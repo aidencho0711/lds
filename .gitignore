@@ -1,0 +1,5 @@
+node_modules/
+test/shots/
+v1_src/
+v1_last-drop.html
+.vercel/

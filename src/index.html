@@ -1,0 +1,298 @@
+<title>Last Drop Royale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>/*STYLE*/</style>
+<div id="app">
+  <canvas id="gl"></canvas>
+
+  <!-- 로비: 상단 탭·아이콘 / 왼쪽 위 오퍼레이터 / 왼쪽 아래 소식·맵·출격 / 가운데 캐릭터 -->
+  <section id="lobby" class="screen">
+    <header class="lb-top">
+      <div class="brand"><span class="brand-mark"></span><div><h1>LAST DROP</h1><p>배틀로얄 · 웹 에디션</p></div></div>
+      <nav class="lb-nav">
+        <div class="lb-tabs" id="lbTabs">
+          <button type="button" data-tab="play" class="on">플레이</button>
+          <button type="button" data-tab="record">전적</button>
+          <button type="button" data-tab="custom">커스터마이즈</button>
+        </div>
+        <div class="lb-sub" id="segQueue"></div>
+        <div class="lb-note" id="lbNote" hidden></div>
+      </nav>
+      <div class="lb-right">
+        <button class="lv-chip" type="button" data-tab-go="record" title="전적"><span class="lv-hex" id="lvBadge">1</span><span class="lv-txt"><b>LV <span id="lvNum">1</span></b><span class="bar"><i id="xpBar"></i></span></span></button>
+        <button class="icon-btn hl" type="button" data-ui="matchCfg" title="경기 설정"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>경기 설정</span></button>
+        <button class="icon-btn" type="button" data-ui="help" title="조작법"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h1M9.5 10h1M13 10h1M16.5 10h1M7 14h10"/></svg><span>조작법</span></button>
+        <button class="icon-btn" type="button" data-ui="settings" title="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg><span>설정</span></button>
+      </div>
+    </header>
+    <div class="lb-body">
+      <div class="lb-left">
+        <!-- 플레이 -->
+        <div class="pane" data-pane="play">
+          <div class="op-card">
+            <div class="op-head"><span>오퍼레이터</span><button type="button" class="op-outfit" data-tab-go="custom" title="복장 바꾸기"><i id="opSwatch"></i><span id="opOutfit">산림 위장</span></button></div>
+            <div class="op-lv"><span class="op-lvk">레벨</span><b id="opLv">1</b></div>
+            <div class="op-xp"><div class="bar"><i id="opXpBar"></i></div><span class="micro" id="xpText">0 / 250 XP</span></div>
+            <div class="op-rings">
+              <div class="ring"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="rgMatches" cx="20" cy="20" r="16"/></svg><b id="stMatches">0</b><span>경기</span></div>
+              <div class="ring"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg win" id="rgWins" cx="20" cy="20" r="16"/></svg><b id="stWins">0</b><span>우승</span></div>
+              <div class="ring"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg kill" id="rgKills" cx="20" cy="20" r="16"/></svg><b id="stKills">0</b><span>처치</span></div>
+            </div>
+          </div>
+          <button class="rank-card" id="rankCard" type="button" data-ui="ranks"><img id="rankEmb" alt=""><div class="rank-info"><b id="rankLabel">-</b><div class="bar"><i id="rankBar"></i></div><span class="micro" id="rankSub">-</span></div><span class="rank-more">티어표 ›</span></button>
+        </div>
+        <!-- 전적 -->
+        <div class="pane panel-pane" data-pane="record" hidden>
+          <div class="eyebrow">전적</div>
+          <div class="stat-grid">
+            <div><span>경기</span><b id="rcMatches">0</b></div><div><span>우승</span><b id="rcWins">0</b></div>
+            <div><span>처치</span><b id="rcKills">0</b></div><div><span>최고 순위</span><b id="stBest">-</b></div>
+            <div><span>우승률</span><b id="rcWinRate">-</b></div><div><span>경기당 처치</span><b id="rcKpm">-</b></div>
+          </div>
+          <div class="eyebrow mt">최근 경기</div>
+          <ol class="recent" id="recent"></ol>
+          <button class="btn mt" type="button" data-ui="ranks">랭크 티어표</button>
+        </div>
+        <!-- 커스터마이즈 -->
+        <div class="pane panel-pane" data-pane="custom" hidden>
+          <div class="eyebrow">복장</div>
+          <div class="outfits" id="outfits"></div>
+          <p class="micro mt">가운데 캐릭터에 바로 적용되고, 경기에서도 이 복장으로 출격합니다.</p>
+        </div>
+        <div class="lb-launch">
+          <button class="news-card" id="newsCard" type="button"><span class="news-img" id="newsImg"></span><span class="news-tag" id="newsTag">업데이트</span><b id="newsTitle"></b><span class="news-dots" id="newsDots"></span></button>
+          <button class="train-btn" id="trainBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg><span><b>훈련장</b><small>에임 연습 · 모든 총기 · 모든 차량</small></span><i>›</i></button>
+          <button class="map-card" id="mapCard" type="button" data-ui="mapPick">
+            <span class="mc-img" id="mcImg"></span>
+            <span class="mc-top" id="mcTop">솔로 · 3인칭</span>
+            <b class="mc-name" id="mcName">칼덴 섬</b>
+            <span class="mc-meta"><span id="mcTime">약 9분</span><span id="mcPlayers">25명</span></span>
+            <span class="mc-warn" id="mcWarn" hidden>렉 주의</span>
+            <span class="mc-gear"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg></span>
+          </button>
+          <button class="btn play" id="playBtn" type="button"><span>출격</span><small id="playSub">솔로 · 칼덴 섬</small></button>
+        </div>
+      </div>
+      <div class="lb-brief"><div class="match-brief" id="matchBrief"></div><div class="micro" id="storeNote"></div></div>
+    </div>
+  </section>
+
+  <!-- 경기 설정 (로비 상단 아이콘) -->
+  <section id="matchCfgPanel" class="overlay" hidden>
+    <div class="menu wide cfg-menu">
+      <div class="eyebrow">경기 설정</div>
+      <div class="cfg-grid">
+        <label class="field"><span>팀 구성</span><div class="seg" id="segSquad"></div></label>
+        <label class="field"><span>게임 모드</span><div class="seg" id="segMode"></div></label>
+        <label class="field"><span>시간대</span><div class="seg" id="segTime"></div></label>
+        <label class="field"><span>시점</span><div class="seg" id="segView"></div></label>
+        <label class="field"><span>봇 난이도</span><div class="seg" id="segDiff"></div></label>
+        <label class="field" id="fldBots"><span>봇 수 <b id="botsVal">24</b></span><input type="range" id="botsRange" min="8" max="48" step="1"></label>
+      </div>
+      <div class="micro cfg-note" id="cfgNote" hidden></div>
+      <p class="micro">듀오·스쿼드: 팀원은 봇이 맡고, 봇 수에는 팀원도 포함됩니다. 쓰러지면 기절하고, 팀원이 10초 동안 부활시키면 다시 일어납니다. 맵은 로비 왼쪽 아래 맵 카드에서 고릅니다. 그래픽·감도·버튼 배치는 오른쪽 위 톱니바퀴(설정)에 있습니다.</p>
+      <button class="btn amber" type="button" data-ui="closeMatchCfg">완료</button>
+    </div>
+  </section>
+
+  <!-- 맵 선택 -->
+  <section id="mapPickPanel" class="overlay" hidden>
+    <div class="menu wide map-menu">
+      <div class="eyebrow">맵 선택</div>
+      <div class="map-grid" id="mapGrid"></div>
+      <div class="map-warn" id="mapWarn" hidden></div>
+      <button class="btn amber" type="button" data-ui="closeMapPick">완료</button>
+    </div>
+  </section>
+
+  <!-- 로딩 -->
+  <section id="loading" class="screen" hidden>
+    <div class="load-box">
+      <div class="eyebrow">작전 지역 생성</div>
+      <h2 id="loadMap">칼덴 섬</h2>
+      <div class="bar big"><i id="loadBar"></i></div>
+      <div class="micro" id="loadStep">준비 중</div>
+      <p class="tip" id="loadTip"></p>
+    </div>
+  </section>
+
+  <!-- 경기 HUD -->
+  <section id="hud" hidden>
+    <div id="compass"><div id="compassStrip"></div><div class="compass-tick"></div></div>
+    <div id="topRight">
+      <canvas id="mini"></canvas>
+      <div class="mini-info"><span id="coord">-</span></div>
+      <div class="counters" id="counters">
+        <div class="ctr"><span>생존</span><b id="alive">0</b></div>
+        <div class="ctr" id="teamsCtr" hidden><span>팀</span><b id="teamsAlive">0</b></div>
+        <div class="ctr"><span>처치</span><b id="kills">0</b></div>
+        <div class="ctr time"><span>시간</span><b id="mtime">0:00</b></div>
+      </div>
+      <div id="zoneInfo" class="zone-info"></div>
+    </div>
+    <div id="killfeed"></div>
+    <div id="teamPanel" hidden></div>
+    <div id="teamTags" hidden></div>
+    <div id="pingTag" hidden><i></i><span></span></div>
+    <div id="dangerTag" hidden><i>!</i><span></span></div>
+    <div id="knockHud" hidden><b id="knockTxt">기절</b><div class="kbar"><i id="knockBar"></i></div><span class="micro">출혈로 체력이 줄어듭니다 · 기어서 엄폐하세요</span></div>
+    <div id="specBar" hidden><span id="specName">관전 중</span><button class="btn" type="button" data-ui="specNext">다음 팀원 <kbd>F</kbd></button><button class="btn danger" type="button" data-ui="quit">로비로</button></div>
+    <div id="toasts"></div>
+    <div id="crosshair"><i class="ch t"></i><i class="ch b"></i><i class="ch l"></i><i class="ch r"></i><svg class="sg" width="320" height="320" viewBox="-160 -160 320 320" aria-hidden="true"><path class="sgo"/><path class="sgi"/></svg><i class="dot"></i></div>
+    <canvas id="sndCv" aria-hidden="true"></canvas>
+    <div id="dummyTags"></div>
+    <div id="dmgNums"></div>
+    <div id="fuseHud" hidden><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="bg" cx="20" cy="20" r="17"/><circle id="fuseArc" class="fg" cx="20" cy="20" r="17"/></svg><b id="fuseNum">7.0</b><span id="fuseTxt"></span></div>
+    <div id="qpop" hidden></div>
+    <div id="hitmark"></div>
+    <div id="dmgRing"></div>
+    <canvas id="scopeCv" hidden></canvas>
+    <canvas id="reticle" hidden></canvas>
+    <div id="breath" hidden><i></i><span>Shift 숨 참기</span></div>
+    <div id="zoneVignette"></div>
+    <div id="progress" hidden><div class="prog-ring"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" class="bg"/><circle cx="20" cy="20" r="17" class="fg" id="progArc"/></svg></div><span id="progLabel">재장전</span></div>
+    <div id="bottom">
+      <div id="gearRow"></div>
+      <div id="hpWrap"><div id="boostBar"></div><div id="hpBar"><i id="hpFill"></i><i id="hpLag"></i></div></div>
+    </div>
+    <div id="weaponPanel"></div>
+    <div id="vehHud" hidden><div class="vn" id="vehName"></div><div class="vs"><b id="vehSpd">0</b><small>km/h</small></div><div class="vh"><i id="vehHp"></i></div><div class="vk" id="vehKeys">W/S 가속·후진 · A/D 조향 · Space 핸드브레이크 · C 좌석 · F 하차</div></div>
+    <div id="vehPrompt" hidden></div>
+    <div id="lootList"></div>
+    <div id="dropPanel" hidden>
+      <div id="dropInfo"></div>
+      <button class="btn amber" id="jumpBtn">강하 <kbd>F</kbd></button>
+      <button class="btn amber" id="chuteBtn" hidden>낙하산 <kbd>F</kbd></button>
+    </div>
+    <div id="hudButtons">
+      <button class="hbtn" id="hbBag" data-tap="inventory" title="인벤토리 (Tab)">가방</button>
+      <button class="hbtn" id="hbMenu" data-tap="pause" title="메뉴 (Esc)">메뉴</button>
+    </div>
+    <!-- 터치 조작 -->
+    <div id="touch" hidden>
+      <div id="touchLayer"></div>
+      <div id="stick"><div id="stickKnob"></div></div>
+      <div id="tbtns"></div>
+    </div>
+  </section>
+
+  <!-- 전체 지도 -->
+  <section id="mapPanel" class="overlay" hidden>
+    <button class="map-x" type="button" data-ui="closeMap" aria-label="지도 닫기" title="지도 닫기 (M)">✕</button>
+    <div class="map-wrap"><canvas id="bigmap"></canvas>
+      <div class="map-side"><div class="eyebrow">전체 지도</div><div class="map-zoom"><button class="btn" type="button" data-mz="in" title="확대">+</button><button class="btn" type="button" data-mz="out" title="축소">−</button><button class="btn" type="button" data-mz="me">내 위치</button><span id="mapZoomVal">×1</span></div><button class="btn amber" type="button" id="mapOrder" hidden>팀원 이동 지시</button><p class="micro" id="mapHelp">휠로 확대·축소, 끌어서 이동. 지도를 눌러 마커를 찍고, 같은 곳을 다시 누르면 지웁니다.</p><div id="mapLegend"></div><button class="btn" data-ui="closeMap">닫기 <kbd>M</kbd></button></div>
+    </div>
+  </section>
+
+  <!-- 인벤토리 -->
+  <section id="invPanel" class="overlay" hidden>
+    <div class="inv">
+      <button class="btn close" data-ui="closeInv">닫기 <kbd>Tab</kbd></button>
+      <div class="inv-col"><div class="eyebrow">주변</div><div id="invGround" class="list"></div></div>
+      <div class="inv-col"><div class="eyebrow">가방 <span id="invCap"></span></div><div class="bar"><i id="capBar"></i></div><div id="invItems" class="list"></div></div>
+      <div class="inv-col"><div class="eyebrow">장비</div><div id="invGear"></div><div class="eyebrow mt">무기</div><div id="invWeapons"></div></div>
+    </div>
+  </section>
+
+  <!-- 일시정지 -->
+  <section id="rankPanel" class="overlay" hidden>
+    <div class="result rank-table">
+      <div class="eyebrow">랭크전</div>
+      <h2>티어 안내</h2>
+      <div class="tier-grid" id="tierGrid"></div>
+      <ul class="rank-rules micro" id="rankRules"></ul>
+      <div class="row"><button class="btn" data-ui="closeRanks">닫기</button></div>
+    </div>
+  </section>
+
+  <section id="pausePanel" class="overlay" hidden>
+    <div class="menu">
+      <div class="eyebrow">일시 정지</div>
+      <button class="btn amber" data-ui="resume">계속하기</button>
+      <button class="btn" data-ui="settings">설정</button>
+      <button class="btn" data-ui="help">조작법</button>
+      <button class="btn" data-ui="layout">모바일 버튼 배치 편집</button>
+      <button class="btn danger" data-ui="quit" id="quitBtn">경기 포기 (로비로)</button>
+    </div>
+  </section>
+
+  <!-- 설정 -->
+  <section id="settingsPanel" class="overlay" hidden>
+    <div class="menu wide">
+      <div class="eyebrow">설정</div>
+      <div class="set-grid" id="setGrid"></div>
+      <p class="micro">봇 수·난이도는 다음 경기부터 적용됩니다. 저장되지 않는 환경에서도 이번 세션 동안은 유지됩니다.</p>
+      <button class="btn amber" data-ui="closeSettings">완료</button>
+    </div>
+  </section>
+
+  <!-- 조작법 -->
+  <section id="helpPanel" class="overlay" hidden>
+    <div class="menu wide">
+      <div class="eyebrow">조작법</div>
+      <div class="help-grid">
+        <div><h3>PC</h3><table class="keys">
+          <tr><td><kbd>W A S D</kbd></td><td>이동</td></tr><tr><td><kbd>마우스</kbd></td><td>시점</td></tr>
+          <tr><td><kbd>좌클릭</kbd> / <kbd>우클릭</kbd></td><td>사격 / 정조준(누르고 있기, 조준경으로 봄)</td></tr>
+          <tr><td><kbd>Shift</kbd> (3·4·6배 조준 중)</td><td>숨 참기 — 조준경 흔들림 감소</td></tr>
+          <tr><td><kbd>Shift</kbd></td><td>달리기</td></tr><tr><td><kbd>Space</kbd></td><td>점프 · 일어서기 · 창문·담 넘기 / 상자 오르기 (앞에 넘을 수 있는 턱이 있으면 자동)</td></tr>
+          <tr><td><kbd>C</kbd> / <kbd>Z</kbd></td><td>앉기 / 엎드리기</td></tr><tr><td><kbd>R</kbd></td><td>재장전</td></tr><tr><td><kbd>B</kbd></td><td>사격 모드 (연사·단발·3점사)</td></tr>
+          <tr><td><kbd>1 2 3</kbd> / <kbd>X</kbd></td><td>무기 선택 / 무기 집어넣기</td></tr>
+          <tr><td><kbd>F</kbd></td><td>줍기 · 강하 · 낙하산 · 차량 탑승/하차 · 기절한 팀원 부활(10초, 움직이면 취소)</td></tr>
+          <tr><td>운전 중 <kbd>W S</kbd> / <kbd>A D</kbd></td><td>가속·브레이크·후진 / 조향 (<kbd>Space</kbd> 핸드브레이크, 마우스로 둘러보기)</td></tr><tr><td><kbd>G</kbd> / <kbd>T</kbd></td><td>투척 준비(궤적 표시, 다시 누르면 취소) / 투척물 전환 — 준비 중 좌클릭을 누르면 핀 뽑기, 떼면 투척. 수류탄은 핀을 뽑고 7초, 연막탄은 3초 뒤 터짐</td></tr>
+          <tr><td><kbd>Q</kbd> (듀오·스쿼드)</td><td>핑 — 적을 조준하면 팀원 '공격', 땅·건물이면 '이동'. 빠르게 두 번 = '위험' 표시(팀원이 그쪽을 경계하며 엄폐), 길게 누르기 = '모여'</td></tr>
+          <tr><td>차량에서 <kbd>C</kbd></td><td>다음 빈 좌석으로 이동 (운전석 ↔ 동승석). 동승석에서는 마우스로 조준·사격·장전 가능</td></tr>
+          <tr><td><kbd>H</kbd> / <kbd>J</kbd></td><td>회복(상황에 맞는 아이템 자동) / 에너지 드링크 — 모바일은 회복·투척 버튼을 누르면 위에 아이템 선택이 뜹니다</td></tr>
+          <tr><td><kbd>Tab</kbd> / <kbd>M</kbd></td><td>인벤토리 / 지도 (미니맵 클릭으로도 열림 · 휠로 확대, 끌어서 이동)</td></tr><tr><td><kbd>V</kbd></td><td>1인칭 ↔ 3인칭</td></tr><tr><td><kbd>Esc</kbd></td><td>메뉴</td></tr>
+        </table></div>
+        <div><h3>모바일 (가로 화면)</h3><table class="keys">
+          <tr><td>왼쪽 화면</td><td>조이스틱 이동 (위로 끝까지 밀면 달리기)</td></tr>
+          <tr><td>오른쪽 빈 화면</td><td>드래그로 시점</td></tr>
+          <tr><td>사격 버튼</td><td>누른 채 드래그하면 조준점이 따라감. 이동 중 사격 가능(달리기는 자동 해제)</td></tr>
+          <tr><td>조준</td><td>누를 때마다 조준 켜기/끄기</td></tr>
+          <tr><td>줍기</td><td>가장 가까운 아이템 줍기 (오른쪽 목록을 눌러도 됨) · 상황에 따라 탑승/부활 버튼으로 바뀜</td></tr>
+          <tr><td>미니맵</td><td>누르면 전체 지도 — 두 손가락으로 확대·축소, 한 손가락으로 끌어서 이동, 짧게 눌러 마커</td></tr>
+          <tr><td>상단 버튼</td><td>가방 · 메뉴</td></tr>
+          <tr><td>핑 버튼 (듀오·스쿼드)</td><td>조준점의 적 → 팀원 공격, 지면 → 이동, 두 번 빠르게 → 위험 표시, 길게 → 모여. 팀 목록 위 ✕로 지시 취소</td></tr>
+          <tr><td>좌석 버튼 (차량)</td><td>다음 빈 좌석으로. 동승석에서는 사격·조준·장전 버튼이 나타남</td></tr>
+          <tr><td>버튼 배치</td><td>메뉴 또는 설정 → 모바일 버튼 배치 편집: 버튼·가방/메뉴·킬 로그·팀 목록을 끌어서 이동, 각각 크기 조절</td></tr>
+        </table>
+        <h3>훈련장</h3><p class="micro">로비의 '훈련장'에서 모든 총기·부착물·차량을 써 볼 수 있습니다. 방어구 단계별 더미(피해 숫자 표시, 파손된 방어구는 5초 뒤 복구), 50~300m 장거리 표적, 이동 표적, 장애물 코스가 있습니다. 기록은 남지 않습니다.</p><h3>규칙</h3><p class="micro">듀오·스쿼드: 쓰러지면 기절(기어가기만 가능, 출혈로 체력 감소)하고, 팀원이 옆에서 10초 동안 부활시키면 체력 15로 일어납니다. 서 있는 팀원이 모두 쓰러지면 팀 전체가 탈락합니다. 팀원끼리는 피해를 주지 않습니다.</p><p class="micro">마지막 생존자(팀)가 승리합니다. 파란 자기장 밖에서는 체력이 계속 줄어듭니다. 흰 원이 다음 안전 구역입니다. 붕대·구급상자는 체력 75까지, 의료 키트는 100까지 회복합니다.</p></div>
+      </div>
+      <button class="btn amber" data-ui="closeHelp">닫기</button>
+    </div>
+  </section>
+
+  <!-- 결과 -->
+  <section id="resultPanel" class="overlay" hidden>
+    <div class="result">
+      <div class="eyebrow" id="resKicker">경기 종료</div>
+      <h2 id="resTitle">다음엔 이길 수 있습니다</h2>
+      <div class="res-rank"><b id="resRank">#12</b><span id="resOf">/ 25</span></div>
+      <div class="res-grid">
+        <div><span>처치</span><b id="resKills">0</b></div><div><span>생존 시간</span><b id="resTime">0:00</b></div>
+        <div><span>가한 피해</span><b id="resDmg">0</b></div><div><span>획득 경험치</span><b id="resXp">+0</b></div>
+      </div>
+      <div class="res-ranked" id="resRanked" hidden><img id="resEmb" alt=""><div class="rr-info"><div class="eyebrow" id="resRkKicker">랭크</div><b id="resRkLabel"></b><div class="bar"><i id="resRkBar"></i></div><span class="micro" id="resRkSub"></span></div><b class="rp-delta" id="resRkDelta"></b></div>
+      <p class="micro" id="resNote"></p>
+      <div class="row"><button class="btn amber" data-ui="again">다시 플레이</button><button class="btn" data-ui="lobby">로비로</button></div>
+    </div>
+  </section>
+
+  <!-- 모바일 버튼 배치 편집 -->
+  <section id="layoutEditor" hidden>
+    <div id="edStage"></div>
+    <div class="ed-panel">
+      <div class="ed-row"><b id="edName">버튼·창을 눌러 선택하세요</b><span class="micro" id="edWarn"></span></div>
+      <label class="ed-row"><span>선택한 항목 크기 <b id="edSizeVal">100%</b></span><input type="range" id="edSize" min="0.5" max="2" step="0.05" value="1"></label>
+      <label class="ed-row"><span>모든 원형 버튼 크기 <b id="edGlobalVal">100%</b></span><input type="range" id="edGlobal" min="0.7" max="1.5" step="0.05" value="1"></label>
+      <label class="ed-check"><input type="checkbox" id="edStickFixed"> 조이스틱 위치 고정 (끄면 왼쪽 화면 어디서나 시작)</label>
+      <div class="row"><button class="btn" id="edResetOne">선택 초기화</button><button class="btn" id="edResetAll">전체 초기화</button><button class="btn" id="edCancel">취소</button><button class="btn amber" id="edSave">저장</button></div>
+    </div>
+  </section>
+
+  <div id="rotateHint" hidden><div><b>가로 화면으로 돌려 주세요</b><p class="micro">이 게임은 가로 화면 기준으로 설계되었습니다.</p><button class="btn" id="rotateDismiss">그래도 계속</button></div></div>
+  <div id="fatal" hidden></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>/*SCRIPT*/</script>

@@ -1,0 +1,46 @@
+import sys, time, json, os
+from playwright.sync_api import sync_playwright
+OUT = sys.argv[1] if len(sys.argv) > 1 else '/tmp'
+THREE = open('/home/claude/br/node_modules/three/build/three.min.js','rb').read()
+def route(r):
+    u = r.request.url
+    if 'three' in u and 'cdnjs' in u: return r.fulfill(body=THREE, content_type='application/javascript')
+    if 'fonts.g' in u: return r.abort()
+    return r.continue_()
+logs = []
+with sync_playwright() as p:
+    b = p.chromium.launch(args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'])
+    pg = b.new_page(viewport={'width':1280,'height':720})
+    pg.on('console', lambda m: logs.append(f'[{m.type}] {m.text}'))
+    pg.on('pageerror', lambda e: logs.append(f'[pageerror] {e}'))
+    pg.route('**/*', route)
+    pg.goto('file:///home/claude/br/dist/index.html')
+    pg.wait_for_timeout(2500)
+    pg.screenshot(path=f'{OUT}/01_lobby.png')
+    pg.evaluate("()=>{ window.__LD.G.timeScale=1; }")
+    pg.click('#playBtn')
+    t0=time.time()
+    pg.wait_for_function("()=>window.__LD.G.state==='play'", timeout=120000)
+    print('load time', round(time.time()-t0,1))
+    print(pg.evaluate("()=>({boxes:__LD.W.boxes.length, buildings:__LD.W.buildings.length, loot:__LD.W.lootSpots.length, pois:__LD.W.pois.map(p=>p.type+':'+p.name), ramps:__LD.W.ramps.length, bridges:__LD.W.bridges.length, roads:__LD.W.roads.length, trees:__LD.W.trees.length})"))
+    pg.wait_for_timeout(800)
+    pg.screenshot(path=f'{OUT}/02_preview.png')
+    pg.click('[data-ui=closeMap]')
+    pg.wait_for_timeout(1500)
+    pg.screenshot(path=f'{OUT}/03_plane.png')
+    # 섬 위에서 강하
+    pg.evaluate("""()=>{const L=__LD; for(let i=0;i<600;i++){ L.sim(1); const pl=L.G.plane; if(Math.abs(pl.pos.x)<150&&Math.abs(pl.pos.z)<150){ L.Input.press('interact'); L.sim(1); break; } } }""")
+    print('player mode', pg.evaluate("()=>__LD.G.player.mode"))
+    pg.evaluate("()=>__LD.sim(60)")
+    pg.wait_for_timeout(500)
+    pg.screenshot(path=f'{OUT}/04_fall.png')
+    t0=time.time()
+    pg.evaluate("()=>__LD.sim(30*25)")
+    print('sim 25s took', round(time.time()-t0,2))
+    print('player', pg.evaluate("()=>{const p=__LD.G.player; return {mode:p.mode,pos:[p.pos.x|0,p.pos.y.toFixed(1),p.pos.z|0],hp:p.hp}}"))
+    print('states', pg.evaluate("()=>__LD.states()"))
+    pg.wait_for_timeout(600)
+    pg.screenshot(path=f'{OUT}/05_ground.png')
+    open(f'{OUT}/logs.txt','w').write('\n'.join(logs))
+    print('\n'.join(logs[:40]))
+    b.close()
