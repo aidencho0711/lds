@@ -19,6 +19,7 @@
         <div class="lb-note" id="lbNote" hidden></div>
       </nav>
       <div class="lb-right">
+        <button class="acct-chip" id="acctChip" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4"/></svg><span>로그인</span></button>
         <button class="lv-chip" type="button" data-tab-go="record" title="전적"><span class="lv-hex" id="lvBadge">1</span><span class="lv-txt"><b>LV <span id="lvNum">1</span></b><span class="bar"><i id="xpBar"></i></span></span></button>
         <button class="icon-btn hl" type="button" data-ui="matchCfg" title="경기 설정"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>경기 설정</span></button>
         <button class="icon-btn" type="button" data-ui="help" title="조작법"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h1M9.5 10h1M13 10h1M16.5 10h1M7 14h10"/></svg><span>조작법</span></button>
@@ -30,7 +31,7 @@
         <!-- 플레이 -->
         <div class="pane" data-pane="play">
           <div class="op-card">
-            <div class="op-head"><span>오퍼레이터</span><button type="button" class="op-outfit" data-tab-go="custom" title="복장 바꾸기"><i id="opSwatch"></i><span id="opOutfit">산림 위장</span></button></div>
+            <div class="op-head"><span id="opName">오퍼레이터</span><button type="button" class="op-outfit" data-tab-go="custom" title="복장 바꾸기"><i id="opSwatch"></i><span id="opOutfit">산림 위장</span></button></div>
             <div class="op-lv"><span class="op-lvk">레벨</span><b id="opLv">1</b></div>
             <div class="op-xp"><div class="bar"><i id="opXpBar"></i></div><span class="micro" id="xpText">0 / 250 XP</span></div>
             <div class="op-rings">
@@ -74,6 +75,28 @@
         </div>
       </div>
       <div class="lb-brief"><div class="match-brief" id="matchBrief"></div><div class="micro" id="storeNote"></div></div>
+    </div>
+  </section>
+
+  <!-- 계정 (로그인 / 회원가입) -->
+  <section id="acctPanel" class="overlay" hidden>
+    <div class="menu acct">
+      <div class="acct-head"><div class="eyebrow">계정</div><button class="map-x acct-x" type="button" id="acctClose" aria-label="닫기">✕</button></div>
+      <form id="acctForm" autocomplete="on">
+        <div class="acct-tabs" id="acctTabs"><button type="button" data-m="login" class="on">로그인</button><button type="button" data-m="signup">회원가입</button></div>
+        <label class="acct-row"><span>아이디</span><input id="acctId" name="username" autocomplete="username" maxlength="10" placeholder="게임 속 이름 (2~10자)" required></label>
+        <label class="acct-row"><span>비밀번호</span><input id="acctPw" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="6자 이상" required></label>
+        <label class="acct-row" id="acctPw2Row" hidden><span>비밀번호 확인</span><input id="acctPw2" type="password" autocomplete="new-password" placeholder="한 번 더"></label>
+        <p class="acct-msg" id="acctMsg" role="status"></p>
+        <button class="btn amber" type="submit" id="acctSubmit">로그인</button>
+        <p class="micro" id="acctHint"></p>
+      </form>
+      <div id="acctInfo" hidden>
+        <p class="acct-who"><b id="acctWho"></b> 님으로 로그인됨</p>
+        <p class="micro">전적·레벨·랭크·설정이 서버에 저장되어 다른 기기에서도 이어집니다. 화면 품질·버튼 배치는 기기마다 따로입니다.</p>
+        <p class="micro" id="acctSync"></p>
+        <div class="acct-btns"><button class="btn" type="button" id="acctSyncNow">지금 저장</button><button class="btn danger" type="button" id="acctLogout">로그아웃</button></div>
+      </div>
     </div>
   </section>
 

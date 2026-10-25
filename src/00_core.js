@@ -91,10 +91,15 @@ const DEFAULT_SETTINGS = {
   touchLayout: {}, stickFixed: false, queue: 'normal', squad: 'solo',
 };
 let SETTINGS = Object.assign({}, DEFAULT_SETTINGS, store.get('settings', {}));
-function saveSettings() { store.set('settings', SETTINGS); }
+// 로그인 상태면 저장할 때마다 서버 동기화 예약 (10_cloud.js가 연결)
+let onDataSaved = null;
+const dataSaved = (what) => { if (onDataSaved) try { onDataSaved(what); } catch (e) { console.warn(e); } };
+function saveSettings() { store.set('settings', SETTINGS); dataSaved('settings'); }
+// 기기마다 다른 설정(화면 품질·버튼 배치 등)은 서버에 올리지 않는다
+const DEVICE_SETTINGS = ['quality', 'shadows', 'touchLayout', 'btnScale', 'hudScale', 'hudOpacity', 'stickFixed', 'touchSens'];
 
 let STATS = Object.assign({ matches: 0, wins: 0, kills: 0, xp: 0, best: 99, recent: [] }, store.get('stats', {}));
-function saveStats() { return store.set('stats', STATS); }
+function saveStats() { const ok = store.set('stats', STATS); dataSaved('stats'); return ok; }
 function levelFromXp(xp) {
   let lv = 1, need = 250, x = xp;
   while (x >= need) { x -= need; lv++; need = Math.round(need * 1.15); }

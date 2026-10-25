@@ -19,7 +19,7 @@ const ROMAN = ['', 'I', 'II', 'III', 'IV'];
 
 const Rank = (() => {
   let S = Object.assign({ rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }, store.get('rank', {}));
-  const save = () => store.set('rank', S);
+  const save = () => { store.set('rank', S); dataSaved('rank'); };
   const unlocked = () => levelFromXp(STATS.xp).lv >= 3;
   const placed = () => S.placed >= 3;
   function tierOf(rp) {
@@ -245,5 +245,7 @@ const Rank = (() => {
     const ti = tierOf(S.rp);
     return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${S.rp} RP` : `${ti.into} / 100 RP`, tier: ti };
   }
-  return { get state() { return S; }, unlocked, placed, tierOf, apply, botDifficulty, botCount, emblem, status, placementScore, rpDelta, reset() { S = { rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }; save(); }, _set(o) { Object.assign(S, o); save(); } };
+  return { get state() { return S; }, unlocked, placed, tierOf, apply, botDifficulty, botCount, emblem, status, placementScore, rpDelta, reset() { S = { rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }; save(); }, _set(o) { Object.assign(S, o); save(); },
+    // 계정 전환: 통째로 바꿔 끼움 (저장 알림 없이)
+    replace(o) { S = Object.assign({ rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }, o || {}); store.set('rank', S); } };
 })();

@@ -298,7 +298,7 @@ async function startMatch() {
   const TS = G.teamSize = G.ranked ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
   G.teams = [];
   const joinTeam = (c) => { let T = G.teams[G.teams.length - 1]; if (!T || T.members.length >= TS) { T = { id: G.teams.length, members: [], place: 0 }; G.teams.push(T); } c.team = T.id; c.slot = T.members.length; T.members.push(c); return T; };
-  const player = new Character({ id: 0, name: '나', isPlayer: true, outfit: OUTFITS[SETTINGS.outfit] });
+  const player = new Character({ id: 0, name: playerName(), isPlayer: true, outfit: OUTFITS[SETTINGS.outfit] });
   CHARS.push(player); G.player = player; joinTeam(player);
   const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
   const nBots = G.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, 1, mapMaxBots(SETTINGS.map));
@@ -630,7 +630,7 @@ function boot() {
   Lobby.init();
   setupInput($('gl'));
   setupTouch($('touch'));
-  HUD.setupLobby(); Training.setupLobby();
+  HUD.setupLobby(); Training.setupLobby(); Cloud.setup(); Cloud.init();
   $('rotateDismiss').addEventListener('click', () => { G.rotateDismissed = true; $('rotateHint').hidden = true; });
   G.onResize();
   document.addEventListener('pointerdown', () => { Audio.init(); if (G.state === 'lobby') Audio.music(true); }, { once: true });
@@ -639,7 +639,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) G.update(dt); },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };
 }

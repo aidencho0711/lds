@@ -19,6 +19,7 @@ function setupInput(canvas) {
     const a = KEYMAP[e.code];
     if (e.code === 'Tab') e.preventDefault();
     if (a === 'pause' && G.paused && !$('pausePanel').hidden && $('settingsPanel').hidden) { G.pause(false); return; }
+    if (e.code === 'Escape' && !$('acctPanel').hidden) { Cloud.close(); return; }
     if (e.code === 'Escape' && !$('helpPanel').hidden) { $('helpPanel').hidden = true; return; }
     if (e.code === 'Escape' && !$('settingsPanel').hidden) { G.ui('closeSettings'); return; }
     if (e.code === 'Escape' && !$('matchCfgPanel').hidden) { G.ui('closeMatchCfg'); return; }

@@ -649,3 +649,30 @@ body.training #counters, body.training #teamsCtr { display: none !important; }
 .dtag small:empty { display: none; }
 .dtag.down { border-color: rgba(229, 72, 77, 0.6); }
 body.touch .dnum { font-size: 1rem; } body.touch .dnum.head { font-size: 1.15rem; }
+
+/* ---------- 계정 ---------- */
+.acct-chip { display: flex; align-items: center; gap: 6px; height: 40px; max-width: 150px; padding: 0 12px 0 9px; border: 1px solid var(--line); background: rgba(13, 17, 19, 0.6); border-radius: 4px; color: var(--sand); cursor: pointer; font: inherit; font-weight: 600; font-size: 0.86rem; }
+.acct-chip[hidden] { display: none; }
+.acct-chip svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.acct-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-chip:hover { border-color: var(--amber); }
+.acct-chip.on { border-color: rgba(134, 197, 108, 0.6); }
+.acct-chip.on svg { color: var(--green); }
+.acct-chip.err svg { color: var(--red); }
+.acct-chip:not(.on) { border-color: rgba(240, 164, 58, 0.55); color: var(--amber); }
+.menu.acct { width: min(360px, 100%); position: relative; }
+.acct-head { display: flex; justify-content: space-between; align-items: center; }
+.acct-x { position: static; width: 34px; height: 34px; font-size: 0.95rem; }
+#acctForm { display: flex; flex-direction: column; gap: 9px; }
+.acct-tabs { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.acct-tabs button { appearance: none; border: 0; background: transparent; color: var(--dim); padding: 7px 0; font: inherit; font-weight: 600; cursor: pointer; }
+.acct-tabs button.on { background: rgba(240, 164, 58, 0.16); color: var(--sand); box-shadow: inset 0 -2px 0 var(--amber); }
+.acct-row { display: flex; flex-direction: column; gap: 3px; font-size: 0.78rem; color: var(--dim); }
+.acct-row[hidden] { display: none; }
+.acct-row input { font: inherit; font-size: 1rem; color: var(--sand); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line-2); border-radius: 4px; padding: 8px 10px; }
+.acct-row input:focus { outline: none; border-color: var(--amber); }
+.acct-msg { min-height: 1.2em; margin: 0; font-size: 0.82rem; }
+.acct-msg.bad { color: #ff9a8a; } .acct-msg.ok { color: var(--dim); }
+.acct-who { font-size: 1.05rem; margin: 2px 0 6px; } .acct-who b { color: var(--amber); }
+.acct-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+@media (max-height: 520px), (max-width: 860px) { .acct-chip { height: 32px; max-width: 108px; font-size: 0.76rem; padding: 0 8px 0 6px; } .acct-chip svg { width: 16px; height: 16px; } .menu.acct { padding: 12px; gap: 6px; } #acctForm { gap: 6px; } .acct-row input { padding: 6px 9px; } }
