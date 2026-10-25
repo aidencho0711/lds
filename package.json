@@ -1,15 +1,16 @@
 {
-  "name": "br",
+  "name": "last-drop-royale",
   "version": "1.0.0",
-  "description": "",
+  "description": "Last Drop Royale — 브라우저 배틀로얄 (Three.js)",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node build.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "three": "^0.128.0"
-  }
+  },
+  "private": true
 }
