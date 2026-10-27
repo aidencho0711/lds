@@ -123,6 +123,7 @@ function fireWeapon(c, origin, dir) {
   if (wi.mag <= 0) { if (c.isPlayer) Audio.dryfire(); return false; }
   // 남은 시간을 이어 받아 프레임 단위 반올림으로 연사 속도가 떨어지지 않게 한다
   wi.mag--; c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); G.stats.shots++;
+  if (c.spawnProt) c.spawnProt = 0; // 데스매치: 쏘면 부활 보호 해제
   const spread = weaponSpread(c) * DEG;
   const pellets = d.pellets || 1;
   const g = gunObj(c), meta = g && g.userData.meta;
@@ -143,6 +144,7 @@ function fireWeapon(c, origin, dir) {
     const t = Math.min(h.t, maxD);
     const ex = origin.x + dx * t, ey = origin.y + dy * t, ez = origin.z + dz * t;
     if (p < 2) FX.tracer(c, tStart, ex, ey, ez);
+    if (p === 0) { _shotEnd[0] = ex; _shotEnd[1] = ey; _shotEnd[2] = ez; _shotEnd[3] = h.type || 0; }
     const fall = h.t > d.range ? clamp(1 - (h.t - d.range) / (d.range * 1.4), 0.35, 1) : 1;
     if (h.type === 'char') {
       applyDamage(h.char, d.dmg * fall, h.part, c, wi.id, ex, ey, ez); G.stats.hits++;
@@ -160,8 +162,10 @@ function fireWeapon(c, origin, dir) {
   if (d.cls === 'PISTOL') c.slideKick = 0.09;
   Audio.gunshot(origin, wi.id, c.isPlayer, isIndoor(c.pos.x, c.pos.z, c.pos.y));
   G.noises.push({ x: origin.x, y: origin.y, z: origin.z, t: G.time, r: d.cls === 'SMG' || d.cls === 'PISTOL' ? 160 : d.ammo === 'a300' ? 360 : 260, by: c, kind: 'shot' });
+  if (G.net) Net.sendShot(c, tStart, _shotEnd, wi.id, _shotEnd[3]); // 같이 하기: 다른 기기에 총성·탄도 표시
   return true;
 }
+const _shotEnd = [0, 0, 0, 0];
 // 맨손 근접 공격 (무기·탄약이 없을 때)
 function melee(c, origin, dir) {
   if (c.fireCd > 0 || c.heal || c.inWater || c.knocked || c.revive) return false;
@@ -433,7 +437,9 @@ function applyParts(gun, A) {
 function applyDamage(t, dmg, part, attacker, cause, hx, hy, hz) {
   if (!t.alive || t.mode === 'plane') return 0;
   if (sameTeam(attacker, t)) return 0; // 팀원 공격 없음 (총·주먹·수류탄·차량)
+  if (G.dm && t.spawnProt > G.time) return 0; // 데스매치 부활 직후 보호
   if (attacker && attacker !== t) shareHit(attacker, t);
+  if (G.net && !Net.mine(t)) return Net.remoteHit(t, dmg, part, attacker, cause, hx, hy, hz); // 다른 기기 캐릭터: 주인 기기가 판정
   if (t.knocked) return damageKnocked(t, dmg, part, attacker, cause);
   let d = dmg;
   const armor = (slot, mult) => {
@@ -468,7 +474,7 @@ function shareHit(a, t) {
 }
 // ---------- 기절·부활 (듀오·스쿼드) ----------
 // 서 있는 팀원이 남아 있으면 쓰러져도 바로 죽지 않고 기절한다. 마지막 팀원이 쓰러지면 팀 전멸.
-function canKnock(t) { return G.teamSize > 1 && t.mode === 'ground' && teamHasStanding(t.team, t); }
+function canKnock(t) { return !G.dm && G.teamSize > 1 && t.mode === 'ground' && teamHasStanding(t.team, t); }
 function damageKnocked(t, dmg, part, attacker, cause) {
   const d = Math.max(0, dmg * (part === 'head' ? 1.5 : 1)); // 기절 중엔 방어구가 막아 주지 않는다
   t.hp -= d; t.lastDamageT = G.time;
@@ -494,11 +500,13 @@ function knockChar(t, attacker, cause) {
   if (t.isPlayer) { HUD.toast('기절했습니다! 팀원이 부활시켜 줄 때까지 기어서 버티세요', 'warn'); HUD.setLoot([]); Audio.hurt(); }
   else if (G.player && sameTeam(G.player, t)) HUD.toast(`팀원 ${t.name} 기절!`, 'warn');
   if (t.brain) t.brain.onKnocked();
+  if (G.net) Net.sendKnock(t, by, cause);
 }
 function startRevive(c, m) {
   if (!c.alive || c.knocked || c.veh || c.revive || !m.alive || !m.knocked || !sameTeam(c, m)) return false;
   if (m.revivedBy && m.revivedBy !== c && m.revivedBy.revive) return false;
   c.revive = { tgt: m, t: 0, total: REVIVE_T }; m.revivedBy = c;
+  if (G.net) Net.sendRevive(c, m, 'start');
   c.heal = null; c.rl = null; c.aiming = false; c.sprint = false; c.burstQ = 0; c.vel.x = c.vel.z = 0;
   if (c.stance === 'stand') c.stance = 'crouch';
   if (c.isPlayer) { HUD.toast(`${m.name} 부활 중 — 움직이면 취소됩니다`, 'info'); Audio.heal('firstaid', 'start'); }
@@ -508,6 +516,7 @@ function startRevive(c, m) {
 function cancelRevive(c, quiet) {
   const r = c.revive; if (!r) return;
   c.revive = null; if (r.tgt.revivedBy === c) r.tgt.revivedBy = null;
+  if (G.net && Net.mine(c)) Net.sendRevive(c, r.tgt, 'stop');
   if (!quiet && (c.isPlayer || r.tgt.isPlayer)) HUD.toast('부활이 중단되었습니다', 'warn');
 }
 function updateRevive(c, dt) {
@@ -516,6 +525,7 @@ function updateRevive(c, dt) {
   m.revivedBy = c; r.t += dt;
   if (r.t < r.total) return;
   c.revive = null; c.revives++;
+  if (G.net) Net.sendRevive(c, m, 'done');
   m.knocked = false; m.revivedBy = null; m.knockedBy = null; m.hp = REVIVE_HP; m.stance = 'crouch'; m.setVisibleGear();
   if (m.brain) m.brain.onRevived();
   if (m.isPlayer) HUD.toast(`${c.name}이(가) 부활시켰습니다`, 'ok');
@@ -524,6 +534,7 @@ function updateRevive(c, dt) {
 }
 // 기절 중 출혈 (부활받는 동안은 멈춤)
 function updateKnocked(c, dt) {
+  if (G.net && !Net.mine(c)) return;
   if (c.revivedBy && c.revivedBy.revive && c.revivedBy.revive.tgt === c) return;
   c.revivedBy = null;
   c.hp -= dt * 100 / BLEED_T[Math.min(c.knockN, BLEED_T.length) - 1];
@@ -531,6 +542,7 @@ function updateKnocked(c, dt) {
 }
 function killChar(t, attacker, cause) {
   if (!t.alive) return;
+  if (G.net && !Net.mine(t)) { Net.killReq(t, attacker, cause); return; } // 다른 기기 캐릭터: 주인에게 요청
   const aliveBefore = CHARS.filter(c => c.alive).length, wasKnocked = t.knocked;
   t.alive = false; t.hp = 0; t.deathTime = G.time; t.place = aliveBefore;
   t.heal = null; t.reloadT = 0; t.cycle = null; t.aiming = false; t.vel.set(0, 0, 0);
@@ -542,9 +554,11 @@ function killChar(t, attacker, cause) {
   if (G.killLog) G.killLog.push({ t: Math.round(G.time), cause, kn: wasKnocked, by: attacker && attacker !== t ? (attacker.isPlayer ? 'player' : 'bot') : 'env' });
   // 사망 시 소지품을 주변에 떨어뜨림 (루팅 가능)
   const sc = G.scene, drop = (id, n, inst) => { const a = Math.random() * TAU, r = 0.4 + Math.random() * 0.9; spawnItem(sc, id, n, t.pos.x + Math.cos(a) * r, groundAt(t.pos.x + Math.cos(a) * r, t.pos.z + Math.sin(a) * r, t.pos.y + 0.5), t.pos.z + Math.sin(a) * r, inst); };
-  for (const wi of t.inv.weapons) if (wi) drop(wi.id, 1, wi);
-  for (const k in t.inv.gear) if (t.inv.gear[k]) drop(t.inv.gear[k].id, 1, t.inv.gear[k]);
-  for (const id in t.inv.items) drop(id, t.inv.items[id]);
+  if (!G.dm) { // 데스매치는 떨어뜨리지 않는다 (부활하면 새로 지급)
+    for (const wi of t.inv.weapons) if (wi) drop(wi.id, 1, wi);
+    for (const k in t.inv.gear) if (t.inv.gear[k]) drop(t.inv.gear[k].id, 1, t.inv.gear[k]);
+    for (const id in t.inv.items) drop(id, t.inv.items[id]);
+  }
   t.inv.weapons = [null, null, null]; t.inv.items = {}; t.inv.cur = -1; t.inv.gear = { helmet: null, vest: null, bag: null };
   t.setVisibleGear();
   HUD.killfeed(attacker && attacker !== t ? attacker.name : null, t.name, causeName(cause), attacker && attacker.isPlayer, t.isPlayer, cause === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t));
@@ -552,6 +566,7 @@ function killChar(t, attacker, cause) {
   // 팀: 서 있는 팀원이 없으면 기절한 팀원도 모두 탈락 (기절시킨 적에게 처치 인정)
   if (G.teams && G.teamSize > 1 && !teamHasStanding(t.team)) for (const m of G.teams[t.team].members) if (m.alive && m.knocked) killChar(m, m.knockedBy, 'wipe');
   if (G.teams) { const T = G.teams[t.team]; if (T && !T.place && !teamAlive(T)) T.place = aliveTeamCount() + 1; }
+  if (G.net) Net.sendDeath(t, attacker, cause);
   G.onDeath(t, attacker);
 }
 
@@ -563,6 +578,7 @@ function throwItem(c, type, origin, dir, power, fuse) {
   if (c.inv.take(type, 1) <= 0) return false;
   const pr = { type, owner: c, x: origin.x, y: origin.y, z: origin.z, vx: dir.x * power, vy: dir.y * power + 3.2, vz: dir.z * power, t: 0, fuse: fuse !== undefined ? fuse : FUSE[type], mesh: FX.grenadeMesh(type) };
   PROJ.push(pr);
+  if (G.net) Net.sendThrow(c, pr);
   if (!c.isPlayer) { c.throwAnim = 0.35; if (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 25) Audio.spoon(c.pos, false); }
   return pr;
 }
@@ -599,6 +615,7 @@ function stepProjectiles(dt) {
 function explode(p) {
   FX.explosion(p.x, p.y, p.z); Audio.explosion(p);
   G.noises.push({ x: p.x, y: p.y, z: p.z, t: G.time, r: 220, by: p.owner, kind: 'blast' });
+  if (p.remote) { if (G.player && G.player.alive) { const d = Math.hypot(G.player.pos.x - p.x, G.player.pos.z - p.z); if (d < 40) G.shake = Math.max(G.shake, (1 - d / 40) * 1.2); } return; } // 다른 기기 수류탄: 피해는 던진 쪽이 판정
   for (const c of CHARS) {
     if (!c.alive || c.mode !== 'ground') continue;
     c.chest(_v1); const d = _v1.distanceTo(_v2.set(p.x, p.y + 0.3, p.z));

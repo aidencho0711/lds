@@ -164,7 +164,7 @@ class Brain {
     if (this.usableWeapons().length && (!this.target || !this.aware.get(this.target) || !this.aware.get(this.target).visible)) this.lookYaw = Math.atan2(x - c.pos.x, z - c.pos.z);
   }
   // 플레이어 팀원이면 플레이어 (살아 있을 때) — 플레이어를 따라가고 지시를 받는다
-  playerMate() { const p = G.player; return G.teamSize > 1 && p && p.alive && p !== this.c && p.team === this.c.team && p.mode === 'ground' ? p : null; }
+  playerMate() { const p = G.player; return !G.dm && G.teamSize > 1 && p && p.alive && p !== this.c && p.team === this.c.team && p.mode === 'ground' ? p : null; }
   order() { return this.playerMate() ? G.teamOrder : null; }
   // 따라가기 자리: 플레이어 진행 방향 기준 왼뒤·오른뒤·뒤
   followSlot(p) {
@@ -196,7 +196,7 @@ class Brain {
   }
   // 팀장: 플레이어 팀이면 플레이어, 아니면 서 있는 첫 팀원 (팀원은 팀장 근처에서 움직인다)
   teamLeader() {
-    if (!G.teams || G.teamSize < 2) return null;
+    if (!G.teams || G.teamSize < 2 || G.dm) return null;
     for (const m of teamMembers(this.c)) if (standing(m) && m.mode === 'ground') return m;
     return null;
   }
@@ -944,6 +944,7 @@ class Brain {
   }
   pickExploreGoal() {
     const c = this.c, z = Zone.next || Zone.cur;
+    if (G.dm) { const q = DM.huntPoint(c); this.building = null; this.moveGoal(q[0], q[1], 'explore'); return; } // 데스매치: 적을 찾아 돌아다닌다
     const pm0 = this.playerMate();
     if (pm0 && this.building && Math.hypot(this.building.x - pm0.pos.x, this.building.z - pm0.pos.z) > 35) this.building = null;
     if (this.building && !this.visited.has(this.building) && (!z || Zone.inside(this.building.x, this.building.z, z, 0) || (W.big && !this.zonePressure()))) {

@@ -5,7 +5,7 @@
 const $ = (id) => document.getElementById(id);
 const HUD = (() => {
   let loot = [], focusIdx = 0, lastHp = 100, lastLootKey = '', toastQ = [];
-  const modals = ['mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel'];
+  const modals = ['mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel'];
   const ico = (id, att, cls = 'ico') => { const w = h('span', cls), src = Models.icon(id, att); if (src) { const im = h('img'); im.src = src; im.alt = ''; im.draggable = false; w.appendChild(im); } return w; };
   const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
 
@@ -310,6 +310,7 @@ const HUD = (() => {
     else zt = '최종 구역';
     if (Zone.next && p.mode === 'ground') { const d = Math.max(0, Math.hypot(p.pos.x - Zone.next.x, p.pos.z - Zone.next.z) - Zone.next.r); if (d > 0) zt += ` · 다음 구역까지 ${Math.round(d)}m`; }
     if (G.training) zt = '훈련장 · 메뉴에서 나가기';
+    if (G.dm) zt = '';
     zi.textContent = zt; zi.className = 'zone-info' + (out ? ' out' : Zone.state === 'shrink' ? ' shrink' : '');
     $('zoneVignette').style.opacity = out && p.mode === 'ground' ? 1 : 0;
     // 나침반
@@ -483,7 +484,7 @@ const HUD = (() => {
     if (cv.width !== S) { cv.width = cv.height = S; }
     const ctx = cv.getContext('2d');
     const src = p.mode === 'plane' ? G.plane.pos : p.pos;
-    const R = p.mode === 'ground' ? (p.veh ? 240 : 110) : 260, scale = S / (R * 2);
+    const R = W.isArena ? 42 : p.mode === 'ground' ? (p.veh ? 240 : 110) : 260, scale = S / (R * 2);
     const img = W.minimap, k = img.width / SIZE;
     ctx.fillStyle = '#2c6474'; ctx.fillRect(0, 0, S, S);
     ctx.drawImage(img, (src.x - R + HALF) * k, (src.z - R + HALF) * k, R * 2 * k, R * 2 * k, 0, 0, S, S);
@@ -742,11 +743,20 @@ const HUD = (() => {
   }
 
   // ---------- 로비 ----------
+  // 파티: 방장만 공통 설정(모드·팀 구성·시간대·난이도)을 바꾼다. 팀 구성은 파티 인원보다 작은 것을 고를 수 없다
+  const PARTY_KEYS = ['mode', 'squad', 'time', 'difficulty'];
   function seg(id, options, key, after) {
     const box = $(id); box.innerHTML = '';
+    const L = Party.lockInfo();
     for (const [v, l] of options) {
-      const b = h('button', SETTINGS[key] === v ? 'on' : '', l); b.type = 'button';
-      b.addEventListener('click', (e) => { e.preventDefault(); SETTINGS[key] = v; saveSettings(); Audio.init(); Audio.ui(); renderLobby(); after && after(); });
+      const small = key === 'squad' && L && TEAM_MODES[v] && TEAM_MODES[v].size < L.size;
+      const b = h('button', (SETTINGS[key] === v ? 'on' : '') + (small || (L && !L.leader && PARTY_KEYS.includes(key)) ? ' lock' : ''), l); b.type = 'button';
+      b.addEventListener('click', (e) => {
+        e.preventDefault(); Audio.init(); Audio.ui();
+        if (L && !L.leader && PARTY_KEYS.includes(key)) { showLobbyNote('파티 설정은 방장만 바꿀 수 있습니다'); return; }
+        if (small) { showLobbyNote(`파티가 ${L.size}명이라 ${TEAM_MODES[v].name}를 고를 수 없습니다`); return; }
+        SETTINGS[key] = v; saveSettings(); renderLobby(); after && after(); if (L) Party.settingsChanged();
+      });
       box.appendChild(b);
     }
   }
@@ -780,9 +790,15 @@ const HUD = (() => {
     const rc = $('recent'); rc.innerHTML = '';
     if (!STATS.recent.length) rc.appendChild(h('li', 'micro', '아직 경기 기록이 없습니다'));
     for (const r of STATS.recent) {
+      if (r.dm) { // 데스매치 기록
+        const li = h('li', r.win ? 'win' : ''); li.appendChild(h('b', '', `${r.win ? '승' : r.draw ? '무' : '패'} ${r.us}:${r.them}`));
+        li.append(`${GAME_TYPES[r.dm] ? GAME_TYPES[r.dm].name : '데스매치'}${r.party ? ' · 파티' : ''} · ${r.kills}킬 ${r.deaths}데스 · ${fmtTime(r.time)}`); rc.appendChild(li); continue;
+      }
       const li = h('li', r.rank === 1 ? 'win' : ''); li.appendChild(h('b', '', `#${r.rank}/${r.total}`));
-      li.append(`${r.sq > 1 ? (r.sq === 2 ? '듀오' : '스쿼드') + ' · ' : ''}${r.kills}킬 · ${fmtTime(r.time)} · ${MAPS[r.map] ? MAPS[r.map].name : ''}${r.ranked ? ' · 랭크' + (r.delta !== undefined ? ` ${r.delta >= 0 ? '+' : ''}${r.delta}RP` : ' 배치') : ''}`); rc.appendChild(li);
+      li.append(`${r.sq > 1 ? ({ 2: '듀오', 3: '트리오', 4: '스쿼드' }[r.sq] || '팀') + ' · ' : ''}${r.party ? '파티 · ' : ''}${r.kills}킬 · ${fmtTime(r.time)} · ${MAPS[r.map] ? MAPS[r.map].name : ''}${r.ranked ? ' · 랭크' + (r.delta !== undefined ? ` ${r.delta >= 0 ? '+' : ''}${r.delta}RP` : ' 배치') : ''}`); rc.appendChild(li);
     }
+    const D = STATS.dm || DM_STATS0;
+    $('rcDm').textContent = D.matches ? `${D.wins} / ${D.matches}` : '-'; $('rcDmKd').textContent = D.matches ? (D.kills / Math.max(1, D.deaths)).toFixed(2) : '-';
     // 커스터마이즈
     const of = $('outfits'); of.innerHTML = '';
     OUTFITS.forEach((o, i) => {
@@ -800,19 +816,31 @@ const HUD = (() => {
     const MP = MAPS[SETTINGS.map], maxB = mapMaxBots(SETTINGS.map);
     if (SETTINGS.bots > maxB) { SETTINGS.bots = maxB; saveSettings(); }
     const br = $('botsRange'); br.max = maxB; br.value = SETTINGS.bots; $('botsVal').textContent = SETTINGS.bots;
-    // 대기열(하위 탭): 일반 / 랭크 (레벨 3 미만 잠김)
-    const unlocked = Rank.unlocked(), ranked = SETTINGS.queue === 'ranked' && unlocked;
+    // 대기열(하위 탭): 일반 / 랭크 (레벨 3 미만 잠김, 배틀로얄만). 파티면 파티원 모두 레벨 3 이상이어야 한다
+    const dm = isDmGame(SETTINGS.game), GT = GAME_TYPES[SETTINGS.game] || GAME_TYPES.br;
+    const lock = typeof Party !== 'undefined' ? Party.lockInfo() : null;   // 파티: 방장이 아니면 설정 잠김, 랭크 가능 여부
+    const unlocked = Rank.unlocked() && (!lock || lock.rankOk), ranked = SETTINGS.queue === 'ranked' && unlocked && !dm;
     const q = $('segQueue'); q.innerHTML = '';
     for (const [v, l] of [['normal', '일반'], ['ranked', unlocked ? '랭크' : '랭크 🔒']]) {
       const b = h('button', (v === 'ranked' ? 'ranked' : '') + ((v === 'ranked') === ranked ? ' on' : '') + (v === 'ranked' && !unlocked ? ' lock' : ''), l); b.type = 'button';
-      b.addEventListener('click', (e) => { e.preventDefault(); Audio.init(); Audio.ui(); if (v === 'ranked' && !unlocked) { showLobbyNote(`랭크전은 레벨 3부터 할 수 있습니다 (현재 레벨 ${levelFromXp(STATS.xp).lv})`); return; } SETTINGS.queue = v; saveSettings(); renderLobby(); });
+      b.addEventListener('click', (e) => {
+        e.preventDefault(); Audio.init(); Audio.ui();
+        if (lock && !lock.leader) { showLobbyNote('파티 설정은 방장만 바꿀 수 있습니다'); return; }
+        if (v === 'ranked' && !Rank.unlocked()) { showLobbyNote(`랭크전은 레벨 3부터 할 수 있습니다 (현재 레벨 ${levelFromXp(STATS.xp).lv})`); return; }
+        if (v === 'ranked' && lock && !lock.rankOk) { showLobbyNote(`파티원 중 레벨 3 미만이 있어 랭크전을 할 수 없습니다 (${lock.lowNames.join(', ')})`); return; }
+        if (v === 'ranked' && dm) { SETTINGS.game = 'br'; showLobbyNote('랭크전은 배틀로얄만 있습니다 — 배틀로얄로 바꿨습니다'); }
+        SETTINGS.queue = v; saveSettings(); renderLobby(); if (lock) Party.settingsChanged();
+      });
       q.appendChild(b);
     }
-    $('segDiff').parentElement.classList.toggle('locked', ranked); $('fldBots').classList.toggle('locked', ranked); $('segSquad').parentElement.classList.toggle('locked', ranked);
-    const TS = ranked ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size; if (Lobby.setTeam) Lobby.setTeam(TS);
-    const sqName = ranked ? '솔로' : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).name;
-    $('cfgNote').hidden = !ranked;
-    if (ranked) $('cfgNote').textContent = `랭크전: 솔로 · 봇 ${Rank.botCount(SETTINGS.map)}명 고정 · 봇 난이도는 ${Rank.placed() ? '현재 티어' : '배치고사 기준(혼합)'}에 맞춰 자동 설정`;
+    const partyN = lock ? lock.size : 1;
+    $('segDiff').parentElement.classList.toggle('locked', ranked); $('fldBots').classList.toggle('locked', ranked || dm); $('segSquad').parentElement.classList.toggle('locked', dm || (ranked && partyN < 2)); $('segMode').parentElement.classList.toggle('locked', dm);
+    const TS = dm ? DM_RULES.teamSize : ranked && partyN < 2 ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
+    if (Lobby.setTeam) { const pm = lock ? Party.members() : null; Lobby.setTeam(pm ? pm.length : dm ? 1 : TS, pm ? pm.filter((m) => m.uid !== Cloud.uid).map((m) => m.outfit) : null); }
+    const sqName = dm ? '4 대 4' : ranked && partyN < 2 ? '솔로' : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).name;
+    $('cfgNote').hidden = !(ranked || dm);
+    if (dm) $('cfgNote').textContent = `${GT.name}: 4 대 4 고정(빈자리는 봇) · 먼저 ${DM_RULES.killTarget}킬 · 최대 ${DM_RULES.timeLimit / 60}분 · 봇 난이도·시간대·시점만 적용`;
+    else if (ranked) $('cfgNote').textContent = `랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 고정 · 봇 난이도는 ${Rank.placed() ? '현재 티어' : '배치고사 기준(혼합)'}에 맞춰 자동 설정`;
     // 랭크 카드 (랭크 대기열에서만)
     const rs = Rank.status(), rc0 = $('rankCard');
     rc0.hidden = !ranked;
@@ -821,34 +849,64 @@ const HUD = (() => {
     rc0.className = 'rank-card' + (rs.kind === 'locked' ? ' locked' : '') + (rs.kind === 'ranked' && rs.tier.t >= 8 ? ' glow' : '') + (rs.kind === 'ranked' && rs.tier.t === 9 ? ' tier-top' : '');
     // 맵 카드 (왼쪽 아래)
     const nb = ranked ? Rank.botCount(SETTINGS.map) : SETTINGS.bots, total = nb + 1, mins = Math.round(matchMinutes()), nTeams = Math.ceil(total / TS);
-    $('mcImg').style.backgroundImage = `url(${LOBBY_ART[SETTINGS.map]})`;
-    $('mcTop').textContent = `${ranked ? '랭크 · 솔로' : sqName} · ${SETTINGS.view === 'fpp' ? '1인칭' : '3인칭'} · ${MODES[SETTINGS.mode].name}`;
-    $('mcName').textContent = MP.name.replace(/\s*\(.*\)$/, '');
-    $('mcTime').textContent = `약 ${mins}분`; $('mcPlayers').textContent = TS > 1 ? `${total}명 · ${nTeams}팀` : `${total}명`; $('mcWarn').hidden = !MP.big;
+    const viewKo = SETTINGS.view === 'fpp' ? '1인칭' : '3인칭';
+    if (dm) {
+      $('mcImg').style.backgroundImage = `url(${LOBBY_ART.arena || LOBBY_ART.kalden})`;
+      $('mcTop').textContent = `${GT.name} · 4 대 4 · ${viewKo}`; $('mcName').textContent = MAPS.arena.name;
+      $('mcTime').textContent = `최대 ${DM_RULES.timeLimit / 60}분`; $('mcPlayers').textContent = '8명 · 2팀'; $('mcWarn').hidden = true;
+    } else {
+      $('mcImg').style.backgroundImage = `url(${LOBBY_ART[SETTINGS.map]})`;
+      $('mcTop').textContent = `${ranked ? '랭크 · ' + sqName : sqName} · ${viewKo} · ${MODES[SETTINGS.mode].name}`;
+      $('mcName').textContent = MP.name.replace(/\s*\(.*\)$/, '');
+      $('mcTime').textContent = `약 ${mins}분`; $('mcPlayers').textContent = TS > 1 ? `${total}명 · ${nTeams}팀` : `${total}명`; $('mcWarn').hidden = !MP.big;
+    }
+    // 모드 선택 (맵 선택 창 위쪽)
+    const gg = $('gameGrid'); gg.innerHTML = '';
+    for (const [k, T] of Object.entries(GAME_TYPES)) {
+      const b = h('button', 'game-opt' + (k === SETTINGS.game ? ' on' : '') + (lock && !lock.leader ? ' lock' : '')); b.type = 'button';
+      b.appendChild(h('b', '', T.name)); b.appendChild(h('span', '', T.desc));
+      b.addEventListener('click', () => {
+        Audio.init(); Audio.ui();
+        if (lock && !lock.leader) { showLobbyNote('모드와 맵은 방장만 바꿀 수 있습니다'); return; }
+        SETTINGS.game = k; if (T.dm && SETTINGS.queue === 'ranked') SETTINGS.queue = 'normal';
+        saveSettings(); renderLobby(); if (lock) Party.settingsChanged();
+      });
+      gg.appendChild(b);
+    }
     // 맵 선택 창
     const mg = $('mapGrid'); mg.innerHTML = '';
     for (const [k, M] of Object.entries(MAPS)) {
       if (M.training) continue; // 훈련장은 로비의 별도 버튼
-      const b = h('button', 'map-opt' + (k === SETTINGS.map ? ' on' : '')); b.type = 'button';
-      const im = h('div', 'mo-img'); im.style.backgroundImage = `url(${LOBBY_ART[k]})`; im.appendChild(h('em', M.big ? 'big' : '', M.big ? '8×8km · 렉 주의' : mapSize(k)));
-      const tx = h('div', 'mo-txt'); tx.appendChild(h('b', '', M.name.replace(/\s*\(.*\)$/, ''))); tx.appendChild(h('span', '', M.desc)); tx.appendChild(h('span', '', `봇 최대 ${mapMaxBots(k)}명`));
+      if (!!M.arena !== dm) continue; // 데스매치는 전용 맵 하나
+      const on = dm || k === SETTINGS.map, b = h('button', 'map-opt' + (on ? ' on' : '') + (dm ? ' fixed' : '')); b.type = 'button';
+      const im = h('div', 'mo-img'); im.style.backgroundImage = `url(${LOBBY_ART[k] || LOBBY_ART.kalden})`; im.appendChild(h('em', M.big ? 'big' : '', M.big ? '8×8km · 렉 주의' : M.arena ? '72×72m' : mapSize(k)));
+      const tx = h('div', 'mo-txt'); tx.appendChild(h('b', '', M.name.replace(/\s*\(.*\)$/, ''))); tx.appendChild(h('span', '', M.desc)); tx.appendChild(h('span', '', M.arena ? '팀 데스매치·웨폰 데스매치 전용' : `봇 최대 ${mapMaxBots(k)}명`));
       b.appendChild(im); b.appendChild(tx);
-      b.addEventListener('click', () => { SETTINGS.map = k; saveSettings(); Audio.init(); Audio.ui(); renderLobby(); if (M.big) { const mw = $('mapWarn'); mw.classList.remove('flash'); void mw.offsetWidth; mw.classList.add('flash'); } });
+      if (!dm) b.addEventListener('click', () => {
+        if (lock && !lock.leader) { showLobbyNote('모드와 맵은 방장만 바꿀 수 있습니다'); return; }
+        SETTINGS.map = k; saveSettings(); Audio.init(); Audio.ui(); renderLobby(); if (lock) Party.settingsChanged();
+        if (M.big) { const mw = $('mapWarn'); mw.classList.remove('flash'); void mw.offsetWidth; mw.classList.add('flash'); }
+      });
       mg.appendChild(b);
     }
-    $('mapWarn').hidden = !MP.big;
-    if (MP.big) $('mapWarn').textContent = `⚠ 대형 맵(8×8km)은 기기 성능에 따라 렉이 걸릴 수 있습니다. 로딩에 수십 초가 걸리고 메모리를 많이 씁니다(휴대폰은 경기 설정에서 봇 수를 줄이는 것을 권장). 봇 최대 ${maxB}명 · 차량 170대 · 한 판 약 ${mins}분.`;
+    $('mapWarn').hidden = dm || !MP.big;
+    if (!dm && MP.big) $('mapWarn').textContent = `⚠ 대형 맵(8×8km)은 기기 성능에 따라 렉이 걸릴 수 있습니다. 로딩에 수십 초가 걸리고 메모리를 많이 씁니다(휴대폰은 경기 설정에서 봇 수를 줄이는 것을 권장). 봇 최대 ${maxB}명 · 차량 170대 · 한 판 약 ${mins}분.`;
     // 출격 버튼 · 요약
-    $('matchBrief').textContent = `${ranked ? '랭크전 · ' : ''}${MAPS[SETTINGS.map].name} · ${MODES[SETTINGS.mode].name} · ${TIMES_KO[SETTINGS.time] || ''} · 봇 ${nb}명(${ranked ? '자동' : DIFFICULTY_NAMES[SETTINGS.difficulty]}) · ${TS > 1 ? `${sqName}(${TS}인 팀 · 팀원 ${Math.min(TS, total) - 1}명은 봇) · 목표: ${nTeams}팀 중 최후의 팀` : `목표: ${total}명 중 최후의 1인`}`;
+    const humans = Math.min(partyN, TS), mateBots = Math.max(0, Math.min(TS, total) - humans);
+    if (dm) $('matchBrief').textContent = `${GT.name} · ${MAPS.arena.name} · ${TIMES_KO[SETTINGS.time] || ''} · 4 대 4 (${partyN > 1 ? `파티 ${partyN}명 + ` : ''}봇 ${8 - partyN}명, ${DIFFICULTY_NAMES[SETTINGS.difficulty]}) · 목표: 먼저 ${DM_RULES.killTarget}킬 (최대 ${DM_RULES.timeLimit / 60}분)`;
+    else $('matchBrief').textContent = `${ranked ? '랭크전 · ' : ''}${MAPS[SETTINGS.map].name} · ${MODES[SETTINGS.mode].name} · ${TIMES_KO[SETTINGS.time] || ''} · 봇 ${nb}명(${ranked ? '자동' : DIFFICULTY_NAMES[SETTINGS.difficulty]}) · ${TS > 1 ? `${sqName}(${TS}인 팀 · ${partyN > 1 ? `파티 ${humans}명` : '나'}${mateBots ? ` + 봇 ${mateBots}명` : ''}) · 목표: ${nTeams}팀 중 최후의 팀` : `목표: ${total}명 중 최후의 1인`}`;
     $('playBtn').classList.toggle('ranked', ranked); $('playBtn').querySelector('span').textContent = ranked ? '랭크 출격' : '출격';
-    $('playSub').textContent = ranked ? `${MAPS[SETTINGS.map].name} · ${rs.label}` : `${sqName} · ${MAPS[SETTINGS.map].name} · ${DIFFICULTY_NAMES[SETTINGS.difficulty]}`;
+    $('playSub').textContent = dm ? `${GT.name} · ${MAPS.arena.name}` : ranked ? `${MAPS[SETTINGS.map].name} · ${rs.label}` : `${sqName} · ${MAPS[SETTINGS.map].name} · ${DIFFICULTY_NAMES[SETTINGS.difficulty]}`;
+    if (lock) Party.decoratePlay();
     setTab(lobbyTab);
   }
   const TIMES_KO = { day: '낮', dusk: '저녁' };
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
-    { tag: '신규', title: '팀원과 함께 차량 탑승 — 동승석에서 사격', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
+    { tag: '신규', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
+    { tag: '신규 모드', title: '팀 데스매치 · 웨폰 데스매치 — 4 대 4, 먼저 40킬', img: () => LOBBY_ART.arena, act: () => G.ui('mapPick') },
+    { tag: '업데이트', title: '팀원과 함께 차량 탑승 — 동승석에서 사격', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
     { tag: '신규 모드', title: '듀오·스쿼드 — 기절·부활, 핑(Q)으로 팀원 지휘', img: () => LOBBY_ART.kalden, act: () => G.ui('matchCfg') },
     { tag: '업데이트', title: '차량 5종 출격 — 말부터 오토바이까지', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
     { tag: '대형 맵', title: '8×8km 노르덴 — 봇 99명과 출격', img: () => LOBBY_ART.norden, act: () => G.ui('mapPick') },
@@ -866,7 +924,7 @@ const HUD = (() => {
     const d = $('newsDots'); d.innerHTML = ''; NEWS.forEach((_, i) => d.appendChild(h('i', i === newsI % NEWS.length ? 'on' : '')));
   }
   function setupLobby() {
-    $('botsRange').addEventListener('input', (e) => { SETTINGS.bots = parseInt(e.target.value, 10); $('botsVal').textContent = SETTINGS.bots; saveSettings(); renderLobby(); });
+    $('botsRange').addEventListener('input', (e) => { const L = Party.lockInfo(); if (L && !L.leader) { e.target.value = SETTINGS.bots; showLobbyNote('파티 설정은 방장만 바꿀 수 있습니다'); return; } SETTINGS.bots = parseInt(e.target.value, 10); $('botsVal').textContent = SETTINGS.bots; saveSettings(); renderLobby(); });
     $('playBtn').addEventListener('click', () => { Audio.init(); Audio.ui(); G.startMatch(); });
     $('jumpBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); Input.press('interact'); });
     $('chuteBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); Input.press('interact'); });
@@ -913,6 +971,7 @@ const HUD = (() => {
     $('resDmg').textContent = Math.round(p.damageDealt); $('resXp').textContent = '+' + G.lastXp;
     let note = G.statsSaved ? '기록이 저장되었습니다.' : '이 브라우저에서는 기록이 저장되지 않았습니다 (게임은 계속 가능).';
     if (team) { const ms = G.teams[p.team].members; note = `팀 처치 ${ms.reduce((a, m) => a + m.kills, 0)} · 내가 기절시킴 ${p.knocks} · 부활시킴 ${p.revives} — ` + note; }
+    if (G.hostGone) note = '방장의 연결이 끊겨 경기가 끝났습니다. ' + note;
     $('resNote').textContent = note;
     // 랭크 결과
     const R = G.rankResult, box = $('resRanked'); box.hidden = !R; box.classList.remove('promo');

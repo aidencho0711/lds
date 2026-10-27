@@ -324,8 +324,10 @@ function separateChars() {
       const b = CHARS[j]; if (!b.alive || b.mode !== 'ground' || b.veh) continue;
       const dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z, d2 = dx * dx + dz * dz;
       if (d2 > 0.49 || d2 < 1e-6 || Math.abs(a.pos.y - b.pos.y) > 1.5) continue;
-      const d = Math.sqrt(d2), p = (0.7 - d) / 2, nx = dx / d, nz = dz / d;
-      a.pos.x -= nx * p; a.pos.z -= nz * p; b.pos.x += nx * p; b.pos.z += nz * p;
+      const d = Math.sqrt(d2), nx = dx / d, nz = dz / d, ma = !a.net || a.net.mine, mb = !b.net || b.net.mine;
+      if (!ma && !mb) continue;
+      const p = (0.7 - d) / (ma && mb ? 2 : 1), pa = ma ? p : 0, pb = mb ? p : 0; // 다른 기기 캐릭터는 밀지 않는다
+      a.pos.x -= nx * pa; a.pos.z -= nz * pa; b.pos.x += nx * pb; b.pos.z += nz * pb;
     }
   }
 }

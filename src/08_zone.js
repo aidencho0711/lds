@@ -73,7 +73,7 @@ const Zone = {
     this.updateMeshes();
     // 구역 밖 피해
     for (const c of CHARS) {
-      if (!c.alive || c.mode === 'plane') continue;
+      if (!c.alive || c.mode === 'plane' || (c.net && !c.net.mine)) continue; // 다른 기기 캐릭터는 그 기기가 계산
       if (!this.inside(c.pos.x, c.pos.z, this.cur)) {
         c.outsideZoneT += dt;
         if (c.mode === 'ground') { applyDamage(c, this.dps * dt, 'zone', null, 'zone'); if (c.isPlayer) Audio.zoneTick(); }

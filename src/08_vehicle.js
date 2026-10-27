@@ -360,6 +360,7 @@ const Veh = (() => {
   // ---------- 피해·파괴 ----------
   function damage(v, dmg, attacker, cause) {
     if (v.dead || dmg <= 0) return;
+    if (G.net && Net.vehRemote(v)) { Net.vehHit(v, dmg, attacker, cause); return; } // 다른 기기가 움직이는 차량: 그 기기가 판정
     v.hp -= dmg; if (attacker) v.lastHitBy = attacker;
     v.awake = true; v.sleepT = 0;
     if (attacker) for (const r of riders(v)) if (r.brain && attacker !== r && !sameTeam(attacker, r)) r.brain.onDamaged(attacker, cause);
@@ -375,6 +376,7 @@ const Veh = (() => {
     Audio.death(v.pos);
   }
   function explode(v) {
+    if (G.net) Net.ev({ k: 'vboom', n: v.nid });
     v.dead = true; v.burnT = 0; v.awake = false; v.vx = v.vz = 0;
     const x = v.pos.x, y = v.pos.y + 0.8, z = v.pos.z, by = v.lastHitBy;
     FX.explosion(x, y, z); FX.explosion(x + rnd(-1, 1), y + 0.6, z + rnd(-1, 1)); Audio.explosion({ x, y, z });
@@ -400,6 +402,16 @@ const Veh = (() => {
     }
   }
 
+  // 다른 기기에서 폭발한 차량: 보이기만 (피해는 그쪽이 판정)
+  function netBoom(v) {
+    v.dead = true; v.burnT = 0; v.awake = false; v.vx = v.vz = 0;
+    const x = v.pos.x, y = v.pos.y + 0.8, z = v.pos.z;
+    FX.explosion(x, y, z); FX.explosion(x + rnd(-1, 1), y + 0.6, z + rnd(-1, 1)); Audio.explosion({ x, y, z });
+    G.noises.push({ x, y, z, t: G.time, r: 300, by: v.lastHitBy, kind: 'blast' });
+    for (const d of riders(v)) if (!d.net || d.net.mine) exit(d, false, true);
+    VehModels.wreck(v.P); v.P.root.position.y -= 0.12; v.smokeT = 30;
+    if (G.player && G.player.alive) { const d = Math.hypot(G.player.pos.x - x, G.player.pos.z - z); if (d < 60) G.shake = Math.max(G.shake, (1 - d / 60) * 1.4); }
+  }
   // ---------- 탑승 ----------
   function nearestEnterable(c, r = 2.2) {
     let best = null, bd = r;
@@ -569,6 +581,14 @@ const Veh = (() => {
     for (const v of list) {
       for (let i = 0; i < v.seats.length; i++) { const s0 = v.seats[i]; if (s0 && (!s0.alive || s0.veh !== v)) v.seats[i] = null; }
       v.driver = v.seats[0];
+      if (G.net && Net.vehRemote(v)) { // 다른 기기가 움직이는 차량: 받은 상태 보간
+        Net.vehInterp(v, dt);
+        if (v.T.animal && (v.P.root.visible || v.driver)) animateHorse(v, dt);
+        syncMesh(v);
+        if (v.seats.some(Boolean)) syncRider(v);
+        if (v.burnT > 0 || v.smokeT > 0 || v.awake || v.hp < v.T.hp * 0.35) effects(v, dt);
+        continue;
+      }
       if (v.burnT > 0) { v.burnT -= dt; if (v.burnT <= 0) explode(v); }
       if (v.T.animal && (v.P.root.visible || v.driver)) animateHorse(v, dt);
       if (v.awake && !(v.dead && !v.T.animal)) {
@@ -584,7 +604,7 @@ const Veh = (() => {
       // 엔진 소리(봇 청각)
       if (v.driver && !v.dead && Math.hypot(v.vx, v.vz) > 1.5) { v.noiseT -= dt; if (v.noiseT <= 0) { v.noiseT = 0.6; G.noises.push({ x: v.pos.x, y: v.pos.y, z: v.pos.z, t: G.time, r: v.T.noise, by: v.driver, kind: 'engine' }); } }
     }
-    for (const v of list) if (v.awake && !v.dead) { vehVeh(v); runOver(v); }
+    for (const v of list) if (v.awake && !v.dead && !(G.net && Net.vehRemote(v))) { vehVeh(v); runOver(v); }
     engineAudio();
     // 거리 컬링·그림자
     cullT -= dt;
@@ -617,6 +637,6 @@ const Veh = (() => {
     for (const v of near(x, z, r)) { if (v.dead || v.seats.some(Boolean) || v.burnT > 0 || v.hp < v.T.hp * 0.3) continue; if (pred && !pred(v)) continue; const d = Math.hypot(v.pos.x - x, v.pos.z - z); if (d < bd) { bd = d; best = v; } }
     return best;
   }
-  return { init, dispose, spawnAll, make, remove, update, ray, damage, blast, pushChar, nearestEnterable, enter, exit, switchSeat, riders, freeSeats, animateRider, syncRider, nearestFree, near,
+  return { init, dispose, spawnAll, make, remove, update, ray, damage, blast, netBoom, pushChar, nearestEnterable, enter, exit, switchSeat, riders, freeSeats, animateRider, syncRider, nearestFree, near,
     get list() { return list; }, get active() { return list.length > 0; } };
 })();

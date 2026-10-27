@@ -46,7 +46,7 @@ const Cloud = (() => {
     loading = new Promise((res, rej) => {
       const done = () => {
         try {
-          sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'lastdrop.auth' } });
+          sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: STORE_PREFIX + 'auth' } });
           res(sb);
         } catch (e) { rej(e); }
       };
@@ -65,6 +65,7 @@ const Cloud = (() => {
   }
   function apply(d) {
     STATS = Object.assign({ matches: 0, wins: 0, kills: 0, xp: 0, best: 99, recent: [] }, d.stats || {});
+    if (!STATS.dm) STATS.dm = Object.assign({}, DM_STATS0);
     store.set('stats', STATS);
     Rank.replace(d.rank || {});
     if (d.settings) { const keep = {}; for (const k of DEVICE_SETTINGS) keep[k] = SETTINGS[k]; SETTINGS = Object.assign({}, DEFAULT_SETTINGS, d.settings, keep); store.set('settings', SETTINGS); }
@@ -116,6 +117,7 @@ const Cloud = (() => {
     store.set('account', { id: u.id, name });
     status = 'online'; lastSync = Date.now();
     refreshUi();
+    if (G.onAuth) try { G.onAuth(true); } catch (e) { console.warn(e); } // 친구·파티 연결
     return note;
   }
 
@@ -162,6 +164,7 @@ const Cloud = (() => {
   async function signOut() {
     if (dirty) await pushNow();
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ }
+    if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
     user = null; name = null; status = 'idle'; clearTimeout(syncT); dirty = false;
     store.set('account', null);
     restoreGuest();
@@ -211,7 +214,7 @@ const Cloud = (() => {
     $('acctSyncNow').addEventListener('click', async () => { const ok = await pushNow(); render(); if (ok) msg('저장했습니다', true); });
     render();
   }
-  return { init, setup, signUp, signIn, signOut, pushNow, open, close, checkId, idEmail,
+  return { init, setup, signUp, signIn, signOut, pushNow, open, close, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
     get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get status() { return status; }, get lastError() { return lastErr; } };
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'

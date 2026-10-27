@@ -146,12 +146,12 @@ async function generateWorld(mapId, scene, progress) {
 
   await yieldUI(0.05, '지형 설계');
   // ----- 거시 레이아웃 -----
-  const big = !!M.big, SC_ = HALF / 350, TR = !!M.training;
-  w.big = big; w.isTraining = TR;
+  const big = !!M.big, SC_ = HALF / 350, TR = !!M.training, AR = !!M.arena, FLAT = TR || AR;
+  w.big = big; w.isTraining = TR; w.isArena = AR;
   // 산(여러 개 가능)·호수·강. 대형 맵은 산맥 4개, 호수 3개, 큰 강 1개
   const mounts = [], lakes = [];
   const mA = R(0, TAU);
-  if (TR) { /* 훈련장: 평지 */ }
+  if (FLAT) { /* 훈련장·아레나: 평지 */ }
   else if (!big) {
     mounts.push({ x: Math.cos(mA) * R(170, 220), z: Math.sin(mA) * R(170, 220), r: R(150, 190) });
     const lA = mA + Math.PI + R(-0.9, 0.9);
@@ -166,7 +166,7 @@ async function generateWorld(mapId, scene, progress) {
   }
   const mount = mounts[0], lake = lakes[0];
   const river = big ? { axisX: rng() < 0.5, v0: R(-600, 600), ph: R(0, TAU), ph2: R(0, TAU), w: 15, A1: 330, F1: 0.0012, A2: 120, F2: 0.0037 }
-    : { axisX: rng() < 0.5, v0: TR ? 1e6 : R(-60, 60), ph: R(0, TAU), ph2: R(0, TAU), w: 9, A1: 42, F1: 0.011, A2: 16, F2: 0.029 };
+    : { axisX: rng() < 0.5, v0: FLAT ? 1e6 : R(-60, 60), ph: R(0, TAU), ph2: R(0, TAU), w: 9, A1: 42, F1: 0.011, A2: 16, F2: 0.029 };
   w.mount = mount; w.lake = lake; w.river = river; w.mounts = mounts; w.lakes = lakes;
   const riverF = (u) => river.v0 + river.A1 * Math.sin(u * river.F1 + river.ph) + river.A2 * Math.sin(u * river.F2 + river.ph2);
   const riverDF = (u) => river.A1 * river.F1 * Math.cos(u * river.F1 + river.ph) + river.A2 * river.F2 * Math.cos(u * river.F2 + river.ph2);
@@ -182,6 +182,7 @@ async function generateWorld(mapId, scene, progress) {
   // 훈련장 지형: 6m 평지 + 서쪽 오프로드 언덕 몇 개
   const TR_HILLS = [[-150, -90, 34, 5], [-135, 15, 24, 3.2], [-115, -155, 38, 6.5], [-170, -20, 20, 2.4], [-95, -40, 16, 1.8]];
   function rawH(x, z) {
+    if (AR) return lerp(6, -9, edgeF(x, z));
     if (TR) {
       let h = 6;
       for (const [hx, hz, r, a] of TR_HILLS) { const d = Math.hypot(x - hx, z - hz); if (d < r) h += a * 0.5 * (1 + Math.cos(Math.PI * d / r)); }
@@ -205,7 +206,7 @@ async function generateWorld(mapId, scene, progress) {
     village: ['솔레 마을', '오크린 마을', '리베 마을', '파인홀', '브룩사이드', '모스글렌', '애쉬포드', '실버크릭', '톨브리지', '하트우드', '스톤웰', '펀우드', '밀브룩', '레드윅', '로웰', '케스윅', '던모어', '글렌포트', '하이턴', '이스트밀'],
     depot: ['북부 물류창고', '그레이야드 창고', '남부 보급창', '이스트게이트 창고'],
   };
-  const poiSpec = TR ? [] : big
+  const poiSpec = FLAT ? [] : big
     ? [['city', 110, 'high'], ['city', 105, 'high'], ['city', 100, 'high'], ['military', 82, 'top'], ['military', 78, 'top'], ['industrial', 64, 'mid'], ['industrial', 62, 'mid'], ['industrial', 60, 'mid'],
       ['depot', 36, 'mid'], ['depot', 34, 'mid'], ['depot', 34, 'mid']].concat(Array.from({ length: 6 }, () => ['farm', 52, 'low']), Array.from({ length: 18 }, () => ['village', 44, 'low']))
     : [['city', 88, 'high'], ['military', 70, 'top'], ['industrial', 60, 'mid'], ['farm', 52, 'low'], ['village', 42, 'low'], ['village', 40, 'low'], ['village', 40, 'low'], ['depot', 34, 'mid']];
@@ -322,6 +323,11 @@ async function generateWorld(mapId, scene, progress) {
       w.hf[j * HF_N + i] = h;
       let s = 0;
       const mw = mountW(x, z);
+      if (AR) { // 아레나: 담 안은 콘크리트, 밖은 풀·흙
+        const m = Math.max(Math.abs(x), Math.abs(z));
+        s = m < 37.5 ? 5 : m < 44 ? 1 : (fbm(n4, x * 0.02, z * 0.02, 3) > 0.2 ? 8 : 0);
+        w.surf[j * HF_N + i] = s; continue;
+      }
       if (TR) {
         const inR = (x0, x1, z0, z1) => x >= x0 && x <= x1 && z >= z0 && z <= z1;
         if (rdist < 4.6) s = 4;
@@ -742,7 +748,85 @@ async function generateWorld(mapId, scene, progress) {
       w.mapRects.push([92, 118, 115, 128]); poi('장애물 코스', 112, 125);
     }
   }
+
+  // ----- 데스매치 아레나: 72×72m 컨테이너 야드 -----
+  // 남쪽(z+) = 0팀 출발 구역, 북쪽(z-) = 1팀. 원점 기준 180° 회전 대칭(어느 팀도 유리하지 않게)
+  // 가운데 2층 전망대(경사로 2개) · 양쪽 창고 · 컨테이너 · 낮은 벽(넘기 가능) · 출발 구역 앞 가림벽
+  function buildArena() {
+    const G0 = heightAt(0, 0);
+    const A = w.arena = { half: 36, spawns: [[], []], G0 };
+    w.mapRects = [];
+    const WALL = 0x8b8a84, TRIM = 0x5d5f5a, BAR = 0x6f7369, DECK = 0x6e6c66, STEP = 0x7d7a72, CRATE = 0x7a5c35, CRATE2 = 0x8a6a3f, SANDC = PAL.sand;
+    const TEAMC = [0x6f7a84, 0x86716c];   // 출발 구역 바닥: 옅은 파랑 / 옅은 빨강 콘크리트
+    // 반쪽을 짓고 180° 돌려 한 번 더 짓는다 (F.box/F.pt가 회전을 처리)
+    const halves = [frame(0, 0, 0, G0), frame(0, 0, 2, G0)];
+    // x축 방향 경사로(계단): 로컬 x 구간 [lx0,lx1], 로컬 z 구간, dirL=+1이면 +x로 올라감. 아래는 단단한 받침(옆에서 못 지나감)
+    const xRamp = (F, lx0, lx1, lz0, lz1, h, dirL) => {
+      const a = F.pt(lx0, lz0), b = F.pt(lx1, lz1), dirW = F.rot === 2 ? -dirL : dirL;
+      addRamp(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1]), G0, G0 + h, 'x', dirW);
+      const n = Math.max(6, Math.round(h / 0.28)), L = lx1 - lx0;
+      for (let k = 0; k < n; k++) { // 계단 모양(보이기만) + 받침(충돌)
+        const t0 = k / n, t1 = (k + 1) / n, y = h * (dirL > 0 ? t1 : 1 - t0);
+        const xa = lx0 + L * t0, xb = lx0 + L * t1;
+        F.box(xa, -0.05, lz0, xb, y, lz1, STEP, { noCollide: true });
+        const yb = h * (dirL > 0 ? t0 : 1 - t1) - 0.08;
+        if (yb > 0.3) F.box(xa, -0.5, lz0, xb, yb, lz1, STEP, { invisible: true });
+      }
+    };
+    halves.forEach((F, side) => {
+      // 1) 외곽 담 (높이 5m) — 남쪽 담 + 동·서 담의 남쪽 절반
+      F.box(-37.2, -1, 36, 37.2, 5, 37.2, WALL); F.box(-37.2, 5, 36, 37.2, 5.3, 37.2, TRIM);
+      F.box(-37.2, -1, 0, -36, 5, 36, WALL); F.box(-37.2, 5, 0, -36, 5.3, 36, TRIM);
+      F.box(36, -1, 0, 37.2, 5, 36, WALL); F.box(36, 5, 0, 37.2, 5.3, 36, TRIM);
+      // 2) 출발 구역: 바닥 색 + 가림벽(높이 2.4m, 넘을 수 없음, 틈 3곳) + 틈 뒤 차단벽
+      F.box(-36, -0.2, 25.4, 36, 0.03, 36, TEAMC[side], { noCollide: true });
+      for (const [a, b] of [[-36, -23], [-17, -4.5], [4.5, 17], [23, 36]]) { F.box(a, -0.5, 24.75, b, 2.4, 25.25, BAR); F.box(a, 2.4, 24.7, b, 2.55, 25.3, TRIM); }
+      F.box(-3.2, -0.5, 28.2, 3.2, 2.4, 28.7, BAR); F.box(-21.8, -0.5, 28.2, -18.2, 2.4, 28.7, BAR); F.box(18.2, -0.5, 28.2, 21.8, 2.4, 28.7, BAR);
+      // 3) 가운데 전망대 (반쪽): 바닥판 3.2m, 기둥, 난간(1.1m 엄폐), 아래층 낮은 벽, 동쪽 경사로
+      F.box(-7, 3.2, 0, 7, 3.45, 5, DECK);
+      for (const x of [-6.6, 6.6]) F.box(x - 0.35, -0.3, 4.25, x + 0.35, 3.2, 4.95, TRIM);
+      F.box(-0.35, -0.3, 0.3, 0.35, 3.2, 1.0, TRIM);
+      F.box(-7, 3.45, 4.7, -1.8, 4.55, 5, BAR); F.box(1.8, 3.45, 4.7, 7, 4.55, 5, BAR);   // 남쪽 난간 (가운데 틈)
+      F.box(-7, 3.45, 0, -6.7, 4.55, 5, BAR);                                             // 서쪽 난간
+      F.box(6.7, 3.45, 0, 7, 4.55, 1.2, BAR); F.box(6.7, 3.45, 4.2, 7, 4.55, 5, BAR);     // 동쪽 난간 (경사로 입구)
+      F.box(-3, -0.3, 2.2, 3, 1.05, 2.6, SANDC);                                          // 아래층 엄폐(넘기 가능)
+      xRamp(F, 7, 15, 1.2, 4.2, 3.45, -1);
+      F.box(7, -0.3, 0.9, 15, 0.9, 1.2, TRIM, { noCollide: true }); F.box(7, -0.3, 4.2, 15, 0.9, 4.5, TRIM, { noCollide: true });
+      // 4) 서쪽 창고 (8×7m, 문은 동쪽, 창문은 남·북) — 반대편은 북동쪽
+      {
+        const H = 3.3, c = 0x9a8f7e, t = 0.25;
+        F.box(-34, -0.3, 8, -26, 0.1, 15, 0x77736a, { nav: true });
+        F.wallX(8, -34, -26, 0.1, H, t, [WIN(-31.5, 1.6)], c);
+        F.wallX(15, -34, -26, 0.1, H, t, [WIN(-31.5, 1.6)], c);
+        F.wallZ(-34, 8 + t / 2, 15 - t / 2, 0.1, H, t, [], c);
+        F.wallZ(-26, 8 + t / 2, 15 - t / 2, 0.1, H, t, [DOOR(10.6)], c);
+        F.box(-34.2, H + 0.1, 7.8, -25.8, H + 0.35, 15.2, 0x4a4f52);
+        F.box(-33.6, 0.1, 13.2, -31.4, 1.0, 14.6, CRATE);                                 // 안쪽 상자
+        const p = F.pt(-30, 11.5); w.mapRects.push([Math.min(p[0] - 4, p[0] + 4), Math.min(p[1] - 3.5, p[1] + 3.5), Math.max(p[0] - 4, p[0] + 4), Math.max(p[1] - 3.5, p[1] + 3.5)]);
+      }
+      // 5) 컨테이너: 서쪽 가운데(단층), 동쪽(2단 쌓기), 동쪽 가운데(옆으로 누운 통과형)
+      const CN = PAL.container;
+      F.box(-17, -0.3, 3, -14.56, 2.6, 9.1, CN[side ? 3 : 0]);
+      F.box(28, -0.3, 3, 30.44, 2.6, 9.1, CN[1]); F.box(28, 2.6, 3.2, 30.44, 5.2, 9.3, CN[side ? 0 : 2]);
+      F.box(10, -0.3, 9, 16.1, 0.12, 11.44, 0x4a4a4a, { noCollide: true });
+      F.box(10, 0.12, 9, 16.1, 2.6, 9.12, CN[4]); F.box(10, 0.12, 11.32, 16.1, 2.6, 11.44, CN[4]); F.box(10, 2.48, 9, 16.1, 2.6, 11.44, CN[4]);
+      for (const r of [[-17, 3, -14.56, 9.1], [28, 3, 30.44, 9.3], [10, 9, 16.1, 11.44]]) { const a = F.pt(r[0], r[1]), b = F.pt(r[2], r[3]); w.mapRects.push([Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])]); }
+      // 6) 낮은 벽(1m, 넘기 가능) · 모래주머니 · 상자 더미
+      F.box(-18, -0.3, 19.5, -10, 1.0, 19.9, TRIM); F.box(22, -0.3, 17, 30, 1.0, 17.4, TRIM);
+      F.box(-3, -0.3, 14, 3, 0.9, 14.8, SANDC); F.box(-12, -0.3, 11.6, -7.5, 0.9, 12.4, SANDC);
+      const crate = (x, z, n) => { for (let k = 0; k < n; k++) F.box(x - 0.65, -0.3 + (k ? 0.3 : 0) + k * 1.3, z - 0.65, x + 0.65, 1.3 * (k + 1), z + 0.65, k ? CRATE2 : CRATE); };
+      crate(-30, 20, 2); crate(-28.7, 20, 1); crate(-24, 18.5, 1); crate(-12, 16, 2); crate(-10.7, 16.3, 1);
+      crate(12, 18, 1); crate(13.3, 18, 2); crate(24, 12, 1); crate(20, 4, 2); crate(-22, 2, 1); crate(5, 9, 1);
+      // 7) 출발 지점 (북쪽을 바라봄; 반대편은 남쪽)
+      for (const z of [30.5, 33.5]) for (const x of [-31, -26, -14, -9, 9, 14, 26, 31]) { const q = F.pt(x, z); A.spawns[side].push({ x: q[0], z: q[1], yaw: side ? 0 : Math.PI }); }
+    });
+    // 전체 지도: 외곽 담·가림벽 표시
+    for (const s of [1, -1]) { w.mapRects.push([-37.2, s > 0 ? 36 : -37.2, 37.2, s > 0 ? 37.2 : -36]); w.mapRects.push([s > 0 ? 36 : -37.2, -37.2, s > 0 ? 37.2 : -36, 37.2]); for (const [a, b] of [[-36, -23], [-17, -4.5], [4.5, 17], [23, 36]]) w.mapRects.push([s > 0 ? a : -b, s > 0 ? 24.75 : -25.25, s > 0 ? b : -a, s > 0 ? 25.25 : -24.75]); }
+    w.mapRects.push([-7, -5, 7, 5]);
+    w.pois.push({ type: 'arena', name: '전망대', x: 0, z: 0, r: 8, h: G0 }, { type: 'arena', name: '블루 출발', x: 0, z: 31, r: 6, h: G0 }, { type: 'arena', name: '레드 출발', x: 0, z: -31, r: 6, h: G0 });
+  }
   if (TR) buildTraining();
+  if (AR) buildArena();
 
   await yieldUI(0.4, '건물 배치');
   // ----- POI 별 구조물 -----
@@ -846,7 +930,7 @@ async function generateWorld(mapId, scene, progress) {
     }
   }
   // ----- 외딴 집/오두막 -----
-  for (let i = 0, tries = 0; !TR && i < (big ? 240 : 26) && tries < (big ? 9000 : 900); tries++) {
+  for (let i = 0, tries = 0; !FLAT && i < (big ? 240 : 26) && tries < (big ? 9000 : 900); tries++) {
     const x = R(-HALF * 0.78, HALF * 0.78), z = R(-HALF * 0.78, HALF * 0.78);
     if (poisNear(x, z).some(p => Math.hypot(p.x - x, p.z - z) < p.r + 25)) continue;
     const wd = R(6.5, 9), dp = R(6, 8.5), F = placeLot(x, z, RI(0, 3), wd, dp, 'house', 1.0, 3, 2);
@@ -977,6 +1061,7 @@ async function generateWorld(mapId, scene, progress) {
     if (poisNear(x, z).some(p => Math.hypot(p.x - x, p.z - z) < p.r + (p.type === 'village' ? -4 : 6))) continue;
     if (!footprintFree(x - 0.6, z - 0.6, x + 0.6, z + 0.6, 1.2)) continue;
     if (TR && Math.max(Math.abs(x), Math.abs(z)) < 222) continue;
+    if (AR && Math.max(Math.abs(x), Math.abs(z)) < 47) continue;
     const pine = h > 14 || mountW(x, z) > 0.3 ? rng() < 0.85 : rng() < 0.3;
     const sc = R(0.8, 1.35);
     trees.push({ x, z, y: h, pine, sc, rot: R(0, TAU) });
@@ -988,6 +1073,7 @@ async function generateWorld(mapId, scene, progress) {
     if (rng() > 0.25 + mountW(x, z) * 0.8 + (s === 2 ? 0.4 : 0)) continue;
     if (poisNear(x, z).some(p => Math.hypot(p.x - x, p.z - z) < p.r)) continue;
     if (TR && Math.max(Math.abs(x), Math.abs(z)) < 222) continue;
+    if (AR && Math.max(Math.abs(x), Math.abs(z)) < 47) continue;
     if (!footprintFree(x - 1.5, z - 1.5, x + 1.5, z + 1.5, 0.5)) continue;
     const sx = R(1.0, 2.6), sy = R(0.7, 1.9), sz = R(1.0, 2.6);
     rocks.push({ x, z, y: h, sx, sy, sz, rot: R(0, TAU) });
@@ -998,6 +1084,7 @@ async function generateWorld(mapId, scene, progress) {
     const x = R(-HALF * 0.88, HALF * 0.88), z = R(-HALF * 0.88, HALF * 0.88), h = heightAt(x, z), s = surfaceAt(x, z);
     if (h < 1.3 || s === 4 || s === 5 || s === 3 || w.roadDist(x, z) < 5) continue;
     if (TR && Math.max(Math.abs(x), Math.abs(z)) < 222) continue;
+    if (AR && Math.max(Math.abs(x), Math.abs(z)) < 47) continue;
     if (!footprintFree(x - 0.8, z - 0.8, x + 0.8, z + 0.8, 0.3)) continue;
     bushes.push({ x, z, y: h, sc: R(0.6, 1.3) });
   }

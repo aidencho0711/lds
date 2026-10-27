@@ -72,9 +72,12 @@ const STEP_H = 0.6;          // 올라설 수 있는 턱 높이
 const CHAR_R = 0.34;         // 캐릭터 충돌 반경
 
 // ---------- 저장소 (실패해도 게임은 동작) ----------
+// 주소 끝에 ?slot=2 를 붙이면 같은 브라우저에서 저장소·로그인을 따로 쓴다 (한 컴퓨터에서 계정 두 개로 파티 시험용)
+const STORE_SLOT = (() => { try { return (new URLSearchParams(location.search).get('slot') || '').replace(/[^0-9]/g, '').slice(0, 2); } catch (e) { return ''; } })();
+const STORE_PREFIX = 'lastdrop' + STORE_SLOT + '.';
 const store = {
-  get(k, d) { try { const v = localStorage.getItem('lastdrop.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem('lastdrop.' + k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  get(k, d) { try { const v = localStorage.getItem(STORE_PREFIX + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(STORE_PREFIX + k, JSON.stringify(v)); return true; } catch (e) { return false; } },
 };
 
 const IS_TOUCH = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches;
@@ -88,7 +91,7 @@ const DEFAULT_SETTINGS = {
   btnScale: 1.0, hudOpacity: 0.95, hudScale: 1.0,
   mode: 'classic', map: 'kalden', time: 'day', outfit: 0,
   sens_iron: 1, sens_reddot: 1, sens_holo: 1, sens_x2: 1, sens_x3: 1, sens_x4: 1, sens_x6: 1,
-  touchLayout: {}, stickFixed: false, queue: 'normal', squad: 'solo',
+  touchLayout: {}, stickFixed: false, queue: 'normal', squad: 'solo', game: 'br',
 };
 let SETTINGS = Object.assign({}, DEFAULT_SETTINGS, store.get('settings', {}));
 // 로그인 상태면 저장할 때마다 서버 동기화 예약 (10_cloud.js가 연결)
@@ -99,6 +102,9 @@ function saveSettings() { store.set('settings', SETTINGS); dataSaved('settings')
 const DEVICE_SETTINGS = ['quality', 'shadows', 'touchLayout', 'btnScale', 'hudScale', 'hudOpacity', 'stickFixed', 'touchSens'];
 
 let STATS = Object.assign({ matches: 0, wins: 0, kills: 0, xp: 0, best: 99, recent: [] }, store.get('stats', {}));
+// 데스매치 전적은 배틀로얄 전적(경기·우승·처치)과 따로 센다 — 경험치만 공유
+const DM_STATS0 = { matches: 0, wins: 0, kills: 0, deaths: 0 };
+if (!STATS.dm) STATS.dm = Object.assign({}, DM_STATS0);
 function saveStats() { const ok = store.set('stats', STATS); dataSaved('stats'); return ok; }
 function levelFromXp(xp) {
   let lv = 1, need = 250, x = xp;
@@ -123,7 +129,17 @@ const MAPS = {
       { wait: 70, shrink: 60, r: 170, dps: 6 }, { wait: 50, shrink: 45, r: 80, dps: 9 }, { wait: 35, shrink: 35, r: 30, dps: 13 }, { wait: 25, shrink: 30, r: 10, dps: 16 }] },
   // 훈련장: 봇·자기장 없는 평지. 로비의 '훈련장' 버튼으로만 들어간다 (맵 선택 목록에는 없음)
   training: { name: '훈련장', seed: 2468, desc: '사격장·더미·차량·장애물 코스', training: true, half: 320, mountain: 0 },
+  // 데스매치 전용: 72×72m 컨테이너 야드 (팀 데스매치·웨폰 데스매치 공용, 맵 선택 목록에는 없음)
+  arena: { name: '컨테이너 야드', seed: 7123, desc: '72×72m · 2층 전망대 · 컨테이너 · 창고', arena: true, half: 100, mountain: 0 },
 };
+// 게임 종류: 배틀로얄 / 팀 데스매치 / 웨폰 데스매치
+const GAME_TYPES = {
+  br:  { name: '배틀로얄', short: '배틀로얄', desc: '자기장 · 파밍 · 최후의 1인(팀)' },
+  tdm: { name: '팀 데스매치', short: '팀 데스매치', desc: '4 대 4 · 전원 같은 무작위 총과 스코프 · 40킬 먼저', dm: true },
+  wdm: { name: '웨폰 데스매치', short: '웨폰 데스매치', desc: '4 대 4 · 처치할 때마다 총·스코프가 바뀜 · 40킬 먼저', dm: true },
+};
+const DM_RULES = { killTarget: 40, timeLimit: 600, respawn: 3, protect: 2, teamSize: 4, regenDelay: 4, regenRate: 22 };
+const isDmGame = (g) => !!(GAME_TYPES[g] && GAME_TYPES[g].dm);
 const mapMaxBots = (id) => (MAPS[id] && MAPS[id].maxBots) || 48;
 const MODES = {
   classic: { name: '클래식', zoneScale: 1.0, desc: '자기장 6단계 · 약 12분' },
@@ -133,6 +149,7 @@ const MODES = {
 const TEAM_MODES = {
   solo:  { name: '솔로', size: 1 },
   duo:   { name: '듀오', size: 2 },
+  trio:  { name: '트리오', size: 3 },
   squad: { name: '스쿼드', size: 4 },
 };
 const TEAM_COLORS = ['#f2c94c', '#f2994a', '#5ab8f0', '#6fcf97'];   // 팀 안 번호(1~4)별 색

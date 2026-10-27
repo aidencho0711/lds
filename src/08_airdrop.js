@@ -29,13 +29,15 @@ const Airdrop = (() => {
     }
     return null;
   }
-  function launch(tx, tz) {
+  // remote: 같이 하기 파티원 기기 — 방장이 정한 자리·방향으로 보이기만 (내용물은 방장이 만들어 알려 준다)
+  function launch(tx, tz, ang, remote) {
     if (!scene) return null;
     let spot = tx !== undefined ? { x: tx, z: tz } : pickSpot(Zone.next || Zone.cur || { x: 0, z: 0, r: 200 });
     if (!spot) return null;
-    const a = Math.random() * TAU, dx = Math.cos(a), dz = Math.sin(a), L = 650;
+    const a = ang !== undefined ? ang : Math.random() * TAU, dx = Math.cos(a), dz = Math.sin(a), L = 650;
+    if (G.net && !remote) Net.ev({ k: 'air', x: spot.x, z: spot.z, a });
     const mesh = buildPlane(); mesh.scale.setScalar(0.8); scene.add(mesh);
-    const pl = { x0: spot.x - dx * L, z0: spot.z - dz * L, dx, dz, t: 0, len: L * 2, dropAt: L, dropped: false, mesh, target: spot };
+    const pl = { x0: spot.x - dx * L, z0: spot.z - dz * L, dx, dz, t: 0, len: L * 2, dropAt: L, dropped: false, mesh, target: spot, remote: !!remote };
     mesh.rotation.y = Math.atan2(dx, dz);
     planes.push(pl);
     HUD.toast('보급품 수송기가 접근 중입니다', 'info');
@@ -44,7 +46,7 @@ const Airdrop = (() => {
   function release(pl) {
     const obj = new THREE.Group(), crate = Models.crate(), chute = Models.canopy();
     obj.add(crate); obj.add(chute); chute.position.y = 0.85;
-    const d = { x: pl.target.x, z: pl.target.z, y: ALT - 4, obj, crate, chute, landed: false, t: 0, items: [], smoke: null, gy: heightAt(pl.target.x, pl.target.z) };
+    const d = { x: pl.target.x, z: pl.target.z, y: ALT - 4, obj, crate, chute, landed: false, t: 0, items: [], smoke: null, gy: heightAt(pl.target.x, pl.target.z), remote: pl.remote };
     obj.position.set(d.x, d.y, d.z); scene.add(obj);
     list.push(d);
     HUD.toast('보급품이 투하되었습니다! 지도에 표시됩니다', 'warn');
@@ -56,7 +58,8 @@ const Airdrop = (() => {
     W.boxes.push(b);
     const i0 = clamp(Math.floor((b.x0 + HALF) / CG), 0, CGN - 1), i1 = clamp(Math.floor((b.x1 + HALF) / CG), 0, CGN - 1), j0 = clamp(Math.floor((b.z0 + HALF) / CG), 0, CGN - 1), j1 = clamp(Math.floor((b.z1 + HALF) / CG), 0, CGN - 1);
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) gridPush(W.grid, j * CGN + i, b);
-    // 내용물: 보급 전용 무기 1정 + 맞는 탄 + 장비·조준경·회복
+    // 내용물: 보급 전용 무기 1정 + 맞는 탄 + 장비·조준경·회복 (파티원 기기는 방장이 만든 것을 받는다)
+    if (d.remote) { addSmoke(d); return; }
     const top = d.gy + 0.845, spots = [[-0.35, -0.2], [0.05, -0.22], [0.38, -0.2], [-0.35, 0.2], [0.05, 0.22], [0.38, 0.2], [-0.1, 0.0], [0.25, 0.0]];
     let k = 0; const put = (id, n, inst) => { const [ox, oz] = spots[k++ % spots.length]; d.items.push(spawnItem(scene, id, n, d.x + ox, top, d.z + oz, inst)); };
     const gun = weightedPick([['awm', 30], ['mg3', 30], ['slr', 40]]);
@@ -67,7 +70,10 @@ const Airdrop = (() => {
     if (Math.random() < 0.7) put(gun === 'awm' ? weightedPick([['x6', 60], ['x4', 40]]) : weightedPick([['x4', 40], ['x3', 35], ['x6', 25]]), 1);
     put(Math.random() < 0.55 ? 'medkit' : 'firstaid', 1);
     if (gun === 'slr' && Math.random() < 0.5) put('extmag', 1);
-    // 주황 연막 기둥
+    addSmoke(d);
+  }
+  // 주황 연막 기둥
+  function addSmoke(d) {
     const sg = new THREE.Group(), parts = [];
     for (let i = 0; i < 22; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(), color: i % 3 ? 0xe2662a : 0xf08a3a, transparent: true, opacity: 0, depthWrite: false })); s.userData = { ph: Math.random(), sx: rnd(-0.6, 0.6), sz: rnd(-0.6, 0.6) }; sg.add(s); parts.push(s); }
     sg.position.set(d.x + 0.9, d.gy + 0.2, d.z); scene.add(sg); d.smoke = { g: sg, parts, t: 0 };
@@ -77,7 +83,7 @@ const Airdrop = (() => {
     if (!scene) return;
     // 자기장 1~4단계 축소 시작 → 투하
     const key = Zone.phase + ':' + Zone.state;
-    if (key !== lastKey) { lastKey = key; if (Zone.state === 'shrink' && Zone.phase <= 3) launch(); }
+    if (key !== lastKey) { lastKey = key; if (Zone.state === 'shrink' && Zone.phase <= 3 && !(G.net && !Net.isHost())) launch(); }
     let nearPlane = null, nd = 1e9;
     for (let i = planes.length - 1; i >= 0; i--) {
       const p = planes[i]; p.t += dt; const s = p.t * PLANE_SPEED;
@@ -111,6 +117,6 @@ const Airdrop = (() => {
     for (const d of list) { if (!d.landed || !d.items.some((it) => it.alive && ITEMS[it.id].type === 'weapon')) continue; const dd = Math.hypot(d.x - x, d.z - z); if (dd < bd) { bd = dd; best = d; } }
     return best;
   }
-  function markers() { return list.filter((d) => !d.landed || remaining(d) > 0).map((d) => ({ x: d.x, z: d.z, falling: !d.landed })); }
+  function markers() { return list.filter((d) => !d.landed || remaining(d) > 0 || (d.remote && G.time - d.landT < 90)).map((d) => ({ x: d.x, z: d.z, falling: !d.landed })); }
   return { init, dispose, update, launch, nearest, markers, get list() { return list; }, get planes() { return planes; } };
 })();

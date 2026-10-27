@@ -19,6 +19,7 @@
         <div class="lb-note" id="lbNote" hidden></div>
       </nav>
       <div class="lb-right">
+        <button class="icon-btn friend-btn" id="friendBtn" type="button" hidden title="친구 · 파티"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.9-3.1 3.2-4.7 6-4.7s5.1 1.6 6 4.7"/><circle cx="16.8" cy="9.6" r="2.5"/><path d="M15.7 14.9c2.4-.3 4.3 1.1 5.1 3.9"/></svg><span>친구</span><b class="badge" id="friendBadge" hidden>0</b></button>
         <button class="acct-chip" id="acctChip" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4"/></svg><span>로그인</span></button>
         <button class="lv-chip" type="button" data-tab-go="record" title="전적"><span class="lv-hex" id="lvBadge">1</span><span class="lv-txt"><b>LV <span id="lvNum">1</span></b><span class="bar"><i id="xpBar"></i></span></span></button>
         <button class="icon-btn hl" type="button" data-ui="matchCfg" title="경기 설정"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>경기 설정</span></button>
@@ -49,6 +50,7 @@
             <div><span>경기</span><b id="rcMatches">0</b></div><div><span>우승</span><b id="rcWins">0</b></div>
             <div><span>처치</span><b id="rcKills">0</b></div><div><span>최고 순위</span><b id="stBest">-</b></div>
             <div><span>우승률</span><b id="rcWinRate">-</b></div><div><span>경기당 처치</span><b id="rcKpm">-</b></div>
+            <div><span>데스매치 승 / 판</span><b id="rcDm">-</b></div><div><span>데스매치 K/D</span><b id="rcDmKd">-</b></div>
           </div>
           <div class="eyebrow mt">최근 경기</div>
           <ol class="recent" id="recent"></ol>
@@ -76,6 +78,8 @@
       </div>
       <div class="lb-brief"><div class="match-brief" id="matchBrief"></div><div class="micro" id="storeNote"></div></div>
     </div>
+    <div id="partyBar" class="party-bar" hidden></div>
+    <div id="inviteBox" class="invite-box"></div>
   </section>
 
   <!-- 계정 (로그인 / 회원가입) -->
@@ -100,6 +104,18 @@
     </div>
   </section>
 
+  <!-- 친구 · 파티 -->
+  <section id="friendPanel" class="overlay" hidden>
+    <div class="menu friend">
+      <div class="acct-head"><div class="eyebrow">친구 · 파티</div><button class="map-x acct-x" type="button" id="friendClose" aria-label="닫기">✕</button></div>
+      <form id="friendForm" class="fr-add" autocomplete="off"><input id="friendId" maxlength="10" placeholder="친구 아이디 (2~10자)" autocomplete="off"><button class="btn amber" type="submit">친구 요청</button></form>
+      <p class="acct-msg" id="friendMsg" role="status"></p>
+      <p class="micro" id="friendConn"></p>
+      <div id="friendList" class="fr-list"></div>
+      <p class="micro">접속 중인 친구를 초대하면 내가 방장이 됩니다(최대 4명). 방장만 모드·맵을 정하고 출격하며, 빈 팀 자리는 봇이 채웁니다.</p>
+    </div>
+  </section>
+
   <!-- 경기 설정 (로비 상단 아이콘) -->
   <section id="matchCfgPanel" class="overlay" hidden>
     <div class="menu wide cfg-menu">
@@ -121,7 +137,9 @@
   <!-- 맵 선택 -->
   <section id="mapPickPanel" class="overlay" hidden>
     <div class="menu wide map-menu">
-      <div class="eyebrow">맵 선택</div>
+      <div class="eyebrow">모드</div>
+      <div class="game-grid" id="gameGrid"></div>
+      <div class="eyebrow">맵</div>
       <div class="map-grid" id="mapGrid"></div>
       <div class="map-warn" id="mapWarn" hidden></div>
       <button class="btn amber" type="button" data-ui="closeMapPick">완료</button>
@@ -154,6 +172,13 @@
       <div id="zoneInfo" class="zone-info"></div>
     </div>
     <div id="killfeed"></div>
+    <div id="dmScore" hidden>
+      <div class="dms-side us"><span id="dmUsName">블루</span><b id="dmUs">0</b><i class="dms-bar"><em id="dmUsBar"></em></i></div>
+      <div class="dms-mid"><b id="dmTime">10:00</b><small id="dmGoal">먼저 40킬</small><small id="dmKd">0킬 · 0데스</small></div>
+      <div class="dms-side them"><i class="dms-bar"><em id="dmThemBar"></em></i><b id="dmThem">0</b><span id="dmThemName">레드</span></div>
+    </div>
+    <div id="dmRespawn" hidden><span>부활까지</span><b id="dmRespawnT">3.0</b><small>출발 구역에서 다시 시작합니다</small></div>
+    <div id="dmProt" hidden></div>
     <div id="teamPanel" hidden></div>
     <div id="teamTags" hidden></div>
     <div id="pingTag" hidden><i></i><span></span></div>

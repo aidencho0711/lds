@@ -122,9 +122,10 @@ function itemsNear(x, z, r, out) {
 }
 // 바닥 아이템: 정밀 모델 + 접지 그림자 (Models.ground가 지오메트리 공유)
 // 메시는 플레이어 근처에 처음 들어올 때 만든다(itemMesh) → 대형 맵의 수천 개 아이템도 가볍게
-function spawnItem(scene, id, count, x, y, z, inst) {
+function spawnItem(scene, id, count, x, y, z, inst, uid) {
   const it = { id, count, inst: inst || null, x, y, z, ry: Math.random() * TAU, alive: true, mesh: null, scene };
   GROUND.push(it); gridPush(itemGrid, itemCell(x, z), it);
+  if (G.net) Net.itemAdded(it, uid); // 같이 하기: 번호를 붙이고 다른 기기에 알림
   return it;
 }
 function itemMesh(it) {
@@ -135,6 +136,8 @@ function itemMesh(it) {
   return it.mesh;
 }
 function removeItem(it) {
+  if (!it.alive) return;
+  if (G.net) Net.itemRemoved(it);
   it.alive = false; if (it.mesh && it.mesh.parent) it.mesh.parent.remove(it.mesh);
   const l = itemGrid[itemCell(it.x, it.z)]; const k = l.indexOf(it); if (k >= 0) l.splice(k, 1);
 }
@@ -248,7 +251,7 @@ function pickupItemRaw(c, it, scene, opts = {}) {
   const n = inv.add(it.id, it.count);
   if (n <= 0) return { ok: false, msg: '가방 공간이 부족합니다' };
   it.count -= n;
-  if (it.count <= 0) removeItem(it);
+  if (it.count <= 0) removeItem(it); else if (G.net) Net.itemCount(it);
   return { ok: true, msg: `${d.name} ${n > 1 ? '×' + n : ''} 획득${it.count > 0 ? ' (일부)' : ''}` };
 }
 function dropFromInventory(c, scene, what) {

@@ -11,7 +11,7 @@ os.makedirs('/tmp/claude-0/-home-claude/68f8f37c-dfb0-54ca-8eee-7f216ce8c253/scr
 TEST = '/tmp/claude-0/-home-claude/68f8f37c-dfb0-54ca-8eee-7f216ce8c253/scratchpad/cl/index.html'
 open(TEST, 'w', encoding='utf-8').write(html)
 THREE = open('/home/claude/lds/node_modules/three/build/three.min.js','rb').read() if os.path.exists('/home/claude/lds/node_modules/three/build/three.min.js') else open('/home/claude/br/node_modules/three/build/three.min.js','rb').read()
-FAKE = open('/home/claude/lds/test/fake_supabase.js','rb').read()
+FAKE = open('/home/claude/lds/test/fake_supabase_rt.js','rb').read()
 def route(r):
     u = r.request.url
     if 'three' in u and 'cdnjs' in u: return r.fulfill(body=THREE, content_type='application/javascript')
