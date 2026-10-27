@@ -34,6 +34,7 @@ const Cloud = (() => {
     if (code === 'over_request_rate_limit' || code === 'over_email_send_rate_limit' || m.includes('rate limit')) return '요청이 너무 많습니다. 잠시 뒤 다시 시도하세요';
     if (code === 'email_not_confirmed' || m.includes('not confirmed')) return '서버 설정 필요: Supabase에서 "Confirm email"을 꺼 주세요';
     if (code === 'signup_disabled' || m.includes('signups not allowed')) return '서버에서 회원가입이 꺼져 있습니다';
+    if (code === 'unexpected_failure' || m.includes('database error')) return '서버에서 계정을 만들지 못했습니다 (DB 설정 확인 필요: schema.sql 실행 여부)';
     if (m.includes('failed to fetch') || m.includes('network') || m.includes('load failed')) return '서버에 연결할 수 없습니다 (인터넷 또는 서버 상태 확인)';
     return '오류: ' + ((err && err.message) || err);
   }
@@ -51,7 +52,7 @@ const Cloud = (() => {
       };
       if (window.supabase && window.supabase.createClient) return done();
       const s = document.createElement('script'); s.src = cfg.sdk; s.async = true; s.crossOrigin = 'anonymous';
-      s.onload = done; s.onerror = () => rej(new Error('network: 로그인 모듈을 불러오지 못했습니다'));
+      s.onload = done; s.onerror = () => rej(new Error('로그인 모듈을 불러오지 못했습니다 (인터넷 연결 확인 후 다시 시도)'));
       document.head.appendChild(s);
     }).catch((e) => { loading = null; throw e; });
     return loading;

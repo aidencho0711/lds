@@ -6,8 +6,8 @@
 //  비워 두면 로그인 기능이 숨겨지고 지금처럼 이 기기에만 저장된다
 // ============================================================
 const CLOUD_CFG = {
-  url: '',
-  key: '',
+  url: 'https://lkfikvavalrkznjzvepd.supabase.co',
+  key: 'sb_publishable_JimXC4Sz5WgRsJjm1tdO6A_v_SOZFnE',
   // 아이디 → 내부용 이메일 주소의 도메인. 한 번 정하면 바꾸지 말 것(바꾸면 기존 계정으로 로그인할 수 없다)
   idDomain: 'lds-training.vercel.app',
   sdk: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js',

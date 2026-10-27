@@ -5,7 +5,7 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else '/tmp'
 VW, VH = (int(sys.argv[2]), int(sys.argv[3])) if len(sys.argv) > 3 else (1280, 720)
 MOB = VW < 1000
 html = open('/home/claude/lds/dist/index.html', encoding='utf-8').read()
-html, n = re.subn(r"url: '',\s*key: '',", "url: 'https://fake.supabase.co', key: 'sb_publishable_test',", html, count=1)
+html, n = re.subn(r"url: '[^']*',\s*key: '[^']*',", "url: 'https://fake.supabase.co', key: 'sb_publishable_test',", html, count=1)
 assert n == 1
 os.makedirs('/tmp/claude-0/-home-claude/68f8f37c-dfb0-54ca-8eee-7f216ce8c253/scratchpad/cl', exist_ok=True)
 TEST = '/tmp/claude-0/-home-claude/68f8f37c-dfb0-54ca-8eee-7f216ce8c253/scratchpad/cl/index.html'
