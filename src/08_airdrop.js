@@ -61,7 +61,7 @@ const Airdrop = (() => {
     // 내용물: 보급 전용 무기 1정 + 맞는 탄 + 장비·조준경·회복 (파티원 기기는 방장이 만든 것을 받는다)
     if (d.remote) { addSmoke(d); return; }
     const top = d.gy + 0.845, spots = [[-0.35, -0.2], [0.05, -0.22], [0.38, -0.2], [-0.35, 0.2], [0.05, 0.22], [0.38, 0.2], [-0.1, 0.0], [0.25, 0.0]];
-    let k = 0; const put = (id, n, inst) => { const [ox, oz] = spots[k++ % spots.length]; d.items.push(spawnItem(scene, id, n, d.x + ox, top, d.z + oz, inst)); };
+    let k = 0; const put = (id, n, inst) => { const [ox, oz] = spots[k++ % spots.length]; const it = spawnItem(scene, id, n, d.x + ox, top, d.z + oz, inst); it.drop = 1; d.items.push(it); };
     const gun = weightedPick([['awm', 30], ['mg3', 30], ['slr', 40]]);
     put(gun, 1, newWeapon(gun, ITEMS[gun].mag));
     const am = ITEMS[gun].ammo; for (let i = 0; i < (gun === 'mg3' ? 3 : 2); i++) put(am, ITEMS[am].stack);
@@ -70,6 +70,7 @@ const Airdrop = (() => {
     if (Math.random() < 0.7) put(gun === 'awm' ? weightedPick([['x6', 60], ['x4', 40]]) : weightedPick([['x4', 40], ['x3', 35], ['x6', 25]]), 1);
     put(Math.random() < 0.55 ? 'medkit' : 'firstaid', 1);
     if (gun === 'slr' && Math.random() < 0.5) put('extmag', 1);
+    if (Math.random() < 0.5 && !G.training) put('gold', Math.round(rnd(40, 80)));
     addSmoke(d);
   }
   // 주황 연막 기둥

@@ -39,9 +39,12 @@ function buildRig(look) {
   const gunMount = new THREE.Group(); B.chest.add(gunMount);
   const backGuns = new THREE.Group(); B.chest.add(backGuns);   // 등에 멘 주무기(손에 없는 것)
   const helmet = new THREE.Group(), vest = new THREE.Group(), pack = new THREE.Group(); B.head.add(helmet); B.chest.add(vest); B.chest.add(pack);
+  // 모자 스킨: 머리 뼈에 붙는 단단한 메시. 헬멧을 쓰면 숨긴다
+  const hat = new THREE.Group(); B.head.add(hat);
+  if (L.hat) { const hm = Body.hatMesh(L.hat); if (hm) hat.add(hm); }
   const chute = Gear.canopy(L.chute); chute.visible = false; root.add(chute);
   const rig = { root, body, hips: B.hips, spine: B.spine, chest: B.chest, neck: B.neck, head: B.head, armL: arm('L'), armR: arm('R'), legL: leg('L'), legR: leg('R'),
-    gunMount, backGuns, backKey: ['', ''], chute, helmet, vest, pack, mesh: I.hi, meshLo: I.lo, skel: I.skel, bones: I.list, look: L, gunId: null, gunObj: null, gearKey: '', lod: 0, shadow: true,
+    gunMount, backGuns, backKey: ['', ''], chute, helmet, vest, pack, hat, mesh: I.hi, meshLo: I.lo, skel: I.skel, bones: I.list, look: L, gunId: null, gunObj: null, gearKey: '', lod: 0, shadow: true,
     // 장비 단계(0 = 없음): 바뀔 때만 메시 교체
     setGear(h, v, p) {
       const key = h + '|' + v + '|' + p; if (this.gearKey === key) return; this.gearKey = key;
@@ -49,11 +52,12 @@ function buildRig(look) {
         while (grp.children.length) grp.remove(grp.children[0]);
         const m = lvl ? fn(lvl) : null; if (m) { m.traverse((o) => { if (o.isMesh) o.castShadow = this.shadow; }); grp.add(m); }
       }
+      hat.visible = !h;
     },
     setShadow(on) {
       if (this.shadow === on) return; this.shadow = on;
       this.mesh.castShadow = this.meshLo.castShadow = on;
-      for (const grp of [helmet, vest, pack, gunMount, backGuns]) grp.traverse((o) => { if (o.isMesh) o.castShadow = on; });
+      for (const grp of [helmet, vest, pack, hat, gunMount, backGuns]) grp.traverse((o) => { if (o.isMesh) o.castShadow = on; });
     },
     // 0 = 가까이(정밀), 1 = 멀리(간략)
     setLod(l) { if (this.lod === l) return; this.lod = l; this.mesh.visible = l === 0; this.meshLo.visible = l !== 0; },

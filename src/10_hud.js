@@ -5,7 +5,7 @@
 const $ = (id) => document.getElementById(id);
 const HUD = (() => {
   let loot = [], focusIdx = 0, lastHp = 100, lastLootKey = '', toastQ = [];
-  const modals = ['mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel'];
+  const modals = ['mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes'];
   const ico = (id, att, cls = 'ico') => { const w = h('span', cls), src = Models.icon(id, att); if (src) { const im = h('img'); im.src = src; im.alt = ''; im.draggable = false; w.appendChild(im); } return w; };
   const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
 
@@ -773,47 +773,77 @@ const HUD = (() => {
     chute: (c, k) => `<path d="M2 10c3-5.5 17-5.5 20 0l-1 1.2H3z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M8 5.6 7 11M16 5.6l1 5.4M12 4.8v6.4" stroke="${k || '#555'}" stroke-width="1.6"/><path d="M4 11.5l7.4 8.5M20 11.5l-7.4 8.5M12 11.5V20" stroke="#bbb" stroke-width="0.6"/><circle cx="12" cy="20.5" r="1.2" fill="#ddd"/>`,
     none: () => `<circle cx="12" cy="12" r="7.5" fill="none" stroke="#777" stroke-width="1.4" stroke-dasharray="3 2"/><path d="M7 17 17 7" stroke="#777" stroke-width="1.4"/>`,
   };
-  function ownedSkins() { const own = new Set(Object.keys(Body.SKINS).filter((k) => /_basic$/.test(k))); for (const k of (STATS.skins || [])) if (Body.SKINS[k]) own.add(k); return own; }
+  function ownedSkins() { return Eco.ownedSkins(); }
   function equipSkin(slot, id) {
     const eq = Body.normEquip(SETTINGS.look); eq[slot] = id; SETTINGS.look = eq; saveSettings();
     Lobby.setLook(SETTINGS.look); renderWarehouse(); Audio.init(); Audio.ui();
   }
+  // 무늬 옷은 SVG 패턴(index.html의 pt-*)으로 칠한다
+  const skinFill = (S) => (S.ico ? `url(#${S.ico})` : hexs(S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888)));
+  let whVeh = 'sedan';
   function renderWarehouse() {
     const eq = Body.normEquip(SETTINGS.look), own = ownedSkins(), cats = $('whCats'), grid = $('whGrid');
     if (!cats || !grid) return;
     cats.innerHTML = ''; grid.innerHTML = '';
-    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.map((s) => [s.id, s.name]))) {
+    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.map((s) => [s.id, s.name]), [['veh', '차량']])) {
       const b = h('button', whCat === k ? 'on' : '', n); b.type = 'button';
-      b.addEventListener('click', () => { whCat = k; renderWarehouse(); Audio.init(); Audio.ui(); }); cats.appendChild(b);
+      b.addEventListener('click', () => { whCat = k; renderWarehouse(); Audio.init(); Audio.ui(); showcase(); }); cats.appendChild(b);
     }
     const card = (slot, id) => {
-      const S = id ? Body.SKINS[id] : null, on = (eq[slot.id] || null) === (id || null);
-      const b = h('button', 'wh-item' + (on ? ' on' : '')); b.type = 'button';
-      const ico = h('i', 'wh-ico'); const col = S ? hexs(S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888)) : null;
-      ico.innerHTML = `<svg viewBox="0 0 24 24">${S ? SKIN_ICON[slot.id](col, S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : null) : SKIN_ICON.none()}</svg>`;
-      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : slot.name + ' 없음')); b.appendChild(h('span', '', slot.name + ' · ' + (on ? '장착 중' : S ? '장착하기' : '벗기')));
+      const S = id ? Body.SKINS[id] : null, on = (eq[slot.id] || null) === (id || null), R = S ? rarOf(S.rar || 0) : null;
+      const b = h('button', 'wh-item' + (on ? ' on' : '') + (S && S.rar ? ' rar' : '')); b.type = 'button';
+      if (R) b.style.setProperty('--rc', R.color);
+      const ico = h('i', 'wh-ico');
+      ico.innerHTML = `<svg viewBox="0 0 24 24">${S ? SKIN_ICON[slot.id](skinFill(S), S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null) : SKIN_ICON.none()}</svg>`;
+      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : slot.name + ' 없음')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + slot.name + ' · ' + (on ? '장착 중' : S ? '장착하기' : '벗기')));
       b.title = S ? `${S.name} — ${S.desc || ''}` : `${slot.name} 벗기`;
       b.addEventListener('click', () => { if (!on) equipSkin(slot.id, id || null); });
       return b;
     };
     let n = 0;
-    for (const slot of Body.SLOTS) {
+    if (whCat === 'veh') {
+      // 차량: 차종별 기본 + 가진 스킨. 장착하면 경기에서 그 차종 운전석에 탈 때 스킨으로 바뀜
+      const vl = Eco.vlook(), tabs = h('div', 'wh-vtabs');
+      for (const [t, nm] of Object.entries(VEH_SKIN_TYPES)) { const b = h('button', whVeh === t ? 'on' : '', nm); b.type = 'button'; b.addEventListener('click', () => { whVeh = t; renderWarehouse(); showcase(); Audio.init(); Audio.ui(); }); tabs.appendChild(b); }
+      grid.appendChild(tabs);
+      const vcard = (id) => {
+        const V = id ? VSKINS[id] : null, on = (vl[whVeh] || null) === (id || null), R = V ? rarOf(V.rar) : null;
+        const b = h('button', 'wh-item veh' + (on ? ' on' : '') + (V ? ' rar' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
+        const ico = h('i', 'wh-ico'), src = V ? Shop.vehThumb(id) : Shop.vehBaseThumb(whVeh); if (src) { const im = h('img'); im.src = src; im.alt = ''; ico.appendChild(im); }
+        b.appendChild(ico); b.appendChild(h('b', '', V ? V.name : `기본 ${VEH_SKIN_TYPES[whVeh]}`)); b.appendChild(h('span', '', (R ? R.name + ' · ' + VCLS_NAME[V.cls] + ' · ' : '') + (on ? '장착 중' : '장착하기')));
+        b.addEventListener('click', () => { if (!on) { Eco.equipVeh(whVeh, id); renderWarehouse(); showcase(); Audio.init(); Audio.ui(); } });
+        return b;
+      };
+      grid.appendChild(vcard(null));
+      const ids = Object.keys(VSKINS).filter((k) => VSKINS[k].veh === whVeh && Eco.ownsVeh(k));
+      for (const id of ids) grid.appendChild(vcard(id));
+      if (!ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${VEH_SKIN_TYPES[whVeh]} 스킨이 없습니다. 상점의 차량 뽑기나 교환소에서 얻을 수 있습니다.`));
+    } else for (const slot of Body.SLOTS) {
       if (whCat !== 'all' && whCat !== slot.id) continue;
-      const ids = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === slot.id && own.has(k));
+      const ids = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === slot.id && own.has(k)).sort((a, b) => (Body.SKINS[b].rar || 0) - (Body.SKINS[a].rar || 0));
       if (slot.optional) grid.appendChild(card(slot, null));
       for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
-      if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다.<br>새 스킨이 추가되면 여기에 나타납니다.`));
+      if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자에서 얻을 수 있습니다.`));
     }
-    $('whCount').textContent = `보유 스킨 ${own.size}개`;
+    $('whCount').textContent = `옷 ${own.size}벌 · 차량 스킨 ${(STATS.vskins || []).length}종`;
   }
-  // 로비 탭: 플레이 / 전적 / 창고
+  // 창고 3D: 차량 분류면 장착한(없으면 기본) 차량을, 아니면 캐릭터
+  function showcase() {
+    if (lobbyTab !== 'custom') return;
+    if (whCat === 'veh') { const vl = Eco.vlook(); Lobby.show({ kind: 'veh', type: whVeh, skin: vl[whVeh] }); } else Lobby.show(null);
+  }
+  // 로비 탭: 플레이 / 전적 / 창고 / 상점 / 미션
   let lobbyTab = 'play';
   function setTab(t) {
+    const prev = lobbyTab;
     lobbyTab = t; Lobby.focus = t === 'custom';
     document.querySelectorAll('#lbTabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
     document.querySelectorAll('#lobby .pane').forEach((p) => { p.hidden = p.dataset.pane !== t; });
     $('segQueue').style.visibility = t === 'play' ? '' : 'hidden';
     const L = document.querySelector('.lb-left'); L.className = 'lb-left tab-' + t + (SETTINGS.queue === 'ranked' && Rank.unlocked() ? ' ranked' : '');
+    document.body.classList.toggle('lobby-wide', t === 'shop' || t === 'mission');
+    if (prev !== t || t === 'shop' || t === 'mission') Shop.onTab(t);
+    if (t === 'custom') { if (prev !== t) renderWarehouse(); showcase(); }   // 뽑기로 얻은 옷이 바로 보이게
   }
   const ringSet = (id, f) => { $(id).style.strokeDashoffset = (100.5 * (1 - clamp(f, 0, 1))).toFixed(1); };
   const mapSize = (k) => MAPS[k].big ? '8×8km' : `${(HALF0 * 2 / 1000).toFixed(1)}×${(HALF0 * 2 / 1000).toFixed(1)}km`;
@@ -942,6 +972,7 @@ const HUD = (() => {
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: '신규', title: '상점 오픈 — 상자 3종 · 차량 뽑기 · 교환소, 미션·출석 보상', img: () => LOBBY_ART.vehicles, act: () => setTab('shop') },
     { tag: '신규', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
     { tag: '신규 모드', title: '팀 데스매치 · 웨폰 데스매치 — 4 대 4, 먼저 40킬', img: () => LOBBY_ART.arena, act: () => G.ui('mapPick') },
     { tag: '업데이트', title: '팀원과 함께 차량 탑승 — 동승석에서 사격', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
@@ -1010,6 +1041,8 @@ const HUD = (() => {
     let note = G.statsSaved ? '기록이 저장되었습니다.' : '이 브라우저에서는 기록이 저장되지 않았습니다 (게임은 계속 가능).';
     if (team) { const ms = G.teams[p.team].members; note = `팀 처치 ${ms.reduce((a, m) => a + m.kills, 0)} · 내가 기절시킴 ${p.knocks} · 부활시킴 ${p.revives} — ` + note; }
     if (G.hostGone) note = '방장의 연결이 끊겨 경기가 끝났습니다. ' + note;
+    if (p.goldAmt) note = `${GOLD_NAME} +${p.goldAmt} 주움 · ` + note;
+    if (Eco.claimable()) note += ' 미션 탭에서 받을 보상이 있습니다.';
     $('resNote').textContent = note;
     // 랭크 결과
     const R = G.rankResult, box = $('resRanked'); box.hidden = !R; box.classList.remove('promo');
@@ -1029,5 +1062,5 @@ const HUD = (() => {
       }
     }
   }
-  return { lobbyNote: (m) => showLobbyNote(m), quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
+  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();

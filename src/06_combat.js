@@ -439,6 +439,7 @@ function applyDamage(t, dmg, part, attacker, cause, hx, hy, hz) {
   if (sameTeam(attacker, t)) return 0; // 팀원 공격 없음 (총·주먹·수류탄·차량)
   if (G.dm && t.spawnProt > G.time) return 0; // 데스매치 부활 직후 보호
   if (attacker && attacker !== t) shareHit(attacker, t);
+  if (attacker && attacker.isPlayer && part === 'head' && attacker !== t && !t.dummy && !sameTeam(attacker, t)) attacker.headshots = (attacker.headshots || 0) + 1;
   if (G.net && !Net.mine(t)) return Net.remoteHit(t, dmg, part, attacker, cause, hx, hy, hz); // 다른 기기 캐릭터: 주인 기기가 판정
   if (t.knocked) return damageKnocked(t, dmg, part, attacker, cause);
   let d = dmg;

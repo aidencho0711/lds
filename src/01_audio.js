@@ -466,6 +466,18 @@ const Audio = (() => {
     land(pos, own, k) { if (!ctx) return; playBuf(k > 1.2 ? 'roll' : 'land', own ? null : pos, (own ? 0.4 : 0.5) * clamp(k, 0.4, 1.4), { own, range: 30, ref: 4, send: 0.05 }); },
     death(pos) { if (!ctx) return; const out = spatial(pos, 0.5, 80); if (!out) return; const t = ctx.currentTime; tone(out, t, 0.4, 'sine', 180, 60, 0.4); },
     win() { if (!ctx) return; const t = ctx.currentTime; [523, 659, 784, 1046].forEach((f, i) => tone(sfxBus, t + i * 0.14, 0.5, 'triangle', f, f, 0.2)); },
+    // 상점 뽑기: start(상자 울림) · tick(빛 단계 상승) · open(뚜껑 터짐 + 등급만큼 화음) · show(결과) · small(작은 보상)
+    gacha(ph, tier = 3) {
+      if (!ctx) return; const t = ctx.currentTime, T = clamp(tier | 0, 0, 5);
+      if (ph === 'start') { noise(sfxBus, t, 1.6 + T * 0.4, 'lowpass', 140, 0.8, 0.32); tone(sfxBus, t, 1.4, 'sine', 52, 74, 0.22); }
+      else if (ph === 'tick') { const f = [440, 494, 523, 659, 784, 988][T]; tone(sfxBus, t, 0.28, 'triangle', f, f * 1.01, 0.17); tone(sfxBus, t, 0.4, 'sine', f * 2, f * 2, 0.05); noise(sfxBus, t, 0.14, 'highpass', 3200, 1, 0.07); }
+      else if (ph === 'open') {
+        noise(sfxBus, t, 0.55, 'bandpass', 900, 0.6, 0.5); noise(sfxBus, t, 1.5, 'highpass', 5200, 0.7, 0.14); tone(sfxBus, t, 0.5, 'sine', 90, 40, 0.4);
+        const base = [262, 262, 294, 392, 440, 523][T]; [1, 1.26, 1.5, 2, 2.52].slice(0, Math.max(2, T)).forEach((m, i) => tone(sfxBus, t + 0.05 + i * 0.07, 1.3, 'triangle', base * m, base * m, 0.13));
+      }
+      else if (ph === 'show') { [784, 988, 1175].forEach((f, i) => tone(sfxBus, t + i * 0.09, 0.45, 'triangle', f, f, 0.09)); }
+      else if (ph === 'small') { [880, 1318].forEach((f, i) => tone(sfxBus, t + i * 0.08, 0.25, 'triangle', f, f, 0.1)); }
+    },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
     engine(id, pos, type, rpm, load, own, skid) {
       if (!ctx) return;

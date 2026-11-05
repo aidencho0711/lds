@@ -33,7 +33,7 @@ const DM = (() => {
     G.state = 'loading'; G.paused = false; G.over = false; G.training = false; G.dm = null;
     document.body.classList.remove('training');
     Audio.music(false);
-    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false;
+    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
     $('loadMap').textContent = `${GAME_TYPES[type].name} · ${MAPS.arena.name}`;
     $('loadTip').textContent = type === 'tdm' ? '팀 데스매치: 모두 같은 총으로 싸웁니다. 먼저 40킬 하는 팀이 이깁니다.' : '웨폰 데스매치: 적을 처치할 때마다 총과 스코프가 바뀝니다. 먼저 40킬 하는 팀이 이깁니다.';
     const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };

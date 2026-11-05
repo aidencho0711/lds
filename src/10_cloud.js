@@ -70,30 +70,56 @@ const Cloud = (() => {
     Rank.replace(d.rank || {});
     if (d.settings) { const keep = {}; for (const k of DEVICE_SETTINGS) keep[k] = SETTINGS[k]; SETTINGS = Object.assign({}, DEFAULT_SETTINGS, d.settings, keep); store.set('settings', SETTINGS); }
   }
-  const hasProgress = (d) => !!(d && d.stats && ((d.stats.matches || 0) > 0 || (d.stats.xp || 0) > 0));
+  // 전적이 없어도 상점 기록(뽑기·미션·스킨)이 있으면 진행한 계정으로 본다
+  const hasProgress = (d) => !!(d && d.stats && ((d.stats.matches || 0) > 0 || (d.stats.xp || 0) > 0 || (d.stats.eco && (d.stats.eco.rev || 0) > 2) || (d.stats.skins || []).length || (d.stats.vskins || []).length));
   function refreshUi() {
     if (G.state === 'lobby') { HUD.renderLobby(); if (G.applySettings) G.applySettings('view'); if (Lobby.setLook) { Lobby.setLook(SETTINGS.look); Lobby.teamN = 0; } }
     render();
   }
 
   // ---------- 동기화 ----------
+  //  base: 마지막으로 서버와 같았던 STATS. 서버의 sync 표식이 base와 다르면(다른 기기가 저장함)
+  //  이 기기에서 바뀐 양만 서버 값에 더해 합친 뒤 올린다 → 재화가 되살아나거나 얻은 스킨이 사라지지 않음
+  let base = null, pullT = 0;
+  const snap = (o) => JSON.parse(JSON.stringify(o || {}));
+  function afterMerge() {
+    store.set('stats', STATS);
+    if (G.state === 'lobby') { try { HUD.renderLobby(); Shop.badge(); const sp = document.querySelector('[data-pane=shop]'), mp = document.querySelector('[data-pane=mission]'); if (sp && !sp.hidden) Shop.render(); if (mp && !mp.hidden) Shop.renderMissions(); } catch (e) { console.warn(e); } }
+  }
   async function pushNow() {
     if (!sb || !user) return false;
     if (busy) { dirty = true; return false; }
     busy = true; dirty = false; status = 'syncing'; render();
     try {
+      const cur = await sb.from('player_data').select('stats').eq('user_id', user.id).maybeSingle();
+      if (!cur.error && cur.data && cur.data.stats && base && cur.data.stats.sync && cur.data.stats.sync !== base.sync) { STATS = Eco.mergeStats(base, STATS, cur.data.stats); afterMerge(); }
+      STATS.sync = Eco.DEV + ':' + Date.now().toString(36); store.set('stats', STATS);
       const d = pack();
       const { error } = await sb.from('player_data').upsert({ user_id: user.id, stats: d.stats, rank: d.rank, settings: d.settings });
       if (error) throw error;
+      base = snap(STATS);
       lastSync = Date.now(); status = 'online'; lastErr = '';
       return true;
     } catch (e) { status = 'error'; lastErr = msgOf(e); dirty = true; return false; }
     finally { busy = false; render(); if (dirty && status !== 'error') schedule(1500); }
   }
+  // 다른 기기에서 바뀐 기록 받아오기 (앱으로 돌아올 때·상점/미션을 열 때, 15초에 한 번까지)
+  async function pull(force) {
+    if (!sb || !user || busy || (!force && Date.now() - pullT < 15000)) return false;
+    pullT = Date.now();
+    try {
+      const cur = await sb.from('player_data').select('stats').eq('user_id', user.id).maybeSingle();
+      const srv = cur.data && cur.data.stats; if (cur.error || !srv || !base || !srv.sync || srv.sync === base.sync) return false;
+      const localChanged = JSON.stringify(STATS) !== JSON.stringify(base);
+      STATS = Eco.mergeStats(base, STATS, srv); STATS.sync = srv.sync; base = snap(srv); afterMerge();
+      if (localChanged) { dirty = true; schedule(500); }
+      return true;
+    } catch (e) { return false; }
+  }
   function schedule(ms) { if (!user) return; clearTimeout(syncT); syncT = setTimeout(pushNow, ms); }
   onDataSaved = () => { if (user) { dirty = true; schedule(2000); } };
   // 창을 닫거나 다른 앱으로 갈 때 밀린 저장을 바로 보냄
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && user && dirty) { clearTimeout(syncT); pushNow(); } });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && user && dirty) { clearTimeout(syncT); pushNow(); } else if (document.visibilityState === 'visible' && user) pull(); });
 
   // 로그인 직후: 게스트 기록 보관 → 서버 기록 불러오기(없으면 이 기기 기록 올리기)
   async function afterLogin(u, fresh) {
@@ -107,7 +133,7 @@ const Cloud = (() => {
     if (r.error) throw r.error;
     row = r.data;
     let note;
-    if (hasProgress(row)) { apply(row); note = `${name}님의 기록을 불러왔습니다`; }
+    if (hasProgress(row)) { apply(row); base = snap(row.stats); note = `${name}님의 기록을 불러왔습니다`; }
     else { // 새 계정(또는 아직 기록이 없는 계정): 지금 이 기기의 기록을 계정으로 옮김
       await pushNow();
       // '옮김'이므로 로그아웃 뒤 게스트 기록은 새로 시작 (같은 기록이 게스트·계정 양쪽에 복사되지 않게). 기기별 설정은 유지
@@ -165,7 +191,7 @@ const Cloud = (() => {
     if (dirty) await pushNow();
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ }
     if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
-    user = null; name = null; status = 'idle'; clearTimeout(syncT); dirty = false;
+    user = null; name = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
     store.set('account', null);
     restoreGuest();
     refreshUi();
@@ -214,7 +240,7 @@ const Cloud = (() => {
     $('acctSyncNow').addEventListener('click', async () => { const ok = await pushNow(); render(); if (ok) msg('저장했습니다', true); });
     render();
   }
-  return { init, setup, signUp, signIn, signOut, pushNow, open, close, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
+  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
     get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get status() { return status; }, get lastError() { return lastErr; } };
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'

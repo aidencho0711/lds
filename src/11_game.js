@@ -39,7 +39,7 @@ function initRenderer() {
     const w = window.innerWidth, h = window.innerHeight;
     r.setSize(w, h, false);
     G.camera.aspect = w / h; G.camera.updateProjectionMatrix();
-    Lobby.cam.aspect = w / h; Lobby.cam.updateProjectionMatrix();
+    Lobby.cam.aspect = w / h; Lobby.cam.updateProjectionMatrix(); Cutscene.resize(w, h);
     $('rotateHint').hidden = !(IS_TOUCH && h > w && !G.rotateDismissed);
     if (!$('mapPanel').hidden) HUD.drawBig();
   };
@@ -87,7 +87,8 @@ const Lobby = {
     add(new THREE.BoxGeometry(2.44, 2.6, 6.1), 0x2f6a8a, -13, 1.3, -16, -0.4);
     try {
       const u = VehModels.instance('uaz'); u.root.position.set(-5.2, 0, -4.6); u.root.rotation.y = 0.95; sc.add(u.root);
-      const m = VehModels.instance('moto'); m.root.position.set(3.0, 0, -3.0); m.root.rotation.y = -0.75; m.root.rotation.z = 0.12; sc.add(m.root);
+      this.motoProp = () => { if (this.moto) sc.remove(this.moto.root); const m = this.moto = VehModels.instance('moto', Eco.vlook().moto); m.root.position.set(3.0, 0, -3.0); m.root.rotation.y = -0.75; m.root.rotation.z = 0.12; sc.add(m.root); };
+      this.motoProp(); Eco.on((w) => { if (w === 'vequip') this.motoProp(); });
     } catch (e) { console.warn('로비 차량 생략', e); }
     for (let i = 0; i < 11; i++) add(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), 0x777777, -15 + i * 3, 1.2, -11);
     const tg = new THREE.ConeGeometry(1.6, 5, 7); for (let i = 0; i < 22; i++) { const a = -Math.PI * 0.95 + i / 21 * Math.PI * 0.9, r = 24 + Math.random() * 12; add(tg, 0x2e4a2a, Math.cos(a) * r, 2.5, Math.sin(a) * r); }
@@ -125,11 +126,37 @@ const Lobby = {
     if (this.rig) { this.scene.remove(this.rig.root); this.rig.skel.dispose(); }
     const rig = buildRig(Body.makeLook(eq, SETTINGS.body)); this.rig = rig; this.scene.add(rig.root);
     rig.gunObj = buildGunMesh('m416', { scope: 'x2', muzzle: 'comp' }); rig.gunMount.add(rig.gunObj);
-    rig.setGear(2, 2, 2);
+    this.gear = [Body.normEquip(eq).hat ? 0 : 2, 2, 2]; rig.setGear(this.gear[0], this.gear[1], this.gear[2]);
     rig.root.position.set(0, 0.2, 0);
+  },
+  // 상점·창고 진열: 받침대 위에 상자나 차량을 올려 천천히 돌린다 (캐릭터는 숨김). spec: null | {kind:'crate', box} | {kind:'veh', type, skin}
+  show(spec) {
+    const key = spec ? JSON.stringify(spec) : '';
+    if (this.scKey === key) return; this.scKey = key;
+    if (this.sc) { this.scene.remove(this.sc.obj); this.sc = null; }
+    if (!spec) return;
+    let obj, size;
+    if (spec.kind === 'crate') { this.crates = this.crates || {}; obj = (this.crates[spec.box] = this.crates[spec.box] || Shop.crate(spec.box)).root; obj.scale.setScalar(1.1); size = 1.9; }
+    else { obj = VehModels.instance(spec.type, spec.skin || null).root; size = spec.type === 'sedan' ? 4.9 : spec.type === 'moto' ? 2.4 : 2.9; }
+    obj.position.set(0, 0.2, 0); obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    this.scene.add(obj); this.sc = { obj, size, t0: this.t, kind: spec.kind };
   },
   update(dt) {
     this.t += dt; const r = this.rig, t = this.t;
+    // 진열 중: 캐릭터·팀원 숨기고 진열품을 화면 오른쪽에 크게 (왼쪽은 상점 창)
+    const sc = this.sc; r.root.visible = !sc; if (this.moto) this.moto.root.visible = !sc;
+    if (sc) {
+      for (const m of this.mates) m.root.visible = false;
+      sc.obj.rotation.y = 0.7 + (t - sc.t0) * 0.32;
+      // 왼쪽 창이 가리지 않는 영역의 가운데에 오도록 카메라를 옆으로 민다 (창 오른쪽 끝은 0.5초마다 다시 잼)
+      if (!(sc.fracT > t)) { const P = document.querySelector('.lb-left'), rr = P ? P.getBoundingClientRect().right : 0; sc.frac = clamp(rr / Math.max(1, window.innerWidth), 0, 0.7); sc.fracT = t + 0.5; }
+      const s = sc.size, dist = 1.45 * s + 1.4, xs = Math.min(0.82, sc.frac + (1 - sc.frac) * 0.5), tanH = Math.tan(this.cam.fov * Math.PI / 360) * this.cam.aspect;
+      const off = (2 * xs - 1) * tanH * dist;
+      this.cam.position.set(-off + 0.25 * s, 0.5 * s + 0.75, dist); this.cam.lookAt(-off, 0.2 * s + 0.35, 0);
+      return;
+    }
+    // 창고(옷 보기): 조끼·가방·헬멧을 벗겨 옷이 보이게
+    const g = this.focus ? [0, 0, 0] : (this.gear || [2, 2, 2]); r.setGear(g[0], g[1], g[2]);
     // 창고 탭: 카메라를 캐릭터 가까이(오른쪽에 크게), 캐릭터는 천천히 돌며 옷을 보여 줌
     this.fk = lerp(this.fk || 0, this.focus ? 1 : 0, clamp(dt * 4, 0, 1));
     const yaw = lerp(0.35 + Math.sin(t * 0.25) * 0.15, 0.25 + Math.sin(t * 0.32) * 0.65, this.fk);
@@ -260,7 +287,7 @@ async function startMatch(cfg) {
   G.state = 'loading'; G.paused = false; G.over = false; G.training = false;
   document.body.classList.remove('training'); $('quitBtn').textContent = '경기 포기 (로비로)';
   Audio.music(false);
-  $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false;
+  $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
   $('loadMap').textContent = MAPS[SETTINGS.map].name; $('loadTip').textContent = pick(TIPS);
   const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
   disposeMatch();
@@ -306,6 +333,7 @@ async function startMatch(cfg) {
   humans.forEach((hm, i) => {
     const me = !net || hm.uid === Cloud.uid;
     const hl = hm.look || {}, c = new Character({ id: i, name: hm.name, isPlayer: me, look: Body.makeLook(hl.eq, hl.body) });
+    c.vlook = hl.veh || null;
     if (net) c.net = Net.charNet(hm.uid);
     CHARS.push(c); joinTeam(c); if (me) player = c;
   });
@@ -409,6 +437,8 @@ function endMatch() {
   STATS.recent.unshift({ rank: place, total: nT, kills: p.kills, time: Math.round(p.alive || win && !p.deathTime ? G.time : p.deathTime), map: SETTINGS.map, ranked: !!G.ranked, sq: G.teamSize, party: G.net ? 1 : 0, delta: G.rankResult && !G.rankResult.placement ? G.rankResult.delta : undefined });
   STATS.recent = STATS.recent.slice(0, 5);
   G.statsSaved = saveStats();
+  // 미션: 배틀로얄 경기 기록 반영 (훈련장·데스매치는 여기로 오지 않음)
+  try { Eco.matchEnd({ quit: !!G.quit, win, place, kills: p.kills, heads: p.headshots || 0, dmg: p.damageDealt || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0, surv: p.alive || win && !p.deathTime ? G.time : p.deathTime || 0 }); } catch (e) { console.warn('미션 반영 실패', e); }
   HUD.showResult(win, p, nT);
 }
 
@@ -418,6 +448,7 @@ const _sp = new THREE.Vector3();
 G.update = function (dt) {
   G.time += dt;
   const p = G.player;
+  if (p && p.veh && p.seat === 0 && !p.veh.dead) p.driveM = (p.driveM || 0) + Math.hypot(p.veh.vx, p.veh.vz) * dt;
   // 메뉴 토글 (모달이 열려 있어도 처리)
   if (Input.consume('pause')) { if (!$('mapPanel').hidden) HUD.closeMap(); else if (!$('invPanel').hidden) HUD.closeInv(); else G.pause(true); }
   if (Input.consume('map')) { $('mapPanel').hidden ? HUD.openMap() : HUD.closeMap(); }
@@ -631,7 +662,11 @@ function loop() {
   requestAnimationFrame(loop);
   const t = performance.now(); let dt = (t - _last) / 1000; _last = t; dt = Math.min(dt, 0.05);
   try {
-    if (G.state === 'lobby' || G.state === 'loading') { Lobby.update(dt); G.renderer.render(Lobby.scene, Lobby.cam); Models.pump(5); }
+    if (G.state === 'lobby' || G.state === 'loading') {
+      if (Cutscene.active) { Cutscene.update(dt); Cutscene.render(G.renderer); }
+      else { Lobby.update(dt); G.renderer.render(Lobby.scene, Lobby.cam); }
+      Models.pump(5);
+    }
     else if (G.scene) {
       if ((!G.paused || G.net) && G.state === 'play') G.update(dt * G.timeScale); // 같이 하기는 메뉴를 열어도 멈추지 않는다
       else if (G.state === 'result' && G.player) { VM.active = false; const a = performance.now() / 4000; G.camera.position.set(G.player.pos.x + Math.sin(a) * 10, G.player.pos.y + 6, G.player.pos.z + Math.cos(a) * 10); G.camera.lookAt(G.player.pos); }
@@ -654,7 +689,7 @@ function boot() {
   Lobby.init();
   setupInput($('gl'));
   setupTouch($('touch'));
-  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Cloud.setup(); Cloud.init();
+  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Shop.setup(); Cloud.setup(); Cloud.init();
   $('rotateDismiss').addEventListener('click', () => { G.rotateDismissed = true; $('rotateHint').hidden = true; });
   G.onResize();
   document.addEventListener('pointerdown', () => { Audio.init(); if (G.state === 'lobby') Audio.music(true); }, { once: true });
@@ -663,7 +698,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) G.update(dt); },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

@@ -432,7 +432,7 @@ const Veh = (() => {
     if (i < 0 || i >= v.seats.length || v.seats[i]) return false;
     if (c.revive) cancelRevive(c, true);
     v.seats[i] = c; c.seat = i; c.veh = v; v.awake = true; v.sleepT = 0;
-    if (i === 0) { v.driver = c; v.lastDriver = c; }
+    if (i === 0) { v.driver = c; v.lastDriver = c; applyDriverSkin(v, c); }
     c.cycle = null; c.heal = null; c.throwMode = null; c.vault = null; c.rollT = 0; c.aiming = false; c.sprint = false; c.stance = 'stand'; c.vel.set(0, 0, 0); c.burstQ = 0;
     if (i === 0) { c.rl = null; v.ctrl.throttle = 0; v.ctrl.steer = 0; v.ctrl.hand = false; }
     c.setVisibleGear(); syncRider(v);
@@ -442,6 +442,23 @@ const Veh = (() => {
     }
     return true;
   }
+  // 차량 스킨: 스킨을 가진 사람이 운전석에 앉으면 그 차량이 스킨 모양으로 바뀌고, 내린 뒤에도 유지된다
+  //  (모양만 바뀜 — 좌석·물리·내구도는 그대로). 같이 하기는 파티원 외형 묶음(look.veh)으로 모든 기기에서 같게
+  function applyDriverSkin(v, c) {
+    const id = c.vlook && c.vlook[v.type];
+    if (id && VehModels.has(id) && v.skin !== id) setSkin(v, id);
+  }
+  function setSkin(v, id) {
+    const old = v.P, P = VehModels.instance(v.type, id || null);
+    P.root.position.copy(old.root.position); P.root.rotation.copy(old.root.rotation); P.root.visible = old.root.visible;
+    if (scene) { scene.remove(old.root); scene.add(P.root); }
+    v.P = P; v.skin = id || null;
+    if (v.dead) { VehModels.wreck(P); P.root.position.y -= 0.12; }
+    VehModels.setShadows(P, !!old.shadowOn);
+    syncMesh(v);
+    if (v.seats.some(Boolean)) syncRider(v);
+    if (G.player && v.driver === G.player) HUD.toast(`${VSKINS[id] ? VSKINS[id].name : v.T.name} 스킨`, 'ok');
+  }
   // 다음 빈 좌석으로 옮기기 (운전석 포함 순환)
   function switchSeat(c) {
     const v = c.veh; if (!v) return false;
@@ -449,7 +466,7 @@ const Veh = (() => {
     for (let k = 1; k < n; k++) {
       const i = (c.seat + k) % n; if (v.seats[i]) continue;
       v.seats[c.seat] = null; if (c.seat === 0) { v.driver = null; v.ctrl.throttle = 0; v.ctrl.steer = 0; v.ctrl.hand = false; }
-      v.seats[i] = c; c.seat = i; if (i === 0) { v.driver = c; v.lastDriver = c; c.rl = null; }
+      v.seats[i] = c; c.seat = i; if (i === 0) { v.driver = c; v.lastDriver = c; c.rl = null; applyDriverSkin(v, c); }
       c.aiming = false; c.setVisibleGear(); syncRider(v);
       if (c.isPlayer) { HUD.toast(i === 0 ? '운전석' : `${i + 1}번 좌석 — 사격 가능`, 'info'); Audio.vehDoor && Audio.vehDoor(v.T.animal); }
       return true;
@@ -607,6 +624,6 @@ const Veh = (() => {
     for (const v of near(x, z, r)) { if (v.dead || v.seats.some(Boolean) || v.burnT > 0 || v.hp < v.T.hp * 0.3) continue; if (pred && !pred(v)) continue; const d = Math.hypot(v.pos.x - x, v.pos.z - z); if (d < bd) { bd = d; best = v; } }
     return best;
   }
-  return { init, dispose, spawnAll, make, remove, update, ray, damage, blast, netBoom, pushChar, nearestEnterable, enter, exit, switchSeat, riders, freeSeats, animateRider, syncRider, nearestFree, near,
+  return { init, dispose, spawnAll, make, remove, update, ray, damage, blast, netBoom, pushChar, nearestEnterable, enter, exit, switchSeat, riders, freeSeats, animateRider, syncRider, nearestFree, near, setSkin,
     get list() { return list; }, get active() { return list.length > 0; } };
 })();

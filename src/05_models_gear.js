@@ -137,14 +137,16 @@ const Gear = (() => {
     const sk = (Body.SKINS[skinId] && Body.SKINS[skinId].colors) ? Body.SKINS[skinId] : Body.SKINS.chute_basic;
     const g = Models.cluster('chute:' + (Body.SKINS[skinId] ? skinId : 'chute_basic'), (G) => {
       const N = 9, R = 4.6, span = 1.5, H = 4.6, chord = 2.7, th = 0.36;
-      const ca = M('cloth', sk.colors[0]), cb = M('cloth', sk.colors[1]), dk = M('cloth', 0x1a1a18);
+      // 칸 색: colors를 차례로 반복(2색 줄무늬 · 무지개 등). metal이면 광택 금속 천
+      const kind = sk.metal ? 'brass' : 'cloth', cols = sk.colors.map((c) => M(kind, c)), dk = M('cloth', sk.edge !== undefined ? sk.edge : 0x1a1a18);
+      const cellM = (i) => cols[(sk.mirror ? Math.min(i, N - 1 - i) : i) % cols.length];
       for (let i = 0; i < N; i++) {
         const t = (i + 0.5) / N - 0.5, a = t * span, x = Math.sin(a) * R, y = H + Math.cos(a) * R - R, w = 2 * R * Math.sin(span / N / 2) * 1.02;
-        A(G, RB(w, th, chord, 0.15), i % 2 ? cb : ca, x, y, 0.35, 0, 0, -a);
+        A(G, RB(w, th, chord, 0.15), cellM(i), x, y, 0.35, 0, 0, -a);
         A(G, RB(w * 0.82, th * 0.55, 0.05, 0.03), dk, x, y - 0.02, 0.35 + chord / 2 - 0.01, 0, 0, -a);
       }
       // 꼬리 쪽 얇은 날
-      for (let i = 0; i < N; i++) { const t = (i + 0.5) / N - 0.5, a = t * span, x = Math.sin(a) * R, y = H + Math.cos(a) * R - R; A(G, BX(2 * R * Math.sin(span / N / 2), 0.03, 0.4), i % 2 ? cb : ca, x, y - 0.05, 0.35 - chord / 2 - 0.15, 0, 0, -a); }
+      for (let i = 0; i < N; i++) { const t = (i + 0.5) / N - 0.5, a = t * span, x = Math.sin(a) * R, y = H + Math.cos(a) * R - R; A(G, BX(2 * R * Math.sin(span / N / 2), 0.03, 0.4), cellM(i), x, y - 0.05, 0.35 - chord / 2 - 0.15, 0, 0, -a); }
     });
     // 줄: 칸 경계 아래 3곳 → 같은 쪽 어깨 고리
     const pts = [], N = 9, R = 4.6, span = 1.5, H = 4.6;

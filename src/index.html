@@ -14,6 +14,8 @@
           <button type="button" data-tab="play" class="on">플레이</button>
           <button type="button" data-tab="record">전적</button>
           <button type="button" data-tab="custom">창고</button>
+          <button type="button" data-tab="shop">상점</button>
+          <button type="button" data-tab="mission">미션<i class="tab-dot" id="misDot" hidden></i></button>
         </div>
         <div class="lb-sub" id="segQueue"></div>
         <div class="lb-note" id="lbNote" hidden></div>
@@ -62,6 +64,20 @@
           <div class="wh-cats" id="whCats"></div>
           <div class="wh-grid" id="whGrid"></div>
           <p class="micro mt" id="whNote">장착한 스킨은 가운데 캐릭터에 바로 보이고, 경기와 파티원 화면에도 그대로 나옵니다.</p>
+        </div>
+        <!-- 상점: 뽑기 4종 · 교환소 -->
+        <div class="pane panel-pane shop-pane" data-pane="shop" hidden>
+          <div class="shop-top"><div class="shop-tabs" id="shopTabs"><button type="button" data-st="gacha" class="on">뽑기</button><button type="button" data-st="exch">교환소</button></div><div class="wallet" id="shopWallet"></div></div>
+          <div class="shop-body" id="shopBody"></div>
+          <p class="micro shop-foot" id="shopFoot"></p>
+        </div>
+        <!-- 미션: 출석 보상 · 일일 · 주간 -->
+        <div class="pane panel-pane mis-pane" data-pane="mission" hidden>
+          <div class="shop-top"><span class="eyebrow">미션 · 보상</span><div class="wallet" id="misWallet"></div></div>
+          <div class="mis-sec"><h4>출석 보상 <small id="attSub"></small></h4><div class="att-row" id="attRow"></div></div>
+          <div class="mis-sec"><h4>일일 미션 <small id="misReset"></small></h4><div class="mis-list" id="misDaily"></div><div class="mis-bonus" id="misBonus"></div></div>
+          <div class="mis-sec"><h4>주간 미션 <small>매주 월요일 초기화</small></h4><div class="mis-list" id="misWeekly"></div></div>
+          <p class="micro">미션은 배틀로얄(일반·랭크·파티) 경기가 끝날 때 반영됩니다. 훈련장·데스매치는 제외. 골드 탄피는 경기 중 건물 안 '골드 탄피 주머니'와 보급품에서도 나옵니다.</p>
         </div>
         <div class="lb-launch">
           <button class="news-card" id="newsCard" type="button"><span class="news-img" id="newsImg"></span><span class="news-tag" id="newsTag">업데이트</span><b id="newsTitle"></b><span class="news-dots" id="newsDots"></span></button>
@@ -242,6 +258,47 @@
       <div class="inv-col"><div class="eyebrow">장비</div><div id="invGear"></div><div class="eyebrow mt">무기</div><div id="invWeapons"></div></div>
     </div>
   </section>
+
+  <!-- 상점: 확률 공개 -->
+  <section id="oddsPanel" class="overlay" hidden>
+    <div class="menu wide odds-menu">
+      <div class="acct-head"><div class="eyebrow" id="oddsTitle">확률</div><button class="map-x acct-x" type="button" id="oddsClose" aria-label="닫기">✕</button></div>
+      <p class="micro" id="oddsNote"></p>
+      <div class="odds-grid" id="oddsGrid"></div>
+    </div>
+  </section>
+  <!-- 상점: 뽑기 결과 -->
+  <section id="gachaRes" class="overlay gres" hidden>
+    <div class="gres-box">
+      <div class="gres-head"><span class="eyebrow" id="gresKicker">획득</span><b id="gresTitle"></b></div>
+      <div class="gres-grid" id="gresGrid"></div>
+      <div class="gres-foot"><span class="micro" id="gresNote"></span><div class="row"><button class="btn" type="button" id="gresWh">창고에서 입기</button><button class="btn" type="button" id="gresAgain">한 번 더</button><button class="btn amber" type="button" id="gresOk">확인</button></div></div>
+    </div>
+  </section>
+  <!-- 고등급 컷신 (3D는 캔버스, 글자·건너뛰기는 여기) -->
+  <section id="csLayer" class="cs-layer" hidden>
+    <div class="cs-flash" id="csFlash"></div>
+    <div class="cs-text" id="csText"><span id="csRar"></span><b id="csName"></b></div>
+    <button class="cs-skip" type="button" id="csSkip">건너뛰기 ›</button>
+  </section>
+  <svg class="svg-defs" width="0" height="0" aria-hidden="true">
+    <defs>
+      <linearGradient id="g-gold" x1="0" x2="1"><stop offset="0" stop-color="#8a5e12"/><stop offset=".45" stop-color="#ffd66b"/><stop offset="1" stop-color="#9c6a14"/></linearGradient>
+      <linearGradient id="g-coin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fe6ff"/><stop offset=".5" stop-color="#2a8ac0"/><stop offset="1" stop-color="#11506f"/></linearGradient>
+      <pattern id="pt-camoW" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#5b6342"/><path d="M0 3q3-2 6 0t6 1v3q-3 2-6 0T0 6z" fill="#434a2f"/><circle cx="9" cy="9" r="2.2" fill="#77744d"/><circle cx="3" cy="10" r="1.4" fill="#2e2e24"/></pattern>
+      <pattern id="pt-camoD" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#b39b72"/><path d="M0 3q3-2 6 0t6 1v3q-3 2-6 0T0 6z" fill="#987f58"/><circle cx="9" cy="9" r="2.2" fill="#cdb98f"/><circle cx="3" cy="10" r="1.4" fill="#7a6446"/></pattern>
+      <pattern id="pt-camoU" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#8a8d90"/><path d="M0 3q3-2 6 0t6 1v3q-3 2-6 0T0 6z" fill="#6b6e72"/><circle cx="9" cy="9" r="2.2" fill="#b4b6b8"/><circle cx="3" cy="10" r="1.4" fill="#3e4144"/></pattern>
+      <pattern id="pt-camoS" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#e2e6e9"/><path d="M0 3q3-2 6 0t6 1v3q-3 2-6 0T0 6z" fill="#b9bfc4"/><circle cx="9" cy="9" r="2.2" fill="#8b9298"/></pattern>
+      <pattern id="pt-camoDig" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#6b6e4b"/><rect width="2" height="2" x="1" y="1" fill="#4a4d33"/><rect width="4" height="2" x="3" y="3" fill="#8b8661"/><rect width="2" height="4" x="5" y="5" fill="#2e3023"/><rect width="2" height="2" x="0" y="5" fill="#4a4d33"/></pattern>
+      <pattern id="pt-camoTiger" width="12" height="8" patternUnits="userSpaceOnUse"><rect width="12" height="8" fill="#7d7a52"/><path d="M0 2q4-1.5 8 0t4 .5v1.4q-4 1.5-8 0T0 3.4z" fill="#2b2b21"/><path d="M2 6q3-1 6 0v1q-3 1-6 0z" fill="#55532f"/></pattern>
+      <pattern id="pt-plaid" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#a3262c"/><rect width="4" height="8" fill="rgba(12,10,10,.55)"/><rect width="8" height="4" fill="rgba(12,10,10,.55)"/></pattern>
+      <pattern id="pt-stripe" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#ecebe6"/><rect width="6" height="2.4" fill="#1f2b4a"/></pattern>
+      <pattern id="pt-denim" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#8ea8cc"/><path d="M0 4 4 0" stroke="#6f89ad" stroke-width=".8"/></pattern>
+      <pattern id="pt-gold" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#d4a53e"/><rect width="10" height="2" y="3" fill="#f1d27a"/><rect width="10" height="1.5" y="7" fill="#9c6e1c"/></pattern>
+      <pattern id="pt-glowC" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#16191d"/><path d="M1 2h5v4h3M2 8h3" stroke="#46f2ff" stroke-width="1" fill="none"/></pattern>
+      <pattern id="pt-glowO" width="10" height="9" patternUnits="userSpaceOnUse"><rect width="10" height="9" fill="#2a2e33"/><path d="M2.5 0 5 1.5v3L2.5 6 0 4.5v-3zM7.5 4.5 10 6v3" stroke="#ff8a1e" stroke-width=".9" fill="none"/></pattern>
+    </defs>
+  </svg>
 
   <!-- 일시정지 -->
   <section id="rankPanel" class="overlay" hidden>

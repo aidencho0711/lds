@@ -416,6 +416,15 @@ const Models = (() => {
       A(g, CY(0.03, 0.033, 0.008, 24, 'y'), al, 0, 0.121, 0); A(g, CY(0.033, 0.03, 0.006, 24, 'y'), al, 0, 0.004, 0);
       A(g, RB(0.012, 0.002, 0.022, 0.004, 0.0008), M('alu', 0xcfd3d6), 0, 0.1255, 0.006);
     },
+    // 골드 탄피 주머니: 가죽 주머니 + 끈 + 쏟아진 금빛 탄피
+    gold(g) {
+      const lt = M('cloth', 0x6e4b2b), dk = M('cloth', 0x3a2716), au = M('brass', 0xf0c45a);
+      const bag = SPH(0.075, 16, 12); bag.scale(1, 0.78, 1); A(g, bag, lt, 0, 0.058, 0);
+      A(g, CY(0.026, 0.04, 0.04, 14, 'y'), lt, 0, 0.115, 0); A(g, TOR(0.029, 0.006, 6, 18), dk, 0, 0.112, 0, Math.PI / 2, 0, 0);
+      const cs = (x, z, ry, up) => { const o = A(g, CY(0.0068, 0.0068, 0.042, 10, 'y'), au, x, up ? 0.14 : 0.007, z, up ? 0.3 : Math.PI / 2, ry, 0); A(g, CY(0.0074, 0.0074, 0.003, 10, 'y'), au, x + (up ? 0 : Math.sin(ry) * 0.021), up ? 0.12 : 0.007, z + (up ? 0 : Math.cos(ry) * 0.021), up ? 0.3 : Math.PI / 2, ry, 0); return o; };
+      cs(0.0, 0.0, 0, true); cs(0.012, 0.008, 0.6, true);
+      cs(0.1, 0.03, 0.4); cs(0.085, -0.06, 1.9); cs(-0.06, 0.09, 2.6); cs(0.04, 0.1, 0.9); cs(-0.1, -0.03, 1.2);
+    },
     // 헬멧·조끼·가방: 몸에 걸친 장비(05_models_gear.js)와 같은 모델 → 바닥·아이콘·착용 모습이 일치
     vest(g, id) { Gear.build.vest[ITEMS[id].lvl](g); },
     helmet(g, id) { Gear.build.helmet[ITEMS[id].lvl](g); },
@@ -472,7 +481,7 @@ const Models = (() => {
 
   // ---------- 아이콘 ----------
   let iconScene = null, iconCam = null, iconRT = null;
-  const VIEW = { weapon: [-1, 0.14, -0.05], att: [-1, 0.42, 0.4], ammo: [0.75, 0.9, 1.1], heal: [0.65, 1.0, 1.0], boost: [0.6, 0.35, 1.0], vest: [0.4, 0.22, 1], helmet: [0.85, 0.45, 1], bag: [0.6, 0.3, 1], throw: [0.7, 0.55, 1], bandage: [0.25, 1.4, 0.6], firstaid: [0.5, 0.9, 1] };
+  const VIEW = { gold: [0.7, 0.9, 1.1], weapon: [-1, 0.14, -0.05], att: [-1, 0.42, 0.4], ammo: [0.75, 0.9, 1.1], heal: [0.65, 1.0, 1.0], boost: [0.6, 0.35, 1.0], vest: [0.4, 0.22, 1], helmet: [0.85, 0.45, 1], bag: [0.6, 0.3, 1], throw: [0.7, 0.55, 1], bandage: [0.25, 1.4, 0.6], firstaid: [0.5, 0.9, 1] };
   function setupIcon() {
     iconScene = new THREE.Scene();
     iconScene.add(new THREE.HemisphereLight(0xe2ebf3, 0x2a2622, 0.6));

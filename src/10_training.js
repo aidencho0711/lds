@@ -22,7 +22,7 @@ const Training = (() => {
     if (G.state === 'loading') return;
     G.state = 'loading'; G.paused = false; G.over = false; G.training = true;
     Audio.music(false);
-    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false;
+    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
     $('loadMap').textContent = MAPS.training.name; $('loadTip').textContent = '훈련장: 무기고에서 총을 고르고 사격선에서 더미를 쏴 보세요. 차량과 장애물 코스도 있습니다.';
     const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
     disposeMatch();
@@ -47,6 +47,7 @@ const Training = (() => {
     G.teamOrder = null; G.spotted = new Map(); G.danger = null; G.ranked = false; G.quit = false; G.rankResult = null;
     G.teamSize = 1; G.teams = [{ id: 0, members: [], place: 0 }, { id: 1, members: [], place: 0 }];
     const p = new Character({ id: 0, name: playerName(), isPlayer: true, look: Body.makeLook(SETTINGS.look, SETTINGS.body), team: 0 });
+    p.vlook = Eco.vlook();   // 훈련장에서도 내 차량 스킨으로 시험 운전
     G.teams[0].members.push(p); CHARS.push(p); G.player = p; sc.add(p.root);
     setup(sc);
     respawnPlayer(p, true);

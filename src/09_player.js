@@ -703,7 +703,7 @@ function updateCharTimers(c, dt) {
         if (c.inv.take(c.heal.id, 1)) {
           if (d.type === 'heal') c.hp = Math.min(Math.max(c.hp, Math.min(d.cap, c.hp + d.heal)), d.cap === 100 ? 100 : Math.max(c.hp, d.cap));
           else c.boost = Math.min(100, c.boost + d.boost);
-          if (c.isPlayer) { HUD.toast(d.name + ' 사용 완료', 'ok'); HUD.refreshInventory(); Audio.heal(c.heal.id, 'done', null, true); }
+          if (c.isPlayer) { c.healN = (c.healN || 0) + 1; HUD.toast(d.name + ' 사용 완료', 'ok'); HUD.refreshInventory(); Audio.heal(c.heal.id, 'done', null, true); }
         }
         c.heal = null;
       }

@@ -53,6 +53,8 @@ const ITEMS = {
   // ----- 투척 -----
   frag: { type: 'throw', name: '세열 수류탄', w: 15, color: 0x3d5a30 },
   smoke: { type: 'throw', name: '연막탄', w: 12, color: 0x8a8a8a },
+  // ----- 상점 재화: 줍는 즉시 계정에 들어감(가방 무게 없음). count = 골드 탄피 양 -----
+  gold: { type: 'gold', name: '골드 탄피 주머니', w: 0, color: 0xd8b04a },
 };
 const AMMO_NAMES = { a556: '5.56', a762: '7.62', a9: '9mm', a12: '12G', a300: '.300' };
 for (const id in ITEMS) { const d = ITEMS[id]; if (d.type === 'weapon') d.auto = d.modes.includes('auto') || d.modes.includes('slow'); }
@@ -145,6 +147,7 @@ function itemLabel(it) {
   const d = ITEMS[it.id];
   if (d.type === 'weapon') return d.name + (it.inst && it.inst.mag ? ` (${it.inst.mag}발)` : '');
   if (d.type === 'vest' || d.type === 'helmet') return d.name + (it.inst ? ` ${Math.round(it.inst.dur / d.dur * 100)}%` : '');
+  if (d.type === 'gold') return `${d.name} (+${it.count})`;
   if (it.count > 1) return `${d.name} ×${it.count}`;
   return d.name;
 }
@@ -182,6 +185,11 @@ function populateLoot(scene) {
     } else if (kind === 'att') { const a = weightedPick([['reddot', 16], ['holo', 13], ['x2', 11], ['x3', 8], ['x4', 7], ['x6', s.tier === 'low' ? 2 : 5], ['comp', 16], ['extmag', 14], ['grip', 11]]); spawnItem(scene, a, 1, jx, s.y, jz); }
     else if (kind === 'throw') { const t = Math.random() < 0.65 ? 'frag' : 'smoke'; spawnItem(scene, t, 1, jx, s.y, jz); }
   }
+  // 골드 탄피 주머니: 작은 맵 8개 · 대형 맵 48개 (훈련장·데스매치 맵에는 없음)
+  if (W.lootSpots.length && !(MAPS[SETTINGS.map] && (MAPS[SETTINGS.map].training || MAPS[SETTINGS.map].arena))) {
+    const n = W.big ? 48 : 8, AMT = { low: [10, 16], mid: [14, 22], high: [20, 30], top: [26, 40] };
+    for (let i = 0; i < n; i++) { const s = W.lootSpots[Math.floor(Math.random() * W.lootSpots.length)], A = AMT[s.tier] || AMT.mid; spawnItem(scene, 'gold', Math.round(rnd(A[0], A[1])), s.x + rnd(-0.3, 0.3), s.y, s.z + rnd(-0.3, 0.3)); }
+  }
 }
 
 // ---------- 줍기 (플레이어/봇 공용 규칙) ----------
@@ -192,14 +200,16 @@ function pickupKind(id) {
   if (d.type === 'ammo') return id === 'a12' ? 'shell' : 'ammo';
   if (d.type === 'heal') return id === 'bandage' ? 'cloth' : id === 'medkit' ? 'medkit' : 'kit';
   if (d.type === 'boost') return 'can';
+  if (d.type === 'gold') return 'ammo';
   if (d.type === 'vest') return 'armor';
   return { helmet: 'helmet', bag: 'bag', att: 'att', throw: 'nade' }[d.type] || 'att';
 }
 // 반환: {ok, msg}. 성공하면 허리를 굽혀 줍는 동작 + 물건별 소리(봇은 가까이 있으면 들린다)
 function pickupItem(c, it, scene, opts = {}) {
-  const id = it.id, r = pickupItemRaw(c, it, scene, opts);
+  const id = it.id, drop = !!it.drop, r = pickupItemRaw(c, it, scene, opts);
   if (r.ok) {
     c.pickT = PICK_T;
+    if (c.isPlayer) { c.lootN = (c.lootN || 0) + 1; if (drop) c.dropN = (c.dropN || 0) + 1; }
     if (c.isPlayer || (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 22)) Audio.pickup(pickupKind(id), c.pos, c.isPlayer);
   }
   return r;
@@ -208,6 +218,12 @@ function pickupItemRaw(c, it, scene, opts = {}) {
   if (!it.alive) return { ok: false, msg: '이미 사라진 아이템' };
   const inv = c.inv, d = ITEMS[it.id];
   const dropAt = (id, count, inst) => spawnItem(scene, id, count, c.pos.x + rnd(-0.6, 0.6), c.pos.y, c.pos.z + rnd(-0.6, 0.6), inst);
+  if (d.type === 'gold') {
+    // 내 캐릭터만 계정에 넣는다 (봇은 줍지 않음, 파티원은 자기 기기에서 처리)
+    const n = it.count; removeItem(it);
+    if (c.isPlayer) { c.goldN = (c.goldN || 0) + 1; c.goldAmt = (c.goldAmt || 0) + n; Eco.found(n); if (Audio.gacha) Audio.gacha('small', 2); }
+    return { ok: true, msg: `${GOLD_NAME} +${n}` };
+  }
   if (d.type === 'weapon') {
     const inst = it.inst || newWeapon(it.id, 0);
     let slot;

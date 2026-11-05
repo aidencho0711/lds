@@ -22,9 +22,15 @@ const VehModels = (() => {
       lamp: new THREE.MeshBasicMaterial({ color: 0xfff1cc }),
       tail: new THREE.MeshBasicMaterial({ color: 0xa8141a }),
       wreck: S({ color: 0x24211e, roughness: 0.95, metalness: 0.25, envMapIntensity: 0.1 }),
+      // 스킨용: 거울 같은 크롬, 진한 광택 도장(펄)
+      chrome: S({ vertexColors: true, roughness: 0.14, metalness: 1.0, envMapIntensity: 1.25 }),
+      gloss: S({ vertexColors: true, roughness: 0.2, metalness: 0.55, envMapIntensity: 1.0 }),
     };
     return MAT;
   }
+  // 스킨의 빛나는 띠(전조등 줄·바닥 조명): 색마다 재질 하나
+  const ACCENT = {};
+  const accentMat = (hex) => ACCENT[hex] || (ACCENT[hex] = new THREE.MeshBasicMaterial({ color: hex }));
 
   // ---------- 정점 묶음 (위치·법선·색) ----------
   class VB {
@@ -177,6 +183,7 @@ const VehModels = (() => {
     return { paint, matte, glass, lamp, tail, wheel: wheelGeo(0.44, 0.3, 0x4c5238, 6), wheels: [[0.8, 0.44, 1.22, 1], [-0.8, 0.44, 1.22, 1], [0.8, 0.44, -1.18, 0], [-0.8, 0.44, -1.18, 0]], wr: 0.44 };
   }
   // ---------- 오토바이 ----------
+  // o: 스킨 { paint, frame, style: 'racer'(앞 카울·낮은 핸들) | 'cruiser'(크롬·물방울 탱크·긴 포크) }
   function buildMoto() {
     const P = 0xd0561c, FR = 0x2b2d30, paint = new VB(), matte = new VB(), lamp = new VB(), tail = new VB();
     const sPaint = new VB(), sMatte = new VB(), sLamp = new VB();
@@ -206,39 +213,45 @@ const VehModels = (() => {
     return { paint, matte, lamp, tail, steer: { paint: sPaint, matte: sMatte, lamp: sLamp, pivot: [0, 0.98, 0.52] }, wheel: wheelGeo(0.33, 0.13, 0x8d9296, 6, 0x151515), wheels: [[0, 0.33, 0.74, 1], [0, 0.32, -0.7, 0]], wr: 0.33 };
   }
   // ---------- 말 ----------
-  function buildHorse() {
-    const COAT = 0x6a3f22, DARK = 0x231710, HOOF = 0x2a2420, LEATH = 0x3a2213;
-    const coat = new VB(), matte = new VB();
+  // o(스킨): { coat, belly, dark(갈기·꼬리), muzzle, hoof, leath(안장), cloth(안장 깔개), metal(등자 등 쇠붙이), trim(깔개 테두리) }
+  function buildHorse(o = {}) {
+    const COAT = o.coat || 0x6a3f22, DARK = o.dark || 0x231710, HOOF = o.hoof || 0x2a2420, LEATH = o.leath || 0x3a2213;
+    const BELLY = o.belly || 0x5c361d, MUZ = o.muzzle || 0x4a2c18, CLOTH = o.cloth || 0x7a2a22, MET = o.metal || 0x8a8f93, BRID = o.bridle || 0x1a120c;
+    const coat = new VB(), matte = new VB(), tack = o.trim ? new VB() : null;
     ball(coat, 0, 1.28, -0.05, 0.36, 0.38, 0.78, COAT, 16);       // 몸통
     ball(coat, 0, 1.31, 0.55, 0.34, 0.37, 0.4, COAT, 14);         // 가슴
     ball(coat, 0, 1.34, -0.68, 0.36, 0.37, 0.44, COAT, 14);       // 엉덩이
-    ball(coat, 0, 1.12, -0.05, 0.3, 0.2, 0.6, 0x5c361d, 12);       // 배
+    ball(coat, 0, 1.12, -0.05, 0.3, 0.2, 0.6, BELLY, 12);       // 배
     // 안장·안장 깔개·등자
-    matte.box(-0.34, 1.62, -0.42, 0.34, 1.66, 0.32, 0x7a2a22);
+    matte.box(-0.34, 1.62, -0.42, 0.34, 1.66, 0.32, CLOTH);
+    if (tack) { for (const s2 of [1, -1]) tack.box(s2 * 0.335, 1.6, -0.43, s2 * 0.35, 1.665, 0.33, o.trim); tack.box(-0.35, 1.6, 0.32, 0.35, 1.665, 0.335, o.trim); tack.box(-0.35, 1.6, -0.435, 0.35, 1.665, -0.42, o.trim); }
     matte.box(-0.25, 1.64, -0.33, 0.25, 1.74, 0.22, LEATH); matte.box(-0.12, 1.72, 0.14, 0.12, 1.82, 0.24, LEATH); matte.box(-0.14, 1.72, -0.36, 0.14, 1.79, -0.26, LEATH);
-    for (const s of [1, -1]) { tube(matte, [s * 0.27, 1.64, -0.02], [s * 0.33, 1.13, 0.0], 0.012, 0x2a1a10, 4); matte.box(s * 0.28, 1.08, -0.06, s * 0.38, 1.13, 0.06, 0x8a8f93); }
+    for (const s of [1, -1]) { tube(matte, [s * 0.27, 1.64, -0.02], [s * 0.33, 1.13, 0.0], 0.012, 0x2a1a10, 4); (tack || matte).box(s * 0.28, 1.08, -0.06, s * 0.38, 1.13, 0.06, MET); }
     tube(matte, [-0.33, 1.28, -0.02], [0.33, 1.28, -0.02], 0.025, 0x2a1a10, 6);            // 복대
     // 목·머리 (목 기준점 = (0, 1.5, 0.72))
     const neck = new VB();
     tube(neck, [0, -0.05, -0.04], [0, 0.6, 0.42], 0.23, COAT, 12, 0.15);
     for (let i = 0; i < 7; i++) { const t = i / 6; ball(neck, 0, 0.06 + t * 0.62 + 0.08, -0.17 + t * 0.44 + 0.02, 0.045, 0.09, 0.07, DARK, 8); }   // 갈기
     tube(neck, [0, 0.66, 0.4], [0, 0.4, 0.86], 0.15, COAT, 12, 0.095);                    // 머리
-    ball(neck, 0, 0.42, 0.85, 0.1, 0.08, 0.08, 0x4a2c18, 10);                             // 주둥이
+    ball(neck, 0, 0.42, 0.85, 0.1, 0.08, 0.08, MUZ, 10);                             // 주둥이
     for (const s of [1, -1]) {
       tube(neck, [s * 0.06, 0.74, 0.38], [s * 0.08, 0.88, 0.36], 0.035, COAT, 6, 0.008);  // 귀
       ball(neck, s * 0.115, 0.63, 0.55, 0.025, 0.03, 0.03, 0x0c0907, 8);                  // 눈
-      tube(neck, [s * 0.1, 0.42, 0.78], [s * 0.15, 0.62, 0.45], 0.01, 0x1a120c, 4);        // 굴레
+      tube(neck, [s * 0.1, 0.42, 0.78], [s * 0.15, 0.62, 0.45], 0.01, BRID, 4);        // 굴레
     }
-    tube(neck, [-0.1, 0.43, 0.76], [0.1, 0.43, 0.76], 0.012, 0x1a120c, 4);
+    tube(neck, [-0.1, 0.43, 0.76], [0.1, 0.43, 0.76], 0.012, BRID, 4);
+    // 스킨: 이마 장식(금속)
+    const neckTack = o.trim ? new VB() : null;
+    if (neckTack) { ball(neckTack, 0, 0.66, 0.52, 0.05, 0.05, 0.02, o.trim, 10); for (const s of [1, -1]) ball(neckTack, s * 0.1, 0.43, 0.77, 0.022, 0.022, 0.022, o.trim, 8); }
     // 고삐 (몸통 쪽, 고정)
-    for (const s of [1, -1]) { tube(matte, [s * 0.1, 1.92, 1.48], [s * 0.15, 1.66, 0.95], 0.009, 0x1a120c, 4); tube(matte, [s * 0.15, 1.66, 0.95], [s * 0.12, 1.84, 0.22], 0.009, 0x1a120c, 4); }
+    for (const s of [1, -1]) { tube(matte, [s * 0.1, 1.92, 1.48], [s * 0.15, 1.66, 0.95], 0.009, BRID, 4); tube(matte, [s * 0.15, 1.66, 0.95], [s * 0.12, 1.84, 0.22], 0.009, BRID, 4); }
     // 꼬리 (기준점 (0, 1.45, -1.05))
     const tail = new VB(); tube(tail, [0, 0.02, 0], [0, -0.3, -0.16], 0.055, DARK, 8, 0.07); tube(tail, [0, -0.3, -0.16], [0, -0.8, -0.2], 0.07, DARK, 8, 0.1); ball(tail, 0, -0.8, -0.2, 0.1, 0.06, 0.1, DARK, 8);
     // 다리 (윗다리: 0 → -L1, 아랫다리: 무릎 기준 0 → -L2)
     const legU = (L, r0, r1) => { const v = new VB(); tube(v, [0, 0.04, 0], [0, -L, 0], r0, COAT, 10, r1); return v.build(); };
-    const legL = (L) => { const v = new VB(); tube(v, [0, 0, 0], [0, -L + 0.08, 0], 0.065, COAT, 8, 0.05); ball(v, 0, -L + 0.11, 0, 0.06, 0.05, 0.06, 0x3a261a, 8); const h = new THREE.CylinderGeometry(0.06, 0.075, 0.08, 10); v.add(h, mtx(0, -L + 0.04, 0.01), HOOF); return v.build(); };
+    const legL = (L) => { const v = new VB(); tube(v, [0, 0, 0], [0, -L + 0.08, 0], 0.065, COAT, 8, 0.05); ball(v, 0, -L + 0.11, 0, 0.06, 0.05, 0.06, o.fetlock || 0x3a261a, 8); const h = new THREE.CylinderGeometry(0.06, 0.075, 0.08, 10); v.add(h, mtx(0, -L + 0.04, 0.01), HOOF); return v.build(); };
     return {
-      coat, matte, neckVB: neck, tailVB: tail,
+      coat, matte, gloss: tack, neckVB: neck, tailVB: tail, neckTack,
       legs: [
         { pos: [0.16, 1.12, 0.6], up: legU(0.52, 0.13, 0.075), low: legL(0.55), L1: 0.52, front: 1 },
         { pos: [-0.16, 1.12, 0.6], up: legU(0.52, 0.13, 0.075), low: legL(0.55), L1: 0.52, front: 1 },
@@ -248,39 +261,50 @@ const VehModels = (() => {
     };
   }
 
+  // 스킨: 05_models_vskin.js가 register(스킨 id, 만드는 함수)로 더한다. 차종(type)의 물리·좌석은 그대로
   const BUILD = { sedan: buildSedan, pickup: buildPickup, uaz: buildUaz, moto: buildMoto, horse: buildHorse };
-  function geos(type) {
-    if (GEO[type]) return GEO[type];
-    const B = BUILD[type](), o = { raw: B };
-    for (const k of ['paint', 'matte', 'glass', 'lamp', 'tail', 'coat']) if (B[k]) o[k] = B[k].build();
-    if (B.steer) o.steer = { paint: B.steer.paint.build(), matte: B.steer.matte.build(), lamp: B.steer.lamp.build(), pivot: B.steer.pivot };
-    if (B.neckVB) { o.neck = B.neckVB.build(); o.tailG = B.tailVB.build(); }
-    return (GEO[type] = o);
+  const SKIN_BUILD = {};
+  function register(id, fn) { SKIN_BUILD[id] = fn; }
+  const KEYS = ['paint', 'matte', 'glass', 'lamp', 'tail', 'coat', 'chrome', 'gloss', 'glow'];
+  function geos(type, skin) {
+    const key = skin && SKIN_BUILD[skin] ? skin : type;
+    if (GEO[key]) return GEO[key];
+    const B = key === type ? BUILD[type]() : SKIN_BUILD[skin](), o = { raw: B };
+    for (const k of KEYS) if (B[k]) o[k] = B[k].build();
+    if (B.steer) { o.steer = { pivot: B.steer.pivot }; for (const k of KEYS) if (B.steer[k]) o.steer[k] = B.steer[k].build(); }
+    if (B.neckVB) { o.neck = B.neckVB.build(); o.tailG = B.tailVB.build(); if (B.neckTack) o.neckTack = B.neckTack.build(); }
+    return (GEO[key] = o);
   }
   const mesh = (g, m, shadow) => { if (!g) return null; const x = new THREE.Mesh(g, m); x.castShadow = !!shadow; x.receiveShadow = false; return x; };
+  let GLOWM = null;
+  const glowMat = () => GLOWM || (GLOWM = new THREE.MeshBasicMaterial({ vertexColors: true }));
+  const matOf = (k) => { const M = mats(); return k === 'glow' ? glowMat() : M[k]; };
+  const SHADOW_K = { paint: 1, matte: 1, coat: 1, chrome: 1, gloss: 1 };
 
-  // 차량 1대 인스턴스 (지오메트리 공유)
-  function instance(type) {
-    const M = mats(), G = geos(type), B = G.raw, root = new THREE.Group(), body = new THREE.Group(); root.add(body);
-    const parts = { root, body, wheels: [], steerPivots: [], meshes: [] };
+  // 차량 1대 인스턴스 (지오메트리 공유). skin: 스킨 id(없으면 기본 모양)
+  function instance(type, skin) {
+    const M = mats(), G = geos(type, skin), B = G.raw, root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+    const parts = { root, body, wheels: [], steerPivots: [], meshes: [], skin: skin && SKIN_BUILD[skin] ? skin : null };
     const add = (parent, g, m, shadow) => { const x = mesh(g, m, shadow); if (x) { parent.add(x); parts.meshes.push(x); } return x; };
-    add(body, G.paint, M.paint, true); add(body, G.matte, M.matte, true); add(body, G.coat, M.coat, true);
-    add(body, G.glass, M.glass, false); add(body, G.lamp, M.lamp, false); add(body, G.tail, M.tail, false);
+    for (const k of KEYS) add(body, G[k], matOf(k), !!SHADOW_K[k]);
+    const wheelM = B.wheelMat ? M[B.wheelMat] : M.matte;
     if (B.wheels) for (const [x, y, z, front] of B.wheels) {
       if (front && G.steer) continue; // 오토바이 앞바퀴는 핸들 뭉치에
       let parent = body;
       if (front) { const pv = new THREE.Group(); pv.position.set(x, y, z); body.add(pv); parts.steerPivots.push(pv); parent = pv; }
-      const w = mesh(B.wheel, M.matte, true); parts.meshes.push(w);
+      const w = mesh(B.wheel, wheelM, true); parts.meshes.push(w);
+      if (B.rim) { const r = mesh(B.rim, M.chrome, true); parts.meshes.push(r); w.add(r); }
       if (parent === body) w.position.set(x, y, z); parent.add(w); parts.wheels.push(w);
     }
     if (G.steer) {
       const pv = new THREE.Group(); pv.position.fromArray(G.steer.pivot); body.add(pv); parts.steerPivots.push(pv);
-      add(pv, G.steer.paint, M.paint, true); add(pv, G.steer.matte, M.matte, true); add(pv, G.steer.lamp, M.lamp, false);
-      const fw = B.wheels.find((w) => w[3]), w = mesh(B.wheel, M.matte, true); parts.meshes.push(w);
+      for (const k of KEYS) add(pv, G.steer[k], matOf(k), !!SHADOW_K[k]);
+      const fw = B.wheels.find((w) => w[3]), w = mesh(B.wheel, wheelM, true); parts.meshes.push(w);
+      if (B.rim) { const r = mesh(B.rim, M.chrome, true); parts.meshes.push(r); w.add(r); }
       w.position.set(fw[0] - G.steer.pivot[0], fw[1] - G.steer.pivot[1], fw[2] - G.steer.pivot[2]); pv.add(w); parts.wheels.unshift(w);
     }
     if (type === 'horse') {
-      const neck = new THREE.Group(); neck.position.set(0, 1.5, 0.72); body.add(neck); add(neck, G.neck, M.coat, true); parts.neck = neck;
+      const neck = new THREE.Group(); neck.position.set(0, 1.5, 0.72); body.add(neck); add(neck, G.neck, M.coat, true); if (G.neckTack) add(neck, G.neckTack, M.gloss, true); parts.neck = neck;
       const tail = new THREE.Group(); tail.position.set(0, 1.45, -1.05); body.add(tail); add(tail, G.tailG, M.coat, true); parts.tail = tail;
       parts.legs = B.legs.map((L) => {
         const hip = new THREE.Group(); hip.position.fromArray(L.pos); body.add(hip); add(hip, L.up, M.coat, true);
@@ -295,10 +319,11 @@ const VehModels = (() => {
   function wreck(parts) {
     const M = mats();
     for (const m of parts.meshes) {
-      if (m.material === M.glass || m.material === M.lamp || m.material === M.tail) m.visible = false;
-      else if (m.material === M.paint || m.material === M.coat) m.material = M.wreck;
+      if (m.material === M.glass || m.material === M.lamp || m.material === M.tail || m.material === GLOWM) m.visible = false;
+      else if (m.material === M.paint || m.material === M.coat || m.material === M.chrome || m.material === M.gloss) m.material = M.wreck;
     }
   }
-  function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) if (m.material !== mats().glass) m.castShadow = on; }
-  return { instance, wreck, setShadows, mats };
+  function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) if (m.material !== mats().glass && m.material !== GLOWM) m.castShadow = on; }
+  return { instance, wreck, setShadows, mats, register, has: (id) => !!SKIN_BUILD[id],
+    kit: { VB, mtx, arch, side, tube, ball, wheelGeo, SEAT_C, TRIM, CHROME, buildHorse } };
 })();
