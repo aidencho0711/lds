@@ -13,7 +13,7 @@
         <div class="lb-tabs" id="lbTabs">
           <button type="button" data-tab="play" class="on">플레이</button>
           <button type="button" data-tab="record">전적</button>
-          <button type="button" data-tab="custom">커스터마이즈</button>
+          <button type="button" data-tab="custom">창고</button>
         </div>
         <div class="lb-sub" id="segQueue"></div>
         <div class="lb-note" id="lbNote" hidden></div>
@@ -32,7 +32,7 @@
         <!-- 플레이 -->
         <div class="pane" data-pane="play">
           <div class="op-card">
-            <div class="op-head"><span id="opName">오퍼레이터</span><button type="button" class="op-outfit" data-tab-go="custom" title="복장 바꾸기"><i id="opSwatch"></i><span id="opOutfit">산림 위장</span></button></div>
+            <div class="op-head"><span id="opName">오퍼레이터</span><button type="button" class="op-outfit" data-tab-go="custom" title="창고 — 스킨 장착"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l9-5 9 5v10l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v10"/></svg><span id="opOutfit">창고</span></button></div>
             <div class="op-lv"><span class="op-lvk">레벨</span><b id="opLv">1</b></div>
             <div class="op-xp"><div class="bar"><i id="opXpBar"></i></div><span class="micro" id="xpText">0 / 250 XP</span></div>
             <div class="op-rings">
@@ -56,11 +56,12 @@
           <ol class="recent" id="recent"></ol>
           <button class="btn mt" type="button" data-ui="ranks">랭크 티어표</button>
         </div>
-        <!-- 커스터마이즈 -->
+        <!-- 창고: 슬롯별 스킨 -->
         <div class="pane panel-pane" data-pane="custom" hidden>
-          <div class="eyebrow">복장</div>
-          <div class="outfits" id="outfits"></div>
-          <p class="micro mt">가운데 캐릭터에 바로 적용되고, 경기에서도 이 복장으로 출격합니다.</p>
+          <div class="wh-head"><span class="eyebrow">창고</span><span class="micro" id="whCount"></span></div>
+          <div class="wh-cats" id="whCats"></div>
+          <div class="wh-grid" id="whGrid"></div>
+          <p class="micro mt" id="whNote">장착한 스킨은 가운데 캐릭터에 바로 보이고, 경기와 파티원 화면에도 그대로 나옵니다.</p>
         </div>
         <div class="lb-launch">
           <button class="news-card" id="newsCard" type="button"><span class="news-img" id="newsImg"></span><span class="news-tag" id="newsTag">업데이트</span><b id="newsTitle"></b><span class="news-dots" id="newsDots"></span></button>

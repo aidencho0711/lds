@@ -185,7 +185,7 @@ const Party = (() => {
   const has = (uid) => !!P && P.members.some((m) => m.uid === uid);
   const canInvite = () => !!Cloud.user && (!P || (isLeader() && size() < PARTY_MAX));
   const uuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'p' + Math.random().toString(16).slice(2) + Date.now().toString(16));
-  function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, outfit: SETTINGS.outfit, st: G.state === 'lobby' ? 'lobby' : 'game' }; }
+  function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, look: myLook(), st: G.state === 'lobby' ? 'lobby' : 'game' }; }
   function shared() { const o = {}; for (const k of SHARED) o[k] = SETTINGS[k]; return o; }
 
   // ---------- 채널 ----------
@@ -329,7 +329,7 @@ const Party = (() => {
       const sh = JSON.stringify(shared());
       if (sh !== lastShared || now - pushT > 15000) pushState();
     }
-    const mi = memberInfo(), key = JSON.stringify([mi.lv, mi.st, mi.outfit, mi.name]);
+    const mi = memberInfo(), key = JSON.stringify([mi.lv, mi.st, mi.look, mi.name]);
     if (key !== lastMine) {
       lastMine = key;
       if (isLeader()) { const i = P.members.findIndex((x) => x.uid === me()); if (i >= 0) { P.members[i] = mi; pushState(); } }
@@ -363,7 +363,7 @@ const Party = (() => {
     const notReady = P.members.filter((m) => m.uid !== me() && m.st !== 'lobby');
     if (notReady.length) { HUD.lobbyNote(`${notReady.map((m) => m.name).join(', ')}님이 아직 게임 중입니다`); return true; }
     if (SETTINGS.queue === 'ranked' && !isDmGame(SETTINGS.game) && !L.rankOk) { HUD.lobbyNote(`파티원 중 레벨 3 미만이 있어 랭크전을 할 수 없습니다 (${L.lowNames.join(', ')})`); return true; }
-    const humans = P.members.map((m) => ({ uid: m.uid, name: m.name, outfit: m.outfit, lv: m.lv }));
+    const humans = P.members.map((m) => ({ uid: m.uid, name: m.name, look: m.look, lv: m.lv }));
     const cfg = Net.makeConfig(humans);
     send('start', { cfg });
     Net.join(cfg);

@@ -72,7 +72,7 @@ const Cloud = (() => {
   }
   const hasProgress = (d) => !!(d && d.stats && ((d.stats.matches || 0) > 0 || (d.stats.xp || 0) > 0));
   function refreshUi() {
-    if (G.state === 'lobby') { HUD.renderLobby(); if (G.applySettings) G.applySettings('view'); if (Lobby.setOutfit) { Lobby.setOutfit(SETTINGS.outfit); Lobby.teamN = 0; } }
+    if (G.state === 'lobby') { HUD.renderLobby(); if (G.applySettings) G.applySettings('view'); if (Lobby.setLook) { Lobby.setLook(SETTINGS.look); Lobby.teamN = 0; } }
     render();
   }
 

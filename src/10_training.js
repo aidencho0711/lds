@@ -9,7 +9,8 @@
 //  · 플레이어: 3초 동안 안 맞으면 체력 회복, 쓰러지면 3초 뒤 무기고에서 소지품 그대로 다시 시작
 // ============================================================
 const Training = (() => {
-  const DUMMY_OUTFIT = { name: '훈련 더미', shirt: 0xc9a46a, pants: 0x8c7350, skin: 0xcaa77a, boots: 0x4a3a2a, accent: 0x9a5a3a };
+  // 더미: 얼굴·머리카락 없는 마네킹(나무색)
+  const DUMMY_LOOK = Object.assign(Body.makeLook(null, { tone: 0xc9a46a, hair: 'none', beard: 'none' }), { mannequin: true });
   const DUMMY_BRAIN = { state: 'DUMMY', update() {}, onDamaged() {}, onKnocked() {}, onRevived() {}, reportEnemy() {}, setState() {} };
   const BROKEN_T = 5, IDLE_T = 4, DOWN_T = 2.6, ITEM_T = 2.5, LITTER_T = 45;
   let S = null;            // 훈련장 상태
@@ -45,7 +46,7 @@ const Training = (() => {
     CHARS = []; G.noises = []; G.time = 0; G.stats = { shots: 0, hits: 0 }; G.killLog = []; G.knockLog = []; G.marker = null; G.updateMarker(); G.spec = null;
     G.teamOrder = null; G.spotted = new Map(); G.danger = null; G.ranked = false; G.quit = false; G.rankResult = null;
     G.teamSize = 1; G.teams = [{ id: 0, members: [], place: 0 }, { id: 1, members: [], place: 0 }];
-    const p = new Character({ id: 0, name: playerName(), isPlayer: true, outfit: OUTFITS[SETTINGS.outfit], team: 0 });
+    const p = new Character({ id: 0, name: playerName(), isPlayer: true, look: Body.makeLook(SETTINGS.look, SETTINGS.body), team: 0 });
     G.teams[0].members.push(p); CHARS.push(p); G.player = p; sc.add(p.root);
     setup(sc);
     respawnPlayer(p, true);
@@ -68,7 +69,7 @@ const Training = (() => {
     for (const s of TW.signs) S.signs.add(makeSign(s));
     // 더미
     TW.dummies.forEach((d, i) => {
-      const c = new Character({ id: 100 + i, name: d.label, outfit: DUMMY_OUTFIT, team: 1 });
+      const c = new Character({ id: 100 + i, name: d.label, look: DUMMY_LOOK, team: 1 });
       c.mode = 'ground'; c.brain = DUMMY_BRAIN; c.onGround = true;
       c.dummy = { lvl: d.lvl, label: d.label, home: { x: d.x, z: d.z }, move: d.move ? { range: d.move.range, speed: d.move.speed, dir: 1 } : null,
         brokeT: { helmet: 0, vest: 0 }, lastHitT: -99, downT: 0, burst: 0, shots: 0, firstT: 0, last: null, tag: null };

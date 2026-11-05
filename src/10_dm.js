@@ -25,7 +25,7 @@ const DM = (() => {
   const loName = (lo) => ITEMS[lo.id].name + (lo.scope ? ' + ' + ITEMS[lo.scope].name : '');
 
   // ---------- 시작 ----------
-  // cfg(같이 하기): { type, seed, roster:[{id,name,team,slot,human,outfit,diff,owner}], loadout, myId }
+  // cfg(같이 하기): { type, seed, roster:[{id,name,team,slot,human,look,diff,owner}], loadout, myId }
   async function start(cfg) {
     if (G.state === 'loading') return;
     cfg = cfg || {};
@@ -69,8 +69,9 @@ const DM = (() => {
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
     roster.forEach((r, i) => {
       const me = cfg.roster ? r.id === cfg.myId : r.human;
-      const outfit = r.human ? OUTFITS[r.outfit !== undefined ? r.outfit : SETTINGS.outfit] || OUTFITS[0] : Object.assign({}, OUTFITS[(i + 1) % OUTFITS.length]);
-      const c = new Character({ id: r.id, name: r.name || names[i % names.length], isPlayer: me, outfit, team: r.team });
+      const hl = r.human ? (r.look || (me ? myLook() : {})) : null;
+      const look = hl ? Body.makeLook(hl.eq, hl.body) : Body.makeLook(null, Body.randomBody(mulberry32((seed + 7919 * (r.id + 1)) | 0)));
+      const c = new Character({ id: r.id, name: r.name || names[i % names.length], isPlayer: me, look, team: r.team });
       c.slot = G.teams[r.team].members.length; G.teams[r.team].members.push(c); CHARS.push(c); sc.add(c.root);
       if (me) G.player = c;
       if (r.net) { c.net = r.net; if (!c.net.mine) c.root.visible = false; } // 같이 하기: 다른 기기가 움직이는 캐릭터 (받은 상태로 그림)

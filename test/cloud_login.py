@@ -50,18 +50,18 @@ with sync_playwright() as p:
     # 게임 코드 경로로 저장: 설정 변경(saveSettings)과 STATS 갱신을 실제 함수로
     pg.evaluate("()=>{ __LD.G.__test = 1; }")
     r = pg.evaluate("""async ()=>{ const L=__LD; L.Cloud; window.__s0=__fakeSB.calls.filter(c=>c[0]==='upsert').length;
-        document.querySelector('[data-tab-go=custom]').click(); document.querySelectorAll('#outfits button')[2].click(); await new Promise(r=>setTimeout(r,2600));
-        const d=__fakeSB.DB(); const row=Object.values(d.player_data)[0]; return {upserts:__fakeSB.calls.filter(c=>c[0]==='upsert').length-__s0, outfit:row.settings.outfit}; }""")
+        document.querySelector('[data-tab-go=custom]').click(); [...document.querySelectorAll('#whGrid .wh-item')].find(b=>!b.classList.contains('on')) ; document.querySelectorAll('#segTime button')[1].click(); await new Promise(r=>setTimeout(r,2600));
+        const d=__fakeSB.DB(); const row=Object.values(d.player_data)[0]; return {upserts:__fakeSB.calls.filter(c=>c[0]==='upsert').length-__s0, time:row.settings.time, look:row.settings.look, wh:document.querySelectorAll('#whGrid .wh-item').length}; }""")
     print('auto sync on save', r)
     # 로그아웃 → 게스트 기록 복원
     pg.click('#acctChip'); pg.wait_for_timeout(200); pg.click('#acctLogout'); pg.wait_for_timeout(500)
-    print('logout', pg.evaluate(S), pg.evaluate("()=>JSON.parse(localStorage.getItem('lastdrop.settings')).outfit"))
+    print('logout', pg.evaluate(S), pg.evaluate("()=>JSON.parse(localStorage.getItem('lastdrop.settings')).time"))
     # 다른 기기: 로컬 비우고(서버는 유지) 로그인 → 서버 기록 불러옴. 대소문자·공백 무시는 영문 아이디로
     pg.evaluate("()=>{ for(const k of Object.keys(localStorage)) if(k.startsWith('lastdrop.')) localStorage.removeItem(k); }"); pg.reload(); pg.wait_for_timeout(1000)
     print('device B guest', pg.evaluate(S))
     print('wrong pw', form('login', '철수', 'nope99')); pg.click('#acctClose')
     print('login', form('login', ' 철수 ', 'abc123'))
-    print('device B after login', pg.evaluate(S), pg.evaluate("()=>JSON.parse(localStorage.getItem('lastdrop.settings')).outfit"))
+    print('device B after login', pg.evaluate(S), pg.evaluate("()=>JSON.parse(localStorage.getItem('lastdrop.settings')).time"))
     # 새로고침 → 세션 복원
     pg.reload(); pg.wait_for_timeout(1500)
     print('restore', pg.evaluate(S))

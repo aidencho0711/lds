@@ -760,10 +760,56 @@ const HUD = (() => {
       box.appendChild(b);
     }
   }
-  // 로비 탭: 플레이 / 전적 / 커스터마이즈
+  // ---------- 창고: 슬롯별 스킨 장착 ----------
+  //  보유 = 기본 스킨 + STATS.skins(나중에 얻는 스킨 id 목록). 선택 슬롯(모자·장갑)은 '없음'도 고를 수 있다
+  let whCat = 'all';
+  const hexs = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
+  const SKIN_ICON = {
+    top: (c) => `<path d="M8 3 3 6l2 4 2-1v12h10V9l2 1 2-4-5-3c-.6 1.5-2.2 2.4-4 2.4S8.6 4.5 8 3z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/>`,
+    bottom: (c) => `<path d="M6 3h12l1.2 18h-5L12 10l-2.2 11h-5z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M6 5.5h12" stroke="rgba(0,0,0,.5)" stroke-width="1.6"/>`,
+    shoes: (c, k) => `<path d="M6 3h7v10l5 2.4c1.3.6 2 1.7 2 3V20H5z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M5 20h15v1.6H5z" fill="${k || '#222'}"/><path d="M9 6h4M9 8.5h4M9 11h4" stroke="rgba(0,0,0,.45)" stroke-width="0.9"/>`,
+    hat: (c) => `<path d="M4 15c0-5 3.6-8 8-8s8 3 8 8z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M3 16h15l3 2H3z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/>`,
+    gloves: (c) => `<path d="M7 21v-8L5 9.5 6.5 8 9 11V4h2v6h1V3h2v7h1V4h2v9c0 4-2 8-6 8z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/>`,
+    chute: (c, k) => `<path d="M2 10c3-5.5 17-5.5 20 0l-1 1.2H3z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M8 5.6 7 11M16 5.6l1 5.4M12 4.8v6.4" stroke="${k || '#555'}" stroke-width="1.6"/><path d="M4 11.5l7.4 8.5M20 11.5l-7.4 8.5M12 11.5V20" stroke="#bbb" stroke-width="0.6"/><circle cx="12" cy="20.5" r="1.2" fill="#ddd"/>`,
+    none: () => `<circle cx="12" cy="12" r="7.5" fill="none" stroke="#777" stroke-width="1.4" stroke-dasharray="3 2"/><path d="M7 17 17 7" stroke="#777" stroke-width="1.4"/>`,
+  };
+  function ownedSkins() { const own = new Set(Object.keys(Body.SKINS).filter((k) => /_basic$/.test(k))); for (const k of (STATS.skins || [])) if (Body.SKINS[k]) own.add(k); return own; }
+  function equipSkin(slot, id) {
+    const eq = Body.normEquip(SETTINGS.look); eq[slot] = id; SETTINGS.look = eq; saveSettings();
+    Lobby.setLook(SETTINGS.look); renderWarehouse(); Audio.init(); Audio.ui();
+  }
+  function renderWarehouse() {
+    const eq = Body.normEquip(SETTINGS.look), own = ownedSkins(), cats = $('whCats'), grid = $('whGrid');
+    if (!cats || !grid) return;
+    cats.innerHTML = ''; grid.innerHTML = '';
+    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.map((s) => [s.id, s.name]))) {
+      const b = h('button', whCat === k ? 'on' : '', n); b.type = 'button';
+      b.addEventListener('click', () => { whCat = k; renderWarehouse(); Audio.init(); Audio.ui(); }); cats.appendChild(b);
+    }
+    const card = (slot, id) => {
+      const S = id ? Body.SKINS[id] : null, on = (eq[slot.id] || null) === (id || null);
+      const b = h('button', 'wh-item' + (on ? ' on' : '')); b.type = 'button';
+      const ico = h('i', 'wh-ico'); const col = S ? hexs(S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888)) : null;
+      ico.innerHTML = `<svg viewBox="0 0 24 24">${S ? SKIN_ICON[slot.id](col, S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : null) : SKIN_ICON.none()}</svg>`;
+      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : slot.name + ' 없음')); b.appendChild(h('span', '', slot.name + ' · ' + (on ? '장착 중' : S ? '장착하기' : '벗기')));
+      b.title = S ? `${S.name} — ${S.desc || ''}` : `${slot.name} 벗기`;
+      b.addEventListener('click', () => { if (!on) equipSkin(slot.id, id || null); });
+      return b;
+    };
+    let n = 0;
+    for (const slot of Body.SLOTS) {
+      if (whCat !== 'all' && whCat !== slot.id) continue;
+      const ids = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === slot.id && own.has(k));
+      if (slot.optional) grid.appendChild(card(slot, null));
+      for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
+      if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다.<br>새 스킨이 추가되면 여기에 나타납니다.`));
+    }
+    $('whCount').textContent = `보유 스킨 ${own.size}개`;
+  }
+  // 로비 탭: 플레이 / 전적 / 창고
   let lobbyTab = 'play';
   function setTab(t) {
-    lobbyTab = t;
+    lobbyTab = t; Lobby.focus = t === 'custom';
     document.querySelectorAll('#lbTabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
     document.querySelectorAll('#lobby .pane').forEach((p) => { p.hidden = p.dataset.pane !== t; });
     $('segQueue').style.visibility = t === 'play' ? '' : 'hidden';
@@ -782,8 +828,7 @@ const HUD = (() => {
     $('rgMatches').parentElement.parentElement.title = `다음 레벨까지 ${L.need - L.cur} XP`;
     $('rgWins').parentElement.parentElement.title = STATS.matches ? `우승률 ${Math.round(STATS.wins / STATS.matches * 100)}%` : '';
     $('rgKills').parentElement.parentElement.title = STATS.matches ? `경기당 처치 ${(STATS.kills / STATS.matches).toFixed(1)}` : '';
-    const O = OUTFITS[SETTINGS.outfit] || OUTFITS[0], hex = (n) => '#' + n.toString(16).padStart(6, '0');
-    $('opSwatch').style.background = `linear-gradient(135deg, ${hex(O.shirt)} 50%, ${hex(O.pants)} 50%)`; $('opOutfit').textContent = O.name;
+    $('opOutfit').textContent = '창고';
     // 전적
     $('rcMatches').textContent = STATS.matches; $('rcWins').textContent = STATS.wins; $('rcKills').textContent = STATS.kills; $('stBest').textContent = STATS.matches ? '#' + STATS.best : '-';
     $('rcWinRate').textContent = STATS.matches ? Math.round(STATS.wins / STATS.matches * 100) + '%' : '-'; $('rcKpm').textContent = STATS.matches ? (STATS.kills / STATS.matches).toFixed(1) : '-';
@@ -799,14 +844,7 @@ const HUD = (() => {
     }
     const D = STATS.dm || DM_STATS0;
     $('rcDm').textContent = D.matches ? `${D.wins} / ${D.matches}` : '-'; $('rcDmKd').textContent = D.matches ? (D.kills / Math.max(1, D.deaths)).toFixed(2) : '-';
-    // 커스터마이즈
-    const of = $('outfits'); of.innerHTML = '';
-    OUTFITS.forEach((o, i) => {
-      const b = h('button', 'outfit' + (SETTINGS.outfit === i ? ' on' : '')); b.type = 'button'; const sw = h('i'); sw.style.background = `linear-gradient(135deg, ${hex(o.shirt)} 50%, ${hex(o.pants)} 50%)`;
-      b.appendChild(sw); b.append(o.name);
-      b.addEventListener('click', () => { SETTINGS.outfit = i; saveSettings(); Lobby.setOutfit(i); Lobby.teamN = 0; renderLobby(); Audio.init(); Audio.ui(); });
-      of.appendChild(b);
-    });
+    renderWarehouse();
     // 경기 설정 창
     seg('segMode', Object.entries(MODES).map(([k, v]) => [k, v.name]), 'mode');
     seg('segSquad', Object.entries(TEAM_MODES).map(([k, v]) => [k, `${v.name}${v.size > 1 ? ' (' + v.size + '인)' : ''}`]), 'squad');
@@ -836,7 +874,7 @@ const HUD = (() => {
     const partyN = lock ? lock.size : 1;
     $('segDiff').parentElement.classList.toggle('locked', ranked); $('fldBots').classList.toggle('locked', ranked || dm); $('segSquad').parentElement.classList.toggle('locked', dm || (ranked && partyN < 2)); $('segMode').parentElement.classList.toggle('locked', dm);
     const TS = dm ? DM_RULES.teamSize : ranked && partyN < 2 ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
-    if (Lobby.setTeam) { const pm = lock ? Party.members() : null; Lobby.setTeam(pm ? pm.length : dm ? 1 : TS, pm ? pm.filter((m) => m.uid !== Cloud.uid).map((m) => m.outfit) : null); }
+    if (Lobby.setTeam) { const pm = lock ? Party.members() : null; Lobby.setTeam(pm ? pm.length : dm ? 1 : TS, pm ? pm.filter((m) => m.uid !== Cloud.uid).map((m) => m.look || {}) : null); }
     const sqName = dm ? '4 대 4' : ranked && partyN < 2 ? '솔로' : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).name;
     $('cfgNote').hidden = !(ranked || dm);
     if (dm) $('cfgNote').textContent = `${GT.name}: 4 대 4 고정(빈자리는 봇) · 먼저 ${DM_RULES.killTarget}킬 · 최대 ${DM_RULES.timeLimit / 60}분 · 봇 난이도·시간대·시점만 적용`;

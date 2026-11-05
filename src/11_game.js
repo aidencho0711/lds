@@ -91,35 +91,26 @@ const Lobby = {
     } catch (e) { console.warn('로비 차량 생략', e); }
     for (let i = 0; i < 11; i++) add(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), 0x777777, -15 + i * 3, 1.2, -11);
     const tg = new THREE.ConeGeometry(1.6, 5, 7); for (let i = 0; i < 22; i++) { const a = -Math.PI * 0.95 + i / 21 * Math.PI * 0.9, r = 24 + Math.random() * 12; add(tg, 0x2e4a2a, Math.cos(a) * r, 2.5, Math.sin(a) * r); }
-    this.setOutfit(SETTINGS.outfit);
+    this.setLook(SETTINGS.look);
     this.mates = []; this.setTeam(1);
   },
-  // 듀오·스쿼드: 캐릭터 옆에 봇 팀원을 세워 둔다 (오른쪽·뒤 — 왼쪽 패널에 가리지 않게)
-  // outs: 파티원 복장 번호 (있으면 그 복장으로)
-  setTeam(n, outs) {
-    const key = n + '|' + (outs ? outs.join(',') : '');
+  // 듀오·스쿼드: 캐릭터 옆에 팀원을 세워 둔다 (오른쪽·뒤 — 왼쪽 패널에 가리지 않게)
+  // looks: 파티원 외형 {eq, body} (있으면 그 외형으로, 없으면 기본 옷 + 무작위 얼굴)
+  setTeam(n, looks) {
+    const key = n + '|' + (looks ? JSON.stringify(looks) : '');
     if (this.teamN === key) return; this.teamN = key;
-    for (const m of this.mates) this.scene.remove(m.root);
+    for (const m of this.mates) { this.scene.remove(m.root); m.skel.dispose(); }
     this.mates = [];
-    const spots = [[1.3, -0.5, -0.25], [2.45, -1.25, -0.45], [-1.05, -1.55, 0.35]];
+    const spots = [[1.3, -0.5, -0.25], [2.45, -1.25, -0.45], [-1.05, -1.55, 0.35]], rng = mulberry32(4242);
     for (let i = 0; i < n - 1 && i < spots.length; i++) {
-      const o = outs && outs[i] !== undefined ? OUTFITS[outs[i]] || OUTFITS[0] : OUTFITS[(SETTINGS.outfit + 1 + i) % OUTFITS.length], rig = buildRig(o);
-      rig.gunMount.add(buildGunMesh(['akm', 'aug', 'mini14'][i] || 'm416', { scope: i === 2 ? 'x4' : 'reddot' }));
-      rig.helmet.visible = true; rig.vest.visible = i !== 1; rig.pack.visible = true;
+      const pl = looks && looks[i], body = Body.randomBody(rng), rig = buildRig(pl ? Body.makeLook(pl.eq, pl.body) : Body.makeLook(null, body));
+      rig.gunObj = buildGunMesh(['akm', 'aug', 'mini14'][i] || 'm416', { scope: i === 2 ? 'x4' : 'reddot' }); rig.gunMount.add(rig.gunObj);
+      rig.setGear(2, i === 1 ? 0 : 2, i === 2 ? 3 : 2);
       rig.root.position.set(spots[i][0], 0, spots[i][1]); rig.baseYaw = spots[i][2]; rig.ph = i * 1.7 + 0.6;
       this.scene.add(rig.root); this.mates.push(rig);
     }
   },
-  pose(r, t, yaw) {
-    r.root.rotation.y = yaw;
-    r.hips.position.y = 0.95 + Math.sin(t * 1.6) * 0.008;
-    r.spine.rotation.x = 0.05 + Math.sin(t * 1.6) * 0.012;
-    r.neck.rotation.y = Math.sin(t * 0.4) * 0.35; r.neck.rotation.x = -0.05;
-    r.armR.sh.rotation.set(-0.75, 0, 0.05); r.armR.el.rotation.x = -1.1;
-    r.armL.sh.rotation.set(-1.05, 0, -0.45); r.armL.el.rotation.x = -0.75;
-    r.gunMount.rotation.set(0.35, 0.15, 0); r.gunMount.position.set(-0.08, 0.3, 0.22);
-    r.legR.hip.rotation.set(-0.04, 0, -0.04); r.legL.hip.rotation.set(0.05, 0, 0.06); r.legR.knee.rotation.x = 0.08; r.legL.knee.rotation.x = 0.03;
-  },
+  pose(r, t, yaw) { poseLobby(r, t, yaw); },
   applyTime() {
     const sc = this.scene, t = TIMES[SETTINGS.time];
     if (this.lights) { sc.remove(this.lights.hemi); sc.remove(this.lights.sun); }
@@ -129,22 +120,25 @@ const Lobby = {
     this.lights = addLights(sc, t, SHADOW_SIZE[SETTINGS.shadows] ? 1024 : 0);
     this.lights.sun.shadow.camera.left = this.lights.sun.shadow.camera.bottom = -12; this.lights.sun.shadow.camera.right = this.lights.sun.shadow.camera.top = 12;
   },
-  setOutfit(i) {
-    if (this.rig) this.scene.remove(this.rig.root);
-    const rig = buildRig(OUTFITS[i]); this.rig = rig; this.scene.add(rig.root);
-    rig.gunMount.add(buildGunMesh('m416', { scope: 'x2', muzzle: 'comp' }));
-    rig.helmet.visible = true; rig.vest.visible = true; rig.pack.visible = true;
+  // 장착 스킨(eq)으로 가운데 캐릭터를 다시 만든다
+  setLook(eq) {
+    if (this.rig) { this.scene.remove(this.rig.root); this.rig.skel.dispose(); }
+    const rig = buildRig(Body.makeLook(eq, SETTINGS.body)); this.rig = rig; this.scene.add(rig.root);
+    rig.gunObj = buildGunMesh('m416', { scope: 'x2', muzzle: 'comp' }); rig.gunMount.add(rig.gunObj);
+    rig.setGear(2, 2, 2);
     rig.root.position.set(0, 0.2, 0);
   },
   update(dt) {
     this.t += dt; const r = this.rig, t = this.t;
-    // 대기 자세: 호흡, 무게 이동, 가끔 고개 돌리기
-    this.pose(r, t, 0.35 + Math.sin(t * 0.25) * 0.15);
-    for (const m of this.mates) this.pose(m, t + m.ph, m.baseYaw + Math.sin((t + m.ph) * 0.21) * 0.12);
+    // 창고 탭: 카메라를 캐릭터 가까이(오른쪽에 크게), 캐릭터는 천천히 돌며 옷을 보여 줌
+    this.fk = lerp(this.fk || 0, this.focus ? 1 : 0, clamp(dt * 4, 0, 1));
+    const yaw = lerp(0.35 + Math.sin(t * 0.25) * 0.15, 0.25 + Math.sin(t * 0.32) * 0.65, this.fk);
+    this.pose(r, t, yaw);
+    for (const m of this.mates) { m.root.visible = this.fk < 0.5; if (m.root.visible) this.pose(m, t + m.ph, m.baseYaw + Math.sin((t + m.ph) * 0.21) * 0.12); }
     // 캐릭터를 화면 가운데에 (왼쪽 패널은 배경 위에 겹친다)
-    const a = t * 0.08;
-    this.cam.position.set(Math.sin(a) * 0.5 + 0.2, 1.45 + Math.sin(t * 0.3) * 0.05, 4.9 + Math.cos(a) * 0.2);
-    this.cam.lookAt(0.05, 1.02, 0);
+    const a = t * 0.08, f = smoothstep01(this.fk);
+    this.cam.position.set(lerp(Math.sin(a) * 0.5 + 0.2, -0.55, f), lerp(1.45 + Math.sin(t * 0.3) * 0.05, 1.32, f), lerp(4.9 + Math.cos(a) * 0.2, 3.05, f));
+    this.cam.lookAt(lerp(0.05, -0.62, f), lerp(1.02, 1.05, f), 0);
   },
 };
 
@@ -307,23 +301,21 @@ async function startMatch(cfg) {
   G.teams = [];
   const joinTeam = (c) => { let T = G.teams[G.teams.length - 1]; if (!T || T.members.length >= TS) { T = { id: G.teams.length, members: [], place: 0 }; G.teams.push(T); } c.team = T.id; c.slot = T.members.length; T.members.push(c); return T; };
   // 사람: 혼자면 나, 파티면 파티원 전원(같은 팀, 0번부터)
-  const humans = net ? cfg.humans : [{ uid: null, name: playerName(), outfit: SETTINGS.outfit }];
+  const humans = net ? cfg.humans : [{ uid: null, name: playerName(), look: myLook() }];
   let player = null;
   humans.forEach((hm, i) => {
     const me = !net || hm.uid === Cloud.uid;
-    const c = new Character({ id: i, name: hm.name, isPlayer: me, outfit: OUTFITS[hm.outfit] || OUTFITS[0] });
+    const hl = hm.look || {}, c = new Character({ id: i, name: hm.name, isPlayer: me, look: Body.makeLook(hl.eq, hl.body) });
     if (net) c.net = Net.charNet(hm.uid);
     CHARS.push(c); joinTeam(c); if (me) player = c;
   });
   G.player = player;
-  const srand = net ? mulberry32(cfg.seed ^ 0x2545f491) : Math.random;        // 봇 이름·옷 색: 모든 기기에서 같게
+  const srand = net ? mulberry32(cfg.seed ^ 0x2545f491) : Math.random;        // 봇 이름·얼굴: 모든 기기에서 같게
   const names = BOT_NAMES.slice(); for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(srand() * (i + 1)); const t0 = names[i]; names[i] = names[j]; names[j] = t0; }
   const nBots = net ? Math.max(0, cfg.nBots - humans.length + 1) : G.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, 1, mapMaxBots(SETTINGS.map));
   const pl = G.plane, hostSide = !net || Net.isHost(), H0 = humans.length;
   for (let i = 0; i < nBots; i++) {
-    const outfit = Object.assign({}, OUTFITS[i % OUTFITS.length]);
-    outfit.shirt = new THREE.Color(outfit.shirt).offsetHSL((srand() - 0.5) * 0.06, 0, (srand() - 0.5) * 0.12).getHex();
-    const b = new Character({ id: i + H0, name: (names[i % names.length]) + (i >= names.length ? '_' + i : ''), outfit });
+    const b = new Character({ id: i + H0, name: (names[i % names.length]) + (i >= names.length ? '_' + i : ''), look: Body.makeLook(null, Body.randomBody(srand)) });
     if (!hostSide) { b.net = Net.charNet(cfg.host); joinTeam(b); CHARS.push(b); continue; } // 파티원 기기: 봇은 방장이 움직인다
     const dk = G.ranked ? Rank.botDifficulty() : SETTINGS.difficulty === 'mixed' ? pick(['easy', 'normal', 'normal', 'hard']) : SETTINGS.difficulty;
     const br = new Brain(b, dk);
@@ -360,6 +352,7 @@ function disposeMatch() {
   if (!G.scene) return;
   Zone.dispose(G.scene); Airdrop.dispose(); Veh.dispose();
   G.scene.traverse(o => { if (o.geometry && !o.isSprite) o.geometry.dispose(); });
+  for (const c of CHARS) if (c.rig && c.rig.skel) c.rig.skel.dispose();   // 뼈대 텍스처(GPU) 해제
   G.scene = null; CHARS = []; GROUND = []; W = null; G.player = null; G.plane = null; G.dropCands = null;
   Audio.plane(false);
 }
@@ -506,10 +499,11 @@ G.update = function (dt) {
   if (G.noises.length > 80 || (G.noises.length && G.time - G.noises[0].t > 2)) G.noises = G.noises.filter(n => G.time - n.t < 2);
   // 거리 기반 표시 최적화
   const Q = QUALITY[SETTINGS.quality], cam = G.camera.position;
+  const lodD = SETTINGS.quality === 'low' ? 18 : SETTINGS.quality === 'high' ? 45 : 30;
   for (const c of CHARS) if (!c.isPlayer && c.mode !== 'plane') {
     const d = Math.hypot(c.pos.x - cam.x, c.pos.z - cam.z);
     c.root.visible = d < Q.botDraw || c.mode !== 'ground' || !!c.dummy;
-    c.rig.body.traverse(o => { if (o.isMesh) o.castShadow = d < 45; });
+    c.rig.setShadow(d < 45); c.rig.setLod(d > lodD && !c.dummy ? 1 : 0); c.rig.backGuns.visible = d < 60;   // 정밀 메시 거리: 품질 낮음 18m·보통 30m·높음 45m, 60m 밖은 등의 총 생략
   }
   lootCullT -= dt;
   if (lootCullT <= 0) {
@@ -551,10 +545,10 @@ G.update = function (dt) {
 function footsteps(c, dt) {
   if (!c.alive || c.mode !== 'ground' || !c.onGround || c.veh) return;
   const sp = Math.hypot(c.vel.x, c.vel.z); if (sp < 0.8) return;
-  c.anim.stepAcc += sp * dt;
-  const stride = c.stance === 'prone' ? 1.2 : 1.55;
-  if (c.anim.stepAcc < stride) return;
-  c.anim.stepAcc = 0;
+  // 발소리는 발이 땅에 닿는 순간(걸음 위상 π마다)에 맞춘다. 화면 밖(애니메이션 생략) 캐릭터는 거리로 근사
+  const a = c.anim;
+  if (c.isPlayer || c.root.visible) { const k = Math.floor(a.phase / Math.PI); if (k === a.stepK) return; a.stepK = k; }
+  else { a.stepAcc += sp * dt; if (a.stepAcc < (c.stance === 'prone' ? 1.2 : 1.4)) return; a.stepAcc = 0; }
   const loud = c.stance === 'crouch' || c.stance === 'prone' ? 0.25 : sp > 5.5 ? 1.4 : 0.8;
   if (G.player && (c.isPlayer || Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 30)) {
     const s = surfaceAt(c.pos.x, c.pos.z), hard = s === 4 || s === 5 || c.pos.y - heightAt(c.pos.x, c.pos.z) > 0.1;
@@ -669,7 +663,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) G.update(dt); },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

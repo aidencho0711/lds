@@ -416,49 +416,10 @@ const Models = (() => {
       A(g, CY(0.03, 0.033, 0.008, 24, 'y'), al, 0, 0.121, 0); A(g, CY(0.033, 0.03, 0.006, 24, 'y'), al, 0, 0.004, 0);
       A(g, RB(0.012, 0.002, 0.022, 0.004, 0.0008), M('alu', 0xcfd3d6), 0, 0.1255, 0.006);
     },
-    vest(g, id) {
-      const lvl = ITEMS[id].lvl, th = lvl === 1 ? 0.04 : 0.06;
-      const fab = lvl === 3 ? MT(camoTex('coyote'), { rough: 0.95 }) : M('cloth', lvl === 1 ? 0x37404c : 0x505b3c);
-      const dk = M('cloth', lvl === 1 ? 0x262c34 : lvl === 2 ? 0x353d29 : 0x4a3f2c);
-      A(g, RB(0.3, 0.34, th, 0.03, 0.012), fab, 0, 0.17, 0.09); A(g, RB(0.3, 0.36, th, 0.03, 0.012), fab, 0, 0.18, -0.09);
-      for (const sx of [-1, 1]) { A(g, RB(0.07, 0.03, 0.2, 0.01), dk, sx * 0.09, 0.335, 0); A(g, RB(0.035, 0.17, 0.16, 0.01), dk, sx * 0.158, 0.1, 0); }
-      const fz = 0.09 + th / 2;
-      if (lvl >= 2) for (let i = -1; i <= 1; i++) { A(g, RB(0.075, 0.1, 0.035, 0.008), fab, i * 0.085, 0.07, fz + 0.017); A(g, RB(0.077, 0.025, 0.04, 0.006), dk, i * 0.085, 0.118, fz + 0.017); }
-      if (lvl === 3) { A(g, RB(0.12, 0.07, 0.025, 0.006), fab, 0, 0.21, fz + 0.012); A(g, PL(0.075, 0.035), MT(ctex('lbl:patch3', 256, 120, LABELS.patch3)), 0, 0.21, fz + 0.0255); }
-      if (lvl === 1) A(g, PL(0.14, 0.045), MT(ctex('lbl:patch1', 256, 84, LABELS.patch1)), 0, 0.24, fz + 0.001);
-      if (lvl >= 2) for (let r = 0; r < 3; r++) A(g, BX(0.26, 0.006, 0.004), dk, 0, 0.2 + r * 0.035, fz + 0.001);
-    },
-    helmet(g, id) {
-      const lvl = ITEMS[id].lvl, col = [0, 0x5f6650, 0x50544a, 0x353a40][lvl];
-      const shellM = lvl === 3 ? MT(camoTex('woodland'), { rough: 0.9 }) : M('polymer', col);
-      const tl = lvl === 1 ? Math.PI * 0.44 : Math.PI * 0.53;
-      const sh = SPH(0.125, 24, 10, 0, tl); sh.scale(1, 0.92, 1.1); A(g, sh, shellM, 0, 0.02, 0);
-      const inn = flip(SPH(0.119, 18, 8, 0, tl)); inn.scale(1, 0.92, 1.1); A(g, inn, M('cloth', 0x1c1b18), 0, 0.02, 0);
-      if (lvl === 1) { A(g, RB(0.17, 0.008, 0.06, 0.02, 0.003), M('polymer', col), 0, 0.06, 0.125, -0.3, 0, 0); for (const sx of [-1, 1]) A(g, BX(0.008, 0.06, 0.012), M('cloth', 0x222222), sx * 0.11, -0.01, 0.0); }
-      if (lvl >= 2) {
-        for (const sx of [-1, 1]) A(g, BX(0.01, 0.014, 0.12), M('polymer', 0x23262a), sx * 0.122, 0.04, 0, 0, 0, sx * 0.35);
-        A(g, RB(0.045, 0.035, 0.012, 0.006), M('gunmetal', 0x26292c), 0, 0.09, 0.128, -0.45, 0, 0);
-        A(g, BX(0.06, 0.03, 0.004), M('cloth', 0x3c3a30), 0, 0.125, -0.09, 0.6, 0, 0);
-      }
-      if (lvl === 3) { const v = SPH(0.135, 20, 6, 1.25, 0.6, Math.PI / 2 - 0.95, 1.9); v.scale(1, 0.95, 1.12); A(g, v, CLS.glass, 0, 0.03, 0.005); A(g, flip(v.clone()), CLS.glass, 0, 0.03, 0.005); }
-    },
-    bag(g, id) {
-      const lvl = ITEMS[id].lvl, [w, h, d] = [0, [0.26, 0.32, 0.13], [0.31, 0.42, 0.17], [0.35, 0.52, 0.2]][lvl];
-      const fab = lvl === 3 ? MT(camoTex('woodland'), { rough: 0.95 }) : M('cloth', lvl === 1 ? 0x6b5a3e : 0x4e5838);
-      const dk = M('cloth', lvl === 1 ? 0x3f3424 : 0x2f3524);
-      A(g, RB(w, h, d, 0.05, 0.02), fab, 0, h / 2, 0);
-      A(g, RB(w * 0.75, h * 0.42, 0.05, 0.03, 0.012), fab, 0, h * 0.3, d / 2 + 0.02);
-      A(g, RB(w * 0.7, 0.01, 0.052, 0.01, 0.003), dk, 0, h * 0.3 + h * 0.17, d / 2 + 0.021);
-      for (const sx of [-1, 1]) A(g, RB(0.045, h * 0.8, 0.02, 0.01, 0.005), dk, sx * w * 0.25, h * 0.5, -d / 2 - 0.01);
-      A(g, TOR(0.025, 0.006, 6, 12, Math.PI), dk, 0, h, -d * 0.2);
-      if (lvl >= 2) for (const sx of [-1, 1]) A(g, RB(0.06, h * 0.45, d * 0.6, 0.02, 0.01), fab, sx * (w / 2 + 0.025), h * 0.4, 0);
-      if (lvl === 3) {
-        A(g, RB(w * 1.02, 0.07, d * 1.05, 0.03, 0.015), fab, 0, h + 0.02, 0.01);
-        A(g, CY(0.055, 0.055, w * 1.05, 14, 'x'), M('cloth', 0x4a4434), 0, 0.03, d * 0.15);
-        for (const sx of [-1, 1]) A(g, BX(0.018, 0.115, 0.004), dk, sx * w * 0.3, 0.03, d * 0.15 + 0.056);
-        for (let r = 0; r < 3; r++) A(g, BX(w * 0.62, 0.006, 0.004), dk, 0, h * 0.62 + r * 0.03, d / 2 + 0.001);
-      }
-    },
+    // 헬멧·조끼·가방: 몸에 걸친 장비(05_models_gear.js)와 같은 모델 → 바닥·아이콘·착용 모습이 일치
+    vest(g, id) { Gear.build.vest[ITEMS[id].lvl](g); },
+    helmet(g, id) { Gear.build.helmet[ITEMS[id].lvl](g); },
+    bag(g, id) { const s = new THREE.Group(); s.rotation.y = Math.PI; g.add(s); Gear.build.pack[ITEMS[id].lvl](s); },
     frag(g) {
       const s = SPH(0.03, 16, 12); s.scale(1, 1.15, 1); A(g, s, M('polymer', 0x4a5236), 0, 0.035, 0);
       A(g, CY(0.011, 0.012, 0.02, 12, 'y'), M('gunmetal', 0x5a5c58), 0, 0.075, 0);

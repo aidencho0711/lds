@@ -1,7 +1,8 @@
 # 사운드 뱅크 측정: 피크, 구간 RMS(dBFS), 대역별 에너지 비율, -40dB 감쇠 시간
 import sys, json
 from playwright.sync_api import sync_playwright
-NAMES = sys.argv[1].split(',') if len(sys.argv) > 1 else ['g_m416','g_akm','g_awm','g_s686','g_p19','g_vk9']
+# 기본: 장전 기계음 10가지(README v14 수치). 총성은 예: g_m416,g_akm,g_awm  /  옛 빌드와 비교: HTML=/경로/옛빌드.html python3 test/audio_measure.py
+NAMES = sys.argv[1].split(',') if len(sys.argv) > 1 else 'magOut,magIn,magSeat,chargeBack,chargeFwd,boltBack,boltFwd,pumpBack,slideRelease,breakClose'.split(',')
 THREE = open('/home/claude/br/node_modules/three/build/three.min.js','rb').read()
 def route(r):
     u = r.request.url
@@ -27,7 +28,8 @@ JS = r"""async (names) => {
     // -40dB 감쇠: 50ms 창 RMS가 피크 대비 -40dB 아래로 떨어지는 마지막 시각
     let tail = 0; const w = Math.floor(0.05 * sr);
     for (let i = 0; i + w < mono.length; i += w) { let s = 0; for (let k = 0; k < w; k++) s += mono[i + k] ** 2; const db = 10 * Math.log10(s / w + 1e-12) - 20 * Math.log10(pk); if (db > -40) tail = (i + w) / sr; }
-    const N = 16384, seg = new Float32Array(N); for (let i = 0; i < N && i < mono.length; i++) seg[i] = mono[i] * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / N));
+    // 창 함수 없음: 짧은 타격음은 에너지가 맨 앞 수십 ms에 몰려 있어 Hann 창을 씌우면 그 부분이 거의 0으로 깎인다(소리는 0.34초 안에 -40dB 아래로 줄어 끝 불연속은 무시할 만함)
+    const N = 16384, seg = new Float32Array(N); for (let i = 0; i < N && i < mono.length; i++) seg[i] = mono[i];
     const m = fftMag(seg), bands = [[20, 100], [100, 300], [300, 1000], [1000, 4000], [4000, 20000]], E = bands.map(([a, b2]) => { let s = 0; for (let k = Math.floor(a * N / sr); k < Math.min(m.length, b2 * N / sr); k++) s += m[k]; return s; });
     const tot = E.reduce((a, b2) => a + b2, 0);
     out[nm] = { dur: +b.duration.toFixed(2), peak: +pk.toFixed(2), rms0_150: +rms(0, 0.15).toFixed(1), rms150_600: +rms(0.15, 0.6).toFixed(1), crest: +(20 * Math.log10(pk) - rms(0, 0.15)).toFixed(1), tail40: +tail.toFixed(2), bands: E.map(e => Math.round(e / tot * 100)) };
@@ -40,7 +42,7 @@ with sync_playwright() as p:
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.route('**/*', route)
-    pg.goto('file:///home/claude/br/dist/index.html'); pg.wait_for_timeout(1500)
+    pg.goto('file://' + (__import__('os').environ.get('HTML','/home/claude/lds/dist/index.html')) + ''); pg.wait_for_timeout(1500)
     r = pg.evaluate(JS, NAMES)
     print('bands = % energy in [20-100, 100-300, 300-1k, 1-4k, 4k+] Hz (first 340ms)')
     for k, v in r.items(): print(k, json.dumps(v))

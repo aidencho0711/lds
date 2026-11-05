@@ -202,50 +202,110 @@ const Audio = (() => {
     for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] = Math.tanh(d[i] / m * k) / n; }
     return buf;
   }
-  // 기계음 레시피
+  // ---------- 기계음 (장전·볼트·덮개 등) ----------
+  //  예전 소리가 '레고' 같았던 이유: 높은 대역의 짧은 딸깍 소리만 있고, 금속 부품의 무게(중저역 몸체 울림)·
+  //  마찰음(미끄러짐)·스프링 울림이 없었고, 모든 소리를 같은 최대 음량으로 맞췄다.
+  //  지금: ① 접촉 순간 넓은 대역의 짧은 충격음 ② 부품별 고유 진동(비정수배 주파수, 높을수록 빨리 사라짐)
+  //        ③ 총몸(리시버) 공명 ④ 마찰(스틱-슬립 알갱이 잡음) ⑤ 스프링 울림 ⑥ 손·천 소리 + 좌우 위치 + 소리별 상대 음량
+  function pan(oc, out, p) { if (!p || !oc.createStereoPanner) return out; const n = oc.createStereoPanner(); n.pan.value = p; n.connect(out); return n; }
+  // 고유 진동 묶음: list = [[주파수, 감쇠 시간상수(s), 크기], ...] — 사인파가 지수적으로 사라짐
+  function modal(oc, out, t0, list, g0, p = 0, fm = 1) {
+    const dst = pan(oc, out, p);
+    for (const [f0, d, a] of list) {
+      const o = oc.createOscillator(); o.frequency.value = f0 * fm * (1 + (Math.random() - 0.5) * 0.012);
+      const g = oc.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(g0 * a, t0 + 0.0006); g.gain.setTargetAtTime(0, t0 + 0.0006, d);
+      o.connect(g); g.connect(dst); o.start(t0); o.stop(t0 + d * 6 + 0.01);
+    }
+  }
+  // 접촉 충격음: 아주 짧은 넓은 대역 잡음 (hp 이상만)
+  function tick(oc, out, t0, hp, g0, dur = 0.0025, p = 0) { nz(oc, pan(oc, out, p), t0, dur, 'highpass', hp, hp, 0.7, g0, 0.0002); }
+  // 무게감: 낮은 사인 + 저역 잡음 (부품이 멈추며 총 전체가 울림)
+  function body(oc, out, t0, f, g0, dur, p = 0) { const d = pan(oc, out, p); os(oc, d, t0, dur, 'sine', f, f * 0.7, g0, 0.0015); nz(oc, d, t0, dur * 0.5, 'lowpass', f * 3.5, f * 1.5, 0.8, g0 * 0.6, 0.0008); }
+  // 마찰(미끄러짐): 대역 잡음 + 스틱-슬립 알갱이. f0→f1로 음색이 변함
+  function slide(oc, out, t0, dur, f0, f1, g0, grit = 1, p = 0) {
+    const d = pan(oc, out, p);
+    nz(oc, d, t0, dur, 'bandpass', f0, f1, 2.2, g0 * 0.55, dur * 0.25);
+    const n = Math.round(dur * 260 * grit);
+    for (let i = 0; i < n; i++) { const t = Math.random(), f = lerp(f0, f1, t) * (0.8 + Math.random() * 0.5); nz(oc, d, t0 + t * dur, 0.0015 + Math.random() * 0.003, 'bandpass', f, f, 4, g0 * (0.3 + Math.random() * 0.9) * Math.sin(Math.PI * Math.min(1, t * 1.15)), 0.0002); }
+  }
+  // 스프링: 금속 코일이 눌리거나 튕기며 내는 '징' — 짧은 처프 + 떨리는 공명
+  function spring(oc, out, t0, f0, f1, dur, g0, p = 0) {
+    const d = pan(oc, out, p), o = oc.createOscillator(), g = oc.createGain(), v = oc.createOscillator(), vg = oc.createGain();
+    o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f1, t0 + dur * 0.6);
+    v.frequency.value = 38 + Math.random() * 20; vg.gain.value = f1 * 0.012; v.connect(vg); vg.connect(o.frequency);
+    g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(g0, t0 + 0.002); g.gain.setTargetAtTime(0, t0 + 0.002, dur * 0.35);
+    const bp = oc.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f1; bp.Q.value = 3;
+    o.connect(g); g.connect(bp); bp.connect(d); o.start(t0); v.start(t0); o.stop(t0 + dur * 2.5); v.stop(t0 + dur * 2.5);
+  }
+  // 재질별 고유 진동표 (주파수 비는 실측 금속 부품처럼 비정수배)
+  const M_SMALL = (f) => [[f, 0.022, 1], [f * 1.59, 0.016, 0.7], [f * 2.37, 0.012, 0.5], [f * 3.31, 0.008, 0.35], [f * 4.62, 0.006, 0.22]];   // 걸쇠·버튼·볼트 같은 작은 강철
+  const M_RECV = (k = 1) => [[340 * k, 0.03, 0.55], [610 * k, 0.045, 0.8], [1040 * k, 0.04, 1], [1580 * k, 0.03, 0.75], [2260 * k, 0.022, 0.55], [3150 * k, 0.016, 0.4], [4400 * k, 0.01, 0.25]];   // 총몸
+  const M_POLY = (k = 1) => [[420 * k, 0.012, 1], [760 * k, 0.01, 0.75], [1230 * k, 0.008, 0.5], [1900 * k, 0.006, 0.3]];   // 플라스틱 탄창
+  const M_STEELMAG = (k = 1) => [[560 * k, 0.025, 0.8], [1180 * k, 0.022, 1], [1900 * k, 0.018, 0.7], [2950 * k, 0.012, 0.45], [4300 * k, 0.008, 0.3]];   // 강철 탄창(AK)
+  const M_BRASS = (k = 1) => [[3800 * k, 0.05, 1], [6050 * k, 0.035, 0.6], [8400 * k, 0.022, 0.35]];
+  const M_PISTOL = (k = 1) => [[880 * k, 0.02, 0.7], [1650 * k, 0.025, 1], [2550 * k, 0.018, 0.7], [3800 * k, 0.012, 0.45], [5200 * k, 0.008, 0.3]];
+  const cloth = (o, b, t0, dur, g0, p = 0) => nz(o, pan(o, b, p), t0, dur, 'bandpass', 1100, 700, 0.9, g0, dur * 0.4);
   const MECH = {
-    mech_rifle: (o, b) => { metal(o, b, 0.0, [2400, 3800, 5600], 0.045, 0.5); metal(o, b, 0.045, [1900, 3100, 4700], 0.05, 0.42); },
-    mech_smg: (o, b) => { metal(o, b, 0.0, [2900, 4400, 6600], 0.035, 0.5); metal(o, b, 0.03, [2300, 3600, 5200], 0.035, 0.4); },
-    mech_pistol: (o, b) => { metal(o, b, 0.0, [2800, 4600, 7100], 0.04, 0.55); metal(o, b, 0.028, [2400, 3900, 6000], 0.04, 0.45); },
-    // 무거운 노리쇠 뭉치(AK 계열): 낮고 둔탁한 철컥
-    mech_ak: (o, b) => { metal(o, b, 0.0, [1700, 2900, 4300], 0.06, 0.55); thunk(o, b, 0.0, 180, 0.05, 0.4); metal(o, b, 0.05, [1500, 2500, 3800], 0.06, 0.45); },
-    // 탄띠식: 탄띠 떨림 + 노리쇠
-    mech_lmg: (o, b) => { metal(o, b, 0.0, [2000, 3300, 5000], 0.04, 0.45); scrape(o, b, 0.01, 0.05, 3000, 2000, 0.3); thunk(o, b, 0.03, 160, 0.04, 0.35); },
-    magInAk: (o, b) => { scrape(o, b, 0.0, 0.06, 1100, 1500, 0.5); metal(o, b, 0.055, [1900, 3100, 4700], 0.05, 0.55); },
-    magRock: (o, b) => { thunk(o, b, 0.0, 140, 0.09, 0.9); metal(o, b, 0.005, [1600, 2700, 4100], 0.07, 0.8); },
-    coverOpen: (o, b) => { metal(o, b, 0.0, [2500, 4000], 0.04, 0.6); scrape(o, b, 0.02, 0.1, 900, 1400, 0.45); metal(o, b, 0.11, [1300, 2200], 0.08, 0.55); },
-    coverClose: (o, b) => { thunk(o, b, 0.0, 130, 0.08, 1.0); metal(o, b, 0.0, [1500, 2600, 3900], 0.09, 0.9); },
-    boxOut: (o, b) => { scrape(o, b, 0.0, 0.12, 700, 500, 0.6); nz(o, b, 0.02, 0.1, 'lowpass', 1200, 600, 0.6, 0.3, 0.02); for (let i = 0; i < 4; i++) metal(o, b, 0.08 + i * 0.022, [3000 + i * 170, 4700], 0.02, 0.3); },
-    boxIn: (o, b) => { thunk(o, b, 0.0, 160, 0.06, 0.7); metal(o, b, 0.0, [1800, 2900], 0.05, 0.5); metal(o, b, 0.06, [2600, 4200], 0.04, 0.5); },
-    boxSeat: (o, b) => { thunk(o, b, 0.0, 150, 0.06, 0.6); metal(o, b, 0.0, [2200, 3500], 0.04, 0.5); },
-    beltLay: (o, b) => { for (let i = 0; i < 6; i++) metal(o, b, i * 0.024, [3200 + Math.random() * 600, 5200 + Math.random() * 600], 0.025, 0.4); thunk(o, b, 0.14, 260, 0.03, 0.3); },
-    breakOpen: (o, b) => { metal(o, b, 0.0, [2200, 3600], 0.04, 0.6); scrape(o, b, 0.05, 0.08, 1200, 800, 0.4); thunk(o, b, 0.1, 170, 0.06, 0.6); },
-    breakClose: (o, b) => { thunk(o, b, 0.0, 150, 0.07, 1.0); metal(o, b, 0.0, [1900, 3200, 4800], 0.08, 0.95); },
-    shellEject: (o, b) => { nz(o, b, 0.0, 0.03, 'bandpass', 800, 500, 2, 0.6, 0.001); thunk(o, b, 0.0, 300, 0.03, 0.5); metal(o, b, 0.012, [1500, 2400], 0.03, 0.4); },
-    selector: (o, b) => { metal(o, b, 0.0, [3400, 5600], 0.025, 0.7); metal(o, b, 0.04, [3000, 5000], 0.02, 0.45); },
-    magRelease: (o, b) => { metal(o, b, 0.005, [3200, 5100, 7400], 0.04, 0.5); },
-    magOut: (o, b) => { scrape(o, b, 0.0, 0.12, 1800, 900, 0.6); thunk(o, b, 0.1, 220, 0.06, 0.4); },
-    magIn: (o, b) => { scrape(o, b, 0.0, 0.09, 900, 1700, 0.55); metal(o, b, 0.085, [2400, 3900, 6100], 0.06, 0.8); thunk(o, b, 0.085, 180, 0.07, 0.6); },
-    magSeat: (o, b) => { thunk(o, b, 0.0, 150, 0.08, 0.9); metal(o, b, 0.002, [2000, 3300], 0.05, 0.5); nz(o, b, 0, 0.05, 'lowpass', 900, 400, 0.7, 0.4); },
-    chargeBack: (o, b) => { scrape(o, b, 0.0, 0.08, 2200, 1500, 0.55); metal(o, b, 0.075, [2800, 4600, 7000], 0.05, 0.6); },
-    chargeFwd: (o, b) => { metal(o, b, 0.0, [2600, 4100, 6600, 8900], 0.09, 1.0); thunk(o, b, 0.0, 260, 0.05, 0.5); },
-    slideBack: (o, b) => { scrape(o, b, 0.0, 0.05, 2600, 1800, 0.4); },
-    slideRelease: (o, b) => { metal(o, b, 0.0, [3000, 5200, 7600], 0.07, 1.0); thunk(o, b, 0.0, 300, 0.04, 0.5); },
-    shellIn: (o, b) => { scrape(o, b, 0.0, 0.05, 1200, 1800, 0.35); metal(o, b, 0.045, [1700, 2900], 0.05, 0.6); thunk(o, b, 0.045, 240, 0.05, 0.5); },
-    roundIn: (o, b) => { scrape(o, b, 0.0, 0.04, 1600, 2400, 0.3); metal(o, b, 0.035, [2600, 4100, 5900], 0.05, 0.7); },
-    pumpBack: (o, b) => { scrape(o, b, 0.0, 0.12, 900, 600, 0.65); metal(o, b, 0.11, [1500, 2600], 0.06, 0.6); },
-    pumpFwd: (o, b) => { scrape(o, b, 0.0, 0.1, 600, 1000, 0.6); metal(o, b, 0.09, [1800, 3100, 4700], 0.07, 0.95); thunk(o, b, 0.09, 200, 0.05, 0.5); },
-    boltUp: (o, b) => { metal(o, b, 0.0, [2100, 3700], 0.05, 0.6); },
-    boltBack: (o, b) => { scrape(o, b, 0.0, 0.13, 1400, 900, 0.6); metal(o, b, 0.12, [1900, 3300], 0.06, 0.55); },
-    boltFwd: (o, b) => { scrape(o, b, 0.0, 0.11, 900, 1500, 0.55); metal(o, b, 0.1, [2500, 4300, 6400], 0.08, 0.9); },
-    boltDown: (o, b) => { metal(o, b, 0.0, [2300, 3900], 0.05, 0.7); thunk(o, b, 0.0, 200, 0.05, 0.5); },
-    equip: (o, b) => { nz(o, b, 0.0, 0.18, 'lowpass', 1400, 600, 0.6, 0.45, 0.04); metal(o, b, 0.14, [2200, 3600, 5400], 0.05, 0.7); },
-    aimIn: (o, b) => { nz(o, b, 0.0, 0.14, 'bandpass', 900, 600, 0.8, 0.5, 0.03); },
-    attach: (o, b) => { metal(o, b, 0.0, [2800, 4500], 0.05, 0.8); thunk(o, b, 0.03, 220, 0.04, 0.5); metal(o, b, 0.06, [3300, 5200], 0.04, 0.5); },
-    dry: (o, b) => { metal(o, b, 0.0, [3500, 6000], 0.03, 0.8); },
+    // 사격 때 겹치는 노리쇠 왕복(작게): 총몸 울림 + 작은 금속 부딪힘
+    mech_rifle: (o, b) => { modal(o, b, 0, M_RECV(1.1), 0.45); tick(o, b, 0, 2500, 0.3); modal(o, b, 0.035, M_SMALL(2600), 0.4); body(o, b, 0.035, 210, 0.25, 0.04); },
+    mech_smg: (o, b) => { modal(o, b, 0, M_RECV(1.35), 0.4); tick(o, b, 0, 3000, 0.3); modal(o, b, 0.026, M_SMALL(3100), 0.35); },
+    mech_pistol: (o, b) => { modal(o, b, 0, M_PISTOL(1.05), 0.55); tick(o, b, 0, 3000, 0.35); modal(o, b, 0.024, M_SMALL(3300), 0.35); },
+    mech_ak: (o, b) => { modal(o, b, 0, M_RECV(0.85), 0.55); body(o, b, 0, 160, 0.4, 0.05); tick(o, b, 0, 1800, 0.35); modal(o, b, 0.045, M_SMALL(2200), 0.45); body(o, b, 0.045, 180, 0.3, 0.05); },
+    mech_lmg: (o, b) => { modal(o, b, 0, M_RECV(0.95), 0.5); tick(o, b, 0, 2200, 0.3); for (let i = 0; i < 3; i++) modal(o, b, 0.012 + i * 0.011, M_SMALL(3500 + i * 300), 0.15); body(o, b, 0.03, 170, 0.3, 0.04); },
+    // ----- 탄창식 -----
+    // 탄창 멈치 버튼: 작은 딸깍 + 탄창이 풀리며 살짝 떨어지는 소리
+    magRelease: (o, b) => { tick(o, b, 0, 2600, 0.45, 0.002, -0.2); modal(o, b, 0, M_SMALL(2350), 0.5, -0.2); modal(o, b, 0.012, M_POLY(1.1), 0.35, -0.2); slide(o, b, 0.012, 0.03, 1500, 1100, 0.25, 0.6, -0.2); },
+    // 탄창 빼기: 탄창이 탄창 우물을 긁으며 빠짐 → 빠지는 순간 '툭'
+    magOut: (o, b) => { slide(o, b, 0, 0.1, 1700, 900, 0.5, 1, -0.25); modal(o, b, 0.095, M_POLY(), 0.55, -0.3); tick(o, b, 0.095, 1500, 0.25, 0.002, -0.3); cloth(o, b, 0.06, 0.16, 0.18, -0.35); },
+    // 탄창 넣기: 긁으며 들어감 → 탄창이 우물에 닿음(둔탁) → 멈치가 걸림(밝은 '철컥')
+    magIn: (o, b) => { slide(o, b, 0, 0.075, 900, 1600, 0.45, 1, -0.2); modal(o, b, 0.072, M_POLY(), 0.6, -0.15); body(o, b, 0.072, 190, 0.6, 0.05, -0.1); tick(o, b, 0.086, 3200, 0.55); tick(o, b, 0.0865, 6000, 0.25, 0.0012); modal(o, b, 0.086, M_SMALL(2450), 0.8); modal(o, b, 0.086, M_RECV(), 0.5); },
+    // 탄창 바닥 치기: 손바닥 '퍽' + 총몸 전체 울림 + 멈치 떨림
+    magSeat: (o, b) => { body(o, b, 0, 105, 1.5, 0.09, -0.1); nz(o, b, 0, 0.05, 'lowpass', 800, 300, 0.7, 0.6, 0.001); modal(o, b, 0.002, M_RECV(0.95), 0.6); modal(o, b, 0.006, M_SMALL(2600), 0.3); },
+    // AK식: 강철 탄창 앞을 걸고 젖혀 넣기 → '철-컥' 두 단계
+    magInAk: (o, b) => { slide(o, b, 0, 0.06, 1000, 1500, 0.45, 1.2, -0.2); modal(o, b, 0.055, M_STEELMAG(), 0.7, -0.15); tick(o, b, 0.055, 2200, 0.4); body(o, b, 0.055, 170, 0.35, 0.05); },
+    magRock: (o, b) => { slide(o, b, 0, 0.04, 800, 1300, 0.3, 1, -0.1); tick(o, b, 0.04, 2400, 0.6); body(o, b, 0.04, 140, 1.3, 0.08); modal(o, b, 0.04, M_STEELMAG(0.95), 0.7); modal(o, b, 0.042, M_SMALL(2000), 0.8); modal(o, b, 0.042, M_RECV(0.85), 0.6); },
+    // 장전손잡이: 걸쇠 풀림 → 노리쇠 뭉치가 스프링을 누르며 미끄러짐 → 끝에 닿음
+    chargeBack: (o, b) => { tick(o, b, 0, 2200, 0.35, 0.002, 0.1); modal(o, b, 0, M_SMALL(2050), 0.35, 0.1); slide(o, b, 0.008, 0.1, 1200, 2300, 0.5, 1.2, 0.1); spring(o, b, 0.01, 1700, 3300, 0.1, 0.07, 0.1); modal(o, b, 0.105, M_RECV(1.05), 0.4, 0.1); tick(o, b, 0.105, 1800, 0.3, 0.002, 0.1); },
+    // 놓기: 노리쇠가 스프링 힘으로 앞으로 '쾅' — 큰 충격 + 총몸 울림 + 스프링 '징' + 부품이 자리 잡는 떨림
+    chargeFwd: (o, b) => { tick(o, b, 0, 1300, 0.9, 0.004); body(o, b, 0, 175, 1.3, 0.08); tick(o, b, 0.0005, 5200, 0.35, 0.0015); modal(o, b, 0, M_RECV(), 1.0); modal(o, b, 0.001, M_SMALL(3050), 0.6); spring(o, b, 0.002, 3200, 2800, 0.22, 0.1); for (const t of [0.018, 0.031, 0.047]) modal(o, b, t, M_SMALL(3400 + Math.random() * 900), 0.12); },
+    // 권총 슬라이드
+    slideBack: (o, b) => { slide(o, b, 0, 0.06, 1900, 2900, 0.45, 1.1, 0.05); spring(o, b, 0.005, 2100, 3600, 0.06, 0.06); modal(o, b, 0.058, M_PISTOL(), 0.35); },
+    slideRelease: (o, b) => { tick(o, b, 0, 1800, 0.85, 0.003); body(o, b, 0, 260, 0.95, 0.05); tick(o, b, 0.0005, 5500, 0.35, 0.0015); modal(o, b, 0, M_PISTOL(), 1.0); modal(o, b, 0.001, M_SMALL(3500), 0.5); spring(o, b, 0.002, 3600, 3100, 0.12, 0.07); },
+    // ----- 볼트 액션 -----
+    boltUp: (o, b) => { tick(o, b, 0, 2400, 0.4, 0.002, 0.25); modal(o, b, 0, M_SMALL(2200), 0.55, 0.25); slide(o, b, 0.004, 0.035, 1400, 1800, 0.2, 0.7, 0.25); },
+    boltBack: (o, b) => { slide(o, b, 0, 0.14, 1150, 700, 0.55, 0.7, 0.25); modal(o, b, 0.135, M_RECV(0.9), 0.45, 0.25); tick(o, b, 0.135, 1500, 0.3, 0.002, 0.25); },
+    boltFwd: (o, b) => { slide(o, b, 0, 0.12, 700, 1250, 0.5, 0.7, 0.25); body(o, b, 0.115, 200, 0.5, 0.05, 0.2); modal(o, b, 0.115, M_RECV(0.95), 0.6, 0.2); tick(o, b, 0.115, 2000, 0.4); },
+    boltDown: (o, b) => { tick(o, b, 0, 1800, 0.7, 0.003, 0.2); body(o, b, 0, 190, 1.0, 0.06, 0.2); tick(o, b, 0.0005, 5000, 0.3, 0.0015, 0.2); modal(o, b, 0, M_RECV(0.9), 0.75, 0.2); modal(o, b, 0, M_SMALL(2600), 0.6, 0.2); },
+    roundIn: (o, b) => { slide(o, b, 0, 0.04, 1700, 2600, 0.3, 1, 0.15); modal(o, b, 0.035, M_BRASS(), 0.45, 0.1); tick(o, b, 0.035, 3000, 0.4); spring(o, b, 0.036, 2500, 3200, 0.05, 0.05); modal(o, b, 0.036, M_SMALL(2700), 0.35); },
+    // ----- 펌프·관형 탄창 -----
+    pumpBack: (o, b) => { slide(o, b, 0, 0.12, 950, 620, 0.6, 0.8, -0.15); modal(o, b, 0.11, M_RECV(0.8), 0.55, -0.1); tick(o, b, 0.11, 1600, 0.35); },
+    pumpFwd: (o, b) => { slide(o, b, 0, 0.1, 620, 1050, 0.55, 0.8, -0.15); tick(o, b, 0.092, 1500, 0.7, 0.003); body(o, b, 0.092, 180, 1.0, 0.06); modal(o, b, 0.092, M_RECV(0.85), 0.85); modal(o, b, 0.094, M_SMALL(2400), 0.5); },
+    shellIn: (o, b) => { slide(o, b, 0, 0.05, 950, 1500, 0.35, 0.8, -0.15); modal(o, b, 0.045, [[650, 0.03, 1], [1480, 0.022, 0.6], [2650, 0.014, 0.4]], 0.6, -0.1); tick(o, b, 0.047, 2600, 0.45); spring(o, b, 0.048, 1800, 2400, 0.06, 0.06); modal(o, b, 0.05, M_BRASS(0.8), 0.25); },
+    // ----- 중절식(꺾는 총열) -----
+    breakOpen: (o, b) => { tick(o, b, 0, 2300, 0.5, 0.002, 0.15); modal(o, b, 0, M_SMALL(2100), 0.6, 0.15); slide(o, b, 0.035, 0.08, 650, 420, 0.35, 0.5); body(o, b, 0.11, 140, 0.55, 0.06); modal(o, b, 0.11, M_RECV(0.75), 0.6); },
+    breakClose: (o, b) => { tick(o, b, 0, 1200, 0.85, 0.004); body(o, b, 0, 120, 1.7, 0.09); tick(o, b, 0.0005, 4800, 0.3, 0.0015); modal(o, b, 0, M_RECV(0.72), 1.0); modal(o, b, 0.004, M_SMALL(1900), 0.7, 0.15); },
+    shellEject: (o, b) => { body(o, b, 0, 480, 0.35, 0.03); nz(o, b, 0, 0.03, 'bandpass', 900, 600, 2, 0.5); modal(o, b, 0.012, [[1150, 0.012, 1], [2300, 0.008, 0.5]], 0.4); modal(o, b, 0.06, [[980, 0.01, 1], [2100, 0.007, 0.5]], 0.25); },
+    // ----- 탄띠식(경기관총) -----
+    coverOpen: (o, b) => { tick(o, b, 0, 2400, 0.45, 0.002, -0.1); modal(o, b, 0, M_SMALL(2300), 0.5, -0.1); slide(o, b, 0.02, 0.09, 900, 1400, 0.3, 0.6, -0.1); modal(o, b, 0.11, [[780, 0.03, 1], [1550, 0.024, 0.7], [2700, 0.016, 0.45]], 0.6, -0.1); body(o, b, 0.11, 170, 0.35, 0.05); },
+    coverClose: (o, b) => { tick(o, b, 0, 1300, 0.85, 0.004); body(o, b, 0, 130, 1.6, 0.09); tick(o, b, 0.0005, 4800, 0.3, 0.0015); modal(o, b, 0, M_RECV(0.8), 1.0); modal(o, b, 0.006, M_SMALL(2100), 0.6); },
+    boxOut: (o, b) => { cloth(o, b, 0, 0.14, 0.35, -0.3); slide(o, b, 0.01, 0.11, 700, 500, 0.4, 0.6, -0.3); modal(o, b, 0.1, M_POLY(0.7), 0.45, -0.3); for (let i = 0; i < 6; i++) modal(o, b, 0.06 + i * 0.019 + Math.random() * 0.01, M_BRASS(0.9 + Math.random() * 0.2), 0.12, -0.2); },
+    boxIn: (o, b) => { slide(o, b, 0, 0.06, 600, 900, 0.35, 0.6, -0.25); body(o, b, 0.058, 150, 0.55, 0.06, -0.2); modal(o, b, 0.058, M_POLY(0.7), 0.6, -0.2); tick(o, b, 0.07, 2600, 0.4); modal(o, b, 0.07, M_SMALL(2500), 0.5); },
+    boxSeat: (o, b) => { body(o, b, 0, 140, 0.6, 0.06, -0.15); modal(o, b, 0, M_POLY(0.75), 0.5, -0.15); tick(o, b, 0.01, 2500, 0.4); modal(o, b, 0.01, M_SMALL(2350), 0.45); },
+    beltLay: (o, b) => { for (let i = 0; i < 8; i++) modal(o, b, i * 0.02 + Math.random() * 0.008, M_BRASS(0.85 + Math.random() * 0.25), 0.22 * (1 - i / 10)); slide(o, b, 0, 0.16, 2400, 3000, 0.15, 0.8); body(o, b, 0.15, 250, 0.25, 0.03); },
+    // ----- 그 밖 -----
+    selector: (o, b) => { tick(o, b, 0, 2800, 0.45, 0.002, 0.2); modal(o, b, 0, M_SMALL(2900), 0.5, 0.2); tick(o, b, 0.045, 3000, 0.3, 0.002, 0.2); modal(o, b, 0.045, M_SMALL(3100), 0.32, 0.2); },
+    equip: (o, b) => { cloth(o, b, 0, 0.2, 0.45); for (let i = 0; i < 3; i++) modal(o, b, 0.05 + i * 0.03 + Math.random() * 0.02, M_SMALL(3300 + Math.random() * 1200), 0.12); body(o, b, 0.15, 200, 0.4, 0.05); modal(o, b, 0.15, M_RECV(1.1), 0.4); },
+    aimIn: (o, b) => { cloth(o, b, 0, 0.13, 0.4); modal(o, b, 0.1, M_RECV(1.2), 0.08); },
+    attach: (o, b) => { slide(o, b, 0, 0.04, 1800, 2400, 0.25); tick(o, b, 0.04, 2600, 0.5); modal(o, b, 0.04, M_SMALL(2700), 0.6); modal(o, b, 0.045, M_RECV(1.2), 0.25); modal(o, b, 0.09, M_SMALL(3200), 0.35); },
+    dry: (o, b) => { tick(o, b, 0, 2600, 0.55); modal(o, b, 0, M_SMALL(2900), 0.6); modal(o, b, 0.001, M_RECV(1.15), 0.18); },
     brass: (o, b) => { [0, 0.06 + Math.random() * 0.03, 0.12 + Math.random() * 0.05].forEach((t, i) => { const k = 1 - i * 0.3, f = 4100 + Math.random() * 600; os(o, b, t, 0.06, 'sine', f, f * 0.99, 0.4 * k); os(o, b, t, 0.04, 'sine', f * 1.53, f * 1.52, 0.25 * k); os(o, b, t, 0.03, 'sine', f * 2.24, f * 2.23, 0.15 * k); }); },
     hull: (o, b) => { thunk(o, b, 0.0, 420, 0.04, 0.6); metal(o, b, 0.0, [1500, 2400], 0.03, 0.4); thunk(o, b, 0.08, 380, 0.03, 0.3); },
   };
+  // 소리별 상대 음량(최댓값) — 작은 딸깍과 노리쇠 '쾅'이 같은 크기로 들리지 않게
+  const MPEAK = { magRelease: 0.4, magOut: 0.5, magIn: 0.78, magSeat: 0.85, magInAk: 0.7, magRock: 0.9, chargeBack: 0.6, chargeFwd: 0.95, slideBack: 0.5, slideRelease: 0.88,
+    boltUp: 0.5, boltBack: 0.62, boltFwd: 0.72, boltDown: 0.85, roundIn: 0.55, pumpBack: 0.65, pumpFwd: 0.88, shellIn: 0.6, breakOpen: 0.7, breakClose: 0.95, shellEject: 0.5,
+    coverOpen: 0.65, coverClose: 0.95, boxOut: 0.6, boxIn: 0.75, boxSeat: 0.7, beltLay: 0.55, selector: 0.45, equip: 0.6, aimIn: 0.35, attach: 0.6, dry: 0.55,
+    mech_rifle: 0.8, mech_smg: 0.8, mech_pistol: 0.8, mech_ak: 0.8, mech_lmg: 0.8 };
   // ---------- 줍기·회복·넘기·투척 효과음 재료 ----------
   const swish = (o, b, t0, dur, f0, f1, g0) => nz(o, b, t0, dur, 'bandpass', f0, f1, 1.2, g0, dur * 0.45);           // 옷·팔 스치는 소리
   function zipper(o, b, t0, dur, f0, g0) { const n = Math.round(dur / 0.011); for (let i = 0; i < n; i++) nz(o, b, t0 + i * dur / n * (0.9 + Math.random() * 0.2), 0.006, 'bandpass', f0 * (1 + i / n * 0.35), f0, 2.5, g0 * (0.6 + Math.random() * 0.4), 0.0005); }
@@ -289,7 +349,7 @@ const Audio = (() => {
     if (!(window.OfflineAudioContext || window.webkitOfflineAudioContext)) return;
     const jobs = [];
     for (const id in GUN) for (let v = 0; v < 2; v++) jobs.push(['g_' + id, GUN[id].sec || 1.5, shotGraph(GUN[id]), 0.95, 1.15]);
-    for (const k in MECH) { const n = k === 'brass' ? 3 : (k.startsWith('mech') ? 2 : 1); for (let v = 0; v < n; v++) jobs.push([k, MECH_SEC[k] || (k === 'equip' ? 0.3 : 0.25), MECH[k], 0.8, 0]); }
+    for (const k in MECH) { const n = k === 'brass' ? 3 : (k.startsWith('mech') || MPEAK[k] ? 2 : 1); for (let v = 0; v < n; v++) jobs.push([k, MECH_SEC[k] || (k === 'equip' ? 0.35 : MPEAK[k] ? 0.45 : 0.25), MECH[k], MPEAK[k] || 0.8, 0]); }
     for (const [name, sec, fn, peak, loud] of jobs) { const b = await render(sec, fn, peak, loud); (bank[name] || (bank[name] = [])).push(b); }
     bankReady = true;
   }
@@ -346,7 +406,7 @@ const Audio = (() => {
     mech(name, pos, weapon, isOwn) {
       if (!ctx || !bankReady || !bank[name]) return;
       const rate = { m416: 1, aug: 1.05, akm: 0.88, asm: 0.95, vk9: 1.1, mini14: 1.02, slr: 0.9, m24: 1, awm: 0.92, s686: 1, s12k: 0.9, m249: 0.95, mg3: 0.88, p19: 1.14 }[weapon] || 1;
-      playBuf(name, isOwn ? null : pos, isOwn ? 0.55 : 0.6, { own: isOwn, rate, range: 26, ref: 4, send: isOwn ? 0.12 : 0.2, room: listener.indoor > 0.5, jitter: 0.05 });
+      playBuf(name, isOwn ? null : pos, isOwn ? 0.72 : 0.7, { own: isOwn, rate, range: 26, ref: 4, send: isOwn ? 0.1 : 0.2, room: listener.indoor > 0.5, jitter: 0.04 });
     },
     brass(pos, kind) { if (!ctx || !throttle('brass', 0.05)) return; playBuf(kind === 'hull' ? 'hull' : 'brass', pos, 0.32, { range: 22, ref: 3, jitter: 0.15, send: 0.08 }); },
     impact(pos, flesh) {

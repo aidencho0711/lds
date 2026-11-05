@@ -28,7 +28,7 @@ const Net = (() => {
       s: { map: SETTINGS.map, mode: SETTINGS.mode, squad: SETTINGS.squad, queue: SETTINGS.queue, time: SETTINGS.time, difficulty: SETTINGS.difficulty, bots: SETTINGS.bots } };
     if (dm) {
       cfg.loadout = game === 'tdm' ? DM.loadout(mulberry32(seed), DM.TDM_GUNS, null) : null;
-      const roster = humans.map((hm, i) => ({ id: i, team: 0, human: true, name: hm.name, outfit: hm.outfit, uid: hm.uid }));
+      const roster = humans.map((hm, i) => ({ id: i, team: 0, human: true, name: hm.name, look: hm.look, uid: hm.uid }));
       const nm = shuffled(BOT_NAMES, mulberry32(seed ^ 0x5bd1e995));
       for (let i = humans.length; i < DM_RULES.teamSize * 2; i++) roster.push({ id: i, team: i < DM_RULES.teamSize ? 0 : 1, name: nm[i % nm.length] });
       cfg.roster = roster;

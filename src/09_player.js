@@ -64,7 +64,7 @@ function releaseLock() { if (document.pointerLockElement) { G.suppressPause = tr
 // ---------- 카메라 ----------
 // ads: 0(허리 사격)~1(정조준). 정조준은 항상 눈 위치에서 조준경/가늠자를 통해 본다(3인칭이어도)
 const Cam = { dist: 3.3, ads: 0, zoom: 1, si: null, recoilP: 0, kick: 0, kickRot: 0, swayT: 0, swayX: 0, swayY: 0, breath: 1, wasAds: false };
-const VM = { scene: null, cam: null, root: null, pivot: null, tilt: null, gun: null, key: null, handL: null, handR: null, armL: null, armR: null, shellL: null, roundR: null, dir: null, hemi: null, flashLight: null, active: false, sleeveHex: null };
+const VM = { scene: null, cam: null, root: null, pivot: null, tilt: null, gun: null, key: null, shellL: null, roundR: null, dir: null, hemi: null, flashLight: null, active: false, arms: null, armsKey: null };
 const _cv = new THREE.Vector3(), _cf = new THREE.Vector3(), _cp = new THREE.Vector3(), _tp = new THREE.Vector3(), _hw = new THREE.Vector3(), _ew = new THREE.Vector3(), _q = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0);
 function buildViewModel() {
   VM.scene = new THREE.Scene();
@@ -75,32 +75,51 @@ function buildViewModel() {
   VM.root = new THREE.Group(); VM.scene.add(VM.root);
   VM.pivot = new THREE.Group(); VM.pivot.rotation.y = Math.PI; VM.root.add(VM.pivot);
   VM.tilt = new THREE.Group(); VM.pivot.add(VM.tilt);
-  VM.handL = Models.hand(); VM.handR = Models.hand(); VM.tilt.add(VM.handL); VM.tilt.add(VM.handR);
   VM.shellL = Models.casing('hull'); VM.roundR = Models.casing('762'); VM.tilt.add(VM.shellL); VM.tilt.add(VM.roundR);
-  // 회복·투척용 손 (카메라 공간)
-  VM.hold = new THREE.Group(); VM.hold.rotation.y = Math.PI; VM.root.add(VM.hold);
-  VM.hhL = Models.hand(); VM.hhR = Models.hand(); VM.hold.add(VM.hhL); VM.hold.add(VM.hhR);
-  VM.hItemL = new THREE.Group(); VM.hItemR = new THREE.Group(); VM.hhL.add(VM.hItemL); VM.hhR.add(VM.hItemR);
-  VM.hold.visible = false;
   VM.root.visible = false;
 }
-// 소매: 화면 밖 팔꿈치(ex,ey,ez)에서 손목까지
-function vmSleeve(arm, hand, ex, ey, ez) {
-  hand.getWorldPosition(_hw); _ew.set(ex, ey, ez);
-  const L = _hw.distanceTo(_ew); _cv.subVectors(_hw, _ew).normalize();
-  arm.position.lerpVectors(_ew, _hw, 0.5 - 0.035 / Math.max(0.1, L)); arm.quaternion.setFromUnitVectors(_up, _cv); arm.scale.set(1, Math.max(0.05, L - 0.06), 1);
+// ---------- 1인칭 팔: 내 외형(창고 장착)으로 만든 팔 메시 + 뼈대, 손은 IK로 총·물건에 ----------
+//  어깨는 화면 밖 아래(카메라 공간 VM_SH). 총이 길어도 손이 닿도록 팔 크기 ×1.1
+const VM_SC = 1.15, VM_SH = new THREE.Vector3(0, -0.22, -0.19), _vq = new THREE.Quaternion(), _vs = new THREE.Vector3(), _vt = new THREE.Vector3(), _vp = new THREE.Vector3(), _vh = new THREE.Quaternion(), _vpole = new THREE.Vector3();
+function vmArms() {
+  const look = Body.makeLook(SETTINGS.look, SETTINGS.body), key = Body.lookKey(look);
+  if (VM.armsKey === key && VM.arms) return VM.arms;
+  if (VM.arms) VM.root.remove(VM.arms.root);
+  const I = Body.armsInstance(look), B = I.B, root = new THREE.Group();
+  root.add(B.hips); root.add(I.mesh); root.rotation.y = Math.PI; root.scale.setScalar(VM_SC);
+  root.position.set(0, VM_SH.y - 1.421 * VM_SC, VM_SH.z);
+  const arm = (k) => { const s = k === 'L' ? 1 : -1, hold = new THREE.Group(); hold.position.set(-s * 0.022, -0.072, 0.004); B['hand' + k].add(hold);
+    return { clav: B['clav' + k], sh: B['sh' + k], el: B['el' + k], hand: B['hand' + k], thumb1: B['thumb1' + k], thumb2: B['thumb2' + k], idx1: B['idx1' + k], idx2: B['idx2' + k], fin1: B['fin1' + k], fin2: B['fin2' + k], hold, side: s, item: null }; };
+  VM.arms = { root, B, list: I.list, mesh: I.mesh, L: arm('L'), R: arm('R') };
+  VM.root.add(root); VM.armsKey = key;
+  return VM.arms;
+}
+// 1인칭 손에 든 물건
+function vmHeld(Ar, id) {
+  if (Ar.itemId === id) return; Ar.itemId = id;
+  while (Ar.hold.children.length) Ar.hold.remove(Ar.hold.children[0]);
+  if (!id) return;
+  const o = heldModel(id), P = HOLD_POSE[id] || [0, 0, 0, 0, 0, 0, 1];
+  o.position.set(-Ar.side * P[0], P[1], P[2]); o.rotation.set(P[3], P[4], P[5]); o.scale.setScalar(P[6] / VM_SC);
+  o.traverse((m) => { if (m.isMesh) m.castShadow = false; }); Ar.hold.add(o);
+}
+// 팔 하나를 카메라 공간 목표로: wpos = 손바닥 가운데, q = 손 방향(카메라 공간), pole = 팔꿈치 방향 점
+function vmReach(Ar, wpos, q, pole, fing, slide) {
+  _vt.copy(Ar.side > 0 ? PALM.L : PALM.R).multiplyScalar(VM_SC).applyQuaternion(q);
+  _vp.copy(wpos).sub(_vt);
+  Ar.clav.updateMatrixWorld(true);
+  // 닿지 않으면(긴 총) 총열을 따라 몸 쪽으로 당김
+  if (slide) { _vs.setFromMatrixPosition(Ar.sh.matrixWorld); const reach = (Body.LEN.upper + Body.LEN.fore) * VM_SC * 0.98; for (let it = 0; it < 3; it++) { const d = _vp.distanceTo(_vs); if (d <= reach) break; _vp.addScaledVector(slide, d - reach + 0.005); } }
+  armIK(Ar, _vp, pole, q, 1, null, VM_SC);
+  setFingers(Ar, fing);
+}
+function vmResetArms(R) {
+  for (const b of R.list) b.quaternion.set(0, 0, 0, 1);
+  for (const Ar of [R.L, R.R]) { const T = Body.REST['thumb1' + (Ar.side > 0 ? 'L' : 'R')]; Ar.thumb1.rotation.set(T[0], T[1], T[2]); }
+  R.root.updateMatrixWorld(true);
 }
 // 1인칭 회복·투척: 손 위치(x 오른쪽, y 위, d 앞쪽 거리)와 아이템
-function vmHeldItem(grp, id) {
-  if (grp.userData.id === id) return; grp.userData.id = id;
-  while (grp.children.length) grp.remove(grp.children[0]);
-  if (!id) return;
-  const o = heldModel(id); o.traverse((m) => { if (m.isMesh) m.castShadow = false; });
-  const P = { bandage: [0, 0.02, 0.03, 0, 0, 0], firstaid: [0.03, 0.03, 0.05, 1.3, 0.2, 0], medkit: [0.05, 0.03, 0.07, 1.3, 0.2, 0], drink: [0, 0.01, 0.03, 0.15, 0, 0], frag: [0, 0.01, 0.035, 0, 0, 0], smoke: [0, 0.01, 0.035, 0, 0, 0] }[id] || [0, 0, 0, 0, 0, 0];
-  o.position.set(P[0], P[1], P[2]); o.rotation.set(P[3], P[4], P[5]); grp.add(o);
-}
 function updateHoldVM(dt, p) {
-  setSleeves(OUTFITS[SETTINGS.outfit].shirt);
   const T = G.time, k = clamp(dt * 14, 0, 1), tm = p.throwMode;
   let L = [-0.13, -0.2, 0.4], R = [0.15, -0.17, 0.4], itL = null, itR = null;
   if (p.heal) {
@@ -116,17 +135,16 @@ function updateHoldVM(dt, p) {
     else if (thr > 0) { R = [lerp(0.2, 0.08, thr), lerp(-0.02, -0.22, thr), lerp(0.24, 0.75, thr)]; L = [-0.12, -0.17, 0.45]; }
     else { R = [0.13, -0.12, 0.38]; L = [-0.03, -0.14, 0.4]; }
   }
-  const mv = (h, P) => { h.position.x = lerp(h.position.x, -P[0], k); h.position.y = lerp(h.position.y, P[1], k); h.position.z = lerp(h.position.z, P[2], k); };
-  mv(VM.hhL, L); mv(VM.hhR, R); VM.hhL.rotation.set(0.2, 0, 0.6); VM.hhR.rotation.set(0.3, 0, -0.5);
-  vmHeldItem(VM.hItemL, itL); vmHeldItem(VM.hItemR, itR);
-  VM.root.updateMatrixWorld(true);
-  vmSleeve(VM.armL, VM.hhL, -0.24, -0.42, -0.02); vmSleeve(VM.armR, VM.hhR, 0.26, -0.4, 0.02);
+  // 부드럽게 따라가는 손 위치 (카메라 공간: x 오른쪽, y 위, -z 앞)
+  const S = VM.holdS || (VM.holdS = { L: new THREE.Vector3(-0.13, -0.2, -0.4), R: new THREE.Vector3(0.15, -0.17, -0.4) });
+  S.L.x = lerp(S.L.x, L[0], k); S.L.y = lerp(S.L.y, L[1], k); S.L.z = lerp(S.L.z, -L[2], k);
+  S.R.x = lerp(S.R.x, R[0], k); S.R.y = lerp(S.R.y, R[1], k); S.R.z = lerp(S.R.z, -R[2], k);
+  const A = vmArms(); A.root.visible = true; vmResetArms(A);
+  const drinkUp = itR === 'drink' && S.R.z > -0.3;
+  handQuat(_vq, _vs.set(0.35, drinkUp ? 0.2 : 0.45, -0.85), _vt.set(-0.9, 0.2, 0.2), -1); vmReach(A.R, S.R, _vq, _vpole.set(0.55, -0.7, 0.1), FING.hold);
+  handQuat(_vh, _vs.set(-0.3, 0.4, -0.85), _vt.set(itL ? 0.2 : 0.9, itL ? 0.9 : 0.2, 0.2), 1); vmReach(A.L, S.L, _vh, _vpole.set(-0.55, -0.7, 0.1), itL ? FING.hold : FING.relax);
+  vmHeld(A.L, itL); vmHeld(A.R, itR);
   if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
-}
-function setSleeves(hex) {
-  if (VM.sleeveHex === hex) return;
-  if (VM.armL) { VM.root.remove(VM.armL); VM.root.remove(VM.armR); }
-  VM.armL = Models.sleeve(hex); VM.armR = Models.sleeve(hex); VM.root.add(VM.armL); VM.root.add(VM.armR); VM.sleeveHex = hex;
 }
 function sightInfo(p) {
   const w = p.weapon; if (!w) return { key: 'iron', zoom: 1.05, mag: false, aimT: 0.18, reticle: null };
@@ -211,7 +229,6 @@ function updateCamera(dt) {
   VM.active = holding ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
   VM.root.visible = VM.active;
   if (VM.pivot) VM.pivot.visible = !holding;
-  if (VM.hold) VM.hold.visible = !!(holding && VM.active);
   if (VM.active) { if (holding) updateHoldVM(dt, p); else updateViewModel(dt, p, adsE); }
 }
 function updateViewModel(dt, p, adsE) {
@@ -222,7 +239,6 @@ function updateViewModel(dt, p, adsE) {
     VM.gun = buildGunMesh(w.id, w.att); VM.gun.traverse((o) => { if (o.isMesh) o.castShadow = false; });
     VM.tilt.add(VM.gun); VM.key = key;
   }
-  setSleeves(OUTFITS[SETTINGS.outfit].shirt);
   const m = VM.gun.userData.meta, A = weaponAnim(p, m);
   applyParts(VM.gun, A);
   // 허리 위치 ↔ 조준 위치 (조준선이 화면 중앙을 지나도록)
@@ -237,14 +253,18 @@ function updateViewModel(dt, p, adsE) {
   VM.pivot.position.x = lerp(VM.pivot.position.x, tx, k); VM.pivot.position.y = lerp(VM.pivot.position.y, ty, k); VM.pivot.position.z = lerp(VM.pivot.position.z, tz, k);
   VM.pivot.rotation.set(0, Math.PI + sprintK * 0.5, sprintK * -0.25);
   VM.tilt.rotation.set(-(A.tiltX + Cam.kickRot * (1 - adsE * 0.6)) - eq * 0.6, 0, A.tiltZ);
-  // 손: 총 좌표계에서 애니메이션된 위치
-  VM.handL.position.copy(A.left); VM.handL.rotation.set(0, 0, 0.55);
-  VM.handR.position.copy(A.right); VM.handR.rotation.set(0.35, 0, -0.2);
   VM.shellL.visible = A.shellL; if (A.shellL) { VM.shellL.position.copy(A.left).add(_hw.set(-0.01, 0.025, 0.02)); VM.shellL.rotation.set(0, 0, 0); }
   VM.roundR.visible = A.shellR; if (A.shellR) { VM.roundR.position.copy(A.right).add(_hw.set(0.01, 0.025, 0.03)); }
-  // 소매: 화면 밖 팔꿈치에서 손목까지
+  // 손: 총의 anchor(손바닥 가운데)로 팔 IK
   VM.root.updateMatrixWorld(true);
-  vmSleeve(VM.armL, VM.handL, -0.24, -0.42, -0.02); vmSleeve(VM.armR, VM.handR, 0.26, -0.4, 0.02);
+  const R = vmArms(); R.root.visible = true; vmResetArms(R); vmHeld(R.L, null); vmHeld(R.R, null);
+  VM.tilt.matrixWorld.decompose(_vs, _vq, _vt);
+  for (const [Ar, anc, info] of [[R.R, A.right, A.ri], [R.L, A.left, A.li]]) {
+    gripQuat(_vh, info, Ar.side, _vq);
+    anchorAdj(info, _hw.copy(anc)).applyMatrix4(VM.tilt.matrixWorld);
+    const sl = Ar.side > 0 && info.a === 'fore' && info.b === 'fore' ? _cf.set(0, 0, -1).applyQuaternion(_vq) : null;
+    vmReach(Ar, _hw, _vh, _ew.set(Ar.side > 0 ? -0.5 : 0.45, -0.75, 0.05), gripFing(info), sl);
+  }
   // 조명: 태양 방향을 카메라 공간으로
   if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
 }

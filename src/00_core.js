@@ -89,11 +89,12 @@ const DEFAULT_SETTINGS = {
   sfx: 0.8, music: 0.35,
   view: 'tpp', difficulty: 'normal', bots: 24,
   btnScale: 1.0, hudOpacity: 0.95, hudScale: 1.0,
-  mode: 'classic', map: 'kalden', time: 'day', outfit: 0,
+  mode: 'classic', map: 'kalden', time: 'day', look: null, body: null,
   sens_iron: 1, sens_reddot: 1, sens_holo: 1, sens_x2: 1, sens_x3: 1, sens_x4: 1, sens_x6: 1,
   touchLayout: {}, stickFixed: false, queue: 'normal', squad: 'solo', game: 'br',
 };
 let SETTINGS = Object.assign({}, DEFAULT_SETTINGS, store.get('settings', {}));
+delete SETTINGS.outfit;   // v14: 옛 복장 번호는 창고 장착 정보(look)로 대체
 // 로그인 상태면 저장할 때마다 서버 동기화 예약 (10_cloud.js가 연결)
 let onDataSaved = null;
 const dataSaved = (what) => { if (onDataSaved) try { onDataSaved(what); } catch (e) { console.warn(e); } };
@@ -158,9 +159,5 @@ const REVIVE_HP = 15;                // 부활 직후 체력
 const BLEED_T = [40, 25, 15];        // 기절 후 출혈로 쓰러질 때까지(초): 첫 기절 / 두 번째 / 세 번째부터
 const CRAWL_SPEED = 0.95;
 const DIFFICULTY_NAMES ={ easy: '쉬움', normal: '보통', hard: '어려움', mixed: '혼합' };
-const OUTFITS = [
-  { name: '산림 위장', shirt: 0x55603f, pants: 0x3b4231, skin: 0xd8b08c, boots: 0x2a2620, accent: 0x7a6a45 },
-  { name: '사막 작전', shirt: 0xb59a6a, pants: 0x8a7552, skin: 0xc99a74, boots: 0x4a3a2a, accent: 0x6d5a3a },
-  { name: '야간 침투', shirt: 0x2d3440, pants: 0x22262e, skin: 0xe0bc9a, boots: 0x15171b, accent: 0x4a5566 },
-  { name: '도시 회색', shirt: 0x7d8288, pants: 0x4b4f55, skin: 0xb98a66, boots: 0x222222, accent: 0xa34a3a },
-];
+// 내 외형: 장착 스킨(SETTINGS.look) + 몸(SETTINGS.body) — 파티·같이 하기에서 이 묶음을 주고받는다
+const myLook = () => ({ eq: SETTINGS.look || null, body: SETTINGS.body || null });

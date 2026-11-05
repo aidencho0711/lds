@@ -495,37 +495,7 @@ const Veh = (() => {
     }
   }
   // 탑승 자세 (animateChar 대신)
-  function animateRider(c, dt) {
-    const v = c.veh, r = c.rig, a = c.anim, T = v.T, pose = T.pose;
-    r.root.rotation.order = 'YXZ'; r.root.position.copy(c.pos); r.root.rotation.set(-v.pitch, v.yaw, v.roll + v.lean);
-    r.body.rotation.set(0, 0, 0); r.body.position.y = 0; r.chute.visible = false; r.gunMount.visible = false;
-    a.speed = 0; a.crouch = 0; a.prone = 0; a.fall = 0; a.chute = 0; a.land = 0;
-    const bob = pose === 'horse' ? Math.sin(v.phase * 2) * 0.03 * clamp(Math.abs(v.f) / 6, 0, 1) : 0;
-    r.hips.position.y = 0.95 + bob;
-    const st = v.steer;
-    for (const [L, s] of [[r.legR, -1], [r.legL, 1]]) {
-      if (pose === 'car') { L.hip.rotation.set(-1.45, 0, s * 0.06); L.knee.rotation.x = 1.4; }
-      else if (pose === 'moto') { L.hip.rotation.set(-1.05, 0, s * 0.28); L.knee.rotation.x = 1.35; }
-      else { L.hip.rotation.set(-0.5, 0, s * 0.52); L.knee.rotation.x = 0.95; }
-    }
-    r.spine.rotation.set(pose === 'moto' ? 0.42 : pose === 'horse' ? 0.15 + bob * 2 : -0.06, 0, 0);
-    for (const [A, s] of [[r.armR, -1], [r.armL, 1]]) {
-      if (pose === 'car') { A.sh.rotation.set(-1.0 + s * st * 0.12, 0, s * 0.12); A.el.rotation.x = -0.6; }
-      else if (pose === 'moto') { A.sh.rotation.set(-1.15 + s * st * 0.15, 0, s * 0.32); A.el.rotation.x = -0.35; }
-      else { A.sh.rotation.set(-0.7, 0, s * 0.12); A.el.rotation.x = -0.95 + bob * 3; }
-    }
-    const look = c.isPlayer ? clamp(angleDiff(v.yaw, c.yaw), -1.1, 1.1) : 0;
-    r.neck.rotation.set(-0.05, look, 0);
-    a.flinch = Math.max(0, a.flinch - dt * 5); r.spine.rotation.z = a.flinch * 0.25 * a.flinchDir;
-    // 동승자: 상체를 조준 방향으로 돌리고 총을 든다 (오토바이 뒷자리는 한 손 잡기 대신 같은 자세)
-    if (c.seat > 0 && c.weapon && c.equipT <= 0) {
-      const tw = clamp(angleDiff(v.yaw, c.yaw), -2.7, 2.7), pitch = c.pitch || 0;
-      r.spine.rotation.set(-pitch * 0.4 + (pose === 'moto' ? 0.15 : 0), tw * 0.75, 0); r.neck.rotation.set(-pitch * 0.35, tw * 0.25, 0);
-      r.armR.sh.rotation.set(-1.15 - pitch * 0.15, 0, 0.12); r.armR.el.rotation.x = -1.0;
-      r.armL.sh.rotation.set(-1.45 - pitch * 0.15, 0, -0.4); r.armL.el.rotation.x = -0.5;
-      r.gunMount.visible = true; r.gunMount.rotation.set(-pitch * 0.15, 0, 0); r.gunMount.position.set(-0.17, 0.43, 0.24);
-    }
-  }
+  function animateRider(c, dt) { poseRider(c, c.veh, dt); }
 
   // ---------- 매 프레임 ----------
   function syncMesh(v) {
