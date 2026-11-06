@@ -128,6 +128,7 @@ function fireWeapon(c, origin, dir) {
   const spread = weaponSpread(c) * DEG;
   const pellets = d.pellets || 1;
   const g = gunObj(c), meta = g && g.userData.meta;
+  const skFx = g && g.userData.skin && g.userData.skin.d.fx;   // 울트라레어 총기 스킨이면 맞힘·처치 효과
   const muzzle = meta ? gunWorldPoint(c, 0, meta.boreY, meta.muzzleZ + 0.01, _mz) : null;
   const tStart = muzzle && muzzle.distanceTo(origin) < 3 ? muzzle : origin;
   // 직교 기저
@@ -153,6 +154,7 @@ function fireWeapon(c, origin, dir) {
     if (p === 0) { _shotEnd[0] = ex; _shotEnd[1] = ey; _shotEnd[2] = ez; _shotEnd[3] = h.type || 0; }
     const fall = h.t > d.range ? clamp(1 - (h.t - d.range) / (d.range * 1.4), 0.35, 1) : 1;
     if (h.type === 'char') {
+      if (skFx && h.char.alive && !sameTeam(c, h.char) && !(G.dm && h.char.spawnProt > G.time)) SkinFx.hit(h.char, ex, ey, ez, dx, dy, dz, skFx, c);
       applyDamage(h.char, d.dmg * fall, h.part, c, wi.id, ex, ey, ez); G.stats.hits++;
       FX.impact(ex, ey, ez, 'blood');
     } else if (h.type === 'veh') {
@@ -731,6 +733,7 @@ function killChar(t, attacker, cause) {
   t.setVisibleGear();
   HUD.killfeed(attacker && attacker !== t ? attacker.name : null, t.name, causeName(cause), attacker && attacker.isPlayer, t.isPlayer, cause === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t));
   Audio.death(t.pos);
+  SkinFx.kill(t, attacker, cause);   // 울트라레어 스킨 총으로 처치하면 그 자리에 큰 효과
   // 팀: 서 있는 팀원이 없으면 기절한 팀원도 모두 탈락 (기절시킨 적에게 처치 인정)
   if (G.teams && G.teamSize > 1 && !teamHasStanding(t.team)) for (const m of G.teams[t.team].members) if (m.alive && m.knocked) killChar(m, m.knockedBy, 'wipe');
   if (G.teams) { const T = G.teams[t.team]; if (T && !T.place && !teamAlive(T)) T.place = aliveTeamCount() + 1; }
@@ -818,6 +821,7 @@ const FX = (() => {
   }
   function init(sc) {
     scene = sc; tracers = []; dots = []; flashes = [];
+    SkinFx.init(sc);
     dotTex = dotTex || tex(0.35); smokeTex = smokeTex || tex(0.6, 128);
     for (let i = 0; i < 40; i++) {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 1], 3));

@@ -355,26 +355,29 @@ float gsHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) *
   }
 
   // ---------- 입자: 장면마다 점 구름 하나(그리기 1번) — 동그란 빛 / 네모 파편 ----------
-  const PV = `attribute float size; attribute float alpha; attribute float shape; attribute vec3 pcol;
-uniform float uVH; varying vec3 vC; varying float vA; varying float vS;
-void main() { vC = pcol; vA = alpha; vS = shape; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
+  //  solid(0~1): 0 = 더하기(빛), 1 = 덮어 그리기(밝은 하늘·땅 위에서도 색이 하얗게 날아가지 않음). 미리 곱한 알파 혼합 하나로 둘 다
+  const PV = `attribute float size; attribute float alpha; attribute float shape; attribute float solid; attribute vec3 pcol;
+uniform float uVH; varying vec3 vC; varying float vA; varying float vS; varying float vO;
+void main() { vC = pcol; vA = alpha; vS = shape; vO = solid; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
   gl_PointSize = alpha > 0.0 ? clamp(size * projectionMatrix[1][1] * uVH * 0.5 / max(0.02, -mv.z), 1.0, 256.0) : 0.0; }`;
-  const PF = `varying vec3 vC; varying float vA; varying float vS;
+  const PF = `varying vec3 vC; varying float vA; varying float vS; varying float vO;
 void main() { vec2 q = gl_PointCoord - 0.5; float a;
   if (vS > 0.5) { vec2 r = abs(q); a = step(max(r.x, r.y), 0.36); } else { float d = clamp(1.0 - length(q) * 2.0, 0.0, 1.0); a = d * d * (0.6 + 0.4 * d); }
-  if (a * vA < 0.004) discard; gl_FragColor = vec4(vC * vA * a, 1.0); }`;
-  const POOLS = new Map(), N_POOL = 128, _vs = new THREE.Vector2(), _col = new THREE.Color();
+  if (a * vA < 0.004) discard; float k = vA * a; gl_FragColor = vec4(vC * k, k * vO); }`;
+  const POOLS = new Map(), _vs = new THREE.Vector2(), _col = new THREE.Color();
   function pool(sc) {
     let P = POOLS.get(sc);
     if (!P) {
+      const N_POOL = isVM(sc) ? 128 : 768;   // 월드 장면은 맞힘·처치 효과(05_models_gskinfx.js)도 같이 씀
       const geo = new THREE.BufferGeometry(), A = (n) => new THREE.BufferAttribute(new Float32Array(N_POOL * n), n).setUsage(THREE.DynamicDrawUsage);
-      geo.setAttribute('position', A(3)); geo.setAttribute('pcol', A(3)); geo.setAttribute('size', A(1)); geo.setAttribute('alpha', A(1)); geo.setAttribute('shape', A(1));
-      const mat = new THREE.ShaderMaterial({ uniforms: { uVH: { value: 720 } }, vertexShader: PV, fragmentShader: PF, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+      geo.setAttribute('position', A(3)); geo.setAttribute('pcol', A(3)); geo.setAttribute('size', A(1)); geo.setAttribute('alpha', A(1)); geo.setAttribute('shape', A(1)); geo.setAttribute('solid', A(1));
+      const mat = new THREE.ShaderMaterial({ uniforms: { uVH: { value: 720 } }, vertexShader: PV, fragmentShader: PF, transparent: true, depthWrite: false,
+        blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor });
       const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; pts.renderOrder = 5;
       pts.onBeforeRender = (r) => { r.getDrawingBufferSize(_vs); mat.uniforms.uVH.value = _vs.y; };
       sc.add(pts);
-      P = { sc, pts, geo, list: [], i: 0, used: 0 };
-      for (let i = 0; i < N_POOL; i++) P.list.push({ p: new THREE.Vector3(), v: new THREE.Vector3(), c: [1, 1, 1], life: 0, max: 1, g: 0, drag: 0, size: 0, grow: 0, a: 1, sq: 0 });
+      P = { sc, pts, geo, list: [], i: 0, used: 0, warm: 0 };
+      for (let i = 0; i < N_POOL; i++) P.list.push({ p: new THREE.Vector3(), v: new THREE.Vector3(), c: [1, 1, 1], life: 0, max: 1, g: 0, drag: 0, size: 0, grow: 0, a: 1, sq: 0, so: 0 });
       POOLS.set(sc, P);
     }
     P.used = CLOCK; return P;
@@ -382,12 +385,12 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
   function emit(P, pos, vx, vy, vz, col, size, life, o = {}) {
     const q = P.list[P.i++ % P.list.length];
     q.p.copy(pos); q.v.set(vx, vy, vz); _col.setHex(col); q.c[0] = _col.r; q.c[1] = _col.g; q.c[2] = _col.b;
-    q.life = q.max = life; q.g = o.g || 0; q.drag = o.drag || 0; q.size = size; q.grow = o.grow || 0; q.a = o.a || 1; q.sq = o.sq ? 1 : 0;
+    q.life = q.max = life; q.g = o.g || 0; q.drag = o.drag || 0; q.size = size; q.grow = o.grow || 0; q.a = o.a || 1; q.sq = o.sq ? 1 : 0; q.so = o.so || 0;
   }
   function updateParticles(dt) {
     for (const [sc, P] of POOLS) {
       let alive = 0;
-      const at = P.geo.attributes, pos = at.position.array, col = at.pcol.array, sz = at.size.array, al = at.alpha.array, sh = at.shape.array;
+      const at = P.geo.attributes, pos = at.position.array, col = at.pcol.array, sz = at.size.array, al = at.alpha.array, sh = at.shape.array, so = at.solid.array;
       for (let i = 0; i < P.list.length; i++) {
         const q = P.list[i];
         if (q.life > 0) {
@@ -397,15 +400,15 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
             q.v.y += q.g * dt; if (q.drag) q.v.multiplyScalar(Math.max(0, 1 - q.drag * dt));
             q.p.addScaledVector(q.v, dt);
             pos[i * 3] = q.p.x; pos[i * 3 + 1] = q.p.y; pos[i * 3 + 2] = q.p.z; col[i * 3] = q.c[0]; col[i * 3 + 1] = q.c[1]; col[i * 3 + 2] = q.c[2];
-            sz[i] = q.size * (1 + q.grow * (1 - k)); al[i] = q.a * Math.pow(k, 0.7); sh[i] = q.sq; continue;
+            sz[i] = q.size * (1 + q.grow * (1 - k)); al[i] = q.a * Math.pow(k, 0.7); sh[i] = q.sq; so[i] = q.so; continue;
           }
         }
         al[i] = 0;
       }
-      if (alive || P.was) for (const k of ['position', 'pcol', 'size', 'alpha', 'shape']) at[k].needsUpdate = true;
-      P.was = alive > 0; P.pts.visible = alive > 0;
+      if (alive || P.was) for (const k of ['position', 'pcol', 'size', 'alpha', 'shape', 'solid']) at[k].needsUpdate = true;
+      P.was = alive > 0; P.pts.visible = alive > 0 || P.warm > 0; if (P.warm > 0) P.warm--;
       // 쓰지 않는 장면(끝난 경기 등)의 입자는 정리
-      if (!alive && CLOCK - P.used > 6) { sc.remove(P.pts); P.geo.dispose(); P.pts.material.dispose(); POOLS.delete(sc); }
+      if (!alive && CLOCK - P.used > 6 && sc !== G.scene && !isVM(sc)) { sc.remove(P.pts); P.geo.dispose(); P.pts.material.dispose(); POOLS.delete(sc); }
     }
   }
   const sceneOf = (o) => { while (o.parent) o = o.parent; return o.isScene ? o : null; };
@@ -492,11 +495,12 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       }
       if (!I.sweep && I.flash <= 0) ACTIVE.delete(I);
     }
+    SkinFx.update(dt);   // 맞힘·처치 효과 (입자를 내보낸 뒤 같은 프레임에 갱신)
     updateParticles(dt);
   }
   // ---------- 이름 ----------
   const short = (gun) => (ITEMS[gun] ? ITEMS[gun].name.replace(/(\s[가-힣]+)+$/, '') : gun);
   const name = (id) => { const d = GSKINS[id]; return d ? `${short(d.gun)} · ${d.name}` : ''; };
   const tracerCol = (g) => { const I = g && g.userData.skin; return I && I.d.fx ? I.d.fx.tr : 0; };
-  return { apply, shot, draw, holster, update, name, short, tracerCol, texOf, get time() { return TIME.value; }, _active: ACTIVE, _pools: POOLS };
+  return { apply, shot, draw, holster, update, name, short, tracerCol, texOf, fx: { pool, emit }, get time() { return TIME.value; }, _active: ACTIVE, _pools: POOLS };
 })();

@@ -149,6 +149,7 @@ const Training = (() => {
       D.last = { shots: D.shots, time: now - D.firstT, dmg: Math.round(D.burst), cause };
       const w = cause && ITEMS[cause] ? ITEMS[cause].name : causeName(cause);
       if (attacker && attacker.isPlayer) HUD.toast(`${D.label} 처치 — ${D.shots}발 · ${(now - D.firstT).toFixed(2)}초${w ? ' · ' + w : ''}`, 'ok');
+      SkinFx.kill(t, attacker, cause);
     }
     return d;
   }

@@ -529,10 +529,10 @@ const Audio = (() => {
       else if (ph === 'show') { [784, 988, 1175].forEach((f, i) => tone(sfxBus, t + i * 0.09, 0.45, 'triangle', f, f, 0.09)); }
       else if (ph === 'small') { [880, 1318].forEach((f, i) => tone(sfxBus, t + i * 0.08, 0.25, 'triangle', f, f, 0.1)); }
     },
-    // 총기 스킨(울트라레어) 효과음: draw(빛 띠가 올라가며 나타남) · holster(내려가며 사라짐) · shot(종류별로 총성에 얹는 소리)
+    // 총기 스킨(울트라레어) 효과음: draw(빛 띠가 올라가며 나타남) · holster(내려가며 사라짐) · shot(종류별로 총성에 얹는 소리) · hit(맞힘) · kill(처치)
     skinFx(ph, kind, pos, own) {
       if (!ctx) return;
-      const out = own ? sfxBus : spatial(pos, 0.9, 60); if (!out) return;
+      const out = own ? sfxBus : spatial(pos, ph === 'kill' ? 1.1 : 0.9, ph === 'kill' ? 140 : 60); if (!out) return;
       const t = ctx.currentTime;
       if (ph === 'draw' || ph === 'holster') {
         if (!throttle('skin' + ph, 0.12) || !voice(0.5)) return;
@@ -542,6 +542,34 @@ const Audio = (() => {
         if (kind === 'ember' || kind === 'flame') noise(out, t, 0.45, 'lowpass', 380, 0.7, 0.16);
         else if (kind === 'spark') { tone(out, t + 0.05, 0.06, 'square', 2400, 900, 0.035); tone(out, t + 0.16, 0.05, 'square', 3100, 1200, 0.03); }
         else if (kind === 'glitch') for (let i = 0; i < 4; i++) tone(out, t + i * 0.07, 0.035, 'square', 300 + Math.random() * 1500, 200 + Math.random() * 900, 0.035);
+        return;
+      }
+      // 맞힘: 총성에 묻히지 않게 짧고 높은 소리 (지글 · 화르륵 · 지직 · 삑)
+      if (ph === 'hit') {
+        if (!throttle('skinhit', 0.06) || !voice(0.2)) return;
+        if (kind === 'ember') { noise(out, t, 0.14, 'highpass', 3200, 0.7, 0.07); noise(out, t, 0.09, 'lowpass', 700, 0.7, 0.06); }
+        else if (kind === 'flame') noise(out, t, 0.18, 'bandpass', 900, 0.9, 0.1);
+        else if (kind === 'spark') { tone(out, t, 0.05, 'square', 2600 + Math.random() * 900, 650, 0.035); noise(out, t, 0.05, 'highpass', 6000, 0.9, 0.06); }
+        else if (kind === 'glitch') { tone(out, t, 0.03, 'square', 1200 + Math.random() * 1400, 300, 0.035); tone(out, t + 0.035, 0.025, 'square', 2400 + Math.random() * 800, 900, 0.025); }
+        return;
+      }
+      // 처치: 크게 (용암 분출 · 불꽃 용의 포효 · 낙뢰 · 데이터 붕괴)
+      if (ph === 'kill') {
+        if (!throttle('skinkill', 0.15) || !voice(1.4)) return;
+        if (kind === 'ember') {
+          tone(out, t, 0.7, 'sine', 90, 34, 0.38); noise(out, t, 0.9, 'lowpass', 300, 0.8, 0.32);
+          noise(out, t + 0.05, 1.1, 'highpass', 3600, 0.7, 0.07); for (let i = 0; i < 5; i++) noise(out, t + 0.25 + i * 0.13, 0.08, 'bandpass', 1400 + Math.random() * 1600, 2, 0.06);
+        } else if (kind === 'flame') {
+          tone(out, t, 0.9, 'sawtooth', 110, 52, 0.07); noise(out, t, 1.1, 'bandpass', 520, 0.7, 0.3); noise(out, t + 0.15, 0.8, 'lowpass', 1600, 0.6, 0.15);
+          tone(out, t + 0.85, 0.45, 'sine', 140, 48, 0.24); noise(out, t + 0.85, 0.45, 'lowpass', 600, 0.8, 0.25);
+        } else if (kind === 'spark') {
+          noise(out, t, 0.12, 'highpass', 1800, 0.6, 0.4); tone(out, t, 0.14, 'square', 3400, 300, 0.06);
+          noise(out, t + 0.06, 1.6, 'lowpass', 160, 0.7, 0.4); tone(out, t + 0.04, 1.0, 'sine', 70, 30, 0.28);
+          for (let i = 0; i < 6; i++) tone(out, t + 0.18 + i * 0.09, 0.04, 'square', 2200 + Math.random() * 1600, 700, 0.03);
+        } else if (kind === 'glitch') {
+          noise(out, t, 0.25, 'bandpass', 2400, 1.5, 0.22); tone(out, t, 0.5, 'sine', 120, 40, 0.24);
+          [1760, 1320, 1046, 784, 587, 440, 330].forEach((f, i) => tone(out, t + 0.05 + i * 0.055, 0.05, 'square', f * (0.97 + Math.random() * 0.06), f * 0.9, 0.04));
+        }
         return;
       }
       if (!throttle('skinshot', 0.05) || !voice(0.2)) return;

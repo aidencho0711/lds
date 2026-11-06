@@ -30,6 +30,14 @@ const HUD = (() => {
   let hmT = 0;
   function hitmarker(head, kill) { const e = $('hitmark'); e.className = kill ? 'kill' : head ? 'head' : ''; e.style.opacity = 1; hmT = kill ? 0.45 : 0.18; }
   // kind: '' 처치 / 'knock' 기절 / 'wipe' 팀 전멸로 탈락. mate: 피해자가 내 팀원
+  // 울트라레어 총기 스킨으로 처치했을 때 조준점 아래 휘장 (fx: 스킨 효과 색·종류, name: 'M416 · 마그마 코어')
+  function skinKill(fx, name) {
+    const e = $('skinKill'); if (!e || !fx) return;
+    const hex = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
+    e.style.setProperty('--sk1', hex(fx.c)); e.style.setProperty('--sk2', hex(fx.c2));
+    e.className = 'k-' + fx.kind; e.innerHTML = ''; e.appendChild(h('b', '', '처치')); e.appendChild(h('small', '', name || ''));
+    void e.offsetWidth; e.classList.add('on');
+  }
   function killfeed(killer, victim, weapon, byPlayer, playerDied, kind, mate) {
     const box = $('killfeed'), e = h('div', 'kf' + (byPlayer ? ' mine' : '') + (playerDied || mate ? ' dead' : '') + (kind === 'knock' ? ' knock' : ''));
     if (killer) { e.append(killer); e.appendChild(h('em', '', (weapon || '▸') + (kind === 'knock' ? ' · 기절' : kind === 'wipe' ? '' : ''))); e.append(victim); }
@@ -1087,5 +1095,5 @@ const HUD = (() => {
       }
     }
   }
-  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
+  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();

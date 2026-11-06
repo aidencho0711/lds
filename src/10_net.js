@@ -392,6 +392,7 @@ const Net = (() => {
     if (G.killLog) G.killLog.push({ t: Math.round(G.time), cause: e.c, kn: wasKnocked, by: by ? (by.isPlayer ? 'player' : 'bot') : 'env' });
     if (!e.lost) HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, false, e.c === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t));
     Audio.death(t.pos);
+    if (!e.lost) SkinFx.kill(t, by, e.c);
     if (G.teams) { const T = G.teams[t.team]; if (T && !T.place && !teamAlive(T)) T.place = aliveTeamCount() + 1; }
     G.onDeath(t, by);
   }
@@ -423,6 +424,7 @@ const Net = (() => {
     const start = muzzle && muzzle.distanceTo(_o) < 3 ? muzzle : _o;
     FX.tracer(c, start, e.e[0], e.e[1], e.e[2], GunSkin.tracerCol(g));
     if (e.i) FX.impact(e.e[0], e.e[1], e.e[2], e.i === 'char' ? 'blood' : e.i === 'terrain' ? 'dirt' : 'spark');
+    if (e.i === 'char' && g && g.userData.skin && g.userData.skin.d.fx) SkinFx.hit(null, e.e[0], e.e[1], e.e[2], _dv.x, _dv.y, _dv.z, g.userData.skin.d.fx, c);
     FX.flash(c, g, meta, start, _dv, d);
     if (g && g.userData.skin) GunSkin.shot(g, c);
     Audio.gunshot(_o, e.w, false, isIndoor(c.pos.x, c.pos.z, c.pos.y));

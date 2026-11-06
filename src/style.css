@@ -222,6 +222,20 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 #hitmark { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; opacity: 0; background: linear-gradient(45deg, transparent 46%, #fff 46%, #fff 54%, transparent 54%), linear-gradient(-45deg, transparent 46%, #fff 46%, #fff 54%, transparent 54%); -webkit-mask: radial-gradient(circle, transparent 5px, #000 6px); mask: radial-gradient(circle, transparent 5px, #000 6px); }
 #hitmark.head { background: linear-gradient(45deg, transparent 46%, var(--amber) 46%, var(--amber) 54%, transparent 54%), linear-gradient(-45deg, transparent 46%, var(--amber) 46%, var(--amber) 54%, transparent 54%); }
 #hitmark.kill { background: linear-gradient(45deg, transparent 44%, var(--red) 44%, var(--red) 56%, transparent 56%), linear-gradient(-45deg, transparent 44%, var(--red) 44%, var(--red) 56%, transparent 56%); }
+/* 울트라레어 총기 스킨으로 처치: 조준점 아래에 스킨 색 휘장 (원 고리가 퍼지고 '처치' + 스킨 이름). 위쪽은 알림(토스트) 자리라 피함 */
+#skinKill { position: absolute; left: 50%; top: 60%; width: 112px; height: 112px; margin-left: -56px; display: grid; place-items: center; align-content: center; gap: 2px; pointer-events: none; opacity: 0; --sk1: #ff5a1e; --sk2: #ffc04a; }
+#skinKill::before { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--sk2) 55%, transparent) 0%, color-mix(in srgb, var(--sk1) 35%, transparent) 34%, transparent 66%); }
+#skinKill::after { content: ''; position: absolute; inset: 18px; border-radius: 50%; border: 3px solid var(--sk1); box-shadow: 0 0 16px var(--sk1), inset 0 0 12px var(--sk1); }
+#skinKill.k-glitch::after { border-radius: 6px; box-shadow: 4px 0 0 rgba(255,36,54,0.8), -4px 0 0 rgba(63,240,255,0.8), 0 0 14px var(--sk1); }
+#skinKill.k-spark::after { border-style: dashed; }
+#skinKill b { position: relative; font: 800 1.3rem/1 var(--f-display); letter-spacing: 0.08em; color: #fff; text-shadow: 0 0 10px var(--sk1), 0 0 3px var(--sk1), 0 1px 2px #000; }
+#skinKill.k-glitch b { text-shadow: 2px 0 0 #ff2436, -2px 0 0 #3ff0ff, 0 1px 2px #000; }
+#skinKill small { position: relative; font-size: 0.66rem; font-weight: 700; color: var(--sk2); text-shadow: 0 1px 2px #000; white-space: nowrap; }
+#skinKill.on { animation: skKill 1.5s ease-out forwards; }
+#skinKill.on::after { animation: skKillRing 1.5s ease-out forwards; }
+@keyframes skKill { 0% { opacity: 0; transform: scale(0.55); } 10% { opacity: 1; transform: scale(1.1); } 20% { transform: scale(1); } 72% { opacity: 1; } 100% { opacity: 0; transform: scale(1.03); } }
+@keyframes skKillRing { 0% { transform: scale(0.5); } 30% { transform: scale(1); } 100% { transform: scale(1.35); opacity: 0; } }
+@media (max-height: 500px) { #skinKill { top: 58%; width: 86px; height: 86px; margin-left: -43px; } #skinKill::after { inset: 13px; } #skinKill b { font-size: 1.05rem; } #skinKill small { font-size: 0.58rem; } }
 #dmgRing { position: absolute; inset: 0; }
 .dmg { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px; border-radius: 50%; border-top: 5px solid rgba(229, 72, 77, 0.9); animation: dmgFade 1.4s forwards; filter: drop-shadow(0 0 4px rgba(229, 72, 77, 0.8)); }
 @keyframes dmgFade { to { opacity: 0; } }

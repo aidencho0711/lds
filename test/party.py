@@ -5,6 +5,7 @@ from playwright.sync_api import sync_playwright
 OUT = sys.argv[1] if len(sys.argv) > 1 else '/tmp'
 MODE = sys.argv[2] if len(sys.argv) > 2 else 'all'      # all | dm | br
 RELAY = 'relay' in sys.argv                             # B 탭의 WebRTC를 꺼서 서버 중계 경로 시험
+SKINFX = 'skinfx' in sys.argv                           # v18: B가 울트라레어 스킨 총으로 처치 → 양쪽 기기에 처치 효과
 SP = '/tmp/claude-0/-home-claude/68f8f37c-dfb0-54ca-8eee-7f216ce8c253/scratchpad/party_srv'
 os.makedirs(SP, exist_ok=True); os.makedirs(OUT, exist_ok=True)
 html = open('/home/claude/lds/dist/index.html', encoding='utf-8').read()
@@ -79,6 +80,7 @@ with sync_playwright() as p:
     jsclick(A, "#segQueue button.ranked"); A.wait_for_timeout(200)
     print('A ranked click', A.evaluate("()=>document.getElementById('lbNote').textContent"))
     def run_dm():
+        if SKINFX: print('B equips ultra', B.evaluate("()=>{ const L=__LD, E=L.Eco.E(); E.gcoin=99999; for (const id of ['g2_akm_plasma','g1_m416_magma']) { L.Eco.exchangeGun(id); L.Eco.equipGun(L.GSKINS[id].gun, id); } return L.Eco.glook(); }"))
         jsclick(A, "#mapCard"); A.wait_for_timeout(200); jsclick(A, "#gameGrid .game-opt:nth-child(2)"); A.wait_for_timeout(200); jsclick(A, "[data-ui=closeMapPick]")
         wait(B, "()=>__LD.Party.state && __LD.Party.state.s.game==='tdm'", 8000)
         B.wait_for_timeout(300)
@@ -100,6 +102,13 @@ with sync_playwright() as p:
         r = B.evaluate("""()=>{const L=__LD,G=L.G,p=G.player; const e=L.CHARS.find(c=>c.team!==p.team&&c.alive); window.__e=e.name; const s0=G.dm.score.slice(); L.fns.applyDamage(e, 600, 'head', p, p.weapon.id); return {target:e.name, s0}}""")
         run(1.5)
         print('B kill', r, 'A sees', A.evaluate("()=>{const L=__LD,e=L.CHARS.find(c=>c.name===window.__e||false); return {score:L.G.dm.score}}"), 'B score', B.evaluate("()=>({score:__LD.G.dm.score, kills:__LD.G.player.kills, feed:document.getElementById('killfeed').textContent.slice(0,80)})"))
+        if SKINFX:
+            r = B.evaluate("""()=>{ const L=__LD,G=L.G,p=G.player; p.inv.weapons[0] = L.fns.newWeapon('akm', 30); p.inv.cur = 0; p.setVisibleGear();
+              const e=L.CHARS.find(c=>c.team!==p.team&&c.alive&&!(c.spawnProt>G.time)); L.fns.applyDamage(e, 600, 'head', p, 'akm'); return { target: e.name, skin: p.skinOf('akm') }; }""")
+            run(0.7)
+            print('skinfx kill', r, 'A sees', A.evaluate("()=>{ const L=__LD, b=L.CHARS.find(c=>c.name==='친구B'); return { live: L.SkinFx._live.length, bSkin: b && b.skinOf('akm') }; }"),
+                  'B sees', B.evaluate("()=>({ live: __LD.SkinFx._live.length, badge: document.getElementById('skinKill').className })"))
+            A.screenshot(path=f'{OUT}/p11b_A_skinfx.png'); B.screenshot(path=f'{OUT}/p11c_B_skinfx.png')
         # 봇이 파티원(B)을 공격 → B가 맞음 (방장 기기가 판정한 피해가 B로)
         r = A.evaluate("""()=>{try{const L=__LD,G=L.G; const bp=L.CHARS.find(c=>c.name==='친구B'); const e=L.CHARS.find(c=>c.team!==bp.team&&c.alive); bp.spawnProt=0; L.fns.applyDamage(bp, 40, 'body', e, 'm416'); return e.name}catch(err){return 'ERR '+err.stack}}""")
         run(1.2)
