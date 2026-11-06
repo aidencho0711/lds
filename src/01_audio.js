@@ -72,8 +72,8 @@ const Audio = (() => {
   }
   // 미리 렌더한 버퍼 재생
   function playBuf(name, pos, gain, o = {}) {
-    if (!ctx || !bankReady) return false;
-    const arr = bank[name]; if (!arr || !arr.length) return false;
+    if (!ctx) return false;
+    const arr = bank[name]; if (!arr || !arr.length) return false;   // 만들어진 소리부터 바로 사용
     const buf = arr[Math.floor(Math.random() * arr.length)];
     let g = gain, pan = 0, cutoff = 20000, delay = 0, d = 0;
     if (pos && !o.own) {
@@ -142,6 +142,18 @@ const Audio = (() => {
     m249: { crack: 0.95, hp: 2900, cl: 1.0, boom: 1.05, lp: 2900, bd: 0.18, th: 0.95, tf: 110, te: 44, tl: 0.95, lo: 215, body: 1100, bq: 1.5, bdc: 0.07, er: 1.05, tail: 1.1, drv: 1.05, gain: 1.02, own: 0.95, range: 880, mech: 'mech_lmg' },
     mg3: { crack: 1.1, hp: 2600, cl: 0.95, boom: 1.1, lp: 2500, bd: 0.14, th: 1.0, tf: 96, te: 40, tl: 0.8, lo: 200, body: 900, bq: 1.4, bdc: 0.06, er: 0.9, tail: 1.05, drv: 1.05, gain: 1.05, own: 0.95, range: 900, mech: 'mech_lmg' },
     p19: { crack: 0.6, hp: 3400, cl: 0.9, boom: 0.75, lp: 4000, bd: 0.09, th: 0.75, tf: 165, te: 65, tl: 0.8, lo: 320, body: 1850, bq: 2.2, bdc: 0.035, er: 0.8, tail: 0.55, drv: 0.85, gain: 0.75, own: 0.75, range: 400, mech: 'mech_pistol', sec: 1.0 },
+    // v16 — Beryl: AKM보다 조금 밝고 날카로움 / M16A4: 건조한 5.56 / Vector·Bizon: 가벼운 9mm(Vector가 더 높고 짧음)
+    //  Tommy·Win94: .45는 음속보다 느려 크랙이 거의 없고 둔탁한 '퍽' / Kar98k: 긴 꼬리의 큰 소총 / DP-28: 느린 7.62 / Deagle: 묵직한 권총
+    beryl: { crack: 1.1, hp: 2700, cl: 1.1, boom: 1.15, lp: 2400, bd: 0.23, th: 1.08, tf: 92, te: 37, tl: 1.1, lo: 195, body: 820, bq: 1.3, bdc: 0.085, er: 1.1, tail: 1.22, drv: 1.08, gain: 1.07, own: 1.0, range: 850, mech: 'mech_ak' },
+    m16a4: { crack: 1.05, hp: 3200, cl: 0.95, boom: 0.95, lp: 3400, bd: 0.16, th: 0.88, tf: 122, te: 48, tl: 0.95, lo: 235, body: 1400, bq: 1.7, bdc: 0.055, er: 1.0, tail: 1.1, drv: 0.98, gain: 1.0, own: 0.95, range: 880, mech: 'mech_rifle' },
+    vector: { crack: 0.42, hp: 3800, cl: 0.75, boom: 0.75, lp: 4400, bd: 0.09, th: 0.65, tf: 160, te: 64, tl: 0.75, lo: 310, body: 1900, bq: 2.1, bdc: 0.035, er: 0.75, tail: 0.55, drv: 0.85, gain: 0.74, own: 0.74, range: 430, mech: 'mech_smg', sec: 1.0 },
+    bizon: { crack: 0.45, hp: 3500, cl: 0.82, boom: 0.82, lp: 4000, bd: 0.11, th: 0.72, tf: 145, te: 58, tl: 0.82, lo: 290, body: 1550, bq: 1.9, bdc: 0.045, er: 0.82, tail: 0.62, drv: 0.86, gain: 0.8, own: 0.78, range: 450, mech: 'mech_smg', sec: 1.0 },
+    tommy: { crack: 0.15, hp: 2900, cl: 1.0, boom: 1.0, lp: 2600, bd: 0.15, th: 0.95, tf: 112, te: 46, tl: 1.0, lo: 235, body: 1050, bq: 1.5, bdc: 0.07, er: 0.95, tail: 0.75, drv: 0.95, gain: 0.86, own: 0.85, range: 480, mech: 'mech_smg', sec: 1.1 },
+    kar98k: { crack: 1.4, hp: 2400, cl: 1.3, boom: 1.25, lp: 1900, bd: 0.34, th: 1.25, tf: 80, te: 30, tl: 1.35, lo: 170, body: 720, bq: 1.15, bdc: 0.11, er: 1.45, tail: 1.8, drv: 1.12, gain: 1.22, own: 1.08, range: 1100, mech: null, sec: 2.0 },
+    win94: { crack: 0.35, hp: 2600, cl: 1.15, boom: 1.1, lp: 2200, bd: 0.24, th: 1.05, tf: 95, te: 38, tl: 1.15, lo: 200, body: 880, bq: 1.3, bdc: 0.09, er: 1.15, tail: 1.25, drv: 1.05, gain: 1.05, own: 1.0, range: 750, mech: null, sec: 1.6 },
+    s1897: { crack: 0.55, hp: 2000, cl: 1.65, boom: 1.3, lp: 1650, bd: 0.38, th: 1.35, tf: 68, te: 29, tl: 1.65, lo: 178, body: 540, bq: 1.0, bdc: 0.12, er: 1.3, tail: 1.35, drv: 1.15, gain: 1.18, own: 1.04, range: 720, mech: null },
+    dp28: { crack: 1.15, hp: 2500, cl: 1.05, boom: 1.15, lp: 2300, bd: 0.2, th: 1.05, tf: 90, te: 37, tl: 1.0, lo: 192, body: 800, bq: 1.3, bdc: 0.08, er: 1.05, tail: 1.2, drv: 1.07, gain: 1.07, own: 0.98, range: 900, mech: 'mech_lmg' },
+    deagle: { crack: 0.85, hp: 2900, cl: 1.1, boom: 1.1, lp: 2700, bd: 0.17, th: 1.0, tf: 110, te: 45, tl: 1.05, lo: 240, body: 1150, bq: 1.6, bdc: 0.07, er: 1.0, tail: 0.95, drv: 1.0, gain: 0.95, own: 0.9, range: 600, mech: 'mech_pistol', sec: 1.3 },
   };
   // 총성 합성 (실제 녹음의 구조를 흉내):
   //  ① 초음속 크랙(아주 짧은 고역) ② 폭압: 광대역 잡음 + 150~350Hz 저중역 덩어리 ③ 피치가 빠르게 떨어지는 저역 킥
@@ -292,6 +304,35 @@ const Audio = (() => {
     boxIn: (o, b) => { slide(o, b, 0, 0.06, 600, 900, 0.35, 0.6, -0.25); body(o, b, 0.058, 150, 0.55, 0.06, -0.2); modal(o, b, 0.058, M_POLY(0.7), 0.6, -0.2); tick(o, b, 0.07, 2600, 0.4); modal(o, b, 0.07, M_SMALL(2500), 0.5); },
     boxSeat: (o, b) => { body(o, b, 0, 140, 0.6, 0.06, -0.15); modal(o, b, 0, M_POLY(0.75), 0.5, -0.15); tick(o, b, 0.01, 2500, 0.4); modal(o, b, 0.01, M_SMALL(2350), 0.45); },
     beltLay: (o, b) => { for (let i = 0; i < 8; i++) modal(o, b, i * 0.02 + Math.random() * 0.008, M_BRASS(0.85 + Math.random() * 0.25), 0.22 * (1 - i / 10)); slide(o, b, 0, 0.16, 2400, 3000, 0.15, 0.8); body(o, b, 0.15, 250, 0.25, 0.03); },
+    // ----- v16 -----
+    // Beryl: 새 강철 탄창이 헌 탄창·멈치를 '쾅' 치고 헌 탄창이 미끄러져 빠짐
+    magKnock: (o, b) => { tick(o, b, 0, 2000, 0.8, 0.003, -0.15); modal(o, b, 0, M_STEELMAG(1.05), 0.9, -0.15); modal(o, b, 0.002, M_POLY(0.95), 0.5); body(o, b, 0, 170, 0.6, 0.05); slide(o, b, 0.012, 0.05, 1500, 900, 0.3, 1, -0.2); },
+    // 떨어진 탄창이 바닥에: 둔탁한 '툭' + 안의 탄이 흔들리는 소리
+    magDrop: (o, b) => { body(o, b, 0, 95, 0.9, 0.08); nz(o, b, 0, 0.06, 'lowpass', 700, 260, 0.7, 0.6, 0.002); modal(o, b, 0.004, M_POLY(0.8), 0.5); for (let i = 0; i < 3; i++) modal(o, b, 0.03 + i * 0.025, M_BRASS(0.7 + Math.random() * 0.2), 0.08); },
+    // Tommy 드럼: 걸쇠 → 레일을 따라 무겁게 미끄러짐(속의 탄이 출렁) → 끝에 걸림
+    drumLatch: (o, b) => { tick(o, b, 0, 2400, 0.5, 0.002, -0.2); modal(o, b, 0, M_SMALL(2100), 0.6, -0.2); },
+    drumOut: (o, b) => { slide(o, b, 0, 0.16, 700, 500, 0.55, 0.9, -0.3); modal(o, b, 0.02, [[310, 0.05, 1], [690, 0.04, 0.7], [1240, 0.03, 0.5], [2100, 0.02, 0.3]], 0.5, -0.3); for (let i = 0; i < 4; i++) modal(o, b, 0.03 + i * 0.03, M_BRASS(0.8), 0.07, -0.25); },
+    drumIn: (o, b) => { slide(o, b, 0, 0.12, 500, 800, 0.5, 0.9, -0.25); modal(o, b, 0.11, [[300, 0.06, 1], [650, 0.045, 0.7], [1200, 0.03, 0.5]], 0.8, -0.2); body(o, b, 0.11, 150, 0.8, 0.07, -0.15); },
+    drumSeat: (o, b) => { tick(o, b, 0, 2200, 0.7, 0.003); modal(o, b, 0, M_SMALL(2300), 0.7); modal(o, b, 0.002, M_RECV(0.8), 0.6); body(o, b, 0, 130, 1.0, 0.07); },
+    // Tommy 위 손잡이: 스프링을 누르며 당김 → 노리쇠가 뒤에 '딸깍' 걸림(열린 노리쇠라 앞으로 가지 않음)
+    knobBack: (o, b) => { slide(o, b, 0, 0.09, 1000, 2000, 0.5, 1.1, 0.05); spring(o, b, 0.01, 1500, 2900, 0.09, 0.06); modal(o, b, 0.09, M_RECV(0.95), 0.55); tick(o, b, 0.09, 2600, 0.6); modal(o, b, 0.092, M_SMALL(2700), 0.6); },
+    // DP-28 원판: 걸쇠 → 넓은 강판이 울리며 들림 / 얹힘 → 눌러 걸림
+    panLatch: (o, b) => { tick(o, b, 0, 2600, 0.5, 0.002, -0.1); modal(o, b, 0, M_SMALL(2500), 0.55, -0.1); },
+    panOff: (o, b) => { slide(o, b, 0, 0.07, 900, 600, 0.35, 0.6, -0.2); modal(o, b, 0.03, [[180, 0.09, 0.8], [420, 0.07, 1], [930, 0.05, 0.7], [1650, 0.035, 0.45], [2600, 0.02, 0.3]], 0.7, -0.2); cloth(o, b, 0.08, 0.14, 0.2, -0.3); },
+    panOn: (o, b) => { modal(o, b, 0, [[180, 0.1, 0.8], [420, 0.08, 1], [930, 0.06, 0.7], [1650, 0.04, 0.45]], 0.75, -0.15); body(o, b, 0, 120, 0.7, 0.07); tick(o, b, 0.004, 1600, 0.4); },
+    panSeat: (o, b) => { tick(o, b, 0, 2200, 0.7, 0.003); modal(o, b, 0, M_SMALL(2300), 0.65); body(o, b, 0, 140, 0.9, 0.06); modal(o, b, 0.003, M_RECV(0.85), 0.5); },
+    // M16A4 노리쇠 멈치: 손바닥 '탁' → 노리쇠가 앞으로 '쾅'
+    boltCatch: (o, b) => { nz(o, b, 0, 0.02, 'bandpass', 900, 700, 1, 0.4, 0.001); body(o, b, 0, 200, 0.5, 0.03); tick(o, b, 0.006, 1300, 0.9, 0.004); body(o, b, 0.006, 175, 1.3, 0.08); modal(o, b, 0.006, M_RECV(), 1.0); modal(o, b, 0.007, M_SMALL(3050), 0.6); spring(o, b, 0.008, 3200, 2800, 0.2, 0.1); },
+    // Deagle 슬라이드 멈치: 작은 레버 딸깍 → 무거운 슬라이드가 닫힘
+    slideStop: (o, b) => { tick(o, b, 0, 3000, 0.4, 0.002); modal(o, b, 0, M_SMALL(3200), 0.4); tick(o, b, 0.012, 1800, 0.85, 0.003); body(o, b, 0.012, 230, 1.1, 0.06); modal(o, b, 0.012, M_PISTOL(0.85), 1.0); spring(o, b, 0.014, 3400, 2900, 0.12, 0.07); },
+    // Kar98k 클립: 홈에 꽂힘 → 엄지로 5발을 밀어 넣음(탄이 차례로 미끄러짐) → 빈 클립이 튕겨 나감
+    clipIn: (o, b) => { slide(o, b, 0, 0.05, 2000, 2800, 0.35, 1.2, 0.15); tick(o, b, 0.048, 2600, 0.55); modal(o, b, 0.048, M_SMALL(2800), 0.6); modal(o, b, 0.05, M_BRASS(0.9), 0.2); },
+    clipStrip: (o, b) => { for (let i = 0; i < 5; i++) { const t = i * 0.035; slide(o, b, t, 0.03, 1800, 1300, 0.18, 0.8, 0.1); modal(o, b, t + 0.025, M_BRASS(0.85 + i * 0.03), 0.22, 0.1); } spring(o, b, 0.02, 1400, 2200, 0.16, 0.07); tick(o, b, 0.17, 2200, 0.4); },
+    clipEject: (o, b) => { modal(o, b, 0, [[2400, 0.04, 1], [3900, 0.03, 0.6], [6100, 0.02, 0.35]], 0.45, 0.2); tick(o, b, 0, 3500, 0.3); },
+    // Win94 레버: 내림(노리쇠가 뒤로 미끄러짐) / 올림(앞으로 닫히며 '철컥') · 장전구로 한 발
+    leverDown: (o, b) => { tick(o, b, 0, 2000, 0.45, 0.002, 0.15); slide(o, b, 0.005, 0.09, 900, 1500, 0.45, 0.9, 0.15); modal(o, b, 0.09, M_RECV(0.9), 0.55, 0.1); tick(o, b, 0.09, 1700, 0.4); },
+    leverUp: (o, b) => { slide(o, b, 0, 0.08, 1500, 900, 0.4, 0.9, 0.15); tick(o, b, 0.075, 1400, 0.8, 0.003); body(o, b, 0.075, 190, 1.0, 0.06); modal(o, b, 0.075, M_RECV(0.95), 0.85); modal(o, b, 0.077, M_SMALL(2500), 0.6); },
+    gateIn: (o, b) => { slide(o, b, 0, 0.045, 1600, 2300, 0.3, 1, 0.2); spring(o, b, 0.01, 1800, 2600, 0.06, 0.06, 0.2); tick(o, b, 0.042, 2800, 0.45); modal(o, b, 0.042, M_BRASS(0.95), 0.4); modal(o, b, 0.044, M_SMALL(2600), 0.4); },
     // ----- 그 밖 -----
     selector: (o, b) => { tick(o, b, 0, 2800, 0.45, 0.002, 0.2); modal(o, b, 0, M_SMALL(2900), 0.5, 0.2); tick(o, b, 0.045, 3000, 0.3, 0.002, 0.2); modal(o, b, 0.045, M_SMALL(3100), 0.32, 0.2); },
     equip: (o, b) => { cloth(o, b, 0, 0.2, 0.45); for (let i = 0; i < 3; i++) modal(o, b, 0.05 + i * 0.03 + Math.random() * 0.02, M_SMALL(3300 + Math.random() * 1200), 0.12); body(o, b, 0.15, 200, 0.4, 0.05); modal(o, b, 0.15, M_RECV(1.1), 0.4); },
@@ -305,7 +346,11 @@ const Audio = (() => {
   const MPEAK = { magRelease: 0.4, magOut: 0.5, magIn: 0.78, magSeat: 0.85, magInAk: 0.7, magRock: 0.9, chargeBack: 0.6, chargeFwd: 0.95, slideBack: 0.5, slideRelease: 0.88,
     boltUp: 0.5, boltBack: 0.62, boltFwd: 0.72, boltDown: 0.85, roundIn: 0.55, pumpBack: 0.65, pumpFwd: 0.88, shellIn: 0.6, breakOpen: 0.7, breakClose: 0.95, shellEject: 0.5,
     coverOpen: 0.65, coverClose: 0.95, boxOut: 0.6, boxIn: 0.75, boxSeat: 0.7, beltLay: 0.55, selector: 0.45, equip: 0.6, aimIn: 0.35, attach: 0.6, dry: 0.55,
-    mech_rifle: 0.8, mech_smg: 0.8, mech_pistol: 0.8, mech_ak: 0.8, mech_lmg: 0.8 };
+    mech_rifle: 0.8, mech_smg: 0.8, mech_pistol: 0.8, mech_ak: 0.8, mech_lmg: 0.8,
+    magKnock: 0.85, magDrop: 0.6, drumLatch: 0.45, drumOut: 0.65, drumIn: 0.8, drumSeat: 0.85, knobBack: 0.7, panLatch: 0.45, panOff: 0.6, panOn: 0.75, panSeat: 0.85,
+    boltCatch: 0.95, slideStop: 0.9, clipIn: 0.6, clipStrip: 0.65, clipEject: 0.45, leverDown: 0.65, leverUp: 0.9, gateIn: 0.55 };
+  // 장전 한 번에 한 번만 나는 v16 소리는 1가지로 (시작할 때 소리 만드는 시간 절약). 매 발 반복되는 레버·장전구는 2가지
+  const ONE_VAR = new Set(['magKnock', 'magDrop', 'drumLatch', 'drumOut', 'drumIn', 'drumSeat', 'knobBack', 'panLatch', 'panOff', 'panOn', 'panSeat', 'boltCatch', 'slideStop', 'clipIn', 'clipStrip', 'clipEject']);
   // ---------- 줍기·회복·넘기·투척 효과음 재료 ----------
   const swish = (o, b, t0, dur, f0, f1, g0) => nz(o, b, t0, dur, 'bandpass', f0, f1, 1.2, g0, dur * 0.45);           // 옷·팔 스치는 소리
   function zipper(o, b, t0, dur, f0, g0) { const n = Math.round(dur / 0.011); for (let i = 0; i < n; i++) nz(o, b, t0 + i * dur / n * (0.9 + Math.random() * 0.2), 0.006, 'bandpass', f0 * (1 + i / n * 0.35), f0, 2.5, g0 * (0.6 + Math.random() * 0.4), 0.0005); }
@@ -347,10 +392,11 @@ const Audio = (() => {
   Object.assign(MECH, SFX);
   async function renderBank() {
     if (!(window.OfflineAudioContext || window.webkitOfflineAudioContext)) return;
-    const jobs = [];
-    for (const id in GUN) for (let v = 0; v < 2; v++) jobs.push(['g_' + id, GUN[id].sec || 1.5, shotGraph(GUN[id]), 0.95, 1.15]);
-    for (const k in MECH) { const n = k === 'brass' ? 3 : (k.startsWith('mech') || MPEAK[k] ? 2 : 1); for (let v = 0; v < n; v++) jobs.push([k, MECH_SEC[k] || (k === 'equip' ? 0.35 : MPEAK[k] ? 0.45 : 0.25), MECH[k], MPEAK[k] || 0.8, 0]); }
-    for (const [name, sec, fn, peak, loud] of jobs) { const b = await render(sec, fn, peak, loud); (bank[name] || (bank[name] = [])).push(b); }
+    // 소리마다 첫 번째 버전을 먼저 모두 만들고(그 소리는 바로 쓸 수 있음), 두 번째 이후 버전은 나중에 → 총이 많아져도 시작 직후 빈 소리 구간이 짧다
+    const first = [], rest = [];
+    for (const id in GUN) for (let v = 0; v < 2; v++) (v ? rest : first).push(['g_' + id, GUN[id].sec || 1.5, shotGraph(GUN[id]), 0.95, 1.15]);
+    for (const k in MECH) { const n = k === 'brass' ? 3 : ONE_VAR.has(k) ? 1 : (k.startsWith('mech') || MPEAK[k] ? 2 : 1); for (let v = 0; v < n; v++) (v ? rest : first).push([k, MECH_SEC[k] || (k === 'equip' ? 0.35 : MPEAK[k] ? 0.45 : 0.25), MECH[k], MPEAK[k] || 0.8, 0]); }
+    for (const [name, sec, fn, peak, loud] of first.concat(rest)) { const b = await render(sec, fn, peak, loud); (bank[name] || (bank[name] = [])).push(b); }
     bankReady = true;
   }
 
@@ -390,7 +436,7 @@ const Audio = (() => {
     gunshot(pos, weapon, isOwn, indoor) {
       if (!ctx) return;
       const id = GUN[weapon] ? weapon : (CLS_ID[weapon] || 'm416'), P = GUN[id];
-      if (bankReady) {
+      if (bank['g_' + id]) {
         const d = isOwn ? 0 : geom(pos).d;
         const send = isOwn ? (indoor ? 0.6 : 0.4) : clamp(0.3 + d / 260, 0.3, 1.15);
         playBuf('g_' + id, isOwn ? null : pos, isOwn ? P.own : P.gain, { own: isOwn, sonic: true, range: P.range, ref: 18, lpRef: 75, send, room: indoor && d < 80, jitter: 0.05, vdur: 0.6 });
@@ -404,11 +450,16 @@ const Audio = (() => {
     },
     // 장전·볼트·펌프 등 기계음. weapon id로 피치를 살짝 바꿔 무기마다 다른 질감
     mech(name, pos, weapon, isOwn) {
-      if (!ctx || !bankReady || !bank[name]) return;
-      const rate = { m416: 1, aug: 1.05, akm: 0.88, asm: 0.95, vk9: 1.1, mini14: 1.02, slr: 0.9, m24: 1, awm: 0.92, s686: 1, s12k: 0.9, m249: 0.95, mg3: 0.88, p19: 1.14 }[weapon] || 1;
+      if (!ctx || !bank[name]) return;
+      const rate = { m416: 1, aug: 1.05, akm: 0.88, asm: 0.95, vk9: 1.1, mini14: 1.02, slr: 0.9, m24: 1, awm: 0.92, s686: 1, s12k: 0.9, m249: 0.95, mg3: 0.88, p19: 1.14,
+        beryl: 0.9, m16a4: 1.0, vector: 1.12, bizon: 1.04, tommy: 0.86, kar98k: 0.97, win94: 1.0, s1897: 0.95, dp28: 0.84, deagle: 0.8 }[weapon] || 1;
       playBuf(name, isOwn ? null : pos, isOwn ? 0.72 : 0.7, { own: isOwn, rate, range: 26, ref: 4, send: isOwn ? 0.1 : 0.2, room: listener.indoor > 0.5, jitter: 0.04 });
     },
-    brass(pos, kind) { if (!ctx || !throttle('brass', 0.05)) return; playBuf(kind === 'hull' ? 'hull' : 'brass', pos, 0.32, { range: 22, ref: 3, jitter: 0.15, send: 0.08 }); },
+    brass(pos, kind) {
+      if (!ctx) return;
+      if (kind && kind.startsWith('mag:')) { playBuf('magDrop', pos, 0.5, { range: 26, ref: 3, jitter: 0.1, send: 0.1 }); return; }   // 떨어뜨린 탄창
+      if (!throttle('brass', 0.05)) return; playBuf(kind === 'hull' ? 'hull' : 'brass', pos, 0.32, { range: 22, ref: 3, jitter: 0.15, send: 0.08 });
+    },
     impact(pos, flesh) {
       if (!ctx || !throttle('imp', 0.03) || !voice(0.1)) return;
       const out = spatial(pos, flesh ? 0.5 : 0.35, 60); if (!out) return;

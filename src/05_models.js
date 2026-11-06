@@ -94,6 +94,8 @@ const Models = (() => {
     a12: (c, w, h) => { c.fillStyle = '#9c1f18'; c.fillRect(0, 0, w, h); c.strokeStyle = '#f0e2c8'; c.lineWidth = 5; c.strokeRect(10, 10, w - 20, h - 20); txt(c, '12', w * 0.35, h * 0.38, 110, '#f0e2c8', 800); txt(c, 'GA', w * 0.7, h * 0.44, 50, '#f0e2c8', 800); txt(c, '00 BUCK · 9 PELLETS', w / 2, h * 0.68, 24, '#f0e2c8'); txt(c, '15 SHELLS', w / 2, h * 0.82, 26, '#f0e2c8'); },
     a300: (c, w, h) => { c.fillStyle = '#272b29'; c.fillRect(0, 0, w, h); c.fillStyle = '#c99a3c'; c.fillRect(0, h * 0.08, w, h * 0.05); c.fillRect(0, h * 0.87, w, h * 0.05); txt(c, '.300', w / 2, h * 0.3, 96, '#e7d9b4', 800); txt(c, 'MAGNUM', w / 2, h * 0.5, 50, '#c99a3c', 800); txt(c, '10 ROUNDS · MATCH', w / 2, h * 0.67, 24, '#bdb39a'); barcode(c, w * 0.25, h * 0.74, w * 0.5, h * 0.09); },
     a762: (c, w, h) => { c.clearRect(0, 0, w, h); txt(c, '7.62 MM', w / 2, h * 0.3, 78, '#e2c23a', 800); txt(c, '30 CARTRIDGES · BALL', w / 2, h * 0.62, 30, '#e2c23a'); txt(c, 'LOT 26-114', w / 2, h * 0.84, 24, '#e2c23a', 500); },
+    // .45 ACP: 올리브색 종이 상자 + 굵은 숫자 (자체 디자인)
+    a45: (c, w, h) => { c.fillStyle = '#6f6a45'; c.fillRect(0, 0, w, h); c.fillStyle = '#e9e1c4'; c.fillRect(w * 0.08, h * 0.08, w * 0.84, h * 0.5); txt(c, '.45', w / 2, h * 0.27, 110, '#3b3a26', 800); txt(c, 'ACP · 230 GR', w / 2, h * 0.48, 30, '#3b3a26'); txt(c, '30 ROUNDS', w / 2, h * 0.7, 34, '#f1ead2', 800); txt(c, 'FULL METAL JACKET', w / 2, h * 0.8, 22, '#d9d0b0', 500); barcode(c, w * 0.3, h * 0.85, w * 0.4, h * 0.08); },
     bandage: (c, w, h) => { c.fillStyle = '#e9e4d4'; c.fillRect(0, 0, w, h); c.fillStyle = '#2f6b6a'; c.fillRect(0, 0, w * 0.13, h); txt(c, 'FIELD', w * 0.57, h * 0.2, 46, '#1f2a2a', 800); txt(c, 'DRESSING', w * 0.57, h * 0.33, 46, '#1f2a2a', 800); txt(c, 'STERILE · 10 CM', w * 0.57, h * 0.47, 24, '#3a4444'); txt(c, 'PRESSURE PAD', w * 0.57, h * 0.56, 24, '#3a4444'); c.fillStyle = '#7a2e1e'; c.fillRect(w * 0.42, h * 0.66, w * 0.3, h * 0.07); txt(c, 'SINGLE USE', w * 0.57, h * 0.695, 20, '#f2ecd8'); txt(c, 'TEAR ▸', w * 0.57, h * 0.88, 26, '#1f2a2a'); },
     cross: (c, w, h) => { c.fillStyle = '#e8e2d0'; c.beginPath(); c.arc(w / 2, h / 2, w / 2, 0, TAU); c.fill(); c.fillStyle = '#2d7a4b'; c.beginPath(); c.arc(w / 2, h / 2, w * 0.44, 0, TAU); c.fill(); c.fillStyle = '#f4f2ea'; const a = w * 0.1, b = w * 0.3; c.fillRect(w / 2 - a, h / 2 - b, a * 2, b * 2); c.fillRect(w / 2 - b, h / 2 - a, b * 2, a * 2); },
     med: (c, w, h) => { c.fillStyle = '#353b29'; c.fillRect(0, 0, w, h); c.strokeStyle = '#d8d2bc'; c.lineWidth = 4; c.strokeRect(8, 8, w - 16, h - 16); c.fillStyle = '#2d7a4b'; c.beginPath(); c.arc(h * 0.5, h * 0.5, h * 0.3, 0, TAU); c.fill(); c.fillStyle = '#f4f2ea'; const a = h * 0.06, b = h * 0.19; c.fillRect(h * 0.5 - a, h * 0.5 - b, a * 2, b * 2); c.fillRect(h * 0.5 - b, h * 0.5 - a, b * 2, a * 2); txt(c, 'MED KIT', w * 0.62, h * 0.38, 56, '#ece6d2', 800); txt(c, 'TRAUMA · FIELD', w * 0.62, h * 0.66, 28, '#c8c2ae'); },
@@ -342,13 +344,18 @@ const Models = (() => {
     const ext = att.mag ? 1 : 0;
     const mk = (name, posKey, key, fn) => { const pv = new THREE.Group(); pv.position.fromArray(meta[posKey]); pv.add(cluster(key, fn)); pv.userData.home = pv.position.clone(); g.add(pv); parts[name] = pv; return pv; };
     if (D.mag) mk('mag', 'magPos', 'gm:' + id + ext, (gg) => D.mag(gg, ext));
+    // 예비 탄창(새 탄창을 든 채 헌 탄창을 쳐 내는 장전): 같은 모델을 하나 더, 평소엔 숨김
+    if (D.mag && meta.spareMag) { mk('mag2', 'magPos', 'gm:' + id + ext, (gg) => D.mag(gg, ext)).visible = false; }
     if (D.charge) mk('charge', 'chargePos', 'gc:' + id, D.charge);
     if (D.pump) mk('pump', 'pumpPos', 'gp:' + id, D.pump);
     if (D.bolt) mk('bolt', 'boltPos', 'gbo:' + id, D.bolt);
     if (D.slide) mk('slide', 'slidePos', 'gs:' + id, D.slide);
     if (D.cover) mk('cover', 'coverPos', 'gcv:' + id, D.cover);
     if (D.barrel) mk('barrel', 'barrelPos', 'gbr:' + id, D.barrel);
-    const host = meta.scopeOnCover && parts.cover ? parts.cover : parts.slide || g, hp = host === g ? [0, 0, 0] : host.position.toArray();
+    if (D.lever) mk('lever', 'leverPos', 'glv:' + id, D.lever);
+    // 클립(삽탄자): 클립 띠 + 탄 5발(눌러 내리면 탄창으로 들어감). 장전할 때만 보임
+    if (D.clip) { const c = mk('clip', 'clipPos', 'gcl:' + id, D.clip); const r = cluster('gclr:' + id, D.clipRounds); r.name = 'rounds'; c.add(r); c.userData.rounds = r; c.visible = false; }
+    const host = meta.scopeOnCover && parts.cover ? parts.cover : (!meta.scopeFixed && parts.slide) || g, hp = host === g ? [0, 0, 0] : host.position.toArray();
     if (D.rear) g.add(att.scope ? cluster('grf:' + id, D.rearFolded) : cluster('gr:' + id, D.rear));
     if (att.scope && SC[att.scope]) {
       if (meta.railOnScope) { const [z0, z1, y] = meta.railOnScope; g.add(cluster('rail:' + id, (gg) => (D.mount || ((g2) => rail(g2, z0, z1, y, 0.018, M('anod', 0x1e2022))))(gg))); }
@@ -358,13 +365,13 @@ const Models = (() => {
     } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.pistol ? 0.4 : 0.3; }
     if (D.front) g.add(att.scope && D.frontFolded ? cluster('gff:' + id, D.frontFolded) : cluster('gf:' + id, D.front));
     if (att.muzzle) { const m = cluster('at:comp', ATT.comp); m.position.set(0, meta.boreY, meta.muzzleZ); g.add(m); meta.muzzleZ += 0.05; }
-    if (att.grip && meta.vgripPos) { const m = cluster('at:grip', ATT.grip); m.position.fromArray(meta.vgripPos); g.add(m); meta.forePos = meta.vgripHand; }
+    if (att.grip && meta.vgripPos) { const m = cluster('at:grip', ATT.grip); m.position.fromArray(meta.vgripPos); g.add(m); meta.forePos = meta.vgripHand; meta.vfore = true; }
     g.userData = { id, meta, parts, att };
     return g;
   }
 
   // ---------- 아이템 ----------
-  const CAL = { 556: [0.045, 0.0048, 0.0037, 0.019, 0.0029], 762: [0.051, 0.006, 0.0045, 0.024, 0.0039], 9: [0.019, 0.005, 0.0049, 0.011, 0.0045], 300: [0.067, 0.0068, 0.0047, 0.03, 0.0039] };
+  const CAL = { 556: [0.045, 0.0048, 0.0037, 0.019, 0.0029], 762: [0.051, 0.006, 0.0045, 0.024, 0.0039], 9: [0.019, 0.005, 0.0049, 0.011, 0.0045], 300: [0.067, 0.0068, 0.0047, 0.03, 0.0039], 45: [0.023, 0.006, 0.006, 0.012, 0.0057] };
   function cart(g, cal, x, z, ry) {
     const ax = Math.sin(ry), az = Math.cos(ry);
     const P = (geo, m, off, r) => A(g, geo, m, x + ax * off, r, z + az * off, 0, ry, 0);
@@ -394,6 +401,7 @@ const Models = (() => {
       cart(g, 300, 0.1, -0.03, 0.25); cart(g, 300, 0.11, 0.03, 0.05);
     },
     a9(g) { A(g, RB(0.075, 0.04, 0.1, 0.003), M('paper', 0xe8e4da), 0, 0.02, 0); A(g, PL(0.07, 0.095), label('a9'), 0, 0.0405, 0, -Math.PI / 2); cart(g, 9, 0.055, -0.02, 0.6); cart(g, 9, 0.06, 0.015, 0.1); cart(g, 9, 0.05, 0.04, 1.2); },
+    a45(g) { A(g, RB(0.085, 0.045, 0.11, 0.003), M('paper', 0x6f6a45), 0, 0.0225, 0); A(g, PL(0.08, 0.105), label('a45'), 0, 0.0455, 0, -Math.PI / 2); cart(g, 45, 0.06, -0.025, 0.4); cart(g, 45, 0.068, 0.012, 1.1); cart(g, 45, 0.058, 0.045, 0.2); },
     a12(g) { A(g, RB(0.085, 0.055, 0.115, 0.003), M('paper', 0x9a1e18), 0, 0.0275, 0); A(g, PL(0.08, 0.11), label('a12'), 0, 0.0556, 0, -Math.PI / 2); cart(g, 12, 0.075, -0.01, 0.3); cart(g, 12, 0.08, 0.04, 0.05); },
     bandage(g) { A(g, RB(0.13, 0.028, 0.19, 0.012, 0.01), M('foil', 0x5a6248), 0, 0.014, 0); A(g, PL(0.095, 0.13), label('bandage'), 0, 0.0285, 0.008, -Math.PI / 2); A(g, BX(0.132, 0.008, 0.014), M('foil', 0x4c5340), 0, 0.012, -0.094); },
     firstaid(g) {
@@ -544,10 +552,14 @@ const Models = (() => {
   // ---------- 손·소매(1인칭), 탄피 ----------
   function hand() { return cluster('hand', (g) => { const gl = M('cloth', 0x2a2925); A(g, RB(0.046, 0.04, 0.088, 0.016), gl); A(g, RB(0.02, 0.018, 0.045, 0.008), gl, 0.022, 0.01, 0.02, 0, -0.5, 0); A(g, RB(0.044, 0.012, 0.03, 0.005), M('cloth', 0x1c1b18), 0, -0.016, -0.03); }); }
   function sleeve(hex) { return cluster('sleeve:' + hex, (g) => { A(g, CY(0.034, 0.042, 1, 12, 'y', true), M('cloth', hex)); A(g, CY(0.03, 0.034, 0.06, 12, 'y'), M('cloth', 0x2a2925), 0, 0.5, 0); }); }
+  // 탄피·탄(손에 든 것)·떨어뜨린 탄창(mag:총:대용량)·빈 클립
   function casing(kind) {
     return cluster('case:' + kind, (g) => {
       if (kind === 'hull') { A(g, CY(0.0105, 0.0105, 0.05, 10), M('polymer', 0xa82020), 0, 0, 0.008); A(g, CY(0.011, 0.011, 0.016, 10), M('brass', 0xc9a24a), 0, 0, -0.025); }
-      else { const r = kind === '9' ? 0.0048 : kind === '762' ? 0.006 : kind === '300' ? 0.0068 : 0.0048, L = kind === '9' ? 0.019 : kind === '762' ? 0.051 : kind === '300' ? 0.067 : 0.045; A(g, CY(r, r, L, 8), M('brass', 0xd0a84e), 0, 0, 0); A(g, CY(r * 0.75, r, L * 0.15, 8), M('brass', 0xd0a84e), 0, 0, L * 0.55); }
+      else if (kind.startsWith('mag:')) { const [, id, ext] = kind.split(':'); GUNS[id].mag(g, ext === '1' ? 1 : 0); }
+      else if (kind === 'clip' && GUNS.kar98k && GUNS.kar98k.clip) GUNS.kar98k.clip(g);
+      else if (kind.startsWith('rnd')) { const cal = +kind.slice(3), [L, r, rn, bl, br] = CAL[cal]; A(g, CY(r, r, L * 0.82, 10), M('brass', 0xc9a24a), 0, 0, -L * 0.09); A(g, CY(rn, r, L * 0.12, 10), M('brass', 0xc9a24a), 0, 0, L * 0.38); A(g, CY(0.0004, br, bl, 10), M('brass', 0xb8703a), 0, 0, L * 0.44 + bl / 2); }
+      else { const r = kind === '9' ? 0.0048 : kind === '762' ? 0.006 : kind === '300' ? 0.0068 : kind === '45' ? 0.006 : 0.0048, L = kind === '9' ? 0.019 : kind === '762' ? 0.051 : kind === '300' ? 0.067 : kind === '45' ? 0.023 : 0.045; A(g, CY(r, r, L, 8), M('brass', 0xd0a84e), 0, 0, 0); A(g, CY(r * 0.75, r, L * 0.15, 8), M('brass', 0xd0a84e), 0, 0, L * 0.55); }
     });
   }
   // ---------- 보급상자 ----------

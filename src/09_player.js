@@ -64,7 +64,9 @@ function releaseLock() { if (document.pointerLockElement) { G.suppressPause = tr
 // ---------- 카메라 ----------
 // ads: 0(허리 사격)~1(정조준). 정조준은 항상 눈 위치에서 조준경/가늠자를 통해 본다(3인칭이어도)
 const Cam = { dist: 3.3, ads: 0, zoom: 1, si: null, recoilP: 0, kick: 0, kickRot: 0, swayT: 0, swayX: 0, swayY: 0, breath: 1, wasAds: false };
-const VM = { scene: null, cam: null, root: null, pivot: null, tilt: null, gun: null, key: null, shellL: null, roundR: null, dir: null, hemi: null, flashLight: null, active: false, arms: null, armsKey: null };
+const VM = { scene: null, cam: null, root: null, pivot: null, tilt: null, gun: null, key: null, shellL: null, roundR: null, dir: null, hemi: null, flashLight: null, active: false, arms: null, armsKey: null,
+  // 장전 중 1인칭 총 위치·회전 보정: L = 왼손이 일하는 장전(탄창·탄띠·산탄), R = 오른손이 일하는 장전(볼트·클립·장전구)
+  rp: { L: { x: 0.0, y: 0.02, z: 0.0, rx: -0.05, ry: -0.12, rz: 0.55 }, R: { x: 0.03, y: -0.04, z: 0.02, rx: 0.0, ry: 0.22, rz: 1.0 }, B: { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0 } } };
 const _cv = new THREE.Vector3(), _cf = new THREE.Vector3(), _cp = new THREE.Vector3(), _tp = new THREE.Vector3(), _hw = new THREE.Vector3(), _ew = new THREE.Vector3(), _q = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0);
 function buildViewModel() {
   VM.scene = new THREE.Scene();
@@ -75,7 +77,7 @@ function buildViewModel() {
   VM.root = new THREE.Group(); VM.scene.add(VM.root);
   VM.pivot = new THREE.Group(); VM.pivot.rotation.y = Math.PI; VM.root.add(VM.pivot);
   VM.tilt = new THREE.Group(); VM.pivot.add(VM.tilt);
-  VM.shellL = Models.casing('hull'); VM.roundR = Models.casing('762'); VM.tilt.add(VM.shellL); VM.tilt.add(VM.roundR);
+  VM.shellL = Models.casing('hull'); VM.roundR = Models.casing('rnd762'); VM.roundKey = 'rnd762'; VM.tilt.add(VM.shellL); VM.tilt.add(VM.roundR);
   VM.root.visible = false;
 }
 // ---------- 1인칭 팔: 내 외형(창고 장착)으로 만든 팔 메시 + 뼈대, 손은 IK로 총·물건에 ----------
@@ -239,8 +241,10 @@ function updateViewModel(dt, p, adsE) {
     VM.gun = buildGunMesh(w.id, w.att); VM.gun.traverse((o) => { if (o.isMesh) o.castShadow = false; });
     VM.tilt.add(VM.gun); VM.key = key;
   }
-  const m = VM.gun.userData.meta, A = weaponAnim(p, m);
+  const m = VM.gun.userData.meta; ANIM_VM = true; const A = weaponAnim(p, m); ANIM_VM = false;
   applyParts(VM.gun, A);
+  // 장전 중: 총을 조금 들고 더 기울여 손동작이 보이게 — 왼손 장전은 왼쪽 옆면·탄창 우물, 오른손 장전(볼트·클립·장전구)은 오른쪽 옆면 쪽으로 (권총은 절반, 불펍은 그대로)
+  const rw = A.rw * (1 - adsE) * (m.pistol ? 0.5 : 1);
   // 허리 위치 ↔ 조준 위치 (조준선이 화면 중앙을 지나도록)
   const hx = m.hip[0], hy = m.hip[1], hz = m.hip[2];
   const ax = 0, ay = -m.sightY, az = m.sightRearZ - m.relief;
@@ -248,12 +252,16 @@ function updateViewModel(dt, p, adsE) {
   const bobX = Math.sin(p.anim.phase) * 0.008 * bobAmp, bobY = -Math.abs(Math.cos(p.anim.phase)) * 0.01 * bobAmp;
   const eq = clamp(p.equipT / 0.6, 0, 1), sprintK = p.sprint ? 1 : 0;
   Cam.kick = lerp(Cam.kick, 0, clamp(dt * 16, 0, 1)); Cam.kickRot = lerp(Cam.kickRot, 0, clamp(dt * 12, 0, 1));
-  const tx = lerp(hx, ax, adsE) + bobX + sprintK * 0.03, ty = lerp(hy, ay, adsE) + bobY - eq * 0.25 - sprintK * 0.03, tz = lerp(hz, az, adsE) + Cam.kick * (1 - adsE * 0.5);
+  const RP = VM.rp[A.rk] || VM.rp.L;
+  const tx = lerp(hx, ax, adsE) + bobX + sprintK * 0.03 + RP.x * rw, ty = lerp(hy, ay, adsE) + bobY - eq * 0.25 - sprintK * 0.03 + RP.y * rw, tz = lerp(hz, az, adsE) + Cam.kick * (1 - adsE * 0.5) + RP.z * rw;
   const k = clamp(dt * 22, 0, 1);
   VM.pivot.position.x = lerp(VM.pivot.position.x, tx, k); VM.pivot.position.y = lerp(VM.pivot.position.y, ty, k); VM.pivot.position.z = lerp(VM.pivot.position.z, tz, k);
   VM.pivot.rotation.set(0, Math.PI + sprintK * 0.5, sprintK * -0.25);
-  VM.tilt.rotation.set(-(A.tiltX + Cam.kickRot * (1 - adsE * 0.6)) - eq * 0.6, 0, A.tiltZ);
+  VM.tilt.rotation.set(-(A.tiltX + Cam.kickRot * (1 - adsE * 0.6)) - eq * 0.6 + RP.rx * rw, RP.ry * rw, clamp(A.tiltZ * (1 + RP.rz * rw), -0.95, 0.95));
   VM.shellL.visible = A.shellL; if (A.shellL) { VM.shellL.position.copy(A.left).add(_hw.set(-0.01, 0.025, 0.02)); VM.shellL.rotation.set(0, 0, 0); }
+  // 오른손에 든 탄: 무기 탄약에 맞는 모델(7.62 소총탄 · .45 권총탄 …)
+  const ck = CASE_KIND[ITEMS[w.id].ammo], rk = 'rnd' + (ck === 'hull' ? '762' : ck);
+  if (VM.roundKey !== rk) { if (VM.roundR) VM.tilt.remove(VM.roundR); VM.roundR = Models.casing(rk); VM.tilt.add(VM.roundR); VM.roundKey = rk; }
   VM.roundR.visible = A.shellR; if (A.shellR) { VM.roundR.position.copy(A.right).add(_hw.set(0.01, 0.025, 0.03)); }
   // 손: 총의 anchor(손바닥 가운데)로 팔 IK
   VM.root.updateMatrixWorld(true);
@@ -325,8 +333,8 @@ function updatePlayer(dt) {
   }
   if (Input.consume('throw')) { if (p.throwMode) exitThrow(p); else enterThrow(p); }
   if (Input.consume('fireMode') && p.weapon) {
-    if (cycleFireMode(p.weapon)) { p.burstQ = 0; Audio.mech('selector', null, p.weapon.id, true); HUD.toast('사격 모드: ' + MODE_NAMES[fireMode(p.weapon)]); }
-    else HUD.toast(ITEMS[p.weapon.id].name + '은(는) ' + MODE_NAMES[fireMode(p.weapon)] + '만 가능합니다');
+    if (cycleFireMode(p.weapon)) { p.burstQ = 0; Audio.mech('selector', null, p.weapon.id, true); HUD.toast('사격 모드: ' + modeName(p.weapon.id, fireMode(p.weapon))); }
+    else HUD.toast(ITEMS[p.weapon.id].name + '은(는) ' + modeName(p.weapon.id, fireMode(p.weapon)) + '만 가능합니다');
   }
   if (Input.consume('view')) { G.firstPerson = !G.firstPerson; SETTINGS.view = G.firstPerson ? 'fpp' : 'tpp'; saveSettings(); }
   if (Input.consume('ping')) pingInputs(p);
@@ -400,7 +408,7 @@ function updatePassenger(dt, p, v) {
   if (Input.consume('reload')) startReload(p);
   for (const [k, i] of [['w1', 0], ['w2', 1], ['w3', 2]]) if (Input.consume(k)) switchWeapon(p, i);
   if (Input.consume('weaponCycle')) { const order = [0, 1, 2].filter(i => p.inv.weapons[i]); if (order.length) switchWeapon(p, order[(order.indexOf(p.inv.cur) + 1) % order.length]); }
-  if (Input.consume('fireMode') && p.weapon && cycleFireMode(p.weapon)) { p.burstQ = 0; Audio.mech('selector', null, p.weapon.id, true); HUD.toast('사격 모드: ' + MODE_NAMES[fireMode(p.weapon)]); }
+  if (Input.consume('fireMode') && p.weapon && cycleFireMode(p.weapon)) { p.burstQ = 0; Audio.mech('selector', null, p.weapon.id, true); HUD.toast('사격 모드: ' + modeName(p.weapon.id, fireMode(p.weapon))); }
   if (Input.consume('crouch') || Input.consume('seat')) Veh.switchSeat(p);
   if (Input.consume('heal')) usePlayerHeal(p);
   if (Input.consume('drink')) useConsumable(p, 'drink');
@@ -524,7 +532,7 @@ function playerFire(p) {
   if (!p.weapon || p.sprint || p.rl) p.burstQ = 0;
   if (p.weapon && p.fireCd <= 0 && !p.sprint && !p.rl && !p.cycle) {
     const d = ITEMS[p.weapon.id], mode = fireMode(p.weapon);
-    // 사격 모드: 연사/저속 연사는 누르는 동안, 단발은 한 번 누를 때 1발, 3점사는 한 번 누르면 3발(손을 떼도 끝까지)
+    // 사격 모드: 연사/저속 연사는 누르는 동안, 단발은 한 번 누를 때 1발, 점사는 한 번 누르면 정해진 발수(3발, Vector 2발 — 손을 떼도 끝까지)
     let want = p.burstQ > 0;
     if (!want && Input.fire && (mode === 'auto' || mode === 'slow' || !p.firedThisPress)) { want = true; if (mode === 'burst' && p.weapon.mag > 0) p.burstQ = d.burstN; }
     if (want) {

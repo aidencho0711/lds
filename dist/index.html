@@ -1274,7 +1274,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
           <tr><td><kbd>좌클릭</kbd> / <kbd>우클릭</kbd></td><td>사격 / 정조준(누르고 있기, 조준경으로 봄)</td></tr>
           <tr><td><kbd>Shift</kbd> (3·4·6배 조준 중)</td><td>숨 참기 — 조준경 흔들림 감소</td></tr>
           <tr><td><kbd>Shift</kbd></td><td>달리기</td></tr><tr><td><kbd>Space</kbd></td><td>점프 · 일어서기 · 창문·담 넘기 / 상자 오르기 (앞에 넘을 수 있는 턱이 있으면 자동)</td></tr>
-          <tr><td><kbd>C</kbd> / <kbd>Z</kbd></td><td>앉기 / 엎드리기</td></tr><tr><td><kbd>R</kbd></td><td>재장전</td></tr><tr><td><kbd>B</kbd></td><td>사격 모드 (연사·단발·3점사)</td></tr>
+          <tr><td><kbd>C</kbd> / <kbd>Z</kbd></td><td>앉기 / 엎드리기</td></tr><tr><td><kbd>R</kbd></td><td>재장전</td></tr><tr><td><kbd>B</kbd></td><td>사격 모드 (연사·단발·점사)</td></tr>
           <tr><td><kbd>1 2 3</kbd> / <kbd>X</kbd></td><td>무기 선택 / 무기 집어넣기</td></tr>
           <tr><td><kbd>F</kbd></td><td>줍기 · 강하 · 낙하산 · 차량 탑승/하차 · 기절한 팀원 부활(10초, 움직이면 취소)</td></tr>
           <tr><td>운전 중 <kbd>W S</kbd> / <kbd>A D</kbd></td><td>가속·브레이크·후진 / 조향 (<kbd>Space</kbd> 핸드브레이크, 마우스로 둘러보기)</td></tr><tr><td><kbd>G</kbd> / <kbd>T</kbd></td><td>투척 준비(궤적 표시, 다시 누르면 취소) / 투척물 전환 — 준비 중 좌클릭을 누르면 핀 뽑기, 떼면 투척. 수류탄은 핀을 뽑고 7초, 연막탄은 3초 뒤 터짐</td></tr>
@@ -1596,8 +1596,8 @@ const Audio = (() => {
   }
   // 미리 렌더한 버퍼 재생
   function playBuf(name, pos, gain, o = {}) {
-    if (!ctx || !bankReady) return false;
-    const arr = bank[name]; if (!arr || !arr.length) return false;
+    if (!ctx) return false;
+    const arr = bank[name]; if (!arr || !arr.length) return false;   // 만들어진 소리부터 바로 사용
     const buf = arr[Math.floor(Math.random() * arr.length)];
     let g = gain, pan = 0, cutoff = 20000, delay = 0, d = 0;
     if (pos && !o.own) {
@@ -1666,6 +1666,18 @@ const Audio = (() => {
     m249: { crack: 0.95, hp: 2900, cl: 1.0, boom: 1.05, lp: 2900, bd: 0.18, th: 0.95, tf: 110, te: 44, tl: 0.95, lo: 215, body: 1100, bq: 1.5, bdc: 0.07, er: 1.05, tail: 1.1, drv: 1.05, gain: 1.02, own: 0.95, range: 880, mech: 'mech_lmg' },
     mg3: { crack: 1.1, hp: 2600, cl: 0.95, boom: 1.1, lp: 2500, bd: 0.14, th: 1.0, tf: 96, te: 40, tl: 0.8, lo: 200, body: 900, bq: 1.4, bdc: 0.06, er: 0.9, tail: 1.05, drv: 1.05, gain: 1.05, own: 0.95, range: 900, mech: 'mech_lmg' },
     p19: { crack: 0.6, hp: 3400, cl: 0.9, boom: 0.75, lp: 4000, bd: 0.09, th: 0.75, tf: 165, te: 65, tl: 0.8, lo: 320, body: 1850, bq: 2.2, bdc: 0.035, er: 0.8, tail: 0.55, drv: 0.85, gain: 0.75, own: 0.75, range: 400, mech: 'mech_pistol', sec: 1.0 },
+    // v16 — Beryl: AKM보다 조금 밝고 날카로움 / M16A4: 건조한 5.56 / Vector·Bizon: 가벼운 9mm(Vector가 더 높고 짧음)
+    //  Tommy·Win94: .45는 음속보다 느려 크랙이 거의 없고 둔탁한 '퍽' / Kar98k: 긴 꼬리의 큰 소총 / DP-28: 느린 7.62 / Deagle: 묵직한 권총
+    beryl: { crack: 1.1, hp: 2700, cl: 1.1, boom: 1.15, lp: 2400, bd: 0.23, th: 1.08, tf: 92, te: 37, tl: 1.1, lo: 195, body: 820, bq: 1.3, bdc: 0.085, er: 1.1, tail: 1.22, drv: 1.08, gain: 1.07, own: 1.0, range: 850, mech: 'mech_ak' },
+    m16a4: { crack: 1.05, hp: 3200, cl: 0.95, boom: 0.95, lp: 3400, bd: 0.16, th: 0.88, tf: 122, te: 48, tl: 0.95, lo: 235, body: 1400, bq: 1.7, bdc: 0.055, er: 1.0, tail: 1.1, drv: 0.98, gain: 1.0, own: 0.95, range: 880, mech: 'mech_rifle' },
+    vector: { crack: 0.42, hp: 3800, cl: 0.75, boom: 0.75, lp: 4400, bd: 0.09, th: 0.65, tf: 160, te: 64, tl: 0.75, lo: 310, body: 1900, bq: 2.1, bdc: 0.035, er: 0.75, tail: 0.55, drv: 0.85, gain: 0.74, own: 0.74, range: 430, mech: 'mech_smg', sec: 1.0 },
+    bizon: { crack: 0.45, hp: 3500, cl: 0.82, boom: 0.82, lp: 4000, bd: 0.11, th: 0.72, tf: 145, te: 58, tl: 0.82, lo: 290, body: 1550, bq: 1.9, bdc: 0.045, er: 0.82, tail: 0.62, drv: 0.86, gain: 0.8, own: 0.78, range: 450, mech: 'mech_smg', sec: 1.0 },
+    tommy: { crack: 0.15, hp: 2900, cl: 1.0, boom: 1.0, lp: 2600, bd: 0.15, th: 0.95, tf: 112, te: 46, tl: 1.0, lo: 235, body: 1050, bq: 1.5, bdc: 0.07, er: 0.95, tail: 0.75, drv: 0.95, gain: 0.86, own: 0.85, range: 480, mech: 'mech_smg', sec: 1.1 },
+    kar98k: { crack: 1.4, hp: 2400, cl: 1.3, boom: 1.25, lp: 1900, bd: 0.34, th: 1.25, tf: 80, te: 30, tl: 1.35, lo: 170, body: 720, bq: 1.15, bdc: 0.11, er: 1.45, tail: 1.8, drv: 1.12, gain: 1.22, own: 1.08, range: 1100, mech: null, sec: 2.0 },
+    win94: { crack: 0.35, hp: 2600, cl: 1.15, boom: 1.1, lp: 2200, bd: 0.24, th: 1.05, tf: 95, te: 38, tl: 1.15, lo: 200, body: 880, bq: 1.3, bdc: 0.09, er: 1.15, tail: 1.25, drv: 1.05, gain: 1.05, own: 1.0, range: 750, mech: null, sec: 1.6 },
+    s1897: { crack: 0.55, hp: 2000, cl: 1.65, boom: 1.3, lp: 1650, bd: 0.38, th: 1.35, tf: 68, te: 29, tl: 1.65, lo: 178, body: 540, bq: 1.0, bdc: 0.12, er: 1.3, tail: 1.35, drv: 1.15, gain: 1.18, own: 1.04, range: 720, mech: null },
+    dp28: { crack: 1.15, hp: 2500, cl: 1.05, boom: 1.15, lp: 2300, bd: 0.2, th: 1.05, tf: 90, te: 37, tl: 1.0, lo: 192, body: 800, bq: 1.3, bdc: 0.08, er: 1.05, tail: 1.2, drv: 1.07, gain: 1.07, own: 0.98, range: 900, mech: 'mech_lmg' },
+    deagle: { crack: 0.85, hp: 2900, cl: 1.1, boom: 1.1, lp: 2700, bd: 0.17, th: 1.0, tf: 110, te: 45, tl: 1.05, lo: 240, body: 1150, bq: 1.6, bdc: 0.07, er: 1.0, tail: 0.95, drv: 1.0, gain: 0.95, own: 0.9, range: 600, mech: 'mech_pistol', sec: 1.3 },
   };
   // 총성 합성 (실제 녹음의 구조를 흉내):
   //  ① 초음속 크랙(아주 짧은 고역) ② 폭압: 광대역 잡음 + 150~350Hz 저중역 덩어리 ③ 피치가 빠르게 떨어지는 저역 킥
@@ -1816,6 +1828,35 @@ const Audio = (() => {
     boxIn: (o, b) => { slide(o, b, 0, 0.06, 600, 900, 0.35, 0.6, -0.25); body(o, b, 0.058, 150, 0.55, 0.06, -0.2); modal(o, b, 0.058, M_POLY(0.7), 0.6, -0.2); tick(o, b, 0.07, 2600, 0.4); modal(o, b, 0.07, M_SMALL(2500), 0.5); },
     boxSeat: (o, b) => { body(o, b, 0, 140, 0.6, 0.06, -0.15); modal(o, b, 0, M_POLY(0.75), 0.5, -0.15); tick(o, b, 0.01, 2500, 0.4); modal(o, b, 0.01, M_SMALL(2350), 0.45); },
     beltLay: (o, b) => { for (let i = 0; i < 8; i++) modal(o, b, i * 0.02 + Math.random() * 0.008, M_BRASS(0.85 + Math.random() * 0.25), 0.22 * (1 - i / 10)); slide(o, b, 0, 0.16, 2400, 3000, 0.15, 0.8); body(o, b, 0.15, 250, 0.25, 0.03); },
+    // ----- v16 -----
+    // Beryl: 새 강철 탄창이 헌 탄창·멈치를 '쾅' 치고 헌 탄창이 미끄러져 빠짐
+    magKnock: (o, b) => { tick(o, b, 0, 2000, 0.8, 0.003, -0.15); modal(o, b, 0, M_STEELMAG(1.05), 0.9, -0.15); modal(o, b, 0.002, M_POLY(0.95), 0.5); body(o, b, 0, 170, 0.6, 0.05); slide(o, b, 0.012, 0.05, 1500, 900, 0.3, 1, -0.2); },
+    // 떨어진 탄창이 바닥에: 둔탁한 '툭' + 안의 탄이 흔들리는 소리
+    magDrop: (o, b) => { body(o, b, 0, 95, 0.9, 0.08); nz(o, b, 0, 0.06, 'lowpass', 700, 260, 0.7, 0.6, 0.002); modal(o, b, 0.004, M_POLY(0.8), 0.5); for (let i = 0; i < 3; i++) modal(o, b, 0.03 + i * 0.025, M_BRASS(0.7 + Math.random() * 0.2), 0.08); },
+    // Tommy 드럼: 걸쇠 → 레일을 따라 무겁게 미끄러짐(속의 탄이 출렁) → 끝에 걸림
+    drumLatch: (o, b) => { tick(o, b, 0, 2400, 0.5, 0.002, -0.2); modal(o, b, 0, M_SMALL(2100), 0.6, -0.2); },
+    drumOut: (o, b) => { slide(o, b, 0, 0.16, 700, 500, 0.55, 0.9, -0.3); modal(o, b, 0.02, [[310, 0.05, 1], [690, 0.04, 0.7], [1240, 0.03, 0.5], [2100, 0.02, 0.3]], 0.5, -0.3); for (let i = 0; i < 4; i++) modal(o, b, 0.03 + i * 0.03, M_BRASS(0.8), 0.07, -0.25); },
+    drumIn: (o, b) => { slide(o, b, 0, 0.12, 500, 800, 0.5, 0.9, -0.25); modal(o, b, 0.11, [[300, 0.06, 1], [650, 0.045, 0.7], [1200, 0.03, 0.5]], 0.8, -0.2); body(o, b, 0.11, 150, 0.8, 0.07, -0.15); },
+    drumSeat: (o, b) => { tick(o, b, 0, 2200, 0.7, 0.003); modal(o, b, 0, M_SMALL(2300), 0.7); modal(o, b, 0.002, M_RECV(0.8), 0.6); body(o, b, 0, 130, 1.0, 0.07); },
+    // Tommy 위 손잡이: 스프링을 누르며 당김 → 노리쇠가 뒤에 '딸깍' 걸림(열린 노리쇠라 앞으로 가지 않음)
+    knobBack: (o, b) => { slide(o, b, 0, 0.09, 1000, 2000, 0.5, 1.1, 0.05); spring(o, b, 0.01, 1500, 2900, 0.09, 0.06); modal(o, b, 0.09, M_RECV(0.95), 0.55); tick(o, b, 0.09, 2600, 0.6); modal(o, b, 0.092, M_SMALL(2700), 0.6); },
+    // DP-28 원판: 걸쇠 → 넓은 강판이 울리며 들림 / 얹힘 → 눌러 걸림
+    panLatch: (o, b) => { tick(o, b, 0, 2600, 0.5, 0.002, -0.1); modal(o, b, 0, M_SMALL(2500), 0.55, -0.1); },
+    panOff: (o, b) => { slide(o, b, 0, 0.07, 900, 600, 0.35, 0.6, -0.2); modal(o, b, 0.03, [[180, 0.09, 0.8], [420, 0.07, 1], [930, 0.05, 0.7], [1650, 0.035, 0.45], [2600, 0.02, 0.3]], 0.7, -0.2); cloth(o, b, 0.08, 0.14, 0.2, -0.3); },
+    panOn: (o, b) => { modal(o, b, 0, [[180, 0.1, 0.8], [420, 0.08, 1], [930, 0.06, 0.7], [1650, 0.04, 0.45]], 0.75, -0.15); body(o, b, 0, 120, 0.7, 0.07); tick(o, b, 0.004, 1600, 0.4); },
+    panSeat: (o, b) => { tick(o, b, 0, 2200, 0.7, 0.003); modal(o, b, 0, M_SMALL(2300), 0.65); body(o, b, 0, 140, 0.9, 0.06); modal(o, b, 0.003, M_RECV(0.85), 0.5); },
+    // M16A4 노리쇠 멈치: 손바닥 '탁' → 노리쇠가 앞으로 '쾅'
+    boltCatch: (o, b) => { nz(o, b, 0, 0.02, 'bandpass', 900, 700, 1, 0.4, 0.001); body(o, b, 0, 200, 0.5, 0.03); tick(o, b, 0.006, 1300, 0.9, 0.004); body(o, b, 0.006, 175, 1.3, 0.08); modal(o, b, 0.006, M_RECV(), 1.0); modal(o, b, 0.007, M_SMALL(3050), 0.6); spring(o, b, 0.008, 3200, 2800, 0.2, 0.1); },
+    // Deagle 슬라이드 멈치: 작은 레버 딸깍 → 무거운 슬라이드가 닫힘
+    slideStop: (o, b) => { tick(o, b, 0, 3000, 0.4, 0.002); modal(o, b, 0, M_SMALL(3200), 0.4); tick(o, b, 0.012, 1800, 0.85, 0.003); body(o, b, 0.012, 230, 1.1, 0.06); modal(o, b, 0.012, M_PISTOL(0.85), 1.0); spring(o, b, 0.014, 3400, 2900, 0.12, 0.07); },
+    // Kar98k 클립: 홈에 꽂힘 → 엄지로 5발을 밀어 넣음(탄이 차례로 미끄러짐) → 빈 클립이 튕겨 나감
+    clipIn: (o, b) => { slide(o, b, 0, 0.05, 2000, 2800, 0.35, 1.2, 0.15); tick(o, b, 0.048, 2600, 0.55); modal(o, b, 0.048, M_SMALL(2800), 0.6); modal(o, b, 0.05, M_BRASS(0.9), 0.2); },
+    clipStrip: (o, b) => { for (let i = 0; i < 5; i++) { const t = i * 0.035; slide(o, b, t, 0.03, 1800, 1300, 0.18, 0.8, 0.1); modal(o, b, t + 0.025, M_BRASS(0.85 + i * 0.03), 0.22, 0.1); } spring(o, b, 0.02, 1400, 2200, 0.16, 0.07); tick(o, b, 0.17, 2200, 0.4); },
+    clipEject: (o, b) => { modal(o, b, 0, [[2400, 0.04, 1], [3900, 0.03, 0.6], [6100, 0.02, 0.35]], 0.45, 0.2); tick(o, b, 0, 3500, 0.3); },
+    // Win94 레버: 내림(노리쇠가 뒤로 미끄러짐) / 올림(앞으로 닫히며 '철컥') · 장전구로 한 발
+    leverDown: (o, b) => { tick(o, b, 0, 2000, 0.45, 0.002, 0.15); slide(o, b, 0.005, 0.09, 900, 1500, 0.45, 0.9, 0.15); modal(o, b, 0.09, M_RECV(0.9), 0.55, 0.1); tick(o, b, 0.09, 1700, 0.4); },
+    leverUp: (o, b) => { slide(o, b, 0, 0.08, 1500, 900, 0.4, 0.9, 0.15); tick(o, b, 0.075, 1400, 0.8, 0.003); body(o, b, 0.075, 190, 1.0, 0.06); modal(o, b, 0.075, M_RECV(0.95), 0.85); modal(o, b, 0.077, M_SMALL(2500), 0.6); },
+    gateIn: (o, b) => { slide(o, b, 0, 0.045, 1600, 2300, 0.3, 1, 0.2); spring(o, b, 0.01, 1800, 2600, 0.06, 0.06, 0.2); tick(o, b, 0.042, 2800, 0.45); modal(o, b, 0.042, M_BRASS(0.95), 0.4); modal(o, b, 0.044, M_SMALL(2600), 0.4); },
     // ----- 그 밖 -----
     selector: (o, b) => { tick(o, b, 0, 2800, 0.45, 0.002, 0.2); modal(o, b, 0, M_SMALL(2900), 0.5, 0.2); tick(o, b, 0.045, 3000, 0.3, 0.002, 0.2); modal(o, b, 0.045, M_SMALL(3100), 0.32, 0.2); },
     equip: (o, b) => { cloth(o, b, 0, 0.2, 0.45); for (let i = 0; i < 3; i++) modal(o, b, 0.05 + i * 0.03 + Math.random() * 0.02, M_SMALL(3300 + Math.random() * 1200), 0.12); body(o, b, 0.15, 200, 0.4, 0.05); modal(o, b, 0.15, M_RECV(1.1), 0.4); },
@@ -1829,7 +1870,11 @@ const Audio = (() => {
   const MPEAK = { magRelease: 0.4, magOut: 0.5, magIn: 0.78, magSeat: 0.85, magInAk: 0.7, magRock: 0.9, chargeBack: 0.6, chargeFwd: 0.95, slideBack: 0.5, slideRelease: 0.88,
     boltUp: 0.5, boltBack: 0.62, boltFwd: 0.72, boltDown: 0.85, roundIn: 0.55, pumpBack: 0.65, pumpFwd: 0.88, shellIn: 0.6, breakOpen: 0.7, breakClose: 0.95, shellEject: 0.5,
     coverOpen: 0.65, coverClose: 0.95, boxOut: 0.6, boxIn: 0.75, boxSeat: 0.7, beltLay: 0.55, selector: 0.45, equip: 0.6, aimIn: 0.35, attach: 0.6, dry: 0.55,
-    mech_rifle: 0.8, mech_smg: 0.8, mech_pistol: 0.8, mech_ak: 0.8, mech_lmg: 0.8 };
+    mech_rifle: 0.8, mech_smg: 0.8, mech_pistol: 0.8, mech_ak: 0.8, mech_lmg: 0.8,
+    magKnock: 0.85, magDrop: 0.6, drumLatch: 0.45, drumOut: 0.65, drumIn: 0.8, drumSeat: 0.85, knobBack: 0.7, panLatch: 0.45, panOff: 0.6, panOn: 0.75, panSeat: 0.85,
+    boltCatch: 0.95, slideStop: 0.9, clipIn: 0.6, clipStrip: 0.65, clipEject: 0.45, leverDown: 0.65, leverUp: 0.9, gateIn: 0.55 };
+  // 장전 한 번에 한 번만 나는 v16 소리는 1가지로 (시작할 때 소리 만드는 시간 절약). 매 발 반복되는 레버·장전구는 2가지
+  const ONE_VAR = new Set(['magKnock', 'magDrop', 'drumLatch', 'drumOut', 'drumIn', 'drumSeat', 'knobBack', 'panLatch', 'panOff', 'panOn', 'panSeat', 'boltCatch', 'slideStop', 'clipIn', 'clipStrip', 'clipEject']);
   // ---------- 줍기·회복·넘기·투척 효과음 재료 ----------
   const swish = (o, b, t0, dur, f0, f1, g0) => nz(o, b, t0, dur, 'bandpass', f0, f1, 1.2, g0, dur * 0.45);           // 옷·팔 스치는 소리
   function zipper(o, b, t0, dur, f0, g0) { const n = Math.round(dur / 0.011); for (let i = 0; i < n; i++) nz(o, b, t0 + i * dur / n * (0.9 + Math.random() * 0.2), 0.006, 'bandpass', f0 * (1 + i / n * 0.35), f0, 2.5, g0 * (0.6 + Math.random() * 0.4), 0.0005); }
@@ -1871,10 +1916,11 @@ const Audio = (() => {
   Object.assign(MECH, SFX);
   async function renderBank() {
     if (!(window.OfflineAudioContext || window.webkitOfflineAudioContext)) return;
-    const jobs = [];
-    for (const id in GUN) for (let v = 0; v < 2; v++) jobs.push(['g_' + id, GUN[id].sec || 1.5, shotGraph(GUN[id]), 0.95, 1.15]);
-    for (const k in MECH) { const n = k === 'brass' ? 3 : (k.startsWith('mech') || MPEAK[k] ? 2 : 1); for (let v = 0; v < n; v++) jobs.push([k, MECH_SEC[k] || (k === 'equip' ? 0.35 : MPEAK[k] ? 0.45 : 0.25), MECH[k], MPEAK[k] || 0.8, 0]); }
-    for (const [name, sec, fn, peak, loud] of jobs) { const b = await render(sec, fn, peak, loud); (bank[name] || (bank[name] = [])).push(b); }
+    // 소리마다 첫 번째 버전을 먼저 모두 만들고(그 소리는 바로 쓸 수 있음), 두 번째 이후 버전은 나중에 → 총이 많아져도 시작 직후 빈 소리 구간이 짧다
+    const first = [], rest = [];
+    for (const id in GUN) for (let v = 0; v < 2; v++) (v ? rest : first).push(['g_' + id, GUN[id].sec || 1.5, shotGraph(GUN[id]), 0.95, 1.15]);
+    for (const k in MECH) { const n = k === 'brass' ? 3 : ONE_VAR.has(k) ? 1 : (k.startsWith('mech') || MPEAK[k] ? 2 : 1); for (let v = 0; v < n; v++) (v ? rest : first).push([k, MECH_SEC[k] || (k === 'equip' ? 0.35 : MPEAK[k] ? 0.45 : 0.25), MECH[k], MPEAK[k] || 0.8, 0]); }
+    for (const [name, sec, fn, peak, loud] of first.concat(rest)) { const b = await render(sec, fn, peak, loud); (bank[name] || (bank[name] = [])).push(b); }
     bankReady = true;
   }
 
@@ -1914,7 +1960,7 @@ const Audio = (() => {
     gunshot(pos, weapon, isOwn, indoor) {
       if (!ctx) return;
       const id = GUN[weapon] ? weapon : (CLS_ID[weapon] || 'm416'), P = GUN[id];
-      if (bankReady) {
+      if (bank['g_' + id]) {
         const d = isOwn ? 0 : geom(pos).d;
         const send = isOwn ? (indoor ? 0.6 : 0.4) : clamp(0.3 + d / 260, 0.3, 1.15);
         playBuf('g_' + id, isOwn ? null : pos, isOwn ? P.own : P.gain, { own: isOwn, sonic: true, range: P.range, ref: 18, lpRef: 75, send, room: indoor && d < 80, jitter: 0.05, vdur: 0.6 });
@@ -1928,11 +1974,16 @@ const Audio = (() => {
     },
     // 장전·볼트·펌프 등 기계음. weapon id로 피치를 살짝 바꿔 무기마다 다른 질감
     mech(name, pos, weapon, isOwn) {
-      if (!ctx || !bankReady || !bank[name]) return;
-      const rate = { m416: 1, aug: 1.05, akm: 0.88, asm: 0.95, vk9: 1.1, mini14: 1.02, slr: 0.9, m24: 1, awm: 0.92, s686: 1, s12k: 0.9, m249: 0.95, mg3: 0.88, p19: 1.14 }[weapon] || 1;
+      if (!ctx || !bank[name]) return;
+      const rate = { m416: 1, aug: 1.05, akm: 0.88, asm: 0.95, vk9: 1.1, mini14: 1.02, slr: 0.9, m24: 1, awm: 0.92, s686: 1, s12k: 0.9, m249: 0.95, mg3: 0.88, p19: 1.14,
+        beryl: 0.9, m16a4: 1.0, vector: 1.12, bizon: 1.04, tommy: 0.86, kar98k: 0.97, win94: 1.0, s1897: 0.95, dp28: 0.84, deagle: 0.8 }[weapon] || 1;
       playBuf(name, isOwn ? null : pos, isOwn ? 0.72 : 0.7, { own: isOwn, rate, range: 26, ref: 4, send: isOwn ? 0.1 : 0.2, room: listener.indoor > 0.5, jitter: 0.04 });
     },
-    brass(pos, kind) { if (!ctx || !throttle('brass', 0.05)) return; playBuf(kind === 'hull' ? 'hull' : 'brass', pos, 0.32, { range: 22, ref: 3, jitter: 0.15, send: 0.08 }); },
+    brass(pos, kind) {
+      if (!ctx) return;
+      if (kind && kind.startsWith('mag:')) { playBuf('magDrop', pos, 0.5, { range: 26, ref: 3, jitter: 0.1, send: 0.1 }); return; }   // 떨어뜨린 탄창
+      if (!throttle('brass', 0.05)) return; playBuf(kind === 'hull' ? 'hull' : 'brass', pos, 0.32, { range: 22, ref: 3, jitter: 0.15, send: 0.08 });
+    },
     impact(pos, flesh) {
       if (!ctx || !throttle('imp', 0.03) || !voice(0.1)) return;
       const out = spatial(pos, flesh ? 0.5 : 0.35, 60); if (!out) return;
@@ -2776,23 +2827,26 @@ async function generateWorld(mapId, scene, progress) {
     const gy = (x, z) => heightAt(x, z), PAD = 0x6f6c66, TABLE = 0x6b5640, POST = 0x4b4f52, ROOF = 0xa9aca4;
     const sign = (x, y, z, ry, title, sub, wd = 3.2, ht = 1.1) => T.signs.push({ x, y, z, ry, title, sub, w: wd, h: ht });
     const poi = (name, x, z) => w.pois.push({ type: 'train', name, x, z, r: 20, h: gy(x, z) });
-    // 1) 무기고: 지붕 덮인 콘크리트 바닥 + 탁자 3줄 (총기 / 부착물·탄약 / 회복·투척·방어구)
+    // 1) 무기고: 지붕 덮인 콘크리트 바닥 + 탁자 4줄 (총기 ①② / 부착물·탄약 / 회복·투척·방어구)
+    //    총기는 종류별로: ① 돌격소총·기관단총·권총  ② 지정사수·저격·산탄·경기관총 (24종)
     {
       const cx = 0, cz = 161, y = gy(cx, cz), F = frame(cx, cz, 0, y);
       F.box(-26, -1.2, -9, 26, 0.12, 9, PAD, { nav: true });
       for (const x of [-26, -19.5, 19.5, 26]) for (const z of [-9, 9]) F.box(x - 0.18, 0.12, z - 0.18, x + 0.18, 3.6, z + 0.18, POST); // 가운데 기둥 없음(시작 시점 카메라를 가리지 않게)
       F.box(-26.6, 3.6, -9.6, 26.6, 3.85, 9.6, ROOF);
       F.box(-26, 0.12, 8.7, 26, 1.2, 9, 0x5a5f55); // 뒤쪽 낮은 벽
+      const guns = (classes) => classes.flatMap((cl) => Object.keys(ITEMS).filter((k) => ITEMS[k].type === 'weapon' && ITEMS[k].cls === cl));
       const rows = [
-        { lz: -5, ids: Object.keys(ITEMS).filter((k) => ITEMS[k].type === 'weapon'), title: '총기', sub: '탄창 가득 · 가져가면 잠시 뒤 다시 놓임' },
-        { lz: 0, ids: ['reddot', 'holo', 'x2', 'x3', 'x4', 'x6', 'comp', 'extmag', 'grip', 'a556', 'a762', 'a9', 'a12', 'a300'], title: '부착물 · 탄약', sub: '훈련장에서는 쏜 만큼 탄약이 자동으로 채워짐' },
-        { lz: 5, ids: ['bandage', 'firstaid', 'medkit', 'drink', 'frag', 'smoke', 'helm1', 'helm2', 'helm3', 'vest1', 'vest2', 'vest3', 'bag1', 'bag2', 'bag3'], title: '회복 · 투척 · 방어구', sub: '수류탄은 북쪽 벽 너머 더미에게 연습' },
+        { lz: -5.6, ids: guns(['AR', 'SMG', 'PISTOL']), title: '총기 ① 돌격·기관단총·권총', sub: '탄창 가득 · 가져가면 잠시 뒤 다시 놓임', wide: true },
+        { lz: -1.8, ids: guns(['DMR', 'SR', 'SG', 'LMG']), title: '총기 ② 저격·산탄·기관총', sub: '지정사수·저격·산탄·경기관총 · 볼트·레버·펌프식은 한 발씩', wide: true },
+        { lz: 2.0, ids: ['reddot', 'holo', 'x2', 'x3', 'x4', 'x6', 'comp', 'extmag', 'grip', 'a556', 'a762', 'a9', 'a12', 'a300', 'a45'], title: '부착물 · 탄약', sub: '훈련장에서는 쏜 만큼 탄약이 자동으로 채워짐' },
+        { lz: 5.8, ids: ['bandage', 'firstaid', 'medkit', 'drink', 'frag', 'smoke', 'helm1', 'helm2', 'helm3', 'vest1', 'vest2', 'vest3', 'bag1', 'bag2', 'bag3'], title: '회복 · 투척 · 방어구', sub: '수류탄은 북쪽 벽 너머 더미에게 연습' },
       ];
       for (const R0 of rows) {
         const n = R0.ids.length, gap = 3.0, x0 = -(n - 1) * gap / 2;
         F.box(x0 - 1.1, 0.12, R0.lz - 0.5, -x0 + 1.1, 0.86, R0.lz + 0.5, TABLE);
         R0.ids.forEach((id, i) => { const d = ITEMS[id]; T.spots.push({ id, count: d.type === 'ammo' ? d.stack : ({ bandage: 5, firstaid: 3, medkit: 1, drink: 3, frag: 3, smoke: 3 }[id] || 1), x: cx + x0 + i * gap, y: y + 0.87, z: cz + R0.lz }); });
-        sign(cx, y + 2.7, cz + R0.lz - 0.55, Math.PI, R0.title, R0.sub, 4.2, 1.15);
+        sign(cx, y + 2.7, cz + R0.lz - 0.55, Math.PI, R0.title, R0.sub, R0.wide ? 5.6 : 4.2, 1.15);
       }
       sign(cx, y + 3.15, cz - 9.75, Math.PI, '무기고', '총을 고른 뒤 북쪽 사격선으로', 5, 1.2);
       sign(cx, y + 3.15, cz - 9.45, 0, '사격선 ↑ 북쪽 30m', '차량 ← 서쪽 · 장애물 코스 → 동쪽', 5, 1.2);
@@ -5029,7 +5083,8 @@ function setFingers(A, P, w = 1) {
 }
 function mixFing(a, b, k) { for (let i = 0; i < 5; i++) _fing[i] = lerp(a[i], b[i], k); return _fing; }
 // 총 부품 위치(anchor)별 손 모양 / 손 방향(총 좌표계 기준 쿼터니언)
-const ANCHOR_FING = { grip: 'trig', fore: 'fore', well: 'mag', pouch: 'mag', pouchR: 'mag', charge: 'pinch', chargeBack: 'pinch', port: 'pinch', bolt: 'pinch', boltUp: 'pinch', boltBack: 'pinch', cover: 'claw', coverUp: 'claw', tray: 'flat', lever: 'grip', breech: 'pinch', foreOpen: 'fore' };
+const ANCHOR_FING = { grip: 'trig', fore: 'fore', well: 'mag', pouch: 'mag', pouchR: 'mag', charge: 'pinch', chargeBack: 'pinch', port: 'pinch', bolt: 'pinch', boltUp: 'pinch', boltBack: 'pinch', cover: 'claw', coverUp: 'claw', tray: 'flat', lever: 'grip', breech: 'pinch', foreOpen: 'fore',
+  vfore: 'grip', wellRock: 'mag', knock: 'mag', catch: 'flat', catchIn: 'flat', knob: 'pinch', knobBack: 'pinch', drum: 'claw', drumOut: 'claw', pan: 'claw', panOut: 'claw', stop: 'grip', gate: 'pinch', clip: 'pinch', clipPush: 'pinch' };
 const GQ = {};   // 총 좌표계에서 손 방향
 (() => {
   const mk = (name, fd, pn, side) => { const q = new THREE.Quaternion(); handQuat(q, new THREE.Vector3().fromArray(fd), new THREE.Vector3().fromArray(pn), side); GQ[name + (side > 0 ? 'L' : 'R')] = q; };
@@ -5044,6 +5099,15 @@ const GQ = {};   // 총 좌표계에서 손 방향
   mk('port', [-0.2, 0.0, 0.98], [0.1, 1, 0], 1); mk('cover', [-0.2, -0.3, 0.93], [0, -1, 0], 1); mk('coverUp', [-0.2, 0.4, 0.9], [0, -0.8, 0.6], 1);
   mk('tray', [-0.3, -0.2, 0.93], [0, -1, 0], 1); mk('breech', [-0.2, -0.3, 0.93], [0.2, -0.9, 0], 1);
   mk('grip', [0, -0.28, 0.96], [-1, 0, 0], 1); mk('fore', [-0.75, 0.35, 0.55], [0.15, 1, 0], -1);
+  // v16 — 왼손: 앞 수직 손잡이 · 젖힌 탄창 · 탄창 쳐내기 · 노리쇠 멈치(손바닥) · 위 장전 손잡이(위에서) · 드럼 옆면 · 원판 가장자리(위에서)
+  mk('vfore', [0, -0.28, 0.96], [-1, 0, 0], 1); mk('wellRock', [0.0, 0.1, 0.99], [-0.85, 0.3, 0], 1); mk('knock', [0.0, 0.25, 0.97], [-0.85, 0.3, 0], 1);
+  mk('catch', [0.05, 0.4, 0.92], [-1, 0, 0], 1); mk('catchIn', [0.05, 0.4, 0.92], [-1, 0, 0], 1);
+  mk('knob', [-0.45, -0.25, 0.86], [0, -1, 0], 1); mk('knobBack', [-0.45, -0.25, 0.86], [0, -1, 0], 1);
+  mk('drum', [0, -0.6, 0.8], [-1, 0, 0], 1); mk('drumOut', [0, -0.6, 0.8], [-1, 0, 0], 1);
+  mk('pan', [-0.55, -0.35, 0.76], [-0.3, -0.95, 0], 1); mk('panOut', [-0.55, -0.35, 0.76], [-0.3, -0.95, 0], 1);
+  // 오른손: 슬라이드 멈치(엄지) · 장전구(손바닥이 총 오른쪽 옆면) · 클립(위에서 엄지로 누름)
+  mk('stop', [0, -0.18, 0.98], [1, 0, 0], -1); mk('gate', [0.05, -0.15, 0.98], [1, 0, 0], -1);
+  mk('clip', [0.35, -0.4, 0.85], [0.15, -0.95, 0.2], -1); mk('clipPush', [0.35, -0.4, 0.85], [0.15, -0.95, 0.2], -1);
 })();
 // 손바닥 가운데(손목 기준, 손 로컬) — 총 anchor는 손바닥 가운데 자리
 const PALM = { L: new THREE.Vector3(-0.012, -0.06, 0.004), R: new THREE.Vector3(0.012, -0.06, 0.004) };
@@ -5365,7 +5429,7 @@ function animateChar(c, dt) {
   if (gun && gunVis) {
     const near = c.isPlayer || camD < 45;
     if (near && (c.rl || c.cycle || c.slideKick > 0 || (c.weapon && c.weapon.mag === 0))) { A = weaponAnim(c, gun.userData.meta); applyParts(gun, A); gun.userData.posed = true; }
-    else { if (gun.userData.posed) { applyParts(gun, weaponAnim({ rl: null, cycle: null, weapon: c.weapon, slideKick: 0 }, gun.userData.meta)); gun.userData.posed = false; } A = weaponAnim({ rl: null, cycle: null, weapon: c.weapon, slideKick: 0, fireCd: 0 }, gun.userData.meta); }
+    else { if (gun.userData.posed) { applyParts(gun, weaponAnim({ rl: null, cycle: null, weapon: c.weapon, slideKick: 0 }, gun.userData.meta)); gun.userData.posed = false; } A = weaponAnim({ rl: null, cycle: null, weapon: c.weapon, slideKick: 0, fireCd: 0 }, gun.userData.meta); if (gun.userData.meta.openBolt) applyParts(gun, A); }
     const aimYaw = c.isPlayer || c.aiming || c.combatFacing || c.fireHold ? c.yaw : c.bodyYaw;
     const gq = placeGun(c, r, a, aimYaw, pitch, A, a.prone > 0.5 ? a.prone : 0);
     // 손 → 총 (anchor = 손바닥 가운데)
@@ -5664,12 +5728,25 @@ const ITEMS = {
   m249: { type: 'weapon', name: 'M249 경기관총', cls: 'LMG', slot: 'primary', ammo: 'a556', dmg: 29, rpm: 750, modes: ['auto'], mag: 100, rKind: 'belt', reload: 7.4, reloadEmpty: 8.0, spread: 1.25, recoil: 1.15, range: 280, zoom: 1.15, moveMul: 0.9, adsMul: 1.45, tier: 3, color: 0x2c2f2a },
   mg3: { type: 'weapon', name: 'MG3 경기관총', cls: 'LMG', slot: 'primary', ammo: 'a762', dmg: 33, rpm: 990, rpmSlow: 660, modes: ['auto', 'slow'], mag: 75, rKind: 'belt', reload: 6.4, reloadEmpty: 7.0, spread: 1.4, recoil: 1.35, range: 300, zoom: 1.15, moveMul: 0.88, adsMul: 1.5, tier: 4, supply: true, color: 0x222426 },
   p19: { type: 'weapon', name: 'P-19 권총', cls: 'PISTOL', slot: 'secondary', ammo: 'a9', dmg: 24, rpm: 420, modes: ['single'], mag: 15, reload: 1.4, reloadEmpty: 1.75, spread: 1.2, recoil: 0.9, range: 70, zoom: 1.1, tier: 1, color: 0x222222 },
+  // ----- v16 추가 10종 (rTL: 총마다 다른 장전 동작 · 06_combat.js RL_TL) -----
+  //  vgrip: 수직 손잡이 가능 · noExt/noScope/noMuzzle: 대용량 탄창·조준경·총구 부착물 불가
+  beryl: { type: 'weapon', name: 'Beryl M762 돌격소총', cls: 'AR', slot: 'primary', ammo: 'a762', dmg: 41, rpm: 700, burstRpm: 900, burstN: 3, burstGap: 0.24, modes: ['auto', 'burst', 'single'], mag: 30, reload: 2.6, reloadEmpty: 3.25, rStyle: 'ak', rTL: 'beryl', spread: 1.25, recoil: 2.1, range: 270, zoom: 1.2, tier: 3, vgrip: true, color: 0x1c1d1f },
+  m16a4: { type: 'weapon', name: 'M16A4 돌격소총', cls: 'AR', slot: 'primary', ammo: 'a556', dmg: 33, rpm: 800, burstRpm: 900, burstN: 3, burstGap: 0.22, modes: ['burst', 'single'], mag: 30, reload: 2.2, reloadEmpty: 2.75, rStyle: 'ar', rTL: 'm16', spread: 0.8, recoil: 1.05, range: 330, zoom: 1.2, tier: 2, color: 0x232527 },
+  vector: { type: 'weapon', name: 'Vector 기관단총', cls: 'SMG', slot: 'primary', ammo: 'a9', dmg: 19, rpm: 1090, burstRpm: 1200, burstN: 2, burstGap: 0.16, modes: ['auto', 'burst', 'single'], mag: 19, reload: 1.85, reloadEmpty: 2.35, rStyle: 'ar', rTL: 'vector', spread: 1.35, recoil: 0.5, range: 100, zoom: 1.15, tier: 2, vgrip: true, color: 0x161718 },
+  bizon: { type: 'weapon', name: 'PP-19 Bizon 기관단총', cls: 'SMG', slot: 'primary', ammo: 'a9', dmg: 22, rpm: 680, modes: ['auto', 'single'], mag: 53, reload: 2.9, reloadEmpty: 3.5, rStyle: 'ak', rTL: 'helix', spread: 1.3, recoil: 0.45, range: 120, zoom: 1.15, tier: 1, noExt: true, color: 0x1f2022 },
+  tommy: { type: 'weapon', name: 'Tommy Gun 기관단총', cls: 'SMG', slot: 'primary', ammo: 'a45', dmg: 26, rpm: 680, modes: ['auto', 'single'], mag: 50, reload: 3.0, reloadEmpty: 3.7, rTL: 'drum', spread: 1.45, recoil: 0.75, range: 110, zoom: 1.15, tier: 1, noExt: true, noScope: true, noMuzzle: true, color: 0x5a3418 },
+  kar98k: { type: 'weapon', name: 'Kar98k 저격소총', cls: 'SR', slot: 'primary', ammo: 'a762', dmg: 90, rpm: 40, modes: ['single'], mag: 5, rKind: 'bolt', rOpen: 0.5, rShell: 0.58, rClose: 0.5, clip: 5, rClipIn: 0.45, rClipPush: 0.5, cycle: 'bolt', cycleT: 1.15, spread: 0.06, recoil: 3.8, range: 650, zoom: 1.25, tier: 2, noExt: true, color: 0x6b4123 },
+  win94: { type: 'weapon', name: 'Win94 레버액션 소총', cls: 'SR', slot: 'primary', ammo: 'a45', dmg: 62, rpm: 66, modes: ['single'], mag: 8, rKind: 'gate', rOpen: 0.4, rShell: 0.5, rClose: 0.3, cycle: 'lever', cycleT: 0.6, spread: 0.12, recoil: 2.2, range: 350, zoom: 1.3, tier: 1, noExt: true, noScope: true, noMuzzle: true, color: 0x7a4826 },
+  s1897: { type: 'weapon', name: 'S1897 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 17, pellets: 9, rpm: 70, modes: ['single'], mag: 5, rKind: 'shell', rOpen: 0.35, rShell: 0.5, rClose: 0.3, rCloseEmpty: 0.45, cycle: 'pump', spread: 4.0, recoil: 2.6, range: 42, zoom: 1.1, tier: 1, noExt: true, color: 0x6a3e1f },
+  dp28: { type: 'weapon', name: 'DP-28 경기관총', cls: 'LMG', slot: 'primary', ammo: 'a762', dmg: 38, rpm: 550, modes: ['auto'], mag: 47, rTL: 'pan', reload: 4.4, reloadEmpty: 5.0, spread: 1.15, recoil: 1.25, range: 300, zoom: 1.15, moveMul: 0.92, adsMul: 1.35, tier: 2, color: 0x3a3f33 },
+  deagle: { type: 'weapon', name: 'Deagle 권총', cls: 'PISTOL', slot: 'secondary', ammo: 'a45', dmg: 42, rpm: 230, modes: ['single'], mag: 7, reload: 1.7, reloadEmpty: 2.15, rTL: 'deagle', spread: 1.0, recoil: 2.3, range: 90, zoom: 1.12, tier: 2, color: 0x9da2a7 },
   // ----- 탄약 -----
   a556: { type: 'ammo', name: '5.56mm 탄', w: 0.4, stack: 40, color: 0xb0a040 },
   a762: { type: 'ammo', name: '7.62mm 탄', w: 0.5, stack: 30, color: 0xb07a30 },
   a9:   { type: 'ammo', name: '9mm 탄', w: 0.3, stack: 45, color: 0xc0c060 },
   a12:  { type: 'ammo', name: '12게이지 탄', w: 1.0, stack: 15, color: 0xb03030 },
   a300: { type: 'ammo', name: '.300 매그넘 탄', w: 1.2, stack: 10, color: 0xc89040 },
+  a45:  { type: 'ammo', name: '.45 ACP 탄', w: 0.4, stack: 30, color: 0x9a8a50 },
   // ----- 회복 -----
   bandage: { type: 'heal', name: '붕대', heal: 10, cap: 75, time: 3, w: 2, color: 0xe0d8c8 },
   firstaid: { type: 'heal', name: '구급상자', heal: 75, cap: 75, time: 6, w: 10, color: 0xd04040 },
@@ -5701,10 +5778,14 @@ const ITEMS = {
   // ----- 상점 재화: 줍는 즉시 계정에 들어감(가방 무게 없음). count = 골드 탄피 양 -----
   gold: { type: 'gold', name: '골드 탄피 주머니', w: 0, color: 0xd8b04a },
 };
-const AMMO_NAMES = { a556: '5.56', a762: '7.62', a9: '9mm', a12: '12G', a300: '.300' };
+const AMMO_NAMES = { a556: '5.56', a762: '7.62', a9: '9mm', a12: '12G', a300: '.300', a45: '.45' };
+// 탄피 모델 종류 (배출·손에 든 탄)
+const CASE_KIND = { a556: '556', a762: '762', a9: '9', a12: 'hull', a300: '300', a45: '45' };
 for (const id in ITEMS) { const d = ITEMS[id]; if (d.type === 'weapon') d.auto = d.modes.includes('auto') || d.modes.includes('slow'); }
 // 사격 모드
 const MODE_NAMES = { auto: '연사', single: '단발', burst: '3점사', slow: '저속 연사' };
+// 점사 발수는 총마다 다름 (Vector 2점사)
+function modeName(id, m) { return m === 'burst' ? (ITEMS[id].burstN || 3) + '점사' : MODE_NAMES[m]; }
 function fireMode(wi) { const d = ITEMS[wi.id]; return d.modes[(wi.fm || 0) % d.modes.length]; }
 function fireRpm(wi) { const d = ITEMS[wi.id], m = fireMode(wi); return m === 'burst' ? d.burstRpm : m === 'slow' ? d.rpmSlow : d.rpm; }
 function cycleFireMode(wi) { const d = ITEMS[wi.id]; if (d.modes.length < 2) return false; wi.fm = ((wi.fm || 0) + 1) % d.modes.length; return true; }
@@ -5743,15 +5824,19 @@ function attFits(attId, wid) {
   const a = ITEMS[attId], d = ITEMS[wid];
   if (wid === 's686') return false; // 중절식 2연발: 부착 불가
   if (a.slot === 'scope') {
+    if (d.noScope) return false;
     if (d.cls === 'PISTOL') return attId === 'reddot' || attId === 'holo';
     if (d.cls === 'SG') return a.zoom <= 2;
     if (d.cls === 'SMG') return a.zoom <= 4;
+    if (d.cls === 'LMG' && wid === 'dp28') return a.zoom <= 4;
     return true;
   }
-  if (a.slot === 'grip') return wid === 'm416' || wid === 'asm' || wid === 'vk9';
-  if (a.slot === 'muzzle') return d.cls !== 'SG' && d.cls !== 'LMG';
-  return d.cls !== 'LMG' && wid !== 'm24'; // 대용량 탄창
+  if (a.slot === 'grip') return !!d.vgrip;
+  if (a.slot === 'muzzle') return d.cls !== 'SG' && d.cls !== 'LMG' && !d.noMuzzle;
+  return d.cls !== 'LMG' && !d.noExt; // 대용량 탄창
 }
+for (const k of ['m416', 'asm', 'vk9']) ITEMS[k].vgrip = true;
+ITEMS.m24.noExt = true;
 
 // ---------- 월드 아이템 ----------
 let GROUND = [];          // {id, count, inst, x, y, z, mesh, alive}
@@ -5805,11 +5890,11 @@ const LOOT = { // 무기 비중: 무기마다 탄약 2묶음이 같이 생기므
   top: [['weapon', 30], ['ammo', 14], ['heal', 18], ['vest', 11], ['helmet', 10], ['bag', 7], ['att', 12], ['throw', 10], ['none', 2]],
 };
 const LVL_TABLE = { low: [[1, 70], [2, 26], [3, 4]], mid: [[1, 50], [2, 40], [3, 10]], high: [[1, 35], [2, 48], [3, 17]], top: [[1, 20], [2, 50], [3, 30]] };
-const WEAPON_TABLE = {
-  low: [['p19', 28], ['vk9', 24], ['s686', 14], ['s12k', 10], ['m416', 10], ['akm', 8], ['mini14', 4], ['asm', 2]],
-  mid: [['p19', 12], ['vk9', 18], ['s686', 10], ['s12k', 10], ['m416', 18], ['akm', 14], ['asm', 7], ['aug', 3], ['mini14', 6], ['m24', 1.5], ['m249', 1]],
-  high: [['p19', 6], ['vk9', 14], ['s686', 8], ['s12k', 8], ['m416', 20], ['akm', 15], ['asm', 9], ['aug', 6], ['mini14', 9], ['m24', 3], ['m249', 2]],
-  top: [['vk9', 10], ['s12k', 6], ['m416', 22], ['akm', 16], ['asm', 10], ['aug', 9], ['mini14', 12], ['m24', 4], ['m249', 3]],
+const WEAPON_TABLE = { // 지역 등급별 무기 비중 (v16: 10종 추가 — 흔한 총은 낮은 등급, 강한 총은 높은 등급에 많이)
+  low: [['p19', 22], ['vk9', 18], ['s686', 12], ['s12k', 8], ['s1897', 10], ['m416', 8], ['akm', 7], ['m16a4', 6], ['mini14', 4], ['asm', 2], ['tommy', 8], ['bizon', 7], ['vector', 4], ['win94', 6], ['deagle', 6], ['kar98k', 2], ['beryl', 1.5], ['dp28', 1]],
+  mid: [['p19', 10], ['vk9', 14], ['s686', 8], ['s12k', 8], ['s1897', 7], ['m416', 15], ['akm', 12], ['m16a4', 9], ['asm', 6], ['aug', 3], ['mini14', 6], ['m24', 1.5], ['m249', 1], ['tommy', 6], ['bizon', 7], ['vector', 6], ['win94', 4], ['deagle', 4], ['kar98k', 4], ['beryl', 4], ['dp28', 3]],
+  high: [['p19', 5], ['vk9', 11], ['s686', 6], ['s12k', 7], ['s1897', 5], ['m416', 17], ['akm', 13], ['m16a4', 9], ['asm', 8], ['aug', 6], ['mini14', 8], ['m24', 3], ['m249', 2], ['tommy', 4], ['bizon', 6], ['vector', 7], ['win94', 3], ['deagle', 4], ['kar98k', 5], ['beryl', 7], ['dp28', 4]],
+  top: [['vk9', 8], ['s12k', 5], ['m416', 19], ['akm', 14], ['m16a4', 8], ['asm', 9], ['aug', 9], ['mini14', 11], ['m24', 4], ['m249', 3], ['vector', 7], ['bizon', 4], ['kar98k', 5], ['beryl', 9], ['dp28', 4], ['deagle', 2]],
 };
 function populateLoot(scene) {
   GROUND = []; itemGrid = new Array(IGN * IGN).fill(EMPTY_LIST);
@@ -5822,7 +5907,7 @@ function populateLoot(scene) {
       spawnItem(scene, id, 1, jx, s.y, jz, newWeapon(id, Math.random() < 0.6 ? ITEMS[id].mag : 0));
       const am = ITEMS[id].ammo; spawnItem(scene, am, ITEMS[am].stack, jx + 0.55, s.y, jz + 0.2);
       spawnItem(scene, am, ITEMS[am].stack, jx + 0.4, s.y, jz - 0.45);
-    } else if (kind === 'ammo') { const am = pick(['a556', 'a762', 'a9', 'a9', 'a12', 'a556']); spawnItem(scene, am, ITEMS[am].stack, jx, s.y, jz); }
+    } else if (kind === 'ammo') { const am = pick(['a556', 'a556', 'a762', 'a762', 'a9', 'a9', 'a12', 'a45']); spawnItem(scene, am, ITEMS[am].stack, jx, s.y, jz); }
     else if (kind === 'heal') { const h = weightedPick([['bandage', 45], ['firstaid', 28], ['medkit', 7], ['drink', 20]]); spawnItem(scene, h, h === 'bandage' ? 5 : 1, jx, s.y, jz); }
     else if (kind === 'vest' || kind === 'helmet' || kind === 'bag') {
       const lv = weightedPick(LVL_TABLE[s.tier]); const id = (kind === 'helmet' ? 'helm' : kind) + lv;
@@ -5921,7 +6006,7 @@ function dropFromInventory(c, scene, what) {
     const wi = inv.weapons[what.weapon]; if (!wi) return;
     inv.weapons[what.weapon] = null;
     spawnItem(scene, wi.id, 1, x, y, z, wi);
-    if (inv.cur === what.weapon) inv.cur = inv.weapons.findIndex(Boolean);
+    if (inv.cur === what.weapon) { inv.cur = inv.weapons.findIndex(Boolean); c.cycle = null; }   // 버린 총의 볼트·펌프 동작이 다른 총으로 이어지지 않게 (장전은 아래 reloadT = 0이 끊음)
     c.reloadT = 0;
   } else if (what.gear) {
     const g = inv.gear[what.gear]; if (!g) return;
@@ -6047,6 +6132,8 @@ const Models = (() => {
     a12: (c, w, h) => { c.fillStyle = '#9c1f18'; c.fillRect(0, 0, w, h); c.strokeStyle = '#f0e2c8'; c.lineWidth = 5; c.strokeRect(10, 10, w - 20, h - 20); txt(c, '12', w * 0.35, h * 0.38, 110, '#f0e2c8', 800); txt(c, 'GA', w * 0.7, h * 0.44, 50, '#f0e2c8', 800); txt(c, '00 BUCK · 9 PELLETS', w / 2, h * 0.68, 24, '#f0e2c8'); txt(c, '15 SHELLS', w / 2, h * 0.82, 26, '#f0e2c8'); },
     a300: (c, w, h) => { c.fillStyle = '#272b29'; c.fillRect(0, 0, w, h); c.fillStyle = '#c99a3c'; c.fillRect(0, h * 0.08, w, h * 0.05); c.fillRect(0, h * 0.87, w, h * 0.05); txt(c, '.300', w / 2, h * 0.3, 96, '#e7d9b4', 800); txt(c, 'MAGNUM', w / 2, h * 0.5, 50, '#c99a3c', 800); txt(c, '10 ROUNDS · MATCH', w / 2, h * 0.67, 24, '#bdb39a'); barcode(c, w * 0.25, h * 0.74, w * 0.5, h * 0.09); },
     a762: (c, w, h) => { c.clearRect(0, 0, w, h); txt(c, '7.62 MM', w / 2, h * 0.3, 78, '#e2c23a', 800); txt(c, '30 CARTRIDGES · BALL', w / 2, h * 0.62, 30, '#e2c23a'); txt(c, 'LOT 26-114', w / 2, h * 0.84, 24, '#e2c23a', 500); },
+    // .45 ACP: 올리브색 종이 상자 + 굵은 숫자 (자체 디자인)
+    a45: (c, w, h) => { c.fillStyle = '#6f6a45'; c.fillRect(0, 0, w, h); c.fillStyle = '#e9e1c4'; c.fillRect(w * 0.08, h * 0.08, w * 0.84, h * 0.5); txt(c, '.45', w / 2, h * 0.27, 110, '#3b3a26', 800); txt(c, 'ACP · 230 GR', w / 2, h * 0.48, 30, '#3b3a26'); txt(c, '30 ROUNDS', w / 2, h * 0.7, 34, '#f1ead2', 800); txt(c, 'FULL METAL JACKET', w / 2, h * 0.8, 22, '#d9d0b0', 500); barcode(c, w * 0.3, h * 0.85, w * 0.4, h * 0.08); },
     bandage: (c, w, h) => { c.fillStyle = '#e9e4d4'; c.fillRect(0, 0, w, h); c.fillStyle = '#2f6b6a'; c.fillRect(0, 0, w * 0.13, h); txt(c, 'FIELD', w * 0.57, h * 0.2, 46, '#1f2a2a', 800); txt(c, 'DRESSING', w * 0.57, h * 0.33, 46, '#1f2a2a', 800); txt(c, 'STERILE · 10 CM', w * 0.57, h * 0.47, 24, '#3a4444'); txt(c, 'PRESSURE PAD', w * 0.57, h * 0.56, 24, '#3a4444'); c.fillStyle = '#7a2e1e'; c.fillRect(w * 0.42, h * 0.66, w * 0.3, h * 0.07); txt(c, 'SINGLE USE', w * 0.57, h * 0.695, 20, '#f2ecd8'); txt(c, 'TEAR ▸', w * 0.57, h * 0.88, 26, '#1f2a2a'); },
     cross: (c, w, h) => { c.fillStyle = '#e8e2d0'; c.beginPath(); c.arc(w / 2, h / 2, w / 2, 0, TAU); c.fill(); c.fillStyle = '#2d7a4b'; c.beginPath(); c.arc(w / 2, h / 2, w * 0.44, 0, TAU); c.fill(); c.fillStyle = '#f4f2ea'; const a = w * 0.1, b = w * 0.3; c.fillRect(w / 2 - a, h / 2 - b, a * 2, b * 2); c.fillRect(w / 2 - b, h / 2 - a, b * 2, a * 2); },
     med: (c, w, h) => { c.fillStyle = '#353b29'; c.fillRect(0, 0, w, h); c.strokeStyle = '#d8d2bc'; c.lineWidth = 4; c.strokeRect(8, 8, w - 16, h - 16); c.fillStyle = '#2d7a4b'; c.beginPath(); c.arc(h * 0.5, h * 0.5, h * 0.3, 0, TAU); c.fill(); c.fillStyle = '#f4f2ea'; const a = h * 0.06, b = h * 0.19; c.fillRect(h * 0.5 - a, h * 0.5 - b, a * 2, b * 2); c.fillRect(h * 0.5 - b, h * 0.5 - a, b * 2, a * 2); txt(c, 'MED KIT', w * 0.62, h * 0.38, 56, '#ece6d2', 800); txt(c, 'TRAUMA · FIELD', w * 0.62, h * 0.66, 28, '#c8c2ae'); },
@@ -6295,13 +6382,18 @@ const Models = (() => {
     const ext = att.mag ? 1 : 0;
     const mk = (name, posKey, key, fn) => { const pv = new THREE.Group(); pv.position.fromArray(meta[posKey]); pv.add(cluster(key, fn)); pv.userData.home = pv.position.clone(); g.add(pv); parts[name] = pv; return pv; };
     if (D.mag) mk('mag', 'magPos', 'gm:' + id + ext, (gg) => D.mag(gg, ext));
+    // 예비 탄창(새 탄창을 든 채 헌 탄창을 쳐 내는 장전): 같은 모델을 하나 더, 평소엔 숨김
+    if (D.mag && meta.spareMag) { mk('mag2', 'magPos', 'gm:' + id + ext, (gg) => D.mag(gg, ext)).visible = false; }
     if (D.charge) mk('charge', 'chargePos', 'gc:' + id, D.charge);
     if (D.pump) mk('pump', 'pumpPos', 'gp:' + id, D.pump);
     if (D.bolt) mk('bolt', 'boltPos', 'gbo:' + id, D.bolt);
     if (D.slide) mk('slide', 'slidePos', 'gs:' + id, D.slide);
     if (D.cover) mk('cover', 'coverPos', 'gcv:' + id, D.cover);
     if (D.barrel) mk('barrel', 'barrelPos', 'gbr:' + id, D.barrel);
-    const host = meta.scopeOnCover && parts.cover ? parts.cover : parts.slide || g, hp = host === g ? [0, 0, 0] : host.position.toArray();
+    if (D.lever) mk('lever', 'leverPos', 'glv:' + id, D.lever);
+    // 클립(삽탄자): 클립 띠 + 탄 5발(눌러 내리면 탄창으로 들어감). 장전할 때만 보임
+    if (D.clip) { const c = mk('clip', 'clipPos', 'gcl:' + id, D.clip); const r = cluster('gclr:' + id, D.clipRounds); r.name = 'rounds'; c.add(r); c.userData.rounds = r; c.visible = false; }
+    const host = meta.scopeOnCover && parts.cover ? parts.cover : (!meta.scopeFixed && parts.slide) || g, hp = host === g ? [0, 0, 0] : host.position.toArray();
     if (D.rear) g.add(att.scope ? cluster('grf:' + id, D.rearFolded) : cluster('gr:' + id, D.rear));
     if (att.scope && SC[att.scope]) {
       if (meta.railOnScope) { const [z0, z1, y] = meta.railOnScope; g.add(cluster('rail:' + id, (gg) => (D.mount || ((g2) => rail(g2, z0, z1, y, 0.018, M('anod', 0x1e2022))))(gg))); }
@@ -6311,13 +6403,13 @@ const Models = (() => {
     } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.pistol ? 0.4 : 0.3; }
     if (D.front) g.add(att.scope && D.frontFolded ? cluster('gff:' + id, D.frontFolded) : cluster('gf:' + id, D.front));
     if (att.muzzle) { const m = cluster('at:comp', ATT.comp); m.position.set(0, meta.boreY, meta.muzzleZ); g.add(m); meta.muzzleZ += 0.05; }
-    if (att.grip && meta.vgripPos) { const m = cluster('at:grip', ATT.grip); m.position.fromArray(meta.vgripPos); g.add(m); meta.forePos = meta.vgripHand; }
+    if (att.grip && meta.vgripPos) { const m = cluster('at:grip', ATT.grip); m.position.fromArray(meta.vgripPos); g.add(m); meta.forePos = meta.vgripHand; meta.vfore = true; }
     g.userData = { id, meta, parts, att };
     return g;
   }
 
   // ---------- 아이템 ----------
-  const CAL = { 556: [0.045, 0.0048, 0.0037, 0.019, 0.0029], 762: [0.051, 0.006, 0.0045, 0.024, 0.0039], 9: [0.019, 0.005, 0.0049, 0.011, 0.0045], 300: [0.067, 0.0068, 0.0047, 0.03, 0.0039] };
+  const CAL = { 556: [0.045, 0.0048, 0.0037, 0.019, 0.0029], 762: [0.051, 0.006, 0.0045, 0.024, 0.0039], 9: [0.019, 0.005, 0.0049, 0.011, 0.0045], 300: [0.067, 0.0068, 0.0047, 0.03, 0.0039], 45: [0.023, 0.006, 0.006, 0.012, 0.0057] };
   function cart(g, cal, x, z, ry) {
     const ax = Math.sin(ry), az = Math.cos(ry);
     const P = (geo, m, off, r) => A(g, geo, m, x + ax * off, r, z + az * off, 0, ry, 0);
@@ -6347,6 +6439,7 @@ const Models = (() => {
       cart(g, 300, 0.1, -0.03, 0.25); cart(g, 300, 0.11, 0.03, 0.05);
     },
     a9(g) { A(g, RB(0.075, 0.04, 0.1, 0.003), M('paper', 0xe8e4da), 0, 0.02, 0); A(g, PL(0.07, 0.095), label('a9'), 0, 0.0405, 0, -Math.PI / 2); cart(g, 9, 0.055, -0.02, 0.6); cart(g, 9, 0.06, 0.015, 0.1); cart(g, 9, 0.05, 0.04, 1.2); },
+    a45(g) { A(g, RB(0.085, 0.045, 0.11, 0.003), M('paper', 0x6f6a45), 0, 0.0225, 0); A(g, PL(0.08, 0.105), label('a45'), 0, 0.0455, 0, -Math.PI / 2); cart(g, 45, 0.06, -0.025, 0.4); cart(g, 45, 0.068, 0.012, 1.1); cart(g, 45, 0.058, 0.045, 0.2); },
     a12(g) { A(g, RB(0.085, 0.055, 0.115, 0.003), M('paper', 0x9a1e18), 0, 0.0275, 0); A(g, PL(0.08, 0.11), label('a12'), 0, 0.0556, 0, -Math.PI / 2); cart(g, 12, 0.075, -0.01, 0.3); cart(g, 12, 0.08, 0.04, 0.05); },
     bandage(g) { A(g, RB(0.13, 0.028, 0.19, 0.012, 0.01), M('foil', 0x5a6248), 0, 0.014, 0); A(g, PL(0.095, 0.13), label('bandage'), 0, 0.0285, 0.008, -Math.PI / 2); A(g, BX(0.132, 0.008, 0.014), M('foil', 0x4c5340), 0, 0.012, -0.094); },
     firstaid(g) {
@@ -6497,10 +6590,14 @@ const Models = (() => {
   // ---------- 손·소매(1인칭), 탄피 ----------
   function hand() { return cluster('hand', (g) => { const gl = M('cloth', 0x2a2925); A(g, RB(0.046, 0.04, 0.088, 0.016), gl); A(g, RB(0.02, 0.018, 0.045, 0.008), gl, 0.022, 0.01, 0.02, 0, -0.5, 0); A(g, RB(0.044, 0.012, 0.03, 0.005), M('cloth', 0x1c1b18), 0, -0.016, -0.03); }); }
   function sleeve(hex) { return cluster('sleeve:' + hex, (g) => { A(g, CY(0.034, 0.042, 1, 12, 'y', true), M('cloth', hex)); A(g, CY(0.03, 0.034, 0.06, 12, 'y'), M('cloth', 0x2a2925), 0, 0.5, 0); }); }
+  // 탄피·탄(손에 든 것)·떨어뜨린 탄창(mag:총:대용량)·빈 클립
   function casing(kind) {
     return cluster('case:' + kind, (g) => {
       if (kind === 'hull') { A(g, CY(0.0105, 0.0105, 0.05, 10), M('polymer', 0xa82020), 0, 0, 0.008); A(g, CY(0.011, 0.011, 0.016, 10), M('brass', 0xc9a24a), 0, 0, -0.025); }
-      else { const r = kind === '9' ? 0.0048 : kind === '762' ? 0.006 : kind === '300' ? 0.0068 : 0.0048, L = kind === '9' ? 0.019 : kind === '762' ? 0.051 : kind === '300' ? 0.067 : 0.045; A(g, CY(r, r, L, 8), M('brass', 0xd0a84e), 0, 0, 0); A(g, CY(r * 0.75, r, L * 0.15, 8), M('brass', 0xd0a84e), 0, 0, L * 0.55); }
+      else if (kind.startsWith('mag:')) { const [, id, ext] = kind.split(':'); GUNS[id].mag(g, ext === '1' ? 1 : 0); }
+      else if (kind === 'clip' && GUNS.kar98k && GUNS.kar98k.clip) GUNS.kar98k.clip(g);
+      else if (kind.startsWith('rnd')) { const cal = +kind.slice(3), [L, r, rn, bl, br] = CAL[cal]; A(g, CY(r, r, L * 0.82, 10), M('brass', 0xc9a24a), 0, 0, -L * 0.09); A(g, CY(rn, r, L * 0.12, 10), M('brass', 0xc9a24a), 0, 0, L * 0.38); A(g, CY(0.0004, br, bl, 10), M('brass', 0xb8703a), 0, 0, L * 0.44 + bl / 2); }
+      else { const r = kind === '9' ? 0.0048 : kind === '762' ? 0.006 : kind === '300' ? 0.0068 : kind === '45' ? 0.006 : 0.0048, L = kind === '9' ? 0.019 : kind === '762' ? 0.051 : kind === '300' ? 0.067 : kind === '45' ? 0.023 : 0.045; A(g, CY(r, r, L, 8), M('brass', 0xd0a84e), 0, 0, 0); A(g, CY(r * 0.75, r, L * 0.15, 8), M('brass', 0xd0a84e), 0, 0, L * 0.55); }
     });
   }
   // ---------- 보급상자 ----------
@@ -7216,6 +7313,460 @@ const Gear = (() => {
   };
 })();
 
+// ---------- 05_models_guns2.js ----------
+// ============================================================
+// 05_models_guns2.js — v16 총기 10종 (실총 형태를 참고한 자체 모델링, 게임 에셋 사용 없음)
+//  Beryl M762 · M16A4 · Vector · PP-19 Bizon · Tommy Gun · Kar98k · Win94 · S1897 · DP-28 · Deagle
+//  좌표: +z 총구 방향, +y 위, -x 오른쪽(배출구 쪽). 원점은 손잡이 근처
+//  새 부품: mag2 예비 탄창 · clip 삽탄자(+탄 5발) · lever 레버
+//  새 손 위치(meta): knockHand 탄창 쳐내기 · catchHand 노리쇠 멈치 · wellHand/outDir 탄창 잡는 곳·빼는 방향
+//    rockAmt 앞 고리 기준 젖힘 · gateHand 장전구 · clipHand 클립 · stopHand 슬라이드 멈치 · leverPos 레버 축
+// ============================================================
+(() => {
+  const { A, BX, CY, RB, PF, SPH, TOR, rail, trigger, magPts, M } = Models.kit;
+  const G = Models.GUNS;
+  const rearUp = (g, top, z, m, dk) => {
+    A(g, BX(0.02, 0.009, 0.022), m, 0, top + 0.0045, z + 0.004);
+    for (const sx of [-1, 1]) A(g, BX(0.003, 0.014, 0.012), m, sx * 0.0085, top + 0.014, z + 0.003);
+    A(g, TOR(0.004, 0.0013, 6, 12), dk, 0, top + 0.0115, z);
+  };
+  const rearDown = (g, top, z, m) => A(g, BX(0.02, 0.007, 0.026), m, 0, top + 0.0035, z + 0.004);
+  const frontUp = (g, top, z, m, dk) => {
+    A(g, BX(0.018, 0.009, 0.02), m, 0, top + 0.0045, z);
+    for (const sx of [-1, 1]) A(g, BX(0.003, 0.015, 0.012), m, sx * 0.009, top + 0.016, z);
+    A(g, BX(0.0035, 0.0115, 0.0035), dk, 0, top + 0.0115 - 0.00575, z);
+  };
+  const frontDown = (g, top, z, m) => A(g, BX(0.018, 0.007, 0.03), m, 0, top + 0.0035, z - 0.004);
+  // 아래로 향한 레일 (y = 붙는 윗면)
+  const railDown = (g, z0, z1, y, w, m) => {
+    A(g, BX(w, 0.006, z1 - z0), m, 0, y - 0.003, (z0 + z1) / 2);
+    const t = BX(w, 0.0045, 0.0052);
+    for (let z = z0 + 0.004; z < z1 - 0.002; z += 0.0105) A(g, t, m, 0, y - 0.0083, z);
+  };
+  const ribs = (g, n, x, y, z0, dz, h, m) => { for (const sx of [-1, 1]) for (let i = 0; i < n; i++) A(g, BX(0.004, h, 0.012), m, sx * x, y, z0 + i * dz); };
+
+  // ---------------- Beryl M762 (AK 계열 7.62 · 새 탄창으로 헌 탄창을 쳐 내는 장전) ----------------
+  G.beryl = {
+    meta: { railY: 0.0726, scopeZ: 0.02, ironY: 0.079, ironRearZ: 0.17, muzzleZ: 0.603, boreY: 0.02, magPos: [0, -0.006, 0.12], chargePos: [-0.031, 0.034, 0.115], chargeTravel: 0.11, chargeHand: [-0.055, 0.04, 0.12], chargeRecip: true,
+      gripPos: [0, -0.065, 0.005], forePos: [0.033, 0.012, 0.29], vgripPos: [0, -0.0195, 0.3], vgripHand: [0.004, -0.066, 0.3], ejectPos: [-0.028, 0.04, 0.06], hip: [0.13, -0.145, -0.44], wellDrop: 0.085,
+      spareMag: true, knockHand: [0.032, -0.098, 0.052] },
+    body(g) {
+      const stl = M('gunmetal', 0x1f2124), dk = M('gunmetal', 0x121315), poly = M('polymer', 0x17181a), bl = M('polymer', 0x070707), an = M('anod', 0x1b1d20);
+      // 리시버 + 레일 달린 덮개 + 가늠자
+      A(g, RB(0.046, 0.054, 0.27, 0.004), stl, 0, 0.022, 0.035);
+      A(g, RB(0.044, 0.018, 0.25, 0.008), stl, 0, 0.054, 0.03);
+      rail(g, -0.085, 0.125, 0.062, 0.02, an);
+      A(g, BX(0.03, 0.022, 0.032), stl, 0, 0.058, 0.188);
+      A(g, BX(0.024, 0.004, 0.05), dk, 0, 0.0712, 0.178);
+      A(g, BX(0.024, 0.007, 0.004), dk, 0, 0.0755, 0.17);
+      A(g, BX(0.003, 0.014, 0.085), dk, -0.024, 0.03, 0.05);
+      A(g, BX(0.044, 0.016, 0.03), stl, 0, -0.008, 0.155);
+      A(g, BX(0.003, 0.012, 0.11), stl, -0.025, 0.035, 0.07, 0.08, 0, 0);
+      A(g, BX(0.012, 0.01, 0.018), stl, 0, -0.011, 0.083);
+      // 총열덮개: 통풍 홈 + 아래 레일 / 가스관 덮개
+      A(g, RB(0.05, 0.044, 0.18, 0.012), poly, 0, 0.011, 0.29);
+      ribs(g, 5, 0.0252, 0.012, 0.218, 0.035, 0.018, bl);
+      railDown(g, 0.215, 0.37, -0.0105, 0.018, an);
+      A(g, RB(0.034, 0.024, 0.16, 0.01), poly, 0, 0.053, 0.28);
+      A(g, CY(0.009, 0.009, 0.05, 10), stl, 0, 0.052, 0.385);
+      A(g, CY(0.009, 0.009, 0.2, 10), stl, 0, 0.02, 0.48);
+      A(g, BX(0.026, 0.034, 0.03), stl, 0, 0.037, 0.43);
+      // 가늠쇠 + 제퇴기(옆 홈 3쌍)
+      A(g, BX(0.02, 0.022, 0.022), stl, 0, 0.026, 0.52); A(g, BX(0.003, 0.03, 0.004), dk, 0, 0.064, 0.52);
+      for (const sx of [-1, 1]) A(g, BX(0.003, 0.032, 0.012), stl, sx * 0.0085, 0.058, 0.52);
+      A(g, CY(0.0135, 0.0135, 0.055, 12), dk, 0, 0.02, 0.575);
+      for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) A(g, BX(0.004, 0.016, 0.007), bl, sx * 0.0122, 0.02, 0.558 + i * 0.016);
+      // 손잡이
+      A(g, PF([[-0.005, -0.006], [0.03, -0.006], [0.012, -0.12], [-0.03, -0.12], [-0.038, -0.11], [-0.02, -0.01]], 0.03), poly);
+      for (let i = 0; i < 3; i++) A(g, BX(0.031, 0.005, 0.005), bl, 0, -0.045 - i * 0.025, 0.012 - i * 0.004);
+      trigger(g, 0.045, -0.004, stl);
+      // 접이식 골조 개머리판: 위 관 + 아래 사선 지지대 + 개머리
+      A(g, BX(0.04, 0.04, 0.022), stl, 0, 0.018, -0.108);
+      A(g, CY(0.0085, 0.0085, 0.25, 10), stl, 0, 0.03, -0.235);
+      A(g, BX(0.012, 0.012, 0.262), stl, 0, -0.047, -0.232, -0.29, 0, 0);
+      A(g, RB(0.044, 0.13, 0.024, 0.008), poly, 0, -0.022, -0.37);
+      A(g, BX(0.046, 0.126, 0.008), M('rubber', 0x111111), 0, -0.022, -0.386);
+    },
+    mag(g, ext) {
+      const L = ext ? 0.26 : 0.2, m = M('polymer', 0x1b1c1e), d = M('polymer', 0x0e0f10);
+      A(g, PF(magPts(L, 0.058, 0.075, 0.006), 0.026), m);
+      for (let i = 1; i < 6; i++) { const t = i / 6; A(g, BX(0.0275, 0.004, 0.05), d, 0, -L * t, 0.075 * t * t + 0.003); }
+      A(g, RB(0.03, 0.01, 0.062, 0.003), d, 0, -L - 0.003, 0.078);
+    },
+    charge(g) { const s = M('gunmetal', 0x1f2124); A(g, RB(0.016, 0.012, 0.02, 0.004), s); A(g, BX(0.012, 0.004, 0.06), s, 0.008, 0, -0.03); },
+  };
+
+  // ---------------- M16A4 (평평한 윗면 · 둥근 총열덮개 · 삼각 가늠쇠 · 탄창 떨어뜨리고 노리쇠 멈치 치기) ----------------
+  G.m16a4 = {
+    meta: { railY: 0.0856, scopeZ: 0.03, ironY: 0.097, ironRearZ: -0.085, muzzleZ: 0.823, boreY: 0.032, magPos: [0, -0.01, 0.095], chargePos: [0, 0.064, -0.098], chargeTravel: 0.06, chargeHand: [0, 0.085, -0.11],
+      gripPos: [0, -0.072, -0.012], forePos: [0.034, 0.016, 0.33], ejectPos: [-0.03, 0.05, 0.06], hip: [0.13, -0.15, -0.45], catchHand: [0.05, 0.012, 0.055] },
+    body(g) {
+      const an = M('anod', 0x232527), dk = M('polymer', 0x161718), st = M('gunmetal', 0x2c2f33), bl = M('polymer', 0x070707), hg = M('polymer', 0x1d1e20);
+      A(g, RB(0.05, 0.05, 0.25, 0.006), an, 0, 0.05, 0.025);
+      rail(g, -0.1, 0.155, 0.075);
+      A(g, CY(0.0068, 0.0068, 0.03, 10), an, -0.027, 0.058, -0.055, 0, 0.35, 0);    // 전진기
+      A(g, BX(0.004, 0.018, 0.058), st, -0.026, 0.05, 0.06);                         // 배출구 덮개
+      A(g, BX(0.008, 0.012, 0.012), an, -0.027, 0.062, 0.016);
+      A(g, PF([[-0.1, 0.025], [0.155, 0.025], [0.155, -0.004], [0.137, -0.01], [0.133, -0.048], [0.062, -0.048], [0.058, -0.012], [0, -0.012], [-0.045, -0.02], [-0.1, -0.02]], 0.046), an);
+      A(g, BX(0.004, 0.024, 0.01), an, 0.0255, 0.014, 0.056);                        // 노리쇠 멈치(왼쪽)
+      A(g, CY(0.0052, 0.0052, 0.006, 8, 'x'), an, -0.025, 0.0, 0.048);              // 탄창 멈치(오른쪽)
+      // 둥근 총열덮개 (A2식 홈) · 델타 링 · 앞 마개
+      A(g, CY(0.031, 0.031, 0.014, 16), an, 0, 0.035, 0.165);
+      A(g, CY(0.0275, 0.029, 0.26, 16), hg, 0, 0.035, 0.302);
+      for (let i = 0; i < 11; i++) A(g, TOR(0.0284 - i * 0.00013, 0.0019, 5, 18), dk, 0, 0.035, 0.185 + i * 0.0225);
+      A(g, CY(0.025, 0.027, 0.01, 16), an, 0, 0.035, 0.437);
+      A(g, CY(0.0095, 0.0095, 0.37, 12), st, 0, 0.032, 0.6);
+      // 삼각 가늠쇠 받침 + 가늠쇠 + 착검 돌기
+      A(g, PF([[0.458, 0.018], [0.488, 0.018], [0.488, 0.048], [0.477, 0.086], [0.467, 0.086], [0.458, 0.048]], 0.016), st);
+      A(g, CY(0.0135, 0.0135, 0.034, 12), st, 0, 0.032, 0.473);
+      A(g, BX(0.0035, 0.012, 0.0035), M('polymer', 0x111111), 0, 0.091, 0.472);
+      for (const sx of [-1, 1]) A(g, BX(0.003, 0.016, 0.01), st, sx * 0.0085, 0.093, 0.472);
+      A(g, BX(0.01, 0.012, 0.018), st, 0, 0.01, 0.473);
+      // 새장형 소염기 (아래쪽은 막힘)
+      A(g, CY(0.011, 0.011, 0.045, 12), dk, 0, 0.032, 0.8);
+      for (const a of [-1.1, -0.55, 0, 0.55, 1.1]) A(g, BX(0.0035, 0.012, 0.026), bl, -Math.sin(a) * 0.0095, 0.032 + Math.cos(a) * 0.0095, 0.803, 0, 0, a);
+      // 손잡이 · 고정식 개머리판
+      A(g, PF([[-0.002, -0.016], [0.03, -0.016], [0.014, -0.135], [-0.03, -0.138], [-0.04, -0.126], [-0.022, -0.02]], 0.031), dk);
+      for (let i = 0; i < 3; i++) A(g, BX(0.0325, 0.006, 0.006), bl, 0, -0.05 - i * 0.026, 0.019 - i * 0.004);
+      trigger(g, 0.045, -0.012, an);
+      A(g, PF([[-0.1, 0.058], [-0.43, 0.042], [-0.448, 0.028], [-0.448, -0.098], [-0.43, -0.104], [-0.25, -0.042], [-0.1, -0.006]], 0.046), dk);
+      A(g, BX(0.048, 0.13, 0.012), dk, 0, -0.035, -0.452);
+      A(g, BX(0.0465, 0.003, 0.05), bl, 0, -0.058, -0.425);
+      A(g, TOR(0.008, 0.0016, 5, 10), st, 0, -0.106, -0.36, 0, Math.PI / 2, 0);
+    },
+    mag(g, ext) {
+      const L = ext ? 0.235 : 0.18, m = M('anod', 0x2b2e31), d = M('polymer', 0x101112);
+      A(g, PF(magPts(L, 0.062, 0.03), 0.024), m);
+      for (let i = 0; i < 3; i++) { const t = 0.3 + i * 0.2; A(g, BX(0.0255, 0.003, 0.054), M('anod', 0x23262a), 0, -L * t, 0.012 + 0.03 * t * t); }
+      A(g, RB(0.03, 0.012, 0.072, 0.003), d, 0, -L - 0.004, 0.034);
+    },
+    charge(g) { const an = M('anod', 0x232527); A(g, BX(0.05, 0.008, 0.012), an, 0, 0, -0.006); A(g, BX(0.012, 0.006, 0.02), an, 0, 0, 0.008); },
+    rear(g) { rearUp(g, 0.0855, -0.085, M('anod', 0x232527), M('polymer', 0x151617)); },
+    rearFolded(g) { rearDown(g, 0.0855, -0.085, M('anod', 0x232527)); },
+  };
+
+  // ---------------- Vector (낮은 총열축 · 비스듬한 앞 몸통 · 접히는 왼쪽 장전손잡이) ----------------
+  G.vector = {
+    meta: { railY: 0.0656, scopeZ: 0.03, ironY: 0.0771, ironRearZ: -0.12, muzzleZ: 0.307, boreY: 0.018, magPos: [0, -0.03, 0.062], chargePos: [0.026, 0.042, 0.13], chargeTravel: 0.07, chargeHand: [0.052, 0.046, 0.15], chargeFold: 1.2,
+      gripPos: [0, -0.078, -0.036], forePos: [0.032, -0.014, 0.19], vgripPos: [0, -0.1, 0.116], vgripHand: [0.004, -0.147, 0.116], ejectPos: [-0.03, 0.03, 0.065], hip: [0.12, -0.14, -0.37], wellDrop: 0.07 },
+    body(g) {
+      const bk = M('polymer', 0x17181a), dk = M('polymer', 0x0c0d0e), an = M('anod', 0x1c1e21), st = M('gunmetal', 0x2a2c2f), bl = M('polymer', 0x050505);
+      A(g, RB(0.048, 0.05, 0.36, 0.008), bk, 0, 0.03, 0.03);
+      rail(g, -0.15, 0.2, 0.055, 0.021, an);
+      // 하부: 앞면이 비스듬히 꺾인 큰 몸통 + 탄창 우물
+      A(g, PF([[-0.07, 0.008], [0.215, 0.008], [0.215, -0.01], [0.135, -0.1], [0.098, -0.1], [0.088, -0.032], [0.036, -0.032], [-0.07, -0.026]], 0.05), bk);
+      for (const sx of [-1, 1]) { A(g, BX(0.002, 0.05, 0.004), dk, sx * 0.0252, -0.03, 0.16, 0.86, 0, 0); A(g, BX(0.002, 0.03, 0.004), dk, sx * 0.0252, -0.06, 0.13, 0.86, 0, 0); }
+      railDown(g, 0.099, 0.134, -0.1, 0.018, an);
+      // 방아쇠울 · 손잡이 · 조정간
+      A(g, BX(0.012, 0.004, 0.07), bk, 0, -0.078, 0.0); A(g, BX(0.012, 0.048, 0.005), bk, 0, -0.054, 0.033);
+      A(g, BX(0.005, 0.024, 0.004), dk, 0, -0.045, 0.012, -0.2, 0, 0);
+      A(g, PF([[-0.035, -0.024], [0.0, -0.024], [-0.018, -0.135], [-0.058, -0.138], [-0.067, -0.125], [-0.052, -0.026]], 0.03), bk);
+      for (let i = 0; i < 4; i++) A(g, BX(0.031, 0.004, 0.004), dk, 0, -0.05 - i * 0.02, -0.03 - i * 0.004);
+      A(g, CY(0.006, 0.006, 0.054, 8, 'x'), dk, 0, 0.012, -0.03); A(g, BX(0.0545, 0.004, 0.012), dk, 0, 0.012, -0.03);
+      // 총열 덮개 · 총구 · 장전손잡이 홈(왼쪽) · 배출구(오른쪽)
+      A(g, RB(0.036, 0.032, 0.09, 0.008), bk, 0, 0.018, 0.25);
+      A(g, CY(0.0085, 0.0085, 0.02, 10), st, 0, 0.018, 0.297); A(g, CY(0.0095, 0.0095, 0.01, 10), dk, 0, 0.018, 0.302);
+      A(g, BX(0.003, 0.008, 0.11), bl, 0.0245, 0.042, 0.11);
+      A(g, BX(0.003, 0.02, 0.05), bl, -0.0245, 0.03, 0.065);
+      // 접이식 개머리판 (관 + 개머리)
+      A(g, BX(0.034, 0.042, 0.022), bk, 0, 0.032, -0.16);
+      A(g, CY(0.0135, 0.0135, 0.16, 12), an, 0, 0.034, -0.25);
+      A(g, PF([[-0.21, 0.052], [-0.335, 0.052], [-0.345, 0.034], [-0.345, -0.07], [-0.325, -0.076], [-0.27, -0.02], [-0.21, 0.012]], 0.042), bk);
+      A(g, BX(0.044, 0.124, 0.01), M('rubber', 0x111111), 0, -0.01, -0.349);
+    },
+    mag(g, ext) { const L = ext ? 0.19 : 0.135, m = M('polymer', 0x101112), d = M('polymer', 0x08090a); A(g, BX(0.024, L, 0.034), m, 0, -L / 2, L * 0.04, -0.08, 0, 0); A(g, RB(0.028, 0.012, 0.04, 0.003), d, 0, -L - 0.004, L * 0.08, -0.08, 0, 0); },
+    // 접힌 장전손잡이: 옆면에 붙어 있다가 펼쳐서(바깥으로) 당긴다
+    charge(g) { const s = M('polymer', 0x111213); A(g, BX(0.005, 0.012, 0.034), s, 0.0025, 0, 0.017); A(g, CY(0.0045, 0.0045, 0.012, 8, 'x'), s, 0.008, 0, 0.031); },
+    rear(g) { rearUp(g, 0.0655, -0.12, M('anod', 0x1c1e21), M('polymer', 0x111111)); },
+    rearFolded(g) { rearDown(g, 0.0655, -0.12, M('anod', 0x1c1e21)); },
+    front(g) { frontUp(g, 0.0655, 0.185, M('anod', 0x1c1e21), M('polymer', 0x111111)); },
+    frontFolded(g) { frontDown(g, 0.0655, 0.185, M('anod', 0x1c1e21)); },
+  };
+
+  // ---------------- PP-19 Bizon (원통 나선 탄창: 앞 고리를 축으로 뒤를 내려 빼고 끼움) ----------------
+  G.bizon = {
+    meta: { railY: 0.0726, scopeZ: 0.03, ironY: 0.072, ironRearZ: 0.142, muzzleZ: 0.392, boreY: 0.022, magPos: [0, -0.016, 0.35], chargePos: [-0.029, 0.034, 0.1], chargeTravel: 0.09, chargeHand: [-0.053, 0.04, 0.105], chargeRecip: true,
+      gripPos: [0, -0.065, 0.005], forePos: [0.03, -0.036, 0.25], ejectPos: [-0.026, 0.04, 0.06], hip: [0.12, -0.14, -0.4], railOnScope: [-0.05, 0.11, 0.062],
+      wellHand: [0.03, -0.078, 0.125], rockAmt: -0.3 },
+    body(g) {
+      const stl = M('gunmetal', 0x26282b), dk = M('gunmetal', 0x141516), bk = M('polymer', 0x1a1b1d), bl = M('polymer', 0x070707);
+      A(g, RB(0.044, 0.05, 0.24, 0.004), stl, 0, 0.022, 0.03);
+      A(g, RB(0.042, 0.016, 0.22, 0.008), stl, 0, 0.052, 0.025);
+      for (let i = 0; i < 4; i++) A(g, BX(0.043, 0.0025, 0.004), dk, 0, 0.052, -0.06 + i * 0.012);
+      A(g, BX(0.028, 0.02, 0.026), stl, 0, 0.056, 0.15); A(g, BX(0.022, 0.008, 0.006), dk, 0, 0.068, 0.142);
+      A(g, BX(0.003, 0.014, 0.075), dk, -0.023, 0.03, 0.045);
+      A(g, BX(0.003, 0.012, 0.1), stl, -0.023, 0.035, 0.065, 0.08, 0, 0);
+      // 위·아래 총열덮개 (아래 덮개 밑에 탄창이 붙음)
+      A(g, RB(0.034, 0.026, 0.13, 0.01), bk, 0, 0.05, 0.23);
+      A(g, RB(0.036, 0.022, 0.13, 0.008), bk, 0, 0.012, 0.23);
+      for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) A(g, BX(0.004, 0.012, 0.012), bl, sx * 0.0175, 0.05, 0.185 + i * 0.03);
+      A(g, CY(0.009, 0.009, 0.24, 10), stl, 0, 0.022, 0.27);
+      // 가늠쇠 받침 + 탄창 앞 고리 + 짧은 제퇴기
+      A(g, BX(0.024, 0.044, 0.03), stl, 0, 0.032, 0.335);
+      A(g, BX(0.003, 0.02, 0.004), dk, 0, 0.062, 0.335); for (const sx of [-1, 1]) A(g, BX(0.003, 0.024, 0.012), stl, sx * 0.008, 0.06, 0.335);
+      A(g, BX(0.03, 0.014, 0.022), dk, 0, 0.002, 0.343);
+      A(g, CY(0.0125, 0.0125, 0.036, 12), dk, 0, 0.022, 0.374);
+      for (let i = 0; i < 2; i++) A(g, BX(0.026, 0.004, 0.006), bl, 0, 0.022, 0.366 + i * 0.014);
+      // 손잡이 · 방아쇠 · 탄창 뒤 멈치
+      A(g, PF([[-0.005, -0.004], [0.03, -0.004], [0.012, -0.12], [-0.03, -0.12], [-0.038, -0.11], [-0.02, -0.008]], 0.03), bk);
+      trigger(g, 0.045, -0.004, stl);
+      A(g, BX(0.03, 0.012, 0.02), stl, 0, -0.008, 0.095);
+      // 접이식 삼각 개머리판
+      A(g, BX(0.036, 0.04, 0.02), stl, 0, 0.02, -0.1);
+      A(g, BX(0.012, 0.012, 0.23), stl, 0, 0.032, -0.215);
+      A(g, BX(0.012, 0.012, 0.231), stl, 0, -0.04, -0.205, -0.308, 0, 0);
+      A(g, PF([[-0.31, 0.042], [-0.338, 0.042], [-0.338, -0.088], [-0.31, -0.088]], 0.042), stl);
+      A(g, BX(0.044, 0.13, 0.006), M('rubber', 0x111111), 0, -0.023, -0.342);
+    },
+    // 나선 탄창(53발): 축은 앞 고리(magPos), 원통은 뒤쪽(-z)으로
+    mag(g) {
+      const m = M('polymer', 0x2a2b2c), d = M('polymer', 0x151617);
+      A(g, CY(0.028, 0.028, 0.255, 20), m, 0, -0.03, -0.13);
+      for (let i = 0; i < 6; i++) A(g, TOR(0.0284, 0.0017, 5, 22), d, 0, -0.03, -0.03 - i * 0.04, 0.16, 0, 0);
+      A(g, CY(0.022, 0.0285, 0.016, 20), d, 0, -0.03, 0.0);
+      A(g, BX(0.024, 0.026, 0.026), d, 0, -0.012, -0.248);
+      A(g, BX(0.02, 0.016, 0.03), d, 0, -0.004, -0.004);
+    },
+    charge(g) { const s = M('gunmetal', 0x26282b); A(g, RB(0.015, 0.012, 0.02, 0.004), s); A(g, BX(0.012, 0.004, 0.05), s, 0.008, 0, -0.025); },
+    mount(g) {
+      const dk = M('anod', 0x1c1e20), z0 = -0.05, z1 = 0.11, y = 0.062;
+      A(g, BX(0.008, 0.05, z1 - z0 - 0.04), dk, 0.026, y - 0.022, (z0 + z1) / 2);
+      for (const z of [z0 + 0.03, z1 - 0.03]) A(g, BX(0.03, 0.006, 0.02), dk, 0.013, y + 0.002, z);
+      rail(g, z0, z1, y, 0.02, dk);
+    },
+  };
+
+  // ---------------- Tommy Gun (드럼 탄창을 옆으로 밀어 넣음 · 위쪽 장전 손잡이 · 열린 노리쇠) ----------------
+  G.tommy = {
+    meta: { ironY: 0.074, ironRearZ: -0.092, muzzleZ: 0.502, boreY: 0.02, railY: 0.06, scopeZ: -0.05, magPos: [0, -0.016, 0.1], chargePos: [0, 0.052, 0.045], chargeTravel: 0.068, chargeHand: [0.006, 0.086, 0.05], openBolt: true,
+      gripPos: [0, -0.07, -0.006], forePos: [0.0, -0.064, 0.277], vfore: true, ejectPos: [-0.026, 0.035, 0.05], hip: [0.13, -0.13, -0.42],
+      wellHand: [0.058, -0.118, 0.1], outDir: [0.15, -0.012, 0] },
+    body(g) {
+      const bl = M('gunmetal', 0x1d1f22), dk = M('gunmetal', 0x111213), wd = M('wood', 0x6a3d1d), wdk = M('wood', 0x4e2d14), hole = M('polymer', 0x050505);
+      // 리시버 + 위 장전 홈 + 가늠자(조리개)
+      A(g, RB(0.044, 0.06, 0.28, 0.006), bl, 0, 0.02, 0.02);
+      A(g, BX(0.008, 0.004, 0.09), hole, 0, 0.0505, 0.012);
+      A(g, BX(0.024, 0.012, 0.03), bl, 0, 0.056, -0.09);
+      for (const sx of [-1, 1]) A(g, BX(0.003, 0.02, 0.012), bl, sx * 0.0105, 0.07, -0.09);
+      A(g, BX(0.014, 0.012, 0.004), bl, 0, 0.074, -0.093); A(g, TOR(0.0035, 0.0014, 6, 12), dk, 0, 0.074, -0.0955);
+      A(g, BX(0.003, 0.016, 0.05), hole, -0.0225, 0.032, 0.05);
+      for (const sx of [-1, 1]) A(g, BX(0.004, 0.006, 0.02), dk, sx * 0.023, 0.006, -0.05);
+      // 냉각핀 총열 + 보정기(위쪽 구멍) + 가늠쇠
+      A(g, CY(0.0105, 0.0105, 0.28, 12), bl, 0, 0.02, 0.3);
+      for (let i = 0; i < 11; i++) A(g, CY(0.0168, 0.0168, 0.0042, 14), bl, 0, 0.02, 0.172 + i * 0.0108);
+      A(g, CY(0.015, 0.015, 0.06, 14), bl, 0, 0.02, 0.47);
+      for (let i = 0; i < 4; i++) A(g, BX(0.016, 0.005, 0.006), hole, 0, 0.0335, 0.452 + i * 0.012);
+      A(g, BX(0.0035, 0.04, 0.01), bl, 0, 0.054, 0.49);
+      // 앞 수직 손잡이(나무) · 아래 몸통 · 손잡이 · 방아쇠
+      A(g, BX(0.024, 0.012, 0.04), bl, 0, 0.006, 0.276);
+      A(g, PF([[0.252, 0.0], [0.302, 0.0], [0.306, -0.04], [0.3, -0.112], [0.29, -0.126], [0.262, -0.126], [0.254, -0.112], [0.25, -0.04]], 0.034), wd);
+      for (let i = 0; i < 3; i++) A(g, BX(0.0345, 0.004, 0.004), wdk, 0, -0.04 - i * 0.025, 0.305);
+      A(g, BX(0.04, 0.026, 0.13), bl, 0, -0.022, 0.0);
+      A(g, BX(0.046, 0.009, 0.06), dk, 0, -0.011, 0.1);
+      A(g, PF([[-0.005, -0.03], [0.028, -0.03], [0.015, -0.135], [-0.028, -0.138], [-0.038, -0.125], [-0.022, -0.032]], 0.03), wd);
+      trigger(g, 0.035, -0.032, bl);
+      // 나무 개머리판
+      A(g, BX(0.03, 0.05, 0.02), bl, 0, 0.012, -0.125);
+      A(g, PF([[-0.12, 0.045], [-0.44, 0.02], [-0.455, 0.008], [-0.455, -0.115], [-0.435, -0.122], [-0.22, -0.06], [-0.12, -0.025]], 0.042), wd);
+      A(g, BX(0.044, 0.125, 0.008), dk, 0, -0.05, -0.458);
+    },
+    // 50발 드럼: 목(받침) + 원통(옆으로 눕힘) + 감는 열쇠
+    mag(g) {
+      const bl = M('gunmetal', 0x202226), dk = M('gunmetal', 0x121315), lt = M('metal', 0x8e9296);
+      A(g, BX(0.036, 0.022, 0.05), dk, 0, -0.01, 0);
+      A(g, CY(0.085, 0.085, 0.05, 30, 'x'), bl, 0, -0.105, 0);
+      for (const sx of [-1, 1]) { A(g, TOR(0.08, 0.0035, 6, 30), dk, sx * 0.0255, -0.105, 0, 0, Math.PI / 2, 0); A(g, CY(0.024, 0.024, 0.004, 16, 'x'), dk, sx * 0.026, -0.105, 0); }
+      A(g, BX(0.006, 0.032, 0.008), lt, 0.03, -0.105, 0);
+      A(g, BX(0.004, 0.03, 0.01), lt, 0.0275, -0.06, 0.03);
+    },
+    charge(g) { A(g, BX(0.006, 0.012, 0.02), M('gunmetal', 0x1d1f22), 0, 0.004, 0); A(g, SPH(0.0085, 12, 10), M('metal', 0x8a8e92), 0, 0.013, 0); },
+  };
+
+  // ---------------- Kar98k (볼트액션 · 빈 탄창이면 클립으로 5발을 한 번에) ----------------
+  G.kar98k = {
+    meta: { railY: 0.0706, scopeZ: 0.235, ironY: 0.067, ironRearZ: 0.183, muzzleZ: 0.642, boreY: 0.036, railOnScope: [0.152, 0.315, 0.06],
+      boltPos: [0, 0.036, -0.03], boltTravel: 0.1, boltLift: 1.45, boltHand: [-0.046, 0.0, -0.05], gripPos: [0, -0.058, -0.1], forePos: [0.03, -0.012, 0.33],
+      loadPort: [0, 0.064, 0.04], clipPos: [0, 0.062, 0.002], clipHand: [-0.01, 0.132, 0.026], ejectPos: [-0.022, 0.055, 0.03], hip: [0.12, -0.14, -0.4], noMag: true },
+    body(g) {
+      const wd = M('wood', 0x5e3a1f), wdk = M('wood', 0x452815), st = M('gunmetal', 0x26292d), dk = M('gunmetal', 0x131416);
+      // 나무 개머리판(총몸 전체)
+      A(g, PF([[0.5, 0.02], [0.5, -0.006], [0.47, -0.024], [0.2, -0.034], [0.12, -0.05], [0.02, -0.05], [-0.04, -0.052], [-0.1, -0.078], [-0.14, -0.098], [-0.46, -0.132], [-0.476, -0.122], [-0.476, 0.012], [-0.456, 0.022], [-0.18, 0.03], [-0.08, 0.026], [0.0, 0.022]], 0.046), wd);
+      A(g, BX(0.048, 0.142, 0.006), st, 0, -0.055, -0.479);
+      A(g, RB(0.03, 0.016, 0.22, 0.006), wdk, 0, 0.05, 0.32);
+      for (const sx of [-1, 1]) A(g, BX(0.002, 0.016, 0.16), wdk, sx * 0.0232, -0.008, 0.33);
+      // 리시버 · 앞 고리 · 뒤 다리(클립 홈)
+      A(g, CY(0.0175, 0.0175, 0.2, 16), st, 0, 0.036, 0.07);
+      A(g, CY(0.019, 0.019, 0.032, 16), st, 0, 0.036, 0.152);
+      A(g, BX(0.03, 0.016, 0.026), st, 0, 0.05, -0.012);
+      for (const sx of [-1, 1]) A(g, BX(0.0035, 0.012, 0.02), dk, sx * 0.0095, 0.062, -0.012);
+      A(g, BX(0.024, 0.006, 0.12), M('polymer', 0x080808), 0, 0.052, 0.06);
+      // 총열 · 띠쇠 2개 · 착검 돌기 · 멜빵 고리
+      A(g, CY(0.0085, 0.011, 0.47, 14), st, 0, 0.036, 0.405);
+      A(g, RB(0.034, 0.05, 0.016, 0.01), st, 0, 0.026, 0.3);
+      A(g, RB(0.03, 0.046, 0.02, 0.008), st, 0, 0.02, 0.475);
+      A(g, BX(0.008, 0.01, 0.04), st, 0, 0.012, 0.505);
+      A(g, TOR(0.009, 0.0017, 5, 10), st, 0.0, -0.01, 0.3, 0, Math.PI / 2, 0);
+      // 가늠쇠(덮개) · 가늠자(접선식)
+      A(g, BX(0.016, 0.012, 0.024), st, 0, 0.05, 0.617);
+      A(g, BX(0.0025, 0.012, 0.003), dk, 0, 0.061, 0.62);
+      A(g, CY(0.011, 0.011, 0.02, 12, 'z', true), st, 0, 0.061, 0.617);
+      // 방아쇠울 · 탄창 바닥판
+      A(g, BX(0.018, 0.006, 0.12), dk, 0, -0.052, 0.06);
+      trigger(g, -0.02, -0.05, dk);
+    },
+    bolt(g) {
+      const st = M('metal', 0x9ea4aa), dk = M('gunmetal', 0x22262c);
+      A(g, CY(0.0095, 0.0095, 0.13, 12), st, 0, 0, 0.015);
+      A(g, CY(0.0125, 0.0125, 0.032, 12), dk, 0, 0, -0.065);
+      A(g, BX(0.004, 0.016, 0.012), dk, 0, 0.012, -0.075);
+      A(g, BX(0.036, 0.007, 0.008), st, -0.017, -0.009, -0.035, 0, 0, 0.62);
+      A(g, SPH(0.0105, 12, 10), st, -0.033, -0.022, -0.035);
+    },
+    // 클립 띠(뒤) / 탄 5발(세로로 쌓임, 탄두가 앞)
+    clip(g) { const m = M('gunmetal', 0x3a3d40); A(g, BX(0.015, 0.064, 0.003), m, 0, 0.026, -0.042); for (const sx of [-1, 1]) A(g, BX(0.0025, 0.064, 0.006), m, sx * 0.0075, 0.026, -0.039); },
+    clipRounds(g) { const br = M('brass', 0xc9a24a), cu = M('brass', 0xb07038); for (let i = 0; i < 5; i++) { const y = i * 0.0118; A(g, CY(0.006, 0.006, 0.046, 10), br, 0, y, -0.016); A(g, CY(0.0045, 0.006, 0.009, 10), br, 0, y, 0.0115); A(g, CY(0.0006, 0.0041, 0.024, 10), cu, 0, y, 0.028); } },
+    rear(g) { const st = M('gunmetal', 0x26292d), dk = M('gunmetal', 0x131416); A(g, BX(0.024, 0.012, 0.04), st, 0, 0.05, 0.205); A(g, BX(0.02, 0.006, 0.05), dk, 0, 0.059, 0.205); A(g, BX(0.02, 0.006, 0.004), dk, 0, 0.064, 0.183); },
+    rearFolded(g) { A(g, BX(0.024, 0.008, 0.04), M('gunmetal', 0x26292d), 0, 0.048, 0.205); },
+    // 정찰용 조준경 받침(총열 위, 리시버 앞) — 클립 장전을 막지 않는다
+    mount(g) { const an = M('anod', 0x1c1e21); rail(g, 0.152, 0.315, 0.06, 0.018, an); for (const z of [0.172, 0.295]) { A(g, BX(0.02, 0.016, 0.016), an, 0, 0.053, z); A(g, CY(0.0125, 0.0125, 0.016, 12), an, 0, 0.036, z); } },
+  };
+
+  // ---------------- Win94 (레버액션 · 오른쪽 장전구로 한 발씩) ----------------
+  G.win94 = {
+    meta: { ironY: 0.056, ironRearZ: 0.2, muzzleZ: 0.512, boreY: 0.033, railY: 0.06, scopeZ: 0.0, leverPos: [0, -0.028, 0.095], leverAngle: 0.95,
+      gripPos: [0, -0.058, -0.07], forePos: [0.028, -0.004, 0.25], gateHand: [-0.05, -0.024, 0.06], ejectPos: [0, 0.055, 0.05], hip: [0.13, -0.15, -0.42], noMag: true },
+    body(g) {
+      const bl = M('gunmetal', 0x222326), rc = M('gunmetal', 0x3a3c40), wd = M('wood', 0x6e4022), wdk = M('wood', 0x51301a);
+      A(g, RB(0.036, 0.075, 0.2, 0.01), bl, 0, 0.012, 0.03);
+      for (const sx of [-1, 1]) A(g, RB(0.002, 0.05, 0.15, 0.012), rc, sx * 0.0181, 0.008, 0.035);
+      A(g, RB(0.003, 0.02, 0.036, 0.004), bl, -0.0196, -0.006, 0.075);
+      A(g, BX(0.007, 0.026, 0.012), bl, 0, 0.058, -0.063, -0.45, 0, 0); A(g, BX(0.012, 0.004, 0.014), bl, 0, 0.072, -0.072);
+      A(g, BX(0.012, 0.006, 0.1), bl, 0, 0.051, 0.06);
+      A(g, CY(0.0095, 0.0112, 0.38, 12), bl, 0, 0.033, 0.32);
+      A(g, CY(0.0085, 0.0085, 0.35, 10), bl, 0, 0.008, 0.305);
+      A(g, CY(0.0095, 0.0095, 0.012, 10), bl, 0, 0.008, 0.484);
+      A(g, RB(0.034, 0.034, 0.21, 0.012), wd, 0, 0.016, 0.24);
+      A(g, RB(0.03, 0.042, 0.012, 0.01), bl, 0, 0.02, 0.35); A(g, RB(0.026, 0.038, 0.012, 0.008), bl, 0, 0.02, 0.47);
+      A(g, BX(0.02, 0.012, 0.008), bl, 0, 0.05, 0.2); for (const sx of [-1, 1]) A(g, BX(0.005, 0.01, 0.008), bl, sx * 0.0075, 0.054, 0.2, 0, 0, sx * 0.3);
+      A(g, BX(0.003, 0.014, 0.012), rc, 0, 0.05, 0.496);
+      A(g, PF([[-0.07, 0.045], [-0.43, 0.02], [-0.445, 0.005], [-0.445, -0.11], [-0.425, -0.116], [-0.18, -0.058], [-0.1, -0.046], [-0.07, -0.022]], 0.04), wd);
+      A(g, BX(0.0405, 0.003, 0.08), wdk, 0, -0.012, -0.2);
+      A(g, BX(0.042, 0.122, 0.008), bl, 0, -0.046, -0.449);
+      A(g, BX(0.005, 0.02, 0.004), bl, 0, -0.034, 0.012, -0.2, 0, 0);
+    },
+    // 레버: 축(leverPos)에서 뒤로 뻗어 손가락 고리까지. 열면 고리가 아래·앞으로 돈다
+    lever(g) {
+      const bl = M('gunmetal', 0x1e1f22);
+      A(g, BX(0.01, 0.01, 0.06), bl, 0, -0.006, -0.03);
+      A(g, BX(0.01, 0.008, 0.075), bl, 0, -0.028, -0.085);
+      const loop = TOR(0.026, 0.0045, 6, 22); loop.rotateY(Math.PI / 2); loop.scale(1, 0.85, 1.45);
+      A(g, loop, bl, 0, -0.046, -0.153);
+    },
+  };
+
+  // ---------------- S1897 (펌프액션 · 관형 탄창 · 아래 장전구로 한 발씩) ----------------
+  G.s1897 = {
+    meta: { railY: 0.0626, scopeZ: 0.03, ironY: 0.051, ironRearZ: -0.04, muzzleZ: 0.652, boreY: 0.033, railOnScope: [-0.05, 0.12, 0.052], pumpPos: [0, 0.005, 0.31], pumpTravel: 0.09,
+      gripPos: [0, -0.055, -0.08], forePos: [0.03, -0.018, 0.31], loadPort: [0, -0.03, 0.06], ejectPos: [-0.022, 0.035, 0.07], hip: [0.13, -0.15, -0.43], noMag: true },
+    body(g) {
+      const bl = M('gunmetal', 0x1c1d1f), wd = M('wood', 0x6a3e1f), st = M('metal', 0x8a8e92), hole = M('polymer', 0x050505);
+      A(g, RB(0.042, 0.068, 0.19, 0.012), bl, 0, 0.018, 0.035);
+      A(g, BX(0.003, 0.03, 0.07), hole, -0.0215, 0.03, 0.07);
+      A(g, BX(0.008, 0.024, 0.012), bl, 0, 0.055, -0.058, -0.5, 0, 0); A(g, BX(0.012, 0.004, 0.012), bl, 0, 0.067, -0.068);
+      A(g, BX(0.022, 0.003, 0.07), hole, 0, -0.0165, 0.06);
+      A(g, CY(0.0105, 0.0115, 0.52, 14), bl, 0, 0.033, 0.39);
+      A(g, SPH(0.003, 8, 6), st, 0, 0.047, 0.64);
+      A(g, CY(0.0105, 0.0105, 0.44, 12), bl, 0, 0.005, 0.35);
+      A(g, CY(0.012, 0.012, 0.02, 12), bl, 0, 0.005, 0.575);
+      A(g, BX(0.02, 0.04, 0.012), bl, 0, 0.019, 0.56);
+      for (const sx of [-1, 1]) A(g, BX(0.003, 0.006, 0.12), bl, sx * 0.012, -0.002, 0.19);
+      trigger(g, 0.0, -0.016, bl);
+      A(g, PF([[-0.06, 0.05], [-0.44, 0.022], [-0.455, 0.005], [-0.455, -0.115], [-0.435, -0.12], [-0.16, -0.06], [-0.1, -0.06], [-0.06, -0.025]], 0.042), wd);
+      A(g, BX(0.044, 0.125, 0.008), M('rubber', 0x2a1a12), 0, -0.05, -0.458);
+    },
+    // 옥수수 모양 펌프(홈이 파인 나무)
+    pump(g) { const wd = M('wood', 0x6a3e1f), wdk = M('wood', 0x4a2812); A(g, CY(0.021, 0.021, 0.14, 16), wd, 0, -0.002, 0); for (let i = 0; i < 9; i++) A(g, TOR(0.0212, 0.0017, 5, 16), wdk, 0, -0.002, -0.064 + i * 0.016); },
+    mount(g) { const an = M('anod', 0x1e2022); rail(g, -0.05, 0.12, 0.052, 0.018, an); },
+  };
+
+  // ---------------- DP-28 (위에 얹는 원판 탄창 · 냉각 구멍 총열덮개 · 나무 개머리판) ----------------
+  G.dp28 = {
+    meta: { railY: 0.0906, scopeZ: -0.1, ironY: 0.115, ironRearZ: 0.19, muzzleZ: 0.772, boreY: 0.035, railOnScope: [-0.14, -0.065, 0.08], magPos: [0, 0.066, 0.06], chargePos: [-0.028, 0.03, 0.13], chargeTravel: 0.1, chargeHand: [-0.052, 0.035, 0.135], chargeRecip: true,
+      gripPos: [0, -0.06, -0.12], forePos: [0.032, 0.005, 0.3], ejectPos: [-0.01, -0.01, 0.05], hip: [0.14, -0.17, -0.46],
+      panHand: [0.1, 0.112, 0.07], outDir: [0, 0.075, 0.11] },
+    body(g) {
+      const st = M('gunmetal', 0x2a2c2a), dk = M('gunmetal', 0x161716), wd = M('wood', 0x654023), bl = M('polymer', 0x060606);
+      A(g, RB(0.05, 0.06, 0.32, 0.006), st, 0, 0.03, 0.03);
+      A(g, CY(0.03, 0.03, 0.012, 16, 'y'), dk, 0, 0.064, 0.06);
+      A(g, BX(0.003, 0.03, 0.12), dk, -0.0255, 0.03, 0.1);
+      // 냉각 구멍 총열덮개
+      A(g, CY(0.024, 0.024, 0.43, 18), st, 0, 0.035, 0.405);
+      for (const sx of [-1, 1]) for (let i = 0; i < 8; i++) A(g, RB(0.002, 0.012, 0.03, 0.006), bl, sx * 0.0235, 0.035, 0.23 + i * 0.05);
+      for (let i = 0; i < 8; i++) A(g, RB(0.014, 0.002, 0.03, 0.006), bl, 0, 0.0585, 0.25 + i * 0.05);
+      // 가늠자(탄창 앞) · 가늠쇠(귀 달림)
+      A(g, BX(0.03, 0.03, 0.04), st, 0, 0.075, 0.205);
+      A(g, BX(0.024, 0.02, 0.006), dk, 0, 0.105, 0.19);
+      A(g, BX(0.02, 0.03, 0.02), st, 0, 0.072, 0.6); A(g, BX(0.003, 0.03, 0.003), dk, 0, 0.1, 0.6);
+      for (const sx of [-1, 1]) A(g, BX(0.003, 0.04, 0.014), st, sx * 0.01, 0.095, 0.6);
+      // 총구 · 원뿔 소염기 · 접힌 양각대
+      A(g, CY(0.01, 0.01, 0.08, 12), st, 0, 0.035, 0.66);
+      A(g, CY(0.022, 0.012, 0.07, 14), dk, 0, 0.035, 0.737);
+      for (const sx of [-1, 1]) A(g, CY(0.004, 0.004, 0.3, 8), dk, sx * 0.012, 0.004, 0.45);
+      A(g, BX(0.034, 0.012, 0.02), dk, 0, 0.012, 0.6);
+      // 방아쇠 뭉치 · 나무 개머리판(손목형)
+      A(g, BX(0.03, 0.022, 0.1), st, 0, -0.008, -0.05);
+      trigger(g, -0.07, -0.018, st);
+      A(g, PF([[-0.13, 0.04], [-0.47, 0.025], [-0.488, 0.01], [-0.488, -0.11], [-0.465, -0.118], [-0.23, -0.06], [-0.15, -0.078], [-0.1, -0.048], [-0.05, -0.02], [-0.05, 0.0], [-0.13, 0.0]], 0.044), wd);
+      A(g, BX(0.046, 0.125, 0.008), dk, 0, -0.045, -0.491);
+    },
+    // 47발 원판 탄창: 원판 + 가운데 축 + 방사형 홈 + 테두리
+    mag(g) {
+      const pm = M('anod', 0x3a3f33), pd = M('anod', 0x2b2f26), dk = M('gunmetal', 0x161716);
+      A(g, CY(0.12, 0.12, 0.03, 36, 'y'), pm, 0, 0.016, 0);
+      A(g, CY(0.034, 0.034, 0.012, 20, 'y'), dk, 0, 0.036, 0);
+      for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; A(g, BX(0.006, 0.004, 0.07), pd, Math.sin(a) * 0.077, 0.032, Math.cos(a) * 0.077, 0, a, 0); }
+      A(g, TOR(0.118, 0.004, 6, 36), dk, 0, 0.016, 0, Math.PI / 2, 0, 0);
+      A(g, BX(0.02, 0.012, 0.03), dk, 0, 0.004, -0.11);
+    },
+    charge(g) { const st = M('gunmetal', 0x2a2c2a); A(g, BX(0.012, 0.012, 0.016), st, -0.006, 0, 0); A(g, CY(0.008, 0.008, 0.016, 10, 'x'), M('polymer', 0x111111), -0.018, 0, 0); },
+    // 원판 뒤 받침 + 레일 (조준경을 원판 위로)
+    mount(g) { const an = M('anod', 0x1c1e1c); A(g, BX(0.026, 0.02, 0.06), an, 0, 0.07, -0.105); rail(g, -0.14, -0.065, 0.08, 0.02, an); },
+  };
+
+  // ---------------- Deagle (큰 권총 · 고정 총열 위 레일 · 빈 탄창이면 엄지로 슬라이드 멈치) ----------------
+  G.deagle = {
+    meta: { railY: 0.0546, scopeZ: 0.125, scopeFixed: true, ironY: 0.061, ironRearZ: -0.075, muzzleZ: 0.192, boreY: 0.022, magPos: [0, -0.022, -0.05], slidePos: [0, 0, 0], slideTravel: 0.045,
+      gripPos: [0, -0.072, -0.042], forePos: [0.024, -0.092, -0.03], chargeHand: [0, 0.062, -0.07], stopHand: [0.004, -0.058, -0.048], ejectPos: [-0.018, 0.035, 0.03], hip: [0.1, -0.12, -0.34], pistol: true,
+      wellHand: [0.02, -0.165, -0.075] },
+    body(g) {
+      const st = M('metal', 0x9da2a7), dk = M('gunmetal', 0x1a1b1d), rb = M('rubber', 0x141414), hole = M('polymer', 0x050505);
+      A(g, RB(0.03, 0.026, 0.2, 0.004), st, 0, -0.01, 0.06);
+      A(g, RB(0.03, 0.04, 0.12, 0.004), st, 0, 0.02, 0.13);
+      A(g, BX(0.016, 0.008, 0.12), st, 0, 0.042, 0.13);
+      rail(g, 0.075, 0.185, 0.044, 0.014, dk);
+      A(g, BX(0.004, 0.008, 0.006), dk, 0, 0.058, 0.18);
+      A(g, CY(0.0068, 0.0068, 0.003, 10), hole, 0, 0.022, 0.1905);
+      A(g, PF([[-0.04, -0.02], [0.0, -0.02], [-0.018, -0.14], [-0.075, -0.142], [-0.085, -0.13], [-0.068, -0.02]], 0.034), rb);
+      for (let i = 0; i < 5; i++) A(g, BX(0.0345, 0.004, 0.004), dk, 0, -0.04 - i * 0.02, -0.022 - i * 0.004);
+      A(g, BX(0.012, 0.004, 0.055), st, 0, -0.05, 0.02); A(g, BX(0.012, 0.03, 0.004), st, 0, -0.036, 0.047);
+      A(g, BX(0.005, 0.02, 0.004), dk, 0, -0.033, 0.01, -0.25, 0, 0);
+      A(g, BX(0.003, 0.006, 0.03), dk, 0.0165, -0.004, 0.0);
+      A(g, CY(0.004, 0.004, 0.034, 8, 'x'), dk, 0, -0.026, -0.012);
+      A(g, BX(0.008, 0.014, 0.01), dk, 0, 0.036, -0.092);
+    },
+    slide(g) {
+      const st = M('metal', 0x9da2a7), dk = M('gunmetal', 0x1a1b1d), hole = M('polymer', 0x050505), wt = M('paper', 0xf0f0e8);
+      A(g, RB(0.031, 0.044, 0.155, 0.004), st, 0, 0.02, -0.0075);
+      for (let i = 0; i < 7; i++) A(g, BX(0.0315, 0.03, 0.002), dk, 0, 0.022, -0.078 + i * 0.006);
+      A(g, BX(0.003, 0.015, 0.04), hole, -0.016, 0.03, 0.03);
+      A(g, BX(0.02, 0.016, 0.008), dk, 0, 0.05, -0.075);
+      for (const sx of [-1, 1]) A(g, BX(0.006, 0.004, 0.008), dk, sx * 0.006, 0.06, -0.075);
+      A(g, BX(0.0022, 0.0022, 0.001), wt, 0, 0.056, -0.0705);
+    },
+    mag(g, ext) { const L = ext ? 0.15 : 0.12, m = M('gunmetal', 0x2a2c2e); A(g, BX(0.022, L, 0.036), m, 0, -L / 2, -L / 2 * 0.17, 0.17, 0, 0); A(g, RB(0.028, 0.009, 0.042, 0.003), M('polymer', 0x0e0f10), 0, -L - 0.004, -L * 0.17, 0.17, 0, 0); },
+  };
+})();
+
 // ---------- 05_models_veh.js ----------
 // ============================================================
 // 05_models_veh.js — 차량 3D 모델 (말·오토바이·UAZ·세단·픽업트럭)
@@ -7916,7 +8467,7 @@ function fireWeapon(c, origin, dir) {
   }
   c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : 1) * 0.22, 4);
   FX.flash(c, g, meta, tStart, dir, d);
-  if (d.cycle) { if (wi.mag > 0) c.cycle = { kind: d.cycle, t: 0, ev: 0, ejected: false, total: CYCLE[d.cycle].total * (d.cycleT ? d.cycleT / 1.05 : 1) }; }
+  if (d.cycle) { if (wi.mag > 0) c.cycle = { kind: d.cycle, t: 0, ev: 0, ejected: false, total: d.cycleT || CYCLE[d.cycle].total }; }
   else if (d.rKind !== 'break') ejectCase(c, d); // 중절식은 장전할 때 꺼낸다
   if (d.cls === 'PISTOL') c.slideKick = 0.09;
   Audio.gunshot(origin, wi.id, c.isPlayer, isIndoor(c.pos.x, c.pos.z, c.pos.y));
@@ -7945,7 +8496,19 @@ function ejectCase(c, d, drop) {
   const sp = 2.2 + Math.random() * 1.3;
   if (drop) _ev.set(-fx * 1.6 + rx * rnd(-0.3, 0.3) + c.vel.x, 1.6 + Math.random() * 0.6, -fz * 1.6 + rz * rnd(-0.3, 0.3) + c.vel.z);
   else _ev.set(rx * sp - fx * 0.7 + c.vel.x, 1.3 + Math.random() * 1.1, rz * sp - fz * 0.7 + c.vel.z);
-  FX.casing(_ep, _ev, { a556: '556', a762: '762', a9: '9', a12: 'hull', a300: '300' }[d.ammo], c.isPlayer || dist < 14);
+  FX.casing(_ep, _ev, CASE_KIND[d.ammo], c.isPlayer || dist < 14);
+}
+// 떨어뜨린 탄창(Beryl·M16A4)·빈 클립(Kar98k): 총에서 빠진 자리에서 실제 바닥으로 떨어져 잠시 남는다
+function dropPartFx(c, part, kind, up) {
+  if (!G.camera) return;
+  const g = gunObj(c); if (!g) return;
+  if (Math.hypot(c.pos.x - G.camera.position.x, c.pos.z - G.camera.position.z) > 40) return;
+  const P = g.userData.parts[part]; if (!P) return;
+  if (!gunWorldPoint(c, P.position.x, P.position.y, P.position.z, _ep)) return;
+  const yaw = c.isPlayer ? c.yaw : c.bodyYaw, rx = -Math.cos(yaw), rz = Math.sin(yaw);
+  if (up) _ev.set(rx * 1.3 + c.vel.x, 1.9 + Math.random() * 0.5, rz * 1.3 + c.vel.z);
+  else _ev.set(c.vel.x * 0.8, -1.4, c.vel.z * 0.8);
+  FX.casing(_ep, _ev, kind, true);
 }
 function mechSound(c, name) {
   const id = c.weapon ? c.weapon.id : 'm416';
@@ -7973,6 +8536,55 @@ const RL_TL = {
     ev: [[0.12, 'coverOpen'], [0.22, 'boxOut'], [0.57, 'boxIn'], [0.61, 'boxSeat'], [0.72, 'beltLay'], [0.86, 'coverClose']],
     out: [0.21, 0.3], hide: [0.3, 0.48], inn: [0.48, 0.58], tilt: [0.03, 0.92], cover: [0.08, 0.14, 0.81, 0.87] },
 };
+// ---------- v16: 총마다 다른 장전 동작 (ITEMS.rTL → 전술 / +'Empty' → 빈 탄창) ----------
+//  hand/handR: 왼손·오른손 위치 keyframe(비율) · ev: 소리·처리 · tilt/tiltAmt: 총 기울임 구간·크기 [z, x]
+//  out/hide/inn: 탄창이 손을 따라 빠짐·숨김·들어옴 · drop: 탄창을 놓아 떨어뜨림(뒤에 바닥으로) · spare: 예비 탄창(mag2)이 손에 [보임, 걸림, 끼움 완료]
+//  rock: 탄창 젖힘 {amt, out, inn} · charge/knob: 장전손잡이 · fold: 접힌 손잡이 펼침 · slideRel: 권총 슬라이드가 닫히는 시점
+Object.assign(RL_TL, {
+  // Beryl M762: 새 탄창을 먼저 꺼내 → 헌 탄창 뒤 멈치를 새 탄창으로 쳐서 떨어뜨리고 → 앞을 걸어 젖혀 끼움
+  beryl: { hand: [[0, 'fore'], [0.06, 'fore'], [0.2, 'pouch'], [0.26, 'pouch'], [0.38, 'knock'], [0.43, 'knock'], [0.52, 'wellRock'], [0.6, 'well'], [0.64, 'well'], [0.82, 'fore']],
+    ev: [[0.4, 'magKnock'], [0.5, 'magFree'], [0.55, 'magInAk'], [0.61, 'magRock']],
+    drop: [0.4, 0.5], hide: [0.5, 0.61], spare: [0.22, 0.52, 0.61], rock: { amt: -0.42, out: [0.4, 0.44], inn: [0.52, 0.61] }, tilt: [0.04, 0.8], tiltAmt: [0.42, 0.14] },
+  berylEmpty: { hand: [[0, 'fore'], [0.05, 'fore'], [0.17, 'pouch'], [0.22, 'pouch'], [0.32, 'knock'], [0.36, 'knock'], [0.44, 'wellRock'], [0.5, 'well'], [0.53, 'well'], [0.6, 'charge'], [0.65, 'charge'], [0.71, 'chargeBack'], [0.74, 'charge'], [0.88, 'fore']],
+    ev: [[0.33, 'magKnock'], [0.42, 'magFree'], [0.46, 'magInAk'], [0.51, 'magRock'], [0.68, 'chargeBack'], [0.74, 'chargeFwd']],
+    drop: [0.33, 0.42], hide: [0.42, 0.51], spare: [0.19, 0.44, 0.51], rock: { amt: -0.42, out: [0.33, 0.37], inn: [0.44, 0.51] }, tilt: [0.03, 0.84], tiltAmt: [0.42, 0.14], charge: [0.65, 0.71, 0.74] },
+  // M16A4: 멈치를 눌러 헌 탄창은 그냥 떨어뜨리고(drop-free) 새 탄창을 꽂음 · 빈 탄창이면 왼손바닥으로 노리쇠 멈치를 쳐서 닫음
+  m16: { hand: [[0, 'fore'], [0.05, 'fore'], [0.2, 'pouch'], [0.3, 'pouch'], [0.46, 'well'], [0.52, 'well'], [0.72, 'fore']],
+    ev: [[0.05, 'magRelease'], [0.2, 'magFree'], [0.44, 'magIn'], [0.5, 'magSeat']], drop: [0.06, 0.2], hide: [0.2, 0.3], inn: [0.3, 0.46], tilt: [0.03, 0.74], tiltAmt: [0.32, 0.1] },
+  m16Empty: { hand: [[0, 'fore'], [0.04, 'fore'], [0.17, 'pouch'], [0.26, 'pouch'], [0.41, 'well'], [0.46, 'well'], [0.53, 'catch'], [0.565, 'catchIn'], [0.6, 'catch'], [0.76, 'fore']],
+    ev: [[0.04, 'magRelease'], [0.17, 'magFree'], [0.39, 'magIn'], [0.45, 'magSeat'], [0.565, 'boltCatch']], drop: [0.05, 0.17], hide: [0.17, 0.26], inn: [0.26, 0.41], tilt: [0.03, 0.8], tiltAmt: [0.32, 0.1] },
+  // Vector: 총구를 들고 탄창을 곧게 뺌 · 빈 탄창이면 왼쪽 접힌 손잡이를 펼쳐 당김
+  vector: { hand: [[0, 'fore'], [0.1, 'well'], [0.24, 'pouch'], [0.38, 'pouch'], [0.52, 'well'], [0.58, 'well'], [0.78, 'fore']],
+    ev: [[0.1, 'magRelease'], [0.14, 'magOut'], [0.5, 'magIn'], [0.56, 'magSeat']], out: [0.11, 0.24], hide: [0.24, 0.38], inn: [0.38, 0.52], tilt: [0.04, 0.76], tiltAmt: [0.16, -0.13] },
+  vectorEmpty: { hand: [[0, 'fore'], [0.08, 'well'], [0.2, 'pouch'], [0.31, 'pouch'], [0.43, 'well'], [0.48, 'well'], [0.56, 'charge'], [0.62, 'charge'], [0.68, 'chargeBack'], [0.71, 'charge'], [0.86, 'fore']],
+    ev: [[0.08, 'magRelease'], [0.12, 'magOut'], [0.42, 'magIn'], [0.47, 'magSeat'], [0.585, 'selector'], [0.66, 'chargeBack'], [0.71, 'chargeFwd']], out: [0.09, 0.2], hide: [0.2, 0.31], inn: [0.31, 0.43],
+    tilt: [0.03, 0.84], tiltAmt: [0.16, -0.13], charge: [0.62, 0.68, 0.71], fold: [0.55, 0.6, 0.73, 0.79] },
+  // PP-19 Bizon: 뒤 멈치를 누르고 원통 탄창 뒤쪽을 내려(앞 고리 축) 빼고, 새 탄창은 앞을 걸고 뒤를 올려 끼움
+  helix: { hand: [[0, 'fore'], [0.08, 'well'], [0.12, 'well'], [0.2, 'wellRock'], [0.32, 'pouch'], [0.44, 'pouch'], [0.56, 'wellRock'], [0.64, 'well'], [0.68, 'well'], [0.84, 'fore']],
+    ev: [[0.12, 'magRelease'], [0.2, 'magOut'], [0.55, 'magInAk'], [0.64, 'magRock']], out: [0.2, 0.32], hide: [0.32, 0.44], inn: [0.44, 0.56],
+    rock: { amt: -0.3, out: [0.12, 0.2], inn: [0.56, 0.64] }, tilt: [0.04, 0.82], tiltAmt: [0.36, 0.06] },
+  helixEmpty: { hand: [[0, 'fore'], [0.07, 'well'], [0.1, 'well'], [0.17, 'wellRock'], [0.27, 'pouch'], [0.37, 'pouch'], [0.47, 'wellRock'], [0.54, 'well'], [0.57, 'well'], [0.64, 'charge'], [0.68, 'charge'], [0.74, 'chargeBack'], [0.77, 'charge'], [0.9, 'fore']],
+    ev: [[0.1, 'magRelease'], [0.17, 'magOut'], [0.46, 'magInAk'], [0.54, 'magRock'], [0.71, 'chargeBack'], [0.77, 'chargeFwd']], out: [0.17, 0.27], hide: [0.27, 0.37], inn: [0.37, 0.47],
+    rock: { amt: -0.3, out: [0.1, 0.17], inn: [0.47, 0.54] }, tilt: [0.03, 0.86], tiltAmt: [0.36, 0.06], charge: [0.68, 0.74, 0.77] },
+  // Tommy Gun: 드럼을 왼쪽으로 밀어 빼고 밀어 넣음 · 빈 탄창(노리쇠가 닫힘)이면 먼저 위 손잡이를 당겨 걸어 둠(열린 노리쇠)
+  drum: { hand: [[0, 'fore'], [0.1, 'drum'], [0.14, 'drum'], [0.25, 'drumOut'], [0.35, 'pouch'], [0.46, 'pouch'], [0.58, 'drumOut'], [0.68, 'drum'], [0.72, 'drum'], [0.86, 'fore']],
+    ev: [[0.12, 'drumLatch'], [0.16, 'drumOut'], [0.6, 'drumIn'], [0.68, 'drumSeat']], out: [0.14, 0.35], hide: [0.35, 0.46], inn: [0.46, 0.68], tilt: [0.04, 0.84], tiltAmt: [0.3, 0.06] },
+  drumEmpty: { hand: [[0, 'fore'], [0.06, 'knob'], [0.1, 'knob'], [0.16, 'knobBack'], [0.2, 'knobBack'], [0.27, 'drum'], [0.3, 'drum'], [0.39, 'drumOut'], [0.48, 'pouch'], [0.58, 'pouch'], [0.68, 'drumOut'], [0.77, 'drum'], [0.8, 'drum'], [0.91, 'fore']],
+    ev: [[0.13, 'knobBack'], [0.29, 'drumLatch'], [0.32, 'drumOut'], [0.7, 'drumIn'], [0.77, 'drumSeat']], out: [0.3, 0.48], hide: [0.48, 0.58], inn: [0.58, 0.77], tilt: [0.03, 0.88], tiltAmt: [0.3, 0.06], knob: [0.1, 0.16] },
+  // DP-28: 위에 얹힌 원판 탄창을 들어 앞으로 빼고, 새 원판을 얹어 눌러 끼움
+  pan: { hand: [[0, 'fore'], [0.1, 'pan'], [0.14, 'pan'], [0.25, 'panOut'], [0.37, 'pouch'], [0.49, 'pouch'], [0.61, 'panOut'], [0.71, 'pan'], [0.75, 'pan'], [0.88, 'fore']],
+    ev: [[0.12, 'panLatch'], [0.17, 'panOff'], [0.62, 'panOn'], [0.71, 'panSeat']], out: [0.14, 0.37], hide: [0.37, 0.49], inn: [0.49, 0.71], tilt: [0.04, 0.86], tiltAmt: [-0.22, 0.12] },
+  panEmpty: { hand: [[0, 'fore'], [0.08, 'pan'], [0.11, 'pan'], [0.2, 'panOut'], [0.3, 'pouch'], [0.4, 'pouch'], [0.5, 'panOut'], [0.59, 'pan'], [0.62, 'pan'], [0.655, 'fore'], [0.69, 'charge'], [0.72, 'charge'], [0.78, 'chargeBack'], [0.81, 'charge'], [0.92, 'fore']],
+    ev: [[0.09, 'panLatch'], [0.13, 'panOff'], [0.51, 'panOn'], [0.59, 'panSeat'], [0.75, 'chargeBack'], [0.81, 'chargeFwd']], out: [0.11, 0.3], hide: [0.3, 0.4], inn: [0.4, 0.59],
+    tilt: [0.03, 0.9], tiltAmt: [-0.22, 0.12], charge: [0.72, 0.78, 0.81] },
+  // Deagle: 무거운 권총이라 더 기울여 갈고, 빈 탄창이면 오른손 엄지로 슬라이드 멈치를 눌러 닫음
+  deagle: { hand: [[0, 'fore'], [0.1, 'well'], [0.28, 'pouch'], [0.42, 'pouch'], [0.56, 'well'], [0.62, 'well'], [0.8, 'fore']],
+    ev: [[0.1, 'magRelease'], [0.16, 'magOut'], [0.54, 'magIn'], [0.6, 'magSeat']], out: [0.12, 0.28], hide: [0.28, 0.42], inn: [0.42, 0.56], tilt: [0.04, 0.76], tiltAmt: [0.4, 0.22] },
+  deagleEmpty: { hand: [[0, 'fore'], [0.08, 'well'], [0.22, 'pouch'], [0.34, 'pouch'], [0.48, 'well'], [0.54, 'well'], [0.7, 'fore']],
+    handR: [[0, 'grip'], [0.56, 'grip'], [0.615, 'stop'], [0.66, 'stop'], [0.72, 'grip']],
+    ev: [[0.08, 'magRelease'], [0.13, 'magOut'], [0.46, 'magIn'], [0.52, 'magSeat'], [0.635, 'slideStop']], out: [0.1, 0.22], hide: [0.22, 0.34], inn: [0.34, 0.48],
+    tilt: [0.03, 0.8], tiltAmt: [0.4, 0.22], slideRel: 0.635 },
+});
 // 빈 탄띠: 맨 앞에 장전손잡이 당기기를 끼워 넣는다
 RL_TL.beltEmpty = (() => {
   const B = RL_TL.belt, k = 0.13, sc = (f) => k + f * (1 - k);
@@ -7984,19 +8596,29 @@ const CYCLE = {
   pump: { total: 0.55, ev: [[0.2, 'pumpBack'], [0.47, 'pumpFwd']], eject: 0.3 },
   bolt: { total: 1.05, ev: [[0.18, 'boltUp'], [0.38, 'boltBack'], [0.6, 'boltFwd'], [0.75, 'boltDown']], eject: 0.42 },
   boltClose: { total: 0.45, ev: [[0.15, 'boltFwd'], [0.55, 'boltDown']], eject: -1 },
+  // 레버액션(Win94): 레버를 내려 빈 탄피를 위로 튕기고, 올려 다음 탄을 약실에
+  lever: { total: 0.6, ev: [[0.16, 'leverDown'], [0.56, 'leverUp']], eject: 0.3 },
 };
 function reloadPlan(c, wi, d) {
   const empty = wi.mag === 0, ms = c.inv.magSize(wi);
-  if (d.rKind === 'shell' || d.rKind === 'bolt' || d.rKind === 'break') {
+  if (d.rKind === 'shell' || d.rKind === 'bolt' || d.rKind === 'break' || d.rKind === 'gate') {
     const n = Math.min(ms - wi.mag, c.inv.count(d.ammo));
-    const brk = d.rKind === 'break';
-    const open = d.rOpen, per = d.rShell, close = d.rClose + (empty && d.rKind === 'shell' ? d.rCloseEmpty : 0);
+    // 클립 장전(Kar98k): 탄창이 비었고 클립 한 개 분량이 있으면 → 볼트 열기 · 클립 꽂기 · 엄지로 5발 밀어 넣기 · 볼트 닫기(빈 클립 튕겨 나감)
+    if (d.clip && d.rKind === 'bolt' && n >= d.clip) {
+      const open = d.rOpen, ins = d.rClipIn, push = d.rClipPush, close = d.rClose, total = open + ins + push + close;
+      const ev = [[open * 0.3, 'boltUp'], [open * 0.62, 'boltBack'], [open + ins * 0.85, 'clipIn'], [open + ins + push * 0.5, 'clipStrip'], [total - close * 0.62, 'boltFwd'], [total - close * 0.58, 'clipEject'], [total - close * 0.36, 'boltDown']];
+      return { kind: 'bolt', clip: true, empty, n, open, ins, push, close, per: 0, total, events: ev, t: 0, ev: 0, canCancel: false, fired: ms - wi.mag };
+    }
+    const brk = d.rKind === 'break', gate = d.rKind === 'gate';
+    // 장전구(Win94): 빈 상태였다면 끝에 레버를 한 번 (빈 탄피 배출 + 약실 장전)
+    const open = d.rOpen, per = d.rShell, close = d.rClose + (empty && d.rKind === 'shell' ? d.rCloseEmpty : 0) + (empty && gate ? CYCLE.lever.total : 0);
     const total = open + n * per + close, ev = [];
     if (d.rKind === 'bolt') ev.push([open * 0.3, 'boltUp'], [open * 0.62, 'boltBack']);
     if (brk) ev.push([open * 0.35, 'breakOpen'], [open * 0.8, 'shellEject']);
-    for (let i = 0; i < n; i++) ev.push([open + per * (i + (brk ? 0.8 : 0.7)), d.rKind === 'bolt' ? 'roundIn' : 'shellIn']);
+    for (let i = 0; i < n; i++) ev.push([open + per * (i + (brk ? 0.8 : 0.7)), d.rKind === 'bolt' ? 'roundIn' : gate ? 'gateIn' : 'shellIn']);
     if (d.rKind === 'bolt') ev.push([total - close * 0.62, 'boltFwd'], [total - close * 0.36, 'boltDown']);
     else if (brk) ev.push([total - close * 0.45, 'breakClose']);
+    else if (gate) { if (empty) { const L = CYCLE.lever.total; ev.push([total - L * 0.84, 'leverDown'], [total - L * 0.3, 'leverUp']); } }
     else if (empty) ev.push([total - close * 0.62, 'pumpBack'], [total - close * 0.32, 'pumpFwd']);
     // 중절식은 장전이 끝날 때까지 쏠 수 없다(총열이 열려 있음)
     return { kind: d.rKind, empty, n, open, per, close, total, events: ev, t: 0, ev: 0, canCancel: !brk, fired: ms - wi.mag };
@@ -8006,6 +8628,7 @@ function reloadPlan(c, wi, d) {
   let T = empty ? RL_TL.magEmpty : RL_TL.mag, kind = 'mag';
   if (d.rKind === 'belt') { T = empty ? RL_TL.beltEmpty : RL_TL.belt; kind = 'belt'; }
   else if (d.rKind === 'boltmag' && empty) T = RL_TL.boltMag;
+  else if (d.rTL) T = RL_TL[d.rTL + (empty ? 'Empty' : '')] || RL_TL[d.rTL] || T;
   const ak = style === 'ak';
   const ev = T.ev.map(([f, n]) => [f * total, pistol && n === 'chargeBack' ? 'slideBack' : pistol && n === 'chargeFwd' ? 'slideRelease' : ak && n === 'magIn' ? 'magInAk' : ak && n === 'magSeat' ? 'magRock' : n]);
   return { kind, style, empty, total, events: ev, t: 0, ev: 0, tl: T };
@@ -8025,10 +8648,12 @@ function loadMag(c) {
 }
 function reloadEvent(c, name) {
   const wi = c.weapon, d = ITEMS[wi.id], rl = c.rl;
-  if (name === 'magIn' || name === 'magInAk' || name === 'boxIn') loadMag(c);
-  else if (name === 'shellIn' || name === 'roundIn') { if (wi.mag < c.inv.magSize(wi) && c.inv.take(d.ammo, 1)) wi.mag++; }
-  if (name === 'pumpBack' || (name === 'boltBack' && rl.empty)) ejectCase(c, d);
+  if (name === 'magIn' || name === 'magInAk' || name === 'boxIn' || name === 'drumIn' || name === 'panOn' || name === 'clipStrip') loadMag(c);
+  else if (name === 'shellIn' || name === 'roundIn' || name === 'gateIn') { if (wi.mag < c.inv.magSize(wi) && c.inv.take(d.ammo, 1)) wi.mag++; }
+  if (name === 'pumpBack' || ((name === 'boltBack' || name === 'leverDown') && rl.empty)) ejectCase(c, d);
   if (name === 'shellEject') for (let i = 0; i < Math.min(2, rl.fired || 0); i++) ejectCase(c, d, true);
+  if (name === 'magFree') dropPartFx(c, 'mag', 'mag:' + wi.id + ':' + (wi.att.mag ? 1 : 0), false);
+  if (name === 'clipEject') dropPartFx(c, 'clip', 'clip', true);
   mechSound(c, name);
 }
 function updateReload(c, dt) {
@@ -8043,6 +8668,8 @@ function cancelReload(c) {
   const rl = c.rl; if (!rl || !rl.canCancel) return;
   c.rl = null;
   if (rl.kind === 'bolt' && rl.t > rl.open * 0.35) c.cycle = { kind: 'boltClose', t: 0, ev: 0, ejected: true, total: CYCLE.boltClose.total };
+  // 빈 상태에서 넣다 만 레버액션·펌프: 약실에 빈 탄피가 있으니 한 번 당겨 장전한 뒤 쏜다
+  else if (rl.empty && (rl.kind === 'gate' || rl.kind === 'shell')) { const k = rl.kind === 'gate' ? 'lever' : 'pump'; c.cycle = { kind: k, t: 0, ev: 0, ejected: false, total: CYCLE[k].total }; }
   c.fireCd = Math.max(c.fireCd, rl.kind === 'bolt' ? 0.46 : 0.22);
 }
 function updateCycle(c, dt) {
@@ -8056,14 +8683,34 @@ function updateCycle(c, dt) {
 
 // ---------- 무기 애니메이션 (1인칭 손·3인칭 팔·총 부품 공용) ----------
 const _ap = new THREE.Vector3(), _ap2 = new THREE.Vector3(), _ap3 = new THREE.Vector3();
+// 1인칭 뷰모델 계산 중인지 (탄 주머니가 몸 옆이 아니라 총 바로 아래 화면 밖 → 손이 카메라 앞을 가리지 않음)
+let ANIM_VM = false;
+// 점 p를 축점 c 둘레로 x축 회전 (탄창 젖힘·레버)
+function rotAboutX(p, c, a) { const y = p.y - c[1], z = p.z - c[2], ca = Math.cos(a), sa = Math.sin(a); p.y = c[1] + y * ca - z * sa; p.z = c[2] + y * sa + z * ca; return p; }
+const addArr = (out, d) => out.set(out.x + d[0], out.y + d[1], out.z + d[2]);
 function anchorPos(meta, name, out) {
   const mp = meta.magPos || [0, -0.02, 0.1];
   switch (name) {
-    case 'fore': return out.fromArray(meta.forePos);
+    case 'fore': case 'vfore': return out.fromArray(meta.forePos);
     case 'grip': return out.fromArray(meta.gripPos);
-    case 'well': return meta.pistol ? out.set(0.02, -0.14, -0.06) : out.set(mp[0] + 0.03, mp[1] - (meta.wellDrop || 0.075), mp[2] - 0.005);
-    case 'pouch': return out.set(0.17, -0.42, mp[2] - 0.12);
-    case 'pouchR': return out.set(-0.16, -0.38, -0.02);
+    case 'well': if (meta.wellHand) return out.fromArray(meta.wellHand); return meta.pistol ? out.set(0.02, -0.14, -0.06) : out.set(mp[0] + 0.03, mp[1] - (meta.wellDrop || 0.075), mp[2] - 0.005);
+    // v16: 젖힌 탄창 뒤쪽 · 탄창 쳐내기 · 노리쇠 멈치 · 위 장전 손잡이 · 드럼 · 원판 · 슬라이드 멈치 · 장전구 · 클립
+    case 'wellRock': anchorPos(meta, 'well', out); return rotAboutX(out, mp, meta.rockAmt || -0.42);
+    case 'knock': return out.fromArray(meta.knockHand || meta.forePos);
+    case 'catch': return out.fromArray(meta.catchHand || meta.forePos);
+    case 'catchIn': out.fromArray(meta.catchHand || meta.forePos); out.x -= 0.014; return out;
+    case 'knob': return out.fromArray(meta.chargeHand || meta.forePos);
+    case 'knobBack': out.fromArray(meta.chargeHand || meta.forePos); out.z -= meta.chargeTravel || 0.05; return out;
+    case 'drum': return out.fromArray(meta.wellHand || meta.forePos);
+    case 'drumOut': return addArr(out.fromArray(meta.wellHand || meta.forePos), meta.outDir || [0.12, 0, 0]);
+    case 'pan': return out.fromArray(meta.panHand || meta.forePos);
+    case 'panOut': return addArr(out.fromArray(meta.panHand || meta.forePos), meta.outDir || [0, 0.08, 0]);
+    case 'stop': return out.fromArray(meta.stopHand || meta.gripPos);
+    case 'gate': return out.fromArray(meta.gateHand || meta.gripPos);
+    case 'clip': return out.fromArray(meta.clipHand || meta.gripPos);
+    case 'clipPush': out.fromArray(meta.clipHand || meta.gripPos); out.y -= 0.05; return out;
+    case 'pouch': return ANIM_VM ? out.set(mp[0] + 0.06, Math.min(mp[1], 0) - 0.36, mp[2] - 0.05) : out.set(0.17, -0.42, mp[2] - 0.12);
+    case 'pouchR': return ANIM_VM ? out.set(-0.05, -0.34, -0.03) : out.set(-0.16, -0.38, -0.02);
     case 'charge': return out.fromArray(meta.chargeHand || meta.forePos);
     case 'chargeBack': out.fromArray(meta.chargeHand || meta.forePos); out.z -= (meta.chargeTravel || meta.slideTravel || 0.04); return out;
     case 'port': return out.fromArray(meta.loadPort || meta.forePos).add(_ap.set(0.025, -0.035, 0));
@@ -8100,6 +8747,20 @@ function track(kf, t, meta, out, info) {
 }
 const win = (t, a0, a1, b0, b1) => t <= a0 || t >= b1 ? 0 : t < a1 ? smoothstep01((t - a0) / (a1 - a0)) : t <= b0 ? 1 : 1 - smoothstep01((t - b0) / (b1 - b0));
 function shellKf(rl, kind) {
+  // 클립(Kar98k): 볼트 열기 → 오른손이 주머니에서 클립 → 홈에 꽂기 → 엄지로 누르기 → 볼트 닫기
+  if (rl.clip) {
+    const o = rl.open, i = rl.ins, p = rl.push, T = rl.total, c = rl.close;
+    return [[0, 'grip'], [o * 0.2, 'bolt'], [o * 0.35, 'boltUp'], [o * 0.7, 'boltBack'], [o * 0.98, 'pouchR'], [o + i * 0.7, 'clip'], [o + i, 'clip'], [o + i + p * 0.45, 'clipPush'], [o + i + p * 0.8, 'clipPush'],
+      [T - c * 0.8, 'boltBack'], [T - c * 0.55, 'boltUp'], [T - c * 0.3, 'bolt'], [T, 'grip']];
+  }
+  // 장전구(Win94): 오른손이 주머니 → 오른쪽 장전구로 한 발씩 밀어 넣음 → (빈 상태였으면) 손잡이로 돌아가 레버
+  if (kind === 'gate') {
+    const kf = [[0, 'grip'], [rl.open * 0.9, 'pouchR']];
+    for (let i = 0; i < rl.n; i++) { const s = rl.open + i * rl.per; kf.push([s + rl.per * 0.5, 'gate'], [s + rl.per * 0.74, 'gate'], [s + rl.per * 0.98, 'pouchR']); }
+    const T = rl.total, c = rl.close;
+    kf.push([T - c * (rl.empty ? 0.86 : 0.6), 'grip'], [T, 'grip']);
+    return kf;
+  }
   if (kind === 'break') {
     const kf = [[0, 'fore'], [rl.open * 0.55, 'foreOpen'], [rl.open * 0.95, 'pouch']];
     for (let i = 0; i < rl.n; i++) { const s = rl.open + i * rl.per; kf.push([s + rl.per * 0.45, 'pouch'], [s + rl.per * 0.78, 'breech'], [s + rl.per * 0.98, i === rl.n - 1 ? 'breech' : 'pouch']); }
@@ -8117,42 +8778,75 @@ function shellKf(rl, kind) {
   return kf;
 }
 const CYC_BOLT_KF = [[0, 'grip'], [0.12, 'bolt'], [0.25, 'boltUp'], [0.42, 'boltBack'], [0.62, 'boltUp'], [0.78, 'bolt'], [1, 'grip']];
-const AN = { left: new THREE.Vector3(), right: new THREE.Vector3(), magOff: new THREE.Vector3(), magVis: true, magRot: 0, tiltX: 0, tiltZ: 0, charge: 0, pump: 0, boltUp: 0, boltBack: 0, slide: 0, cover: 0, breakOpen: 0, shellL: false, shellR: false, li: { a: 'fore', b: 'fore', k: 0 }, ri: { a: 'grip', b: 'grip', k: 0 } };
+const AN = { left: new THREE.Vector3(), right: new THREE.Vector3(), magOff: new THREE.Vector3(), magVis: true, magRot: 0, mag2Off: new THREE.Vector3(), mag2Vis: false, mag2Rot: 0, clipOff: new THREE.Vector3(), clipVis: false, clipPush: 0,
+  tiltX: 0, tiltZ: 0, rw: 0, rk: 'L', charge: 0, fold: 0, pump: 0, boltUp: 0, boltBack: 0, slide: 0, cover: 0, breakOpen: 0, lever: 0, shellL: false, shellR: false, li: { a: 'fore', b: 'fore', k: 0 }, ri: { a: 'grip', b: 'grip', k: 0 } };
+const ss = (t, a, b) => smoothstep01(clamp((t - a) / (b - a), 0, 1));
 function weaponAnim(c, meta) {
   const A = AN, rl = c.rl, cy = c.cycle, wi = c.weapon;
-  A.magOff.set(0, 0, 0); A.magVis = true; A.magRot = 0; A.tiltX = A.tiltZ = 0; A.charge = A.pump = A.boltUp = A.boltBack = A.slide = A.cover = A.breakOpen = 0; A.shellL = A.shellR = false;
+  A.magOff.set(0, 0, 0); A.magVis = true; A.magRot = 0; A.tiltX = A.tiltZ = A.rw = 0; A.rk = 'L'; A.charge = A.fold = A.pump = A.boltUp = A.boltBack = A.slide = A.cover = A.breakOpen = A.lever = 0; A.shellL = A.shellR = false;
+  A.mag2Off.set(0, 0, 0); A.mag2Vis = false; A.mag2Rot = 0; A.clipOff.set(0, 0, 0); A.clipVis = false; A.clipPush = 0;
   anchorPos(meta, 'fore', A.left); anchorPos(meta, 'grip', A.right);
   A.li.a = A.li.b = 'fore'; A.li.k = 0; A.ri.a = A.ri.b = 'grip'; A.ri.k = 0;
   if (rl && (rl.kind === 'mag' || rl.kind === 'belt')) {
-    const T = rl.tl, f = rl.t / rl.total;
+    const T = rl.tl, f = rl.t / rl.total, inPh = (r) => r && f >= r[0] && f < r[1];
     track(T.hand, f, meta, A.left, A.li);
     if (T.handR) track(T.handR, f, meta, A.right, A.ri);
-    const b = win(f, T.tilt[0], T.tilt[0] + 0.12, T.tilt[1] - 0.12, T.tilt[1]);
-    if (rl.kind === 'belt') { A.tiltZ = 0.32 * b; A.tiltX = 0.12 * b; }
+    const b = win(f, T.tilt[0], T.tilt[0] + 0.12, T.tilt[1] - 0.12, T.tilt[1]); A.rw = b; if (rl.style === 'bullpup') A.rk = 'B';   // 불펍은 탄창이 어깨 쪽이라 1인칭 보정 없음
+    if (T.tiltAmt) { A.tiltZ = T.tiltAmt[0] * b; A.tiltX = T.tiltAmt[1] * b; }
+    else if (rl.kind === 'belt') { A.tiltZ = 0.32 * b; A.tiltX = 0.12 * b; }
     else if (rl.style === 'bullpup') { A.tiltZ = 0.55 * b; A.tiltX = -0.12 * b; }
     else if (T.handR) { A.tiltZ = 0.3 * b; A.tiltX = 0.08 * b; }
     else { A.tiltZ = 0.45 * b; A.tiltX = 0.16 * b; }
-    if (f >= T.out[0] && f < T.hide[0]) { track(T.hand, T.out[0], meta, _ap3); A.magOff.copy(A.left).sub(_ap3); }
-    else if (f >= T.hide[0] && f < T.hide[1]) A.magVis = false;
-    else if (f >= T.inn[0] && f < T.inn[1]) { track(T.hand, T.inn[1], meta, _ap3); A.magOff.copy(A.left).sub(_ap3); }
-    // AK식: 탄창 앞을 걸고 뒤로 젖혀 빼고·끼운다
-    if (rl.style === 'ak' && rl.kind === 'mag') {
+    // 헌 탄창: 놓아 떨어뜨림(drop) / 손을 따라 빠짐(out) → 숨김(hide) → 새 탄창이 손을 따라 들어옴(inn)
+    if (inPh(T.drop)) { const s = (f - T.drop[0]) * rl.total; A.magOff.set(0, -(4.9 * s * s + 0.35 * s), 0.12 * s); }
+    else if (inPh(T.out)) { track(T.hand, T.out[0], meta, _ap3); A.magOff.copy(A.left).sub(_ap3); }
+    else if (inPh(T.hide)) A.magVis = false;
+    else if (inPh(T.inn)) { track(T.hand, T.inn[1], meta, _ap3); A.magOff.copy(A.left).sub(_ap3); }
+    if (T.rock) {
+      // 탄창 젖힘(앞 고리·magPos 축): 빠질 때 rock.out 동안 젖혀지고, 들어올 땐 젖힌 채 걸린 뒤 rock.inn 동안 제자리로
+      const R = T.rock, end = T.hide ? T.hide[0] : 1;
+      if (f >= R.out[0] && f < end) A.magRot = R.amt * ss(f, R.out[0], R.out[1]);
+      if (T.inn && f >= T.inn[0] && f < R.inn[1]) A.magRot = R.amt * (1 - ss(f, R.inn[0], R.inn[1]));
+    } else if (rl.style === 'ak' && rl.kind === 'mag' && T.out) {
+      // AK식: 탄창 앞을 걸고 뒤로 젖혀 빼고·끼운다
       const r0 = T.out[0] - 0.04, r1 = T.out[0] + 0.03;
       if (f >= r0 && f < T.hide[0]) A.magRot = -0.42 * smoothstep01(clamp((f - r0) / (r1 - r0), 0, 1));
       else if (f >= T.inn[0] && f < T.inn[1] + 0.05) A.magRot = -0.42 * (1 - smoothstep01(clamp((f - (T.inn[1] - 0.04)) / 0.09, 0, 1)));
     }
+    // 예비 탄창(새 탄창): 주머니에서 손에 들려 오다가 걸린 뒤 젖혀 끼워짐 → 끝나면 원래 탄창 자리로 바뀜
+    if (T.spare && f >= T.spare[0] && f < T.spare[2]) {
+      const [, s1] = T.spare, amt = T.rock ? T.rock.amt : 0;
+      A.mag2Vis = true;
+      if (f < s1) { track(T.hand, s1, meta, _ap3); A.mag2Off.copy(A.left).sub(_ap3); A.mag2Rot = amt; }
+      else A.mag2Rot = T.rock ? amt * (1 - ss(f, T.rock.inn[0], T.rock.inn[1])) : 0;
+    }
     if (T.charge) { const [c0, c1, c2] = T.charge; A.charge = f < c0 ? 0 : f < c1 ? (f - c0) / (c1 - c0) : f < c2 ? 1 - (f - c1) / (c2 - c1) : 0; }
+    if (T.fold) A.fold = win(f, ...T.fold);
     if (T.boltUp) { A.boltUp = win(f, ...T.boltUp); A.boltBack = win(f, ...T.boltBack); }
     if (T.cover) A.cover = win(f, ...T.cover);
-    if (meta.pistol) { A.slide = rl.empty ? (f < 0.73 ? 1 + 0.15 * A.charge : 0) : 0; A.charge = 0; }
+    if (meta.pistol) { A.slide = rl.empty ? (f < (T.slideRel || 0.73) ? 1 + 0.15 * A.charge : 0) : 0; A.charge = 0; }
+    // 열린 노리쇠(Tommy Gun): 탄이 남은 채 갈면 손잡이는 뒤에 걸린 그대로, 빈 상태면 knob 구간에 당겨 건다
+    if (meta.openBolt) A.charge = rl.empty ? (T.knob ? ss(f, T.knob[0], T.knob[1]) : 0) : 1;
   } else if (rl) {
     const kind = rl.kind, t = rl.t, kf = rl.kf || (rl.kf = shellKf(rl, kind));
-    const b = win(t, 0, 0.25, rl.total - 0.3, rl.total);
+    const b = win(t, 0, 0.25, rl.total - 0.3, rl.total); A.rw = b; A.rk = kind === 'bolt' || kind === 'gate' ? 'R' : 'L';
     if (kind === 'bolt') {
       track(kf, t, meta, A.right, A.ri); A.tiltZ = -0.18 * b; A.tiltX = 0.08 * b;
       const T = rl.total, cl = rl.close;
       A.boltUp = win(t, rl.open * 0.22, rl.open * 0.36, T - cl * 0.5, T - cl * 0.28);
       A.boltBack = win(t, rl.open * 0.38, rl.open * 0.7, T - cl * 0.8, T - cl * 0.55);
+      if (rl.clip) {
+        // 클립: 주머니에서 손에 들려 옴 → 홈에 꽂힘 → 탄이 눌려 내려감 → 볼트가 닫히며 빈 클립이 튕겨 나감
+        const o = rl.open, ins = rl.ins, p = rl.push;
+        A.clipVis = t >= o * 0.98 && t < T - cl * 0.58;
+        if (t < o + ins * 0.7) { track(kf, o + ins * 0.7, meta, _ap3); A.clipOff.copy(A.right).sub(_ap3); }
+        A.clipPush = clamp((t - (o + ins + p * 0.22)) / (p * 0.55), 0, 1);
+        A.tiltZ = -0.12 * b; A.tiltX = 0.12 * b;
+      }
+    } else if (kind === 'gate') {
+      // 장전구는 오른쪽 → 총을 왼쪽으로 눕혀 오른쪽 옆면을 보이게
+      track(kf, t, meta, A.right, A.ri); A.tiltZ = -0.4 * b; A.tiltX = 0.1 * b;
+      if (rl.empty) { const L = CYCLE.lever.total, T = rl.total; A.lever = win(t, T - L * 0.95, T - L * 0.7, T - L * 0.42, T - L * 0.14); }
     } else if (kind === 'break') {
       track(kf, t, meta, A.left, A.li); A.tiltZ = 0.4 * b; A.tiltX = 0.2 * b;
       const T = rl.total, cl = rl.close;
@@ -8164,32 +8858,45 @@ function weaponAnim(c, meta) {
       track(kf, t, meta, A.left, A.li); A.tiltZ = 0.7 * b; A.tiltX = 0.15 * b;
       if (rl.empty) A.pump = win(t, rl.total - rl.close * 0.78, rl.total - rl.close * 0.58, rl.total - rl.close * 0.42, rl.total - rl.close * 0.22);
     }
-    if (t > rl.open && t < rl.open + rl.n * rl.per) {
+    if (!rl.clip && t > rl.open && t < rl.open + rl.n * rl.per) {
       const ph = ((t - rl.open) % rl.per) / rl.per, lo = kind === 'break' ? 0.3 : 0.15, hi = kind === 'break' ? 0.8 : 0.72;
-      if (ph > lo && ph < hi) { if (kind === 'bolt') A.shellR = true; else A.shellL = true; }
+      if (ph > lo && ph < hi) { if (kind === 'bolt' || kind === 'gate') A.shellR = true; else A.shellL = true; }
     }
   }
   if (cy) {
     const C = CYCLE[cy.kind], f = cy.t / (cy.total || C.total);
     if (cy.kind === 'pump') A.pump = win(f, 0.12, 0.38, 0.42, 0.66);
     else if (cy.kind === 'bolt') { track(CYC_BOLT_KF, f, meta, A.right, A.ri); A.boltUp = win(f, 0.12, 0.25, 0.68, 0.8); A.boltBack = win(f, 0.28, 0.42, 0.5, 0.64); }
+    else if (cy.kind === 'lever') A.lever = win(f, 0.06, 0.32, 0.46, 0.76);
     else { A.boltBack = 1 - smoothstep01(clamp(f / 0.35, 0, 1)); A.boltUp = 1 - smoothstep01(clamp((f - 0.35) / 0.4, 0, 1)); }
   }
   if (meta.pumpTravel && A.li.a === 'fore' && A.li.b === 'fore') A.left.z -= meta.pumpTravel * A.pump;
+  // 레버: 손가락이 고리에 들어 있으니 오른손도 레버 축 둘레로 (손바닥은 덜 움직임)
+  if (A.lever > 0 && meta.leverPos && A.ri.a === 'grip' && A.ri.b === 'grip') rotAboutX(A.right, meta.leverPos, -(meta.leverAngle || 0.9) * A.lever * 0.55);
   if (meta.pistol && !rl) { if (wi && wi.mag === 0) A.slide = 1; else if (c.slideKick > 0) A.slide = Math.sin(clamp(1 - c.slideKick / 0.09, 0, 1) * Math.PI); }
   // 연사 중 장전손잡이가 함께 움직이는 총(AK 계열·MG): 사격 직후 잠깐 뒤로
   if (meta.chargeRecip && !rl && c.fireCd > 0 && wi) { const per = 60 / fireRpm(wi), k = clamp(c.fireCd / per, 0, 1); A.charge = Math.max(A.charge, Math.sin(k * Math.PI) * 0.9); }
+  // 열린 노리쇠(Tommy Gun): 탄이 있으면 뒤에 걸려 있고, 쏠 때마다 앞으로 갔다 돌아옴. 다 쏘면 닫힌 채
+  if (meta.openBolt && wi && !rl) { A.charge = wi.mag > 0 ? 1 : 0; if (c.fireCd > 0 && wi.mag > 0) { const per = 60 / fireRpm(wi), k = clamp(c.fireCd / per, 0, 1); A.charge = 1 - 0.95 * Math.sin(k * Math.PI); } }
+  // 앞 수직 손잡이(내장·부착): 왼손도 권총 손잡이처럼 감싸 쥔다
+  if (meta.vfore) { if (A.li.a === 'fore') A.li.a = 'vfore'; if (A.li.b === 'fore') A.li.b = 'vfore'; }
   return A;
 }
 function applyParts(gun, A) {
   const P = gun.userData.parts, m = gun.userData.meta;
   if (P.mag) { P.mag.position.copy(P.mag.userData.home).add(A.magOff); P.mag.visible = A.magVis; P.mag.rotation.x = A.magRot; }
-  if (P.charge) { P.charge.position.copy(P.charge.userData.home); P.charge.position.z -= m.chargeTravel * A.charge; }
+  if (P.mag2) { P.mag2.visible = A.mag2Vis; if (A.mag2Vis) { P.mag2.position.copy(P.mag2.userData.home).add(A.mag2Off); P.mag2.rotation.x = A.mag2Rot; } }
+  if (P.charge) { P.charge.position.copy(P.charge.userData.home); P.charge.position.z -= m.chargeTravel * A.charge; if (m.chargeFold) P.charge.rotation.y = m.chargeFold * A.fold; }
   if (P.pump) { P.pump.position.copy(P.pump.userData.home); P.pump.position.z -= m.pumpTravel * A.pump; }
   if (P.bolt) { P.bolt.position.copy(P.bolt.userData.home); P.bolt.position.z -= m.boltTravel * A.boltBack; P.bolt.rotation.z = -(m.boltLift || 1.25) * A.boltUp; }
   if (P.slide) { P.slide.position.copy(P.slide.userData.home); P.slide.position.z -= m.slideTravel * A.slide; }
   if (P.cover) P.cover.rotation.x = (m.coverAngle || 1.2) * A.cover;
   if (P.barrel) P.barrel.rotation.x = (m.breakAngle || 0.4) * A.breakOpen;
+  if (P.lever) P.lever.rotation.x = -(m.leverAngle || 0.9) * A.lever;
+  if (P.clip) {
+    P.clip.visible = A.clipVis;
+    if (A.clipVis) { P.clip.position.copy(P.clip.userData.home).add(A.clipOff); const r = P.clip.userData.rounds; r.visible = A.clipPush < 0.98; r.position.y = -0.06 * smoothstep01(A.clipPush); }
+  }
 }
 
 // ---------- 피해 ----------
@@ -8799,7 +9506,7 @@ class Brain {
       if (inv.weapons[i].mag === 0) s -= 10;
       if (s > bs) { bs = s; best = i; }
     }
-    if (inv.cur !== best) { inv.cur = best; c.equipT = 0.55; c.reloadT = 0; c.setVisibleGear(); }
+    if (inv.cur !== best) { inv.cur = best; c.equipT = 0.55; c.reloadT = 0; c.cycle = null; c.setVisibleGear(); }   // 바꾼 총에 이전 총의 볼트·펌프 동작이 이어지지 않게 (reloadT = 0이 장전도 끊음)
   }
   desire(it) {
     const inv = this.c.inv, d = ITEMS[it.id];
@@ -10519,7 +11226,9 @@ function releaseLock() { if (document.pointerLockElement) { G.suppressPause = tr
 // ---------- 카메라 ----------
 // ads: 0(허리 사격)~1(정조준). 정조준은 항상 눈 위치에서 조준경/가늠자를 통해 본다(3인칭이어도)
 const Cam = { dist: 3.3, ads: 0, zoom: 1, si: null, recoilP: 0, kick: 0, kickRot: 0, swayT: 0, swayX: 0, swayY: 0, breath: 1, wasAds: false };
-const VM = { scene: null, cam: null, root: null, pivot: null, tilt: null, gun: null, key: null, shellL: null, roundR: null, dir: null, hemi: null, flashLight: null, active: false, arms: null, armsKey: null };
+const VM = { scene: null, cam: null, root: null, pivot: null, tilt: null, gun: null, key: null, shellL: null, roundR: null, dir: null, hemi: null, flashLight: null, active: false, arms: null, armsKey: null,
+  // 장전 중 1인칭 총 위치·회전 보정: L = 왼손이 일하는 장전(탄창·탄띠·산탄), R = 오른손이 일하는 장전(볼트·클립·장전구)
+  rp: { L: { x: 0.0, y: 0.02, z: 0.0, rx: -0.05, ry: -0.12, rz: 0.55 }, R: { x: 0.03, y: -0.04, z: 0.02, rx: 0.0, ry: 0.22, rz: 1.0 }, B: { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0 } } };
 const _cv = new THREE.Vector3(), _cf = new THREE.Vector3(), _cp = new THREE.Vector3(), _tp = new THREE.Vector3(), _hw = new THREE.Vector3(), _ew = new THREE.Vector3(), _q = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0);
 function buildViewModel() {
   VM.scene = new THREE.Scene();
@@ -10530,7 +11239,7 @@ function buildViewModel() {
   VM.root = new THREE.Group(); VM.scene.add(VM.root);
   VM.pivot = new THREE.Group(); VM.pivot.rotation.y = Math.PI; VM.root.add(VM.pivot);
   VM.tilt = new THREE.Group(); VM.pivot.add(VM.tilt);
-  VM.shellL = Models.casing('hull'); VM.roundR = Models.casing('762'); VM.tilt.add(VM.shellL); VM.tilt.add(VM.roundR);
+  VM.shellL = Models.casing('hull'); VM.roundR = Models.casing('rnd762'); VM.roundKey = 'rnd762'; VM.tilt.add(VM.shellL); VM.tilt.add(VM.roundR);
   VM.root.visible = false;
 }
 // ---------- 1인칭 팔: 내 외형(창고 장착)으로 만든 팔 메시 + 뼈대, 손은 IK로 총·물건에 ----------
@@ -10694,8 +11403,10 @@ function updateViewModel(dt, p, adsE) {
     VM.gun = buildGunMesh(w.id, w.att); VM.gun.traverse((o) => { if (o.isMesh) o.castShadow = false; });
     VM.tilt.add(VM.gun); VM.key = key;
   }
-  const m = VM.gun.userData.meta, A = weaponAnim(p, m);
+  const m = VM.gun.userData.meta; ANIM_VM = true; const A = weaponAnim(p, m); ANIM_VM = false;
   applyParts(VM.gun, A);
+  // 장전 중: 총을 조금 들고 더 기울여 손동작이 보이게 — 왼손 장전은 왼쪽 옆면·탄창 우물, 오른손 장전(볼트·클립·장전구)은 오른쪽 옆면 쪽으로 (권총은 절반, 불펍은 그대로)
+  const rw = A.rw * (1 - adsE) * (m.pistol ? 0.5 : 1);
   // 허리 위치 ↔ 조준 위치 (조준선이 화면 중앙을 지나도록)
   const hx = m.hip[0], hy = m.hip[1], hz = m.hip[2];
   const ax = 0, ay = -m.sightY, az = m.sightRearZ - m.relief;
@@ -10703,12 +11414,16 @@ function updateViewModel(dt, p, adsE) {
   const bobX = Math.sin(p.anim.phase) * 0.008 * bobAmp, bobY = -Math.abs(Math.cos(p.anim.phase)) * 0.01 * bobAmp;
   const eq = clamp(p.equipT / 0.6, 0, 1), sprintK = p.sprint ? 1 : 0;
   Cam.kick = lerp(Cam.kick, 0, clamp(dt * 16, 0, 1)); Cam.kickRot = lerp(Cam.kickRot, 0, clamp(dt * 12, 0, 1));
-  const tx = lerp(hx, ax, adsE) + bobX + sprintK * 0.03, ty = lerp(hy, ay, adsE) + bobY - eq * 0.25 - sprintK * 0.03, tz = lerp(hz, az, adsE) + Cam.kick * (1 - adsE * 0.5);
+  const RP = VM.rp[A.rk] || VM.rp.L;
+  const tx = lerp(hx, ax, adsE) + bobX + sprintK * 0.03 + RP.x * rw, ty = lerp(hy, ay, adsE) + bobY - eq * 0.25 - sprintK * 0.03 + RP.y * rw, tz = lerp(hz, az, adsE) + Cam.kick * (1 - adsE * 0.5) + RP.z * rw;
   const k = clamp(dt * 22, 0, 1);
   VM.pivot.position.x = lerp(VM.pivot.position.x, tx, k); VM.pivot.position.y = lerp(VM.pivot.position.y, ty, k); VM.pivot.position.z = lerp(VM.pivot.position.z, tz, k);
   VM.pivot.rotation.set(0, Math.PI + sprintK * 0.5, sprintK * -0.25);
-  VM.tilt.rotation.set(-(A.tiltX + Cam.kickRot * (1 - adsE * 0.6)) - eq * 0.6, 0, A.tiltZ);
+  VM.tilt.rotation.set(-(A.tiltX + Cam.kickRot * (1 - adsE * 0.6)) - eq * 0.6 + RP.rx * rw, RP.ry * rw, clamp(A.tiltZ * (1 + RP.rz * rw), -0.95, 0.95));
   VM.shellL.visible = A.shellL; if (A.shellL) { VM.shellL.position.copy(A.left).add(_hw.set(-0.01, 0.025, 0.02)); VM.shellL.rotation.set(0, 0, 0); }
+  // 오른손에 든 탄: 무기 탄약에 맞는 모델(7.62 소총탄 · .45 권총탄 …)
+  const ck = CASE_KIND[ITEMS[w.id].ammo], rk = 'rnd' + (ck === 'hull' ? '762' : ck);
+  if (VM.roundKey !== rk) { if (VM.roundR) VM.tilt.remove(VM.roundR); VM.roundR = Models.casing(rk); VM.tilt.add(VM.roundR); VM.roundKey = rk; }
   VM.roundR.visible = A.shellR; if (A.shellR) { VM.roundR.position.copy(A.right).add(_hw.set(0.01, 0.025, 0.03)); }
   // 손: 총의 anchor(손바닥 가운데)로 팔 IK
   VM.root.updateMatrixWorld(true);
@@ -10780,8 +11495,8 @@ function updatePlayer(dt) {
   }
   if (Input.consume('throw')) { if (p.throwMode) exitThrow(p); else enterThrow(p); }
   if (Input.consume('fireMode') && p.weapon) {
-    if (cycleFireMode(p.weapon)) { p.burstQ = 0; Audio.mech('selector', null, p.weapon.id, true); HUD.toast('사격 모드: ' + MODE_NAMES[fireMode(p.weapon)]); }
-    else HUD.toast(ITEMS[p.weapon.id].name + '은(는) ' + MODE_NAMES[fireMode(p.weapon)] + '만 가능합니다');
+    if (cycleFireMode(p.weapon)) { p.burstQ = 0; Audio.mech('selector', null, p.weapon.id, true); HUD.toast('사격 모드: ' + modeName(p.weapon.id, fireMode(p.weapon))); }
+    else HUD.toast(ITEMS[p.weapon.id].name + '은(는) ' + modeName(p.weapon.id, fireMode(p.weapon)) + '만 가능합니다');
   }
   if (Input.consume('view')) { G.firstPerson = !G.firstPerson; SETTINGS.view = G.firstPerson ? 'fpp' : 'tpp'; saveSettings(); }
   if (Input.consume('ping')) pingInputs(p);
@@ -10855,7 +11570,7 @@ function updatePassenger(dt, p, v) {
   if (Input.consume('reload')) startReload(p);
   for (const [k, i] of [['w1', 0], ['w2', 1], ['w3', 2]]) if (Input.consume(k)) switchWeapon(p, i);
   if (Input.consume('weaponCycle')) { const order = [0, 1, 2].filter(i => p.inv.weapons[i]); if (order.length) switchWeapon(p, order[(order.indexOf(p.inv.cur) + 1) % order.length]); }
-  if (Input.consume('fireMode') && p.weapon && cycleFireMode(p.weapon)) { p.burstQ = 0; Audio.mech('selector', null, p.weapon.id, true); HUD.toast('사격 모드: ' + MODE_NAMES[fireMode(p.weapon)]); }
+  if (Input.consume('fireMode') && p.weapon && cycleFireMode(p.weapon)) { p.burstQ = 0; Audio.mech('selector', null, p.weapon.id, true); HUD.toast('사격 모드: ' + modeName(p.weapon.id, fireMode(p.weapon))); }
   if (Input.consume('crouch') || Input.consume('seat')) Veh.switchSeat(p);
   if (Input.consume('heal')) usePlayerHeal(p);
   if (Input.consume('drink')) useConsumable(p, 'drink');
@@ -10979,7 +11694,7 @@ function playerFire(p) {
   if (!p.weapon || p.sprint || p.rl) p.burstQ = 0;
   if (p.weapon && p.fireCd <= 0 && !p.sprint && !p.rl && !p.cycle) {
     const d = ITEMS[p.weapon.id], mode = fireMode(p.weapon);
-    // 사격 모드: 연사/저속 연사는 누르는 동안, 단발은 한 번 누를 때 1발, 3점사는 한 번 누르면 3발(손을 떼도 끝까지)
+    // 사격 모드: 연사/저속 연사는 누르는 동안, 단발은 한 번 누를 때 1발, 점사는 한 번 누르면 정해진 발수(3발, Vector 2발 — 손을 떼도 끝까지)
     let want = p.burstQ > 0;
     if (!want && Input.fire && (mode === 'auto' || mode === 'slow' || !p.firedThisPress)) { want = true; if (mode === 'burst' && p.weapon.mag > 0) p.burstQ = d.burstN; }
     if (want) {
@@ -12209,7 +12924,7 @@ const HUD = (() => {
         if (!w) return; const d = ITEMS[w.id], e = h('div', 'wslot' + (i === inv.cur ? ' cur' : ''));
         e.appendChild(ico(w.id, w.att, 'ico wide wi'));
         e.appendChild(h('span', 'wn', `${i + 1}  ${d.name}`));
-        if (d.modes.length > 1 || i === inv.cur) e.appendChild(h('span', 'wm', MODE_NAMES[fireMode(w)]));
+        if (d.modes.length > 1 || i === inv.cur) e.appendChild(h('span', 'wm', modeName(w.id, fireMode(w))));
         const a = h('span', 'wa'); a.append(String(w.mag)); a.appendChild(h('small', '', ' / ' + inv.count(d.ammo))); e.appendChild(a);
         wp.appendChild(e);
       });
@@ -12539,7 +13254,7 @@ const HUD = (() => {
       acts.appendChild(btn('버리기', () => dropFromInventory(p, G.scene, { weapon: i })));
       top.appendChild(acts); card.appendChild(top);
       card.appendChild(ico(w.id, w.att, 'ico wide big'));
-      card.appendChild(h('div', 'micro', `${AMMO_NAMES[d.ammo]} · 탄창 ${w.mag}/${inv.magSize(w)} · 보유 ${inv.count(d.ammo)} · 피해 ${d.dmg}${d.pellets ? '×' + d.pellets : ''} · ${d.modes.map(m => MODE_NAMES[m]).join('/')}${d.supply ? ' · 보급 전용' : ''}`));
+      card.appendChild(h('div', 'micro', `${AMMO_NAMES[d.ammo]} · 탄창 ${w.mag}/${inv.magSize(w)} · 보유 ${inv.count(d.ammo)} · 피해 ${d.dmg}${d.pellets ? '×' + d.pellets : ''} · ${d.modes.map(m => modeName(w.id, m)).join('/')}${d.supply ? ' · 보급 전용' : ''}`));
       const chips = h('div', 'chips');
       for (const slot of ['scope', 'muzzle', 'mag', 'grip']) {
         const a = w.att[slot], c = h('button', 'chip' + (a ? '' : ' empty'));
@@ -15903,7 +16618,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) G.update(dt); },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

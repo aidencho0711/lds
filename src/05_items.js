@@ -19,12 +19,25 @@ const ITEMS = {
   m249: { type: 'weapon', name: 'M249 경기관총', cls: 'LMG', slot: 'primary', ammo: 'a556', dmg: 29, rpm: 750, modes: ['auto'], mag: 100, rKind: 'belt', reload: 7.4, reloadEmpty: 8.0, spread: 1.25, recoil: 1.15, range: 280, zoom: 1.15, moveMul: 0.9, adsMul: 1.45, tier: 3, color: 0x2c2f2a },
   mg3: { type: 'weapon', name: 'MG3 경기관총', cls: 'LMG', slot: 'primary', ammo: 'a762', dmg: 33, rpm: 990, rpmSlow: 660, modes: ['auto', 'slow'], mag: 75, rKind: 'belt', reload: 6.4, reloadEmpty: 7.0, spread: 1.4, recoil: 1.35, range: 300, zoom: 1.15, moveMul: 0.88, adsMul: 1.5, tier: 4, supply: true, color: 0x222426 },
   p19: { type: 'weapon', name: 'P-19 권총', cls: 'PISTOL', slot: 'secondary', ammo: 'a9', dmg: 24, rpm: 420, modes: ['single'], mag: 15, reload: 1.4, reloadEmpty: 1.75, spread: 1.2, recoil: 0.9, range: 70, zoom: 1.1, tier: 1, color: 0x222222 },
+  // ----- v16 추가 10종 (rTL: 총마다 다른 장전 동작 · 06_combat.js RL_TL) -----
+  //  vgrip: 수직 손잡이 가능 · noExt/noScope/noMuzzle: 대용량 탄창·조준경·총구 부착물 불가
+  beryl: { type: 'weapon', name: 'Beryl M762 돌격소총', cls: 'AR', slot: 'primary', ammo: 'a762', dmg: 41, rpm: 700, burstRpm: 900, burstN: 3, burstGap: 0.24, modes: ['auto', 'burst', 'single'], mag: 30, reload: 2.6, reloadEmpty: 3.25, rStyle: 'ak', rTL: 'beryl', spread: 1.25, recoil: 2.1, range: 270, zoom: 1.2, tier: 3, vgrip: true, color: 0x1c1d1f },
+  m16a4: { type: 'weapon', name: 'M16A4 돌격소총', cls: 'AR', slot: 'primary', ammo: 'a556', dmg: 33, rpm: 800, burstRpm: 900, burstN: 3, burstGap: 0.22, modes: ['burst', 'single'], mag: 30, reload: 2.2, reloadEmpty: 2.75, rStyle: 'ar', rTL: 'm16', spread: 0.8, recoil: 1.05, range: 330, zoom: 1.2, tier: 2, color: 0x232527 },
+  vector: { type: 'weapon', name: 'Vector 기관단총', cls: 'SMG', slot: 'primary', ammo: 'a9', dmg: 19, rpm: 1090, burstRpm: 1200, burstN: 2, burstGap: 0.16, modes: ['auto', 'burst', 'single'], mag: 19, reload: 1.85, reloadEmpty: 2.35, rStyle: 'ar', rTL: 'vector', spread: 1.35, recoil: 0.5, range: 100, zoom: 1.15, tier: 2, vgrip: true, color: 0x161718 },
+  bizon: { type: 'weapon', name: 'PP-19 Bizon 기관단총', cls: 'SMG', slot: 'primary', ammo: 'a9', dmg: 22, rpm: 680, modes: ['auto', 'single'], mag: 53, reload: 2.9, reloadEmpty: 3.5, rStyle: 'ak', rTL: 'helix', spread: 1.3, recoil: 0.45, range: 120, zoom: 1.15, tier: 1, noExt: true, color: 0x1f2022 },
+  tommy: { type: 'weapon', name: 'Tommy Gun 기관단총', cls: 'SMG', slot: 'primary', ammo: 'a45', dmg: 26, rpm: 680, modes: ['auto', 'single'], mag: 50, reload: 3.0, reloadEmpty: 3.7, rTL: 'drum', spread: 1.45, recoil: 0.75, range: 110, zoom: 1.15, tier: 1, noExt: true, noScope: true, noMuzzle: true, color: 0x5a3418 },
+  kar98k: { type: 'weapon', name: 'Kar98k 저격소총', cls: 'SR', slot: 'primary', ammo: 'a762', dmg: 90, rpm: 40, modes: ['single'], mag: 5, rKind: 'bolt', rOpen: 0.5, rShell: 0.58, rClose: 0.5, clip: 5, rClipIn: 0.45, rClipPush: 0.5, cycle: 'bolt', cycleT: 1.15, spread: 0.06, recoil: 3.8, range: 650, zoom: 1.25, tier: 2, noExt: true, color: 0x6b4123 },
+  win94: { type: 'weapon', name: 'Win94 레버액션 소총', cls: 'SR', slot: 'primary', ammo: 'a45', dmg: 62, rpm: 66, modes: ['single'], mag: 8, rKind: 'gate', rOpen: 0.4, rShell: 0.5, rClose: 0.3, cycle: 'lever', cycleT: 0.6, spread: 0.12, recoil: 2.2, range: 350, zoom: 1.3, tier: 1, noExt: true, noScope: true, noMuzzle: true, color: 0x7a4826 },
+  s1897: { type: 'weapon', name: 'S1897 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 17, pellets: 9, rpm: 70, modes: ['single'], mag: 5, rKind: 'shell', rOpen: 0.35, rShell: 0.5, rClose: 0.3, rCloseEmpty: 0.45, cycle: 'pump', spread: 4.0, recoil: 2.6, range: 42, zoom: 1.1, tier: 1, noExt: true, color: 0x6a3e1f },
+  dp28: { type: 'weapon', name: 'DP-28 경기관총', cls: 'LMG', slot: 'primary', ammo: 'a762', dmg: 38, rpm: 550, modes: ['auto'], mag: 47, rTL: 'pan', reload: 4.4, reloadEmpty: 5.0, spread: 1.15, recoil: 1.25, range: 300, zoom: 1.15, moveMul: 0.92, adsMul: 1.35, tier: 2, color: 0x3a3f33 },
+  deagle: { type: 'weapon', name: 'Deagle 권총', cls: 'PISTOL', slot: 'secondary', ammo: 'a45', dmg: 42, rpm: 230, modes: ['single'], mag: 7, reload: 1.7, reloadEmpty: 2.15, rTL: 'deagle', spread: 1.0, recoil: 2.3, range: 90, zoom: 1.12, tier: 2, color: 0x9da2a7 },
   // ----- 탄약 -----
   a556: { type: 'ammo', name: '5.56mm 탄', w: 0.4, stack: 40, color: 0xb0a040 },
   a762: { type: 'ammo', name: '7.62mm 탄', w: 0.5, stack: 30, color: 0xb07a30 },
   a9:   { type: 'ammo', name: '9mm 탄', w: 0.3, stack: 45, color: 0xc0c060 },
   a12:  { type: 'ammo', name: '12게이지 탄', w: 1.0, stack: 15, color: 0xb03030 },
   a300: { type: 'ammo', name: '.300 매그넘 탄', w: 1.2, stack: 10, color: 0xc89040 },
+  a45:  { type: 'ammo', name: '.45 ACP 탄', w: 0.4, stack: 30, color: 0x9a8a50 },
   // ----- 회복 -----
   bandage: { type: 'heal', name: '붕대', heal: 10, cap: 75, time: 3, w: 2, color: 0xe0d8c8 },
   firstaid: { type: 'heal', name: '구급상자', heal: 75, cap: 75, time: 6, w: 10, color: 0xd04040 },
@@ -56,10 +69,14 @@ const ITEMS = {
   // ----- 상점 재화: 줍는 즉시 계정에 들어감(가방 무게 없음). count = 골드 탄피 양 -----
   gold: { type: 'gold', name: '골드 탄피 주머니', w: 0, color: 0xd8b04a },
 };
-const AMMO_NAMES = { a556: '5.56', a762: '7.62', a9: '9mm', a12: '12G', a300: '.300' };
+const AMMO_NAMES = { a556: '5.56', a762: '7.62', a9: '9mm', a12: '12G', a300: '.300', a45: '.45' };
+// 탄피 모델 종류 (배출·손에 든 탄)
+const CASE_KIND = { a556: '556', a762: '762', a9: '9', a12: 'hull', a300: '300', a45: '45' };
 for (const id in ITEMS) { const d = ITEMS[id]; if (d.type === 'weapon') d.auto = d.modes.includes('auto') || d.modes.includes('slow'); }
 // 사격 모드
 const MODE_NAMES = { auto: '연사', single: '단발', burst: '3점사', slow: '저속 연사' };
+// 점사 발수는 총마다 다름 (Vector 2점사)
+function modeName(id, m) { return m === 'burst' ? (ITEMS[id].burstN || 3) + '점사' : MODE_NAMES[m]; }
 function fireMode(wi) { const d = ITEMS[wi.id]; return d.modes[(wi.fm || 0) % d.modes.length]; }
 function fireRpm(wi) { const d = ITEMS[wi.id], m = fireMode(wi); return m === 'burst' ? d.burstRpm : m === 'slow' ? d.rpmSlow : d.rpm; }
 function cycleFireMode(wi) { const d = ITEMS[wi.id]; if (d.modes.length < 2) return false; wi.fm = ((wi.fm || 0) + 1) % d.modes.length; return true; }
@@ -98,15 +115,19 @@ function attFits(attId, wid) {
   const a = ITEMS[attId], d = ITEMS[wid];
   if (wid === 's686') return false; // 중절식 2연발: 부착 불가
   if (a.slot === 'scope') {
+    if (d.noScope) return false;
     if (d.cls === 'PISTOL') return attId === 'reddot' || attId === 'holo';
     if (d.cls === 'SG') return a.zoom <= 2;
     if (d.cls === 'SMG') return a.zoom <= 4;
+    if (d.cls === 'LMG' && wid === 'dp28') return a.zoom <= 4;
     return true;
   }
-  if (a.slot === 'grip') return wid === 'm416' || wid === 'asm' || wid === 'vk9';
-  if (a.slot === 'muzzle') return d.cls !== 'SG' && d.cls !== 'LMG';
-  return d.cls !== 'LMG' && wid !== 'm24'; // 대용량 탄창
+  if (a.slot === 'grip') return !!d.vgrip;
+  if (a.slot === 'muzzle') return d.cls !== 'SG' && d.cls !== 'LMG' && !d.noMuzzle;
+  return d.cls !== 'LMG' && !d.noExt; // 대용량 탄창
 }
+for (const k of ['m416', 'asm', 'vk9']) ITEMS[k].vgrip = true;
+ITEMS.m24.noExt = true;
 
 // ---------- 월드 아이템 ----------
 let GROUND = [];          // {id, count, inst, x, y, z, mesh, alive}
@@ -160,11 +181,11 @@ const LOOT = { // 무기 비중: 무기마다 탄약 2묶음이 같이 생기므
   top: [['weapon', 30], ['ammo', 14], ['heal', 18], ['vest', 11], ['helmet', 10], ['bag', 7], ['att', 12], ['throw', 10], ['none', 2]],
 };
 const LVL_TABLE = { low: [[1, 70], [2, 26], [3, 4]], mid: [[1, 50], [2, 40], [3, 10]], high: [[1, 35], [2, 48], [3, 17]], top: [[1, 20], [2, 50], [3, 30]] };
-const WEAPON_TABLE = {
-  low: [['p19', 28], ['vk9', 24], ['s686', 14], ['s12k', 10], ['m416', 10], ['akm', 8], ['mini14', 4], ['asm', 2]],
-  mid: [['p19', 12], ['vk9', 18], ['s686', 10], ['s12k', 10], ['m416', 18], ['akm', 14], ['asm', 7], ['aug', 3], ['mini14', 6], ['m24', 1.5], ['m249', 1]],
-  high: [['p19', 6], ['vk9', 14], ['s686', 8], ['s12k', 8], ['m416', 20], ['akm', 15], ['asm', 9], ['aug', 6], ['mini14', 9], ['m24', 3], ['m249', 2]],
-  top: [['vk9', 10], ['s12k', 6], ['m416', 22], ['akm', 16], ['asm', 10], ['aug', 9], ['mini14', 12], ['m24', 4], ['m249', 3]],
+const WEAPON_TABLE = { // 지역 등급별 무기 비중 (v16: 10종 추가 — 흔한 총은 낮은 등급, 강한 총은 높은 등급에 많이)
+  low: [['p19', 22], ['vk9', 18], ['s686', 12], ['s12k', 8], ['s1897', 10], ['m416', 8], ['akm', 7], ['m16a4', 6], ['mini14', 4], ['asm', 2], ['tommy', 8], ['bizon', 7], ['vector', 4], ['win94', 6], ['deagle', 6], ['kar98k', 2], ['beryl', 1.5], ['dp28', 1]],
+  mid: [['p19', 10], ['vk9', 14], ['s686', 8], ['s12k', 8], ['s1897', 7], ['m416', 15], ['akm', 12], ['m16a4', 9], ['asm', 6], ['aug', 3], ['mini14', 6], ['m24', 1.5], ['m249', 1], ['tommy', 6], ['bizon', 7], ['vector', 6], ['win94', 4], ['deagle', 4], ['kar98k', 4], ['beryl', 4], ['dp28', 3]],
+  high: [['p19', 5], ['vk9', 11], ['s686', 6], ['s12k', 7], ['s1897', 5], ['m416', 17], ['akm', 13], ['m16a4', 9], ['asm', 8], ['aug', 6], ['mini14', 8], ['m24', 3], ['m249', 2], ['tommy', 4], ['bizon', 6], ['vector', 7], ['win94', 3], ['deagle', 4], ['kar98k', 5], ['beryl', 7], ['dp28', 4]],
+  top: [['vk9', 8], ['s12k', 5], ['m416', 19], ['akm', 14], ['m16a4', 8], ['asm', 9], ['aug', 9], ['mini14', 11], ['m24', 4], ['m249', 3], ['vector', 7], ['bizon', 4], ['kar98k', 5], ['beryl', 9], ['dp28', 4], ['deagle', 2]],
 };
 function populateLoot(scene) {
   GROUND = []; itemGrid = new Array(IGN * IGN).fill(EMPTY_LIST);
@@ -177,7 +198,7 @@ function populateLoot(scene) {
       spawnItem(scene, id, 1, jx, s.y, jz, newWeapon(id, Math.random() < 0.6 ? ITEMS[id].mag : 0));
       const am = ITEMS[id].ammo; spawnItem(scene, am, ITEMS[am].stack, jx + 0.55, s.y, jz + 0.2);
       spawnItem(scene, am, ITEMS[am].stack, jx + 0.4, s.y, jz - 0.45);
-    } else if (kind === 'ammo') { const am = pick(['a556', 'a762', 'a9', 'a9', 'a12', 'a556']); spawnItem(scene, am, ITEMS[am].stack, jx, s.y, jz); }
+    } else if (kind === 'ammo') { const am = pick(['a556', 'a556', 'a762', 'a762', 'a9', 'a9', 'a12', 'a45']); spawnItem(scene, am, ITEMS[am].stack, jx, s.y, jz); }
     else if (kind === 'heal') { const h = weightedPick([['bandage', 45], ['firstaid', 28], ['medkit', 7], ['drink', 20]]); spawnItem(scene, h, h === 'bandage' ? 5 : 1, jx, s.y, jz); }
     else if (kind === 'vest' || kind === 'helmet' || kind === 'bag') {
       const lv = weightedPick(LVL_TABLE[s.tier]); const id = (kind === 'helmet' ? 'helm' : kind) + lv;
@@ -276,7 +297,7 @@ function dropFromInventory(c, scene, what) {
     const wi = inv.weapons[what.weapon]; if (!wi) return;
     inv.weapons[what.weapon] = null;
     spawnItem(scene, wi.id, 1, x, y, z, wi);
-    if (inv.cur === what.weapon) inv.cur = inv.weapons.findIndex(Boolean);
+    if (inv.cur === what.weapon) { inv.cur = inv.weapons.findIndex(Boolean); c.cycle = null; }   // 버린 총의 볼트·펌프 동작이 다른 총으로 이어지지 않게 (장전은 아래 reloadT = 0이 끊음)
     c.reloadT = 0;
   } else if (what.gear) {
     const g = inv.gear[what.gear]; if (!g) return;

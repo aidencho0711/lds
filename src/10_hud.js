@@ -290,7 +290,7 @@ const HUD = (() => {
         if (!w) return; const d = ITEMS[w.id], e = h('div', 'wslot' + (i === inv.cur ? ' cur' : ''));
         e.appendChild(ico(w.id, w.att, 'ico wide wi'));
         e.appendChild(h('span', 'wn', `${i + 1}  ${d.name}`));
-        if (d.modes.length > 1 || i === inv.cur) e.appendChild(h('span', 'wm', MODE_NAMES[fireMode(w)]));
+        if (d.modes.length > 1 || i === inv.cur) e.appendChild(h('span', 'wm', modeName(w.id, fireMode(w))));
         const a = h('span', 'wa'); a.append(String(w.mag)); a.appendChild(h('small', '', ' / ' + inv.count(d.ammo))); e.appendChild(a);
         wp.appendChild(e);
       });
@@ -620,7 +620,7 @@ const HUD = (() => {
       acts.appendChild(btn('버리기', () => dropFromInventory(p, G.scene, { weapon: i })));
       top.appendChild(acts); card.appendChild(top);
       card.appendChild(ico(w.id, w.att, 'ico wide big'));
-      card.appendChild(h('div', 'micro', `${AMMO_NAMES[d.ammo]} · 탄창 ${w.mag}/${inv.magSize(w)} · 보유 ${inv.count(d.ammo)} · 피해 ${d.dmg}${d.pellets ? '×' + d.pellets : ''} · ${d.modes.map(m => MODE_NAMES[m]).join('/')}${d.supply ? ' · 보급 전용' : ''}`));
+      card.appendChild(h('div', 'micro', `${AMMO_NAMES[d.ammo]} · 탄창 ${w.mag}/${inv.magSize(w)} · 보유 ${inv.count(d.ammo)} · 피해 ${d.dmg}${d.pellets ? '×' + d.pellets : ''} · ${d.modes.map(m => modeName(w.id, m)).join('/')}${d.supply ? ' · 보급 전용' : ''}`));
       const chips = h('div', 'chips');
       for (const slot of ['scope', 'muzzle', 'mag', 'grip']) {
         const a = w.att[slot], c = h('button', 'chip' + (a ? '' : ' empty'));

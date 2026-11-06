@@ -157,7 +157,7 @@ function fireWeapon(c, origin, dir) {
   }
   c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : 1) * 0.22, 4);
   FX.flash(c, g, meta, tStart, dir, d);
-  if (d.cycle) { if (wi.mag > 0) c.cycle = { kind: d.cycle, t: 0, ev: 0, ejected: false, total: CYCLE[d.cycle].total * (d.cycleT ? d.cycleT / 1.05 : 1) }; }
+  if (d.cycle) { if (wi.mag > 0) c.cycle = { kind: d.cycle, t: 0, ev: 0, ejected: false, total: d.cycleT || CYCLE[d.cycle].total }; }
   else if (d.rKind !== 'break') ejectCase(c, d); // 중절식은 장전할 때 꺼낸다
   if (d.cls === 'PISTOL') c.slideKick = 0.09;
   Audio.gunshot(origin, wi.id, c.isPlayer, isIndoor(c.pos.x, c.pos.z, c.pos.y));
@@ -186,7 +186,19 @@ function ejectCase(c, d, drop) {
   const sp = 2.2 + Math.random() * 1.3;
   if (drop) _ev.set(-fx * 1.6 + rx * rnd(-0.3, 0.3) + c.vel.x, 1.6 + Math.random() * 0.6, -fz * 1.6 + rz * rnd(-0.3, 0.3) + c.vel.z);
   else _ev.set(rx * sp - fx * 0.7 + c.vel.x, 1.3 + Math.random() * 1.1, rz * sp - fz * 0.7 + c.vel.z);
-  FX.casing(_ep, _ev, { a556: '556', a762: '762', a9: '9', a12: 'hull', a300: '300' }[d.ammo], c.isPlayer || dist < 14);
+  FX.casing(_ep, _ev, CASE_KIND[d.ammo], c.isPlayer || dist < 14);
+}
+// 떨어뜨린 탄창(Beryl·M16A4)·빈 클립(Kar98k): 총에서 빠진 자리에서 실제 바닥으로 떨어져 잠시 남는다
+function dropPartFx(c, part, kind, up) {
+  if (!G.camera) return;
+  const g = gunObj(c); if (!g) return;
+  if (Math.hypot(c.pos.x - G.camera.position.x, c.pos.z - G.camera.position.z) > 40) return;
+  const P = g.userData.parts[part]; if (!P) return;
+  if (!gunWorldPoint(c, P.position.x, P.position.y, P.position.z, _ep)) return;
+  const yaw = c.isPlayer ? c.yaw : c.bodyYaw, rx = -Math.cos(yaw), rz = Math.sin(yaw);
+  if (up) _ev.set(rx * 1.3 + c.vel.x, 1.9 + Math.random() * 0.5, rz * 1.3 + c.vel.z);
+  else _ev.set(c.vel.x * 0.8, -1.4, c.vel.z * 0.8);
+  FX.casing(_ep, _ev, kind, true);
 }
 function mechSound(c, name) {
   const id = c.weapon ? c.weapon.id : 'm416';
@@ -214,6 +226,55 @@ const RL_TL = {
     ev: [[0.12, 'coverOpen'], [0.22, 'boxOut'], [0.57, 'boxIn'], [0.61, 'boxSeat'], [0.72, 'beltLay'], [0.86, 'coverClose']],
     out: [0.21, 0.3], hide: [0.3, 0.48], inn: [0.48, 0.58], tilt: [0.03, 0.92], cover: [0.08, 0.14, 0.81, 0.87] },
 };
+// ---------- v16: 총마다 다른 장전 동작 (ITEMS.rTL → 전술 / +'Empty' → 빈 탄창) ----------
+//  hand/handR: 왼손·오른손 위치 keyframe(비율) · ev: 소리·처리 · tilt/tiltAmt: 총 기울임 구간·크기 [z, x]
+//  out/hide/inn: 탄창이 손을 따라 빠짐·숨김·들어옴 · drop: 탄창을 놓아 떨어뜨림(뒤에 바닥으로) · spare: 예비 탄창(mag2)이 손에 [보임, 걸림, 끼움 완료]
+//  rock: 탄창 젖힘 {amt, out, inn} · charge/knob: 장전손잡이 · fold: 접힌 손잡이 펼침 · slideRel: 권총 슬라이드가 닫히는 시점
+Object.assign(RL_TL, {
+  // Beryl M762: 새 탄창을 먼저 꺼내 → 헌 탄창 뒤 멈치를 새 탄창으로 쳐서 떨어뜨리고 → 앞을 걸어 젖혀 끼움
+  beryl: { hand: [[0, 'fore'], [0.06, 'fore'], [0.2, 'pouch'], [0.26, 'pouch'], [0.38, 'knock'], [0.43, 'knock'], [0.52, 'wellRock'], [0.6, 'well'], [0.64, 'well'], [0.82, 'fore']],
+    ev: [[0.4, 'magKnock'], [0.5, 'magFree'], [0.55, 'magInAk'], [0.61, 'magRock']],
+    drop: [0.4, 0.5], hide: [0.5, 0.61], spare: [0.22, 0.52, 0.61], rock: { amt: -0.42, out: [0.4, 0.44], inn: [0.52, 0.61] }, tilt: [0.04, 0.8], tiltAmt: [0.42, 0.14] },
+  berylEmpty: { hand: [[0, 'fore'], [0.05, 'fore'], [0.17, 'pouch'], [0.22, 'pouch'], [0.32, 'knock'], [0.36, 'knock'], [0.44, 'wellRock'], [0.5, 'well'], [0.53, 'well'], [0.6, 'charge'], [0.65, 'charge'], [0.71, 'chargeBack'], [0.74, 'charge'], [0.88, 'fore']],
+    ev: [[0.33, 'magKnock'], [0.42, 'magFree'], [0.46, 'magInAk'], [0.51, 'magRock'], [0.68, 'chargeBack'], [0.74, 'chargeFwd']],
+    drop: [0.33, 0.42], hide: [0.42, 0.51], spare: [0.19, 0.44, 0.51], rock: { amt: -0.42, out: [0.33, 0.37], inn: [0.44, 0.51] }, tilt: [0.03, 0.84], tiltAmt: [0.42, 0.14], charge: [0.65, 0.71, 0.74] },
+  // M16A4: 멈치를 눌러 헌 탄창은 그냥 떨어뜨리고(drop-free) 새 탄창을 꽂음 · 빈 탄창이면 왼손바닥으로 노리쇠 멈치를 쳐서 닫음
+  m16: { hand: [[0, 'fore'], [0.05, 'fore'], [0.2, 'pouch'], [0.3, 'pouch'], [0.46, 'well'], [0.52, 'well'], [0.72, 'fore']],
+    ev: [[0.05, 'magRelease'], [0.2, 'magFree'], [0.44, 'magIn'], [0.5, 'magSeat']], drop: [0.06, 0.2], hide: [0.2, 0.3], inn: [0.3, 0.46], tilt: [0.03, 0.74], tiltAmt: [0.32, 0.1] },
+  m16Empty: { hand: [[0, 'fore'], [0.04, 'fore'], [0.17, 'pouch'], [0.26, 'pouch'], [0.41, 'well'], [0.46, 'well'], [0.53, 'catch'], [0.565, 'catchIn'], [0.6, 'catch'], [0.76, 'fore']],
+    ev: [[0.04, 'magRelease'], [0.17, 'magFree'], [0.39, 'magIn'], [0.45, 'magSeat'], [0.565, 'boltCatch']], drop: [0.05, 0.17], hide: [0.17, 0.26], inn: [0.26, 0.41], tilt: [0.03, 0.8], tiltAmt: [0.32, 0.1] },
+  // Vector: 총구를 들고 탄창을 곧게 뺌 · 빈 탄창이면 왼쪽 접힌 손잡이를 펼쳐 당김
+  vector: { hand: [[0, 'fore'], [0.1, 'well'], [0.24, 'pouch'], [0.38, 'pouch'], [0.52, 'well'], [0.58, 'well'], [0.78, 'fore']],
+    ev: [[0.1, 'magRelease'], [0.14, 'magOut'], [0.5, 'magIn'], [0.56, 'magSeat']], out: [0.11, 0.24], hide: [0.24, 0.38], inn: [0.38, 0.52], tilt: [0.04, 0.76], tiltAmt: [0.16, -0.13] },
+  vectorEmpty: { hand: [[0, 'fore'], [0.08, 'well'], [0.2, 'pouch'], [0.31, 'pouch'], [0.43, 'well'], [0.48, 'well'], [0.56, 'charge'], [0.62, 'charge'], [0.68, 'chargeBack'], [0.71, 'charge'], [0.86, 'fore']],
+    ev: [[0.08, 'magRelease'], [0.12, 'magOut'], [0.42, 'magIn'], [0.47, 'magSeat'], [0.585, 'selector'], [0.66, 'chargeBack'], [0.71, 'chargeFwd']], out: [0.09, 0.2], hide: [0.2, 0.31], inn: [0.31, 0.43],
+    tilt: [0.03, 0.84], tiltAmt: [0.16, -0.13], charge: [0.62, 0.68, 0.71], fold: [0.55, 0.6, 0.73, 0.79] },
+  // PP-19 Bizon: 뒤 멈치를 누르고 원통 탄창 뒤쪽을 내려(앞 고리 축) 빼고, 새 탄창은 앞을 걸고 뒤를 올려 끼움
+  helix: { hand: [[0, 'fore'], [0.08, 'well'], [0.12, 'well'], [0.2, 'wellRock'], [0.32, 'pouch'], [0.44, 'pouch'], [0.56, 'wellRock'], [0.64, 'well'], [0.68, 'well'], [0.84, 'fore']],
+    ev: [[0.12, 'magRelease'], [0.2, 'magOut'], [0.55, 'magInAk'], [0.64, 'magRock']], out: [0.2, 0.32], hide: [0.32, 0.44], inn: [0.44, 0.56],
+    rock: { amt: -0.3, out: [0.12, 0.2], inn: [0.56, 0.64] }, tilt: [0.04, 0.82], tiltAmt: [0.36, 0.06] },
+  helixEmpty: { hand: [[0, 'fore'], [0.07, 'well'], [0.1, 'well'], [0.17, 'wellRock'], [0.27, 'pouch'], [0.37, 'pouch'], [0.47, 'wellRock'], [0.54, 'well'], [0.57, 'well'], [0.64, 'charge'], [0.68, 'charge'], [0.74, 'chargeBack'], [0.77, 'charge'], [0.9, 'fore']],
+    ev: [[0.1, 'magRelease'], [0.17, 'magOut'], [0.46, 'magInAk'], [0.54, 'magRock'], [0.71, 'chargeBack'], [0.77, 'chargeFwd']], out: [0.17, 0.27], hide: [0.27, 0.37], inn: [0.37, 0.47],
+    rock: { amt: -0.3, out: [0.1, 0.17], inn: [0.47, 0.54] }, tilt: [0.03, 0.86], tiltAmt: [0.36, 0.06], charge: [0.68, 0.74, 0.77] },
+  // Tommy Gun: 드럼을 왼쪽으로 밀어 빼고 밀어 넣음 · 빈 탄창(노리쇠가 닫힘)이면 먼저 위 손잡이를 당겨 걸어 둠(열린 노리쇠)
+  drum: { hand: [[0, 'fore'], [0.1, 'drum'], [0.14, 'drum'], [0.25, 'drumOut'], [0.35, 'pouch'], [0.46, 'pouch'], [0.58, 'drumOut'], [0.68, 'drum'], [0.72, 'drum'], [0.86, 'fore']],
+    ev: [[0.12, 'drumLatch'], [0.16, 'drumOut'], [0.6, 'drumIn'], [0.68, 'drumSeat']], out: [0.14, 0.35], hide: [0.35, 0.46], inn: [0.46, 0.68], tilt: [0.04, 0.84], tiltAmt: [0.3, 0.06] },
+  drumEmpty: { hand: [[0, 'fore'], [0.06, 'knob'], [0.1, 'knob'], [0.16, 'knobBack'], [0.2, 'knobBack'], [0.27, 'drum'], [0.3, 'drum'], [0.39, 'drumOut'], [0.48, 'pouch'], [0.58, 'pouch'], [0.68, 'drumOut'], [0.77, 'drum'], [0.8, 'drum'], [0.91, 'fore']],
+    ev: [[0.13, 'knobBack'], [0.29, 'drumLatch'], [0.32, 'drumOut'], [0.7, 'drumIn'], [0.77, 'drumSeat']], out: [0.3, 0.48], hide: [0.48, 0.58], inn: [0.58, 0.77], tilt: [0.03, 0.88], tiltAmt: [0.3, 0.06], knob: [0.1, 0.16] },
+  // DP-28: 위에 얹힌 원판 탄창을 들어 앞으로 빼고, 새 원판을 얹어 눌러 끼움
+  pan: { hand: [[0, 'fore'], [0.1, 'pan'], [0.14, 'pan'], [0.25, 'panOut'], [0.37, 'pouch'], [0.49, 'pouch'], [0.61, 'panOut'], [0.71, 'pan'], [0.75, 'pan'], [0.88, 'fore']],
+    ev: [[0.12, 'panLatch'], [0.17, 'panOff'], [0.62, 'panOn'], [0.71, 'panSeat']], out: [0.14, 0.37], hide: [0.37, 0.49], inn: [0.49, 0.71], tilt: [0.04, 0.86], tiltAmt: [-0.22, 0.12] },
+  panEmpty: { hand: [[0, 'fore'], [0.08, 'pan'], [0.11, 'pan'], [0.2, 'panOut'], [0.3, 'pouch'], [0.4, 'pouch'], [0.5, 'panOut'], [0.59, 'pan'], [0.62, 'pan'], [0.655, 'fore'], [0.69, 'charge'], [0.72, 'charge'], [0.78, 'chargeBack'], [0.81, 'charge'], [0.92, 'fore']],
+    ev: [[0.09, 'panLatch'], [0.13, 'panOff'], [0.51, 'panOn'], [0.59, 'panSeat'], [0.75, 'chargeBack'], [0.81, 'chargeFwd']], out: [0.11, 0.3], hide: [0.3, 0.4], inn: [0.4, 0.59],
+    tilt: [0.03, 0.9], tiltAmt: [-0.22, 0.12], charge: [0.72, 0.78, 0.81] },
+  // Deagle: 무거운 권총이라 더 기울여 갈고, 빈 탄창이면 오른손 엄지로 슬라이드 멈치를 눌러 닫음
+  deagle: { hand: [[0, 'fore'], [0.1, 'well'], [0.28, 'pouch'], [0.42, 'pouch'], [0.56, 'well'], [0.62, 'well'], [0.8, 'fore']],
+    ev: [[0.1, 'magRelease'], [0.16, 'magOut'], [0.54, 'magIn'], [0.6, 'magSeat']], out: [0.12, 0.28], hide: [0.28, 0.42], inn: [0.42, 0.56], tilt: [0.04, 0.76], tiltAmt: [0.4, 0.22] },
+  deagleEmpty: { hand: [[0, 'fore'], [0.08, 'well'], [0.22, 'pouch'], [0.34, 'pouch'], [0.48, 'well'], [0.54, 'well'], [0.7, 'fore']],
+    handR: [[0, 'grip'], [0.56, 'grip'], [0.615, 'stop'], [0.66, 'stop'], [0.72, 'grip']],
+    ev: [[0.08, 'magRelease'], [0.13, 'magOut'], [0.46, 'magIn'], [0.52, 'magSeat'], [0.635, 'slideStop']], out: [0.1, 0.22], hide: [0.22, 0.34], inn: [0.34, 0.48],
+    tilt: [0.03, 0.8], tiltAmt: [0.4, 0.22], slideRel: 0.635 },
+});
 // 빈 탄띠: 맨 앞에 장전손잡이 당기기를 끼워 넣는다
 RL_TL.beltEmpty = (() => {
   const B = RL_TL.belt, k = 0.13, sc = (f) => k + f * (1 - k);
@@ -225,19 +286,29 @@ const CYCLE = {
   pump: { total: 0.55, ev: [[0.2, 'pumpBack'], [0.47, 'pumpFwd']], eject: 0.3 },
   bolt: { total: 1.05, ev: [[0.18, 'boltUp'], [0.38, 'boltBack'], [0.6, 'boltFwd'], [0.75, 'boltDown']], eject: 0.42 },
   boltClose: { total: 0.45, ev: [[0.15, 'boltFwd'], [0.55, 'boltDown']], eject: -1 },
+  // 레버액션(Win94): 레버를 내려 빈 탄피를 위로 튕기고, 올려 다음 탄을 약실에
+  lever: { total: 0.6, ev: [[0.16, 'leverDown'], [0.56, 'leverUp']], eject: 0.3 },
 };
 function reloadPlan(c, wi, d) {
   const empty = wi.mag === 0, ms = c.inv.magSize(wi);
-  if (d.rKind === 'shell' || d.rKind === 'bolt' || d.rKind === 'break') {
+  if (d.rKind === 'shell' || d.rKind === 'bolt' || d.rKind === 'break' || d.rKind === 'gate') {
     const n = Math.min(ms - wi.mag, c.inv.count(d.ammo));
-    const brk = d.rKind === 'break';
-    const open = d.rOpen, per = d.rShell, close = d.rClose + (empty && d.rKind === 'shell' ? d.rCloseEmpty : 0);
+    // 클립 장전(Kar98k): 탄창이 비었고 클립 한 개 분량이 있으면 → 볼트 열기 · 클립 꽂기 · 엄지로 5발 밀어 넣기 · 볼트 닫기(빈 클립 튕겨 나감)
+    if (d.clip && d.rKind === 'bolt' && n >= d.clip) {
+      const open = d.rOpen, ins = d.rClipIn, push = d.rClipPush, close = d.rClose, total = open + ins + push + close;
+      const ev = [[open * 0.3, 'boltUp'], [open * 0.62, 'boltBack'], [open + ins * 0.85, 'clipIn'], [open + ins + push * 0.5, 'clipStrip'], [total - close * 0.62, 'boltFwd'], [total - close * 0.58, 'clipEject'], [total - close * 0.36, 'boltDown']];
+      return { kind: 'bolt', clip: true, empty, n, open, ins, push, close, per: 0, total, events: ev, t: 0, ev: 0, canCancel: false, fired: ms - wi.mag };
+    }
+    const brk = d.rKind === 'break', gate = d.rKind === 'gate';
+    // 장전구(Win94): 빈 상태였다면 끝에 레버를 한 번 (빈 탄피 배출 + 약실 장전)
+    const open = d.rOpen, per = d.rShell, close = d.rClose + (empty && d.rKind === 'shell' ? d.rCloseEmpty : 0) + (empty && gate ? CYCLE.lever.total : 0);
     const total = open + n * per + close, ev = [];
     if (d.rKind === 'bolt') ev.push([open * 0.3, 'boltUp'], [open * 0.62, 'boltBack']);
     if (brk) ev.push([open * 0.35, 'breakOpen'], [open * 0.8, 'shellEject']);
-    for (let i = 0; i < n; i++) ev.push([open + per * (i + (brk ? 0.8 : 0.7)), d.rKind === 'bolt' ? 'roundIn' : 'shellIn']);
+    for (let i = 0; i < n; i++) ev.push([open + per * (i + (brk ? 0.8 : 0.7)), d.rKind === 'bolt' ? 'roundIn' : gate ? 'gateIn' : 'shellIn']);
     if (d.rKind === 'bolt') ev.push([total - close * 0.62, 'boltFwd'], [total - close * 0.36, 'boltDown']);
     else if (brk) ev.push([total - close * 0.45, 'breakClose']);
+    else if (gate) { if (empty) { const L = CYCLE.lever.total; ev.push([total - L * 0.84, 'leverDown'], [total - L * 0.3, 'leverUp']); } }
     else if (empty) ev.push([total - close * 0.62, 'pumpBack'], [total - close * 0.32, 'pumpFwd']);
     // 중절식은 장전이 끝날 때까지 쏠 수 없다(총열이 열려 있음)
     return { kind: d.rKind, empty, n, open, per, close, total, events: ev, t: 0, ev: 0, canCancel: !brk, fired: ms - wi.mag };
@@ -247,6 +318,7 @@ function reloadPlan(c, wi, d) {
   let T = empty ? RL_TL.magEmpty : RL_TL.mag, kind = 'mag';
   if (d.rKind === 'belt') { T = empty ? RL_TL.beltEmpty : RL_TL.belt; kind = 'belt'; }
   else if (d.rKind === 'boltmag' && empty) T = RL_TL.boltMag;
+  else if (d.rTL) T = RL_TL[d.rTL + (empty ? 'Empty' : '')] || RL_TL[d.rTL] || T;
   const ak = style === 'ak';
   const ev = T.ev.map(([f, n]) => [f * total, pistol && n === 'chargeBack' ? 'slideBack' : pistol && n === 'chargeFwd' ? 'slideRelease' : ak && n === 'magIn' ? 'magInAk' : ak && n === 'magSeat' ? 'magRock' : n]);
   return { kind, style, empty, total, events: ev, t: 0, ev: 0, tl: T };
@@ -266,10 +338,12 @@ function loadMag(c) {
 }
 function reloadEvent(c, name) {
   const wi = c.weapon, d = ITEMS[wi.id], rl = c.rl;
-  if (name === 'magIn' || name === 'magInAk' || name === 'boxIn') loadMag(c);
-  else if (name === 'shellIn' || name === 'roundIn') { if (wi.mag < c.inv.magSize(wi) && c.inv.take(d.ammo, 1)) wi.mag++; }
-  if (name === 'pumpBack' || (name === 'boltBack' && rl.empty)) ejectCase(c, d);
+  if (name === 'magIn' || name === 'magInAk' || name === 'boxIn' || name === 'drumIn' || name === 'panOn' || name === 'clipStrip') loadMag(c);
+  else if (name === 'shellIn' || name === 'roundIn' || name === 'gateIn') { if (wi.mag < c.inv.magSize(wi) && c.inv.take(d.ammo, 1)) wi.mag++; }
+  if (name === 'pumpBack' || ((name === 'boltBack' || name === 'leverDown') && rl.empty)) ejectCase(c, d);
   if (name === 'shellEject') for (let i = 0; i < Math.min(2, rl.fired || 0); i++) ejectCase(c, d, true);
+  if (name === 'magFree') dropPartFx(c, 'mag', 'mag:' + wi.id + ':' + (wi.att.mag ? 1 : 0), false);
+  if (name === 'clipEject') dropPartFx(c, 'clip', 'clip', true);
   mechSound(c, name);
 }
 function updateReload(c, dt) {
@@ -284,6 +358,8 @@ function cancelReload(c) {
   const rl = c.rl; if (!rl || !rl.canCancel) return;
   c.rl = null;
   if (rl.kind === 'bolt' && rl.t > rl.open * 0.35) c.cycle = { kind: 'boltClose', t: 0, ev: 0, ejected: true, total: CYCLE.boltClose.total };
+  // 빈 상태에서 넣다 만 레버액션·펌프: 약실에 빈 탄피가 있으니 한 번 당겨 장전한 뒤 쏜다
+  else if (rl.empty && (rl.kind === 'gate' || rl.kind === 'shell')) { const k = rl.kind === 'gate' ? 'lever' : 'pump'; c.cycle = { kind: k, t: 0, ev: 0, ejected: false, total: CYCLE[k].total }; }
   c.fireCd = Math.max(c.fireCd, rl.kind === 'bolt' ? 0.46 : 0.22);
 }
 function updateCycle(c, dt) {
@@ -297,14 +373,34 @@ function updateCycle(c, dt) {
 
 // ---------- 무기 애니메이션 (1인칭 손·3인칭 팔·총 부품 공용) ----------
 const _ap = new THREE.Vector3(), _ap2 = new THREE.Vector3(), _ap3 = new THREE.Vector3();
+// 1인칭 뷰모델 계산 중인지 (탄 주머니가 몸 옆이 아니라 총 바로 아래 화면 밖 → 손이 카메라 앞을 가리지 않음)
+let ANIM_VM = false;
+// 점 p를 축점 c 둘레로 x축 회전 (탄창 젖힘·레버)
+function rotAboutX(p, c, a) { const y = p.y - c[1], z = p.z - c[2], ca = Math.cos(a), sa = Math.sin(a); p.y = c[1] + y * ca - z * sa; p.z = c[2] + y * sa + z * ca; return p; }
+const addArr = (out, d) => out.set(out.x + d[0], out.y + d[1], out.z + d[2]);
 function anchorPos(meta, name, out) {
   const mp = meta.magPos || [0, -0.02, 0.1];
   switch (name) {
-    case 'fore': return out.fromArray(meta.forePos);
+    case 'fore': case 'vfore': return out.fromArray(meta.forePos);
     case 'grip': return out.fromArray(meta.gripPos);
-    case 'well': return meta.pistol ? out.set(0.02, -0.14, -0.06) : out.set(mp[0] + 0.03, mp[1] - (meta.wellDrop || 0.075), mp[2] - 0.005);
-    case 'pouch': return out.set(0.17, -0.42, mp[2] - 0.12);
-    case 'pouchR': return out.set(-0.16, -0.38, -0.02);
+    case 'well': if (meta.wellHand) return out.fromArray(meta.wellHand); return meta.pistol ? out.set(0.02, -0.14, -0.06) : out.set(mp[0] + 0.03, mp[1] - (meta.wellDrop || 0.075), mp[2] - 0.005);
+    // v16: 젖힌 탄창 뒤쪽 · 탄창 쳐내기 · 노리쇠 멈치 · 위 장전 손잡이 · 드럼 · 원판 · 슬라이드 멈치 · 장전구 · 클립
+    case 'wellRock': anchorPos(meta, 'well', out); return rotAboutX(out, mp, meta.rockAmt || -0.42);
+    case 'knock': return out.fromArray(meta.knockHand || meta.forePos);
+    case 'catch': return out.fromArray(meta.catchHand || meta.forePos);
+    case 'catchIn': out.fromArray(meta.catchHand || meta.forePos); out.x -= 0.014; return out;
+    case 'knob': return out.fromArray(meta.chargeHand || meta.forePos);
+    case 'knobBack': out.fromArray(meta.chargeHand || meta.forePos); out.z -= meta.chargeTravel || 0.05; return out;
+    case 'drum': return out.fromArray(meta.wellHand || meta.forePos);
+    case 'drumOut': return addArr(out.fromArray(meta.wellHand || meta.forePos), meta.outDir || [0.12, 0, 0]);
+    case 'pan': return out.fromArray(meta.panHand || meta.forePos);
+    case 'panOut': return addArr(out.fromArray(meta.panHand || meta.forePos), meta.outDir || [0, 0.08, 0]);
+    case 'stop': return out.fromArray(meta.stopHand || meta.gripPos);
+    case 'gate': return out.fromArray(meta.gateHand || meta.gripPos);
+    case 'clip': return out.fromArray(meta.clipHand || meta.gripPos);
+    case 'clipPush': out.fromArray(meta.clipHand || meta.gripPos); out.y -= 0.05; return out;
+    case 'pouch': return ANIM_VM ? out.set(mp[0] + 0.06, Math.min(mp[1], 0) - 0.36, mp[2] - 0.05) : out.set(0.17, -0.42, mp[2] - 0.12);
+    case 'pouchR': return ANIM_VM ? out.set(-0.05, -0.34, -0.03) : out.set(-0.16, -0.38, -0.02);
     case 'charge': return out.fromArray(meta.chargeHand || meta.forePos);
     case 'chargeBack': out.fromArray(meta.chargeHand || meta.forePos); out.z -= (meta.chargeTravel || meta.slideTravel || 0.04); return out;
     case 'port': return out.fromArray(meta.loadPort || meta.forePos).add(_ap.set(0.025, -0.035, 0));
@@ -341,6 +437,20 @@ function track(kf, t, meta, out, info) {
 }
 const win = (t, a0, a1, b0, b1) => t <= a0 || t >= b1 ? 0 : t < a1 ? smoothstep01((t - a0) / (a1 - a0)) : t <= b0 ? 1 : 1 - smoothstep01((t - b0) / (b1 - b0));
 function shellKf(rl, kind) {
+  // 클립(Kar98k): 볼트 열기 → 오른손이 주머니에서 클립 → 홈에 꽂기 → 엄지로 누르기 → 볼트 닫기
+  if (rl.clip) {
+    const o = rl.open, i = rl.ins, p = rl.push, T = rl.total, c = rl.close;
+    return [[0, 'grip'], [o * 0.2, 'bolt'], [o * 0.35, 'boltUp'], [o * 0.7, 'boltBack'], [o * 0.98, 'pouchR'], [o + i * 0.7, 'clip'], [o + i, 'clip'], [o + i + p * 0.45, 'clipPush'], [o + i + p * 0.8, 'clipPush'],
+      [T - c * 0.8, 'boltBack'], [T - c * 0.55, 'boltUp'], [T - c * 0.3, 'bolt'], [T, 'grip']];
+  }
+  // 장전구(Win94): 오른손이 주머니 → 오른쪽 장전구로 한 발씩 밀어 넣음 → (빈 상태였으면) 손잡이로 돌아가 레버
+  if (kind === 'gate') {
+    const kf = [[0, 'grip'], [rl.open * 0.9, 'pouchR']];
+    for (let i = 0; i < rl.n; i++) { const s = rl.open + i * rl.per; kf.push([s + rl.per * 0.5, 'gate'], [s + rl.per * 0.74, 'gate'], [s + rl.per * 0.98, 'pouchR']); }
+    const T = rl.total, c = rl.close;
+    kf.push([T - c * (rl.empty ? 0.86 : 0.6), 'grip'], [T, 'grip']);
+    return kf;
+  }
   if (kind === 'break') {
     const kf = [[0, 'fore'], [rl.open * 0.55, 'foreOpen'], [rl.open * 0.95, 'pouch']];
     for (let i = 0; i < rl.n; i++) { const s = rl.open + i * rl.per; kf.push([s + rl.per * 0.45, 'pouch'], [s + rl.per * 0.78, 'breech'], [s + rl.per * 0.98, i === rl.n - 1 ? 'breech' : 'pouch']); }
@@ -358,42 +468,75 @@ function shellKf(rl, kind) {
   return kf;
 }
 const CYC_BOLT_KF = [[0, 'grip'], [0.12, 'bolt'], [0.25, 'boltUp'], [0.42, 'boltBack'], [0.62, 'boltUp'], [0.78, 'bolt'], [1, 'grip']];
-const AN = { left: new THREE.Vector3(), right: new THREE.Vector3(), magOff: new THREE.Vector3(), magVis: true, magRot: 0, tiltX: 0, tiltZ: 0, charge: 0, pump: 0, boltUp: 0, boltBack: 0, slide: 0, cover: 0, breakOpen: 0, shellL: false, shellR: false, li: { a: 'fore', b: 'fore', k: 0 }, ri: { a: 'grip', b: 'grip', k: 0 } };
+const AN = { left: new THREE.Vector3(), right: new THREE.Vector3(), magOff: new THREE.Vector3(), magVis: true, magRot: 0, mag2Off: new THREE.Vector3(), mag2Vis: false, mag2Rot: 0, clipOff: new THREE.Vector3(), clipVis: false, clipPush: 0,
+  tiltX: 0, tiltZ: 0, rw: 0, rk: 'L', charge: 0, fold: 0, pump: 0, boltUp: 0, boltBack: 0, slide: 0, cover: 0, breakOpen: 0, lever: 0, shellL: false, shellR: false, li: { a: 'fore', b: 'fore', k: 0 }, ri: { a: 'grip', b: 'grip', k: 0 } };
+const ss = (t, a, b) => smoothstep01(clamp((t - a) / (b - a), 0, 1));
 function weaponAnim(c, meta) {
   const A = AN, rl = c.rl, cy = c.cycle, wi = c.weapon;
-  A.magOff.set(0, 0, 0); A.magVis = true; A.magRot = 0; A.tiltX = A.tiltZ = 0; A.charge = A.pump = A.boltUp = A.boltBack = A.slide = A.cover = A.breakOpen = 0; A.shellL = A.shellR = false;
+  A.magOff.set(0, 0, 0); A.magVis = true; A.magRot = 0; A.tiltX = A.tiltZ = A.rw = 0; A.rk = 'L'; A.charge = A.fold = A.pump = A.boltUp = A.boltBack = A.slide = A.cover = A.breakOpen = A.lever = 0; A.shellL = A.shellR = false;
+  A.mag2Off.set(0, 0, 0); A.mag2Vis = false; A.mag2Rot = 0; A.clipOff.set(0, 0, 0); A.clipVis = false; A.clipPush = 0;
   anchorPos(meta, 'fore', A.left); anchorPos(meta, 'grip', A.right);
   A.li.a = A.li.b = 'fore'; A.li.k = 0; A.ri.a = A.ri.b = 'grip'; A.ri.k = 0;
   if (rl && (rl.kind === 'mag' || rl.kind === 'belt')) {
-    const T = rl.tl, f = rl.t / rl.total;
+    const T = rl.tl, f = rl.t / rl.total, inPh = (r) => r && f >= r[0] && f < r[1];
     track(T.hand, f, meta, A.left, A.li);
     if (T.handR) track(T.handR, f, meta, A.right, A.ri);
-    const b = win(f, T.tilt[0], T.tilt[0] + 0.12, T.tilt[1] - 0.12, T.tilt[1]);
-    if (rl.kind === 'belt') { A.tiltZ = 0.32 * b; A.tiltX = 0.12 * b; }
+    const b = win(f, T.tilt[0], T.tilt[0] + 0.12, T.tilt[1] - 0.12, T.tilt[1]); A.rw = b; if (rl.style === 'bullpup') A.rk = 'B';   // 불펍은 탄창이 어깨 쪽이라 1인칭 보정 없음
+    if (T.tiltAmt) { A.tiltZ = T.tiltAmt[0] * b; A.tiltX = T.tiltAmt[1] * b; }
+    else if (rl.kind === 'belt') { A.tiltZ = 0.32 * b; A.tiltX = 0.12 * b; }
     else if (rl.style === 'bullpup') { A.tiltZ = 0.55 * b; A.tiltX = -0.12 * b; }
     else if (T.handR) { A.tiltZ = 0.3 * b; A.tiltX = 0.08 * b; }
     else { A.tiltZ = 0.45 * b; A.tiltX = 0.16 * b; }
-    if (f >= T.out[0] && f < T.hide[0]) { track(T.hand, T.out[0], meta, _ap3); A.magOff.copy(A.left).sub(_ap3); }
-    else if (f >= T.hide[0] && f < T.hide[1]) A.magVis = false;
-    else if (f >= T.inn[0] && f < T.inn[1]) { track(T.hand, T.inn[1], meta, _ap3); A.magOff.copy(A.left).sub(_ap3); }
-    // AK식: 탄창 앞을 걸고 뒤로 젖혀 빼고·끼운다
-    if (rl.style === 'ak' && rl.kind === 'mag') {
+    // 헌 탄창: 놓아 떨어뜨림(drop) / 손을 따라 빠짐(out) → 숨김(hide) → 새 탄창이 손을 따라 들어옴(inn)
+    if (inPh(T.drop)) { const s = (f - T.drop[0]) * rl.total; A.magOff.set(0, -(4.9 * s * s + 0.35 * s), 0.12 * s); }
+    else if (inPh(T.out)) { track(T.hand, T.out[0], meta, _ap3); A.magOff.copy(A.left).sub(_ap3); }
+    else if (inPh(T.hide)) A.magVis = false;
+    else if (inPh(T.inn)) { track(T.hand, T.inn[1], meta, _ap3); A.magOff.copy(A.left).sub(_ap3); }
+    if (T.rock) {
+      // 탄창 젖힘(앞 고리·magPos 축): 빠질 때 rock.out 동안 젖혀지고, 들어올 땐 젖힌 채 걸린 뒤 rock.inn 동안 제자리로
+      const R = T.rock, end = T.hide ? T.hide[0] : 1;
+      if (f >= R.out[0] && f < end) A.magRot = R.amt * ss(f, R.out[0], R.out[1]);
+      if (T.inn && f >= T.inn[0] && f < R.inn[1]) A.magRot = R.amt * (1 - ss(f, R.inn[0], R.inn[1]));
+    } else if (rl.style === 'ak' && rl.kind === 'mag' && T.out) {
+      // AK식: 탄창 앞을 걸고 뒤로 젖혀 빼고·끼운다
       const r0 = T.out[0] - 0.04, r1 = T.out[0] + 0.03;
       if (f >= r0 && f < T.hide[0]) A.magRot = -0.42 * smoothstep01(clamp((f - r0) / (r1 - r0), 0, 1));
       else if (f >= T.inn[0] && f < T.inn[1] + 0.05) A.magRot = -0.42 * (1 - smoothstep01(clamp((f - (T.inn[1] - 0.04)) / 0.09, 0, 1)));
     }
+    // 예비 탄창(새 탄창): 주머니에서 손에 들려 오다가 걸린 뒤 젖혀 끼워짐 → 끝나면 원래 탄창 자리로 바뀜
+    if (T.spare && f >= T.spare[0] && f < T.spare[2]) {
+      const [, s1] = T.spare, amt = T.rock ? T.rock.amt : 0;
+      A.mag2Vis = true;
+      if (f < s1) { track(T.hand, s1, meta, _ap3); A.mag2Off.copy(A.left).sub(_ap3); A.mag2Rot = amt; }
+      else A.mag2Rot = T.rock ? amt * (1 - ss(f, T.rock.inn[0], T.rock.inn[1])) : 0;
+    }
     if (T.charge) { const [c0, c1, c2] = T.charge; A.charge = f < c0 ? 0 : f < c1 ? (f - c0) / (c1 - c0) : f < c2 ? 1 - (f - c1) / (c2 - c1) : 0; }
+    if (T.fold) A.fold = win(f, ...T.fold);
     if (T.boltUp) { A.boltUp = win(f, ...T.boltUp); A.boltBack = win(f, ...T.boltBack); }
     if (T.cover) A.cover = win(f, ...T.cover);
-    if (meta.pistol) { A.slide = rl.empty ? (f < 0.73 ? 1 + 0.15 * A.charge : 0) : 0; A.charge = 0; }
+    if (meta.pistol) { A.slide = rl.empty ? (f < (T.slideRel || 0.73) ? 1 + 0.15 * A.charge : 0) : 0; A.charge = 0; }
+    // 열린 노리쇠(Tommy Gun): 탄이 남은 채 갈면 손잡이는 뒤에 걸린 그대로, 빈 상태면 knob 구간에 당겨 건다
+    if (meta.openBolt) A.charge = rl.empty ? (T.knob ? ss(f, T.knob[0], T.knob[1]) : 0) : 1;
   } else if (rl) {
     const kind = rl.kind, t = rl.t, kf = rl.kf || (rl.kf = shellKf(rl, kind));
-    const b = win(t, 0, 0.25, rl.total - 0.3, rl.total);
+    const b = win(t, 0, 0.25, rl.total - 0.3, rl.total); A.rw = b; A.rk = kind === 'bolt' || kind === 'gate' ? 'R' : 'L';
     if (kind === 'bolt') {
       track(kf, t, meta, A.right, A.ri); A.tiltZ = -0.18 * b; A.tiltX = 0.08 * b;
       const T = rl.total, cl = rl.close;
       A.boltUp = win(t, rl.open * 0.22, rl.open * 0.36, T - cl * 0.5, T - cl * 0.28);
       A.boltBack = win(t, rl.open * 0.38, rl.open * 0.7, T - cl * 0.8, T - cl * 0.55);
+      if (rl.clip) {
+        // 클립: 주머니에서 손에 들려 옴 → 홈에 꽂힘 → 탄이 눌려 내려감 → 볼트가 닫히며 빈 클립이 튕겨 나감
+        const o = rl.open, ins = rl.ins, p = rl.push;
+        A.clipVis = t >= o * 0.98 && t < T - cl * 0.58;
+        if (t < o + ins * 0.7) { track(kf, o + ins * 0.7, meta, _ap3); A.clipOff.copy(A.right).sub(_ap3); }
+        A.clipPush = clamp((t - (o + ins + p * 0.22)) / (p * 0.55), 0, 1);
+        A.tiltZ = -0.12 * b; A.tiltX = 0.12 * b;
+      }
+    } else if (kind === 'gate') {
+      // 장전구는 오른쪽 → 총을 왼쪽으로 눕혀 오른쪽 옆면을 보이게
+      track(kf, t, meta, A.right, A.ri); A.tiltZ = -0.4 * b; A.tiltX = 0.1 * b;
+      if (rl.empty) { const L = CYCLE.lever.total, T = rl.total; A.lever = win(t, T - L * 0.95, T - L * 0.7, T - L * 0.42, T - L * 0.14); }
     } else if (kind === 'break') {
       track(kf, t, meta, A.left, A.li); A.tiltZ = 0.4 * b; A.tiltX = 0.2 * b;
       const T = rl.total, cl = rl.close;
@@ -405,32 +548,45 @@ function weaponAnim(c, meta) {
       track(kf, t, meta, A.left, A.li); A.tiltZ = 0.7 * b; A.tiltX = 0.15 * b;
       if (rl.empty) A.pump = win(t, rl.total - rl.close * 0.78, rl.total - rl.close * 0.58, rl.total - rl.close * 0.42, rl.total - rl.close * 0.22);
     }
-    if (t > rl.open && t < rl.open + rl.n * rl.per) {
+    if (!rl.clip && t > rl.open && t < rl.open + rl.n * rl.per) {
       const ph = ((t - rl.open) % rl.per) / rl.per, lo = kind === 'break' ? 0.3 : 0.15, hi = kind === 'break' ? 0.8 : 0.72;
-      if (ph > lo && ph < hi) { if (kind === 'bolt') A.shellR = true; else A.shellL = true; }
+      if (ph > lo && ph < hi) { if (kind === 'bolt' || kind === 'gate') A.shellR = true; else A.shellL = true; }
     }
   }
   if (cy) {
     const C = CYCLE[cy.kind], f = cy.t / (cy.total || C.total);
     if (cy.kind === 'pump') A.pump = win(f, 0.12, 0.38, 0.42, 0.66);
     else if (cy.kind === 'bolt') { track(CYC_BOLT_KF, f, meta, A.right, A.ri); A.boltUp = win(f, 0.12, 0.25, 0.68, 0.8); A.boltBack = win(f, 0.28, 0.42, 0.5, 0.64); }
+    else if (cy.kind === 'lever') A.lever = win(f, 0.06, 0.32, 0.46, 0.76);
     else { A.boltBack = 1 - smoothstep01(clamp(f / 0.35, 0, 1)); A.boltUp = 1 - smoothstep01(clamp((f - 0.35) / 0.4, 0, 1)); }
   }
   if (meta.pumpTravel && A.li.a === 'fore' && A.li.b === 'fore') A.left.z -= meta.pumpTravel * A.pump;
+  // 레버: 손가락이 고리에 들어 있으니 오른손도 레버 축 둘레로 (손바닥은 덜 움직임)
+  if (A.lever > 0 && meta.leverPos && A.ri.a === 'grip' && A.ri.b === 'grip') rotAboutX(A.right, meta.leverPos, -(meta.leverAngle || 0.9) * A.lever * 0.55);
   if (meta.pistol && !rl) { if (wi && wi.mag === 0) A.slide = 1; else if (c.slideKick > 0) A.slide = Math.sin(clamp(1 - c.slideKick / 0.09, 0, 1) * Math.PI); }
   // 연사 중 장전손잡이가 함께 움직이는 총(AK 계열·MG): 사격 직후 잠깐 뒤로
   if (meta.chargeRecip && !rl && c.fireCd > 0 && wi) { const per = 60 / fireRpm(wi), k = clamp(c.fireCd / per, 0, 1); A.charge = Math.max(A.charge, Math.sin(k * Math.PI) * 0.9); }
+  // 열린 노리쇠(Tommy Gun): 탄이 있으면 뒤에 걸려 있고, 쏠 때마다 앞으로 갔다 돌아옴. 다 쏘면 닫힌 채
+  if (meta.openBolt && wi && !rl) { A.charge = wi.mag > 0 ? 1 : 0; if (c.fireCd > 0 && wi.mag > 0) { const per = 60 / fireRpm(wi), k = clamp(c.fireCd / per, 0, 1); A.charge = 1 - 0.95 * Math.sin(k * Math.PI); } }
+  // 앞 수직 손잡이(내장·부착): 왼손도 권총 손잡이처럼 감싸 쥔다
+  if (meta.vfore) { if (A.li.a === 'fore') A.li.a = 'vfore'; if (A.li.b === 'fore') A.li.b = 'vfore'; }
   return A;
 }
 function applyParts(gun, A) {
   const P = gun.userData.parts, m = gun.userData.meta;
   if (P.mag) { P.mag.position.copy(P.mag.userData.home).add(A.magOff); P.mag.visible = A.magVis; P.mag.rotation.x = A.magRot; }
-  if (P.charge) { P.charge.position.copy(P.charge.userData.home); P.charge.position.z -= m.chargeTravel * A.charge; }
+  if (P.mag2) { P.mag2.visible = A.mag2Vis; if (A.mag2Vis) { P.mag2.position.copy(P.mag2.userData.home).add(A.mag2Off); P.mag2.rotation.x = A.mag2Rot; } }
+  if (P.charge) { P.charge.position.copy(P.charge.userData.home); P.charge.position.z -= m.chargeTravel * A.charge; if (m.chargeFold) P.charge.rotation.y = m.chargeFold * A.fold; }
   if (P.pump) { P.pump.position.copy(P.pump.userData.home); P.pump.position.z -= m.pumpTravel * A.pump; }
   if (P.bolt) { P.bolt.position.copy(P.bolt.userData.home); P.bolt.position.z -= m.boltTravel * A.boltBack; P.bolt.rotation.z = -(m.boltLift || 1.25) * A.boltUp; }
   if (P.slide) { P.slide.position.copy(P.slide.userData.home); P.slide.position.z -= m.slideTravel * A.slide; }
   if (P.cover) P.cover.rotation.x = (m.coverAngle || 1.2) * A.cover;
   if (P.barrel) P.barrel.rotation.x = (m.breakAngle || 0.4) * A.breakOpen;
+  if (P.lever) P.lever.rotation.x = -(m.leverAngle || 0.9) * A.lever;
+  if (P.clip) {
+    P.clip.visible = A.clipVis;
+    if (A.clipVis) { P.clip.position.copy(P.clip.userData.home).add(A.clipOff); const r = P.clip.userData.rounds; r.visible = A.clipPush < 0.98; r.position.y = -0.06 * smoothstep01(A.clipPush); }
+  }
 }
 
 // ---------- 피해 ----------

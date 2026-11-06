@@ -98,7 +98,8 @@ function setFingers(A, P, w = 1) {
 }
 function mixFing(a, b, k) { for (let i = 0; i < 5; i++) _fing[i] = lerp(a[i], b[i], k); return _fing; }
 // 총 부품 위치(anchor)별 손 모양 / 손 방향(총 좌표계 기준 쿼터니언)
-const ANCHOR_FING = { grip: 'trig', fore: 'fore', well: 'mag', pouch: 'mag', pouchR: 'mag', charge: 'pinch', chargeBack: 'pinch', port: 'pinch', bolt: 'pinch', boltUp: 'pinch', boltBack: 'pinch', cover: 'claw', coverUp: 'claw', tray: 'flat', lever: 'grip', breech: 'pinch', foreOpen: 'fore' };
+const ANCHOR_FING = { grip: 'trig', fore: 'fore', well: 'mag', pouch: 'mag', pouchR: 'mag', charge: 'pinch', chargeBack: 'pinch', port: 'pinch', bolt: 'pinch', boltUp: 'pinch', boltBack: 'pinch', cover: 'claw', coverUp: 'claw', tray: 'flat', lever: 'grip', breech: 'pinch', foreOpen: 'fore',
+  vfore: 'grip', wellRock: 'mag', knock: 'mag', catch: 'flat', catchIn: 'flat', knob: 'pinch', knobBack: 'pinch', drum: 'claw', drumOut: 'claw', pan: 'claw', panOut: 'claw', stop: 'grip', gate: 'pinch', clip: 'pinch', clipPush: 'pinch' };
 const GQ = {};   // 총 좌표계에서 손 방향
 (() => {
   const mk = (name, fd, pn, side) => { const q = new THREE.Quaternion(); handQuat(q, new THREE.Vector3().fromArray(fd), new THREE.Vector3().fromArray(pn), side); GQ[name + (side > 0 ? 'L' : 'R')] = q; };
@@ -113,6 +114,15 @@ const GQ = {};   // 총 좌표계에서 손 방향
   mk('port', [-0.2, 0.0, 0.98], [0.1, 1, 0], 1); mk('cover', [-0.2, -0.3, 0.93], [0, -1, 0], 1); mk('coverUp', [-0.2, 0.4, 0.9], [0, -0.8, 0.6], 1);
   mk('tray', [-0.3, -0.2, 0.93], [0, -1, 0], 1); mk('breech', [-0.2, -0.3, 0.93], [0.2, -0.9, 0], 1);
   mk('grip', [0, -0.28, 0.96], [-1, 0, 0], 1); mk('fore', [-0.75, 0.35, 0.55], [0.15, 1, 0], -1);
+  // v16 — 왼손: 앞 수직 손잡이 · 젖힌 탄창 · 탄창 쳐내기 · 노리쇠 멈치(손바닥) · 위 장전 손잡이(위에서) · 드럼 옆면 · 원판 가장자리(위에서)
+  mk('vfore', [0, -0.28, 0.96], [-1, 0, 0], 1); mk('wellRock', [0.0, 0.1, 0.99], [-0.85, 0.3, 0], 1); mk('knock', [0.0, 0.25, 0.97], [-0.85, 0.3, 0], 1);
+  mk('catch', [0.05, 0.4, 0.92], [-1, 0, 0], 1); mk('catchIn', [0.05, 0.4, 0.92], [-1, 0, 0], 1);
+  mk('knob', [-0.45, -0.25, 0.86], [0, -1, 0], 1); mk('knobBack', [-0.45, -0.25, 0.86], [0, -1, 0], 1);
+  mk('drum', [0, -0.6, 0.8], [-1, 0, 0], 1); mk('drumOut', [0, -0.6, 0.8], [-1, 0, 0], 1);
+  mk('pan', [-0.55, -0.35, 0.76], [-0.3, -0.95, 0], 1); mk('panOut', [-0.55, -0.35, 0.76], [-0.3, -0.95, 0], 1);
+  // 오른손: 슬라이드 멈치(엄지) · 장전구(손바닥이 총 오른쪽 옆면) · 클립(위에서 엄지로 누름)
+  mk('stop', [0, -0.18, 0.98], [1, 0, 0], -1); mk('gate', [0.05, -0.15, 0.98], [1, 0, 0], -1);
+  mk('clip', [0.35, -0.4, 0.85], [0.15, -0.95, 0.2], -1); mk('clipPush', [0.35, -0.4, 0.85], [0.15, -0.95, 0.2], -1);
 })();
 // 손바닥 가운데(손목 기준, 손 로컬) — 총 anchor는 손바닥 가운데 자리
 const PALM = { L: new THREE.Vector3(-0.012, -0.06, 0.004), R: new THREE.Vector3(0.012, -0.06, 0.004) };
@@ -434,7 +444,7 @@ function animateChar(c, dt) {
   if (gun && gunVis) {
     const near = c.isPlayer || camD < 45;
     if (near && (c.rl || c.cycle || c.slideKick > 0 || (c.weapon && c.weapon.mag === 0))) { A = weaponAnim(c, gun.userData.meta); applyParts(gun, A); gun.userData.posed = true; }
-    else { if (gun.userData.posed) { applyParts(gun, weaponAnim({ rl: null, cycle: null, weapon: c.weapon, slideKick: 0 }, gun.userData.meta)); gun.userData.posed = false; } A = weaponAnim({ rl: null, cycle: null, weapon: c.weapon, slideKick: 0, fireCd: 0 }, gun.userData.meta); }
+    else { if (gun.userData.posed) { applyParts(gun, weaponAnim({ rl: null, cycle: null, weapon: c.weapon, slideKick: 0 }, gun.userData.meta)); gun.userData.posed = false; } A = weaponAnim({ rl: null, cycle: null, weapon: c.weapon, slideKick: 0, fireCd: 0 }, gun.userData.meta); if (gun.userData.meta.openBolt) applyParts(gun, A); }
     const aimYaw = c.isPlayer || c.aiming || c.combatFacing || c.fireHold ? c.yaw : c.bodyYaw;
     const gq = placeGun(c, r, a, aimYaw, pitch, A, a.prone > 0.5 ? a.prone : 0);
     // 손 → 총 (anchor = 손바닥 가운데)

@@ -248,7 +248,7 @@ class Brain {
       if (inv.weapons[i].mag === 0) s -= 10;
       if (s > bs) { bs = s; best = i; }
     }
-    if (inv.cur !== best) { inv.cur = best; c.equipT = 0.55; c.reloadT = 0; c.setVisibleGear(); }
+    if (inv.cur !== best) { inv.cur = best; c.equipT = 0.55; c.reloadT = 0; c.cycle = null; c.setVisibleGear(); }   // 바꾼 총에 이전 총의 볼트·펌프 동작이 이어지지 않게 (reloadT = 0이 장전도 끊음)
   }
   desire(it) {
     const inv = this.c.inv, d = ITEMS[it.id];

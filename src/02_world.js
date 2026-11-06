@@ -662,23 +662,26 @@ async function generateWorld(mapId, scene, progress) {
     const gy = (x, z) => heightAt(x, z), PAD = 0x6f6c66, TABLE = 0x6b5640, POST = 0x4b4f52, ROOF = 0xa9aca4;
     const sign = (x, y, z, ry, title, sub, wd = 3.2, ht = 1.1) => T.signs.push({ x, y, z, ry, title, sub, w: wd, h: ht });
     const poi = (name, x, z) => w.pois.push({ type: 'train', name, x, z, r: 20, h: gy(x, z) });
-    // 1) 무기고: 지붕 덮인 콘크리트 바닥 + 탁자 3줄 (총기 / 부착물·탄약 / 회복·투척·방어구)
+    // 1) 무기고: 지붕 덮인 콘크리트 바닥 + 탁자 4줄 (총기 ①② / 부착물·탄약 / 회복·투척·방어구)
+    //    총기는 종류별로: ① 돌격소총·기관단총·권총  ② 지정사수·저격·산탄·경기관총 (24종)
     {
       const cx = 0, cz = 161, y = gy(cx, cz), F = frame(cx, cz, 0, y);
       F.box(-26, -1.2, -9, 26, 0.12, 9, PAD, { nav: true });
       for (const x of [-26, -19.5, 19.5, 26]) for (const z of [-9, 9]) F.box(x - 0.18, 0.12, z - 0.18, x + 0.18, 3.6, z + 0.18, POST); // 가운데 기둥 없음(시작 시점 카메라를 가리지 않게)
       F.box(-26.6, 3.6, -9.6, 26.6, 3.85, 9.6, ROOF);
       F.box(-26, 0.12, 8.7, 26, 1.2, 9, 0x5a5f55); // 뒤쪽 낮은 벽
+      const guns = (classes) => classes.flatMap((cl) => Object.keys(ITEMS).filter((k) => ITEMS[k].type === 'weapon' && ITEMS[k].cls === cl));
       const rows = [
-        { lz: -5, ids: Object.keys(ITEMS).filter((k) => ITEMS[k].type === 'weapon'), title: '총기', sub: '탄창 가득 · 가져가면 잠시 뒤 다시 놓임' },
-        { lz: 0, ids: ['reddot', 'holo', 'x2', 'x3', 'x4', 'x6', 'comp', 'extmag', 'grip', 'a556', 'a762', 'a9', 'a12', 'a300'], title: '부착물 · 탄약', sub: '훈련장에서는 쏜 만큼 탄약이 자동으로 채워짐' },
-        { lz: 5, ids: ['bandage', 'firstaid', 'medkit', 'drink', 'frag', 'smoke', 'helm1', 'helm2', 'helm3', 'vest1', 'vest2', 'vest3', 'bag1', 'bag2', 'bag3'], title: '회복 · 투척 · 방어구', sub: '수류탄은 북쪽 벽 너머 더미에게 연습' },
+        { lz: -5.6, ids: guns(['AR', 'SMG', 'PISTOL']), title: '총기 ① 돌격·기관단총·권총', sub: '탄창 가득 · 가져가면 잠시 뒤 다시 놓임', wide: true },
+        { lz: -1.8, ids: guns(['DMR', 'SR', 'SG', 'LMG']), title: '총기 ② 저격·산탄·기관총', sub: '지정사수·저격·산탄·경기관총 · 볼트·레버·펌프식은 한 발씩', wide: true },
+        { lz: 2.0, ids: ['reddot', 'holo', 'x2', 'x3', 'x4', 'x6', 'comp', 'extmag', 'grip', 'a556', 'a762', 'a9', 'a12', 'a300', 'a45'], title: '부착물 · 탄약', sub: '훈련장에서는 쏜 만큼 탄약이 자동으로 채워짐' },
+        { lz: 5.8, ids: ['bandage', 'firstaid', 'medkit', 'drink', 'frag', 'smoke', 'helm1', 'helm2', 'helm3', 'vest1', 'vest2', 'vest3', 'bag1', 'bag2', 'bag3'], title: '회복 · 투척 · 방어구', sub: '수류탄은 북쪽 벽 너머 더미에게 연습' },
       ];
       for (const R0 of rows) {
         const n = R0.ids.length, gap = 3.0, x0 = -(n - 1) * gap / 2;
         F.box(x0 - 1.1, 0.12, R0.lz - 0.5, -x0 + 1.1, 0.86, R0.lz + 0.5, TABLE);
         R0.ids.forEach((id, i) => { const d = ITEMS[id]; T.spots.push({ id, count: d.type === 'ammo' ? d.stack : ({ bandage: 5, firstaid: 3, medkit: 1, drink: 3, frag: 3, smoke: 3 }[id] || 1), x: cx + x0 + i * gap, y: y + 0.87, z: cz + R0.lz }); });
-        sign(cx, y + 2.7, cz + R0.lz - 0.55, Math.PI, R0.title, R0.sub, 4.2, 1.15);
+        sign(cx, y + 2.7, cz + R0.lz - 0.55, Math.PI, R0.title, R0.sub, R0.wide ? 5.6 : 4.2, 1.15);
       }
       sign(cx, y + 3.15, cz - 9.75, Math.PI, '무기고', '총을 고른 뒤 북쪽 사격선으로', 5, 1.2);
       sign(cx, y + 3.15, cz - 9.45, 0, '사격선 ↑ 북쪽 30m', '차량 ← 서쪽 · 장애물 코스 → 동쪽', 5, 1.2);
