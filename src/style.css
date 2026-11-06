@@ -790,7 +790,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .cur { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.45); border: 1px solid var(--line-2); font-variant-numeric: tabular-nums; }
 .cur b { font-family: var(--f-display); font-size: 1.05rem; letter-spacing: 0.02em; }
 .cur i { font-style: normal; font-size: 0.66rem; color: var(--dim); }
-.cur.gold b { color: #ffd66b; } .cur.coin b { color: #8fdcff; }
+.cur.gold b { color: #ffd66b; } .cur.coin b { color: #8fdcff; } .cur.gcoin b { color: #ffa982; }
 .ico-cur { width: 20px; height: 20px; flex: none; }
 .amt { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
 .amt .ico-cur { width: 16px; height: 16px; }
@@ -809,6 +809,8 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .gc-img img { width: 100%; height: 100%; max-height: 74px; object-fit: contain; }
 .gc-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding-right: 34px; }
 .gc-txt b { font-size: 1rem; font-weight: 700; }
+.gc-new { font-style: normal; margin-left: 6px; padding: 1px 5px; border-radius: 3px; background: #ff3d3d; color: #fff; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.04em; vertical-align: 2px; }
+.gc-card.gun .gc-img img { transform: scale(1.12); }
 .gc-txt span { font-size: 0.7rem; color: var(--dim); line-height: 1.35; }
 .gc-odds { position: absolute; top: 8px; right: 8px; appearance: none; border: 1px solid var(--line-2); background: rgba(0, 0, 0, 0.35); color: var(--sand); border-radius: 3px; padding: 2px 7px; font-size: 0.68rem; cursor: pointer; }
 .gc-odds:hover { border-color: var(--amber); color: var(--amber); }
@@ -820,6 +822,9 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .gc-buy.armed { background: var(--acc); color: #111; animation: pulseB 0.9s infinite; }
 @keyframes pulseB { 50% { filter: brightness(1.25); } }
 /* 교환소 */
+.ex-subtabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.ex-subtabs button { appearance: none; border: 1px solid var(--line); background: transparent; color: var(--dim); border-radius: 999px; padding: 3px 12px; font-size: 0.76rem; font-weight: 600; cursor: pointer; }
+.ex-subtabs button.on { border-color: var(--amber); color: var(--amber); background: rgba(240, 164, 58, 0.08); }
 .ex-sec + .ex-sec { margin-top: 10px; }
 .ex-sec h4 { margin: 0 0 6px; font-size: 0.82rem; color: var(--dim); font-weight: 600; }
 .ex-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
@@ -842,6 +847,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .od-row { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 8px; padding: 2px 0; font-size: 0.78rem; }
 .od-ico { width: 30px; height: 26px; display: grid; place-items: center; }
 .od-ico svg, .od-ico img { max-width: 28px; max-height: 24px; }
+.od-row.gun { grid-template-columns: 58px 1fr auto; } .od-row.gun .od-ico { width: 58px; } .od-row.gun .od-ico img { max-width: 56px; max-height: 26px; }
 .od-name small { display: block; font-size: 0.64rem; color: var(--dim); }
 .od-p { font-variant-numeric: tabular-nums; font-weight: 600; }
 /* 뽑기 결과 */
@@ -897,6 +903,9 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .wh-item.on.rar span { color: var(--amber); }
 .wh-item .wh-ico img { max-width: 100%; max-height: 100%; }
 .wh-item.veh { grid-template-columns: 64px 1fr; } .wh-item.veh .wh-ico { width: 64px; }
+.wh-item.gun { grid-template-columns: 1fr; grid-template-rows: auto auto auto; row-gap: 2px; } .wh-item.gun .wh-ico { grid-row: auto; width: 100%; height: 46px; } .wh-item.gun .wh-ico img { max-height: 46px; }
+@media (max-height: 520px), (max-width: 860px) { .wh-item.gun { grid-template-columns: 72px 1fr; grid-template-rows: auto auto; } .wh-item.gun .wh-ico { grid-row: 1 / 3; width: 72px; height: 34px; } .wh-item.gun .wh-ico img { max-height: 34px; } }
+.wh-ghead { grid-column: 1 / -1; margin-top: 4px; font-size: 0.74rem; font-weight: 700; color: var(--sand); letter-spacing: 0.02em; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
 .wh-vtabs { grid-column: 1 / -1; display: flex; gap: 4px; }
 .wh-vtabs button { appearance: none; flex: 1; border: 1px solid var(--line); background: transparent; color: var(--dim); border-radius: 4px; padding: 4px; font-size: 0.74rem; cursor: pointer; }
 .wh-vtabs button.on { border-color: var(--amber); color: var(--amber); }

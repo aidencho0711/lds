@@ -1,0 +1,502 @@
+// ============================================================
+// 05_models_gskin.js — 총기 스킨 (v17)
+//  · 목록 GSKINS: 총 · 상자(총기 상자 g1 아스널 · g2 네온 / 옷 상자 br·sp·sup에 2개씩) · 레어도
+//    등급이 높을수록 화려하게: 희귀 = 단색 도장 → 초희귀 = 무늬(위장·체크·홀로) → 슈퍼레어 = 금속 광택·빛나는 선
+//    → 울트라레어(빨강) = 움직이는 빛 + 사격·꺼내기·넣기 효과
+//  · 재질: 합친 지오메트리의 정점마다 재질 종류(kd: 플라스틱·나무·무광 금속·광택 금속…)를 남겨 두고(05_models.js)
+//    셰이더가 종류별로 스킨 색·무늬·금속감을 고른다. 무늬는 물체 공간 3방향 투영(삼평면) → 부품 UV와 무관하게 크기가 같다
+//  · 총 인스턴스마다 재질을 따로 만든다(프로그램은 공유) → 내 총만 번쩍이고, 1인칭·3인칭 총이 따로 사라지고 나타난다
+//  · 효과(울트라레어): 사격 = 색 총구 화염 + 불씨/스파크/불꽃/파편 + 탄도 색 + 몸체 빛 번쩍
+//    꺼내기 = 개머리판→총구로 빛 띠가 지나가며 총이 나타남, 넣기 = 총구→개머리판으로 빛 띠가 지나가며 사라짐(손에서 떨어진 자리에서)
+//  · 실제 회사 이름·로고·다른 게임의 스킨 디자인은 쓰지 않는다
+// ============================================================
+const GSKINS = (() => {
+  const S = {
+    // ---------- 아스널 상자 (g1): 전술 테마 ----------
+    g1_akm_sand: { gun: 'akm', box: 'g1', rar: 1, name: '사막 모래', body: { c: 0x9c8664, mr: [0.3, 0.6] }, furn: { c: 0xc2a77c, mr: [0, 0.72] } },
+    g1_vector_od: { gun: 'vector', box: 'g1', rar: 1, name: '올리브 드랩', body: { c: 0x535b3a, mr: [0.1, 0.68] } },
+    g1_s12k_tundra: { gun: 's12k', box: 'g1', rar: 1, name: '툰드라', body: { c: 0xb4babd, mr: [0.2, 0.58] } },
+    g1_mini14_ebony: { gun: 'mini14', box: 'g1', rar: 1, name: '블랙 우드', body: { c: 0x1d1e21, mr: [0.4, 0.45] }, furn: { c: 0x2b1d16, mr: [0, 0.45] } },
+    g1_m416_digi: { gun: 'm416', box: 'g1', rar: 3, name: '디지털 사막', pat: 'digital', pal: ['#b39e78', '#8f7a55', '#d1bf98', '#6a5a40'], sc: 4.5, body: { p: 1, mr: [0.12, 0.72] } },
+    g1_kar98k_tiger: { gun: 'kar98k', box: 'g1', rar: 3, name: '타이거 스트라이프', pat: 'tiger', pal: ['#7d7a52', '#232319', '#4e4c2c', '#9a9468'], sc: 3.6, furn: { p: 1, mr: [0, 0.65] } },
+    g1_dp28_snow: { gun: 'dp28', box: 'g1', rar: 3, name: '설원', pat: 'camo', pal: ['#e4e8eb', '#b9bfc4', '#8b9298', '#f7f9fa'], sc: 3.5, body: { p: 1, mr: [0.1, 0.62] }, furn: { p: 1, mr: [0, 0.66] } },
+    g1_akm_gold: { gun: 'akm', box: 'g1', rar: 4, name: '황금 각인', pat: 'engrave', pal: ['#c8962f', '#f3d77e', '#7a5414', '#4a3008'], sc: 4, env: 1.0, body: { p: 1, mr: [1, 0.26] }, furn: { c: 0x17110e, mr: [0.15, 0.32] }, steel: { c: 0xe2bd58, mr: [1, 0.22] } },
+    g1_m24_carbon: { gun: 'm24', box: 'g1', rar: 4, name: '카본 블랙', pat: 'carbon', pal: ['#0c0d10', '#4c525c', '#1a1c21'], sc: 7, env: 0.9, body: { p: 1, mr: [0.35, 0.3] }, furn: { p: 1, mr: [0.35, 0.3] }, steel: { c: 0xd8b04a, mr: [1, 0.24] },
+      glow: { pat: 'lines', c: 0xffa63a, k: 1.4, anim: 0 } },
+    g1_m416_magma: { gun: 'm416', box: 'g1', rar: 5, name: '마그마 코어', pat: 'lava', pal: ['#17110f', '#3a2620', '#ff6a1e'], sc: 3.2, env: 0.5, body: { p: 1, mr: [0.25, 0.62] }, steel: { c: 0x2a2220, mr: [0.8, 0.45] },
+      glow: { pat: 'lava', c: 0xff5414, k: 2.8, anim: 2 }, fx: { kind: 'ember', c: 0xff5a1e, c2: 0xffc04a, tr: 0xff6a2a }, desc: '갈라진 틈으로 용암이 흐르는 몸체 · 쏠 때 불씨' },
+    g1_beryl_dragon: { gun: 'beryl', box: 'g1', rar: 5, name: '홍룡', pat: 'scales', pal: ['#4a080d', '#a51c25', '#d9b04c', '#1c0306'], sc: 3.4, env: 0.85, body: { p: 1, mr: [0.65, 0.32] }, furn: { p: 1, mr: [0.65, 0.32] }, steel: { c: 0xe6c25a, mr: [1, 0.22] },
+      glow: { pat: 'scales', c: 0xff3a1a, k: 1.25, anim: 1 }, fx: { kind: 'flame', c: 0xff3a1a, c2: 0xffc24a, tr: 0xff4a22 }, desc: '금테 붉은 비늘이 숨 쉬듯 빛남 · 쏠 때 불꽃' },
+    // ---------- 네온 상자 (g2): 사이버·스트리트 테마 ----------
+    g2_vk9_mint: { gun: 'vk9', box: 'g2', rar: 1, name: '민트 팝', body: { c: 0x74d6b9, mr: [0.08, 0.5] } },
+    g2_deagle_pink: { gun: 'deagle', box: 'g2', rar: 1, name: '핑크 크롬', env: 1.0, body: { c: 0x232227, mr: [0.3, 0.5] }, steel: { c: 0xff9ccc, mr: [0.55, 0.28] } },
+    g2_bizon_sunset: { gun: 'bizon', box: 'g2', rar: 1, name: '선셋 오렌지', body: { c: 0xe2702c, mr: [0.12, 0.5] } },
+    g2_m16a4_ice: { gun: 'm16a4', box: 'g2', rar: 1, name: '아이스 블루', body: { c: 0x8cc6ec, mr: [0.18, 0.45] } },
+    g2_vector_graffiti: { gun: 'vector', box: 'g2', rar: 3, name: '그래피티', pat: 'graffiti', pal: ['#ecebe4', '#ff3d8b', '#2ad4ff', '#ffd23f', '#16181c'], sc: 3, body: { p: 1, mr: [0.05, 0.55] } },
+    g2_aug_holo: { gun: 'aug', box: 'g2', rar: 3, name: '홀로그램', pat: 'holo', sc: 2.4, env: 1.1, body: { p: 1, mr: [0.85, 0.2] } },
+    g2_s686_checker: { gun: 's686', box: 'g2', rar: 3, name: '레이싱 체커', pat: 'checker', pal: ['#f2f2ee', '#141416'], sc: 7, body: { c: 0xc61e26, mr: [0.4, 0.38] }, furn: { p: 1, mr: [0.05, 0.42] } },
+    g2_m416_circuit: { gun: 'm416', box: 'g2', rar: 4, name: '사이버 회로', env: 0.8, body: { c: 0x15181d, mr: [0.45, 0.38] }, glow: { pat: 'circuit', c: 0x2ae8ff, k: 1.6, anim: 0 }, sc: 2.6 },
+    g2_kar98k_wave: { gun: 'kar98k', box: 'g2', rar: 4, name: '네온 웨이브', env: 0.7, body: { c: 0x101015, mr: [0.4, 0.4] }, furn: { c: 0x1c1424, mr: [0.1, 0.38] }, glow: { pat: 'wave', c: 0xff3df0, k: 1.7, anim: 0 }, sc: 3 },
+    g2_akm_plasma: { gun: 'akm', box: 'g2', rar: 5, name: '플라즈마', pat: 'camo', pal: ['#140709', '#2a0b12', '#0c0507', '#3a0d18'], sc: 3, env: 0.7, body: { p: 1, mr: [0.55, 0.35] }, furn: { p: 1, mr: [0.3, 0.38] }, steel: { c: 0x2a1418, mr: [0.9, 0.3] },
+      glow: { pat: 'veins', c: 0xff2448, k: 2.6, anim: 2 }, fx: { kind: 'spark', c: 0xff2a5a, c2: 0xffc8d8, tr: 0xff3a66 }, desc: '검붉은 몸체에 번개 같은 혈관이 흐름 · 쏠 때 전기 스파크' },
+    g2_vector_glitch: { gun: 'vector', box: 'g2', rar: 5, name: '크림슨 글리치', pat: 'glitch', pal: ['#1a0a0d', '#3d0d14', '#0d0d10', '#6e1420', '#262629'], sc: 3.4, env: 0.6, body: { p: 1, mr: [0.3, 0.42] }, steel: { c: 0x1d1d22, mr: [0.8, 0.35] },
+      glow: { pat: 'glitch', c: 0xff2436, k: 2.4, anim: 3 }, fx: { kind: 'glitch', c: 0xff2436, c2: 0x3ff0ff, tr: 0xff3046 }, desc: '화면이 깨지듯 깜빡이는 붉은 블록 · 쏠 때 디지털 파편' },
+    // ---------- 옷 상자에 2개씩 ----------
+    br_s686_hunter: { gun: 's686', box: 'br', rar: 1, name: '사냥꾼', body: { c: 0x3b3e33, mr: [0.45, 0.45] }, furn: { c: 0x7a4626, mr: [0, 0.5] } },
+    br_mini14_wood: { gun: 'mini14', box: 'br', rar: 3, name: '산림 위장', pat: 'camo', pal: ['#4e5636', '#3b4129', '#6a6a44', '#2b2b22'], sc: 3.5, body: { p: 1, mr: [0.1, 0.7] }, furn: { p: 1, mr: [0, 0.72] } },
+    sp_p19_bubble: { gun: 'p19', box: 'sp', rar: 1, name: '버블검', body: { c: 0xff8cc8, mr: [0.05, 0.45] } },
+    sp_tommy_plaid: { gun: 'tommy', box: 'sp', rar: 3, name: '버펄로 체크', pat: 'plaid', pal: ['#a3262c', '#1a0c0c', '#d84a44'], sc: 6, furn: { p: 1, mr: [0, 0.7] } },
+    sup_win94_nickel: { gun: 'win94', box: 'sup', rar: 1, name: '니켈 실버', env: 1.0, body: { c: 0xc5c9ce, mr: [1, 0.3] } },
+    sup_slr_digi: { gun: 'slr', box: 'sup', rar: 3, name: '디지털 정글', pat: 'digital', pal: ['#6b6e4b', '#4a4d33', '#8b8661', '#2e3023'], sc: 4.5, body: { p: 1, mr: [0.12, 0.7] }, furn: { p: 1, mr: [0, 0.7] } },
+  };
+  return S;
+})();
+
+const GunSkin = (() => {
+  // ---------- 무늬 텍스처 (캔버스, 이어 붙여도 이음매 없음) ----------
+  const TEX = {};
+  const cv = (S) => { const c = document.createElement('canvas'); c.width = c.height = S; return c; };
+  const W9 = (S, fn) => { for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) fn(dx, dy); };
+  const rgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  function vnoise(rng, G) {
+    const v = []; for (let i = 0; i < G * G; i++) v.push(rng());
+    return (x, y) => {
+      const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0, X0 = ((x0 % G) + G) % G, Y0 = ((y0 % G) + G) % G, X1 = (X0 + 1) % G, Y1 = (Y0 + 1) % G;
+      const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      return lerp(lerp(v[Y0 * G + X0], v[Y0 * G + X1], sx), lerp(v[Y1 * G + X0], v[Y1 * G + X1], sx), sy);
+    };
+  }
+  function blob(c, S, x, y, r, rng) {
+    const pts = []; for (let a = 0; a < 11; a++) { const t = a / 11 * TAU, rr = r * (0.55 + rng() * 0.7); pts.push([Math.cos(t) * rr * 1.5, Math.sin(t) * rr]); }
+    W9(S, (dx, dy) => { c.beginPath(); pts.forEach(([px, py], k) => (k ? c.lineTo(x + dx + px, y + dy + py) : c.moveTo(x + dx + px, y + dy + py))); c.closePath(); c.fill(); });
+  }
+  const PAT = {
+    camo(c, S, pal, rng) {
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      for (let L = 1; L < pal.length; L++) { c.fillStyle = pal[L]; for (let i = 0; i < 22; i++) blob(c, S, rng() * S, rng() * S, S * (0.035 + rng() * 0.065), rng); }
+    },
+    digital(c, S, pal, rng) {
+      const n1 = vnoise(rng, 6), n2 = vnoise(rng, 14), N = 64, cs = S / N;
+      for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+        const u = i / N, v = j / N, val = n1(u * 6, v * 6) * 0.62 + n2(u * 14, v * 14) * 0.38 + (rng() - 0.5) * 0.09;
+        c.fillStyle = pal[val < 0.4 ? 0 : val < 0.52 ? 1 : val < 0.63 ? 2 : 3]; c.fillRect(i * cs, j * cs, cs + 0.6, cs + 0.6);
+      }
+    },
+    tiger(c, S, pal, rng) {
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 28; i++) {
+        const y = rng() * S, th = S * (0.012 + rng() * 0.026), f1 = 1 + Math.floor(rng() * 3), f2 = 3 + Math.floor(rng() * 4), p1 = rng() * TAU, p2 = rng() * TAU, x0 = rng() * S, len = S * (0.3 + rng() * 0.5);
+        c.fillStyle = pal[rng() < 0.7 ? 1 : 2];
+        const top = [], bot = [];
+        for (let k = 0; k <= 24; k++) { const t = k / 24, x = x0 + t * len, b = y + Math.sin(t * TAU * f1 + p1) * th * 0.8, w = th * Math.sin(t * Math.PI); top.push([x, b - w * (0.8 + 0.4 * Math.sin(t * f2 * 5 + p2))]); bot.push([x, b + w * (0.5 + 0.5 * Math.sin(t * 13 + p1))]); }
+        W9(S, (dx, dy) => { c.beginPath(); top.forEach(([x, yy], k) => (k ? c.lineTo(x + dx, yy + dy) : c.moveTo(x + dx, yy + dy))); for (let k = bot.length - 1; k >= 0; k--) c.lineTo(bot[k][0] + dx, bot[k][1] + dy); c.closePath(); c.fill(); });
+      }
+    },
+    carbon(c, S, pal) {
+      const n = 16, cs = S / n;
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+        const hor = ((i + j) % 4) < 2, g = hor ? c.createLinearGradient(0, j * cs, 0, j * cs + cs) : c.createLinearGradient(i * cs, 0, i * cs + cs, 0);
+        g.addColorStop(0, pal[0]); g.addColorStop(0.45, pal[1]); g.addColorStop(1, pal[2]);
+        c.fillStyle = g; c.fillRect(i * cs, j * cs, cs, cs);
+      }
+    },
+    engrave(c, S, pal, rng) {
+      const g = c.createLinearGradient(0, 0, 0, S); g.addColorStop(0, pal[0]); g.addColorStop(0.5, pal[1]); g.addColorStop(1, pal[0]); c.fillStyle = g; c.fillRect(0, 0, S, S);
+      c.globalAlpha = 0.16; for (let y = 0; y < S; y += 2) { c.fillStyle = rng() < 0.5 ? pal[1] : pal[2]; c.fillRect(0, y, S, 1); } c.globalAlpha = 1;
+      const lw = S / 256;
+      for (let i = 0; i < 10; i++) {
+        const x = rng() * S, y = rng() * S, r = S * (0.045 + rng() * 0.05), turns = 1.5 + rng() * 0.9, dir = rng() < 0.5 ? 1 : -1, a0 = rng() * TAU;
+        const pts = []; for (let k = 0; k <= 70; k++) { const t = k / 70, a = a0 + dir * t * turns * TAU, rr = r * (1 - t * 0.82); pts.push([Math.cos(a) * rr, Math.sin(a) * rr]); }
+        // 잎사귀 꼬리
+        const tail = []; for (let k = 0; k <= 20; k++) { const t = k / 20, a = a0 - dir * t * 1.4; tail.push([Math.cos(a) * r * (1 + t * 1.2), Math.sin(a) * r * (1 + t * 1.2) + t * r * 0.4]); }
+        W9(S, (dx, dy) => {
+          for (const [col, off, w] of [[pal[3], 1.2, 2.6], [pal[2], 0, 1.6], [pal[1], -0.8, 0.7]]) {
+            c.strokeStyle = col; c.lineWidth = w * lw; c.lineCap = 'round';
+            for (const P of [pts, tail]) { c.beginPath(); P.forEach(([px, py], k) => (k ? c.lineTo(x + dx + px + off, y + dy + py + off) : c.moveTo(x + dx + px + off, y + dy + py + off))); c.stroke(); }
+          }
+        });
+      }
+    },
+    graffiti(c, S, pal, rng) {
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      const cols = pal.slice(1);
+      for (let i = 0; i < 16; i++) {
+        const col = cols[Math.floor(rng() * cols.length)], x = rng() * S, y = rng() * S, r = S * (0.025 + rng() * 0.06), drips = [];
+        for (let d = 0; d < 3; d++) drips.push([(rng() - 0.5) * r * 1.4, r * (1 + rng() * 2.4), S * (0.006 + rng() * 0.008)]);
+        const dots = []; for (let d = 0; d < 7; d++) { const a = rng() * TAU, rr = r * (1.2 + rng() * 0.9); dots.push([Math.cos(a) * rr, Math.sin(a) * rr, S * (0.003 + rng() * 0.006)]); }
+        W9(S, (dx, dy) => {
+          c.fillStyle = col; c.beginPath(); c.arc(x + dx, y + dy, r, 0, TAU); c.fill();
+          for (const [ox, len, w] of drips) { c.fillRect(x + dx + ox - w / 2, y + dy, w, len); c.beginPath(); c.arc(x + dx + ox, y + dy + len, w * 0.8, 0, TAU); c.fill(); }
+          for (const [ox, oy, rr] of dots) { c.beginPath(); c.arc(x + dx + ox, y + dy + oy, rr, 0, TAU); c.fill(); }
+        });
+      }
+      // 굵은 붓질 (검은 테 + 색)
+      for (let i = 0; i < 7; i++) {
+        const col = cols[Math.floor(rng() * (cols.length - 1))], P = [[rng() * S, rng() * S]]; for (let k = 0; k < 3; k++) P.push([P[0][0] + (rng() - 0.3) * S * 0.35, P[0][1] + (rng() - 0.5) * S * 0.25]);
+        W9(S, (dx, dy) => {
+          for (const [cc, w] of [[pal[pal.length - 1], 0.034], [col, 0.022]]) { c.strokeStyle = cc; c.lineWidth = S * w; c.lineCap = 'round'; c.beginPath(); c.moveTo(P[0][0] + dx, P[0][1] + dy); c.bezierCurveTo(P[1][0] + dx, P[1][1] + dy, P[2][0] + dx, P[2][1] + dy, P[3][0] + dx, P[3][1] + dy); c.stroke(); }
+        });
+      }
+    },
+    holo(c, S, pal, rng) {
+      c.lineWidth = 2;
+      for (let x = -S; x < S; x += 1) { c.strokeStyle = `hsl(${((x / S) * 720 % 360 + 360) % 360},88%,62%)`; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + S, S); c.stroke(); }
+      for (let i = 0; i < 160; i++) { const x = rng() * S, y = rng() * S, r = S * (0.002 + rng() * 0.004); c.fillStyle = `rgba(255,255,255,${0.35 + rng() * 0.5})`; W9(S, (dx, dy) => { c.beginPath(); c.arc(x + dx, y + dy, r, 0, TAU); c.fill(); }); }
+    },
+    checker(c, S, pal) { const n = 8, cs = S / n; for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { c.fillStyle = pal[(i + j) % 2]; c.fillRect(i * cs, j * cs, cs, cs); } },
+    plaid(c, S, pal) {
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      c.fillStyle = 'rgba(14,6,6,0.55)'; for (const k of [0, S / 2]) { c.fillRect(0, k, S, S / 4); c.fillRect(k, 0, S / 4, S); }
+      c.fillStyle = pal[2]; for (const k of [S * 0.375, S * 0.875]) { c.globalAlpha = 0.5; c.fillRect(0, k, S, S / 64); c.fillRect(k, 0, S / 64, S); c.globalAlpha = 1; }
+    },
+  };
+  // 무늬 + 빛 지도를 같이 만드는 것들 (빛 지도는 흰 = 빛남)
+  const PAT2 = {
+    lava(S, pal, rng) {
+      const N = 24, P = []; for (let i = 0; i < N; i++) P.push([rng() * S, rng() * S]);
+      const a = cv(S), g = cv(S), ac = a.getContext('2d'), gc = g.getContext('2d'), A = ac.createImageData(S, S), Gd = gc.createImageData(S, S), n1 = vnoise(rng, 8);
+      const c0 = rgb(pal[0]), c1 = rgb(pal[1]), c2 = rgb(pal[2]), H = S / 2;
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        let d1 = 1e9, d2 = 1e9;
+        for (const [px, py] of P) { let dx = Math.abs(x - px), dy = Math.abs(y - py); if (dx > H) dx = S - dx; if (dy > H) dy = S - dy; const d = dx * dx + dy * dy; if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; }
+        const e = Math.sqrt(d2) - Math.sqrt(d1), crack = clamp(1 - e / (S * 0.016), 0, 1), heat = clamp(1 - e / (S * 0.07), 0, 1), nz = n1(x / S * 8, y / S * 8);
+        const i4 = (y * S + x) * 4, k = nz * 0.7 + 0.15, hot = Math.max(crack, heat * 0.25);
+        for (let ch = 0; ch < 3; ch++) A.data[i4 + ch] = lerp(lerp(c0[ch], c1[ch], k), c2[ch], hot);
+        A.data[i4 + 3] = 255;
+        const gv = clamp(Math.pow(crack, 1.3) + heat * heat * 0.3, 0, 1) * 255; Gd.data[i4] = Gd.data[i4 + 1] = Gd.data[i4 + 2] = gv; Gd.data[i4 + 3] = 255;
+      }
+      ac.putImageData(A, 0, 0); gc.putImageData(Gd, 0, 0);
+      return { alb: a, glow: g };
+    },
+    scales(S, pal) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), n = 8, s = S / n, lw = S / 256;
+      c.fillStyle = pal[3]; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      // 아래 줄부터 그려서 위 줄 비늘의 둥근 끝이 아래 줄 비늘 윗부분을 덮게 (물고기 비늘)
+      for (let row = n * 2 + 1; row >= -2; row--) {
+        const y = row * s * 0.5, off = (((row % 2) + 2) % 2) * s * 0.5;
+        for (let col = -1; col <= n; col++) {
+          const x = col * s + off, path = (cx) => { cx.beginPath(); cx.moveTo(x - s / 2, y - s * 0.22); cx.quadraticCurveTo(x - s / 2, y + s * 0.42, x, y + s * 0.5); cx.quadraticCurveTo(x + s / 2, y + s * 0.42, x + s / 2, y - s * 0.22); cx.closePath(); };
+          const gr = c.createRadialGradient(x, y - s * 0.1, s * 0.05, x, y + s * 0.1, s * 0.62); gr.addColorStop(0, pal[1]); gr.addColorStop(0.75, pal[0]); gr.addColorStop(1, pal[3]);
+          path(c); c.fillStyle = gr; c.fill(); c.strokeStyle = pal[2]; c.lineWidth = 1.8 * lw; c.stroke();
+          path(gc); gc.fillStyle = '#000'; gc.fill(); gc.strokeStyle = '#fff'; gc.lineWidth = 1.5 * lw; gc.stroke();
+        }
+      }
+      return { alb: a, glow: g };
+    },
+    glitch(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d');
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      for (let i = 0; i < 70; i++) {
+        const w = S * (0.03 + rng() * 0.22), h = S * (0.008 + rng() * 0.05), x = rng() * S, y = rng() * S, col = pal[1 + Math.floor(rng() * (pal.length - 1))], lit = rng() < 0.32;
+        W9(S, (dx, dy) => { c.fillStyle = col; c.fillRect(x + dx, y + dy, w, h); if (lit) { gc.fillStyle = `rgba(255,255,255,${0.55 + rng() * 0.45})`; gc.fillRect(x + dx, y + dy, w, h); } });
+      }
+      gc.fillStyle = 'rgba(255,255,255,0.22)'; for (let y = 0; y < S; y += 6) gc.fillRect(0, y, S, 1);
+      c.fillStyle = 'rgba(0,0,0,0.25)'; for (let y = 0; y < S; y += 3) c.fillRect(0, y, S, 1);
+      return { alb: a, glow: g };
+    },
+  };
+  // 빛 지도만 (흰 선 = 빛남)
+  const GLOW = {
+    lines(gc, S) { gc.fillStyle = '#fff'; const h = Math.max(1, S / 160); for (const y of [0.3, 0.7]) gc.fillRect(0, S * y, S, h); for (let x = 0; x < S; x += S / 8) gc.fillRect(x, S * 0.3, S / 64, S * 0.4 * 0.08); },
+    circuit(gc, S, rng) {
+      const st = S / 32, lw = S / 256 * 1.6;
+      gc.strokeStyle = '#fff'; gc.fillStyle = '#fff'; gc.lineWidth = lw; gc.lineJoin = 'round';
+      for (let i = 0; i < 24; i++) {
+        let x = Math.floor(rng() * 32) * st, y = Math.floor(rng() * 32) * st, dir = Math.floor(rng() * 4); const P = [[x, y]];
+        for (let k = 0, n = 3 + Math.floor(rng() * 4); k < n; k++) { if (k) dir = (dir + (rng() < 0.5 ? 1 : 3)) % 4; const L = (2 + Math.floor(rng() * 5)) * st; x += [L, 0, -L, 0][dir]; y += [0, L, 0, -L][dir]; P.push([x, y]); }
+        const pad = rng() < 0.5;
+        W9(S, (dx, dy) => {
+          gc.beginPath(); P.forEach(([px, py], k) => (k ? gc.lineTo(px + dx, py + dy) : gc.moveTo(px + dx, py + dy))); gc.stroke();
+          const [ex, ey] = P[P.length - 1]; if (pad) gc.fillRect(ex + dx - st * 0.3, ey + dy - st * 0.3, st * 0.6, st * 0.6); else { gc.beginPath(); gc.arc(ex + dx, ey + dy, st * 0.32, 0, TAU); gc.fill(); }
+          gc.beginPath(); gc.arc(P[0][0] + dx, P[0][1] + dy, st * 0.2, 0, TAU); gc.fill();
+        });
+      }
+    },
+    wave(gc, S, rng) {
+      gc.strokeStyle = '#fff'; const lw = S / 256;
+      for (let k = 0; k < 5; k++) {
+        const y0 = (k + 0.2 + rng() * 0.5) * S / 5, amp = S * (0.02 + rng() * 0.035), f = 1 + Math.floor(rng() * 2), ph = rng() * TAU;
+        for (const [w, o, al] of [[2.4, 0, 1], [1, S * 0.012, 0.55]]) { gc.globalAlpha = al; gc.lineWidth = w * lw; for (const dy of [-S, 0, S]) { gc.beginPath(); for (let x = 0; x <= S; x += 2) { const y = y0 + o + dy + Math.sin(x / S * TAU * f + ph) * amp; x ? gc.lineTo(x, y) : gc.moveTo(x, y); } gc.stroke(); } }
+      }
+      gc.globalAlpha = 1;
+    },
+    veins(gc, S, rng) {
+      const lw = S / 256;
+      const bolt = (x, y, a, n, w) => {
+        for (let i = 0; i < n; i++) {
+          const nx = x + Math.cos(a) * S * 0.022, ny = y + Math.sin(a) * S * 0.022;
+          W9(S, (dx, dy) => { gc.lineWidth = w * lw; gc.beginPath(); gc.moveTo(x + dx, y + dy); gc.lineTo(nx + dx, ny + dy); gc.stroke(); });
+          x = nx; y = ny; a += (rng() - 0.5) * 0.9; w = Math.max(0.7, w * 0.985);
+          if (rng() < 0.06 && n > 8) bolt(x, y, a + (rng() < 0.5 ? 0.8 : -0.8), Math.floor(n * 0.4), w * 0.6);
+        }
+      };
+      gc.strokeStyle = '#fff'; gc.lineCap = 'round';
+      for (let b = 0; b < 8; b++) bolt(rng() * S, rng() * S, rng() * TAU, 26 + Math.floor(rng() * 20), 2.6);
+    },
+  };
+  const blank = (() => { let t = null; return () => t || (t = (() => { const c = cv(4), x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, 4, 4); return new THREE.CanvasTexture(c); })()); })();
+  function toTex(c) { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t; }
+  // 스킨 하나의 텍스처(무늬·빛) — 처음 쓸 때 한 번 만든다
+  function texOf(id) {
+    if (TEX[id]) return TEX[id];
+    const d = GSKINS[id], S = d.rar >= 4 ? 512 : 256, seed = [...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 17), out = { pat: null, glow: null };
+    if (d.pat && PAT2[d.pat]) { const r = PAT2[d.pat](d.pat === 'lava' ? 256 : S, d.pal, mulberry32(seed)); out.pat = toTex(r.alb); if (d.glow && d.glow.pat === d.pat) out.glow = toTex(r.glow); }
+    else if (d.pat && PAT[d.pat]) { const c = cv(S); PAT[d.pat](c.getContext('2d'), S, d.pal || [], mulberry32(seed)); out.pat = toTex(c); }
+    if (d.glow && !out.glow) {
+      const c = cv(S), gc = c.getContext('2d'); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      if (GLOW[d.glow.pat]) GLOW[d.glow.pat](gc, S, mulberry32(seed ^ 0x5bd1e995)); else if (PAT2[d.glow.pat]) { const r = PAT2[d.glow.pat](S, d.pal || ['#000', '#000', '#fff'], mulberry32(seed)); gc.drawImage(r.glow, 0, 0); }
+      out.glow = toTex(c);
+    }
+    return (TEX[id] = out);
+  }
+
+  // ---------- 셰이더 ----------
+  //  부위: kd 0 플라스틱·2 무광 금속 → 몸체(body) / 1 나무 → 손잡이·개머리(furn) / 3 광택 금속 → 강철(steel) / 4~6 황동·고무·천 → 그대로
+  //  모드: 0 원래 색 · 1 단색 · 2 무늬. 디테일(어두운 작은 부품)은 원래 정점 색의 밝기만큼 조금 어둡게
+  const V_HEAD = 'attribute float kd;\nvarying float vKd;\nvarying vec3 vOP;\nvarying vec3 vON;\nvarying float vGZ;\nuniform mat4 uGunInv;\n';
+  const V_BODY = '\n\tvKd = kd; vOP = position; vON = normal; vGZ = (uGunInv * (modelMatrix * vec4(position, 1.0))).z;\n';
+  const F_HEAD = `varying float vKd; varying vec3 vOP; varying vec3 vON; varying float vGZ;
+uniform sampler2D uPat; uniform sampler2D uGlow; uniform float uScale;
+uniform vec3 uBodyCol; uniform vec3 uFurnCol; uniform vec3 uSteelCol; uniform vec3 uMode;
+uniform vec4 uMR; uniform vec2 uSteelMR;
+uniform vec3 uGlowCol; uniform float uGlowAmt; uniform float uGlowAnim;
+uniform float uTime; uniform float uFlash; uniform float uSweepOn; uniform float uSweepZ; uniform vec3 uFxCol;
+vec3 gsTri(sampler2D t, vec3 p, vec3 n) {
+  vec3 w = abs(n); w = w * w; w = w * w; w /= (w.x + w.y + w.z + 1e-5);
+  return texture2D(t, p.zy * uScale).rgb * w.x + texture2D(t, p.zx * uScale).rgb * w.y + texture2D(t, p.xy * uScale).rgb * w.z;
+}
+float gsHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+`;
+  const F_SWEEP = `
+	float gsEdge = 0.0;
+	if (uSweepOn > 0.5) {
+		float gsD = vGZ - uSweepZ + (gsHash(floor(vOP * 160.0)) - 0.5) * 0.035;
+		if (gsD > 0.0) discard;
+		gsEdge = smoothstep(0.07, 0.0, -gsD);
+	}
+`;
+  const F_COLOR = `
+	float gsR = floor(vKd + 0.5);
+	float gsRole = gsR < 0.5 ? 0.0 : gsR < 1.5 ? 1.0 : gsR < 2.5 ? 0.0 : gsR < 3.5 ? 2.0 : 3.0;
+	float gsMode = gsRole < 0.5 ? uMode.x : gsRole < 1.5 ? uMode.y : gsRole < 2.5 ? uMode.z : 0.0;
+	vec3 gsNrm = normalize(vON);
+	float gsDet = mix(0.45, 1.0, smoothstep(0.035, 0.14, dot(vColor, vec3(0.3, 0.59, 0.11))));
+	if (gsMode > 1.5) diffuseColor.rgb = gsTri(uPat, vOP, gsNrm) * gsDet;
+	else if (gsMode > 0.5) diffuseColor.rgb = (gsRole < 0.5 ? uBodyCol : gsRole < 1.5 ? uFurnCol : uSteelCol) * gsDet;
+`;
+  const F_MR = `
+	if (gsMode > 0.5) { if (gsRole < 0.5) { metalnessFactor = uMR.x; roughnessFactor = uMR.y; } else if (gsRole < 1.5) { metalnessFactor = uMR.z; roughnessFactor = uMR.w; } else { metalnessFactor = uSteelMR.x; roughnessFactor = uSteelMR.y; } }
+`;
+  const F_EMIT = `
+	if (uGlowAmt > 0.0 && gsRole < 1.5) {
+		float gsG = gsTri(uGlow, vOP, gsNrm).r;
+		float gsA = 1.0;
+		if (uGlowAnim > 2.5) { float gsB = floor(uTime * 13.0) + floor(vOP.z * 22.0) * 7.0 + floor(vOP.y * 30.0); gsA = 0.3 + 0.7 * step(0.28, gsHash(vec3(gsB, 1.0, 2.0))); }
+		else if (uGlowAnim > 1.5) { float gsW = 0.5 + 0.5 * sin(uTime * 4.2 - vOP.z * 16.0); gsA = 0.4 + 0.6 * gsW * gsW; }
+		else if (uGlowAnim > 0.5) gsA = 0.72 + 0.28 * sin(uTime * 2.4 + vOP.z * 3.0);
+		totalEmissiveRadiance += uGlowCol * gsG * uGlowAmt * (gsA + uFlash * 1.8);
+	}
+	totalEmissiveRadiance += uFxCol * gsEdge * 2.6;
+`;
+  function patchV(s) { return s.replace('void main() {', V_HEAD + 'void main() {').replace('#include <begin_vertex>', '#include <begin_vertex>' + V_BODY); }
+  function patchF(s) {
+    return s.replace('void main() {', F_HEAD + 'void main() {')
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>' + F_SWEEP)
+      .replace('#include <color_fragment>', '#include <color_fragment>' + F_COLOR)
+      .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>' + F_MR)
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>' + F_EMIT);
+  }
+  // 셰이더 시간은 10분마다 되감음(float 정밀도). 입자 정리는 되감지 않는 CLOCK
+  const TIME = { value: 0 }; let CLOCK = 0;
+  // 스킨마다 바뀌지 않는 값(텍스처·색·모드) — 인스턴스끼리 같은 객체를 공유
+  const STATIC = {};
+  function staticU(id) {
+    if (STATIC[id]) return STATIC[id];
+    const d = GSKINS[id], T = texOf(id), b = d.body || {}, f = d.furn || {}, s = d.steel || {};
+    const mode = (r) => (r.p ? 2 : r.c !== undefined ? 1 : 0), gl = d.glow;
+    return (STATIC[id] = {
+      uPat: { value: T.pat || blank() }, uGlow: { value: T.glow || blank() }, uScale: { value: d.sc || 3 },
+      uBodyCol: { value: new THREE.Color(b.c !== undefined ? b.c : 0x888888) }, uFurnCol: { value: new THREE.Color(f.c !== undefined ? f.c : 0x888888) }, uSteelCol: { value: new THREE.Color(s.c !== undefined ? s.c : 0x888888) },
+      uMode: { value: new THREE.Vector3(mode(b), mode(f), mode(s)) },
+      uMR: { value: new THREE.Vector4((b.mr || [0.15, 0.6])[0], (b.mr || [0.15, 0.6])[1], (f.mr || [0, 0.7])[0], (f.mr || [0, 0.7])[1]) }, uSteelMR: { value: new THREE.Vector2((s.mr || [0.9, 0.3])[0], (s.mr || [0.9, 0.3])[1]) },
+      uGlowCol: { value: new THREE.Color(gl ? gl.c : 0) }, uGlowAmt: { value: gl ? gl.k : 0 }, uGlowAnim: { value: gl ? gl.anim || 0 : 0 },
+    });
+  }
+  function makeMat(base, U, d) {
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: base.roughness, metalness: base.metalness, envMap: base.envMap, envMapIntensity: d.env !== undefined ? Math.max(d.env, base.envMapIntensity) : base.envMapIntensity });
+    m.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); sh.vertexShader = patchV(sh.vertexShader); sh.fragmentShader = patchF(sh.fragmentShader); };
+    m.customProgramCacheKey = () => 'gskin-v1';
+    return m;
+  }
+  // 그리기 직전에 총 공간 행렬(빛 띠 위치 계산용) — 효과가 진행 중일 때만
+  let FRM = 0;
+  function beforeRender() { const I = this.userData.gsInst; if (I && I.U.uSweepOn.value > 0.5 && I.frm !== FRM) { I.frm = FRM; I.U.uGunInv.value.copy(I.g.matrixWorld).invert(); } }
+  const _bb = new THREE.Box3();
+  // 만들어진 총(그룹)에 스킨을 입힌다
+  function apply(g, id) {
+    const d = GSKINS[id]; if (!d || d.gun !== g.userData.id) return g;
+    const U = Object.assign({ uTime: TIME, uFlash: { value: 0 }, uSweepOn: { value: 0 }, uSweepZ: { value: 0 }, uGunInv: { value: new THREE.Matrix4() }, uFxCol: { value: new THREE.Color(d.fx ? d.fx.c : rarOf(d.rar).hex) } }, staticU(id));
+    const I = { g, id, d, U, flash: 0, sweep: null, frm: -1, z0: -0.4, z1: 0.6 }, mats = {};
+    const walk = (o) => {
+      if (o.userData.noSkin) return;
+      if (o.isMesh && o.material && o.material.userData) {
+        const k = o.material.userData.clsKey;
+        if (k === 'cls:metal' || k === 'cls:matte' || k === 'cls:diel') { o.material = mats[k] || (mats[k] = makeMat(o.material, U, d)); o.userData.gsInst = I; o.onBeforeRender = beforeRender; }
+      }
+      for (const ch of o.children) walk(ch);
+    };
+    walk(g);
+    // 몸체 길이(개머리판 끝 ~ 총구) — 빛 띠가 지나가는 구간
+    const body = g.children[0]; let z0 = 1e9, z1 = -1e9;
+    if (body) for (const m of body.children) { const gb = m.geometry && m.geometry.boundingBox; if (gb) { z0 = Math.min(z0, gb.min.z); z1 = Math.max(z1, gb.max.z); } }
+    if (z0 < z1) { I.z0 = z0; I.z1 = z1; } else { _bb.setFromObject(g); I.z0 = _bb.min.z; I.z1 = _bb.max.z; }
+    g.userData.skin = I;
+    return g;
+  }
+
+  // ---------- 입자: 장면마다 점 구름 하나(그리기 1번) — 동그란 빛 / 네모 파편 ----------
+  const PV = `attribute float size; attribute float alpha; attribute float shape; attribute vec3 pcol;
+uniform float uVH; varying vec3 vC; varying float vA; varying float vS;
+void main() { vC = pcol; vA = alpha; vS = shape; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
+  gl_PointSize = alpha > 0.0 ? clamp(size * projectionMatrix[1][1] * uVH * 0.5 / max(0.02, -mv.z), 1.0, 256.0) : 0.0; }`;
+  const PF = `varying vec3 vC; varying float vA; varying float vS;
+void main() { vec2 q = gl_PointCoord - 0.5; float a;
+  if (vS > 0.5) { vec2 r = abs(q); a = step(max(r.x, r.y), 0.36); } else { float d = clamp(1.0 - length(q) * 2.0, 0.0, 1.0); a = d * d * (0.6 + 0.4 * d); }
+  if (a * vA < 0.004) discard; gl_FragColor = vec4(vC * vA * a, 1.0); }`;
+  const POOLS = new Map(), N_POOL = 128, _vs = new THREE.Vector2(), _col = new THREE.Color();
+  function pool(sc) {
+    let P = POOLS.get(sc);
+    if (!P) {
+      const geo = new THREE.BufferGeometry(), A = (n) => new THREE.BufferAttribute(new Float32Array(N_POOL * n), n).setUsage(THREE.DynamicDrawUsage);
+      geo.setAttribute('position', A(3)); geo.setAttribute('pcol', A(3)); geo.setAttribute('size', A(1)); geo.setAttribute('alpha', A(1)); geo.setAttribute('shape', A(1));
+      const mat = new THREE.ShaderMaterial({ uniforms: { uVH: { value: 720 } }, vertexShader: PV, fragmentShader: PF, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+      const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; pts.renderOrder = 5;
+      pts.onBeforeRender = (r) => { r.getDrawingBufferSize(_vs); mat.uniforms.uVH.value = _vs.y; };
+      sc.add(pts);
+      P = { sc, pts, geo, list: [], i: 0, used: 0 };
+      for (let i = 0; i < N_POOL; i++) P.list.push({ p: new THREE.Vector3(), v: new THREE.Vector3(), c: [1, 1, 1], life: 0, max: 1, g: 0, drag: 0, size: 0, grow: 0, a: 1, sq: 0 });
+      POOLS.set(sc, P);
+    }
+    P.used = CLOCK; return P;
+  }
+  function emit(P, pos, vx, vy, vz, col, size, life, o = {}) {
+    const q = P.list[P.i++ % P.list.length];
+    q.p.copy(pos); q.v.set(vx, vy, vz); _col.setHex(col); q.c[0] = _col.r; q.c[1] = _col.g; q.c[2] = _col.b;
+    q.life = q.max = life; q.g = o.g || 0; q.drag = o.drag || 0; q.size = size; q.grow = o.grow || 0; q.a = o.a || 1; q.sq = o.sq ? 1 : 0;
+  }
+  function updateParticles(dt) {
+    for (const [sc, P] of POOLS) {
+      let alive = 0;
+      const at = P.geo.attributes, pos = at.position.array, col = at.pcol.array, sz = at.size.array, al = at.alpha.array, sh = at.shape.array;
+      for (let i = 0; i < P.list.length; i++) {
+        const q = P.list[i];
+        if (q.life > 0) {
+          q.life -= dt;
+          if (q.life > 0) {
+            alive++; const k = q.life / q.max;
+            q.v.y += q.g * dt; if (q.drag) q.v.multiplyScalar(Math.max(0, 1 - q.drag * dt));
+            q.p.addScaledVector(q.v, dt);
+            pos[i * 3] = q.p.x; pos[i * 3 + 1] = q.p.y; pos[i * 3 + 2] = q.p.z; col[i * 3] = q.c[0]; col[i * 3 + 1] = q.c[1]; col[i * 3 + 2] = q.c[2];
+            sz[i] = q.size * (1 + q.grow * (1 - k)); al[i] = q.a * Math.pow(k, 0.7); sh[i] = q.sq; continue;
+          }
+        }
+        al[i] = 0;
+      }
+      if (alive || P.was) for (const k of ['position', 'pcol', 'size', 'alpha', 'shape']) at[k].needsUpdate = true;
+      P.was = alive > 0; P.pts.visible = alive > 0;
+      // 쓰지 않는 장면(끝난 경기 등)의 입자는 정리
+      if (!alive && CLOCK - P.used > 6) { sc.remove(P.pts); P.geo.dispose(); P.pts.material.dispose(); POOLS.delete(sc); }
+    }
+  }
+  const sceneOf = (o) => { while (o.parent) o = o.parent; return o.isScene ? o : null; };
+  const shown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+  const isVM = (sc) => typeof VM !== 'undefined' && sc === VM.scene;
+  const _p = new THREE.Vector3(), _q = new THREE.Vector3(), _d = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
+  const pick = (fx) => (Math.random() < 0.55 ? fx.c : fx.c2);
+  const own = (c) => !c || !!c.isPlayer;
+  // ---------- 사격 ----------
+  const SHOT = {
+    // 마그마: 주황 고리 화염 + 위로 떠오르다 떨어지는 불씨
+    ember(P, k, fx) {
+      emit(P, _p, _d.x * 0.4, _d.y * 0.4, _d.z * 0.4, fx.c, 0.2 * k, 0.08, { grow: 0.9 });
+      emit(P, _p, _d.x * 1.2, _d.y * 1.2, _d.z * 1.2, 0xffd27a, 0.09 * k, 0.06, { grow: 1.5 });
+      for (let i = 0; i < 14; i++) { const sp = 1.2 + Math.random() * 2.6; emit(P, _p, _d.x * sp + (Math.random() - 0.5) * 1.3, _d.y * sp + 0.4 + Math.random() * 1.0, _d.z * sp + (Math.random() - 0.5) * 1.3, pick(fx), (0.016 + Math.random() * 0.016) * k, 0.4 + Math.random() * 0.4, { g: -1.6, drag: 1.4 }); }
+    },
+    // 홍룡: 앞으로 길게 뻗는 불꽃 혀 + 금빛 불티
+    flame(P, k, fx) {
+      for (let i = 0; i < 6; i++) { const sp = 0.8 + i * 0.6; emit(P, _p, _d.x * sp + (Math.random() - 0.5) * 0.2, _d.y * sp + 0.15, _d.z * sp + (Math.random() - 0.5) * 0.2, i < 2 ? 0xffd27a : fx.c, (0.045 + i * 0.012) * k, 0.14 + i * 0.03, { grow: 2.2, drag: 3 }); }
+      for (let i = 0; i < 9; i++) { const sp = 2 + Math.random() * 3; emit(P, _p, _d.x * sp + (Math.random() - 0.5) * 1.5, _d.y * sp + (Math.random() - 0.3) * 1.5, _d.z * sp + (Math.random() - 0.5) * 1.5, fx.c2, (0.01 + Math.random() * 0.008) * k, 0.3 + Math.random() * 0.2, { g: -3, drag: 2 }); }
+    },
+    // 플라즈마: 분홍 고리 + 아주 빠르고 짧은 전기 스파크
+    spark(P, k, fx) {
+      emit(P, _p, 0, 0, 0, fx.c, 0.22 * k, 0.07, { grow: 1.4 });
+      emit(P, _p, 0, 0, 0, 0xffffff, 0.07 * k, 0.04, { grow: 1 });
+      for (let i = 0; i < 16; i++) { const sp = 4 + Math.random() * 5; _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(2.6); emit(P, _p, _d.x * sp + _r.x, _d.y * sp + _r.y, _d.z * sp + _r.z, pick(fx), (0.009 + Math.random() * 0.009) * k, 0.12 + Math.random() * 0.14, { drag: 8 }); }
+    },
+    // 글리치: 붉은·하늘색 네모 파편이 사방으로 튐
+    glitch(P, k, fx) {
+      emit(P, _p, 0, 0, 0, fx.c, 0.16 * k, 0.06, { grow: 0.6 });
+      for (let i = 0; i < 12; i++) { const sp = 0.8 + Math.random() * 1.8; _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(1.8); emit(P, _p, _d.x * sp + _r.x, _d.y * sp + _r.y, _d.z * sp + _r.z, pick(fx), (0.014 + Math.random() * 0.016) * k, 0.18 + Math.random() * 0.22, { sq: 1, drag: 4 }); }
+    },
+  };
+  function shot(g, c) {
+    const I = g && g.userData.skin; if (!I || !I.d.fx) return;
+    I.flash = 1; ACTIVE.add(I);
+    const sc = sceneOf(g); if (!sc || !shown(g)) return;
+    const vm = isVM(sc), k = vm ? 1.45 : 2.4, m = g.userData.meta, fx = I.d.fx;   // 1인칭은 총구가 화면 구석이라 조금 크게
+    if (!vm && G.camera && _q.setFromMatrixPosition(g.matrixWorld).distanceTo(G.camera.position) > 70) return;
+    _p.set(0, m.boreY, m.muzzleZ + 0.015); g.localToWorld(_p); _d.set(0, m.boreY, m.muzzleZ + 1); g.localToWorld(_d); _d.sub(_p).normalize();
+    (SHOT[fx.kind] || SHOT.ember)(pool(sc), k, fx);
+    if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('shot', fx.kind, c && !own(c) ? c.pos : null, own(c));
+  }
+  // ---------- 꺼내기·넣기 (빛 띠) ----------
+  const ACTIVE = new Set();
+  function draw(g, dur = 0.35, c = null, quiet = false) {
+    const I = g && g.userData.skin; if (!I || !I.d.fx) return;
+    g.updateWorldMatrix(true, true); I.U.uGunInv.value.copy(g.matrixWorld).invert();
+    I.sweep = { t: 0, dur, out: false, c }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.z0 - 0.05; ACTIVE.add(I);
+    if (!quiet && typeof Audio !== 'undefined' && Audio.skinFx && shown(g)) Audio.skinFx('draw', I.d.fx.kind, c && !own(c) ? c.pos : null, own(c));
+  }
+  // 손에서 떠난 총: 장면에 그대로 두고(지금 자리·자세) 총구부터 사라지게 한 뒤 지운다. 효과가 없는 총이면 false
+  function holster(g, dur = 0.32, c = null) {
+    const I = g && g.userData.skin; if (!I || !I.d.fx) return false;
+    const sc = sceneOf(g); if (!sc || !shown(g)) return false;
+    sc.attach(g); g.updateMatrixWorld(true); I.U.uGunInv.value.copy(g.matrixWorld).invert();
+    // 1인칭: 화면 아래로 가라앉으며 사라짐 (총구가 멀어 앞에서부터 사라지는 게 잘 안 보이므로)
+    I.sweep = { t: 0, dur, out: true, c, sink: isVM(sc) ? 0.32 : 0 }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.z1 + 0.05; ACTIVE.add(I);
+    if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('holster', I.d.fx.kind, c && !own(c) ? c.pos : null, own(c));
+    return true;
+  }
+  function sweepParticles(I, z, dt) {
+    const g = I.g, sc = sceneOf(g); if (!sc || !shown(g)) return;
+    const vm = isVM(sc), k = vm ? 1 : 2.4, fx = I.d.fx, m = g.userData.meta, P = pool(sc), n = Math.max(1, Math.round(dt * 90));
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * TAU, r = 0.025 + Math.random() * 0.035;
+      _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r * 1.4 - 0.02, z); g.localToWorld(_p);
+      _q.set(Math.cos(a) * (r + 0.05), m.boreY + Math.sin(a) * (r + 0.05) * 1.4 - 0.02, z); g.localToWorld(_q); _q.sub(_p).normalize().multiplyScalar(0.25 + Math.random() * 0.45);
+      emit(P, _p, _q.x, _q.y + 0.15, _q.z, pick(fx), (0.011 + Math.random() * 0.011) * k, 0.25 + Math.random() * 0.25, { drag: 2, sq: fx.kind === 'glitch' });
+    }
+  }
+  function update(dt) {
+    CLOCK += dt; TIME.value = CLOCK % 600; FRM++;
+    for (const I of ACTIVE) {
+      if (I.flash > 0) { I.flash = Math.max(0, I.flash - dt * 7); I.U.uFlash.value = I.flash; }
+      const s = I.sweep;
+      if (s) {
+        s.t += dt; const u = clamp(s.t / s.dur, 0, 1), e = u * u * (3 - 2 * u);
+        const z = s.out ? lerp(I.z1 + 0.05, I.z0 - 0.05, e) : lerp(I.z0 - 0.05, I.z1 + 0.05, e);
+        I.U.uSweepZ.value = z;
+        if (s.sink) { I.g.position.y -= s.sink * dt / s.dur; I.g.rotation.x += 0.5 * dt / s.dur; }
+        if (u < 1) sweepParticles(I, z, dt);
+        else { I.U.uSweepOn.value = 0; I.sweep = null; if (s.out && I.g.parent) I.g.parent.remove(I.g); }
+      }
+      if (!I.sweep && I.flash <= 0) ACTIVE.delete(I);
+    }
+    updateParticles(dt);
+  }
+  // ---------- 이름 ----------
+  const short = (gun) => (ITEMS[gun] ? ITEMS[gun].name.replace(/(\s[가-힣]+)+$/, '') : gun);
+  const name = (id) => { const d = GSKINS[id]; return d ? `${short(d.gun)} · ${d.name}` : ''; };
+  const tracerCol = (g) => { const I = g && g.userData.skin; return I && I.d.fx ? I.d.fx.tr : 0; };
+  return { apply, shot, draw, holster, update, name, short, tracerCol, texOf, get time() { return TIME.value; }, _active: ACTIVE, _pools: POOLS };
+})();

@@ -421,9 +421,10 @@ const Net = (() => {
     const g = gunObj(c), meta = g && g.userData.meta;
     const muzzle = meta ? gunWorldPoint(c, 0, meta.boreY, meta.muzzleZ + 0.01, new THREE.Vector3()) : null;
     const start = muzzle && muzzle.distanceTo(_o) < 3 ? muzzle : _o;
-    FX.tracer(c, start, e.e[0], e.e[1], e.e[2]);
+    FX.tracer(c, start, e.e[0], e.e[1], e.e[2], GunSkin.tracerCol(g));
     if (e.i) FX.impact(e.e[0], e.e[1], e.e[2], e.i === 'char' ? 'blood' : e.i === 'terrain' ? 'dirt' : 'spark');
     FX.flash(c, g, meta, start, _dv, d);
+    if (g && g.userData.skin) GunSkin.shot(g, c);
     Audio.gunshot(_o, e.w, false, isIndoor(c.pos.x, c.pos.z, c.pos.y));
     c.lastShotT = G.time;
     G.noises.push({ x: _o.x, y: _o.y, z: _o.z, t: G.time, r: d.cls === 'SMG' || d.cls === 'PISTOL' ? 160 : d.ammo === 'a300' ? 360 : 260, by: c, kind: 'shot' });

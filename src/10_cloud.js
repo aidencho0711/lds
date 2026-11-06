@@ -71,7 +71,7 @@ const Cloud = (() => {
     if (d.settings) { const keep = {}; for (const k of DEVICE_SETTINGS) keep[k] = SETTINGS[k]; SETTINGS = Object.assign({}, DEFAULT_SETTINGS, d.settings, keep); store.set('settings', SETTINGS); }
   }
   // 전적이 없어도 상점 기록(뽑기·미션·스킨)이 있으면 진행한 계정으로 본다
-  const hasProgress = (d) => !!(d && d.stats && ((d.stats.matches || 0) > 0 || (d.stats.xp || 0) > 0 || (d.stats.eco && (d.stats.eco.rev || 0) > 2) || (d.stats.skins || []).length || (d.stats.vskins || []).length));
+  const hasProgress = (d) => !!(d && d.stats && ((d.stats.matches || 0) > 0 || (d.stats.xp || 0) > 0 || (d.stats.eco && (d.stats.eco.rev || 0) > 2) || (d.stats.skins || []).length || (d.stats.vskins || []).length || (d.stats.gskins || []).length));
   function refreshUi() {
     if (G.state === 'lobby') { HUD.renderLobby(); if (G.applySettings) G.applySettings('view'); if (Lobby.setLook) { Lobby.setLook(SETTINGS.look); Lobby.teamN = 0; } }
     render();

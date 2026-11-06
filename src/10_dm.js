@@ -72,6 +72,7 @@ const DM = (() => {
       const hl = r.human ? (r.look || (me ? myLook() : {})) : null;
       const look = hl ? Body.makeLook(hl.eq, hl.body) : Body.makeLook(null, Body.randomBody(mulberry32((seed + 7919 * (r.id + 1)) | 0)));
       const c = new Character({ id: r.id, name: r.name || names[i % names.length], isPlayer: me, look, team: r.team });
+      if (hl) c.glook = hl.gun || (me ? Eco.glook() : null);   // 총기 스킨
       c.slot = G.teams[r.team].members.length; G.teams[r.team].members.push(c); CHARS.push(c); sc.add(c.root);
       if (me) G.player = c;
       if (r.net) { c.net = r.net; if (!c.net.mine) c.root.visible = false; } // 같이 하기: 다른 기기가 움직이는 캐릭터 (받은 상태로 그림)

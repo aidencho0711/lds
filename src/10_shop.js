@@ -1,33 +1,73 @@
 // ============================================================
 // 10_shop.js — 상점·미션 화면 + 상자 3D 모델 + 고등급 뽑기 컷신
-//  · 상점 탭: 지갑(골드 탄피·차량 교환 코인), 뽑기 4종(1회·10회, 확률 공개), 교환소(차량 교환 코인 → 차량 스킨)
+//  · 상점 탭: 지갑(골드 탄피·차량 교환 코인·총기 교환 코인), 뽑기 6종(총기 2 · 옷 3 · 차량, 1회·10회, 확률 공개)
+//    교환소: 총기(총기 교환 코인 → 총기 스킨) · 차량(차량 교환 코인 → 차량 스킨)
 //  · 미션 탭: 7일 출석 보상, 일일 미션 4개(+모두 받기 보너스), 주간 미션 4개
 //  · 결과: 레어도 색 카드. 초희귀 이상이 나오면 먼저 3D 컷신(상자가 흔들리며 빛이 파랑→보라→핑크→빨강으로 바뀌고 열림)
 //  · 로비 3D: 고른 상자·차량을 가운데 받침대에 올려 천천히 돌려 보여 준다 (Lobby.show)
 // ============================================================
 const Shop = (() => {
-  let tab = 'gacha', selBox = 'br', selVeh = 'sedan_gt_red', armed = null, armT = null, lastPull = null;
+  let tab = 'gacha', selBox = 'g1', selVeh = 'sedan_gt_red', selGun = 'g1_m416_magma', exSub = 'gun', armed = null, armT = null, lastPull = null;
   const fmt = (n) => Math.round(n).toLocaleString('ko-KR');
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // 이 파일의 문구는 모두 게임 안 고정 목록(이름은 esc 처리) → innerHTML로 아이콘과 함께 넣는다
   const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
   const goldIco = () => `<svg class="ico-cur" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7.5 9.2 4h5.6L16 7.5V20H8z" fill="url(#g-gold)" stroke="#5a3c08" stroke-width=".8"/><rect x="7.2" y="19.2" width="9.6" height="2.6" rx=".5" fill="url(#g-gold)" stroke="#5a3c08" stroke-width=".8"/><path d="M10 9v8" stroke="rgba(255,255,255,.55)" stroke-width="1.1"/></svg>`;
   const coinIco = () => `<svg class="ico-cur" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="url(#g-coin)" stroke="#0b3a52" stroke-width="1"/><circle cx="12" cy="12" r="7" fill="none" stroke="rgba(255,255,255,.45)" stroke-width=".8"/><path d="M6.8 13.6h10.4l-.6-2-1.7-.4-1.4-1.6H10.3l-1.6 1.6-1.4.4z" fill="#e8f7ff"/><circle cx="9" cy="14.2" r="1.1" fill="#0b3a52"/><circle cx="15" cy="14.2" r="1.1" fill="#0b3a52"/></svg>`;
-  const curHtml = (k, n) => `<span class="amt">${k === 'coin' ? coinIco() : goldIco()}<b>${fmt(n)}</b></span>`;
-  function wallet(el) { if (el) el.innerHTML = `<span class="cur gold" title="${GOLD_NAME}">${goldIco()}<b>${fmt(Eco.gold)}</b><i>${GOLD_NAME}</i></span><span class="cur coin" title="${COIN_NAME}">${coinIco()}<b>${fmt(Eco.coin)}</b><i>교환 코인</i></span>`; }
+  // 총기 교환 코인: 붉은 동전 + 탄 모양
+  const gcoinIco = () => `<svg class="ico-cur" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="url(#g-gcoin)" stroke="#5a1408" stroke-width="1"/><circle cx="12" cy="12" r="7" fill="none" stroke="rgba(255,255,255,.45)" stroke-width=".8"/><path d="M10.3 16.6V10.2c0-1.5.7-2.8 1.7-3.6 1 .8 1.7 2.1 1.7 3.6v6.4z" fill="#fff3e4"/><path d="M9.7 16.6h4.6v1.6H9.7z" fill="#ffcf9a"/></svg>`;
+  const curIco = (k) => (k === 'coin' ? coinIco() : k === 'gcoin' ? gcoinIco() : goldIco());
+  const curHtml = (k, n) => `<span class="amt">${curIco(k)}<b>${fmt(n)}</b></span>`;
+  function wallet(el) { if (el) el.innerHTML = `<span class="cur gold" title="${GOLD_NAME}">${goldIco()}<b>${fmt(Eco.gold)}</b><i>${GOLD_NAME}</i></span><span class="cur coin" title="${COIN_NAME}">${coinIco()}<b>${fmt(Eco.coin)}</b><i>차량 코인</i></span><span class="cur gcoin" title="${GCOIN_NAME}">${gcoinIco()}<b>${fmt(Eco.gcoin)}</b><i>총기 코인</i></span>`; }
 
   // ---------- 3D 상자 ----------
   //  base(몸통)·lid(뚜껑) 따로 — 컷신에서 뚜껑이 날아간다. seam: 뚜껑 틈의 빛 띠(색이 바뀜)
+  //  dim: 뚜껑 높이·틈 크기 (총기 상자는 길고 낮은 총 케이스)
   function crate(box) {
-    const K = Models.kit, { A, BX, CY, RB, SPH, TOR } = K, M = K.M;
+    const K = Models.kit, D = CRATE[box].dim || {}, lidY = D.lidY || 0.62;
     const root = new THREE.Group(), base = Models.cluster('gc:' + box + ':b', (g) => CRATE[box].base(g, K)), lid = new THREE.Group();
-    lid.add(Models.cluster('gc:' + box + ':l', (g) => CRATE[box].lid(g, K))); lid.position.y = 0.62;
+    lid.add(Models.cluster('gc:' + box + ':l', (g) => CRATE[box].lid(g, K))); lid.position.y = lidY;
     const seamMat = new THREE.MeshBasicMaterial({ color: 0x4d8fff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
-    const seam = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.035, 0.76), seamMat); seam.position.y = 0.62;
+    const seam = new THREE.Mesh(new THREE.BoxGeometry(D.sw || 1.06, 0.035, D.sd || 0.76), seamMat); seam.position.y = lidY;
     root.add(base); root.add(lid); root.add(seam);
-    return { root, base, lid, seam, seamMat };
+    return { root, base, lid, seam, seamMat, lidY };
   }
   const CRATE = {
+    // 아스널(총기): 올리브 하드 총 케이스 + 검정 고무 범퍼 + 황동 걸쇠 4개 + 주황 띠 + 뚜껑 위 볼록 줄·육각 황동 엠블럼
+    g1: {
+      dim: { lidY: 0.4, sw: 1.56, sd: 0.6 },
+      base(g, { A, BX, RB, M }) {
+        const od = M('anod', 0x4b5233), dk = M('rubber', 0x1c1d1a), br = M('brass', 0xc9a24a), st = M('gunmetal', 0x2e302c), or = M('polymer', 0xe0892a);
+        A(g, RB(1.5, 0.38, 0.56, 0.05), od, 0, 0.2, 0);
+        for (const x of [-0.56, 0.56]) A(g, RB(0.07, 0.4, 0.58, 0.03), dk, x, 0.2, 0);
+        A(g, RB(1.52, 0.04, 0.58, 0.02), dk, 0, 0.02, 0);
+        for (const sz of [-1, 1]) { for (const x of [-0.4, -0.2, 0.2, 0.4]) A(g, BX(0.09, 0.08, 0.03), br, x, 0.34, sz * 0.285); A(g, BX(0.6, 0.025, 0.006), or, 0, 0.13, sz * 0.281); }
+        A(g, BX(0.3, 0.035, 0.045), dk, 0, 0.26, 0.31); for (const x of [-0.14, 0.14]) A(g, BX(0.03, 0.06, 0.04), st, x, 0.27, 0.295);
+      },
+      lid(g, { A, BX, RB, CY, M }) {
+        const od = M('anod', 0x535b39), dk = M('rubber', 0x1c1d1a), br = M('brass', 0xc9a24a);
+        A(g, RB(1.53, 0.09, 0.58, 0.04), od, 0, 0.045, 0);
+        for (const z of [-0.2, -0.11, 0.11, 0.2]) A(g, BX(1.3, 0.022, 0.04), dk, 0, 0.098, z);
+        A(g, CY(0.075, 0.075, 0.03, 6, 'y'), br, 0, 0.11, 0); A(g, CY(0.045, 0.045, 0.034, 6, 'y'), M('anod', 0x2a2d22), 0, 0.112, 0);
+      },
+    },
+    // 네온(총기): 광택 검정 총 케이스 + 분홍·하늘 빛 줄 + 크롬 모서리 + 뚜껑 위 사선 빛 줄·육각 엠블럼
+    g2: {
+      dim: { lidY: 0.4, sw: 1.56, sd: 0.6 },
+      base(g, { A, BX, RB, M }) {
+        const bk = M('polymer', 0x121216), ch = M('metal', 0xd6dade), pk = new THREE.MeshBasicMaterial({ color: 0xff2d95 }), cy = new THREE.MeshBasicMaterial({ color: 0x2ae8ff });
+        A(g, RB(1.5, 0.38, 0.56, 0.06), bk, 0, 0.2, 0);
+        for (const sz of [-1, 1]) { A(g, BX(1.36, 0.014, 0.006), pk, 0, 0.35, sz * 0.281); A(g, BX(1.36, 0.01, 0.006), cy, 0, 0.06, sz * 0.281); A(g, BX(0.12, 0.08, 0.02), ch, 0, 0.3, sz * 0.287); }
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) A(g, BX(0.06, 0.4, 0.06), ch, sx * 0.73, 0.2, sz * 0.26);
+        for (const sx of [-1, 1]) A(g, BX(0.006, 0.014, 0.46), pk, sx * 0.752, 0.35, 0);
+      },
+      lid(g, { A, BX, RB, CY, M }) {
+        const bk = M('polymer', 0x17171c), ch = M('metal', 0xd6dade), pk = new THREE.MeshBasicMaterial({ color: 0xff2d95 }), cy = new THREE.MeshBasicMaterial({ color: 0x2ae8ff });
+        A(g, RB(1.53, 0.09, 0.58, 0.06), bk, 0, 0.045, 0);
+        for (let i = 0; i < 3; i++) A(g, BX(0.46, 0.008, 0.022), i === 1 ? cy : pk, -0.42 + i * 0.08, 0.093, 0, 0, 0.7, 0);
+        A(g, CY(0.08, 0.08, 0.02, 6, 'y'), ch, 0.38, 0.1, 0); A(g, CY(0.05, 0.05, 0.024, 6, 'y'), pk, 0.38, 0.102, 0);
+      },
+    },
     // 배틀로얄: 올리브 탄약 상자 + 철 띠 + 주황 줄 + 마름모 표식 + 걸쇠
     br: {
       base(g, { A, BX, RB, M }) {
@@ -103,6 +143,15 @@ const Shop = (() => {
   const crateThumb = (box) => thumb('crate:' + box, () => crate(box).root, 200, 160, [0.9, 0.75, 1.3]);
   const vehThumb = (id) => { const V = VSKINS[id]; return thumb('veh:' + id, () => VehModels.instance(V.veh, id).root, 240, 140, V.veh === 'sedan' ? [1.2, 0.55, 1.0] : [1.3, 0.45, 0.6]); };
   const vehBaseThumb = (type) => thumb('vehb:' + type, () => VehModels.instance(type).root, 240, 140, type === 'sedan' ? [1.2, 0.55, 1.0] : [1.3, 0.45, 0.6]);
+  // 총기 스킨 썸네일 (id 없으면 기본 총). 목록은 한꺼번에 렌더하면 휴대폰에서 끊기므로
+  //  아직 없는 그림은 빈 칸으로 두고 로비 프레임마다 하나씩 그려 넣는다(<img data-th>)
+  const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', TQ = [];
+  const gkey = (gun, id) => 'gs:' + gun + ':' + (id || '');
+  const gunThumb = (gun, id) => thumb(gkey(gun, id), () => buildGunMesh(gun, {}, id || null), 240, 104, [-1, 0.22, 0.12]);
+  function gunSrc(gun, id) { const k = gkey(gun, id); if (THUMB[k] !== undefined) return THUMB[k] || BLANK; if (!TQ.some((q) => q[0] === k)) TQ.push([k, gun, id]); return BLANK; }
+  const gunImg = (gun, id) => `<img data-th="${gkey(gun, id)}" src="${gunSrc(gun, id)}" alt="">`;
+  function gunImgEl(gun, id) { const im = document.createElement('img'); im.dataset.th = gkey(gun, id); im.src = gunSrc(gun, id); im.alt = ''; return im; }
+  function pump() { if (!TQ.length) return; const [k, gun, id] = TQ.shift(), src = gunThumb(gun, id) || BLANK; document.querySelectorAll(`img[data-th="${k}"]`).forEach((im) => { im.src = src; }); }
   // ---------- 아이콘 ----------
   const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산' };
   const hexs = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
@@ -115,17 +164,22 @@ const Shop = (() => {
   function itemIcon(o) {
     if (o.k === 'gold') return goldIco();
     if (o.k === 'coin') return coinIco();
+    if (o.k === 'gcoin') return gcoinIco();
+    if (o.k === 'gskin') return gunImg(GSKINS[o.id].gun, o.id);
     if (o.k === 'vskin') { const src = vehThumb(o.id); return src ? `<img src="${src}" alt="">` : coinIco(); }
     return skinSvg(o.id);
   }
   function itemName(o) {
     if (o.k === 'gold') return `${GOLD_NAME} ×${fmt(o.n)}`;
     if (o.k === 'coin') return `${COIN_NAME} ×${o.n}`;
+    if (o.k === 'gcoin') return `${GCOIN_NAME} ×${o.n}`;
     if (o.k === 'vskin') return VSKINS[o.id].name;
+    if (o.k === 'gskin') return GunSkin.name(o.id);
     return Body.SKINS[o.id].name;
   }
   function itemSub(o) {
-    if (o.k === 'gold' || o.k === 'coin') return '재화';
+    if (o.k === 'gold' || o.k === 'coin' || o.k === 'gcoin') return '재화';
+    if (o.k === 'gskin') { const S = GSKINS[o.id], cls = ITEMS[S.gun].name.replace(GunSkin.short(S.gun), '').trim(); return `총기 스킨 · ${cls}` + (S.fx ? ' · 사격·교체 효과' : ''); }
     if (o.k === 'vskin') { const V = VSKINS[o.id]; return `${VEH_SKIN_TYPES[V.veh]} 스킨 · ${VCLS_NAME[V.cls]}`; }
     return SLOT_NAME[Body.SKINS[o.id].slot] || '';
   }
@@ -139,9 +193,10 @@ const Shop = (() => {
     if (tab === 'gacha') {
       const grid = h('div', 'gc-grid');
       for (const [k, B] of Object.entries(BOXES)) {
-        const card = h('div', 'gc-card' + (k === selBox ? ' on' : '') + (k === 'veh' ? ' veh' : '')); card.style.setProperty('--acc', B.accent); card.tabIndex = 0;
-        const n = k === 'veh' ? Object.keys(VSKINS).length : Eco.pool(k).filter((x) => x.k === 'skin').length;
-        card.innerHTML = `<span class="gc-img"><img src="${crateThumb(k)}" alt=""></span><span class="gc-txt"><b>${B.name}</b><span>${k === 'veh' ? `차량 교환 코인(높은 확률) · 차량 스킨 ${n}종` : `${B.theme} ${n}종 · ${GOLD_NAME}`}</span></span>`;
+        const card = h('div', 'gc-card' + (k === selBox ? ' on' : '') + (k === 'veh' ? ' veh' : '') + (B.gun ? ' gun' : '')); card.style.setProperty('--acc', B.accent); card.tabIndex = 0; card.dataset.box = k;
+        const P = Eco.pool(k), n = k === 'veh' ? Object.keys(VSKINS).length : P.filter((x) => x.k === (B.gun ? 'gskin' : 'skin')).length, gn = B.gun ? 0 : P.filter((x) => x.k === 'gskin').length;
+        const sub = k === 'veh' ? `차량 교환 코인(높은 확률) · 차량 스킨 ${n}종` : B.gun ? `총기 교환 코인 70% · ${B.theme} ${n}종` : `${B.theme} ${n}종 · 총기 스킨 ${gn}종 · ${GOLD_NAME}`;
+        card.innerHTML = `<span class="gc-img"><img src="${crateThumb(k)}" alt=""></span><span class="gc-txt"><b>${B.name}${B.isNew && !(Eco.E().pulls[k] > 0) ? '<em class="gc-new">NEW</em>' : ''}</b><span>${sub}</span></span>`;
         const odds = h('button', 'gc-odds', '확률'); odds.type = 'button'; odds.addEventListener('click', (e) => { e.stopPropagation(); click(); openOdds(k); }); card.appendChild(odds);
         const btns = h('span', 'gc-btns');
         for (const n2 of [1, 10]) {
@@ -154,8 +209,34 @@ const Shop = (() => {
         grid.appendChild(card);
       }
       body.appendChild(grid);
-      $('shopFoot').textContent = `옷 상자는 1회 100, 차량 뽑기는 1회 1,000 ${GOLD_NAME}. 이미 가진 옷이 나오면 ${GOLD_NAME}로, 가진 차량이 나오면 교환 코인으로 일부 돌려받습니다. 상자마다 나오는 옷이 모두 다릅니다.`;
+      $('shopFoot').textContent = `총기 상자·차량 뽑기는 1회 200, 옷 상자는 1회 100 ${GOLD_NAME}. 총기 상자는 70% 확률로 총기 교환 코인, 나머지는 총기 스킨이 나오고 울트라레어 스킨은 쏠 때와 총을 바꿀 때 효과가 있습니다. 이미 가진 것이 나오면 일부를 돌려받습니다.`;
     } else {
+      // 교환소: 총기 / 차량
+      const subt = h('div', 'ex-subtabs');
+      for (const [k, nm] of [['gun', '총기 스킨'], ['veh', '차량 스킨']]) { const b = h('button', exSub === k ? 'on' : '', nm); b.type = 'button'; b.addEventListener('click', () => { click(); exSub = k; armed = null; render(); onTab('shop'); }); subt.appendChild(b); }
+      body.appendChild(subt);
+    }
+    if (tab !== 'gacha' && exSub === 'gun') {
+      for (const r of [5, 4, 3, 1]) {
+        const ids = Object.keys(GSKINS).filter((id) => GSKINS[id].rar === r && Eco.gunPrice(id)); if (!ids.length) continue;
+        const R = rarOf(r), sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', `${R.name}` + (r === 5 ? ' · 사격·교체 효과' : '')));
+        const grid = h('div', 'ex-grid gun');
+        for (const id of ids) {
+          const S = GSKINS[id], own = Eco.ownsGun(id), price = Eco.gunPrice(id), key = 'exg:' + id;
+          const card = h('div', 'ex-card' + (id === selGun ? ' on' : '') + (own ? ' own' : '')); card.style.setProperty('--rc', R.color);
+          card.innerHTML = `<span class="ex-img">${gunImg(S.gun, id)}</span><span class="ex-rar">${R.name} · ${esc(GunSkin.short(S.gun))}</span><b>${esc(S.name)}</b>`;
+          const b = h('button', 'ex-buy' + (armed === key ? ' armed' : '') + (!own && Eco.gcoin < price ? ' poor' : '')); b.type = 'button';
+          b.innerHTML = own ? '보유 중' : armed === key ? '<em>교환 확인</em>' : `<em>교환</em>${curHtml('gcoin', price)}`;
+          b.disabled = own;
+          b.addEventListener('click', (e) => { e.stopPropagation(); swapGun(id); });
+          card.appendChild(b);
+          card.addEventListener('click', () => { click(); selGun = id; render(); Lobby.show({ kind: 'gun', gun: S.gun, skin: id }); });
+          grid.appendChild(card);
+        }
+        sec.appendChild(grid); body.appendChild(sec);
+      }
+      $('shopFoot').textContent = `${GCOIN_NAME}은 아스널·네온 상자에서 70% 확률로 나옵니다. 교환한 스킨은 창고 → 총기에서 장착하면 경기·훈련장에서 그 총을 들 때 적용됩니다.`;
+    } else if (tab !== 'gacha') {
       for (const t of Object.keys(VEH_SKIN_TYPES)) {
         const sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', VEH_SKIN_TYPES[t] + (t === 'sedan' ? ' (세단에 적용)' : '')));
         const grid = h('div', 'ex-grid');
@@ -177,6 +258,7 @@ const Shop = (() => {
     }
   }
   const click = () => { Audio.init(); Audio.ui(); };
+  let whGo = null;
   // 1,000 이상 쓰는 버튼은 두 번 눌러 확인
   function arm(key) { armed = key; clearTimeout(armT); armT = setTimeout(() => { armed = null; if (tab) render(); }, 3500); render(); }
   function buy(box, n) {
@@ -199,6 +281,16 @@ const Shop = (() => {
     lastPull = null;
     reveal(r, `교환소 · ${V.name}`, 'veh');
   }
+  function swapGun(id) {
+    click();
+    const S = GSKINS[id], price = Eco.gunPrice(id); if (!S || !price || Eco.ownsGun(id)) return;
+    if (Eco.gcoin < price) { HUD.lobbyNote(`${GCOIN_NAME}이 부족합니다 — 필요 ${price}, 보유 ${Eco.gcoin} (아스널·네온 상자에서 70% 확률로 나옵니다)`); return; }
+    if (armed !== 'exg:' + id) { arm('exg:' + id); return; }
+    armed = null; clearTimeout(armT);
+    const r = Eco.exchangeGun(id); if (r.err) { HUD.lobbyNote(r.err); render(); return; }
+    lastPull = null;
+    reveal(r, `교환소 · ${GunSkin.name(id)}`, S.box);
+  }
   // 결과: 초희귀 이상이면 컷신 → 카드
   function reveal(r, title, box) {
     render(); renderMissions(); badge();
@@ -213,12 +305,15 @@ const Shop = (() => {
     r.res.forEach((o, i) => {
       const R = rarOf(o.rar), c = h('div', 'gr-card r' + o.rar); c.style.setProperty('--rc', R.color); c.style.animationDelay = (i * 0.07) + 's';
       c.innerHTML = `<span class="gr-ico">${itemIcon(o)}</span><span class="gr-rar">${R.name}</span><b class="gr-name">${esc(itemName(o))}</b><span class="gr-sub">${esc(itemSub(o))}</span>` +
-        (o.isNew ? '<em class="gr-tag new">NEW</em>' : o.dup ? `<em class="gr-tag dup">중복 → ${o.refund ? GOLD_NAME + ' +' + o.refund : '코인 +' + o.refundCoin}</em>` : '');
+        (o.isNew ? '<em class="gr-tag new">NEW</em>' : o.dup ? `<em class="gr-tag dup">중복 → ${o.refund ? GOLD_NAME + ' +' + o.refund : o.refundGC ? '총기 코인 +' + o.refundGC : '차량 코인 +' + o.refundCoin}</em>` : '');
       grid.appendChild(c);
     });
-    const gotG = r.res.reduce((a, o) => a + (o.k === 'gold' ? o.n : 0) + (o.refund || 0), 0), gotC = r.res.reduce((a, o) => a + (o.k === 'coin' ? o.n : 0) + (o.refundCoin || 0), 0);
-    $('gresNote').innerHTML = (r.cost ? `사용 ${curHtml('gold', r.cost)} · ` : '') + (gotG ? `받은 ${GOLD_NAME} ${curHtml('gold', gotG)} · ` : '') + (gotC ? `받은 코인 ${curHtml('coin', gotC)} · ` : '') + `남은 ${curHtml('gold', Eco.gold)} ${curHtml('coin', Eco.coin)}`;
-    $('gresAgain').hidden = !lastPull; $('gresWh').hidden = !r.res.some((o) => o.isNew && (o.k === 'skin' || o.k === 'vskin'));
+    const gotG = r.res.reduce((a, o) => a + (o.k === 'gold' ? o.n : 0) + (o.refund || 0), 0), gotC = r.res.reduce((a, o) => a + (o.k === 'coin' ? o.n : 0) + (o.refundCoin || 0), 0), gotGC = r.res.reduce((a, o) => a + (o.k === 'gcoin' ? o.n : 0) + (o.refundGC || 0), 0);
+    $('gresNote').innerHTML = (r.cost ? `사용 ${curHtml('gold', r.cost)} · ` : '') + (gotG ? `받은 ${GOLD_NAME} ${curHtml('gold', gotG)} · ` : '') + (gotC ? `받은 차량 코인 ${curHtml('coin', gotC)} · ` : '') + (gotGC ? `받은 총기 코인 ${curHtml('gcoin', gotGC)} · ` : '') + `남은 ${curHtml('gold', Eco.gold)} ${curHtml('coin', Eco.coin)} ${curHtml('gcoin', Eco.gcoin)}`;
+    // 새로 얻은 것이 있으면 창고로: 총기 스킨이면 창고 → 총기(그 총)로 바로
+    const nw = r.res.filter((o) => o.isNew && (o.k === 'skin' || o.k === 'vskin' || o.k === 'gskin')), ng = nw.find((o) => o.k === 'gskin');
+    whGo = ng && !nw.some((o) => o.k === 'skin') ? { cat: 'gun', gun: GSKINS[ng.id].gun, skin: ng.id } : nw.some((o) => o.k === 'vskin') && !nw.some((o) => o.k === 'skin') ? { cat: 'veh' } : null;
+    $('gresAgain').hidden = !lastPull; $('gresWh').hidden = !nw.length; $('gresWh').textContent = whGo && whGo.cat === 'gun' ? '창고에서 장착' : '창고에서 입기';
     P.hidden = false;
     if (r.best >= 3) Audio.gacha && Audio.gacha('show', r.best); else Audio.gacha && Audio.gacha('small', r.best);
   }
@@ -231,7 +326,7 @@ const Shop = (() => {
       const rows = P.filter((x) => x.rar === r); if (!rows.length) continue;
       const R = rarOf(r), sum = rows.reduce((a, x) => a + x.p, 0), sec = h('div', 'od-sec'); sec.style.setProperty('--rc', R.color);
       sec.appendChild(h('div', 'od-head', `<b>${R.name}</b><span>${sum.toFixed(2)}%</span>`));
-      for (const x of rows) { const row = h('div', 'od-row'); row.innerHTML = `<span class="od-ico">${itemIcon(x)}</span><span class="od-name">${esc(itemName(x))}<small>${esc(itemSub(x))}</small></span><span class="od-p">${x.p.toFixed(x.p < 1 ? 3 : 2)}%</span>`; sec.appendChild(row); }
+      for (const x of rows) { const row = h('div', 'od-row' + (x.k === 'gskin' ? ' gun' : '')); row.innerHTML = `<span class="od-ico">${itemIcon(x)}</span><span class="od-name">${esc(itemName(x))}<small>${esc(itemSub(x))}</small></span><span class="od-p">${x.p.toFixed(x.p < 1 ? 3 : 2)}%</span>`; sec.appendChild(row); }
       grid.appendChild(sec);
     }
     $('oddsPanel').hidden = false;
@@ -274,7 +369,7 @@ const Shop = (() => {
   // 탭이 바뀔 때 (HUD.setTab에서 호출): 로비 3D 진열
   function onTab(t) {
     if ((t === 'shop' || t === 'mission') && Cloud.user) Cloud.pull();
-    if (t === 'shop') { render(); Lobby.show(tab === 'gacha' ? { kind: 'crate', box: selBox } : { kind: 'veh', type: VSKINS[selVeh].veh, skin: selVeh }); }
+    if (t === 'shop') { render(); Lobby.show(tab === 'gacha' ? { kind: 'crate', box: selBox } : exSub === 'gun' ? { kind: 'gun', gun: GSKINS[selGun].gun, skin: selGun } : { kind: 'veh', type: VSKINS[selVeh].veh, skin: selVeh }); }
     else if (t === 'mission') { renderMissions(); Lobby.show(null); }
     else if (t !== 'custom') Lobby.show(null);
     badge();
@@ -285,7 +380,7 @@ const Shop = (() => {
     $('oddsPanel').addEventListener('click', (e) => { if (e.target === $('oddsPanel')) $('oddsPanel').hidden = true; });
     $('gresOk').addEventListener('click', () => { click(); $('gachaRes').hidden = true; });
     $('gresAgain').addEventListener('click', () => { $('gachaRes').hidden = true; if (lastPull) buy(lastPull.box, lastPull.n); });
-    $('gresWh').addEventListener('click', () => { click(); $('gachaRes').hidden = true; HUD.goTab('custom'); });
+    $('gresWh').addEventListener('click', () => { click(); $('gachaRes').hidden = true; if (whGo) HUD.whOpen(whGo.cat, whGo.gun, whGo.skin); else HUD.goTab('custom'); });
     $('csSkip').addEventListener('click', (e) => { e.stopPropagation(); Cutscene.skip(); });
     $('csLayer').addEventListener('click', () => Cutscene.skip());
     Eco.on(() => { wallet($('shopWallet')); wallet($('misWallet')); badge(); if (!$('lobby').hidden) { const P = document.querySelector('[data-pane=mission]'); if (P && !P.hidden) renderMissions(); } });
@@ -296,13 +391,14 @@ const Shop = (() => {
   }
   // 경기가 시작되면 상점 창·컷신을 닫는다 (파티 방장이 시작하는 경우 등)
   function closeAll() { if (Cutscene.active) Cutscene.skip(); for (const id of ['gachaRes', 'oddsPanel']) { const e = $(id); if (e) e.hidden = true; } armed = null; }
-  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh }; } };
+  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, gunThumb, gunImgEl, pump, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, gcoinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh, gun: selGun, ex: exSub }; } };
 })();
 
 // ============================================================
 // 고등급 뽑기 컷신 (초희귀·슈퍼레어·울트라레어)
 //  어두운 무대 → 카메라가 다가감 → 상자가 흔들리며 뚜껑 틈 빛이 파랑→보라→핑크→빨강으로 단계 상승(등급까지)
 //  → 뚜껑이 튀어 오르고 빛기둥·불꽃 → 등급·이름 표시 → 결과 카드. 화면을 누르면 건너뛴다
+//  총기 상자는 상자만 총 케이스로 바뀌고, 총기 스킨이 나오면 열린 케이스에서 그 총이 떠올라 돈다(울트라레어는 빛 띠와 함께 나타남)
 // ============================================================
 const Cutscene = (() => {
   let S = null, active = false, t = 0, t0 = 0, last = 0, D = 3, tier = 3, cb = null, steps = [], stepI = 0, opened = false, item = null;
@@ -336,7 +432,7 @@ const Cutscene = (() => {
   function resetParticles(burst) {
     for (let i = 0; i < S.N; i++) {
       const a = Math.random() * TAU, r = burst ? 0.1 : 0.9 + Math.random() * 0.8;
-      S.pos[i * 3] = Math.cos(a) * r; S.pos[i * 3 + 1] = burst ? 0.7 : Math.random() * 0.4; S.pos[i * 3 + 2] = Math.sin(a) * r;
+      S.pos[i * 3] = Math.cos(a) * r; S.pos[i * 3 + 1] = burst ? (S.crate ? S.crate.lidY : 0.62) + 0.08 : Math.random() * 0.4; S.pos[i * 3 + 2] = Math.sin(a) * r;
       const sp = burst ? 2 + Math.random() * 4 : 0.2 + Math.random() * 0.5;
       S.vel[i * 3] = burst ? Math.cos(a) * sp * 0.5 : -Math.sin(a) * sp; S.vel[i * 3 + 1] = burst ? 2 + Math.random() * 5 : 0.4 + Math.random() * 0.8; S.vel[i * 3 + 2] = burst ? Math.sin(a) * sp * 0.5 : Math.cos(a) * sp;
     }
@@ -346,7 +442,14 @@ const Cutscene = (() => {
     if (!S) build();
     if (S.crate) S.sc.remove(S.crate.root);
     S.crates = S.crates || {}; S.crate = S.crates[box] = S.crates[box] || Shop.crate(box); S.sc.add(S.crate.root); S.box = box;
-    const C = S.crate; C.root.position.set(0, 0, 0); C.root.rotation.set(0, 0, 0); C.lid.position.set(0, 0.62, 0); C.lid.rotation.set(0, 0, 0); C.seamMat.opacity = 0;
+    const C = S.crate; C.root.position.set(0, 0, 0); C.root.rotation.set(0, 0, 0); C.lid.position.set(0, C.lidY, 0); C.lid.rotation.set(0, 0, 0); C.seamMat.opacity = 0;
+    // 총기 스킨이 나오면 케이스에서 떠오를 총 (가운데를 축으로 돌게 감쌈)
+    if (S.gun) { S.sc.remove(S.gun); S.gun = null; }
+    if (top && top.k === 'gskin' && GSKINS[top.id]) {
+      const g = buildGunMesh(GSKINS[top.id].gun, {}, top.id), bb = new THREE.Box3().setFromObject(g), pv = new THREE.Group();
+      g.position.sub(bb.getCenter(new THREE.Vector3())); pv.add(g); pv.scale.setScalar(Math.min(2.6, 1.75 / Math.max(0.3, bb.max.z - bb.min.z)));
+      pv.visible = false; pv.userData.gun = g; S.sc.add(pv); S.gun = pv;
+    }
     tier = clamp(best, 3, 5); D = DUR[tier]; t = 0; t0 = last = performance.now(); cb = done; opened = false; item = top;
     // 빛 단계: 레어(파랑)부터 결과 등급까지
     steps = []; for (let r = 2; r <= tier; r++) steps.push(r); stepI = 0; setCol(colOf(2));
@@ -366,6 +469,7 @@ const Cutscene = (() => {
   function skip() { if (!active) return; if (!opened) open(true); finish(); }
   function open(silent) {
     opened = true; setCol(colOf(tier));
+    if (S.gun) { S.gun.visible = true; S.gunT = 0; S.gun.position.set(0, S.crate.lidY - 0.1, 0); if (!silent) GunSkin.draw(S.gun.userData.gun, 0.9, null); }
     resetParticles(true); S.pm.opacity = 1;
     $('csFlash').className = 'cs-flash on';
     const R = rarOf(tier); $('csRar').textContent = R.name; $('csRar').style.color = R.color; $('csName').textContent = item ? Shop.itemName(item) : '';
@@ -389,7 +493,7 @@ const Cutscene = (() => {
       if (t > 0.5 && want !== stepI) { stepI = want; setCol(colOf(steps[stepI])); Audio.gacha && Audio.gacha('tick', steps[stepI]); }
       const pulse = 0.5 + 0.5 * Math.sin(t * (10 + sh * 18));
       C.root.position.x = (Math.random() - 0.5) * shake; C.root.rotation.z = (Math.random() - 0.5) * shake * 1.6; C.root.rotation.y = Math.sin(t * 1.3) * 0.15;
-      C.lid.position.y = 0.62 + sh * 0.025 * pulse; C.seamMat.opacity = t > 0.5 ? 0.35 + 0.65 * sh * pulse : 0;
+      C.lid.position.y = C.lidY + sh * 0.025 * pulse; C.seamMat.opacity = t > 0.5 ? 0.35 + 0.65 * sh * pulse : 0;
       S.glow.intensity = t > 0.5 ? (0.6 + sh * 2.2) * (0.6 + 0.4 * pulse) : 0;
       S.raysM.opacity = t > 0.5 ? 0.12 + sh * 0.35 * pulse : 0; S.rays.rotation.y += dt * 0.6;
       S.pm.opacity = Math.min(0.85, t * 0.5);
@@ -397,9 +501,13 @@ const Cutscene = (() => {
     } else {
       const u = t - tOpen;
       C.root.position.x = 0; C.root.rotation.z = 0;
-      C.lid.position.y = 0.62 + u * 3.2 - u * u * 2.2; C.lid.rotation.x = -u * 2.4; C.lid.position.z = -u * 0.8;
+      // 총이 떠오를 때는 뚜껑이 멀리 뒤로 날아가 총을 가리지 않게
+      if (S.gun) { C.lid.position.y = C.lidY + u * 2.6 - u * u * 3.2; C.lid.rotation.x = -u * 3.2; C.lid.position.z = -u * 2.6; }
+      else { C.lid.position.y = C.lidY + u * 3.2 - u * u * 2.2; C.lid.rotation.x = -u * 2.4; C.lid.position.z = -u * 0.8; }
+      // 총: 빛기둥 앞쪽으로 떠올라 천천히 돈다
+      if (S.gun) { S.gunT += dt; const k = smoothstep01(clamp(S.gunT / 0.9, 0, 1)); S.gun.position.set(0, lerp(C.lidY - 0.1, C.lidY + 0.85, k), lerp(0, 0.55, k)); S.gun.rotation.set(0.12 * (1 - k), 0.5 + S.gunT * 0.9, 0); }
       C.seamMat.opacity = Math.max(0, 1 - u * 1.5);
-      S.pillar.scale.y = Math.min(1, u * 3.5); S.pillar.position.y = 0.6 + 4.5 * S.pillar.scale.y; S.pillarM.opacity = Math.min(0.7, u * 3) * (0.85 + 0.15 * Math.sin(u * 20));
+      S.pillar.scale.y = Math.min(1, u * 3.5); S.pillar.position.y = C.lidY - 0.02 + 4.5 * S.pillar.scale.y; S.pillarM.opacity = Math.min(S.gun ? 0.42 : 0.7, u * 3) * (0.85 + 0.15 * Math.sin(u * 20));
       S.glow.intensity = 3.2 + Math.sin(u * 14) * 0.6; S.raysM.opacity = Math.max(0, 0.7 - u * 0.4); S.rays.rotation.y += dt * 1.4;
       S.pm.opacity = Math.max(0, 1 - u * 0.55);
       if (u > 0.25 && $('csFlash').className === 'cs-flash on') $('csFlash').className = 'cs-flash';

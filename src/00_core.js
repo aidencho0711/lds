@@ -89,7 +89,7 @@ const DEFAULT_SETTINGS = {
   sfx: 0.8, music: 0.35,
   view: 'tpp', difficulty: 'normal', bots: 24,
   btnScale: 1.0, hudOpacity: 0.95, hudScale: 1.0,
-  mode: 'classic', map: 'kalden', time: 'day', look: null, body: null, vlook: null,
+  mode: 'classic', map: 'kalden', time: 'day', look: null, body: null, vlook: null, glook: null, gshow: null,
   sens_iron: 1, sens_reddot: 1, sens_holo: 1, sens_x2: 1, sens_x3: 1, sens_x4: 1, sens_x6: 1,
   touchLayout: {}, stickFixed: false, queue: 'normal', squad: 'solo', game: 'br',
 };
@@ -161,4 +161,4 @@ const CRAWL_SPEED = 0.95;
 const DIFFICULTY_NAMES ={ easy: '쉬움', normal: '보통', hard: '어려움', mixed: '혼합' };
 // 내 외형: 장착 스킨(SETTINGS.look) + 몸(SETTINGS.body) — 파티·같이 하기에서 이 묶음을 주고받는다
 // veh: 장착한 차량 스킨(차종별) — 경기에서 운전석에 탈 때 그 차량을 내 스킨으로 바꾼다
-const myLook = () => ({ eq: SETTINGS.look || null, body: SETTINGS.body || null, veh: typeof Eco !== 'undefined' ? Eco.vlook() : null });
+const myLook = () => ({ eq: SETTINGS.look || null, body: SETTINGS.body || null, veh: typeof Eco !== 'undefined' ? Eco.vlook() : null, gun: typeof Eco !== 'undefined' ? Eco.glook() : null });

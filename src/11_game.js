@@ -88,7 +88,7 @@ const Lobby = {
     try {
       const u = VehModels.instance('uaz'); u.root.position.set(-5.2, 0, -4.6); u.root.rotation.y = 0.95; sc.add(u.root);
       this.motoProp = () => { if (this.moto) sc.remove(this.moto.root); const m = this.moto = VehModels.instance('moto', Eco.vlook().moto); m.root.position.set(3.0, 0, -3.0); m.root.rotation.y = -0.75; m.root.rotation.z = 0.12; sc.add(m.root); };
-      this.motoProp(); Eco.on((w) => { if (w === 'vequip') this.motoProp(); });
+      this.motoProp(); Eco.on((w) => { if (w === 'vequip') this.motoProp(); if (w === 'gequip') this.setGun(true); });
     } catch (e) { console.warn('로비 차량 생략', e); }
     for (let i = 0; i < 11; i++) add(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), 0x777777, -15 + i * 3, 1.2, -11);
     const tg = new THREE.ConeGeometry(1.6, 5, 7); for (let i = 0; i < 22; i++) { const a = -Math.PI * 0.95 + i / 21 * Math.PI * 0.9, r = 24 + Math.random() * 12; add(tg, 0x2e4a2a, Math.cos(a) * r, 2.5, Math.sin(a) * r); }
@@ -125,21 +125,38 @@ const Lobby = {
   setLook(eq) {
     if (this.rig) { this.scene.remove(this.rig.root); this.rig.skel.dispose(); }
     const rig = buildRig(Body.makeLook(eq, SETTINGS.body)); this.rig = rig; this.scene.add(rig.root);
-    rig.gunObj = buildGunMesh('m416', { scope: 'x2', muzzle: 'comp' }); rig.gunMount.add(rig.gunObj);
+    this.setGun(false);
     this.gear = [Body.normEquip(eq).hat ? 0 : 2, 2, 2]; rig.setGear(this.gear[0], this.gear[1], this.gear[2]);
     rig.root.position.set(0, 0.2, 0);
   },
-  // 상점·창고 진열: 받침대 위에 상자나 차량을 올려 천천히 돌린다 (캐릭터는 숨김). spec: null | {kind:'crate', box} | {kind:'veh', type, skin}
+  // 가운데 캐릭터가 드는 총: 마지막으로 스킨을 바꾼 총(+그 스킨). 바꾸면 울트라레어는 빛 띠와 함께 나타남
+  setGun(fx) {
+    const r = this.rig; if (!r) return;
+    if (r.gunObj) r.gunMount.remove(r.gunObj);
+    const id = Eco.showGun(), sk = Eco.glook()[id] || null, att = {};
+    for (const s of ['x2', 'reddot']) if (attFits(s, id)) { att.scope = s; break; }
+    if (attFits('comp', id)) att.muzzle = 'comp';
+    r.gunObj = buildGunMesh(id, att, sk); r.gunMount.add(r.gunObj);
+    if (fx && sk) GunSkin.draw(r.gunObj, 0.55, null);
+  },
+  // 상점·창고 진열: 받침대 위에 상자나 차량을 올려 천천히 돌린다 (캐릭터는 숨김). spec: null | {kind:'crate', box} | {kind:'veh', type, skin} | {kind:'gun', gun, skin}
   show(spec) {
     const key = spec ? JSON.stringify(spec) : '';
     if (this.scKey === key) return; this.scKey = key;
     if (this.sc) { this.scene.remove(this.sc.obj); this.sc = null; }
     if (!spec) return;
     let obj, size;
+    let gun = null;
     if (spec.kind === 'crate') { this.crates = this.crates || {}; obj = (this.crates[spec.box] = this.crates[spec.box] || Shop.crate(spec.box)).root; obj.scale.setScalar(1.1); size = 1.9; }
+    else if (spec.kind === 'gun') {
+      // 총: 가운데를 축으로 돌도록 감싸서 받침대 위에 띄움
+      gun = buildGunMesh(spec.gun, {}, spec.skin || null); const bb = new THREE.Box3().setFromObject(gun), c = bb.getCenter(new THREE.Vector3());
+      gun.position.sub(c); obj = new THREE.Group(); obj.add(gun); obj.scale.setScalar(2.4); size = Math.max(1.5, (bb.max.z - bb.min.z) * 2.6);
+    }
     else { obj = VehModels.instance(spec.type, spec.skin || null).root; size = spec.type === 'sedan' ? 4.9 : spec.type === 'moto' ? 2.4 : 2.9; }
-    obj.position.set(0, 0.2, 0); obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    obj.position.set(0, spec.kind === 'gun' ? 1.05 : 0.2, 0); obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this.scene.add(obj); this.sc = { obj, size, t0: this.t, kind: spec.kind };
+    if (gun && spec.skin) GunSkin.draw(gun, 0.8, null);
   },
   update(dt) {
     this.t += dt; const r = this.rig, t = this.t;
@@ -333,7 +350,7 @@ async function startMatch(cfg) {
   humans.forEach((hm, i) => {
     const me = !net || hm.uid === Cloud.uid;
     const hl = hm.look || {}, c = new Character({ id: i, name: hm.name, isPlayer: me, look: Body.makeLook(hl.eq, hl.body) });
-    c.vlook = hl.veh || null;
+    c.vlook = hl.veh || null; c.glook = hl.gun || null;   // 차량·총기 스킨 (파티원은 그 사람의 장착 목록)
     if (net) c.net = Net.charNet(hm.uid);
     CHARS.push(c); joinTeam(c); if (me) player = c;
   });
@@ -663,12 +680,13 @@ function loop() {
   const t = performance.now(); let dt = (t - _last) / 1000; _last = t; dt = Math.min(dt, 0.05);
   try {
     if (G.state === 'lobby' || G.state === 'loading') {
+      GunSkin.update(dt);   // 총기 스킨: 빛 애니메이션·꺼내기 효과 (경기 중에는 G.update와 함께 — 멈추면 같이 멈춤)
       if (Cutscene.active) { Cutscene.update(dt); Cutscene.render(G.renderer); }
       else { Lobby.update(dt); G.renderer.render(Lobby.scene, Lobby.cam); }
-      Models.pump(5);
+      Models.pump(5); Shop.pump();
     }
     else if (G.scene) {
-      if ((!G.paused || G.net) && G.state === 'play') G.update(dt * G.timeScale); // 같이 하기는 메뉴를 열어도 멈추지 않는다
+      if ((!G.paused || G.net) && G.state === 'play') { GunSkin.update(dt * G.timeScale); G.update(dt * G.timeScale); } // 같이 하기는 메뉴를 열어도 멈추지 않는다
       else if (G.state === 'result' && G.player) { VM.active = false; const a = performance.now() / 4000; G.camera.position.set(G.player.pos.x + Math.sin(a) * 10, G.player.pos.y + 6, G.player.pos.z + Math.cos(a) * 10); G.camera.lookAt(G.player.pos); }
       G.renderer.render(G.scene, G.camera);
       if (G.state === 'play') renderViewModel();
@@ -698,9 +716,9 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
-    sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) G.update(dt); },
+    sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };
 }
 boot();

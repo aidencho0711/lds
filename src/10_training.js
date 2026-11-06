@@ -47,7 +47,7 @@ const Training = (() => {
     G.teamOrder = null; G.spotted = new Map(); G.danger = null; G.ranked = false; G.quit = false; G.rankResult = null;
     G.teamSize = 1; G.teams = [{ id: 0, members: [], place: 0 }, { id: 1, members: [], place: 0 }];
     const p = new Character({ id: 0, name: playerName(), isPlayer: true, look: Body.makeLook(SETTINGS.look, SETTINGS.body), team: 0 });
-    p.vlook = Eco.vlook();   // 훈련장에서도 내 차량 스킨으로 시험 운전
+    p.vlook = Eco.vlook(); p.glook = Eco.glook();   // 훈련장에서도 내 차량 스킨으로 시험 운전
     G.teams[0].members.push(p); CHARS.push(p); G.player = p; sc.add(p.root);
     setup(sc);
     respawnPlayer(p, true);

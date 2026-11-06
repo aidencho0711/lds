@@ -529,6 +529,27 @@ const Audio = (() => {
       else if (ph === 'show') { [784, 988, 1175].forEach((f, i) => tone(sfxBus, t + i * 0.09, 0.45, 'triangle', f, f, 0.09)); }
       else if (ph === 'small') { [880, 1318].forEach((f, i) => tone(sfxBus, t + i * 0.08, 0.25, 'triangle', f, f, 0.1)); }
     },
+    // 총기 스킨(울트라레어) 효과음: draw(빛 띠가 올라가며 나타남) · holster(내려가며 사라짐) · shot(종류별로 총성에 얹는 소리)
+    skinFx(ph, kind, pos, own) {
+      if (!ctx) return;
+      const out = own ? sfxBus : spatial(pos, 0.9, 60); if (!out) return;
+      const t = ctx.currentTime;
+      if (ph === 'draw' || ph === 'holster') {
+        if (!throttle('skin' + ph, 0.12) || !voice(0.5)) return;
+        const up = ph === 'draw', f0 = up ? 520 : 1700, f1 = up ? 1900 : 420;
+        tone(out, t, 0.42, 'triangle', f0, f1, 0.07); tone(out, t + 0.03, 0.36, 'sine', f0 * 2, f1 * 2, 0.04);
+        noise(out, t, 0.38, 'bandpass', up ? 2600 : 1800, 0.8, 0.09);
+        if (kind === 'ember' || kind === 'flame') noise(out, t, 0.45, 'lowpass', 380, 0.7, 0.16);
+        else if (kind === 'spark') { tone(out, t + 0.05, 0.06, 'square', 2400, 900, 0.035); tone(out, t + 0.16, 0.05, 'square', 3100, 1200, 0.03); }
+        else if (kind === 'glitch') for (let i = 0; i < 4; i++) tone(out, t + i * 0.07, 0.035, 'square', 300 + Math.random() * 1500, 200 + Math.random() * 900, 0.035);
+        return;
+      }
+      if (!throttle('skinshot', 0.05) || !voice(0.2)) return;
+      if (kind === 'ember') { noise(out, t, 0.16, 'lowpass', 520, 0.7, 0.12); noise(out, t + 0.02, 0.12, 'highpass', 4200, 0.8, 0.05); }
+      else if (kind === 'flame') noise(out, t, 0.2, 'bandpass', 380, 0.6, 0.16);
+      else if (kind === 'spark') { tone(out, t, 0.07, 'square', 3200, 700, 0.045); noise(out, t, 0.06, 'highpass', 5000, 0.9, 0.06); }
+      else if (kind === 'glitch') { tone(out, t, 0.035, 'square', 900 + Math.random() * 900, 400, 0.04); tone(out, t + 0.04, 0.03, 'square', 1800 + Math.random() * 800, 600, 0.03); }
+    },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
     engine(id, pos, type, rpm, load, own, skid) {
       if (!ctx) return;

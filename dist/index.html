@@ -795,7 +795,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .cur { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.45); border: 1px solid var(--line-2); font-variant-numeric: tabular-nums; }
 .cur b { font-family: var(--f-display); font-size: 1.05rem; letter-spacing: 0.02em; }
 .cur i { font-style: normal; font-size: 0.66rem; color: var(--dim); }
-.cur.gold b { color: #ffd66b; } .cur.coin b { color: #8fdcff; }
+.cur.gold b { color: #ffd66b; } .cur.coin b { color: #8fdcff; } .cur.gcoin b { color: #ffa982; }
 .ico-cur { width: 20px; height: 20px; flex: none; }
 .amt { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
 .amt .ico-cur { width: 16px; height: 16px; }
@@ -814,6 +814,8 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .gc-img img { width: 100%; height: 100%; max-height: 74px; object-fit: contain; }
 .gc-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding-right: 34px; }
 .gc-txt b { font-size: 1rem; font-weight: 700; }
+.gc-new { font-style: normal; margin-left: 6px; padding: 1px 5px; border-radius: 3px; background: #ff3d3d; color: #fff; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.04em; vertical-align: 2px; }
+.gc-card.gun .gc-img img { transform: scale(1.12); }
 .gc-txt span { font-size: 0.7rem; color: var(--dim); line-height: 1.35; }
 .gc-odds { position: absolute; top: 8px; right: 8px; appearance: none; border: 1px solid var(--line-2); background: rgba(0, 0, 0, 0.35); color: var(--sand); border-radius: 3px; padding: 2px 7px; font-size: 0.68rem; cursor: pointer; }
 .gc-odds:hover { border-color: var(--amber); color: var(--amber); }
@@ -825,6 +827,9 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .gc-buy.armed { background: var(--acc); color: #111; animation: pulseB 0.9s infinite; }
 @keyframes pulseB { 50% { filter: brightness(1.25); } }
 /* 교환소 */
+.ex-subtabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.ex-subtabs button { appearance: none; border: 1px solid var(--line); background: transparent; color: var(--dim); border-radius: 999px; padding: 3px 12px; font-size: 0.76rem; font-weight: 600; cursor: pointer; }
+.ex-subtabs button.on { border-color: var(--amber); color: var(--amber); background: rgba(240, 164, 58, 0.08); }
 .ex-sec + .ex-sec { margin-top: 10px; }
 .ex-sec h4 { margin: 0 0 6px; font-size: 0.82rem; color: var(--dim); font-weight: 600; }
 .ex-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
@@ -847,6 +852,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .od-row { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 8px; padding: 2px 0; font-size: 0.78rem; }
 .od-ico { width: 30px; height: 26px; display: grid; place-items: center; }
 .od-ico svg, .od-ico img { max-width: 28px; max-height: 24px; }
+.od-row.gun { grid-template-columns: 58px 1fr auto; } .od-row.gun .od-ico { width: 58px; } .od-row.gun .od-ico img { max-width: 56px; max-height: 26px; }
 .od-name small { display: block; font-size: 0.64rem; color: var(--dim); }
 .od-p { font-variant-numeric: tabular-nums; font-weight: 600; }
 /* 뽑기 결과 */
@@ -902,6 +908,9 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .wh-item.on.rar span { color: var(--amber); }
 .wh-item .wh-ico img { max-width: 100%; max-height: 100%; }
 .wh-item.veh { grid-template-columns: 64px 1fr; } .wh-item.veh .wh-ico { width: 64px; }
+.wh-item.gun { grid-template-columns: 1fr; grid-template-rows: auto auto auto; row-gap: 2px; } .wh-item.gun .wh-ico { grid-row: auto; width: 100%; height: 46px; } .wh-item.gun .wh-ico img { max-height: 46px; }
+@media (max-height: 520px), (max-width: 860px) { .wh-item.gun { grid-template-columns: 72px 1fr; grid-template-rows: auto auto; } .wh-item.gun .wh-ico { grid-row: 1 / 3; width: 72px; height: 34px; } .wh-item.gun .wh-ico img { max-height: 34px; } }
+.wh-ghead { grid-column: 1 / -1; margin-top: 4px; font-size: 0.74rem; font-weight: 700; color: var(--sand); letter-spacing: 0.02em; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
 .wh-vtabs { grid-column: 1 / -1; display: flex; gap: 4px; }
 .wh-vtabs button { appearance: none; flex: 1; border: 1px solid var(--line); background: transparent; color: var(--dim); border-radius: 4px; padding: 4px; font-size: 0.74rem; cursor: pointer; }
 .wh-vtabs button.on { border-color: var(--amber); color: var(--amber); }
@@ -1217,6 +1226,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
     <defs>
       <linearGradient id="g-gold" x1="0" x2="1"><stop offset="0" stop-color="#8a5e12"/><stop offset=".45" stop-color="#ffd66b"/><stop offset="1" stop-color="#9c6a14"/></linearGradient>
       <linearGradient id="g-coin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fe6ff"/><stop offset=".5" stop-color="#2a8ac0"/><stop offset="1" stop-color="#11506f"/></linearGradient>
+      <linearGradient id="g-gcoin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb08a"/><stop offset=".5" stop-color="#d8402a"/><stop offset="1" stop-color="#6e1610"/></linearGradient>
       <pattern id="pt-camoW" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#5b6342"/><path d="M0 3q3-2 6 0t6 1v3q-3 2-6 0T0 6z" fill="#434a2f"/><circle cx="9" cy="9" r="2.2" fill="#77744d"/><circle cx="3" cy="10" r="1.4" fill="#2e2e24"/></pattern>
       <pattern id="pt-camoD" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#b39b72"/><path d="M0 3q3-2 6 0t6 1v3q-3 2-6 0T0 6z" fill="#987f58"/><circle cx="9" cy="9" r="2.2" fill="#cdb98f"/><circle cx="3" cy="10" r="1.4" fill="#7a6446"/></pattern>
       <pattern id="pt-camoU" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#8a8d90"/><path d="M0 3q3-2 6 0t6 1v3q-3 2-6 0T0 6z" fill="#6b6e72"/><circle cx="9" cy="9" r="2.2" fill="#b4b6b8"/><circle cx="3" cy="10" r="1.4" fill="#3e4144"/></pattern>
@@ -1447,7 +1457,7 @@ const DEFAULT_SETTINGS = {
   sfx: 0.8, music: 0.35,
   view: 'tpp', difficulty: 'normal', bots: 24,
   btnScale: 1.0, hudOpacity: 0.95, hudScale: 1.0,
-  mode: 'classic', map: 'kalden', time: 'day', look: null, body: null, vlook: null,
+  mode: 'classic', map: 'kalden', time: 'day', look: null, body: null, vlook: null, glook: null, gshow: null,
   sens_iron: 1, sens_reddot: 1, sens_holo: 1, sens_x2: 1, sens_x3: 1, sens_x4: 1, sens_x6: 1,
   touchLayout: {}, stickFixed: false, queue: 'normal', squad: 'solo', game: 'br',
 };
@@ -1519,7 +1529,7 @@ const CRAWL_SPEED = 0.95;
 const DIFFICULTY_NAMES ={ easy: '쉬움', normal: '보통', hard: '어려움', mixed: '혼합' };
 // 내 외형: 장착 스킨(SETTINGS.look) + 몸(SETTINGS.body) — 파티·같이 하기에서 이 묶음을 주고받는다
 // veh: 장착한 차량 스킨(차종별) — 경기에서 운전석에 탈 때 그 차량을 내 스킨으로 바꾼다
-const myLook = () => ({ eq: SETTINGS.look || null, body: SETTINGS.body || null, veh: typeof Eco !== 'undefined' ? Eco.vlook() : null });
+const myLook = () => ({ eq: SETTINGS.look || null, body: SETTINGS.body || null, veh: typeof Eco !== 'undefined' ? Eco.vlook() : null, gun: typeof Eco !== 'undefined' ? Eco.glook() : null });
 
 // ---------- 01_audio.js ----------
 // ============================================================
@@ -2052,6 +2062,27 @@ const Audio = (() => {
       }
       else if (ph === 'show') { [784, 988, 1175].forEach((f, i) => tone(sfxBus, t + i * 0.09, 0.45, 'triangle', f, f, 0.09)); }
       else if (ph === 'small') { [880, 1318].forEach((f, i) => tone(sfxBus, t + i * 0.08, 0.25, 'triangle', f, f, 0.1)); }
+    },
+    // 총기 스킨(울트라레어) 효과음: draw(빛 띠가 올라가며 나타남) · holster(내려가며 사라짐) · shot(종류별로 총성에 얹는 소리)
+    skinFx(ph, kind, pos, own) {
+      if (!ctx) return;
+      const out = own ? sfxBus : spatial(pos, 0.9, 60); if (!out) return;
+      const t = ctx.currentTime;
+      if (ph === 'draw' || ph === 'holster') {
+        if (!throttle('skin' + ph, 0.12) || !voice(0.5)) return;
+        const up = ph === 'draw', f0 = up ? 520 : 1700, f1 = up ? 1900 : 420;
+        tone(out, t, 0.42, 'triangle', f0, f1, 0.07); tone(out, t + 0.03, 0.36, 'sine', f0 * 2, f1 * 2, 0.04);
+        noise(out, t, 0.38, 'bandpass', up ? 2600 : 1800, 0.8, 0.09);
+        if (kind === 'ember' || kind === 'flame') noise(out, t, 0.45, 'lowpass', 380, 0.7, 0.16);
+        else if (kind === 'spark') { tone(out, t + 0.05, 0.06, 'square', 2400, 900, 0.035); tone(out, t + 0.16, 0.05, 'square', 3100, 1200, 0.03); }
+        else if (kind === 'glitch') for (let i = 0; i < 4; i++) tone(out, t + i * 0.07, 0.035, 'square', 300 + Math.random() * 1500, 200 + Math.random() * 900, 0.035);
+        return;
+      }
+      if (!throttle('skinshot', 0.05) || !voice(0.2)) return;
+      if (kind === 'ember') { noise(out, t, 0.16, 'lowpass', 520, 0.7, 0.12); noise(out, t + 0.02, 0.12, 'highpass', 4200, 0.8, 0.05); }
+      else if (kind === 'flame') noise(out, t, 0.2, 'bandpass', 380, 0.6, 0.16);
+      else if (kind === 'spark') { tone(out, t, 0.07, 'square', 3200, 700, 0.045); noise(out, t, 0.06, 'highpass', 5000, 0.9, 0.06); }
+      else if (kind === 'glitch') { tone(out, t, 0.035, 'square', 900 + Math.random() * 900, 400, 0.04); tone(out, t + 0.04, 0.03, 'square', 1800 + Math.random() * 800, 600, 0.03); }
     },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
     engine(id, pos, type, rpm, load, own, skid) {
@@ -4755,31 +4786,39 @@ class Character {
     if (this.anim.prone > 0.5) return out.set(this.pos.x + Math.sin(this.bodyYaw) * 1.05, this.pos.y + 0.28, this.pos.z + Math.cos(this.bodyYaw) * 1.05);
     return out.set(this.pos.x, this.pos.y + 1.25 - this.anim.crouch * 0.36, this.pos.z);
   }
+  // 이 캐릭터가 이 총에 입힌 스킨 (사람: 장착 목록 glook, 봇: 없음)
+  skinOf(id) { const s = this.glook && this.glook[id]; return s && typeof GSKINS !== 'undefined' && GSKINS[s] && GSKINS[s].gun === id ? s : null; }
   setVisibleGear() {
     const r = this.rig, inv = this.inv;
     const lv = (g) => (g && ITEMS[g.id] && ITEMS[g.id].lvl) || (g ? 1 : 0);
     r.setGear(lv(inv.gear.helmet), lv(inv.gear.vest), lv(inv.gear.bag));
-    const w = this.weapon, gid = w && this.equipT <= 0.25 && !this.knocked ? w.id + '|' + [w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].join(',') : null;
+    const w = this.weapon, sk = w ? this.skinOf(w.id) : null, gid = w && this.equipT <= 0.25 && !this.knocked ? w.id + '|' + [w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].join(',') + '|' + (sk || '') : null;
     // 등에 멘 주무기: 1번은 왼쪽 어깨 위로, 2번은 오른쪽 어깨 위로 비스듬히 (가방이 있으면 가방 위)
     for (let i = 0; i < 2; i++) {
       const bw = inv.weapons[i], inHand = i === inv.cur && this.equipT <= 0.25 && !this.knocked;
-      const key = bw && !inHand ? bw.id + '|' + [bw.att.scope, bw.att.muzzle, bw.att.mag, bw.att.grip].join(',') + '|' + (inv.gear.bag ? 1 : 0) : '';
+      const bsk = bw ? this.skinOf(bw.id) : null, key = bw && !inHand ? bw.id + '|' + [bw.att.scope, bw.att.muzzle, bw.att.mag, bw.att.grip].join(',') + '|' + (inv.gear.bag ? 1 : 0) + '|' + (bsk || '') : '';
       if (r.backKey[i] === key) continue;
       r.backKey[i] = key;
       const old = r.backGuns.getObjectByName('back' + i); if (old) r.backGuns.remove(old);
       if (!key) continue;
-      const g = buildGunMesh(bw.id, bw.att), s = i === 0 ? 1 : -1, zb = (inv.gear.bag ? -0.36 : -0.16) - i * 0.045;
+      const g = buildGunMesh(bw.id, bw.att, bsk), s = i === 0 ? 1 : -1, zb = (inv.gear.bag ? -0.36 : -0.16) - i * 0.045;
       g.name = 'back' + i; g.traverse((o) => { if (o.isMesh) o.castShadow = r.shadow; });
       _bz.set(s * 0.42, 0.9, 0).normalize(); _bx.set(0, 0, -1); _by.crossVectors(_bz, _bx);
       g.quaternion.setFromRotationMatrix(_bm.makeBasis(_bx, _by, _bz));
       g.position.set(0, 0.04, zb).addScaledVector(_bz, -0.05);
       r.backGuns.add(g);
+      // 손에서 등으로 옮긴 울트라레어 총: 손에서는 사라지고 등에서 빛 띠와 함께 나타남
+      if (bsk && r.gunBase === bw.id + '|' + i && typeof GunSkin !== 'undefined' && this.root.visible && !!this.root.parent && (!G.camera || this.pos.distanceTo(G.camera.position) < 45)) GunSkin.draw(g, 0.4, this, true);
     }
     if (r.gunId !== gid) {
+      // 울트라레어 스킨: 다른 총으로 바꾸거나 넣으면 손을 떠난 자리에서 사라지고, 새 총은 빛 띠와 함께 나타난다 (부착물만 바뀌면 효과 없음)
+      const base = gid ? w.id + '|' + inv.cur : null, swap = base !== r.gunBase;
+      const fx = swap && typeof GunSkin !== 'undefined' && this.root.visible && !!this.root.parent && (!G.camera || this.pos.distanceTo(G.camera.position) < 45);
+      if (fx && r.gunObj) GunSkin.holster(r.gunObj, 0.3, this);
       while (r.gunMount.children.length) r.gunMount.remove(r.gunMount.children[0]);
-      r.gunObj = gid ? buildGunMesh(w.id, w.att) : null;
-      if (r.gunObj) { r.gunObj.rotation.y = 0; r.gunMount.add(r.gunObj); }
-      r.gunId = gid;
+      r.gunObj = gid ? buildGunMesh(w.id, w.att, sk) : null;
+      if (r.gunObj) { r.gunObj.rotation.y = 0; r.gunMount.add(r.gunObj); if (fx) GunSkin.draw(r.gunObj, 0.3, this); }
+      r.gunId = gid; r.gunBase = base;
     }
   }
 }
@@ -6051,7 +6090,9 @@ const Models = (() => {
   const CLS = {}, TEXMAT = {}, TEX = {}, CL = {}, ICON = {};
   const WHITE = new THREE.Color(1, 1, 1);
   const KIND2CLS = { metal: 'metal', brass: 'metal', alu: 'metal', gunmetal: 'matte', anod: 'matte', foil: 'matte', polymer: 'diel', rubber: 'diel', wood: 'diel', cloth: 'diel', paper: 'diel' };
-  const M = (kind, color) => ({ desc: true, cls: KIND2CLS[kind] || 'diel', color: new THREE.Color(color) });
+  const M = (kind, color) => ({ desc: true, cls: KIND2CLS[kind] || 'diel', color: new THREE.Color(color), kind });
+  // 정점마다 남기는 재질 종류(총기 스킨이 부위별로 칠할 때 씀): 0 플라스틱 · 1 나무 · 2 무광 금속 · 3 광택 금속 · 4 황동 · 5 고무 · 6 천·종이
+  const KD = { polymer: 0, wood: 1, gunmetal: 2, anod: 2, metal: 3, alu: 3, brass: 4, rubber: 5, cloth: 6, paper: 6, foil: 6 };
   const FONT = '"Saira Condensed","Arial Narrow",Arial,sans-serif';
 
   // ---------- 환경광(반사) ----------
@@ -6214,17 +6255,19 @@ const Models = (() => {
   // ---------- 병합 ----------
   function concat(geos) {
     let n = 0; for (const g of geos) n += g.attributes.position.count;
-    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * 3);
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * 3), kd = new Float32Array(n);
     let o = 0;
     for (const g of geos) {
       const c = g.attributes.position.count;
       pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3);
       uv.set(g.attributes.uv.array, o * 2); col.set(g.attributes.color.array, o * 3);
+      if (g.attributes.kd) kd.set(g.attributes.kd.array, o);
       o += c; g.dispose();
     }
     const out = new THREE.BufferGeometry();
     out.setAttribute('position', new THREE.BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
     out.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    out.setAttribute('kd', new THREE.BufferAttribute(kd, 1));
     out.computeBoundingSphere(); out.computeBoundingBox();
     return out;
   }
@@ -6235,8 +6278,8 @@ const Models = (() => {
     const buckets = new Map();
     root.traverse((o) => {
       if (!o.isMesh || !o.geometry) return;
-      const m = o.material; let key, real, col = null;
-      if (m && m.desc) { key = 'cls:' + m.cls; real = CLS[m.cls]; col = m.color; }
+      const m = o.material; let key, real, col = null, kd = 0;
+      if (m && m.desc) { key = 'cls:' + m.cls; real = CLS[m.cls]; col = m.color; kd = KD[m.kind] || 0; }
       else { key = (m.userData && m.userData.clsKey) || m.uuid; real = m; }
       _tm.multiplyMatrices(_inv, o.matrixWorld);
       let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
@@ -6251,6 +6294,7 @@ const Models = (() => {
         for (let i = 0; i < n; i++) { c[i * 3] = cc.r; c[i * 3 + 1] = cc.g; c[i * 3 + 2] = cc.b; }
         g.setAttribute('color', new THREE.BufferAttribute(c, 3));
       }
+      if (kd) g.setAttribute('kd', new THREE.BufferAttribute(new Float32Array(n).fill(kd), 1));
       if (!buckets.has(key)) buckets.set(key, { mat: real, geos: [] });
       buckets.get(key).geos.push(g);
     });
@@ -6375,7 +6419,8 @@ const Models = (() => {
     grip(g) { const pb = M('polymer', 0x1c1e20); A(g, RB(0.02, 0.01, 0.034, 0.003), pb, 0, -0.005, 0); A(g, CY(0.0125, 0.014, 0.07, 12, 'y'), pb, 0, -0.045, 0); A(g, CY(0.0145, 0.0145, 0.006, 12, 'y'), pb, 0, -0.082, 0); },
   };
 
-  function buildGun(id, att) {
+  // skin: 총기 스킨 id (05_models_gskin.js). 조준경·보정기·손잡이·조준경 받침은 스킨을 입히지 않는다(noSkin)
+  function buildGun(id, att, skin) {
     att = att || {};
     const D = GUNS[id], meta = Object.assign({}, D.meta), g = new THREE.Group(), parts = {};
     g.add(cluster('gb:' + id, D.body));
@@ -6396,15 +6441,16 @@ const Models = (() => {
     const host = meta.scopeOnCover && parts.cover ? parts.cover : (!meta.scopeFixed && parts.slide) || g, hp = host === g ? [0, 0, 0] : host.position.toArray();
     if (D.rear) g.add(att.scope ? cluster('grf:' + id, D.rearFolded) : cluster('gr:' + id, D.rear));
     if (att.scope && SC[att.scope]) {
-      if (meta.railOnScope) { const [z0, z1, y] = meta.railOnScope; g.add(cluster('rail:' + id, (gg) => (D.mount || ((g2) => rail(g2, z0, z1, y, 0.018, M('anod', 0x1e2022))))(gg))); }
-      const S = SC[att.scope], s = cluster('sc:' + att.scope, S.build);
+      if (meta.railOnScope) { const [z0, z1, y] = meta.railOnScope; const rm = cluster('rail:' + id, (gg) => (D.mount || ((g2) => rail(g2, z0, z1, y, 0.018, M('anod', 0x1e2022))))(gg)); rm.userData.noSkin = true; g.add(rm); }
+      const S = SC[att.scope], s = cluster('sc:' + att.scope, S.build); s.userData.noSkin = true;
       s.position.set(-hp[0], meta.railY - hp[1], meta.scopeZ - hp[2]); host.add(s);
       meta.sightY = meta.railY + S.eyeY; meta.sightRearZ = meta.scopeZ - S.len / 2; meta.relief = S.relief;
     } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.pistol ? 0.4 : 0.3; }
     if (D.front) g.add(att.scope && D.frontFolded ? cluster('gff:' + id, D.frontFolded) : cluster('gf:' + id, D.front));
-    if (att.muzzle) { const m = cluster('at:comp', ATT.comp); m.position.set(0, meta.boreY, meta.muzzleZ); g.add(m); meta.muzzleZ += 0.05; }
-    if (att.grip && meta.vgripPos) { const m = cluster('at:grip', ATT.grip); m.position.fromArray(meta.vgripPos); g.add(m); meta.forePos = meta.vgripHand; meta.vfore = true; }
+    if (att.muzzle) { const m = cluster('at:comp', ATT.comp); m.userData.noSkin = true; m.position.set(0, meta.boreY, meta.muzzleZ); g.add(m); meta.muzzleZ += 0.05; }
+    if (att.grip && meta.vgripPos) { const m = cluster('at:grip', ATT.grip); m.userData.noSkin = true; m.position.fromArray(meta.vgripPos); g.add(m); meta.forePos = meta.vgripHand; meta.vfore = true; }
     g.userData = { id, meta, parts, att };
+    if (skin && typeof GunSkin !== 'undefined') GunSkin.apply(g, skin);
     return g;
   }
 
@@ -6628,7 +6674,7 @@ const Models = (() => {
   const kit = { A, BX, CY, RB, PF, SPH, TOR, PL, rail, trigger, magPts, tube, flip, M, cart };
   return { init, buildGun, ground, display: buildDisplay, icon, iconKey, prewarm, pump, hand, sleeve, casing, scopeInfo, cluster, M, crate, canopy, kit, _render: renderIcon, get env() { return ENV; }, GUNS, CLS };
 })();
-function buildGunMesh(id, att) { return Models.buildGun(id, att); }
+function buildGunMesh(id, att, skin) { return Models.buildGun(id, att, skin); }
 
 // ---------- 05_models_gear.js ----------
 // ============================================================
@@ -6799,6 +6845,510 @@ const Gear = (() => {
     return g;
   }
   return { helmet: (l) => make(HELMETS, 'helmet', l), vest: (l) => make(VESTS, 'vest', l), pack: (l) => make(PACKS, 'pack', l), canopy, shell, build: { helmet: HELMETS, vest: VESTS, pack: PACKS } };
+})();
+
+// ---------- 05_models_gskin.js ----------
+// ============================================================
+// 05_models_gskin.js — 총기 스킨 (v17)
+//  · 목록 GSKINS: 총 · 상자(총기 상자 g1 아스널 · g2 네온 / 옷 상자 br·sp·sup에 2개씩) · 레어도
+//    등급이 높을수록 화려하게: 희귀 = 단색 도장 → 초희귀 = 무늬(위장·체크·홀로) → 슈퍼레어 = 금속 광택·빛나는 선
+//    → 울트라레어(빨강) = 움직이는 빛 + 사격·꺼내기·넣기 효과
+//  · 재질: 합친 지오메트리의 정점마다 재질 종류(kd: 플라스틱·나무·무광 금속·광택 금속…)를 남겨 두고(05_models.js)
+//    셰이더가 종류별로 스킨 색·무늬·금속감을 고른다. 무늬는 물체 공간 3방향 투영(삼평면) → 부품 UV와 무관하게 크기가 같다
+//  · 총 인스턴스마다 재질을 따로 만든다(프로그램은 공유) → 내 총만 번쩍이고, 1인칭·3인칭 총이 따로 사라지고 나타난다
+//  · 효과(울트라레어): 사격 = 색 총구 화염 + 불씨/스파크/불꽃/파편 + 탄도 색 + 몸체 빛 번쩍
+//    꺼내기 = 개머리판→총구로 빛 띠가 지나가며 총이 나타남, 넣기 = 총구→개머리판으로 빛 띠가 지나가며 사라짐(손에서 떨어진 자리에서)
+//  · 실제 회사 이름·로고·다른 게임의 스킨 디자인은 쓰지 않는다
+// ============================================================
+const GSKINS = (() => {
+  const S = {
+    // ---------- 아스널 상자 (g1): 전술 테마 ----------
+    g1_akm_sand: { gun: 'akm', box: 'g1', rar: 1, name: '사막 모래', body: { c: 0x9c8664, mr: [0.3, 0.6] }, furn: { c: 0xc2a77c, mr: [0, 0.72] } },
+    g1_vector_od: { gun: 'vector', box: 'g1', rar: 1, name: '올리브 드랩', body: { c: 0x535b3a, mr: [0.1, 0.68] } },
+    g1_s12k_tundra: { gun: 's12k', box: 'g1', rar: 1, name: '툰드라', body: { c: 0xb4babd, mr: [0.2, 0.58] } },
+    g1_mini14_ebony: { gun: 'mini14', box: 'g1', rar: 1, name: '블랙 우드', body: { c: 0x1d1e21, mr: [0.4, 0.45] }, furn: { c: 0x2b1d16, mr: [0, 0.45] } },
+    g1_m416_digi: { gun: 'm416', box: 'g1', rar: 3, name: '디지털 사막', pat: 'digital', pal: ['#b39e78', '#8f7a55', '#d1bf98', '#6a5a40'], sc: 4.5, body: { p: 1, mr: [0.12, 0.72] } },
+    g1_kar98k_tiger: { gun: 'kar98k', box: 'g1', rar: 3, name: '타이거 스트라이프', pat: 'tiger', pal: ['#7d7a52', '#232319', '#4e4c2c', '#9a9468'], sc: 3.6, furn: { p: 1, mr: [0, 0.65] } },
+    g1_dp28_snow: { gun: 'dp28', box: 'g1', rar: 3, name: '설원', pat: 'camo', pal: ['#e4e8eb', '#b9bfc4', '#8b9298', '#f7f9fa'], sc: 3.5, body: { p: 1, mr: [0.1, 0.62] }, furn: { p: 1, mr: [0, 0.66] } },
+    g1_akm_gold: { gun: 'akm', box: 'g1', rar: 4, name: '황금 각인', pat: 'engrave', pal: ['#c8962f', '#f3d77e', '#7a5414', '#4a3008'], sc: 4, env: 1.0, body: { p: 1, mr: [1, 0.26] }, furn: { c: 0x17110e, mr: [0.15, 0.32] }, steel: { c: 0xe2bd58, mr: [1, 0.22] } },
+    g1_m24_carbon: { gun: 'm24', box: 'g1', rar: 4, name: '카본 블랙', pat: 'carbon', pal: ['#0c0d10', '#4c525c', '#1a1c21'], sc: 7, env: 0.9, body: { p: 1, mr: [0.35, 0.3] }, furn: { p: 1, mr: [0.35, 0.3] }, steel: { c: 0xd8b04a, mr: [1, 0.24] },
+      glow: { pat: 'lines', c: 0xffa63a, k: 1.4, anim: 0 } },
+    g1_m416_magma: { gun: 'm416', box: 'g1', rar: 5, name: '마그마 코어', pat: 'lava', pal: ['#17110f', '#3a2620', '#ff6a1e'], sc: 3.2, env: 0.5, body: { p: 1, mr: [0.25, 0.62] }, steel: { c: 0x2a2220, mr: [0.8, 0.45] },
+      glow: { pat: 'lava', c: 0xff5414, k: 2.8, anim: 2 }, fx: { kind: 'ember', c: 0xff5a1e, c2: 0xffc04a, tr: 0xff6a2a }, desc: '갈라진 틈으로 용암이 흐르는 몸체 · 쏠 때 불씨' },
+    g1_beryl_dragon: { gun: 'beryl', box: 'g1', rar: 5, name: '홍룡', pat: 'scales', pal: ['#4a080d', '#a51c25', '#d9b04c', '#1c0306'], sc: 3.4, env: 0.85, body: { p: 1, mr: [0.65, 0.32] }, furn: { p: 1, mr: [0.65, 0.32] }, steel: { c: 0xe6c25a, mr: [1, 0.22] },
+      glow: { pat: 'scales', c: 0xff3a1a, k: 1.25, anim: 1 }, fx: { kind: 'flame', c: 0xff3a1a, c2: 0xffc24a, tr: 0xff4a22 }, desc: '금테 붉은 비늘이 숨 쉬듯 빛남 · 쏠 때 불꽃' },
+    // ---------- 네온 상자 (g2): 사이버·스트리트 테마 ----------
+    g2_vk9_mint: { gun: 'vk9', box: 'g2', rar: 1, name: '민트 팝', body: { c: 0x74d6b9, mr: [0.08, 0.5] } },
+    g2_deagle_pink: { gun: 'deagle', box: 'g2', rar: 1, name: '핑크 크롬', env: 1.0, body: { c: 0x232227, mr: [0.3, 0.5] }, steel: { c: 0xff9ccc, mr: [0.55, 0.28] } },
+    g2_bizon_sunset: { gun: 'bizon', box: 'g2', rar: 1, name: '선셋 오렌지', body: { c: 0xe2702c, mr: [0.12, 0.5] } },
+    g2_m16a4_ice: { gun: 'm16a4', box: 'g2', rar: 1, name: '아이스 블루', body: { c: 0x8cc6ec, mr: [0.18, 0.45] } },
+    g2_vector_graffiti: { gun: 'vector', box: 'g2', rar: 3, name: '그래피티', pat: 'graffiti', pal: ['#ecebe4', '#ff3d8b', '#2ad4ff', '#ffd23f', '#16181c'], sc: 3, body: { p: 1, mr: [0.05, 0.55] } },
+    g2_aug_holo: { gun: 'aug', box: 'g2', rar: 3, name: '홀로그램', pat: 'holo', sc: 2.4, env: 1.1, body: { p: 1, mr: [0.85, 0.2] } },
+    g2_s686_checker: { gun: 's686', box: 'g2', rar: 3, name: '레이싱 체커', pat: 'checker', pal: ['#f2f2ee', '#141416'], sc: 7, body: { c: 0xc61e26, mr: [0.4, 0.38] }, furn: { p: 1, mr: [0.05, 0.42] } },
+    g2_m416_circuit: { gun: 'm416', box: 'g2', rar: 4, name: '사이버 회로', env: 0.8, body: { c: 0x15181d, mr: [0.45, 0.38] }, glow: { pat: 'circuit', c: 0x2ae8ff, k: 1.6, anim: 0 }, sc: 2.6 },
+    g2_kar98k_wave: { gun: 'kar98k', box: 'g2', rar: 4, name: '네온 웨이브', env: 0.7, body: { c: 0x101015, mr: [0.4, 0.4] }, furn: { c: 0x1c1424, mr: [0.1, 0.38] }, glow: { pat: 'wave', c: 0xff3df0, k: 1.7, anim: 0 }, sc: 3 },
+    g2_akm_plasma: { gun: 'akm', box: 'g2', rar: 5, name: '플라즈마', pat: 'camo', pal: ['#140709', '#2a0b12', '#0c0507', '#3a0d18'], sc: 3, env: 0.7, body: { p: 1, mr: [0.55, 0.35] }, furn: { p: 1, mr: [0.3, 0.38] }, steel: { c: 0x2a1418, mr: [0.9, 0.3] },
+      glow: { pat: 'veins', c: 0xff2448, k: 2.6, anim: 2 }, fx: { kind: 'spark', c: 0xff2a5a, c2: 0xffc8d8, tr: 0xff3a66 }, desc: '검붉은 몸체에 번개 같은 혈관이 흐름 · 쏠 때 전기 스파크' },
+    g2_vector_glitch: { gun: 'vector', box: 'g2', rar: 5, name: '크림슨 글리치', pat: 'glitch', pal: ['#1a0a0d', '#3d0d14', '#0d0d10', '#6e1420', '#262629'], sc: 3.4, env: 0.6, body: { p: 1, mr: [0.3, 0.42] }, steel: { c: 0x1d1d22, mr: [0.8, 0.35] },
+      glow: { pat: 'glitch', c: 0xff2436, k: 2.4, anim: 3 }, fx: { kind: 'glitch', c: 0xff2436, c2: 0x3ff0ff, tr: 0xff3046 }, desc: '화면이 깨지듯 깜빡이는 붉은 블록 · 쏠 때 디지털 파편' },
+    // ---------- 옷 상자에 2개씩 ----------
+    br_s686_hunter: { gun: 's686', box: 'br', rar: 1, name: '사냥꾼', body: { c: 0x3b3e33, mr: [0.45, 0.45] }, furn: { c: 0x7a4626, mr: [0, 0.5] } },
+    br_mini14_wood: { gun: 'mini14', box: 'br', rar: 3, name: '산림 위장', pat: 'camo', pal: ['#4e5636', '#3b4129', '#6a6a44', '#2b2b22'], sc: 3.5, body: { p: 1, mr: [0.1, 0.7] }, furn: { p: 1, mr: [0, 0.72] } },
+    sp_p19_bubble: { gun: 'p19', box: 'sp', rar: 1, name: '버블검', body: { c: 0xff8cc8, mr: [0.05, 0.45] } },
+    sp_tommy_plaid: { gun: 'tommy', box: 'sp', rar: 3, name: '버펄로 체크', pat: 'plaid', pal: ['#a3262c', '#1a0c0c', '#d84a44'], sc: 6, furn: { p: 1, mr: [0, 0.7] } },
+    sup_win94_nickel: { gun: 'win94', box: 'sup', rar: 1, name: '니켈 실버', env: 1.0, body: { c: 0xc5c9ce, mr: [1, 0.3] } },
+    sup_slr_digi: { gun: 'slr', box: 'sup', rar: 3, name: '디지털 정글', pat: 'digital', pal: ['#6b6e4b', '#4a4d33', '#8b8661', '#2e3023'], sc: 4.5, body: { p: 1, mr: [0.12, 0.7] }, furn: { p: 1, mr: [0, 0.7] } },
+  };
+  return S;
+})();
+
+const GunSkin = (() => {
+  // ---------- 무늬 텍스처 (캔버스, 이어 붙여도 이음매 없음) ----------
+  const TEX = {};
+  const cv = (S) => { const c = document.createElement('canvas'); c.width = c.height = S; return c; };
+  const W9 = (S, fn) => { for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) fn(dx, dy); };
+  const rgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  function vnoise(rng, G) {
+    const v = []; for (let i = 0; i < G * G; i++) v.push(rng());
+    return (x, y) => {
+      const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0, X0 = ((x0 % G) + G) % G, Y0 = ((y0 % G) + G) % G, X1 = (X0 + 1) % G, Y1 = (Y0 + 1) % G;
+      const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      return lerp(lerp(v[Y0 * G + X0], v[Y0 * G + X1], sx), lerp(v[Y1 * G + X0], v[Y1 * G + X1], sx), sy);
+    };
+  }
+  function blob(c, S, x, y, r, rng) {
+    const pts = []; for (let a = 0; a < 11; a++) { const t = a / 11 * TAU, rr = r * (0.55 + rng() * 0.7); pts.push([Math.cos(t) * rr * 1.5, Math.sin(t) * rr]); }
+    W9(S, (dx, dy) => { c.beginPath(); pts.forEach(([px, py], k) => (k ? c.lineTo(x + dx + px, y + dy + py) : c.moveTo(x + dx + px, y + dy + py))); c.closePath(); c.fill(); });
+  }
+  const PAT = {
+    camo(c, S, pal, rng) {
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      for (let L = 1; L < pal.length; L++) { c.fillStyle = pal[L]; for (let i = 0; i < 22; i++) blob(c, S, rng() * S, rng() * S, S * (0.035 + rng() * 0.065), rng); }
+    },
+    digital(c, S, pal, rng) {
+      const n1 = vnoise(rng, 6), n2 = vnoise(rng, 14), N = 64, cs = S / N;
+      for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+        const u = i / N, v = j / N, val = n1(u * 6, v * 6) * 0.62 + n2(u * 14, v * 14) * 0.38 + (rng() - 0.5) * 0.09;
+        c.fillStyle = pal[val < 0.4 ? 0 : val < 0.52 ? 1 : val < 0.63 ? 2 : 3]; c.fillRect(i * cs, j * cs, cs + 0.6, cs + 0.6);
+      }
+    },
+    tiger(c, S, pal, rng) {
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 28; i++) {
+        const y = rng() * S, th = S * (0.012 + rng() * 0.026), f1 = 1 + Math.floor(rng() * 3), f2 = 3 + Math.floor(rng() * 4), p1 = rng() * TAU, p2 = rng() * TAU, x0 = rng() * S, len = S * (0.3 + rng() * 0.5);
+        c.fillStyle = pal[rng() < 0.7 ? 1 : 2];
+        const top = [], bot = [];
+        for (let k = 0; k <= 24; k++) { const t = k / 24, x = x0 + t * len, b = y + Math.sin(t * TAU * f1 + p1) * th * 0.8, w = th * Math.sin(t * Math.PI); top.push([x, b - w * (0.8 + 0.4 * Math.sin(t * f2 * 5 + p2))]); bot.push([x, b + w * (0.5 + 0.5 * Math.sin(t * 13 + p1))]); }
+        W9(S, (dx, dy) => { c.beginPath(); top.forEach(([x, yy], k) => (k ? c.lineTo(x + dx, yy + dy) : c.moveTo(x + dx, yy + dy))); for (let k = bot.length - 1; k >= 0; k--) c.lineTo(bot[k][0] + dx, bot[k][1] + dy); c.closePath(); c.fill(); });
+      }
+    },
+    carbon(c, S, pal) {
+      const n = 16, cs = S / n;
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+        const hor = ((i + j) % 4) < 2, g = hor ? c.createLinearGradient(0, j * cs, 0, j * cs + cs) : c.createLinearGradient(i * cs, 0, i * cs + cs, 0);
+        g.addColorStop(0, pal[0]); g.addColorStop(0.45, pal[1]); g.addColorStop(1, pal[2]);
+        c.fillStyle = g; c.fillRect(i * cs, j * cs, cs, cs);
+      }
+    },
+    engrave(c, S, pal, rng) {
+      const g = c.createLinearGradient(0, 0, 0, S); g.addColorStop(0, pal[0]); g.addColorStop(0.5, pal[1]); g.addColorStop(1, pal[0]); c.fillStyle = g; c.fillRect(0, 0, S, S);
+      c.globalAlpha = 0.16; for (let y = 0; y < S; y += 2) { c.fillStyle = rng() < 0.5 ? pal[1] : pal[2]; c.fillRect(0, y, S, 1); } c.globalAlpha = 1;
+      const lw = S / 256;
+      for (let i = 0; i < 10; i++) {
+        const x = rng() * S, y = rng() * S, r = S * (0.045 + rng() * 0.05), turns = 1.5 + rng() * 0.9, dir = rng() < 0.5 ? 1 : -1, a0 = rng() * TAU;
+        const pts = []; for (let k = 0; k <= 70; k++) { const t = k / 70, a = a0 + dir * t * turns * TAU, rr = r * (1 - t * 0.82); pts.push([Math.cos(a) * rr, Math.sin(a) * rr]); }
+        // 잎사귀 꼬리
+        const tail = []; for (let k = 0; k <= 20; k++) { const t = k / 20, a = a0 - dir * t * 1.4; tail.push([Math.cos(a) * r * (1 + t * 1.2), Math.sin(a) * r * (1 + t * 1.2) + t * r * 0.4]); }
+        W9(S, (dx, dy) => {
+          for (const [col, off, w] of [[pal[3], 1.2, 2.6], [pal[2], 0, 1.6], [pal[1], -0.8, 0.7]]) {
+            c.strokeStyle = col; c.lineWidth = w * lw; c.lineCap = 'round';
+            for (const P of [pts, tail]) { c.beginPath(); P.forEach(([px, py], k) => (k ? c.lineTo(x + dx + px + off, y + dy + py + off) : c.moveTo(x + dx + px + off, y + dy + py + off))); c.stroke(); }
+          }
+        });
+      }
+    },
+    graffiti(c, S, pal, rng) {
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      const cols = pal.slice(1);
+      for (let i = 0; i < 16; i++) {
+        const col = cols[Math.floor(rng() * cols.length)], x = rng() * S, y = rng() * S, r = S * (0.025 + rng() * 0.06), drips = [];
+        for (let d = 0; d < 3; d++) drips.push([(rng() - 0.5) * r * 1.4, r * (1 + rng() * 2.4), S * (0.006 + rng() * 0.008)]);
+        const dots = []; for (let d = 0; d < 7; d++) { const a = rng() * TAU, rr = r * (1.2 + rng() * 0.9); dots.push([Math.cos(a) * rr, Math.sin(a) * rr, S * (0.003 + rng() * 0.006)]); }
+        W9(S, (dx, dy) => {
+          c.fillStyle = col; c.beginPath(); c.arc(x + dx, y + dy, r, 0, TAU); c.fill();
+          for (const [ox, len, w] of drips) { c.fillRect(x + dx + ox - w / 2, y + dy, w, len); c.beginPath(); c.arc(x + dx + ox, y + dy + len, w * 0.8, 0, TAU); c.fill(); }
+          for (const [ox, oy, rr] of dots) { c.beginPath(); c.arc(x + dx + ox, y + dy + oy, rr, 0, TAU); c.fill(); }
+        });
+      }
+      // 굵은 붓질 (검은 테 + 색)
+      for (let i = 0; i < 7; i++) {
+        const col = cols[Math.floor(rng() * (cols.length - 1))], P = [[rng() * S, rng() * S]]; for (let k = 0; k < 3; k++) P.push([P[0][0] + (rng() - 0.3) * S * 0.35, P[0][1] + (rng() - 0.5) * S * 0.25]);
+        W9(S, (dx, dy) => {
+          for (const [cc, w] of [[pal[pal.length - 1], 0.034], [col, 0.022]]) { c.strokeStyle = cc; c.lineWidth = S * w; c.lineCap = 'round'; c.beginPath(); c.moveTo(P[0][0] + dx, P[0][1] + dy); c.bezierCurveTo(P[1][0] + dx, P[1][1] + dy, P[2][0] + dx, P[2][1] + dy, P[3][0] + dx, P[3][1] + dy); c.stroke(); }
+        });
+      }
+    },
+    holo(c, S, pal, rng) {
+      c.lineWidth = 2;
+      for (let x = -S; x < S; x += 1) { c.strokeStyle = `hsl(${((x / S) * 720 % 360 + 360) % 360},88%,62%)`; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + S, S); c.stroke(); }
+      for (let i = 0; i < 160; i++) { const x = rng() * S, y = rng() * S, r = S * (0.002 + rng() * 0.004); c.fillStyle = `rgba(255,255,255,${0.35 + rng() * 0.5})`; W9(S, (dx, dy) => { c.beginPath(); c.arc(x + dx, y + dy, r, 0, TAU); c.fill(); }); }
+    },
+    checker(c, S, pal) { const n = 8, cs = S / n; for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { c.fillStyle = pal[(i + j) % 2]; c.fillRect(i * cs, j * cs, cs, cs); } },
+    plaid(c, S, pal) {
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      c.fillStyle = 'rgba(14,6,6,0.55)'; for (const k of [0, S / 2]) { c.fillRect(0, k, S, S / 4); c.fillRect(k, 0, S / 4, S); }
+      c.fillStyle = pal[2]; for (const k of [S * 0.375, S * 0.875]) { c.globalAlpha = 0.5; c.fillRect(0, k, S, S / 64); c.fillRect(k, 0, S / 64, S); c.globalAlpha = 1; }
+    },
+  };
+  // 무늬 + 빛 지도를 같이 만드는 것들 (빛 지도는 흰 = 빛남)
+  const PAT2 = {
+    lava(S, pal, rng) {
+      const N = 24, P = []; for (let i = 0; i < N; i++) P.push([rng() * S, rng() * S]);
+      const a = cv(S), g = cv(S), ac = a.getContext('2d'), gc = g.getContext('2d'), A = ac.createImageData(S, S), Gd = gc.createImageData(S, S), n1 = vnoise(rng, 8);
+      const c0 = rgb(pal[0]), c1 = rgb(pal[1]), c2 = rgb(pal[2]), H = S / 2;
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        let d1 = 1e9, d2 = 1e9;
+        for (const [px, py] of P) { let dx = Math.abs(x - px), dy = Math.abs(y - py); if (dx > H) dx = S - dx; if (dy > H) dy = S - dy; const d = dx * dx + dy * dy; if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; }
+        const e = Math.sqrt(d2) - Math.sqrt(d1), crack = clamp(1 - e / (S * 0.016), 0, 1), heat = clamp(1 - e / (S * 0.07), 0, 1), nz = n1(x / S * 8, y / S * 8);
+        const i4 = (y * S + x) * 4, k = nz * 0.7 + 0.15, hot = Math.max(crack, heat * 0.25);
+        for (let ch = 0; ch < 3; ch++) A.data[i4 + ch] = lerp(lerp(c0[ch], c1[ch], k), c2[ch], hot);
+        A.data[i4 + 3] = 255;
+        const gv = clamp(Math.pow(crack, 1.3) + heat * heat * 0.3, 0, 1) * 255; Gd.data[i4] = Gd.data[i4 + 1] = Gd.data[i4 + 2] = gv; Gd.data[i4 + 3] = 255;
+      }
+      ac.putImageData(A, 0, 0); gc.putImageData(Gd, 0, 0);
+      return { alb: a, glow: g };
+    },
+    scales(S, pal) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), n = 8, s = S / n, lw = S / 256;
+      c.fillStyle = pal[3]; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      // 아래 줄부터 그려서 위 줄 비늘의 둥근 끝이 아래 줄 비늘 윗부분을 덮게 (물고기 비늘)
+      for (let row = n * 2 + 1; row >= -2; row--) {
+        const y = row * s * 0.5, off = (((row % 2) + 2) % 2) * s * 0.5;
+        for (let col = -1; col <= n; col++) {
+          const x = col * s + off, path = (cx) => { cx.beginPath(); cx.moveTo(x - s / 2, y - s * 0.22); cx.quadraticCurveTo(x - s / 2, y + s * 0.42, x, y + s * 0.5); cx.quadraticCurveTo(x + s / 2, y + s * 0.42, x + s / 2, y - s * 0.22); cx.closePath(); };
+          const gr = c.createRadialGradient(x, y - s * 0.1, s * 0.05, x, y + s * 0.1, s * 0.62); gr.addColorStop(0, pal[1]); gr.addColorStop(0.75, pal[0]); gr.addColorStop(1, pal[3]);
+          path(c); c.fillStyle = gr; c.fill(); c.strokeStyle = pal[2]; c.lineWidth = 1.8 * lw; c.stroke();
+          path(gc); gc.fillStyle = '#000'; gc.fill(); gc.strokeStyle = '#fff'; gc.lineWidth = 1.5 * lw; gc.stroke();
+        }
+      }
+      return { alb: a, glow: g };
+    },
+    glitch(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d');
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      for (let i = 0; i < 70; i++) {
+        const w = S * (0.03 + rng() * 0.22), h = S * (0.008 + rng() * 0.05), x = rng() * S, y = rng() * S, col = pal[1 + Math.floor(rng() * (pal.length - 1))], lit = rng() < 0.32;
+        W9(S, (dx, dy) => { c.fillStyle = col; c.fillRect(x + dx, y + dy, w, h); if (lit) { gc.fillStyle = `rgba(255,255,255,${0.55 + rng() * 0.45})`; gc.fillRect(x + dx, y + dy, w, h); } });
+      }
+      gc.fillStyle = 'rgba(255,255,255,0.22)'; for (let y = 0; y < S; y += 6) gc.fillRect(0, y, S, 1);
+      c.fillStyle = 'rgba(0,0,0,0.25)'; for (let y = 0; y < S; y += 3) c.fillRect(0, y, S, 1);
+      return { alb: a, glow: g };
+    },
+  };
+  // 빛 지도만 (흰 선 = 빛남)
+  const GLOW = {
+    lines(gc, S) { gc.fillStyle = '#fff'; const h = Math.max(1, S / 160); for (const y of [0.3, 0.7]) gc.fillRect(0, S * y, S, h); for (let x = 0; x < S; x += S / 8) gc.fillRect(x, S * 0.3, S / 64, S * 0.4 * 0.08); },
+    circuit(gc, S, rng) {
+      const st = S / 32, lw = S / 256 * 1.6;
+      gc.strokeStyle = '#fff'; gc.fillStyle = '#fff'; gc.lineWidth = lw; gc.lineJoin = 'round';
+      for (let i = 0; i < 24; i++) {
+        let x = Math.floor(rng() * 32) * st, y = Math.floor(rng() * 32) * st, dir = Math.floor(rng() * 4); const P = [[x, y]];
+        for (let k = 0, n = 3 + Math.floor(rng() * 4); k < n; k++) { if (k) dir = (dir + (rng() < 0.5 ? 1 : 3)) % 4; const L = (2 + Math.floor(rng() * 5)) * st; x += [L, 0, -L, 0][dir]; y += [0, L, 0, -L][dir]; P.push([x, y]); }
+        const pad = rng() < 0.5;
+        W9(S, (dx, dy) => {
+          gc.beginPath(); P.forEach(([px, py], k) => (k ? gc.lineTo(px + dx, py + dy) : gc.moveTo(px + dx, py + dy))); gc.stroke();
+          const [ex, ey] = P[P.length - 1]; if (pad) gc.fillRect(ex + dx - st * 0.3, ey + dy - st * 0.3, st * 0.6, st * 0.6); else { gc.beginPath(); gc.arc(ex + dx, ey + dy, st * 0.32, 0, TAU); gc.fill(); }
+          gc.beginPath(); gc.arc(P[0][0] + dx, P[0][1] + dy, st * 0.2, 0, TAU); gc.fill();
+        });
+      }
+    },
+    wave(gc, S, rng) {
+      gc.strokeStyle = '#fff'; const lw = S / 256;
+      for (let k = 0; k < 5; k++) {
+        const y0 = (k + 0.2 + rng() * 0.5) * S / 5, amp = S * (0.02 + rng() * 0.035), f = 1 + Math.floor(rng() * 2), ph = rng() * TAU;
+        for (const [w, o, al] of [[2.4, 0, 1], [1, S * 0.012, 0.55]]) { gc.globalAlpha = al; gc.lineWidth = w * lw; for (const dy of [-S, 0, S]) { gc.beginPath(); for (let x = 0; x <= S; x += 2) { const y = y0 + o + dy + Math.sin(x / S * TAU * f + ph) * amp; x ? gc.lineTo(x, y) : gc.moveTo(x, y); } gc.stroke(); } }
+      }
+      gc.globalAlpha = 1;
+    },
+    veins(gc, S, rng) {
+      const lw = S / 256;
+      const bolt = (x, y, a, n, w) => {
+        for (let i = 0; i < n; i++) {
+          const nx = x + Math.cos(a) * S * 0.022, ny = y + Math.sin(a) * S * 0.022;
+          W9(S, (dx, dy) => { gc.lineWidth = w * lw; gc.beginPath(); gc.moveTo(x + dx, y + dy); gc.lineTo(nx + dx, ny + dy); gc.stroke(); });
+          x = nx; y = ny; a += (rng() - 0.5) * 0.9; w = Math.max(0.7, w * 0.985);
+          if (rng() < 0.06 && n > 8) bolt(x, y, a + (rng() < 0.5 ? 0.8 : -0.8), Math.floor(n * 0.4), w * 0.6);
+        }
+      };
+      gc.strokeStyle = '#fff'; gc.lineCap = 'round';
+      for (let b = 0; b < 8; b++) bolt(rng() * S, rng() * S, rng() * TAU, 26 + Math.floor(rng() * 20), 2.6);
+    },
+  };
+  const blank = (() => { let t = null; return () => t || (t = (() => { const c = cv(4), x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, 4, 4); return new THREE.CanvasTexture(c); })()); })();
+  function toTex(c) { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t; }
+  // 스킨 하나의 텍스처(무늬·빛) — 처음 쓸 때 한 번 만든다
+  function texOf(id) {
+    if (TEX[id]) return TEX[id];
+    const d = GSKINS[id], S = d.rar >= 4 ? 512 : 256, seed = [...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 17), out = { pat: null, glow: null };
+    if (d.pat && PAT2[d.pat]) { const r = PAT2[d.pat](d.pat === 'lava' ? 256 : S, d.pal, mulberry32(seed)); out.pat = toTex(r.alb); if (d.glow && d.glow.pat === d.pat) out.glow = toTex(r.glow); }
+    else if (d.pat && PAT[d.pat]) { const c = cv(S); PAT[d.pat](c.getContext('2d'), S, d.pal || [], mulberry32(seed)); out.pat = toTex(c); }
+    if (d.glow && !out.glow) {
+      const c = cv(S), gc = c.getContext('2d'); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      if (GLOW[d.glow.pat]) GLOW[d.glow.pat](gc, S, mulberry32(seed ^ 0x5bd1e995)); else if (PAT2[d.glow.pat]) { const r = PAT2[d.glow.pat](S, d.pal || ['#000', '#000', '#fff'], mulberry32(seed)); gc.drawImage(r.glow, 0, 0); }
+      out.glow = toTex(c);
+    }
+    return (TEX[id] = out);
+  }
+
+  // ---------- 셰이더 ----------
+  //  부위: kd 0 플라스틱·2 무광 금속 → 몸체(body) / 1 나무 → 손잡이·개머리(furn) / 3 광택 금속 → 강철(steel) / 4~6 황동·고무·천 → 그대로
+  //  모드: 0 원래 색 · 1 단색 · 2 무늬. 디테일(어두운 작은 부품)은 원래 정점 색의 밝기만큼 조금 어둡게
+  const V_HEAD = 'attribute float kd;\nvarying float vKd;\nvarying vec3 vOP;\nvarying vec3 vON;\nvarying float vGZ;\nuniform mat4 uGunInv;\n';
+  const V_BODY = '\n\tvKd = kd; vOP = position; vON = normal; vGZ = (uGunInv * (modelMatrix * vec4(position, 1.0))).z;\n';
+  const F_HEAD = `varying float vKd; varying vec3 vOP; varying vec3 vON; varying float vGZ;
+uniform sampler2D uPat; uniform sampler2D uGlow; uniform float uScale;
+uniform vec3 uBodyCol; uniform vec3 uFurnCol; uniform vec3 uSteelCol; uniform vec3 uMode;
+uniform vec4 uMR; uniform vec2 uSteelMR;
+uniform vec3 uGlowCol; uniform float uGlowAmt; uniform float uGlowAnim;
+uniform float uTime; uniform float uFlash; uniform float uSweepOn; uniform float uSweepZ; uniform vec3 uFxCol;
+vec3 gsTri(sampler2D t, vec3 p, vec3 n) {
+  vec3 w = abs(n); w = w * w; w = w * w; w /= (w.x + w.y + w.z + 1e-5);
+  return texture2D(t, p.zy * uScale).rgb * w.x + texture2D(t, p.zx * uScale).rgb * w.y + texture2D(t, p.xy * uScale).rgb * w.z;
+}
+float gsHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+`;
+  const F_SWEEP = `
+	float gsEdge = 0.0;
+	if (uSweepOn > 0.5) {
+		float gsD = vGZ - uSweepZ + (gsHash(floor(vOP * 160.0)) - 0.5) * 0.035;
+		if (gsD > 0.0) discard;
+		gsEdge = smoothstep(0.07, 0.0, -gsD);
+	}
+`;
+  const F_COLOR = `
+	float gsR = floor(vKd + 0.5);
+	float gsRole = gsR < 0.5 ? 0.0 : gsR < 1.5 ? 1.0 : gsR < 2.5 ? 0.0 : gsR < 3.5 ? 2.0 : 3.0;
+	float gsMode = gsRole < 0.5 ? uMode.x : gsRole < 1.5 ? uMode.y : gsRole < 2.5 ? uMode.z : 0.0;
+	vec3 gsNrm = normalize(vON);
+	float gsDet = mix(0.45, 1.0, smoothstep(0.035, 0.14, dot(vColor, vec3(0.3, 0.59, 0.11))));
+	if (gsMode > 1.5) diffuseColor.rgb = gsTri(uPat, vOP, gsNrm) * gsDet;
+	else if (gsMode > 0.5) diffuseColor.rgb = (gsRole < 0.5 ? uBodyCol : gsRole < 1.5 ? uFurnCol : uSteelCol) * gsDet;
+`;
+  const F_MR = `
+	if (gsMode > 0.5) { if (gsRole < 0.5) { metalnessFactor = uMR.x; roughnessFactor = uMR.y; } else if (gsRole < 1.5) { metalnessFactor = uMR.z; roughnessFactor = uMR.w; } else { metalnessFactor = uSteelMR.x; roughnessFactor = uSteelMR.y; } }
+`;
+  const F_EMIT = `
+	if (uGlowAmt > 0.0 && gsRole < 1.5) {
+		float gsG = gsTri(uGlow, vOP, gsNrm).r;
+		float gsA = 1.0;
+		if (uGlowAnim > 2.5) { float gsB = floor(uTime * 13.0) + floor(vOP.z * 22.0) * 7.0 + floor(vOP.y * 30.0); gsA = 0.3 + 0.7 * step(0.28, gsHash(vec3(gsB, 1.0, 2.0))); }
+		else if (uGlowAnim > 1.5) { float gsW = 0.5 + 0.5 * sin(uTime * 4.2 - vOP.z * 16.0); gsA = 0.4 + 0.6 * gsW * gsW; }
+		else if (uGlowAnim > 0.5) gsA = 0.72 + 0.28 * sin(uTime * 2.4 + vOP.z * 3.0);
+		totalEmissiveRadiance += uGlowCol * gsG * uGlowAmt * (gsA + uFlash * 1.8);
+	}
+	totalEmissiveRadiance += uFxCol * gsEdge * 2.6;
+`;
+  function patchV(s) { return s.replace('void main() {', V_HEAD + 'void main() {').replace('#include <begin_vertex>', '#include <begin_vertex>' + V_BODY); }
+  function patchF(s) {
+    return s.replace('void main() {', F_HEAD + 'void main() {')
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>' + F_SWEEP)
+      .replace('#include <color_fragment>', '#include <color_fragment>' + F_COLOR)
+      .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>' + F_MR)
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>' + F_EMIT);
+  }
+  // 셰이더 시간은 10분마다 되감음(float 정밀도). 입자 정리는 되감지 않는 CLOCK
+  const TIME = { value: 0 }; let CLOCK = 0;
+  // 스킨마다 바뀌지 않는 값(텍스처·색·모드) — 인스턴스끼리 같은 객체를 공유
+  const STATIC = {};
+  function staticU(id) {
+    if (STATIC[id]) return STATIC[id];
+    const d = GSKINS[id], T = texOf(id), b = d.body || {}, f = d.furn || {}, s = d.steel || {};
+    const mode = (r) => (r.p ? 2 : r.c !== undefined ? 1 : 0), gl = d.glow;
+    return (STATIC[id] = {
+      uPat: { value: T.pat || blank() }, uGlow: { value: T.glow || blank() }, uScale: { value: d.sc || 3 },
+      uBodyCol: { value: new THREE.Color(b.c !== undefined ? b.c : 0x888888) }, uFurnCol: { value: new THREE.Color(f.c !== undefined ? f.c : 0x888888) }, uSteelCol: { value: new THREE.Color(s.c !== undefined ? s.c : 0x888888) },
+      uMode: { value: new THREE.Vector3(mode(b), mode(f), mode(s)) },
+      uMR: { value: new THREE.Vector4((b.mr || [0.15, 0.6])[0], (b.mr || [0.15, 0.6])[1], (f.mr || [0, 0.7])[0], (f.mr || [0, 0.7])[1]) }, uSteelMR: { value: new THREE.Vector2((s.mr || [0.9, 0.3])[0], (s.mr || [0.9, 0.3])[1]) },
+      uGlowCol: { value: new THREE.Color(gl ? gl.c : 0) }, uGlowAmt: { value: gl ? gl.k : 0 }, uGlowAnim: { value: gl ? gl.anim || 0 : 0 },
+    });
+  }
+  function makeMat(base, U, d) {
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: base.roughness, metalness: base.metalness, envMap: base.envMap, envMapIntensity: d.env !== undefined ? Math.max(d.env, base.envMapIntensity) : base.envMapIntensity });
+    m.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); sh.vertexShader = patchV(sh.vertexShader); sh.fragmentShader = patchF(sh.fragmentShader); };
+    m.customProgramCacheKey = () => 'gskin-v1';
+    return m;
+  }
+  // 그리기 직전에 총 공간 행렬(빛 띠 위치 계산용) — 효과가 진행 중일 때만
+  let FRM = 0;
+  function beforeRender() { const I = this.userData.gsInst; if (I && I.U.uSweepOn.value > 0.5 && I.frm !== FRM) { I.frm = FRM; I.U.uGunInv.value.copy(I.g.matrixWorld).invert(); } }
+  const _bb = new THREE.Box3();
+  // 만들어진 총(그룹)에 스킨을 입힌다
+  function apply(g, id) {
+    const d = GSKINS[id]; if (!d || d.gun !== g.userData.id) return g;
+    const U = Object.assign({ uTime: TIME, uFlash: { value: 0 }, uSweepOn: { value: 0 }, uSweepZ: { value: 0 }, uGunInv: { value: new THREE.Matrix4() }, uFxCol: { value: new THREE.Color(d.fx ? d.fx.c : rarOf(d.rar).hex) } }, staticU(id));
+    const I = { g, id, d, U, flash: 0, sweep: null, frm: -1, z0: -0.4, z1: 0.6 }, mats = {};
+    const walk = (o) => {
+      if (o.userData.noSkin) return;
+      if (o.isMesh && o.material && o.material.userData) {
+        const k = o.material.userData.clsKey;
+        if (k === 'cls:metal' || k === 'cls:matte' || k === 'cls:diel') { o.material = mats[k] || (mats[k] = makeMat(o.material, U, d)); o.userData.gsInst = I; o.onBeforeRender = beforeRender; }
+      }
+      for (const ch of o.children) walk(ch);
+    };
+    walk(g);
+    // 몸체 길이(개머리판 끝 ~ 총구) — 빛 띠가 지나가는 구간
+    const body = g.children[0]; let z0 = 1e9, z1 = -1e9;
+    if (body) for (const m of body.children) { const gb = m.geometry && m.geometry.boundingBox; if (gb) { z0 = Math.min(z0, gb.min.z); z1 = Math.max(z1, gb.max.z); } }
+    if (z0 < z1) { I.z0 = z0; I.z1 = z1; } else { _bb.setFromObject(g); I.z0 = _bb.min.z; I.z1 = _bb.max.z; }
+    g.userData.skin = I;
+    return g;
+  }
+
+  // ---------- 입자: 장면마다 점 구름 하나(그리기 1번) — 동그란 빛 / 네모 파편 ----------
+  const PV = `attribute float size; attribute float alpha; attribute float shape; attribute vec3 pcol;
+uniform float uVH; varying vec3 vC; varying float vA; varying float vS;
+void main() { vC = pcol; vA = alpha; vS = shape; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
+  gl_PointSize = alpha > 0.0 ? clamp(size * projectionMatrix[1][1] * uVH * 0.5 / max(0.02, -mv.z), 1.0, 256.0) : 0.0; }`;
+  const PF = `varying vec3 vC; varying float vA; varying float vS;
+void main() { vec2 q = gl_PointCoord - 0.5; float a;
+  if (vS > 0.5) { vec2 r = abs(q); a = step(max(r.x, r.y), 0.36); } else { float d = clamp(1.0 - length(q) * 2.0, 0.0, 1.0); a = d * d * (0.6 + 0.4 * d); }
+  if (a * vA < 0.004) discard; gl_FragColor = vec4(vC * vA * a, 1.0); }`;
+  const POOLS = new Map(), N_POOL = 128, _vs = new THREE.Vector2(), _col = new THREE.Color();
+  function pool(sc) {
+    let P = POOLS.get(sc);
+    if (!P) {
+      const geo = new THREE.BufferGeometry(), A = (n) => new THREE.BufferAttribute(new Float32Array(N_POOL * n), n).setUsage(THREE.DynamicDrawUsage);
+      geo.setAttribute('position', A(3)); geo.setAttribute('pcol', A(3)); geo.setAttribute('size', A(1)); geo.setAttribute('alpha', A(1)); geo.setAttribute('shape', A(1));
+      const mat = new THREE.ShaderMaterial({ uniforms: { uVH: { value: 720 } }, vertexShader: PV, fragmentShader: PF, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+      const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; pts.renderOrder = 5;
+      pts.onBeforeRender = (r) => { r.getDrawingBufferSize(_vs); mat.uniforms.uVH.value = _vs.y; };
+      sc.add(pts);
+      P = { sc, pts, geo, list: [], i: 0, used: 0 };
+      for (let i = 0; i < N_POOL; i++) P.list.push({ p: new THREE.Vector3(), v: new THREE.Vector3(), c: [1, 1, 1], life: 0, max: 1, g: 0, drag: 0, size: 0, grow: 0, a: 1, sq: 0 });
+      POOLS.set(sc, P);
+    }
+    P.used = CLOCK; return P;
+  }
+  function emit(P, pos, vx, vy, vz, col, size, life, o = {}) {
+    const q = P.list[P.i++ % P.list.length];
+    q.p.copy(pos); q.v.set(vx, vy, vz); _col.setHex(col); q.c[0] = _col.r; q.c[1] = _col.g; q.c[2] = _col.b;
+    q.life = q.max = life; q.g = o.g || 0; q.drag = o.drag || 0; q.size = size; q.grow = o.grow || 0; q.a = o.a || 1; q.sq = o.sq ? 1 : 0;
+  }
+  function updateParticles(dt) {
+    for (const [sc, P] of POOLS) {
+      let alive = 0;
+      const at = P.geo.attributes, pos = at.position.array, col = at.pcol.array, sz = at.size.array, al = at.alpha.array, sh = at.shape.array;
+      for (let i = 0; i < P.list.length; i++) {
+        const q = P.list[i];
+        if (q.life > 0) {
+          q.life -= dt;
+          if (q.life > 0) {
+            alive++; const k = q.life / q.max;
+            q.v.y += q.g * dt; if (q.drag) q.v.multiplyScalar(Math.max(0, 1 - q.drag * dt));
+            q.p.addScaledVector(q.v, dt);
+            pos[i * 3] = q.p.x; pos[i * 3 + 1] = q.p.y; pos[i * 3 + 2] = q.p.z; col[i * 3] = q.c[0]; col[i * 3 + 1] = q.c[1]; col[i * 3 + 2] = q.c[2];
+            sz[i] = q.size * (1 + q.grow * (1 - k)); al[i] = q.a * Math.pow(k, 0.7); sh[i] = q.sq; continue;
+          }
+        }
+        al[i] = 0;
+      }
+      if (alive || P.was) for (const k of ['position', 'pcol', 'size', 'alpha', 'shape']) at[k].needsUpdate = true;
+      P.was = alive > 0; P.pts.visible = alive > 0;
+      // 쓰지 않는 장면(끝난 경기 등)의 입자는 정리
+      if (!alive && CLOCK - P.used > 6) { sc.remove(P.pts); P.geo.dispose(); P.pts.material.dispose(); POOLS.delete(sc); }
+    }
+  }
+  const sceneOf = (o) => { while (o.parent) o = o.parent; return o.isScene ? o : null; };
+  const shown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+  const isVM = (sc) => typeof VM !== 'undefined' && sc === VM.scene;
+  const _p = new THREE.Vector3(), _q = new THREE.Vector3(), _d = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
+  const pick = (fx) => (Math.random() < 0.55 ? fx.c : fx.c2);
+  const own = (c) => !c || !!c.isPlayer;
+  // ---------- 사격 ----------
+  const SHOT = {
+    // 마그마: 주황 고리 화염 + 위로 떠오르다 떨어지는 불씨
+    ember(P, k, fx) {
+      emit(P, _p, _d.x * 0.4, _d.y * 0.4, _d.z * 0.4, fx.c, 0.2 * k, 0.08, { grow: 0.9 });
+      emit(P, _p, _d.x * 1.2, _d.y * 1.2, _d.z * 1.2, 0xffd27a, 0.09 * k, 0.06, { grow: 1.5 });
+      for (let i = 0; i < 14; i++) { const sp = 1.2 + Math.random() * 2.6; emit(P, _p, _d.x * sp + (Math.random() - 0.5) * 1.3, _d.y * sp + 0.4 + Math.random() * 1.0, _d.z * sp + (Math.random() - 0.5) * 1.3, pick(fx), (0.016 + Math.random() * 0.016) * k, 0.4 + Math.random() * 0.4, { g: -1.6, drag: 1.4 }); }
+    },
+    // 홍룡: 앞으로 길게 뻗는 불꽃 혀 + 금빛 불티
+    flame(P, k, fx) {
+      for (let i = 0; i < 6; i++) { const sp = 0.8 + i * 0.6; emit(P, _p, _d.x * sp + (Math.random() - 0.5) * 0.2, _d.y * sp + 0.15, _d.z * sp + (Math.random() - 0.5) * 0.2, i < 2 ? 0xffd27a : fx.c, (0.045 + i * 0.012) * k, 0.14 + i * 0.03, { grow: 2.2, drag: 3 }); }
+      for (let i = 0; i < 9; i++) { const sp = 2 + Math.random() * 3; emit(P, _p, _d.x * sp + (Math.random() - 0.5) * 1.5, _d.y * sp + (Math.random() - 0.3) * 1.5, _d.z * sp + (Math.random() - 0.5) * 1.5, fx.c2, (0.01 + Math.random() * 0.008) * k, 0.3 + Math.random() * 0.2, { g: -3, drag: 2 }); }
+    },
+    // 플라즈마: 분홍 고리 + 아주 빠르고 짧은 전기 스파크
+    spark(P, k, fx) {
+      emit(P, _p, 0, 0, 0, fx.c, 0.22 * k, 0.07, { grow: 1.4 });
+      emit(P, _p, 0, 0, 0, 0xffffff, 0.07 * k, 0.04, { grow: 1 });
+      for (let i = 0; i < 16; i++) { const sp = 4 + Math.random() * 5; _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(2.6); emit(P, _p, _d.x * sp + _r.x, _d.y * sp + _r.y, _d.z * sp + _r.z, pick(fx), (0.009 + Math.random() * 0.009) * k, 0.12 + Math.random() * 0.14, { drag: 8 }); }
+    },
+    // 글리치: 붉은·하늘색 네모 파편이 사방으로 튐
+    glitch(P, k, fx) {
+      emit(P, _p, 0, 0, 0, fx.c, 0.16 * k, 0.06, { grow: 0.6 });
+      for (let i = 0; i < 12; i++) { const sp = 0.8 + Math.random() * 1.8; _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(1.8); emit(P, _p, _d.x * sp + _r.x, _d.y * sp + _r.y, _d.z * sp + _r.z, pick(fx), (0.014 + Math.random() * 0.016) * k, 0.18 + Math.random() * 0.22, { sq: 1, drag: 4 }); }
+    },
+  };
+  function shot(g, c) {
+    const I = g && g.userData.skin; if (!I || !I.d.fx) return;
+    I.flash = 1; ACTIVE.add(I);
+    const sc = sceneOf(g); if (!sc || !shown(g)) return;
+    const vm = isVM(sc), k = vm ? 1.45 : 2.4, m = g.userData.meta, fx = I.d.fx;   // 1인칭은 총구가 화면 구석이라 조금 크게
+    if (!vm && G.camera && _q.setFromMatrixPosition(g.matrixWorld).distanceTo(G.camera.position) > 70) return;
+    _p.set(0, m.boreY, m.muzzleZ + 0.015); g.localToWorld(_p); _d.set(0, m.boreY, m.muzzleZ + 1); g.localToWorld(_d); _d.sub(_p).normalize();
+    (SHOT[fx.kind] || SHOT.ember)(pool(sc), k, fx);
+    if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('shot', fx.kind, c && !own(c) ? c.pos : null, own(c));
+  }
+  // ---------- 꺼내기·넣기 (빛 띠) ----------
+  const ACTIVE = new Set();
+  function draw(g, dur = 0.35, c = null, quiet = false) {
+    const I = g && g.userData.skin; if (!I || !I.d.fx) return;
+    g.updateWorldMatrix(true, true); I.U.uGunInv.value.copy(g.matrixWorld).invert();
+    I.sweep = { t: 0, dur, out: false, c }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.z0 - 0.05; ACTIVE.add(I);
+    if (!quiet && typeof Audio !== 'undefined' && Audio.skinFx && shown(g)) Audio.skinFx('draw', I.d.fx.kind, c && !own(c) ? c.pos : null, own(c));
+  }
+  // 손에서 떠난 총: 장면에 그대로 두고(지금 자리·자세) 총구부터 사라지게 한 뒤 지운다. 효과가 없는 총이면 false
+  function holster(g, dur = 0.32, c = null) {
+    const I = g && g.userData.skin; if (!I || !I.d.fx) return false;
+    const sc = sceneOf(g); if (!sc || !shown(g)) return false;
+    sc.attach(g); g.updateMatrixWorld(true); I.U.uGunInv.value.copy(g.matrixWorld).invert();
+    // 1인칭: 화면 아래로 가라앉으며 사라짐 (총구가 멀어 앞에서부터 사라지는 게 잘 안 보이므로)
+    I.sweep = { t: 0, dur, out: true, c, sink: isVM(sc) ? 0.32 : 0 }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.z1 + 0.05; ACTIVE.add(I);
+    if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('holster', I.d.fx.kind, c && !own(c) ? c.pos : null, own(c));
+    return true;
+  }
+  function sweepParticles(I, z, dt) {
+    const g = I.g, sc = sceneOf(g); if (!sc || !shown(g)) return;
+    const vm = isVM(sc), k = vm ? 1 : 2.4, fx = I.d.fx, m = g.userData.meta, P = pool(sc), n = Math.max(1, Math.round(dt * 90));
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * TAU, r = 0.025 + Math.random() * 0.035;
+      _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r * 1.4 - 0.02, z); g.localToWorld(_p);
+      _q.set(Math.cos(a) * (r + 0.05), m.boreY + Math.sin(a) * (r + 0.05) * 1.4 - 0.02, z); g.localToWorld(_q); _q.sub(_p).normalize().multiplyScalar(0.25 + Math.random() * 0.45);
+      emit(P, _p, _q.x, _q.y + 0.15, _q.z, pick(fx), (0.011 + Math.random() * 0.011) * k, 0.25 + Math.random() * 0.25, { drag: 2, sq: fx.kind === 'glitch' });
+    }
+  }
+  function update(dt) {
+    CLOCK += dt; TIME.value = CLOCK % 600; FRM++;
+    for (const I of ACTIVE) {
+      if (I.flash > 0) { I.flash = Math.max(0, I.flash - dt * 7); I.U.uFlash.value = I.flash; }
+      const s = I.sweep;
+      if (s) {
+        s.t += dt; const u = clamp(s.t / s.dur, 0, 1), e = u * u * (3 - 2 * u);
+        const z = s.out ? lerp(I.z1 + 0.05, I.z0 - 0.05, e) : lerp(I.z0 - 0.05, I.z1 + 0.05, e);
+        I.U.uSweepZ.value = z;
+        if (s.sink) { I.g.position.y -= s.sink * dt / s.dur; I.g.rotation.x += 0.5 * dt / s.dur; }
+        if (u < 1) sweepParticles(I, z, dt);
+        else { I.U.uSweepOn.value = 0; I.sweep = null; if (s.out && I.g.parent) I.g.parent.remove(I.g); }
+      }
+      if (!I.sweep && I.flash <= 0) ACTIVE.delete(I);
+    }
+    updateParticles(dt);
+  }
+  // ---------- 이름 ----------
+  const short = (gun) => (ITEMS[gun] ? ITEMS[gun].name.replace(/(\s[가-힣]+)+$/, '') : gun);
+  const name = (id) => { const d = GSKINS[id]; return d ? `${short(d.gun)} · ${d.name}` : ''; };
+  const tracerCol = (g) => { const I = g && g.userData.skin; return I && I.d.fx ? I.d.fx.tr : 0; };
+  return { apply, shot, draw, holster, update, name, short, tracerCol, texOf, get time() { return TIME.value; }, _active: ACTIVE, _pools: POOLS };
 })();
 
 // ---------- 05_models_guns.js ----------
@@ -8453,7 +9003,7 @@ function fireWeapon(c, origin, dir) {
     const h = raycastAll(origin.x, origin.y, origin.z, dx, dy, dz, maxD, c);
     const t = Math.min(h.t, maxD);
     const ex = origin.x + dx * t, ey = origin.y + dy * t, ez = origin.z + dz * t;
-    if (p < 2) FX.tracer(c, tStart, ex, ey, ez);
+    if (p < 2) FX.tracer(c, tStart, ex, ey, ez, GunSkin.tracerCol(g));
     if (p === 0) { _shotEnd[0] = ex; _shotEnd[1] = ey; _shotEnd[2] = ez; _shotEnd[3] = h.type || 0; }
     const fall = h.t > d.range ? clamp(1 - (h.t - d.range) / (d.range * 1.4), 0.35, 1) : 1;
     if (h.type === 'char') {
@@ -8467,6 +9017,7 @@ function fireWeapon(c, origin, dir) {
   }
   c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : 1) * 0.22, 4);
   FX.flash(c, g, meta, tStart, dir, d);
+  if (g && g.userData.skin) GunSkin.shot(g, c);   // 울트라레어 총기 스킨: 색 화염·불씨/스파크·몸체 빛
   if (d.cycle) { if (wi.mag > 0) c.cycle = { kind: d.cycle, t: 0, ev: 0, ejected: false, total: d.cycleT || CYCLE[d.cycle].total }; }
   else if (d.rKind !== 'break') ejectCase(c, d); // 중절식은 장전할 때 꺼낸다
   if (d.cls === 'PISTOL') c.slideKick = 0.09;
@@ -9197,14 +9748,14 @@ const FX = (() => {
       }
     }
   }
-  function tracer(c, o, ex, ey, ez) {
+  function tracer(c, o, ex, ey, ez, col) {
     if (!scene) return;
     // 멀리 있는 봇의 탄도는 생략 (성능)
     if (!c.isPlayer && G.player && Math.hypot(o.x - G.player.pos.x, o.z - G.player.pos.z) > 180) return;
     const t = tracers[ti++ % tracers.length], p = t.l.geometry.attributes.position;
     const sx = c.isPlayer ? o.x : o.x, sy = o.y, sz = o.z;
     p.setXYZ(0, sx, sy, sz); p.setXYZ(1, ex, ey, ez); p.needsUpdate = true; t.l.geometry.computeBoundingSphere();
-    t.l.visible = true; t.life = 0.06; t.l.material.opacity = 0.75;
+    t.l.visible = true; t.life = 0.06; t.l.material.opacity = 0.75; t.l.material.color.setHex(col || 0xffe2a0);
   }
   function puff(x, y, z, color, size, life, grow, vy) {
     if (!scene) return; const d = dots[di++ % dots.length];
@@ -11396,12 +11947,16 @@ function updateCamera(dt) {
   if (VM.active) { if (holding) updateHoldVM(dt, p); else updateViewModel(dt, p, adsE); }
 }
 function updateViewModel(dt, p, adsE) {
-  const w = p.weapon;
-  const key = w.id + '|' + [w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].join(',');
+  const w = p.weapon, sk = p.skinOf(w.id);
+  const key = w.id + '|' + [w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].join(',') + '|' + (sk || '');
   if (VM.key !== key) {
-    if (VM.gun) VM.tilt.remove(VM.gun);
-    VM.gun = buildGunMesh(w.id, w.att); VM.gun.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+    // 총을 바꿨을 때(부착물만 바뀐 게 아니라): 울트라레어 스킨이면 헌 총은 그 자리에서 사라지고 새 총은 빛 띠와 함께 나타남
+    const base = w.id + '|' + p.inv.cur, swap = !!VM.base && VM.base !== base;
+    if (VM.gun && !(swap && GunSkin.holster(VM.gun, 0.3, p))) VM.tilt.remove(VM.gun);
+    VM.gun = buildGunMesh(w.id, w.att, sk); VM.gun.traverse((o) => { if (o.isMesh) o.castShadow = false; });
     VM.tilt.add(VM.gun); VM.key = key;
+    if (swap || !VM.base) GunSkin.draw(VM.gun, 0.45, p);
+    VM.base = base;
   }
   const m = VM.gun.userData.meta; ANIM_VM = true; const A = weaponAnim(p, m); ANIM_VM = false;
   applyParts(VM.gun, A);
@@ -11957,7 +12512,7 @@ const Cloud = (() => {
     if (d.settings) { const keep = {}; for (const k of DEVICE_SETTINGS) keep[k] = SETTINGS[k]; SETTINGS = Object.assign({}, DEFAULT_SETTINGS, d.settings, keep); store.set('settings', SETTINGS); }
   }
   // 전적이 없어도 상점 기록(뽑기·미션·스킨)이 있으면 진행한 계정으로 본다
-  const hasProgress = (d) => !!(d && d.stats && ((d.stats.matches || 0) > 0 || (d.stats.xp || 0) > 0 || (d.stats.eco && (d.stats.eco.rev || 0) > 2) || (d.stats.skins || []).length || (d.stats.vskins || []).length));
+  const hasProgress = (d) => !!(d && d.stats && ((d.stats.matches || 0) > 0 || (d.stats.xp || 0) > 0 || (d.stats.eco && (d.stats.eco.rev || 0) > 2) || (d.stats.skins || []).length || (d.stats.vskins || []).length || (d.stats.gskins || []).length));
   function refreshUi() {
     if (G.state === 'lobby') { HUD.renderLobby(); if (G.applySettings) G.applySettings('view'); if (Lobby.setLook) { Lobby.setLook(SETTINGS.look); Lobby.teamN = 0; } }
     render();
@@ -12207,6 +12762,7 @@ const DM = (() => {
       const hl = r.human ? (r.look || (me ? myLook() : {})) : null;
       const look = hl ? Body.makeLook(hl.eq, hl.body) : Body.makeLook(null, Body.randomBody(mulberry32((seed + 7919 * (r.id + 1)) | 0)));
       const c = new Character({ id: r.id, name: r.name || names[i % names.length], isPlayer: me, look, team: r.team });
+      if (hl) c.glook = hl.gun || (me ? Eco.glook() : null);   // 총기 스킨
       c.slot = G.teams[r.team].members.length; G.teams[r.team].members.push(c); CHARS.push(c); sc.add(c.root);
       if (me) G.player = c;
       if (r.net) { c.net = r.net; if (!c.net.mine) c.root.visible = false; } // 같이 하기: 다른 기기가 움직이는 캐릭터 (받은 상태로 그림)
@@ -12424,23 +12980,31 @@ const DM = (() => {
 // 10_eco.js — 상점 경제: 재화 · 보유 스킨 · 뽑기 확률 · 교환소 · 미션 · 출석 보상
 //  · 재화 '골드 탄피': 뽑기(레어 등급으로 나옴) · 배틀로얄 경기 중 주운 골드 탄피 주머니 · 미션 · 출석 보상
 //  · '차량 교환 코인': 차량 뽑기(높은 확률) · 출석 6일째 → 교환소에서 차량 스킨과 바꿈
-//  · 저장: STATS.eco(재화·미션·출석) · STATS.skins(옷) · STATS.vskins(차량) → 로그인하면 서버(player_data.stats)에 함께 저장
+//  · '총기 교환 코인': 총기 상자 2종(70%) → 교환소에서 총기 스킨과 바꿈 (v17)
+//  · 저장: STATS.eco(재화·미션·출석) · STATS.skins(옷) · STATS.vskins(차량) · STATS.gskins(총기) → 로그인하면 서버(player_data.stats)에 함께 저장
+//    장착: SETTINGS.vlook(차종별) · SETTINGS.glook(총마다) · SETTINGS.gshow(로비 캐릭터가 드는 총)
 //  · 여러 기기: 서버에 다른 기기가 쓴 기록이 있으면 '마지막 동기화 이후 바뀐 양'만 더해 합친다 (mergeStats)
 //    → 한 기기에서 쓴 재화가 다른 기기의 옛 기록 때문에 되살아나거나, 얻은 스킨이 사라지지 않는다
 //  · 확률은 상자마다 공개(상점 '확률' 버튼). 무작위는 이 기기에서 뽑는다(실제 돈 결제가 없는 게임 재화)
 // ============================================================
-const GOLD_NAME = '골드 탄피', COIN_NAME = '차량 교환 코인';
+const GOLD_NAME = '골드 탄피', COIN_NAME = '차량 교환 코인', GCOIN_NAME = '총기 교환 코인';
+// 상점 진열 순서 = 이 순서 (총기 상자 → 옷 상자 → 차량)
 const BOXES = {
+  g1: { name: '아스널 상자', theme: '전술 테마 총기 스킨', cost: 200, accent: '#d9a441', hex: 0x8a6a2a, gun: true, isNew: true },
+  g2: { name: '네온 상자', theme: '사이버 테마 총기 스킨', cost: 200, accent: '#ff3d9a', hex: 0xd0307a, gun: true, isNew: true },
   br: { name: '배틀로얄 상자', theme: '전장 테마 옷', cost: 100, accent: '#9db35e', hex: 0x6f8a3a },
   sp: { name: '스페셜 상자', theme: '스트리트 테마 옷', cost: 100, accent: '#ff6fb0', hex: 0xd0457f },
   sup: { name: '보급 상자', theme: '엘리트 테마 옷', cost: 100, accent: '#f0a43a', hex: 0xd07a1e },
-  veh: { name: '차량 뽑기', theme: '교환 코인 · 차량 스킨', cost: 1000, accent: '#46c8ff', hex: 0x2a8ac0 },
+  veh: { name: '차량 뽑기', theme: '교환 코인 · 차량 스킨', cost: 200, accent: '#46c8ff', hex: 0x2a8ac0 },
 };
 const BOX_TIER_P = [45, 25, 18, 8, 3.2, 0.8];                 // 옷 상자의 레어도별 확률(%) — 2번(레어)은 골드 탄피
 const BOX_GOLD = [[30, 9], [60, 6], [150, 2.5], [500, 0.5]];   // 상자 속 골드 탄피 [양, %] (합 18%)
 const DUP_GOLD = [10, 20, 0, 60, 150, 400];                     // 이미 가진 옷이 나오면 레어도별 골드 탄피 환급
 const VEH_COINS = [[3, 55], [5, 25], [10, 10], [20, 2]];        // 차량 뽑기 코인 [개수, %] (합 92%)
 const VEH_SKIN_P = { 3: 5.5, 4: 2, 5: 0.5 };                    // 차량 뽑기 스킨 레어도별 합(%) — 같은 레어도 안에서 똑같이 나눔
+const GUN_COINS = [[3, 40], [5, 20], [10, 8], [20, 2]];         // 총기 상자 코인 [개수, %] (합 70%)
+const GBOX_TIER_P = { 1: 18, 3: 8, 4: 3.2, 5: 0.8 };            // 총기 상자 스킨 레어도별 합(%) (합 30%) — 같은 레어도 안에서 똑같이 나눔
+const GSKIN_PRICE = { 1: 10, 3: 25, 4: 50, 5: 120 };            // 교환소 가격(총기 교환 코인). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
 const ATTEND = [{ gold: 50 }, { gold: 50 }, { gold: 100 }, { gold: 50 }, { gold: 100 }, { coin: 3 }, { gold: 300 }];
 const WELCOME_GOLD = 1000;
 // 미션: key = 경기에서 세는 값. 일일 미션은 날마다 4개(겹치는 key 없이), 주간 미션은 4개 고정
@@ -12474,10 +13038,12 @@ const Eco = (() => {
   function today(d = new Date()) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
   function weekKey(d = new Date()) { const m = new Date(d.getFullYear(), d.getMonth(), d.getDate()); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return 'W' + today(m); }
   function E() {
-    if (!STATS.eco || typeof STATS.eco !== 'object') { STATS.eco = { v: 1, gold: WELCOME_GOLD, coin: 0, rev: 1, dev: DEV, pulls: {}, att: { last: '', n: 0 }, q: null, welcome: 1 }; }
+    if (!STATS.eco || typeof STATS.eco !== 'object') { STATS.eco = { v: 1, gold: WELCOME_GOLD, coin: 0, gcoin: 0, rev: 1, dev: DEV, pulls: {}, att: { last: '', n: 0 }, q: null, welcome: 1 }; }
     const e = STATS.eco;
+    if (!(e.gcoin >= 0)) e.gcoin = 0;
     if (!Array.isArray(STATS.skins)) STATS.skins = [];
     if (!Array.isArray(STATS.vskins)) STATS.vskins = [];
+    if (!Array.isArray(STATS.gskins)) STATS.gskins = [];
     if (!e.pulls) e.pulls = {}; if (!e.att) e.att = { last: '', n: 0 };
     rollQuests(e);
     return e;
@@ -12486,6 +13052,9 @@ const Eco = (() => {
   // ---------- 보유 ----------
   const owns = (id) => Body.SKINS[id] && (/_basic$/.test(id) || (STATS.skins || []).includes(id));
   const ownsVeh = (id) => (STATS.vskins || []).includes(id);
+  const ownsGun = (id) => !!GSKINS[id] && (STATS.gskins || []).includes(id);
+  const gunBox = (box) => !!(BOXES[box] && BOXES[box].gun);
+  const gskinsIn = (box, r) => Object.keys(GSKINS).filter((id) => GSKINS[id].box === box && GSKINS[id].rar === r);
   function ownedSkins() { const s = new Set(Object.keys(Body.SKINS).filter((k) => /_basic$/.test(k))); for (const k of (STATS.skins || [])) if (Body.SKINS[k]) s.add(k); return s; }
   // ---------- 뽑기 확률표 ----------
   const POOLS = {};
@@ -12495,11 +13064,17 @@ const Eco = (() => {
     if (box === 'veh') {
       for (const [n, p] of VEH_COINS) out.push({ k: 'coin', n, rar: 2, p });
       for (const r of [3, 4, 5]) { const ids = Object.keys(VSKINS).filter((id) => VSKINS[id].rar === r); for (const id of ids) out.push({ k: 'vskin', id, rar: r, p: VEH_SKIN_P[r] / ids.length }); }
+    } else if (gunBox(box)) {
+      // 총기 상자: 총기 교환 코인 70% + 총기 스킨 30%
+      for (const [n, p] of GUN_COINS) out.push({ k: 'gcoin', n, rar: 2, p });
+      for (const r of [1, 3, 4, 5]) { const ids = gskinsIn(box, r); for (const id of ids) out.push({ k: 'gskin', id, rar: r, p: GBOX_TIER_P[r] / ids.length }); }
     } else {
+      // 옷 상자: 등급마다 옷 + (있으면) 그 상자의 총기 스킨이 확률을 똑같이 나눔
       for (let r = 0; r < BOX_TIER_P.length; r++) {
         if (r === 2) { for (const [n, p] of BOX_GOLD) out.push({ k: 'gold', n, rar: 2, p }); continue; }
-        const ids = Object.keys(Body.SKINS).filter((id) => Body.SKINS[id].box === box && Body.SKINS[id].rar === r);
-        for (const id of ids) out.push({ k: 'skin', id, rar: r, p: BOX_TIER_P[r] / ids.length });
+        const ids = Object.keys(Body.SKINS).filter((id) => Body.SKINS[id].box === box && Body.SKINS[id].rar === r), gids = gskinsIn(box, r), all = ids.length + gids.length;
+        for (const id of ids) out.push({ k: 'skin', id, rar: r, p: BOX_TIER_P[r] / all });
+        for (const id of gids) out.push({ k: 'gskin', id, rar: r, p: BOX_TIER_P[r] / all });
       }
     }
     const tot = out.reduce((a, x) => a + x.p, 0); for (const x of out) x.p = x.p * 100 / tot;   // 빈 등급이 있어도 합 100%
@@ -12517,6 +13092,12 @@ const Eco = (() => {
     else if (x.k === 'coin') e.coin += x.n;
     else if (x.k === 'skin') { if (owns(x.id)) { o.dup = true; o.refund = DUP_GOLD[x.rar] || 10; e.gold += o.refund; } else { STATS.skins.push(x.id); o.isNew = true; } }
     else if (x.k === 'vskin') { if (ownsVeh(x.id)) { o.dup = true; o.refundCoin = Math.ceil(VSKINS[x.id].price / 2); e.coin += o.refundCoin; } else { STATS.vskins.push(x.id); o.isNew = true; } }
+    else if (x.k === 'gcoin') e.gcoin += x.n;
+    else if (x.k === 'gskin') {
+      // 중복: 총기 상자 스킨은 교환가 절반을 총기 코인으로, 옷 상자 스킨은 옷처럼 골드 탄피로
+      if (ownsGun(x.id)) { o.dup = true; if (gunBox(GSKINS[x.id].box)) { o.refundGC = Math.ceil(GSKIN_PRICE[x.rar] / 2); e.gcoin += o.refundGC; } else { o.refund = DUP_GOLD[x.rar] || 10; e.gold += o.refund; } }
+      else { STATS.gskins.push(x.id); o.isNew = true; }
+    }
     return o;
   }
   function pull(box, n = 1) {
@@ -12536,6 +13117,15 @@ const Eco = (() => {
     if (e.coin < V.price) return { err: `${COIN_NAME}이 부족합니다 (필요 ${V.price} · 보유 ${e.coin})` };
     e.coin -= V.price; const o = give({ k: 'vskin', id, rar: V.rar }); changed('exchange');
     return { res: [o], best: V.rar };
+  }
+  // 총기 교환소: 총기 상자에서 나오는 스킨만 (옷 상자 속 총기 스킨은 그 상자에서만)
+  const gunPrice = (id) => (GSKINS[id] && gunBox(GSKINS[id].box) ? GSKIN_PRICE[GSKINS[id].rar] : 0);
+  function exchangeGun(id) {
+    const S = GSKINS[id], e = E(), price = gunPrice(id); if (!S || !price) return { err: '교환할 수 없는 스킨입니다' };
+    if (ownsGun(id)) return { err: '이미 가지고 있습니다' };
+    if (e.gcoin < price) return { err: `${GCOIN_NAME}이 부족합니다 (필요 ${price} · 보유 ${e.gcoin})` };
+    e.gcoin -= price; const o = give({ k: 'gskin', id, rar: S.rar }); changed('exchange');
+    return { res: [o], best: S.rar };
   }
   // ---------- 출석 ----------
   function attendInfo() { const e = E(), a = e.att; return { can: a.last !== today(), n: a.n, day: a.n % 7, rewards: ATTEND, last: a.last }; }
@@ -12597,6 +13187,14 @@ const Eco = (() => {
   // ---------- 장착(차량) ----------
   function vlook() { const v = SETTINGS.vlook && typeof SETTINGS.vlook === 'object' ? SETTINGS.vlook : {}; const out = {}; for (const t in VEH_SKIN_TYPES) out[t] = v[t] && VSKINS[v[t]] && VSKINS[v[t]].veh === t && ownsVeh(v[t]) ? v[t] : null; return out; }
   function equipVeh(type, id) { const v = vlook(); v[type] = id && ownsVeh(id) ? id : null; SETTINGS.vlook = v; saveSettings(); for (const f of listeners) try { f('vequip'); } catch (err) { console.warn(err); } }
+  // ---------- 장착(총기): 총마다 스킨 하나. 경기에서 그 총을 들면 내 스킨 ----------
+  function glook() { const v = SETTINGS.glook && typeof SETTINGS.glook === 'object' ? SETTINGS.glook : {}, out = {}; for (const g in v) { const S = GSKINS[v[g]]; if (S && S.gun === g && ownsGun(v[g])) out[g] = v[g]; } return out; }
+  function equipGun(gun, id) {
+    const v = glook(); if (id && GSKINS[id] && GSKINS[id].gun === gun && ownsGun(id)) v[gun] = id; else delete v[gun];
+    SETTINGS.glook = v; SETTINGS.gshow = gun; saveSettings(); for (const f of listeners) try { f('gequip'); } catch (err) { console.warn(err); }
+  }
+  // 로비 캐릭터가 드는 총: 마지막으로 스킨을 바꾼 총 (없으면 M416)
+  function showGun() { const g = SETTINGS.gshow; return g && ITEMS[g] && ITEMS[g].type === 'weapon' ? g : 'm416'; }
   // ---------- 여러 기기 합치기 ----------
   //  base: 마지막 동기화 때의 기록, local: 이 기기, server: 서버. 숫자(재화·전적)는 서버 + (이 기기에서 늘어난/줄어든 양)
   function mergeStats(base, local, server) {
@@ -12608,11 +13206,13 @@ const Eco = (() => {
     const dm = {}, Bd = B.dm || {}, Ld = L.dm || {}, Sd = S.dm || {}; for (const k of ['matches', 'wins', 'kills', 'deaths']) dm[k] = Math.max(0, base ? delta(Bd[k], Ld[k], Sd[k]) : Math.max(Ld[k] || 0, Sd[k] || 0)); out.dm = dm;
     out.skins = [...new Set([...(S.skins || []), ...(L.skins || [])])];
     out.vskins = [...new Set([...(S.vskins || []), ...(L.vskins || [])])];
+    out.gskins = [...new Set([...(S.gskins || []), ...(L.gskins || [])])];
     const Be = B.eco || {}, Le = L.eco, Se = S.eco;
     if (Le || Se) {
       const le = Le || {}, se = Se || {}, e = Object.assign({}, se.v ? se : le);
       e.gold = Math.max(0, Se && Le ? (base ? delta(Be.gold, le.gold, se.gold) : Math.max(le.gold || 0, se.gold || 0)) : (le.gold !== undefined ? le.gold : se.gold || 0));
       e.coin = Math.max(0, Se && Le ? (base ? delta(Be.coin, le.coin, se.coin) : Math.max(le.coin || 0, se.coin || 0)) : (le.coin !== undefined ? le.coin : se.coin || 0));
+      e.gcoin = Math.max(0, Se && Le ? (base ? delta(Be.gcoin, le.gcoin, se.gcoin) : Math.max(le.gcoin || 0, se.gcoin || 0)) : (le.gcoin !== undefined ? le.gcoin : se.gcoin || 0));
       const pulls = {}; for (const k of new Set([...Object.keys(le.pulls || {}), ...Object.keys(se.pulls || {})])) pulls[k] = Math.max((le.pulls || {})[k] || 0, (se.pulls || {})[k] || 0); e.pulls = pulls;
       const la = le.att || { last: '', n: 0 }, sa = se.att || { last: '', n: 0 }; e.att = { last: la.last > sa.last ? la.last : sa.last, n: Math.max(la.n || 0, sa.n || 0) };
       const lq = le.q, sq = se.q;
@@ -12627,8 +13227,8 @@ const Eco = (() => {
     }
     return out;
   }
-  return { E, today, weekKey, owns, ownsVeh, ownedSkins, pool, draw, pull, exchange, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, mergeStats, changed,
-    on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, DEV };
+  return { E, today, weekKey, owns, ownsVeh, ownsGun, ownedSkins, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+    on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();
 
 // ---------- 10_hud.js ----------
@@ -13414,12 +14014,12 @@ const HUD = (() => {
   }
   // 무늬 옷은 SVG 패턴(index.html의 pt-*)으로 칠한다
   const skinFill = (S) => (S.ico ? `url(#${S.ico})` : hexs(S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888)));
-  let whVeh = 'sedan';
+  let whVeh = 'sedan', whGun = null;
   function renderWarehouse() {
     const eq = Body.normEquip(SETTINGS.look), own = ownedSkins(), cats = $('whCats'), grid = $('whGrid');
     if (!cats || !grid) return;
     cats.innerHTML = ''; grid.innerHTML = '';
-    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.map((s) => [s.id, s.name]), [['veh', '차량']])) {
+    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.map((s) => [s.id, s.name]), [['gun', '총기'], ['veh', '차량']])) {
       const b = h('button', whCat === k ? 'on' : '', n); b.type = 'button';
       b.addEventListener('click', () => { whCat = k; renderWarehouse(); Audio.init(); Audio.ui(); showcase(); }); cats.appendChild(b);
     }
@@ -13435,7 +14035,26 @@ const HUD = (() => {
       return b;
     };
     let n = 0;
-    if (whCat === 'veh') {
+    if (whCat === 'gun') {
+      // 총기: 스킨을 가진 총마다 '기본' + 가진 스킨. 장착하면 경기에서 그 총을 들 때 내 스킨, 로비 캐릭터도 그 총을 든다
+      const gl = Eco.glook(), owned = (STATS.gskins || []).filter((id) => GSKINS[id]), order = Object.keys(ITEMS);
+      const guns = [...new Set(owned.map((id) => GSKINS[id].gun))].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      const gcard = (gun, id) => {
+        const S = id ? GSKINS[id] : null, on = (gl[gun] || null) === (id || null), R = S ? rarOf(S.rar) : null;
+        const b = h('button', 'wh-item gun' + (on ? ' on' : '') + (S ? ' rar' : '') + (whGun === gun && on ? ' sel' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
+        const ico = h('i', 'wh-ico'); ico.appendChild(Shop.gunImgEl(gun, id));
+        b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : '기본')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + (S && S.fx ? '효과 · ' : '') + (on ? '장착 중' : '장착하기')));
+        b.title = S ? GunSkin.name(id) + (S.desc ? ' — ' + S.desc : '') : GunSkin.short(gun) + ' 기본';
+        b.addEventListener('click', () => { whGun = gun; if (!on) Eco.equipGun(gun, id); else { SETTINGS.gshow = gun; saveSettings(); Lobby.setGun(false); } renderWarehouse(); showcase(); Audio.init(); Audio.ui(); });
+        return b;
+      };
+      for (const gun of guns) {
+        grid.appendChild(h('div', 'wh-ghead', GunSkin.short(gun)));
+        grid.appendChild(gcard(gun, null));
+        for (const id of owned.filter((x) => GSKINS[x].gun === gun).sort((a, b) => GSKINS[b].rar - GSKINS[a].rar)) { grid.appendChild(gcard(gun, id)); n++; }
+      }
+      if (!guns.length) grid.appendChild(h('div', 'wh-empty', '아직 가진 총기 스킨이 없습니다. 상점의 아스널·네온 상자, 교환소(총기 교환 코인), 옷 상자(드물게)에서 얻을 수 있습니다.'));
+    } else if (whCat === 'veh') {
       // 차량: 차종별 기본 + 가진 스킨. 장착하면 경기에서 그 차종 운전석에 탈 때 스킨으로 바뀜
       const vl = Eco.vlook(), tabs = h('div', 'wh-vtabs');
       for (const [t, nm] of Object.entries(VEH_SKIN_TYPES)) { const b = h('button', whVeh === t ? 'on' : '', nm); b.type = 'button'; b.addEventListener('click', () => { whVeh = t; renderWarehouse(); showcase(); Audio.init(); Audio.ui(); }); tabs.appendChild(b); }
@@ -13459,12 +14078,14 @@ const HUD = (() => {
       for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
       if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자에서 얻을 수 있습니다.`));
     }
-    $('whCount').textContent = `옷 ${own.size}벌 · 차량 스킨 ${(STATS.vskins || []).length}종`;
+    $('whCount').textContent = `옷 ${own.size}벌 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${(STATS.gskins || []).length}종`;
   }
   // 창고 3D: 차량 분류면 장착한(없으면 기본) 차량을, 아니면 캐릭터
   function showcase() {
     if (lobbyTab !== 'custom') return;
-    if (whCat === 'veh') { const vl = Eco.vlook(); Lobby.show({ kind: 'veh', type: whVeh, skin: vl[whVeh] }); } else Lobby.show(null);
+    if (whCat === 'veh') { const vl = Eco.vlook(); Lobby.show({ kind: 'veh', type: whVeh, skin: vl[whVeh] }); }
+    else if (whCat === 'gun') { const gun = whGun || Eco.showGun(); Lobby.show({ kind: 'gun', gun, skin: Eco.glook()[gun] || null }); }
+    else Lobby.show(null);
   }
   // 로비 탭: 플레이 / 전적 / 창고 / 상점 / 미션
   let lobbyTab = 'play';
@@ -13696,7 +14317,7 @@ const HUD = (() => {
       }
     }
   }
-  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
+  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();
 
 // ---------- 10_net.js ----------
@@ -14123,9 +14744,10 @@ const Net = (() => {
     const g = gunObj(c), meta = g && g.userData.meta;
     const muzzle = meta ? gunWorldPoint(c, 0, meta.boreY, meta.muzzleZ + 0.01, new THREE.Vector3()) : null;
     const start = muzzle && muzzle.distanceTo(_o) < 3 ? muzzle : _o;
-    FX.tracer(c, start, e.e[0], e.e[1], e.e[2]);
+    FX.tracer(c, start, e.e[0], e.e[1], e.e[2], GunSkin.tracerCol(g));
     if (e.i) FX.impact(e.e[0], e.e[1], e.e[2], e.i === 'char' ? 'blood' : e.i === 'terrain' ? 'dirt' : 'spark');
     FX.flash(c, g, meta, start, _dv, d);
+    if (g && g.userData.skin) GunSkin.shot(g, c);
     Audio.gunshot(_o, e.w, false, isIndoor(c.pos.x, c.pos.z, c.pos.y));
     c.lastShotT = G.time;
     G.noises.push({ x: _o.x, y: _o.y, z: _o.z, t: G.time, r: d.cls === 'SMG' || d.cls === 'PISTOL' ? 160 : d.ammo === 'a300' ? 360 : 260, by: c, kind: 'shot' });
@@ -14520,34 +15142,74 @@ const Rank = (() => {
 // ---------- 10_shop.js ----------
 // ============================================================
 // 10_shop.js — 상점·미션 화면 + 상자 3D 모델 + 고등급 뽑기 컷신
-//  · 상점 탭: 지갑(골드 탄피·차량 교환 코인), 뽑기 4종(1회·10회, 확률 공개), 교환소(차량 교환 코인 → 차량 스킨)
+//  · 상점 탭: 지갑(골드 탄피·차량 교환 코인·총기 교환 코인), 뽑기 6종(총기 2 · 옷 3 · 차량, 1회·10회, 확률 공개)
+//    교환소: 총기(총기 교환 코인 → 총기 스킨) · 차량(차량 교환 코인 → 차량 스킨)
 //  · 미션 탭: 7일 출석 보상, 일일 미션 4개(+모두 받기 보너스), 주간 미션 4개
 //  · 결과: 레어도 색 카드. 초희귀 이상이 나오면 먼저 3D 컷신(상자가 흔들리며 빛이 파랑→보라→핑크→빨강으로 바뀌고 열림)
 //  · 로비 3D: 고른 상자·차량을 가운데 받침대에 올려 천천히 돌려 보여 준다 (Lobby.show)
 // ============================================================
 const Shop = (() => {
-  let tab = 'gacha', selBox = 'br', selVeh = 'sedan_gt_red', armed = null, armT = null, lastPull = null;
+  let tab = 'gacha', selBox = 'g1', selVeh = 'sedan_gt_red', selGun = 'g1_m416_magma', exSub = 'gun', armed = null, armT = null, lastPull = null;
   const fmt = (n) => Math.round(n).toLocaleString('ko-KR');
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // 이 파일의 문구는 모두 게임 안 고정 목록(이름은 esc 처리) → innerHTML로 아이콘과 함께 넣는다
   const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
   const goldIco = () => `<svg class="ico-cur" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7.5 9.2 4h5.6L16 7.5V20H8z" fill="url(#g-gold)" stroke="#5a3c08" stroke-width=".8"/><rect x="7.2" y="19.2" width="9.6" height="2.6" rx=".5" fill="url(#g-gold)" stroke="#5a3c08" stroke-width=".8"/><path d="M10 9v8" stroke="rgba(255,255,255,.55)" stroke-width="1.1"/></svg>`;
   const coinIco = () => `<svg class="ico-cur" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="url(#g-coin)" stroke="#0b3a52" stroke-width="1"/><circle cx="12" cy="12" r="7" fill="none" stroke="rgba(255,255,255,.45)" stroke-width=".8"/><path d="M6.8 13.6h10.4l-.6-2-1.7-.4-1.4-1.6H10.3l-1.6 1.6-1.4.4z" fill="#e8f7ff"/><circle cx="9" cy="14.2" r="1.1" fill="#0b3a52"/><circle cx="15" cy="14.2" r="1.1" fill="#0b3a52"/></svg>`;
-  const curHtml = (k, n) => `<span class="amt">${k === 'coin' ? coinIco() : goldIco()}<b>${fmt(n)}</b></span>`;
-  function wallet(el) { if (el) el.innerHTML = `<span class="cur gold" title="${GOLD_NAME}">${goldIco()}<b>${fmt(Eco.gold)}</b><i>${GOLD_NAME}</i></span><span class="cur coin" title="${COIN_NAME}">${coinIco()}<b>${fmt(Eco.coin)}</b><i>교환 코인</i></span>`; }
+  // 총기 교환 코인: 붉은 동전 + 탄 모양
+  const gcoinIco = () => `<svg class="ico-cur" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="url(#g-gcoin)" stroke="#5a1408" stroke-width="1"/><circle cx="12" cy="12" r="7" fill="none" stroke="rgba(255,255,255,.45)" stroke-width=".8"/><path d="M10.3 16.6V10.2c0-1.5.7-2.8 1.7-3.6 1 .8 1.7 2.1 1.7 3.6v6.4z" fill="#fff3e4"/><path d="M9.7 16.6h4.6v1.6H9.7z" fill="#ffcf9a"/></svg>`;
+  const curIco = (k) => (k === 'coin' ? coinIco() : k === 'gcoin' ? gcoinIco() : goldIco());
+  const curHtml = (k, n) => `<span class="amt">${curIco(k)}<b>${fmt(n)}</b></span>`;
+  function wallet(el) { if (el) el.innerHTML = `<span class="cur gold" title="${GOLD_NAME}">${goldIco()}<b>${fmt(Eco.gold)}</b><i>${GOLD_NAME}</i></span><span class="cur coin" title="${COIN_NAME}">${coinIco()}<b>${fmt(Eco.coin)}</b><i>차량 코인</i></span><span class="cur gcoin" title="${GCOIN_NAME}">${gcoinIco()}<b>${fmt(Eco.gcoin)}</b><i>총기 코인</i></span>`; }
 
   // ---------- 3D 상자 ----------
   //  base(몸통)·lid(뚜껑) 따로 — 컷신에서 뚜껑이 날아간다. seam: 뚜껑 틈의 빛 띠(색이 바뀜)
+  //  dim: 뚜껑 높이·틈 크기 (총기 상자는 길고 낮은 총 케이스)
   function crate(box) {
-    const K = Models.kit, { A, BX, CY, RB, SPH, TOR } = K, M = K.M;
+    const K = Models.kit, D = CRATE[box].dim || {}, lidY = D.lidY || 0.62;
     const root = new THREE.Group(), base = Models.cluster('gc:' + box + ':b', (g) => CRATE[box].base(g, K)), lid = new THREE.Group();
-    lid.add(Models.cluster('gc:' + box + ':l', (g) => CRATE[box].lid(g, K))); lid.position.y = 0.62;
+    lid.add(Models.cluster('gc:' + box + ':l', (g) => CRATE[box].lid(g, K))); lid.position.y = lidY;
     const seamMat = new THREE.MeshBasicMaterial({ color: 0x4d8fff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
-    const seam = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.035, 0.76), seamMat); seam.position.y = 0.62;
+    const seam = new THREE.Mesh(new THREE.BoxGeometry(D.sw || 1.06, 0.035, D.sd || 0.76), seamMat); seam.position.y = lidY;
     root.add(base); root.add(lid); root.add(seam);
-    return { root, base, lid, seam, seamMat };
+    return { root, base, lid, seam, seamMat, lidY };
   }
   const CRATE = {
+    // 아스널(총기): 올리브 하드 총 케이스 + 검정 고무 범퍼 + 황동 걸쇠 4개 + 주황 띠 + 뚜껑 위 볼록 줄·육각 황동 엠블럼
+    g1: {
+      dim: { lidY: 0.4, sw: 1.56, sd: 0.6 },
+      base(g, { A, BX, RB, M }) {
+        const od = M('anod', 0x4b5233), dk = M('rubber', 0x1c1d1a), br = M('brass', 0xc9a24a), st = M('gunmetal', 0x2e302c), or = M('polymer', 0xe0892a);
+        A(g, RB(1.5, 0.38, 0.56, 0.05), od, 0, 0.2, 0);
+        for (const x of [-0.56, 0.56]) A(g, RB(0.07, 0.4, 0.58, 0.03), dk, x, 0.2, 0);
+        A(g, RB(1.52, 0.04, 0.58, 0.02), dk, 0, 0.02, 0);
+        for (const sz of [-1, 1]) { for (const x of [-0.4, -0.2, 0.2, 0.4]) A(g, BX(0.09, 0.08, 0.03), br, x, 0.34, sz * 0.285); A(g, BX(0.6, 0.025, 0.006), or, 0, 0.13, sz * 0.281); }
+        A(g, BX(0.3, 0.035, 0.045), dk, 0, 0.26, 0.31); for (const x of [-0.14, 0.14]) A(g, BX(0.03, 0.06, 0.04), st, x, 0.27, 0.295);
+      },
+      lid(g, { A, BX, RB, CY, M }) {
+        const od = M('anod', 0x535b39), dk = M('rubber', 0x1c1d1a), br = M('brass', 0xc9a24a);
+        A(g, RB(1.53, 0.09, 0.58, 0.04), od, 0, 0.045, 0);
+        for (const z of [-0.2, -0.11, 0.11, 0.2]) A(g, BX(1.3, 0.022, 0.04), dk, 0, 0.098, z);
+        A(g, CY(0.075, 0.075, 0.03, 6, 'y'), br, 0, 0.11, 0); A(g, CY(0.045, 0.045, 0.034, 6, 'y'), M('anod', 0x2a2d22), 0, 0.112, 0);
+      },
+    },
+    // 네온(총기): 광택 검정 총 케이스 + 분홍·하늘 빛 줄 + 크롬 모서리 + 뚜껑 위 사선 빛 줄·육각 엠블럼
+    g2: {
+      dim: { lidY: 0.4, sw: 1.56, sd: 0.6 },
+      base(g, { A, BX, RB, M }) {
+        const bk = M('polymer', 0x121216), ch = M('metal', 0xd6dade), pk = new THREE.MeshBasicMaterial({ color: 0xff2d95 }), cy = new THREE.MeshBasicMaterial({ color: 0x2ae8ff });
+        A(g, RB(1.5, 0.38, 0.56, 0.06), bk, 0, 0.2, 0);
+        for (const sz of [-1, 1]) { A(g, BX(1.36, 0.014, 0.006), pk, 0, 0.35, sz * 0.281); A(g, BX(1.36, 0.01, 0.006), cy, 0, 0.06, sz * 0.281); A(g, BX(0.12, 0.08, 0.02), ch, 0, 0.3, sz * 0.287); }
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) A(g, BX(0.06, 0.4, 0.06), ch, sx * 0.73, 0.2, sz * 0.26);
+        for (const sx of [-1, 1]) A(g, BX(0.006, 0.014, 0.46), pk, sx * 0.752, 0.35, 0);
+      },
+      lid(g, { A, BX, RB, CY, M }) {
+        const bk = M('polymer', 0x17171c), ch = M('metal', 0xd6dade), pk = new THREE.MeshBasicMaterial({ color: 0xff2d95 }), cy = new THREE.MeshBasicMaterial({ color: 0x2ae8ff });
+        A(g, RB(1.53, 0.09, 0.58, 0.06), bk, 0, 0.045, 0);
+        for (let i = 0; i < 3; i++) A(g, BX(0.46, 0.008, 0.022), i === 1 ? cy : pk, -0.42 + i * 0.08, 0.093, 0, 0, 0.7, 0);
+        A(g, CY(0.08, 0.08, 0.02, 6, 'y'), ch, 0.38, 0.1, 0); A(g, CY(0.05, 0.05, 0.024, 6, 'y'), pk, 0.38, 0.102, 0);
+      },
+    },
     // 배틀로얄: 올리브 탄약 상자 + 철 띠 + 주황 줄 + 마름모 표식 + 걸쇠
     br: {
       base(g, { A, BX, RB, M }) {
@@ -14623,6 +15285,15 @@ const Shop = (() => {
   const crateThumb = (box) => thumb('crate:' + box, () => crate(box).root, 200, 160, [0.9, 0.75, 1.3]);
   const vehThumb = (id) => { const V = VSKINS[id]; return thumb('veh:' + id, () => VehModels.instance(V.veh, id).root, 240, 140, V.veh === 'sedan' ? [1.2, 0.55, 1.0] : [1.3, 0.45, 0.6]); };
   const vehBaseThumb = (type) => thumb('vehb:' + type, () => VehModels.instance(type).root, 240, 140, type === 'sedan' ? [1.2, 0.55, 1.0] : [1.3, 0.45, 0.6]);
+  // 총기 스킨 썸네일 (id 없으면 기본 총). 목록은 한꺼번에 렌더하면 휴대폰에서 끊기므로
+  //  아직 없는 그림은 빈 칸으로 두고 로비 프레임마다 하나씩 그려 넣는다(<img data-th>)
+  const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', TQ = [];
+  const gkey = (gun, id) => 'gs:' + gun + ':' + (id || '');
+  const gunThumb = (gun, id) => thumb(gkey(gun, id), () => buildGunMesh(gun, {}, id || null), 240, 104, [-1, 0.22, 0.12]);
+  function gunSrc(gun, id) { const k = gkey(gun, id); if (THUMB[k] !== undefined) return THUMB[k] || BLANK; if (!TQ.some((q) => q[0] === k)) TQ.push([k, gun, id]); return BLANK; }
+  const gunImg = (gun, id) => `<img data-th="${gkey(gun, id)}" src="${gunSrc(gun, id)}" alt="">`;
+  function gunImgEl(gun, id) { const im = document.createElement('img'); im.dataset.th = gkey(gun, id); im.src = gunSrc(gun, id); im.alt = ''; return im; }
+  function pump() { if (!TQ.length) return; const [k, gun, id] = TQ.shift(), src = gunThumb(gun, id) || BLANK; document.querySelectorAll(`img[data-th="${k}"]`).forEach((im) => { im.src = src; }); }
   // ---------- 아이콘 ----------
   const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산' };
   const hexs = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
@@ -14635,17 +15306,22 @@ const Shop = (() => {
   function itemIcon(o) {
     if (o.k === 'gold') return goldIco();
     if (o.k === 'coin') return coinIco();
+    if (o.k === 'gcoin') return gcoinIco();
+    if (o.k === 'gskin') return gunImg(GSKINS[o.id].gun, o.id);
     if (o.k === 'vskin') { const src = vehThumb(o.id); return src ? `<img src="${src}" alt="">` : coinIco(); }
     return skinSvg(o.id);
   }
   function itemName(o) {
     if (o.k === 'gold') return `${GOLD_NAME} ×${fmt(o.n)}`;
     if (o.k === 'coin') return `${COIN_NAME} ×${o.n}`;
+    if (o.k === 'gcoin') return `${GCOIN_NAME} ×${o.n}`;
     if (o.k === 'vskin') return VSKINS[o.id].name;
+    if (o.k === 'gskin') return GunSkin.name(o.id);
     return Body.SKINS[o.id].name;
   }
   function itemSub(o) {
-    if (o.k === 'gold' || o.k === 'coin') return '재화';
+    if (o.k === 'gold' || o.k === 'coin' || o.k === 'gcoin') return '재화';
+    if (o.k === 'gskin') { const S = GSKINS[o.id], cls = ITEMS[S.gun].name.replace(GunSkin.short(S.gun), '').trim(); return `총기 스킨 · ${cls}` + (S.fx ? ' · 사격·교체 효과' : ''); }
     if (o.k === 'vskin') { const V = VSKINS[o.id]; return `${VEH_SKIN_TYPES[V.veh]} 스킨 · ${VCLS_NAME[V.cls]}`; }
     return SLOT_NAME[Body.SKINS[o.id].slot] || '';
   }
@@ -14659,9 +15335,10 @@ const Shop = (() => {
     if (tab === 'gacha') {
       const grid = h('div', 'gc-grid');
       for (const [k, B] of Object.entries(BOXES)) {
-        const card = h('div', 'gc-card' + (k === selBox ? ' on' : '') + (k === 'veh' ? ' veh' : '')); card.style.setProperty('--acc', B.accent); card.tabIndex = 0;
-        const n = k === 'veh' ? Object.keys(VSKINS).length : Eco.pool(k).filter((x) => x.k === 'skin').length;
-        card.innerHTML = `<span class="gc-img"><img src="${crateThumb(k)}" alt=""></span><span class="gc-txt"><b>${B.name}</b><span>${k === 'veh' ? `차량 교환 코인(높은 확률) · 차량 스킨 ${n}종` : `${B.theme} ${n}종 · ${GOLD_NAME}`}</span></span>`;
+        const card = h('div', 'gc-card' + (k === selBox ? ' on' : '') + (k === 'veh' ? ' veh' : '') + (B.gun ? ' gun' : '')); card.style.setProperty('--acc', B.accent); card.tabIndex = 0; card.dataset.box = k;
+        const P = Eco.pool(k), n = k === 'veh' ? Object.keys(VSKINS).length : P.filter((x) => x.k === (B.gun ? 'gskin' : 'skin')).length, gn = B.gun ? 0 : P.filter((x) => x.k === 'gskin').length;
+        const sub = k === 'veh' ? `차량 교환 코인(높은 확률) · 차량 스킨 ${n}종` : B.gun ? `총기 교환 코인 70% · ${B.theme} ${n}종` : `${B.theme} ${n}종 · 총기 스킨 ${gn}종 · ${GOLD_NAME}`;
+        card.innerHTML = `<span class="gc-img"><img src="${crateThumb(k)}" alt=""></span><span class="gc-txt"><b>${B.name}${B.isNew && !(Eco.E().pulls[k] > 0) ? '<em class="gc-new">NEW</em>' : ''}</b><span>${sub}</span></span>`;
         const odds = h('button', 'gc-odds', '확률'); odds.type = 'button'; odds.addEventListener('click', (e) => { e.stopPropagation(); click(); openOdds(k); }); card.appendChild(odds);
         const btns = h('span', 'gc-btns');
         for (const n2 of [1, 10]) {
@@ -14674,8 +15351,34 @@ const Shop = (() => {
         grid.appendChild(card);
       }
       body.appendChild(grid);
-      $('shopFoot').textContent = `옷 상자는 1회 100, 차량 뽑기는 1회 1,000 ${GOLD_NAME}. 이미 가진 옷이 나오면 ${GOLD_NAME}로, 가진 차량이 나오면 교환 코인으로 일부 돌려받습니다. 상자마다 나오는 옷이 모두 다릅니다.`;
+      $('shopFoot').textContent = `총기 상자·차량 뽑기는 1회 200, 옷 상자는 1회 100 ${GOLD_NAME}. 총기 상자는 70% 확률로 총기 교환 코인, 나머지는 총기 스킨이 나오고 울트라레어 스킨은 쏠 때와 총을 바꿀 때 효과가 있습니다. 이미 가진 것이 나오면 일부를 돌려받습니다.`;
     } else {
+      // 교환소: 총기 / 차량
+      const subt = h('div', 'ex-subtabs');
+      for (const [k, nm] of [['gun', '총기 스킨'], ['veh', '차량 스킨']]) { const b = h('button', exSub === k ? 'on' : '', nm); b.type = 'button'; b.addEventListener('click', () => { click(); exSub = k; armed = null; render(); onTab('shop'); }); subt.appendChild(b); }
+      body.appendChild(subt);
+    }
+    if (tab !== 'gacha' && exSub === 'gun') {
+      for (const r of [5, 4, 3, 1]) {
+        const ids = Object.keys(GSKINS).filter((id) => GSKINS[id].rar === r && Eco.gunPrice(id)); if (!ids.length) continue;
+        const R = rarOf(r), sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', `${R.name}` + (r === 5 ? ' · 사격·교체 효과' : '')));
+        const grid = h('div', 'ex-grid gun');
+        for (const id of ids) {
+          const S = GSKINS[id], own = Eco.ownsGun(id), price = Eco.gunPrice(id), key = 'exg:' + id;
+          const card = h('div', 'ex-card' + (id === selGun ? ' on' : '') + (own ? ' own' : '')); card.style.setProperty('--rc', R.color);
+          card.innerHTML = `<span class="ex-img">${gunImg(S.gun, id)}</span><span class="ex-rar">${R.name} · ${esc(GunSkin.short(S.gun))}</span><b>${esc(S.name)}</b>`;
+          const b = h('button', 'ex-buy' + (armed === key ? ' armed' : '') + (!own && Eco.gcoin < price ? ' poor' : '')); b.type = 'button';
+          b.innerHTML = own ? '보유 중' : armed === key ? '<em>교환 확인</em>' : `<em>교환</em>${curHtml('gcoin', price)}`;
+          b.disabled = own;
+          b.addEventListener('click', (e) => { e.stopPropagation(); swapGun(id); });
+          card.appendChild(b);
+          card.addEventListener('click', () => { click(); selGun = id; render(); Lobby.show({ kind: 'gun', gun: S.gun, skin: id }); });
+          grid.appendChild(card);
+        }
+        sec.appendChild(grid); body.appendChild(sec);
+      }
+      $('shopFoot').textContent = `${GCOIN_NAME}은 아스널·네온 상자에서 70% 확률로 나옵니다. 교환한 스킨은 창고 → 총기에서 장착하면 경기·훈련장에서 그 총을 들 때 적용됩니다.`;
+    } else if (tab !== 'gacha') {
       for (const t of Object.keys(VEH_SKIN_TYPES)) {
         const sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', VEH_SKIN_TYPES[t] + (t === 'sedan' ? ' (세단에 적용)' : '')));
         const grid = h('div', 'ex-grid');
@@ -14697,6 +15400,7 @@ const Shop = (() => {
     }
   }
   const click = () => { Audio.init(); Audio.ui(); };
+  let whGo = null;
   // 1,000 이상 쓰는 버튼은 두 번 눌러 확인
   function arm(key) { armed = key; clearTimeout(armT); armT = setTimeout(() => { armed = null; if (tab) render(); }, 3500); render(); }
   function buy(box, n) {
@@ -14719,6 +15423,16 @@ const Shop = (() => {
     lastPull = null;
     reveal(r, `교환소 · ${V.name}`, 'veh');
   }
+  function swapGun(id) {
+    click();
+    const S = GSKINS[id], price = Eco.gunPrice(id); if (!S || !price || Eco.ownsGun(id)) return;
+    if (Eco.gcoin < price) { HUD.lobbyNote(`${GCOIN_NAME}이 부족합니다 — 필요 ${price}, 보유 ${Eco.gcoin} (아스널·네온 상자에서 70% 확률로 나옵니다)`); return; }
+    if (armed !== 'exg:' + id) { arm('exg:' + id); return; }
+    armed = null; clearTimeout(armT);
+    const r = Eco.exchangeGun(id); if (r.err) { HUD.lobbyNote(r.err); render(); return; }
+    lastPull = null;
+    reveal(r, `교환소 · ${GunSkin.name(id)}`, S.box);
+  }
   // 결과: 초희귀 이상이면 컷신 → 카드
   function reveal(r, title, box) {
     render(); renderMissions(); badge();
@@ -14733,12 +15447,15 @@ const Shop = (() => {
     r.res.forEach((o, i) => {
       const R = rarOf(o.rar), c = h('div', 'gr-card r' + o.rar); c.style.setProperty('--rc', R.color); c.style.animationDelay = (i * 0.07) + 's';
       c.innerHTML = `<span class="gr-ico">${itemIcon(o)}</span><span class="gr-rar">${R.name}</span><b class="gr-name">${esc(itemName(o))}</b><span class="gr-sub">${esc(itemSub(o))}</span>` +
-        (o.isNew ? '<em class="gr-tag new">NEW</em>' : o.dup ? `<em class="gr-tag dup">중복 → ${o.refund ? GOLD_NAME + ' +' + o.refund : '코인 +' + o.refundCoin}</em>` : '');
+        (o.isNew ? '<em class="gr-tag new">NEW</em>' : o.dup ? `<em class="gr-tag dup">중복 → ${o.refund ? GOLD_NAME + ' +' + o.refund : o.refundGC ? '총기 코인 +' + o.refundGC : '차량 코인 +' + o.refundCoin}</em>` : '');
       grid.appendChild(c);
     });
-    const gotG = r.res.reduce((a, o) => a + (o.k === 'gold' ? o.n : 0) + (o.refund || 0), 0), gotC = r.res.reduce((a, o) => a + (o.k === 'coin' ? o.n : 0) + (o.refundCoin || 0), 0);
-    $('gresNote').innerHTML = (r.cost ? `사용 ${curHtml('gold', r.cost)} · ` : '') + (gotG ? `받은 ${GOLD_NAME} ${curHtml('gold', gotG)} · ` : '') + (gotC ? `받은 코인 ${curHtml('coin', gotC)} · ` : '') + `남은 ${curHtml('gold', Eco.gold)} ${curHtml('coin', Eco.coin)}`;
-    $('gresAgain').hidden = !lastPull; $('gresWh').hidden = !r.res.some((o) => o.isNew && (o.k === 'skin' || o.k === 'vskin'));
+    const gotG = r.res.reduce((a, o) => a + (o.k === 'gold' ? o.n : 0) + (o.refund || 0), 0), gotC = r.res.reduce((a, o) => a + (o.k === 'coin' ? o.n : 0) + (o.refundCoin || 0), 0), gotGC = r.res.reduce((a, o) => a + (o.k === 'gcoin' ? o.n : 0) + (o.refundGC || 0), 0);
+    $('gresNote').innerHTML = (r.cost ? `사용 ${curHtml('gold', r.cost)} · ` : '') + (gotG ? `받은 ${GOLD_NAME} ${curHtml('gold', gotG)} · ` : '') + (gotC ? `받은 차량 코인 ${curHtml('coin', gotC)} · ` : '') + (gotGC ? `받은 총기 코인 ${curHtml('gcoin', gotGC)} · ` : '') + `남은 ${curHtml('gold', Eco.gold)} ${curHtml('coin', Eco.coin)} ${curHtml('gcoin', Eco.gcoin)}`;
+    // 새로 얻은 것이 있으면 창고로: 총기 스킨이면 창고 → 총기(그 총)로 바로
+    const nw = r.res.filter((o) => o.isNew && (o.k === 'skin' || o.k === 'vskin' || o.k === 'gskin')), ng = nw.find((o) => o.k === 'gskin');
+    whGo = ng && !nw.some((o) => o.k === 'skin') ? { cat: 'gun', gun: GSKINS[ng.id].gun, skin: ng.id } : nw.some((o) => o.k === 'vskin') && !nw.some((o) => o.k === 'skin') ? { cat: 'veh' } : null;
+    $('gresAgain').hidden = !lastPull; $('gresWh').hidden = !nw.length; $('gresWh').textContent = whGo && whGo.cat === 'gun' ? '창고에서 장착' : '창고에서 입기';
     P.hidden = false;
     if (r.best >= 3) Audio.gacha && Audio.gacha('show', r.best); else Audio.gacha && Audio.gacha('small', r.best);
   }
@@ -14751,7 +15468,7 @@ const Shop = (() => {
       const rows = P.filter((x) => x.rar === r); if (!rows.length) continue;
       const R = rarOf(r), sum = rows.reduce((a, x) => a + x.p, 0), sec = h('div', 'od-sec'); sec.style.setProperty('--rc', R.color);
       sec.appendChild(h('div', 'od-head', `<b>${R.name}</b><span>${sum.toFixed(2)}%</span>`));
-      for (const x of rows) { const row = h('div', 'od-row'); row.innerHTML = `<span class="od-ico">${itemIcon(x)}</span><span class="od-name">${esc(itemName(x))}<small>${esc(itemSub(x))}</small></span><span class="od-p">${x.p.toFixed(x.p < 1 ? 3 : 2)}%</span>`; sec.appendChild(row); }
+      for (const x of rows) { const row = h('div', 'od-row' + (x.k === 'gskin' ? ' gun' : '')); row.innerHTML = `<span class="od-ico">${itemIcon(x)}</span><span class="od-name">${esc(itemName(x))}<small>${esc(itemSub(x))}</small></span><span class="od-p">${x.p.toFixed(x.p < 1 ? 3 : 2)}%</span>`; sec.appendChild(row); }
       grid.appendChild(sec);
     }
     $('oddsPanel').hidden = false;
@@ -14794,7 +15511,7 @@ const Shop = (() => {
   // 탭이 바뀔 때 (HUD.setTab에서 호출): 로비 3D 진열
   function onTab(t) {
     if ((t === 'shop' || t === 'mission') && Cloud.user) Cloud.pull();
-    if (t === 'shop') { render(); Lobby.show(tab === 'gacha' ? { kind: 'crate', box: selBox } : { kind: 'veh', type: VSKINS[selVeh].veh, skin: selVeh }); }
+    if (t === 'shop') { render(); Lobby.show(tab === 'gacha' ? { kind: 'crate', box: selBox } : exSub === 'gun' ? { kind: 'gun', gun: GSKINS[selGun].gun, skin: selGun } : { kind: 'veh', type: VSKINS[selVeh].veh, skin: selVeh }); }
     else if (t === 'mission') { renderMissions(); Lobby.show(null); }
     else if (t !== 'custom') Lobby.show(null);
     badge();
@@ -14805,7 +15522,7 @@ const Shop = (() => {
     $('oddsPanel').addEventListener('click', (e) => { if (e.target === $('oddsPanel')) $('oddsPanel').hidden = true; });
     $('gresOk').addEventListener('click', () => { click(); $('gachaRes').hidden = true; });
     $('gresAgain').addEventListener('click', () => { $('gachaRes').hidden = true; if (lastPull) buy(lastPull.box, lastPull.n); });
-    $('gresWh').addEventListener('click', () => { click(); $('gachaRes').hidden = true; HUD.goTab('custom'); });
+    $('gresWh').addEventListener('click', () => { click(); $('gachaRes').hidden = true; if (whGo) HUD.whOpen(whGo.cat, whGo.gun, whGo.skin); else HUD.goTab('custom'); });
     $('csSkip').addEventListener('click', (e) => { e.stopPropagation(); Cutscene.skip(); });
     $('csLayer').addEventListener('click', () => Cutscene.skip());
     Eco.on(() => { wallet($('shopWallet')); wallet($('misWallet')); badge(); if (!$('lobby').hidden) { const P = document.querySelector('[data-pane=mission]'); if (P && !P.hidden) renderMissions(); } });
@@ -14816,13 +15533,14 @@ const Shop = (() => {
   }
   // 경기가 시작되면 상점 창·컷신을 닫는다 (파티 방장이 시작하는 경우 등)
   function closeAll() { if (Cutscene.active) Cutscene.skip(); for (const id of ['gachaRes', 'oddsPanel']) { const e = $(id); if (e) e.hidden = true; } armed = null; }
-  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh }; } };
+  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, gunThumb, gunImgEl, pump, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, gcoinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh, gun: selGun, ex: exSub }; } };
 })();
 
 // ============================================================
 // 고등급 뽑기 컷신 (초희귀·슈퍼레어·울트라레어)
 //  어두운 무대 → 카메라가 다가감 → 상자가 흔들리며 뚜껑 틈 빛이 파랑→보라→핑크→빨강으로 단계 상승(등급까지)
 //  → 뚜껑이 튀어 오르고 빛기둥·불꽃 → 등급·이름 표시 → 결과 카드. 화면을 누르면 건너뛴다
+//  총기 상자는 상자만 총 케이스로 바뀌고, 총기 스킨이 나오면 열린 케이스에서 그 총이 떠올라 돈다(울트라레어는 빛 띠와 함께 나타남)
 // ============================================================
 const Cutscene = (() => {
   let S = null, active = false, t = 0, t0 = 0, last = 0, D = 3, tier = 3, cb = null, steps = [], stepI = 0, opened = false, item = null;
@@ -14856,7 +15574,7 @@ const Cutscene = (() => {
   function resetParticles(burst) {
     for (let i = 0; i < S.N; i++) {
       const a = Math.random() * TAU, r = burst ? 0.1 : 0.9 + Math.random() * 0.8;
-      S.pos[i * 3] = Math.cos(a) * r; S.pos[i * 3 + 1] = burst ? 0.7 : Math.random() * 0.4; S.pos[i * 3 + 2] = Math.sin(a) * r;
+      S.pos[i * 3] = Math.cos(a) * r; S.pos[i * 3 + 1] = burst ? (S.crate ? S.crate.lidY : 0.62) + 0.08 : Math.random() * 0.4; S.pos[i * 3 + 2] = Math.sin(a) * r;
       const sp = burst ? 2 + Math.random() * 4 : 0.2 + Math.random() * 0.5;
       S.vel[i * 3] = burst ? Math.cos(a) * sp * 0.5 : -Math.sin(a) * sp; S.vel[i * 3 + 1] = burst ? 2 + Math.random() * 5 : 0.4 + Math.random() * 0.8; S.vel[i * 3 + 2] = burst ? Math.sin(a) * sp * 0.5 : Math.cos(a) * sp;
     }
@@ -14866,7 +15584,14 @@ const Cutscene = (() => {
     if (!S) build();
     if (S.crate) S.sc.remove(S.crate.root);
     S.crates = S.crates || {}; S.crate = S.crates[box] = S.crates[box] || Shop.crate(box); S.sc.add(S.crate.root); S.box = box;
-    const C = S.crate; C.root.position.set(0, 0, 0); C.root.rotation.set(0, 0, 0); C.lid.position.set(0, 0.62, 0); C.lid.rotation.set(0, 0, 0); C.seamMat.opacity = 0;
+    const C = S.crate; C.root.position.set(0, 0, 0); C.root.rotation.set(0, 0, 0); C.lid.position.set(0, C.lidY, 0); C.lid.rotation.set(0, 0, 0); C.seamMat.opacity = 0;
+    // 총기 스킨이 나오면 케이스에서 떠오를 총 (가운데를 축으로 돌게 감쌈)
+    if (S.gun) { S.sc.remove(S.gun); S.gun = null; }
+    if (top && top.k === 'gskin' && GSKINS[top.id]) {
+      const g = buildGunMesh(GSKINS[top.id].gun, {}, top.id), bb = new THREE.Box3().setFromObject(g), pv = new THREE.Group();
+      g.position.sub(bb.getCenter(new THREE.Vector3())); pv.add(g); pv.scale.setScalar(Math.min(2.6, 1.75 / Math.max(0.3, bb.max.z - bb.min.z)));
+      pv.visible = false; pv.userData.gun = g; S.sc.add(pv); S.gun = pv;
+    }
     tier = clamp(best, 3, 5); D = DUR[tier]; t = 0; t0 = last = performance.now(); cb = done; opened = false; item = top;
     // 빛 단계: 레어(파랑)부터 결과 등급까지
     steps = []; for (let r = 2; r <= tier; r++) steps.push(r); stepI = 0; setCol(colOf(2));
@@ -14886,6 +15611,7 @@ const Cutscene = (() => {
   function skip() { if (!active) return; if (!opened) open(true); finish(); }
   function open(silent) {
     opened = true; setCol(colOf(tier));
+    if (S.gun) { S.gun.visible = true; S.gunT = 0; S.gun.position.set(0, S.crate.lidY - 0.1, 0); if (!silent) GunSkin.draw(S.gun.userData.gun, 0.9, null); }
     resetParticles(true); S.pm.opacity = 1;
     $('csFlash').className = 'cs-flash on';
     const R = rarOf(tier); $('csRar').textContent = R.name; $('csRar').style.color = R.color; $('csName').textContent = item ? Shop.itemName(item) : '';
@@ -14909,7 +15635,7 @@ const Cutscene = (() => {
       if (t > 0.5 && want !== stepI) { stepI = want; setCol(colOf(steps[stepI])); Audio.gacha && Audio.gacha('tick', steps[stepI]); }
       const pulse = 0.5 + 0.5 * Math.sin(t * (10 + sh * 18));
       C.root.position.x = (Math.random() - 0.5) * shake; C.root.rotation.z = (Math.random() - 0.5) * shake * 1.6; C.root.rotation.y = Math.sin(t * 1.3) * 0.15;
-      C.lid.position.y = 0.62 + sh * 0.025 * pulse; C.seamMat.opacity = t > 0.5 ? 0.35 + 0.65 * sh * pulse : 0;
+      C.lid.position.y = C.lidY + sh * 0.025 * pulse; C.seamMat.opacity = t > 0.5 ? 0.35 + 0.65 * sh * pulse : 0;
       S.glow.intensity = t > 0.5 ? (0.6 + sh * 2.2) * (0.6 + 0.4 * pulse) : 0;
       S.raysM.opacity = t > 0.5 ? 0.12 + sh * 0.35 * pulse : 0; S.rays.rotation.y += dt * 0.6;
       S.pm.opacity = Math.min(0.85, t * 0.5);
@@ -14917,9 +15643,13 @@ const Cutscene = (() => {
     } else {
       const u = t - tOpen;
       C.root.position.x = 0; C.root.rotation.z = 0;
-      C.lid.position.y = 0.62 + u * 3.2 - u * u * 2.2; C.lid.rotation.x = -u * 2.4; C.lid.position.z = -u * 0.8;
+      // 총이 떠오를 때는 뚜껑이 멀리 뒤로 날아가 총을 가리지 않게
+      if (S.gun) { C.lid.position.y = C.lidY + u * 2.6 - u * u * 3.2; C.lid.rotation.x = -u * 3.2; C.lid.position.z = -u * 2.6; }
+      else { C.lid.position.y = C.lidY + u * 3.2 - u * u * 2.2; C.lid.rotation.x = -u * 2.4; C.lid.position.z = -u * 0.8; }
+      // 총: 빛기둥 앞쪽으로 떠올라 천천히 돈다
+      if (S.gun) { S.gunT += dt; const k = smoothstep01(clamp(S.gunT / 0.9, 0, 1)); S.gun.position.set(0, lerp(C.lidY - 0.1, C.lidY + 0.85, k), lerp(0, 0.55, k)); S.gun.rotation.set(0.12 * (1 - k), 0.5 + S.gunT * 0.9, 0); }
       C.seamMat.opacity = Math.max(0, 1 - u * 1.5);
-      S.pillar.scale.y = Math.min(1, u * 3.5); S.pillar.position.y = 0.6 + 4.5 * S.pillar.scale.y; S.pillarM.opacity = Math.min(0.7, u * 3) * (0.85 + 0.15 * Math.sin(u * 20));
+      S.pillar.scale.y = Math.min(1, u * 3.5); S.pillar.position.y = C.lidY - 0.02 + 4.5 * S.pillar.scale.y; S.pillarM.opacity = Math.min(S.gun ? 0.42 : 0.7, u * 3) * (0.85 + 0.15 * Math.sin(u * 20));
       S.glow.intensity = 3.2 + Math.sin(u * 14) * 0.6; S.raysM.opacity = Math.max(0, 0.7 - u * 0.4); S.rays.rotation.y += dt * 1.4;
       S.pm.opacity = Math.max(0, 1 - u * 0.55);
       if (u > 0.25 && $('csFlash').className === 'cs-flash on') $('csFlash').className = 'cs-flash';
@@ -15677,7 +16407,7 @@ const Training = (() => {
     G.teamOrder = null; G.spotted = new Map(); G.danger = null; G.ranked = false; G.quit = false; G.rankResult = null;
     G.teamSize = 1; G.teams = [{ id: 0, members: [], place: 0 }, { id: 1, members: [], place: 0 }];
     const p = new Character({ id: 0, name: playerName(), isPlayer: true, look: Body.makeLook(SETTINGS.look, SETTINGS.body), team: 0 });
-    p.vlook = Eco.vlook();   // 훈련장에서도 내 차량 스킨으로 시험 운전
+    p.vlook = Eco.vlook(); p.glook = Eco.glook();   // 훈련장에서도 내 차량 스킨으로 시험 운전
     G.teams[0].members.push(p); CHARS.push(p); G.player = p; sc.add(p.root);
     setup(sc);
     respawnPlayer(p, true);
@@ -16008,7 +16738,7 @@ const Lobby = {
     try {
       const u = VehModels.instance('uaz'); u.root.position.set(-5.2, 0, -4.6); u.root.rotation.y = 0.95; sc.add(u.root);
       this.motoProp = () => { if (this.moto) sc.remove(this.moto.root); const m = this.moto = VehModels.instance('moto', Eco.vlook().moto); m.root.position.set(3.0, 0, -3.0); m.root.rotation.y = -0.75; m.root.rotation.z = 0.12; sc.add(m.root); };
-      this.motoProp(); Eco.on((w) => { if (w === 'vequip') this.motoProp(); });
+      this.motoProp(); Eco.on((w) => { if (w === 'vequip') this.motoProp(); if (w === 'gequip') this.setGun(true); });
     } catch (e) { console.warn('로비 차량 생략', e); }
     for (let i = 0; i < 11; i++) add(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), 0x777777, -15 + i * 3, 1.2, -11);
     const tg = new THREE.ConeGeometry(1.6, 5, 7); for (let i = 0; i < 22; i++) { const a = -Math.PI * 0.95 + i / 21 * Math.PI * 0.9, r = 24 + Math.random() * 12; add(tg, 0x2e4a2a, Math.cos(a) * r, 2.5, Math.sin(a) * r); }
@@ -16045,21 +16775,38 @@ const Lobby = {
   setLook(eq) {
     if (this.rig) { this.scene.remove(this.rig.root); this.rig.skel.dispose(); }
     const rig = buildRig(Body.makeLook(eq, SETTINGS.body)); this.rig = rig; this.scene.add(rig.root);
-    rig.gunObj = buildGunMesh('m416', { scope: 'x2', muzzle: 'comp' }); rig.gunMount.add(rig.gunObj);
+    this.setGun(false);
     this.gear = [Body.normEquip(eq).hat ? 0 : 2, 2, 2]; rig.setGear(this.gear[0], this.gear[1], this.gear[2]);
     rig.root.position.set(0, 0.2, 0);
   },
-  // 상점·창고 진열: 받침대 위에 상자나 차량을 올려 천천히 돌린다 (캐릭터는 숨김). spec: null | {kind:'crate', box} | {kind:'veh', type, skin}
+  // 가운데 캐릭터가 드는 총: 마지막으로 스킨을 바꾼 총(+그 스킨). 바꾸면 울트라레어는 빛 띠와 함께 나타남
+  setGun(fx) {
+    const r = this.rig; if (!r) return;
+    if (r.gunObj) r.gunMount.remove(r.gunObj);
+    const id = Eco.showGun(), sk = Eco.glook()[id] || null, att = {};
+    for (const s of ['x2', 'reddot']) if (attFits(s, id)) { att.scope = s; break; }
+    if (attFits('comp', id)) att.muzzle = 'comp';
+    r.gunObj = buildGunMesh(id, att, sk); r.gunMount.add(r.gunObj);
+    if (fx && sk) GunSkin.draw(r.gunObj, 0.55, null);
+  },
+  // 상점·창고 진열: 받침대 위에 상자나 차량을 올려 천천히 돌린다 (캐릭터는 숨김). spec: null | {kind:'crate', box} | {kind:'veh', type, skin} | {kind:'gun', gun, skin}
   show(spec) {
     const key = spec ? JSON.stringify(spec) : '';
     if (this.scKey === key) return; this.scKey = key;
     if (this.sc) { this.scene.remove(this.sc.obj); this.sc = null; }
     if (!spec) return;
     let obj, size;
+    let gun = null;
     if (spec.kind === 'crate') { this.crates = this.crates || {}; obj = (this.crates[spec.box] = this.crates[spec.box] || Shop.crate(spec.box)).root; obj.scale.setScalar(1.1); size = 1.9; }
+    else if (spec.kind === 'gun') {
+      // 총: 가운데를 축으로 돌도록 감싸서 받침대 위에 띄움
+      gun = buildGunMesh(spec.gun, {}, spec.skin || null); const bb = new THREE.Box3().setFromObject(gun), c = bb.getCenter(new THREE.Vector3());
+      gun.position.sub(c); obj = new THREE.Group(); obj.add(gun); obj.scale.setScalar(2.4); size = Math.max(1.5, (bb.max.z - bb.min.z) * 2.6);
+    }
     else { obj = VehModels.instance(spec.type, spec.skin || null).root; size = spec.type === 'sedan' ? 4.9 : spec.type === 'moto' ? 2.4 : 2.9; }
-    obj.position.set(0, 0.2, 0); obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    obj.position.set(0, spec.kind === 'gun' ? 1.05 : 0.2, 0); obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this.scene.add(obj); this.sc = { obj, size, t0: this.t, kind: spec.kind };
+    if (gun && spec.skin) GunSkin.draw(gun, 0.8, null);
   },
   update(dt) {
     this.t += dt; const r = this.rig, t = this.t;
@@ -16253,7 +17000,7 @@ async function startMatch(cfg) {
   humans.forEach((hm, i) => {
     const me = !net || hm.uid === Cloud.uid;
     const hl = hm.look || {}, c = new Character({ id: i, name: hm.name, isPlayer: me, look: Body.makeLook(hl.eq, hl.body) });
-    c.vlook = hl.veh || null;
+    c.vlook = hl.veh || null; c.glook = hl.gun || null;   // 차량·총기 스킨 (파티원은 그 사람의 장착 목록)
     if (net) c.net = Net.charNet(hm.uid);
     CHARS.push(c); joinTeam(c); if (me) player = c;
   });
@@ -16583,12 +17330,13 @@ function loop() {
   const t = performance.now(); let dt = (t - _last) / 1000; _last = t; dt = Math.min(dt, 0.05);
   try {
     if (G.state === 'lobby' || G.state === 'loading') {
+      GunSkin.update(dt);   // 총기 스킨: 빛 애니메이션·꺼내기 효과 (경기 중에는 G.update와 함께 — 멈추면 같이 멈춤)
       if (Cutscene.active) { Cutscene.update(dt); Cutscene.render(G.renderer); }
       else { Lobby.update(dt); G.renderer.render(Lobby.scene, Lobby.cam); }
-      Models.pump(5);
+      Models.pump(5); Shop.pump();
     }
     else if (G.scene) {
-      if ((!G.paused || G.net) && G.state === 'play') G.update(dt * G.timeScale); // 같이 하기는 메뉴를 열어도 멈추지 않는다
+      if ((!G.paused || G.net) && G.state === 'play') { GunSkin.update(dt * G.timeScale); G.update(dt * G.timeScale); } // 같이 하기는 메뉴를 열어도 멈추지 않는다
       else if (G.state === 'result' && G.player) { VM.active = false; const a = performance.now() / 4000; G.camera.position.set(G.player.pos.x + Math.sin(a) * 10, G.player.pos.y + 6, G.player.pos.z + Math.cos(a) * 10); G.camera.lookAt(G.player.pos); }
       G.renderer.render(G.scene, G.camera);
       if (G.state === 'play') renderViewModel();
@@ -16618,9 +17366,9 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
-    sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) G.update(dt); },
+    sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };
 }
 boot();

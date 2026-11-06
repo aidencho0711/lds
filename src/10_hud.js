@@ -780,12 +780,12 @@ const HUD = (() => {
   }
   // 무늬 옷은 SVG 패턴(index.html의 pt-*)으로 칠한다
   const skinFill = (S) => (S.ico ? `url(#${S.ico})` : hexs(S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888)));
-  let whVeh = 'sedan';
+  let whVeh = 'sedan', whGun = null;
   function renderWarehouse() {
     const eq = Body.normEquip(SETTINGS.look), own = ownedSkins(), cats = $('whCats'), grid = $('whGrid');
     if (!cats || !grid) return;
     cats.innerHTML = ''; grid.innerHTML = '';
-    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.map((s) => [s.id, s.name]), [['veh', '차량']])) {
+    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.map((s) => [s.id, s.name]), [['gun', '총기'], ['veh', '차량']])) {
       const b = h('button', whCat === k ? 'on' : '', n); b.type = 'button';
       b.addEventListener('click', () => { whCat = k; renderWarehouse(); Audio.init(); Audio.ui(); showcase(); }); cats.appendChild(b);
     }
@@ -801,7 +801,26 @@ const HUD = (() => {
       return b;
     };
     let n = 0;
-    if (whCat === 'veh') {
+    if (whCat === 'gun') {
+      // 총기: 스킨을 가진 총마다 '기본' + 가진 스킨. 장착하면 경기에서 그 총을 들 때 내 스킨, 로비 캐릭터도 그 총을 든다
+      const gl = Eco.glook(), owned = (STATS.gskins || []).filter((id) => GSKINS[id]), order = Object.keys(ITEMS);
+      const guns = [...new Set(owned.map((id) => GSKINS[id].gun))].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      const gcard = (gun, id) => {
+        const S = id ? GSKINS[id] : null, on = (gl[gun] || null) === (id || null), R = S ? rarOf(S.rar) : null;
+        const b = h('button', 'wh-item gun' + (on ? ' on' : '') + (S ? ' rar' : '') + (whGun === gun && on ? ' sel' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
+        const ico = h('i', 'wh-ico'); ico.appendChild(Shop.gunImgEl(gun, id));
+        b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : '기본')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + (S && S.fx ? '효과 · ' : '') + (on ? '장착 중' : '장착하기')));
+        b.title = S ? GunSkin.name(id) + (S.desc ? ' — ' + S.desc : '') : GunSkin.short(gun) + ' 기본';
+        b.addEventListener('click', () => { whGun = gun; if (!on) Eco.equipGun(gun, id); else { SETTINGS.gshow = gun; saveSettings(); Lobby.setGun(false); } renderWarehouse(); showcase(); Audio.init(); Audio.ui(); });
+        return b;
+      };
+      for (const gun of guns) {
+        grid.appendChild(h('div', 'wh-ghead', GunSkin.short(gun)));
+        grid.appendChild(gcard(gun, null));
+        for (const id of owned.filter((x) => GSKINS[x].gun === gun).sort((a, b) => GSKINS[b].rar - GSKINS[a].rar)) { grid.appendChild(gcard(gun, id)); n++; }
+      }
+      if (!guns.length) grid.appendChild(h('div', 'wh-empty', '아직 가진 총기 스킨이 없습니다. 상점의 아스널·네온 상자, 교환소(총기 교환 코인), 옷 상자(드물게)에서 얻을 수 있습니다.'));
+    } else if (whCat === 'veh') {
       // 차량: 차종별 기본 + 가진 스킨. 장착하면 경기에서 그 차종 운전석에 탈 때 스킨으로 바뀜
       const vl = Eco.vlook(), tabs = h('div', 'wh-vtabs');
       for (const [t, nm] of Object.entries(VEH_SKIN_TYPES)) { const b = h('button', whVeh === t ? 'on' : '', nm); b.type = 'button'; b.addEventListener('click', () => { whVeh = t; renderWarehouse(); showcase(); Audio.init(); Audio.ui(); }); tabs.appendChild(b); }
@@ -825,12 +844,14 @@ const HUD = (() => {
       for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
       if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자에서 얻을 수 있습니다.`));
     }
-    $('whCount').textContent = `옷 ${own.size}벌 · 차량 스킨 ${(STATS.vskins || []).length}종`;
+    $('whCount').textContent = `옷 ${own.size}벌 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${(STATS.gskins || []).length}종`;
   }
   // 창고 3D: 차량 분류면 장착한(없으면 기본) 차량을, 아니면 캐릭터
   function showcase() {
     if (lobbyTab !== 'custom') return;
-    if (whCat === 'veh') { const vl = Eco.vlook(); Lobby.show({ kind: 'veh', type: whVeh, skin: vl[whVeh] }); } else Lobby.show(null);
+    if (whCat === 'veh') { const vl = Eco.vlook(); Lobby.show({ kind: 'veh', type: whVeh, skin: vl[whVeh] }); }
+    else if (whCat === 'gun') { const gun = whGun || Eco.showGun(); Lobby.show({ kind: 'gun', gun, skin: Eco.glook()[gun] || null }); }
+    else Lobby.show(null);
   }
   // 로비 탭: 플레이 / 전적 / 창고 / 상점 / 미션
   let lobbyTab = 'play';
@@ -1062,5 +1083,5 @@ const HUD = (() => {
       }
     }
   }
-  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
+  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();

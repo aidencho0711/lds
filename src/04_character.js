@@ -107,31 +107,39 @@ class Character {
     if (this.anim.prone > 0.5) return out.set(this.pos.x + Math.sin(this.bodyYaw) * 1.05, this.pos.y + 0.28, this.pos.z + Math.cos(this.bodyYaw) * 1.05);
     return out.set(this.pos.x, this.pos.y + 1.25 - this.anim.crouch * 0.36, this.pos.z);
   }
+  // 이 캐릭터가 이 총에 입힌 스킨 (사람: 장착 목록 glook, 봇: 없음)
+  skinOf(id) { const s = this.glook && this.glook[id]; return s && typeof GSKINS !== 'undefined' && GSKINS[s] && GSKINS[s].gun === id ? s : null; }
   setVisibleGear() {
     const r = this.rig, inv = this.inv;
     const lv = (g) => (g && ITEMS[g.id] && ITEMS[g.id].lvl) || (g ? 1 : 0);
     r.setGear(lv(inv.gear.helmet), lv(inv.gear.vest), lv(inv.gear.bag));
-    const w = this.weapon, gid = w && this.equipT <= 0.25 && !this.knocked ? w.id + '|' + [w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].join(',') : null;
+    const w = this.weapon, sk = w ? this.skinOf(w.id) : null, gid = w && this.equipT <= 0.25 && !this.knocked ? w.id + '|' + [w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].join(',') + '|' + (sk || '') : null;
     // 등에 멘 주무기: 1번은 왼쪽 어깨 위로, 2번은 오른쪽 어깨 위로 비스듬히 (가방이 있으면 가방 위)
     for (let i = 0; i < 2; i++) {
       const bw = inv.weapons[i], inHand = i === inv.cur && this.equipT <= 0.25 && !this.knocked;
-      const key = bw && !inHand ? bw.id + '|' + [bw.att.scope, bw.att.muzzle, bw.att.mag, bw.att.grip].join(',') + '|' + (inv.gear.bag ? 1 : 0) : '';
+      const bsk = bw ? this.skinOf(bw.id) : null, key = bw && !inHand ? bw.id + '|' + [bw.att.scope, bw.att.muzzle, bw.att.mag, bw.att.grip].join(',') + '|' + (inv.gear.bag ? 1 : 0) + '|' + (bsk || '') : '';
       if (r.backKey[i] === key) continue;
       r.backKey[i] = key;
       const old = r.backGuns.getObjectByName('back' + i); if (old) r.backGuns.remove(old);
       if (!key) continue;
-      const g = buildGunMesh(bw.id, bw.att), s = i === 0 ? 1 : -1, zb = (inv.gear.bag ? -0.36 : -0.16) - i * 0.045;
+      const g = buildGunMesh(bw.id, bw.att, bsk), s = i === 0 ? 1 : -1, zb = (inv.gear.bag ? -0.36 : -0.16) - i * 0.045;
       g.name = 'back' + i; g.traverse((o) => { if (o.isMesh) o.castShadow = r.shadow; });
       _bz.set(s * 0.42, 0.9, 0).normalize(); _bx.set(0, 0, -1); _by.crossVectors(_bz, _bx);
       g.quaternion.setFromRotationMatrix(_bm.makeBasis(_bx, _by, _bz));
       g.position.set(0, 0.04, zb).addScaledVector(_bz, -0.05);
       r.backGuns.add(g);
+      // 손에서 등으로 옮긴 울트라레어 총: 손에서는 사라지고 등에서 빛 띠와 함께 나타남
+      if (bsk && r.gunBase === bw.id + '|' + i && typeof GunSkin !== 'undefined' && this.root.visible && !!this.root.parent && (!G.camera || this.pos.distanceTo(G.camera.position) < 45)) GunSkin.draw(g, 0.4, this, true);
     }
     if (r.gunId !== gid) {
+      // 울트라레어 스킨: 다른 총으로 바꾸거나 넣으면 손을 떠난 자리에서 사라지고, 새 총은 빛 띠와 함께 나타난다 (부착물만 바뀌면 효과 없음)
+      const base = gid ? w.id + '|' + inv.cur : null, swap = base !== r.gunBase;
+      const fx = swap && typeof GunSkin !== 'undefined' && this.root.visible && !!this.root.parent && (!G.camera || this.pos.distanceTo(G.camera.position) < 45);
+      if (fx && r.gunObj) GunSkin.holster(r.gunObj, 0.3, this);
       while (r.gunMount.children.length) r.gunMount.remove(r.gunMount.children[0]);
-      r.gunObj = gid ? buildGunMesh(w.id, w.att) : null;
-      if (r.gunObj) { r.gunObj.rotation.y = 0; r.gunMount.add(r.gunObj); }
-      r.gunId = gid;
+      r.gunObj = gid ? buildGunMesh(w.id, w.att, sk) : null;
+      if (r.gunObj) { r.gunObj.rotation.y = 0; r.gunMount.add(r.gunObj); if (fx) GunSkin.draw(r.gunObj, 0.3, this); }
+      r.gunId = gid; r.gunBase = base;
     }
   }
 }

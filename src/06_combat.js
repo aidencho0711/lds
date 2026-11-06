@@ -143,7 +143,7 @@ function fireWeapon(c, origin, dir) {
     const h = raycastAll(origin.x, origin.y, origin.z, dx, dy, dz, maxD, c);
     const t = Math.min(h.t, maxD);
     const ex = origin.x + dx * t, ey = origin.y + dy * t, ez = origin.z + dz * t;
-    if (p < 2) FX.tracer(c, tStart, ex, ey, ez);
+    if (p < 2) FX.tracer(c, tStart, ex, ey, ez, GunSkin.tracerCol(g));
     if (p === 0) { _shotEnd[0] = ex; _shotEnd[1] = ey; _shotEnd[2] = ez; _shotEnd[3] = h.type || 0; }
     const fall = h.t > d.range ? clamp(1 - (h.t - d.range) / (d.range * 1.4), 0.35, 1) : 1;
     if (h.type === 'char') {
@@ -157,6 +157,7 @@ function fireWeapon(c, origin, dir) {
   }
   c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : 1) * 0.22, 4);
   FX.flash(c, g, meta, tStart, dir, d);
+  if (g && g.userData.skin) GunSkin.shot(g, c);   // 울트라레어 총기 스킨: 색 화염·불씨/스파크·몸체 빛
   if (d.cycle) { if (wi.mag > 0) c.cycle = { kind: d.cycle, t: 0, ev: 0, ejected: false, total: d.cycleT || CYCLE[d.cycle].total }; }
   else if (d.rKind !== 'break') ejectCase(c, d); // 중절식은 장전할 때 꺼낸다
   if (d.cls === 'PISTOL') c.slideKick = 0.09;
@@ -887,14 +888,14 @@ const FX = (() => {
       }
     }
   }
-  function tracer(c, o, ex, ey, ez) {
+  function tracer(c, o, ex, ey, ez, col) {
     if (!scene) return;
     // 멀리 있는 봇의 탄도는 생략 (성능)
     if (!c.isPlayer && G.player && Math.hypot(o.x - G.player.pos.x, o.z - G.player.pos.z) > 180) return;
     const t = tracers[ti++ % tracers.length], p = t.l.geometry.attributes.position;
     const sx = c.isPlayer ? o.x : o.x, sy = o.y, sz = o.z;
     p.setXYZ(0, sx, sy, sz); p.setXYZ(1, ex, ey, ez); p.needsUpdate = true; t.l.geometry.computeBoundingSphere();
-    t.l.visible = true; t.life = 0.06; t.l.material.opacity = 0.75;
+    t.l.visible = true; t.life = 0.06; t.l.material.opacity = 0.75; t.l.material.color.setHex(col || 0xffe2a0);
   }
   function puff(x, y, z, color, size, life, grow, vy) {
     if (!scene) return; const d = dots[di++ % dots.length];

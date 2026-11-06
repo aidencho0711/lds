@@ -13,7 +13,9 @@ const Models = (() => {
   const CLS = {}, TEXMAT = {}, TEX = {}, CL = {}, ICON = {};
   const WHITE = new THREE.Color(1, 1, 1);
   const KIND2CLS = { metal: 'metal', brass: 'metal', alu: 'metal', gunmetal: 'matte', anod: 'matte', foil: 'matte', polymer: 'diel', rubber: 'diel', wood: 'diel', cloth: 'diel', paper: 'diel' };
-  const M = (kind, color) => ({ desc: true, cls: KIND2CLS[kind] || 'diel', color: new THREE.Color(color) });
+  const M = (kind, color) => ({ desc: true, cls: KIND2CLS[kind] || 'diel', color: new THREE.Color(color), kind });
+  // 정점마다 남기는 재질 종류(총기 스킨이 부위별로 칠할 때 씀): 0 플라스틱 · 1 나무 · 2 무광 금속 · 3 광택 금속 · 4 황동 · 5 고무 · 6 천·종이
+  const KD = { polymer: 0, wood: 1, gunmetal: 2, anod: 2, metal: 3, alu: 3, brass: 4, rubber: 5, cloth: 6, paper: 6, foil: 6 };
   const FONT = '"Saira Condensed","Arial Narrow",Arial,sans-serif';
 
   // ---------- 환경광(반사) ----------
@@ -176,17 +178,19 @@ const Models = (() => {
   // ---------- 병합 ----------
   function concat(geos) {
     let n = 0; for (const g of geos) n += g.attributes.position.count;
-    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * 3);
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * 3), kd = new Float32Array(n);
     let o = 0;
     for (const g of geos) {
       const c = g.attributes.position.count;
       pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3);
       uv.set(g.attributes.uv.array, o * 2); col.set(g.attributes.color.array, o * 3);
+      if (g.attributes.kd) kd.set(g.attributes.kd.array, o);
       o += c; g.dispose();
     }
     const out = new THREE.BufferGeometry();
     out.setAttribute('position', new THREE.BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
     out.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    out.setAttribute('kd', new THREE.BufferAttribute(kd, 1));
     out.computeBoundingSphere(); out.computeBoundingBox();
     return out;
   }
@@ -197,8 +201,8 @@ const Models = (() => {
     const buckets = new Map();
     root.traverse((o) => {
       if (!o.isMesh || !o.geometry) return;
-      const m = o.material; let key, real, col = null;
-      if (m && m.desc) { key = 'cls:' + m.cls; real = CLS[m.cls]; col = m.color; }
+      const m = o.material; let key, real, col = null, kd = 0;
+      if (m && m.desc) { key = 'cls:' + m.cls; real = CLS[m.cls]; col = m.color; kd = KD[m.kind] || 0; }
       else { key = (m.userData && m.userData.clsKey) || m.uuid; real = m; }
       _tm.multiplyMatrices(_inv, o.matrixWorld);
       let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
@@ -213,6 +217,7 @@ const Models = (() => {
         for (let i = 0; i < n; i++) { c[i * 3] = cc.r; c[i * 3 + 1] = cc.g; c[i * 3 + 2] = cc.b; }
         g.setAttribute('color', new THREE.BufferAttribute(c, 3));
       }
+      if (kd) g.setAttribute('kd', new THREE.BufferAttribute(new Float32Array(n).fill(kd), 1));
       if (!buckets.has(key)) buckets.set(key, { mat: real, geos: [] });
       buckets.get(key).geos.push(g);
     });
@@ -337,7 +342,8 @@ const Models = (() => {
     grip(g) { const pb = M('polymer', 0x1c1e20); A(g, RB(0.02, 0.01, 0.034, 0.003), pb, 0, -0.005, 0); A(g, CY(0.0125, 0.014, 0.07, 12, 'y'), pb, 0, -0.045, 0); A(g, CY(0.0145, 0.0145, 0.006, 12, 'y'), pb, 0, -0.082, 0); },
   };
 
-  function buildGun(id, att) {
+  // skin: 총기 스킨 id (05_models_gskin.js). 조준경·보정기·손잡이·조준경 받침은 스킨을 입히지 않는다(noSkin)
+  function buildGun(id, att, skin) {
     att = att || {};
     const D = GUNS[id], meta = Object.assign({}, D.meta), g = new THREE.Group(), parts = {};
     g.add(cluster('gb:' + id, D.body));
@@ -358,15 +364,16 @@ const Models = (() => {
     const host = meta.scopeOnCover && parts.cover ? parts.cover : (!meta.scopeFixed && parts.slide) || g, hp = host === g ? [0, 0, 0] : host.position.toArray();
     if (D.rear) g.add(att.scope ? cluster('grf:' + id, D.rearFolded) : cluster('gr:' + id, D.rear));
     if (att.scope && SC[att.scope]) {
-      if (meta.railOnScope) { const [z0, z1, y] = meta.railOnScope; g.add(cluster('rail:' + id, (gg) => (D.mount || ((g2) => rail(g2, z0, z1, y, 0.018, M('anod', 0x1e2022))))(gg))); }
-      const S = SC[att.scope], s = cluster('sc:' + att.scope, S.build);
+      if (meta.railOnScope) { const [z0, z1, y] = meta.railOnScope; const rm = cluster('rail:' + id, (gg) => (D.mount || ((g2) => rail(g2, z0, z1, y, 0.018, M('anod', 0x1e2022))))(gg)); rm.userData.noSkin = true; g.add(rm); }
+      const S = SC[att.scope], s = cluster('sc:' + att.scope, S.build); s.userData.noSkin = true;
       s.position.set(-hp[0], meta.railY - hp[1], meta.scopeZ - hp[2]); host.add(s);
       meta.sightY = meta.railY + S.eyeY; meta.sightRearZ = meta.scopeZ - S.len / 2; meta.relief = S.relief;
     } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.pistol ? 0.4 : 0.3; }
     if (D.front) g.add(att.scope && D.frontFolded ? cluster('gff:' + id, D.frontFolded) : cluster('gf:' + id, D.front));
-    if (att.muzzle) { const m = cluster('at:comp', ATT.comp); m.position.set(0, meta.boreY, meta.muzzleZ); g.add(m); meta.muzzleZ += 0.05; }
-    if (att.grip && meta.vgripPos) { const m = cluster('at:grip', ATT.grip); m.position.fromArray(meta.vgripPos); g.add(m); meta.forePos = meta.vgripHand; meta.vfore = true; }
+    if (att.muzzle) { const m = cluster('at:comp', ATT.comp); m.userData.noSkin = true; m.position.set(0, meta.boreY, meta.muzzleZ); g.add(m); meta.muzzleZ += 0.05; }
+    if (att.grip && meta.vgripPos) { const m = cluster('at:grip', ATT.grip); m.userData.noSkin = true; m.position.fromArray(meta.vgripPos); g.add(m); meta.forePos = meta.vgripHand; meta.vfore = true; }
     g.userData = { id, meta, parts, att };
+    if (skin && typeof GunSkin !== 'undefined') GunSkin.apply(g, skin);
     return g;
   }
 
@@ -590,4 +597,4 @@ const Models = (() => {
   const kit = { A, BX, CY, RB, PF, SPH, TOR, PL, rail, trigger, magPts, tube, flip, M, cart };
   return { init, buildGun, ground, display: buildDisplay, icon, iconKey, prewarm, pump, hand, sleeve, casing, scopeInfo, cluster, M, crate, canopy, kit, _render: renderIcon, get env() { return ENV; }, GUNS, CLS };
 })();
-function buildGunMesh(id, att) { return Models.buildGun(id, att); }
+function buildGunMesh(id, att, skin) { return Models.buildGun(id, att, skin); }

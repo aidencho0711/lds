@@ -2,23 +2,31 @@
 // 10_eco.js — 상점 경제: 재화 · 보유 스킨 · 뽑기 확률 · 교환소 · 미션 · 출석 보상
 //  · 재화 '골드 탄피': 뽑기(레어 등급으로 나옴) · 배틀로얄 경기 중 주운 골드 탄피 주머니 · 미션 · 출석 보상
 //  · '차량 교환 코인': 차량 뽑기(높은 확률) · 출석 6일째 → 교환소에서 차량 스킨과 바꿈
-//  · 저장: STATS.eco(재화·미션·출석) · STATS.skins(옷) · STATS.vskins(차량) → 로그인하면 서버(player_data.stats)에 함께 저장
+//  · '총기 교환 코인': 총기 상자 2종(70%) → 교환소에서 총기 스킨과 바꿈 (v17)
+//  · 저장: STATS.eco(재화·미션·출석) · STATS.skins(옷) · STATS.vskins(차량) · STATS.gskins(총기) → 로그인하면 서버(player_data.stats)에 함께 저장
+//    장착: SETTINGS.vlook(차종별) · SETTINGS.glook(총마다) · SETTINGS.gshow(로비 캐릭터가 드는 총)
 //  · 여러 기기: 서버에 다른 기기가 쓴 기록이 있으면 '마지막 동기화 이후 바뀐 양'만 더해 합친다 (mergeStats)
 //    → 한 기기에서 쓴 재화가 다른 기기의 옛 기록 때문에 되살아나거나, 얻은 스킨이 사라지지 않는다
 //  · 확률은 상자마다 공개(상점 '확률' 버튼). 무작위는 이 기기에서 뽑는다(실제 돈 결제가 없는 게임 재화)
 // ============================================================
-const GOLD_NAME = '골드 탄피', COIN_NAME = '차량 교환 코인';
+const GOLD_NAME = '골드 탄피', COIN_NAME = '차량 교환 코인', GCOIN_NAME = '총기 교환 코인';
+// 상점 진열 순서 = 이 순서 (총기 상자 → 옷 상자 → 차량)
 const BOXES = {
+  g1: { name: '아스널 상자', theme: '전술 테마 총기 스킨', cost: 200, accent: '#d9a441', hex: 0x8a6a2a, gun: true, isNew: true },
+  g2: { name: '네온 상자', theme: '사이버 테마 총기 스킨', cost: 200, accent: '#ff3d9a', hex: 0xd0307a, gun: true, isNew: true },
   br: { name: '배틀로얄 상자', theme: '전장 테마 옷', cost: 100, accent: '#9db35e', hex: 0x6f8a3a },
   sp: { name: '스페셜 상자', theme: '스트리트 테마 옷', cost: 100, accent: '#ff6fb0', hex: 0xd0457f },
   sup: { name: '보급 상자', theme: '엘리트 테마 옷', cost: 100, accent: '#f0a43a', hex: 0xd07a1e },
-  veh: { name: '차량 뽑기', theme: '교환 코인 · 차량 스킨', cost: 1000, accent: '#46c8ff', hex: 0x2a8ac0 },
+  veh: { name: '차량 뽑기', theme: '교환 코인 · 차량 스킨', cost: 200, accent: '#46c8ff', hex: 0x2a8ac0 },
 };
 const BOX_TIER_P = [45, 25, 18, 8, 3.2, 0.8];                 // 옷 상자의 레어도별 확률(%) — 2번(레어)은 골드 탄피
 const BOX_GOLD = [[30, 9], [60, 6], [150, 2.5], [500, 0.5]];   // 상자 속 골드 탄피 [양, %] (합 18%)
 const DUP_GOLD = [10, 20, 0, 60, 150, 400];                     // 이미 가진 옷이 나오면 레어도별 골드 탄피 환급
 const VEH_COINS = [[3, 55], [5, 25], [10, 10], [20, 2]];        // 차량 뽑기 코인 [개수, %] (합 92%)
 const VEH_SKIN_P = { 3: 5.5, 4: 2, 5: 0.5 };                    // 차량 뽑기 스킨 레어도별 합(%) — 같은 레어도 안에서 똑같이 나눔
+const GUN_COINS = [[3, 40], [5, 20], [10, 8], [20, 2]];         // 총기 상자 코인 [개수, %] (합 70%)
+const GBOX_TIER_P = { 1: 18, 3: 8, 4: 3.2, 5: 0.8 };            // 총기 상자 스킨 레어도별 합(%) (합 30%) — 같은 레어도 안에서 똑같이 나눔
+const GSKIN_PRICE = { 1: 10, 3: 25, 4: 50, 5: 120 };            // 교환소 가격(총기 교환 코인). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
 const ATTEND = [{ gold: 50 }, { gold: 50 }, { gold: 100 }, { gold: 50 }, { gold: 100 }, { coin: 3 }, { gold: 300 }];
 const WELCOME_GOLD = 1000;
 // 미션: key = 경기에서 세는 값. 일일 미션은 날마다 4개(겹치는 key 없이), 주간 미션은 4개 고정
@@ -52,10 +60,12 @@ const Eco = (() => {
   function today(d = new Date()) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
   function weekKey(d = new Date()) { const m = new Date(d.getFullYear(), d.getMonth(), d.getDate()); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return 'W' + today(m); }
   function E() {
-    if (!STATS.eco || typeof STATS.eco !== 'object') { STATS.eco = { v: 1, gold: WELCOME_GOLD, coin: 0, rev: 1, dev: DEV, pulls: {}, att: { last: '', n: 0 }, q: null, welcome: 1 }; }
+    if (!STATS.eco || typeof STATS.eco !== 'object') { STATS.eco = { v: 1, gold: WELCOME_GOLD, coin: 0, gcoin: 0, rev: 1, dev: DEV, pulls: {}, att: { last: '', n: 0 }, q: null, welcome: 1 }; }
     const e = STATS.eco;
+    if (!(e.gcoin >= 0)) e.gcoin = 0;
     if (!Array.isArray(STATS.skins)) STATS.skins = [];
     if (!Array.isArray(STATS.vskins)) STATS.vskins = [];
+    if (!Array.isArray(STATS.gskins)) STATS.gskins = [];
     if (!e.pulls) e.pulls = {}; if (!e.att) e.att = { last: '', n: 0 };
     rollQuests(e);
     return e;
@@ -64,6 +74,9 @@ const Eco = (() => {
   // ---------- 보유 ----------
   const owns = (id) => Body.SKINS[id] && (/_basic$/.test(id) || (STATS.skins || []).includes(id));
   const ownsVeh = (id) => (STATS.vskins || []).includes(id);
+  const ownsGun = (id) => !!GSKINS[id] && (STATS.gskins || []).includes(id);
+  const gunBox = (box) => !!(BOXES[box] && BOXES[box].gun);
+  const gskinsIn = (box, r) => Object.keys(GSKINS).filter((id) => GSKINS[id].box === box && GSKINS[id].rar === r);
   function ownedSkins() { const s = new Set(Object.keys(Body.SKINS).filter((k) => /_basic$/.test(k))); for (const k of (STATS.skins || [])) if (Body.SKINS[k]) s.add(k); return s; }
   // ---------- 뽑기 확률표 ----------
   const POOLS = {};
@@ -73,11 +86,17 @@ const Eco = (() => {
     if (box === 'veh') {
       for (const [n, p] of VEH_COINS) out.push({ k: 'coin', n, rar: 2, p });
       for (const r of [3, 4, 5]) { const ids = Object.keys(VSKINS).filter((id) => VSKINS[id].rar === r); for (const id of ids) out.push({ k: 'vskin', id, rar: r, p: VEH_SKIN_P[r] / ids.length }); }
+    } else if (gunBox(box)) {
+      // 총기 상자: 총기 교환 코인 70% + 총기 스킨 30%
+      for (const [n, p] of GUN_COINS) out.push({ k: 'gcoin', n, rar: 2, p });
+      for (const r of [1, 3, 4, 5]) { const ids = gskinsIn(box, r); for (const id of ids) out.push({ k: 'gskin', id, rar: r, p: GBOX_TIER_P[r] / ids.length }); }
     } else {
+      // 옷 상자: 등급마다 옷 + (있으면) 그 상자의 총기 스킨이 확률을 똑같이 나눔
       for (let r = 0; r < BOX_TIER_P.length; r++) {
         if (r === 2) { for (const [n, p] of BOX_GOLD) out.push({ k: 'gold', n, rar: 2, p }); continue; }
-        const ids = Object.keys(Body.SKINS).filter((id) => Body.SKINS[id].box === box && Body.SKINS[id].rar === r);
-        for (const id of ids) out.push({ k: 'skin', id, rar: r, p: BOX_TIER_P[r] / ids.length });
+        const ids = Object.keys(Body.SKINS).filter((id) => Body.SKINS[id].box === box && Body.SKINS[id].rar === r), gids = gskinsIn(box, r), all = ids.length + gids.length;
+        for (const id of ids) out.push({ k: 'skin', id, rar: r, p: BOX_TIER_P[r] / all });
+        for (const id of gids) out.push({ k: 'gskin', id, rar: r, p: BOX_TIER_P[r] / all });
       }
     }
     const tot = out.reduce((a, x) => a + x.p, 0); for (const x of out) x.p = x.p * 100 / tot;   // 빈 등급이 있어도 합 100%
@@ -95,6 +114,12 @@ const Eco = (() => {
     else if (x.k === 'coin') e.coin += x.n;
     else if (x.k === 'skin') { if (owns(x.id)) { o.dup = true; o.refund = DUP_GOLD[x.rar] || 10; e.gold += o.refund; } else { STATS.skins.push(x.id); o.isNew = true; } }
     else if (x.k === 'vskin') { if (ownsVeh(x.id)) { o.dup = true; o.refundCoin = Math.ceil(VSKINS[x.id].price / 2); e.coin += o.refundCoin; } else { STATS.vskins.push(x.id); o.isNew = true; } }
+    else if (x.k === 'gcoin') e.gcoin += x.n;
+    else if (x.k === 'gskin') {
+      // 중복: 총기 상자 스킨은 교환가 절반을 총기 코인으로, 옷 상자 스킨은 옷처럼 골드 탄피로
+      if (ownsGun(x.id)) { o.dup = true; if (gunBox(GSKINS[x.id].box)) { o.refundGC = Math.ceil(GSKIN_PRICE[x.rar] / 2); e.gcoin += o.refundGC; } else { o.refund = DUP_GOLD[x.rar] || 10; e.gold += o.refund; } }
+      else { STATS.gskins.push(x.id); o.isNew = true; }
+    }
     return o;
   }
   function pull(box, n = 1) {
@@ -114,6 +139,15 @@ const Eco = (() => {
     if (e.coin < V.price) return { err: `${COIN_NAME}이 부족합니다 (필요 ${V.price} · 보유 ${e.coin})` };
     e.coin -= V.price; const o = give({ k: 'vskin', id, rar: V.rar }); changed('exchange');
     return { res: [o], best: V.rar };
+  }
+  // 총기 교환소: 총기 상자에서 나오는 스킨만 (옷 상자 속 총기 스킨은 그 상자에서만)
+  const gunPrice = (id) => (GSKINS[id] && gunBox(GSKINS[id].box) ? GSKIN_PRICE[GSKINS[id].rar] : 0);
+  function exchangeGun(id) {
+    const S = GSKINS[id], e = E(), price = gunPrice(id); if (!S || !price) return { err: '교환할 수 없는 스킨입니다' };
+    if (ownsGun(id)) return { err: '이미 가지고 있습니다' };
+    if (e.gcoin < price) return { err: `${GCOIN_NAME}이 부족합니다 (필요 ${price} · 보유 ${e.gcoin})` };
+    e.gcoin -= price; const o = give({ k: 'gskin', id, rar: S.rar }); changed('exchange');
+    return { res: [o], best: S.rar };
   }
   // ---------- 출석 ----------
   function attendInfo() { const e = E(), a = e.att; return { can: a.last !== today(), n: a.n, day: a.n % 7, rewards: ATTEND, last: a.last }; }
@@ -175,6 +209,14 @@ const Eco = (() => {
   // ---------- 장착(차량) ----------
   function vlook() { const v = SETTINGS.vlook && typeof SETTINGS.vlook === 'object' ? SETTINGS.vlook : {}; const out = {}; for (const t in VEH_SKIN_TYPES) out[t] = v[t] && VSKINS[v[t]] && VSKINS[v[t]].veh === t && ownsVeh(v[t]) ? v[t] : null; return out; }
   function equipVeh(type, id) { const v = vlook(); v[type] = id && ownsVeh(id) ? id : null; SETTINGS.vlook = v; saveSettings(); for (const f of listeners) try { f('vequip'); } catch (err) { console.warn(err); } }
+  // ---------- 장착(총기): 총마다 스킨 하나. 경기에서 그 총을 들면 내 스킨 ----------
+  function glook() { const v = SETTINGS.glook && typeof SETTINGS.glook === 'object' ? SETTINGS.glook : {}, out = {}; for (const g in v) { const S = GSKINS[v[g]]; if (S && S.gun === g && ownsGun(v[g])) out[g] = v[g]; } return out; }
+  function equipGun(gun, id) {
+    const v = glook(); if (id && GSKINS[id] && GSKINS[id].gun === gun && ownsGun(id)) v[gun] = id; else delete v[gun];
+    SETTINGS.glook = v; SETTINGS.gshow = gun; saveSettings(); for (const f of listeners) try { f('gequip'); } catch (err) { console.warn(err); }
+  }
+  // 로비 캐릭터가 드는 총: 마지막으로 스킨을 바꾼 총 (없으면 M416)
+  function showGun() { const g = SETTINGS.gshow; return g && ITEMS[g] && ITEMS[g].type === 'weapon' ? g : 'm416'; }
   // ---------- 여러 기기 합치기 ----------
   //  base: 마지막 동기화 때의 기록, local: 이 기기, server: 서버. 숫자(재화·전적)는 서버 + (이 기기에서 늘어난/줄어든 양)
   function mergeStats(base, local, server) {
@@ -186,11 +228,13 @@ const Eco = (() => {
     const dm = {}, Bd = B.dm || {}, Ld = L.dm || {}, Sd = S.dm || {}; for (const k of ['matches', 'wins', 'kills', 'deaths']) dm[k] = Math.max(0, base ? delta(Bd[k], Ld[k], Sd[k]) : Math.max(Ld[k] || 0, Sd[k] || 0)); out.dm = dm;
     out.skins = [...new Set([...(S.skins || []), ...(L.skins || [])])];
     out.vskins = [...new Set([...(S.vskins || []), ...(L.vskins || [])])];
+    out.gskins = [...new Set([...(S.gskins || []), ...(L.gskins || [])])];
     const Be = B.eco || {}, Le = L.eco, Se = S.eco;
     if (Le || Se) {
       const le = Le || {}, se = Se || {}, e = Object.assign({}, se.v ? se : le);
       e.gold = Math.max(0, Se && Le ? (base ? delta(Be.gold, le.gold, se.gold) : Math.max(le.gold || 0, se.gold || 0)) : (le.gold !== undefined ? le.gold : se.gold || 0));
       e.coin = Math.max(0, Se && Le ? (base ? delta(Be.coin, le.coin, se.coin) : Math.max(le.coin || 0, se.coin || 0)) : (le.coin !== undefined ? le.coin : se.coin || 0));
+      e.gcoin = Math.max(0, Se && Le ? (base ? delta(Be.gcoin, le.gcoin, se.gcoin) : Math.max(le.gcoin || 0, se.gcoin || 0)) : (le.gcoin !== undefined ? le.gcoin : se.gcoin || 0));
       const pulls = {}; for (const k of new Set([...Object.keys(le.pulls || {}), ...Object.keys(se.pulls || {})])) pulls[k] = Math.max((le.pulls || {})[k] || 0, (se.pulls || {})[k] || 0); e.pulls = pulls;
       const la = le.att || { last: '', n: 0 }, sa = se.att || { last: '', n: 0 }; e.att = { last: la.last > sa.last ? la.last : sa.last, n: Math.max(la.n || 0, sa.n || 0) };
       const lq = le.q, sq = se.q;
@@ -205,6 +249,6 @@ const Eco = (() => {
     }
     return out;
   }
-  return { E, today, weekKey, owns, ownsVeh, ownedSkins, pool, draw, pull, exchange, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, mergeStats, changed,
-    on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, DEV };
+  return { E, today, weekKey, owns, ownsVeh, ownsGun, ownedSkins, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+    on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();

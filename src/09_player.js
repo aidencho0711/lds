@@ -234,12 +234,16 @@ function updateCamera(dt) {
   if (VM.active) { if (holding) updateHoldVM(dt, p); else updateViewModel(dt, p, adsE); }
 }
 function updateViewModel(dt, p, adsE) {
-  const w = p.weapon;
-  const key = w.id + '|' + [w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].join(',');
+  const w = p.weapon, sk = p.skinOf(w.id);
+  const key = w.id + '|' + [w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].join(',') + '|' + (sk || '');
   if (VM.key !== key) {
-    if (VM.gun) VM.tilt.remove(VM.gun);
-    VM.gun = buildGunMesh(w.id, w.att); VM.gun.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+    // 총을 바꿨을 때(부착물만 바뀐 게 아니라): 울트라레어 스킨이면 헌 총은 그 자리에서 사라지고 새 총은 빛 띠와 함께 나타남
+    const base = w.id + '|' + p.inv.cur, swap = !!VM.base && VM.base !== base;
+    if (VM.gun && !(swap && GunSkin.holster(VM.gun, 0.3, p))) VM.tilt.remove(VM.gun);
+    VM.gun = buildGunMesh(w.id, w.att, sk); VM.gun.traverse((o) => { if (o.isMesh) o.castShadow = false; });
     VM.tilt.add(VM.gun); VM.key = key;
+    if (swap || !VM.base) GunSkin.draw(VM.gun, 0.45, p);
+    VM.base = base;
   }
   const m = VM.gun.userData.meta; ANIM_VM = true; const A = weaponAnim(p, m); ANIM_VM = false;
   applyParts(VM.gun, A);
