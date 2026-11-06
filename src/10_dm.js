@@ -22,7 +22,7 @@ const DM = (() => {
     const scope = fits.length ? fits[Math.floor(rand() * fits.length)] : null;
     return { id, scope };
   }
-  const loName = (lo) => ITEMS[lo.id].name + (lo.scope ? ' + ' + ITEMS[lo.scope].name : '');
+  const loName = (lo) => ITEMS[lo.id].name + (lo.scope ? ' + ' + ITEMS[lo.scope].name : ITEMS[lo.id].fixedScope ? ' + ' + ITEMS[lo.id].fixedScope.name : '');
 
   // ---------- 시작 ----------
   // cfg(같이 하기): { type, seed, roster:[{id,name,team,slot,human,look,diff,owner}], loadout, myId }

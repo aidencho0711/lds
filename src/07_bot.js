@@ -1008,7 +1008,7 @@ class Brain {
     const settle = clamp(1.5 - this.track / d.settle, 0.5, 1.5);
     const tsp = Math.hypot(tgt.vel.x, tgt.vel.z);
     // 조준경: 원거리에서 배율이 높을수록 정확, 근거리에서 고배율은 오히려 불리
-    const zk = c.weapon.att.scope ? ITEMS[c.weapon.att.scope].zoom : 1, dist0 = tr.dist || 50;
+    const fsc = ITEMS[c.weapon.id].fixedScope, zk = c.weapon.att.scope ? ITEMS[c.weapon.att.scope].zoom : fsc ? fsc.zoom : 1, dist0 = tr.dist || 50;
     const scopeK = dist0 > 60 ? (zk >= 3 ? 0.65 : zk >= 2 ? 0.8 : 1) : (dist0 < 15 && zk >= 4 ? 1.25 : 1);
     const cls0 = ITEMS[c.weapon.id].cls, wk = cls0 === 'SR' ? 0.45 : cls0 === 'DMR' ? 0.6 : 1, still = Math.hypot(c.vel.x, c.vel.z) < 0.5 && c.stance !== 'stand' ? 0.8 : 1;
     const err = d.aimErr * DEG * settle * scopeK * wk * still * (1 + tsp / 5) * (Math.hypot(c.vel.x, c.vel.z) > 1 ? 1.4 : 1);

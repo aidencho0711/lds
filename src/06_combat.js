@@ -97,14 +97,15 @@ function raycastAll(ox, oy, oz, dx, dy, dz, maxD, ignore) {
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3();
 function weaponSpread(c) {
   const wi = c.weapon; if (!wi) return 0;
-  const d = ITEMS[wi.id];
+  const d = ITEMS[wi.id], sg = d.cls === 'SG';
   let s = d.spread * (wi.att.grip ? ITEMS.grip.spreadMul : 1);
   if (!c.aiming && (d.cls === 'SR' || d.cls === 'DMR')) s = Math.max(s, 2.6);
   const sp = c.anim.speed;
-  s *= 1 + clamp(sp / 3.5, 0, 1.6);
-  if (!c.onGround && !c.inWater) s *= 3;
+  // 산탄총은 펠릿 묶음 크기가 거의 고정 (뛰며 쏴도 근거리에서 맞도록 이동·점프·조준 영향을 작게)
+  s *= 1 + clamp(sp / 3.5, 0, 1.6) * (sg ? 0.25 : 1);
+  if (!c.onGround && !c.inWater) s *= sg ? 1.6 : 3;
   if (c.veh) s *= 1 + clamp(Math.hypot(c.veh.vx, c.veh.vz) / 12, 0, 1.6); // 달리는 차에서 쏘면 퍼짐
-  if (c.aiming) s *= 0.45;
+  if (c.aiming) s *= sg ? 0.9 : 0.45;   // 산탄총은 조준해도 조금만 모인다 (중거리 위력은 예전과 비슷하게)
   if (c.stance === 'crouch') s *= 0.8; else if (c.stance === 'prone') s *= d.cls === 'LMG' ? 0.42 : 0.6;
   return s + c.bloom;
 }
@@ -135,8 +136,13 @@ function fireWeapon(c, origin, dir) {
   const rl = Math.hypot(rx, ry, rz);
   const ax = rx / rl, ay = ry / rl, az = rz / rl;
   const bx = dir.y * az - dir.z * ay, by = dir.z * ax - dir.x * az, bz = dir.x * ay - dir.y * ax;
+  // 산탄: 가운데 1발 + 안쪽·바깥쪽 고리를 번갈아 (무작위 원판보다 구멍·뭉침이 적어 근거리 피해가 고르다)
+  const T = Math.tan(spread), a0 = Math.random() * TAU, ring = pellets - 1;
   for (let p = 0; p < pellets; p++) {
-    const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * Math.tan(spread);
+    let a, r;
+    if (pellets === 1) { a = Math.random() * TAU; r = Math.sqrt(Math.random()) * T; }
+    else if (p === 0) { a = Math.random() * TAU; r = Math.random() * 0.1 * T; }
+    else { const k = p - 1; a = a0 + k * TAU / ring + (Math.random() - 0.5) * 0.5; r = (k % 2 ? 0.66 + Math.random() * 0.34 : 0.3 + Math.random() * 0.25) * T; }
     let dx = dir.x + (ax * Math.cos(a) + bx * Math.sin(a)) * r, dy = dir.y + (ay * Math.cos(a) + by * Math.sin(a)) * r, dz = dir.z + (az * Math.cos(a) + bz * Math.sin(a)) * r;
     const L = Math.hypot(dx, dy, dz); dx /= L; dy /= L; dz /= L;
     const maxD = d.range * 2.4;
@@ -155,12 +161,16 @@ function fireWeapon(c, origin, dir) {
       if (c.isPlayer && !h.veh.dead) HUD.hitmarker(false, false);
     } else if (h.type) { FX.impact(ex, ey, ez, h.type === 'terrain' ? 'dirt' : 'spark'); if (p === 0) Audio.impact({ x: ex, y: ey, z: ez }, false); }
   }
-  c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : 1) * 0.22, 4);
+  // 이 발로 처치해 웨폰 데스매치 총이 바뀌었으면(applyDamage → swapWeapon) 새 총에 레버·볼트 순환·탄피·반동을 넘기지 않는다
+  const swapped = c.weapon !== wi;
+  if (!swapped) c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : d.cls === 'SG' ? 0.5 : 1) * 0.22, 4);
   FX.flash(c, g, meta, tStart, dir, d);
-  if (g && g.userData.skin) GunSkin.shot(g, c);   // 울트라레어 총기 스킨: 색 화염·불씨/스파크·몸체 빛
-  if (d.cycle) { if (wi.mag > 0) c.cycle = { kind: d.cycle, t: 0, ev: 0, ejected: false, total: d.cycleT || CYCLE[d.cycle].total }; }
-  else if (d.rKind !== 'break') ejectCase(c, d); // 중절식은 장전할 때 꺼낸다
-  if (d.cls === 'PISTOL') c.slideKick = 0.09;
+  if (g && g.userData.skin && !swapped) GunSkin.shot(g, c);   // 울트라레어 총기 스킨: 색 화염·불씨/스파크·몸체 빛
+  if (!swapped) {
+    if (d.cycle) { if (wi.mag > 0) c.cycle = { kind: d.cycle, t: 0, ev: 0, ejected: false, total: d.cycleT || CYCLE[d.cycle].total }; }
+    else if (d.rKind !== 'break') ejectCase(c, d); // 중절식은 장전할 때 꺼낸다
+    if (d.cls === 'PISTOL') c.slideKick = 0.09;
+  }
   Audio.gunshot(origin, wi.id, c.isPlayer, isIndoor(c.pos.x, c.pos.z, c.pos.y));
   G.noises.push({ x: origin.x, y: origin.y, z: origin.z, t: G.time, r: d.cls === 'SMG' || d.cls === 'PISTOL' ? 160 : d.ammo === 'a300' ? 360 : 260, by: c, kind: 'shot' });
   if (G.net) Net.sendShot(c, tStart, _shotEnd, wi.id, _shotEnd[3]); // 같이 하기: 다른 기기에 총성·탄도 표시

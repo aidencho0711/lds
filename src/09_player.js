@@ -152,6 +152,7 @@ function sightInfo(p) {
   const w = p.weapon; if (!w) return { key: 'iron', zoom: 1.05, mag: false, aimT: 0.18, reticle: null };
   const am = ITEMS[w.id].adsMul || 1;
   if (w.att.scope) { const s = ITEMS[w.att.scope]; return { key: w.att.scope, zoom: s.zoom, mag: s.zoom >= 2, aimT: s.aimT * am, reticle: w.att.scope }; }
+  const fs = ITEMS[w.id].fixedScope; if (fs) return { key: fs.key, sens: fs.sens, zoom: fs.zoom, mag: fs.zoom >= 2, aimT: fs.aimT * am, reticle: fs.key };
   return { key: 'iron', zoom: ITEMS[w.id].zoom, mag: false, aimT: 0.16 * am, reticle: null };
 }
 // 차량 추적 카메라: 마우스/드래그로 자유롭게 돌려 보고, 손을 떼면 진행 방향 뒤로 돌아온다
@@ -190,7 +191,7 @@ function updateCamera(dt) {
   const fppBase = G.firstPerson && p.mode === 'ground' && p.alive;
   cam.fov = (fppBase ? 78 : lerp(72, 78, adsE)) / Cam.zoom; cam.updateProjectionMatrix();
   // 배율 조준경 흔들림 (호흡). PC는 Shift로 잠시 숨참기
-  const swayBase = adsE > 0.5 ? ({ x3: 0.0011, x4: 0.0017, x6: 0.0027 }[si.key] || 0) : 0;
+  const swayBase = adsE > 0.5 ? ({ x3: 0.0011, x4: 0.0017, x6: 0.0027, w94: 0.001 }[si.key] || 0) : 0;
   const hold = (Input.keys.ShiftLeft || Input.keys.ShiftRight) && swayBase > 0 && Cam.breath > 0;
   Cam.breath = clamp(Cam.breath + (hold ? -dt / 4.5 : dt / 7), 0, 1);
   const amp = swayBase * (p.stance === 'prone' ? 0.35 : p.stance === 'crouch' ? 0.6 : 1) * (p.anim.speed > 0.8 ? 2 : 1) * (hold ? 0.15 : 1) * (IS_TOUCH ? 0.6 : 1);
@@ -316,7 +317,7 @@ function updatePlayer(dt) {
   const s = SETTINGS;
   // 시점
   // 스코프별 감도: 100%면 배율과 상관없이 화면에서 같은 속도로 움직인다
-  const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + Cam.si.key] || 1) / Math.max(1, Cam.zoom) : 1;
+  const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + (Cam.si.sens || Cam.si.key)] || 1) / Math.max(1, Cam.zoom) : 1;
   const sensBase = 0.0023 * s.lookSens * sensK;
   p.yaw -= Input.lookX * sensBase; p.pitch -= Input.lookY * sensBase;
   p.pitch = clamp(p.pitch, -1.35, 1.35);
@@ -406,7 +407,7 @@ function updatePlayer(dt) {
 const DRIVE_IGNORE = ['prone', 'reload', 'w1', 'w2', 'w3', 'weaponCycle', 'holster', 'throw', 'throwSwap', 'fireMode', 'jump', 'view'];
 // 동승석: 자유 시점 + 조준·사격·장전·무기 교체 (이동은 운전자가)
 function updatePassenger(dt, p, v) {
-  const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + Cam.si.key] || 1) / Math.max(1, Cam.zoom) : 1, sens = 0.0023 * SETTINGS.lookSens * sensK;
+  const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + (Cam.si.sens || Cam.si.key)] || 1) / Math.max(1, Cam.zoom) : 1, sens = 0.0023 * SETTINGS.lookSens * sensK;
   p.yaw -= Input.lookX * sens; p.pitch = clamp(p.pitch - Input.lookY * sens, -1.1, 1.0); Input.lookX = Input.lookY = 0;
   for (const k of ['prone', 'holster', 'throw', 'throwSwap', 'jump', 'view']) Input.consume(k);
   if (Input.consume('reload')) startReload(p);

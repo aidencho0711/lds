@@ -371,7 +371,7 @@ const HUD = (() => {
     const rt = $('reticle'), dotOn = ground && si && (si.key === 'reddot' || si.key === 'holo') && adsE > 0.8 && !p.rl;
     rt.hidden = !dotOn;
     if (dotOn) { if (reticleKey !== si.key) { drawDot(si.key); reticleKey = si.key; } rt.style.opacity = clamp((adsE - 0.8) / 0.15, 0, 1); }
-    const br = $('breath'); br.hidden = !(scopeOn && !IS_TOUCH && (si.key === 'x3' || si.key === 'x4' || si.key === 'x6'));
+    const br = $('breath'); br.hidden = !(scopeOn && !IS_TOUCH && (si.key === 'x3' || si.key === 'x4' || si.key === 'x6' || si.key === 'w94'));
     if (!br.hidden) br.firstElementChild.style.width = Math.round(Cam.breath * 100) + '%';
     if (hmT > 0) { hmT -= dt; if (hmT <= 0) $('hitmark').style.opacity = 0; }
     // 진행 표시 (재장전/회복/장착)
@@ -623,6 +623,7 @@ const HUD = (() => {
       card.appendChild(h('div', 'micro', `${AMMO_NAMES[d.ammo]} · 탄창 ${w.mag}/${inv.magSize(w)} · 보유 ${inv.count(d.ammo)} · 피해 ${d.dmg}${d.pellets ? '×' + d.pellets : ''} · ${d.modes.map(m => modeName(w.id, m)).join('/')}${d.supply ? ' · 보급 전용' : ''}`));
       const chips = h('div', 'chips');
       for (const slot of ['scope', 'muzzle', 'mag', 'grip']) {
+        if (slot === 'scope' && d.fixedScope) { const c = h('button', 'chip'); c.disabled = true; c.title = '총에 붙어 있어 뗄 수 없음'; c.append(d.fixedScope.name); chips.appendChild(c); continue; }
         const a = w.att[slot], c = h('button', 'chip' + (a ? '' : ' empty'));
         if (a) c.appendChild(ico(a, null, 'ico xs'));
         c.append(a ? ITEMS[a].name + ' ✕' : { scope: '조준경', muzzle: '총구', mag: '탄창', grip: '손잡이' }[slot]);
@@ -697,7 +698,7 @@ const HUD = (() => {
     const cv = $('scopeCv'), dpr = Math.min(2, window.devicePixelRatio || 1), W = window.innerWidth, H = window.innerHeight;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + 'px'; cv.style.height = H + 'px';
     const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const R = Math.min(W, H) * ({ x2: 0.47, x3: 0.45, x4: 0.43, x6: 0.41 }[key] || 0.43), cx = W / 2, cy = H / 2;
+    const R = Math.min(W, H) * ({ x2: 0.47, x3: 0.45, x4: 0.43, x6: 0.41, w94: 0.44 }[key] || 0.43), cx = W / 2, cy = H / 2;
     c.fillStyle = '#000'; c.beginPath(); c.rect(0, 0, W, H); c.arc(cx, cy, R, 0, TAU, true); c.fill('evenodd');
     const edge = c.createRadialGradient(cx, cy, R * 0.72, cx, cy, R); edge.addColorStop(0, 'rgba(0,0,0,0)'); edge.addColorStop(0.82, 'rgba(0,0,0,0.3)'); edge.addColorStop(1, 'rgba(0,0,0,0.95)');
     c.fillStyle = edge; c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
@@ -716,6 +717,9 @@ const HUD = (() => {
       red(() => { c.lineWidth = 2.6; c.beginPath(); c.moveTo(cx - 10, cy + 11); c.lineTo(cx, cy); c.lineTo(cx + 10, cy + 11); c.stroke(); });
       line(cx, cy + 16, cx, cy + R * 0.62, 1.4, ink);
       [0.16, 0.27, 0.38, 0.49].forEach((f, i) => line(cx - (16 - i * 3), cy + R * f, cx + (16 - i * 3), cy + R * f, 1.4, ink));
+    } else if (key === 'w94') {
+      // 고전 듀플렉스: 바깥쪽 굵은 기둥 + 가운데 가는 십자 (빛나는 점 없음)
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { line(cx + dx * R, cy + dy * R, cx + dx * R * 0.3, cy + dy * R * 0.3, 5, ink); line(cx + dx * R * 0.3, cy + dy * R * 0.3, cx, cy, 1.1, ink); }
     } else if (key === 'x4') {
       line(cx - R, cy, cx - R * 0.5, cy, 4, ink); line(cx + R * 0.5, cy, cx + R, cy, 4, ink);
       line(cx - R * 0.5, cy, cx - R * 0.08, cy, 1.1, ink); line(cx + R * 0.08, cy, cx + R * 0.5, cy, 1.1, ink);

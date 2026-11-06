@@ -317,8 +317,8 @@
 
   // ---------------- Win94 (레버액션 · 오른쪽 장전구로 한 발씩) ----------------
   G.win94 = {
-    meta: { ironY: 0.056, ironRearZ: 0.2, muzzleZ: 0.512, boreY: 0.033, railY: 0.06, scopeZ: 0.0, leverPos: [0, -0.028, 0.095], leverAngle: 0.95,
-      gripPos: [0, -0.058, -0.07], forePos: [0.028, -0.004, 0.25], gateHand: [-0.05, -0.024, 0.06], ejectPos: [0, 0.055, 0.05], hip: [0.13, -0.15, -0.42], noMag: true },
+    meta: { ironY: 0.056, ironRearZ: 0.2, muzzleZ: 0.512, boreY: 0.033, railY: 0.054, scopeZ: 0.075, fixedScope: 'w94', leverPos: [0, -0.028, 0.095], leverAngle: 0.95,
+      gripPos: [0, -0.058, -0.07], forePos: [0.028, -0.004, 0.25], gateHand: [-0.05, -0.024, 0.06], ejectPos: [-0.019, 0.046, 0.05], hip: [0.13, -0.15, -0.42], noMag: true },
     body(g) {
       const bl = M('gunmetal', 0x222326), rc = M('gunmetal', 0x3a3c40), wd = M('wood', 0x6e4022), wdk = M('wood', 0x51301a);
       A(g, RB(0.036, 0.075, 0.2, 0.01), bl, 0, 0.012, 0.03);

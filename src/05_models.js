@@ -336,6 +336,23 @@ const Models = (() => {
       A(g, CY(0.024, 0.024, 0.002, 20), CLS.lens, 0, 0.052, 0.155); A(g, CY(0.017, 0.017, 0.002, 18), CLS.lens, 0, 0.052, -0.148);
       A(g, CY(0.0105, 0.0105, 0.022, 14, 'y'), an, 0, 0.074, 0); A(g, CY(0.0105, 0.0105, 0.022, 14, 'x'), an, -0.024, 0.052, 0); A(g, CY(0.0085, 0.0085, 0.016, 12, 'x'), an, 0.022, 0.052, 0);
     } },
+    // Win94 고정 조준경 (주울 수 없음): 가는 몸통의 고전 사냥용 2.7배 스코프 · 받침 위 링 2개 · 접안부에 놋쇠 띠
+    w94: { eyeY: 0.042, len: 0.28, relief: 0.26, build(g) {
+      const bl = M('gunmetal', 0x17181b), dk = M('polymer', 0x0b0b0c), rb = M('rubber', 0x101010), br = M('brass', 0xb08a3e), y = 0.042;
+      A(g, RB(0.013, 0.004, 0.13, 0.0015), bl, 0, 0.002, -0.012);
+      for (const z of [-0.06, 0.04]) {
+        A(g, RB(0.018, 0.022, 0.016, 0.003), bl, 0, 0.013, z);
+        A(g, TOR(0.0142, 0.0038, 8, 18), bl, 0, y, z);
+        for (const sx of [-1, 1]) A(g, CY(0.0022, 0.0022, 0.004, 8, 'x'), dk, sx * 0.0172, y + 0.006, z);
+      }
+      A(g, CY(0.0127, 0.0127, 0.18, 18), bl, 0, y, 0);
+      A(g, CY(0.0127, 0.019, 0.03, 18), bl, 0, y, -0.105); A(g, CY(0.019, 0.019, 0.02, 18), bl, 0, y, -0.13);
+      A(g, CY(0.0193, 0.0193, 0.004, 18), br, 0, y, -0.118); A(g, CY(0.0197, 0.0197, 0.007, 18), rb, 0, y, -0.1375);
+      A(g, CY(0.021, 0.0127, 0.035, 18), bl, 0, y, 0.1075); A(g, CY(0.021, 0.021, 0.015, 18), bl, 0, y, 0.1325);
+      A(g, CY(0.0175, 0.0175, 0.002, 18), CLS.lens, 0, y, 0.1395); A(g, CY(0.0165, 0.0165, 0.002, 18), CLS.lens, 0, y, -0.1405);
+      A(g, CY(0.009, 0.0095, 0.014, 12, 'y'), bl, 0, y + 0.0185, -0.008); A(g, CY(0.0095, 0.0095, 0.003, 12, 'y'), br, 0, y + 0.0265, -0.008);
+      A(g, CY(0.009, 0.0095, 0.014, 12, 'x'), bl, 0.0185, y, -0.008);
+    } },
   };
   const ATT = {
     comp(g) { A(g, CY(0.0145, 0.0145, 0.05, 12), M('gunmetal', 0x1a1b1d), 0, 0, 0.025); for (let i = 0; i < 3; i++) A(g, BX(0.02, 0.004, 0.007), M('polymer', 0x050505), 0, 0.0135, 0.012 + i * 0.012); },
@@ -367,6 +384,10 @@ const Models = (() => {
       if (meta.railOnScope) { const [z0, z1, y] = meta.railOnScope; const rm = cluster('rail:' + id, (gg) => (D.mount || ((g2) => rail(g2, z0, z1, y, 0.018, M('anod', 0x1e2022))))(gg)); rm.userData.noSkin = true; g.add(rm); }
       const S = SC[att.scope], s = cluster('sc:' + att.scope, S.build); s.userData.noSkin = true;
       s.position.set(-hp[0], meta.railY - hp[1], meta.scopeZ - hp[2]); host.add(s);
+      meta.sightY = meta.railY + S.eyeY; meta.sightRearZ = meta.scopeZ - S.len / 2; meta.relief = S.relief;
+    } else if (meta.fixedScope && SC[meta.fixedScope]) {
+      const S = SC[meta.fixedScope], s = cluster('sc:' + meta.fixedScope, S.build); s.userData.noSkin = true;
+      s.position.set(0, meta.railY, meta.scopeZ); g.add(s);
       meta.sightY = meta.railY + S.eyeY; meta.sightRearZ = meta.scopeZ - S.len / 2; meta.relief = S.relief;
     } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.pistol ? 0.4 : 0.3; }
     if (D.front) g.add(att.scope && D.frontFolded ? cluster('gff:' + id, D.frontFolded) : cluster('gf:' + id, D.front));

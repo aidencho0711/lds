@@ -5760,21 +5760,22 @@ const ITEMS = {
   slr: { type: 'weapon', name: 'SLR 지정사수소총', cls: 'DMR', slot: 'primary', ammo: 'a762', dmg: 56, rpm: 230, modes: ['single'], mag: 10, reload: 2.6, reloadEmpty: 3.3, rStyle: 'ak', spread: 0.22, recoil: 2.6, range: 500, zoom: 1.25, tier: 4, supply: true, color: 0x26282b },
   m24: { type: 'weapon', name: 'M24 저격소총', cls: 'SR', slot: 'primary', ammo: 'a762', dmg: 88, rpm: 46, modes: ['single'], mag: 5, rKind: 'bolt', rOpen: 0.5, rShell: 0.6, rClose: 0.5, cycle: 'bolt', spread: 0.05, recoil: 3.6, range: 700, zoom: 1.25, tier: 3, color: 0x4b5338 },
   awm: { type: 'weapon', name: 'AWM 저격소총', cls: 'SR', slot: 'primary', ammo: 'a300', dmg: 120, rpm: 40, modes: ['single'], mag: 5, rKind: 'boltmag', reload: 3.2, reloadEmpty: 4.1, cycle: 'bolt', cycleT: 1.2, spread: 0.03, recoil: 4.6, range: 900, zoom: 1.25, tier: 4, supply: true, color: 0x3f4a2e },
-  s686: { type: 'weapon', name: 'S686 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 16, pellets: 9, rpm: 400, modes: ['single'], mag: 2, rKind: 'break', rOpen: 0.42, rShell: 0.5, rClose: 0.38, spread: 4.2, recoil: 2.8, range: 45, zoom: 1.1, tier: 1, color: 0x6e4426 },
-  s12k: { type: 'weapon', name: 'S12K 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 13, pellets: 9, rpm: 230, modes: ['single'], mag: 5, reload: 3.0, reloadEmpty: 3.6, rStyle: 'ak', spread: 5.0, recoil: 2.5, range: 36, zoom: 1.1, tier: 1, color: 0x1c1d1f },
+  s686: { type: 'weapon', name: 'S686 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 16, pellets: 9, rpm: 400, modes: ['single'], mag: 2, rKind: 'break', rOpen: 0.42, rShell: 0.5, rClose: 0.38, spread: 2.3, recoil: 2.8, range: 45, zoom: 1.1, tier: 1, color: 0x6e4426 },
+  s12k: { type: 'weapon', name: 'S12K 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 13, pellets: 9, rpm: 230, modes: ['single'], mag: 5, reload: 3.0, reloadEmpty: 3.6, rStyle: 'ak', spread: 2.8, recoil: 2.5, range: 36, zoom: 1.1, tier: 1, color: 0x1c1d1f },
   m249: { type: 'weapon', name: 'M249 경기관총', cls: 'LMG', slot: 'primary', ammo: 'a556', dmg: 29, rpm: 750, modes: ['auto'], mag: 100, rKind: 'belt', reload: 7.4, reloadEmpty: 8.0, spread: 1.25, recoil: 1.15, range: 280, zoom: 1.15, moveMul: 0.9, adsMul: 1.45, tier: 3, color: 0x2c2f2a },
   mg3: { type: 'weapon', name: 'MG3 경기관총', cls: 'LMG', slot: 'primary', ammo: 'a762', dmg: 33, rpm: 990, rpmSlow: 660, modes: ['auto', 'slow'], mag: 75, rKind: 'belt', reload: 6.4, reloadEmpty: 7.0, spread: 1.4, recoil: 1.35, range: 300, zoom: 1.15, moveMul: 0.88, adsMul: 1.5, tier: 4, supply: true, color: 0x222426 },
   p19: { type: 'weapon', name: 'P-19 권총', cls: 'PISTOL', slot: 'secondary', ammo: 'a9', dmg: 24, rpm: 420, modes: ['single'], mag: 15, reload: 1.4, reloadEmpty: 1.75, spread: 1.2, recoil: 0.9, range: 70, zoom: 1.1, tier: 1, color: 0x222222 },
   // ----- v16 추가 10종 (rTL: 총마다 다른 장전 동작 · 06_combat.js RL_TL) -----
   //  vgrip: 수직 손잡이 가능 · noExt/noScope/noMuzzle: 대용량 탄창·조준경·총구 부착물 불가
+  //  fixedScope: 총에 붙어 있는 조준경 (떼거나 바꿀 수 없음; 모델은 05_models.js SC[key])
   beryl: { type: 'weapon', name: 'Beryl M762 돌격소총', cls: 'AR', slot: 'primary', ammo: 'a762', dmg: 41, rpm: 700, burstRpm: 900, burstN: 3, burstGap: 0.24, modes: ['auto', 'burst', 'single'], mag: 30, reload: 2.6, reloadEmpty: 3.25, rStyle: 'ak', rTL: 'beryl', spread: 1.25, recoil: 2.1, range: 270, zoom: 1.2, tier: 3, vgrip: true, color: 0x1c1d1f },
   m16a4: { type: 'weapon', name: 'M16A4 돌격소총', cls: 'AR', slot: 'primary', ammo: 'a556', dmg: 33, rpm: 800, burstRpm: 900, burstN: 3, burstGap: 0.22, modes: ['burst', 'single'], mag: 30, reload: 2.2, reloadEmpty: 2.75, rStyle: 'ar', rTL: 'm16', spread: 0.8, recoil: 1.05, range: 330, zoom: 1.2, tier: 2, color: 0x232527 },
   vector: { type: 'weapon', name: 'Vector 기관단총', cls: 'SMG', slot: 'primary', ammo: 'a9', dmg: 19, rpm: 1090, burstRpm: 1200, burstN: 2, burstGap: 0.16, modes: ['auto', 'burst', 'single'], mag: 19, reload: 1.85, reloadEmpty: 2.35, rStyle: 'ar', rTL: 'vector', spread: 1.35, recoil: 0.5, range: 100, zoom: 1.15, tier: 2, vgrip: true, color: 0x161718 },
   bizon: { type: 'weapon', name: 'PP-19 Bizon 기관단총', cls: 'SMG', slot: 'primary', ammo: 'a9', dmg: 22, rpm: 680, modes: ['auto', 'single'], mag: 53, reload: 2.9, reloadEmpty: 3.5, rStyle: 'ak', rTL: 'helix', spread: 1.3, recoil: 0.45, range: 120, zoom: 1.15, tier: 1, noExt: true, color: 0x1f2022 },
   tommy: { type: 'weapon', name: 'Tommy Gun 기관단총', cls: 'SMG', slot: 'primary', ammo: 'a45', dmg: 26, rpm: 680, modes: ['auto', 'single'], mag: 50, reload: 3.0, reloadEmpty: 3.7, rTL: 'drum', spread: 1.45, recoil: 0.75, range: 110, zoom: 1.15, tier: 1, noExt: true, noScope: true, noMuzzle: true, color: 0x5a3418 },
   kar98k: { type: 'weapon', name: 'Kar98k 저격소총', cls: 'SR', slot: 'primary', ammo: 'a762', dmg: 90, rpm: 40, modes: ['single'], mag: 5, rKind: 'bolt', rOpen: 0.5, rShell: 0.58, rClose: 0.5, clip: 5, rClipIn: 0.45, rClipPush: 0.5, cycle: 'bolt', cycleT: 1.15, spread: 0.06, recoil: 3.8, range: 650, zoom: 1.25, tier: 2, noExt: true, color: 0x6b4123 },
-  win94: { type: 'weapon', name: 'Win94 레버액션 소총', cls: 'SR', slot: 'primary', ammo: 'a45', dmg: 62, rpm: 66, modes: ['single'], mag: 8, rKind: 'gate', rOpen: 0.4, rShell: 0.5, rClose: 0.3, cycle: 'lever', cycleT: 0.6, spread: 0.12, recoil: 2.2, range: 350, zoom: 1.3, tier: 1, noExt: true, noScope: true, noMuzzle: true, color: 0x7a4826 },
-  s1897: { type: 'weapon', name: 'S1897 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 17, pellets: 9, rpm: 70, modes: ['single'], mag: 5, rKind: 'shell', rOpen: 0.35, rShell: 0.5, rClose: 0.3, rCloseEmpty: 0.45, cycle: 'pump', spread: 4.0, recoil: 2.6, range: 42, zoom: 1.1, tier: 1, noExt: true, color: 0x6a3e1f },
+  win94: { type: 'weapon', name: 'Win94 레버액션 소총', cls: 'SR', slot: 'primary', ammo: 'a45', dmg: 62, rpm: 66, modes: ['single'], mag: 8, rKind: 'gate', rOpen: 0.4, rShell: 0.5, rClose: 0.3, cycle: 'lever', cycleT: 0.6, spread: 0.12, recoil: 2.2, range: 350, zoom: 1.3, tier: 1, noExt: true, noScope: true, noMuzzle: true, fixedScope: { key: 'w94', zoom: 2.7, aimT: 0.22, sens: 'x3', name: '고정 2.7배 조준경' }, color: 0x7a4826 },
+  s1897: { type: 'weapon', name: 'S1897 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 17, pellets: 9, rpm: 70, modes: ['single'], mag: 5, rKind: 'shell', rOpen: 0.35, rShell: 0.5, rClose: 0.3, rCloseEmpty: 0.45, cycle: 'pump', spread: 2.2, recoil: 2.6, range: 42, zoom: 1.1, tier: 1, noExt: true, color: 0x6a3e1f },
   dp28: { type: 'weapon', name: 'DP-28 경기관총', cls: 'LMG', slot: 'primary', ammo: 'a762', dmg: 38, rpm: 550, modes: ['auto'], mag: 47, rTL: 'pan', reload: 4.4, reloadEmpty: 5.0, spread: 1.15, recoil: 1.25, range: 300, zoom: 1.15, moveMul: 0.92, adsMul: 1.35, tier: 2, color: 0x3a3f33 },
   deagle: { type: 'weapon', name: 'Deagle 권총', cls: 'PISTOL', slot: 'secondary', ammo: 'a45', dmg: 42, rpm: 230, modes: ['single'], mag: 7, reload: 1.7, reloadEmpty: 2.15, rTL: 'deagle', spread: 1.0, recoil: 2.3, range: 90, zoom: 1.12, tier: 2, color: 0x9da2a7 },
   // ----- 탄약 -----
@@ -6411,6 +6412,23 @@ const Models = (() => {
       A(g, CY(0.024, 0.024, 0.002, 20), CLS.lens, 0, 0.052, 0.155); A(g, CY(0.017, 0.017, 0.002, 18), CLS.lens, 0, 0.052, -0.148);
       A(g, CY(0.0105, 0.0105, 0.022, 14, 'y'), an, 0, 0.074, 0); A(g, CY(0.0105, 0.0105, 0.022, 14, 'x'), an, -0.024, 0.052, 0); A(g, CY(0.0085, 0.0085, 0.016, 12, 'x'), an, 0.022, 0.052, 0);
     } },
+    // Win94 고정 조준경 (주울 수 없음): 가는 몸통의 고전 사냥용 2.7배 스코프 · 받침 위 링 2개 · 접안부에 놋쇠 띠
+    w94: { eyeY: 0.042, len: 0.28, relief: 0.26, build(g) {
+      const bl = M('gunmetal', 0x17181b), dk = M('polymer', 0x0b0b0c), rb = M('rubber', 0x101010), br = M('brass', 0xb08a3e), y = 0.042;
+      A(g, RB(0.013, 0.004, 0.13, 0.0015), bl, 0, 0.002, -0.012);
+      for (const z of [-0.06, 0.04]) {
+        A(g, RB(0.018, 0.022, 0.016, 0.003), bl, 0, 0.013, z);
+        A(g, TOR(0.0142, 0.0038, 8, 18), bl, 0, y, z);
+        for (const sx of [-1, 1]) A(g, CY(0.0022, 0.0022, 0.004, 8, 'x'), dk, sx * 0.0172, y + 0.006, z);
+      }
+      A(g, CY(0.0127, 0.0127, 0.18, 18), bl, 0, y, 0);
+      A(g, CY(0.0127, 0.019, 0.03, 18), bl, 0, y, -0.105); A(g, CY(0.019, 0.019, 0.02, 18), bl, 0, y, -0.13);
+      A(g, CY(0.0193, 0.0193, 0.004, 18), br, 0, y, -0.118); A(g, CY(0.0197, 0.0197, 0.007, 18), rb, 0, y, -0.1375);
+      A(g, CY(0.021, 0.0127, 0.035, 18), bl, 0, y, 0.1075); A(g, CY(0.021, 0.021, 0.015, 18), bl, 0, y, 0.1325);
+      A(g, CY(0.0175, 0.0175, 0.002, 18), CLS.lens, 0, y, 0.1395); A(g, CY(0.0165, 0.0165, 0.002, 18), CLS.lens, 0, y, -0.1405);
+      A(g, CY(0.009, 0.0095, 0.014, 12, 'y'), bl, 0, y + 0.0185, -0.008); A(g, CY(0.0095, 0.0095, 0.003, 12, 'y'), br, 0, y + 0.0265, -0.008);
+      A(g, CY(0.009, 0.0095, 0.014, 12, 'x'), bl, 0.0185, y, -0.008);
+    } },
   };
   const ATT = {
     comp(g) { A(g, CY(0.0145, 0.0145, 0.05, 12), M('gunmetal', 0x1a1b1d), 0, 0, 0.025); for (let i = 0; i < 3; i++) A(g, BX(0.02, 0.004, 0.007), M('polymer', 0x050505), 0, 0.0135, 0.012 + i * 0.012); },
@@ -6442,6 +6460,10 @@ const Models = (() => {
       if (meta.railOnScope) { const [z0, z1, y] = meta.railOnScope; const rm = cluster('rail:' + id, (gg) => (D.mount || ((g2) => rail(g2, z0, z1, y, 0.018, M('anod', 0x1e2022))))(gg)); rm.userData.noSkin = true; g.add(rm); }
       const S = SC[att.scope], s = cluster('sc:' + att.scope, S.build); s.userData.noSkin = true;
       s.position.set(-hp[0], meta.railY - hp[1], meta.scopeZ - hp[2]); host.add(s);
+      meta.sightY = meta.railY + S.eyeY; meta.sightRearZ = meta.scopeZ - S.len / 2; meta.relief = S.relief;
+    } else if (meta.fixedScope && SC[meta.fixedScope]) {
+      const S = SC[meta.fixedScope], s = cluster('sc:' + meta.fixedScope, S.build); s.userData.noSkin = true;
+      s.position.set(0, meta.railY, meta.scopeZ); g.add(s);
       meta.sightY = meta.railY + S.eyeY; meta.sightRearZ = meta.scopeZ - S.len / 2; meta.relief = S.relief;
     } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.pistol ? 0.4 : 0.3; }
     if (D.front) g.add(att.scope && D.frontFolded ? cluster('gff:' + id, D.frontFolded) : cluster('gf:' + id, D.front));
@@ -8181,8 +8203,8 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
 
   // ---------------- Win94 (레버액션 · 오른쪽 장전구로 한 발씩) ----------------
   G.win94 = {
-    meta: { ironY: 0.056, ironRearZ: 0.2, muzzleZ: 0.512, boreY: 0.033, railY: 0.06, scopeZ: 0.0, leverPos: [0, -0.028, 0.095], leverAngle: 0.95,
-      gripPos: [0, -0.058, -0.07], forePos: [0.028, -0.004, 0.25], gateHand: [-0.05, -0.024, 0.06], ejectPos: [0, 0.055, 0.05], hip: [0.13, -0.15, -0.42], noMag: true },
+    meta: { ironY: 0.056, ironRearZ: 0.2, muzzleZ: 0.512, boreY: 0.033, railY: 0.054, scopeZ: 0.075, fixedScope: 'w94', leverPos: [0, -0.028, 0.095], leverAngle: 0.95,
+      gripPos: [0, -0.058, -0.07], forePos: [0.028, -0.004, 0.25], gateHand: [-0.05, -0.024, 0.06], ejectPos: [-0.019, 0.046, 0.05], hip: [0.13, -0.15, -0.42], noMag: true },
     body(g) {
       const bl = M('gunmetal', 0x222326), rc = M('gunmetal', 0x3a3c40), wd = M('wood', 0x6e4022), wdk = M('wood', 0x51301a);
       A(g, RB(0.036, 0.075, 0.2, 0.01), bl, 0, 0.012, 0.03);
@@ -8955,14 +8977,15 @@ function raycastAll(ox, oy, oz, dx, dy, dz, maxD, ignore) {
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3();
 function weaponSpread(c) {
   const wi = c.weapon; if (!wi) return 0;
-  const d = ITEMS[wi.id];
+  const d = ITEMS[wi.id], sg = d.cls === 'SG';
   let s = d.spread * (wi.att.grip ? ITEMS.grip.spreadMul : 1);
   if (!c.aiming && (d.cls === 'SR' || d.cls === 'DMR')) s = Math.max(s, 2.6);
   const sp = c.anim.speed;
-  s *= 1 + clamp(sp / 3.5, 0, 1.6);
-  if (!c.onGround && !c.inWater) s *= 3;
+  // 산탄총은 펠릿 묶음 크기가 거의 고정 (뛰며 쏴도 근거리에서 맞도록 이동·점프·조준 영향을 작게)
+  s *= 1 + clamp(sp / 3.5, 0, 1.6) * (sg ? 0.25 : 1);
+  if (!c.onGround && !c.inWater) s *= sg ? 1.6 : 3;
   if (c.veh) s *= 1 + clamp(Math.hypot(c.veh.vx, c.veh.vz) / 12, 0, 1.6); // 달리는 차에서 쏘면 퍼짐
-  if (c.aiming) s *= 0.45;
+  if (c.aiming) s *= sg ? 0.9 : 0.45;   // 산탄총은 조준해도 조금만 모인다 (중거리 위력은 예전과 비슷하게)
   if (c.stance === 'crouch') s *= 0.8; else if (c.stance === 'prone') s *= d.cls === 'LMG' ? 0.42 : 0.6;
   return s + c.bloom;
 }
@@ -8993,8 +9016,13 @@ function fireWeapon(c, origin, dir) {
   const rl = Math.hypot(rx, ry, rz);
   const ax = rx / rl, ay = ry / rl, az = rz / rl;
   const bx = dir.y * az - dir.z * ay, by = dir.z * ax - dir.x * az, bz = dir.x * ay - dir.y * ax;
+  // 산탄: 가운데 1발 + 안쪽·바깥쪽 고리를 번갈아 (무작위 원판보다 구멍·뭉침이 적어 근거리 피해가 고르다)
+  const T = Math.tan(spread), a0 = Math.random() * TAU, ring = pellets - 1;
   for (let p = 0; p < pellets; p++) {
-    const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * Math.tan(spread);
+    let a, r;
+    if (pellets === 1) { a = Math.random() * TAU; r = Math.sqrt(Math.random()) * T; }
+    else if (p === 0) { a = Math.random() * TAU; r = Math.random() * 0.1 * T; }
+    else { const k = p - 1; a = a0 + k * TAU / ring + (Math.random() - 0.5) * 0.5; r = (k % 2 ? 0.66 + Math.random() * 0.34 : 0.3 + Math.random() * 0.25) * T; }
     let dx = dir.x + (ax * Math.cos(a) + bx * Math.sin(a)) * r, dy = dir.y + (ay * Math.cos(a) + by * Math.sin(a)) * r, dz = dir.z + (az * Math.cos(a) + bz * Math.sin(a)) * r;
     const L = Math.hypot(dx, dy, dz); dx /= L; dy /= L; dz /= L;
     const maxD = d.range * 2.4;
@@ -9013,12 +9041,16 @@ function fireWeapon(c, origin, dir) {
       if (c.isPlayer && !h.veh.dead) HUD.hitmarker(false, false);
     } else if (h.type) { FX.impact(ex, ey, ez, h.type === 'terrain' ? 'dirt' : 'spark'); if (p === 0) Audio.impact({ x: ex, y: ey, z: ez }, false); }
   }
-  c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : 1) * 0.22, 4);
+  // 이 발로 처치해 웨폰 데스매치 총이 바뀌었으면(applyDamage → swapWeapon) 새 총에 레버·볼트 순환·탄피·반동을 넘기지 않는다
+  const swapped = c.weapon !== wi;
+  if (!swapped) c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : d.cls === 'SG' ? 0.5 : 1) * 0.22, 4);
   FX.flash(c, g, meta, tStart, dir, d);
-  if (g && g.userData.skin) GunSkin.shot(g, c);   // 울트라레어 총기 스킨: 색 화염·불씨/스파크·몸체 빛
-  if (d.cycle) { if (wi.mag > 0) c.cycle = { kind: d.cycle, t: 0, ev: 0, ejected: false, total: d.cycleT || CYCLE[d.cycle].total }; }
-  else if (d.rKind !== 'break') ejectCase(c, d); // 중절식은 장전할 때 꺼낸다
-  if (d.cls === 'PISTOL') c.slideKick = 0.09;
+  if (g && g.userData.skin && !swapped) GunSkin.shot(g, c);   // 울트라레어 총기 스킨: 색 화염·불씨/스파크·몸체 빛
+  if (!swapped) {
+    if (d.cycle) { if (wi.mag > 0) c.cycle = { kind: d.cycle, t: 0, ev: 0, ejected: false, total: d.cycleT || CYCLE[d.cycle].total }; }
+    else if (d.rKind !== 'break') ejectCase(c, d); // 중절식은 장전할 때 꺼낸다
+    if (d.cls === 'PISTOL') c.slideKick = 0.09;
+  }
   Audio.gunshot(origin, wi.id, c.isPlayer, isIndoor(c.pos.x, c.pos.z, c.pos.y));
   G.noises.push({ x: origin.x, y: origin.y, z: origin.z, t: G.time, r: d.cls === 'SMG' || d.cls === 'PISTOL' ? 160 : d.ammo === 'a300' ? 360 : 260, by: c, kind: 'shot' });
   if (G.net) Net.sendShot(c, tStart, _shotEnd, wi.id, _shotEnd[3]); // 같이 하기: 다른 기기에 총성·탄도 표시
@@ -10815,7 +10847,7 @@ class Brain {
     const settle = clamp(1.5 - this.track / d.settle, 0.5, 1.5);
     const tsp = Math.hypot(tgt.vel.x, tgt.vel.z);
     // 조준경: 원거리에서 배율이 높을수록 정확, 근거리에서 고배율은 오히려 불리
-    const zk = c.weapon.att.scope ? ITEMS[c.weapon.att.scope].zoom : 1, dist0 = tr.dist || 50;
+    const fsc = ITEMS[c.weapon.id].fixedScope, zk = c.weapon.att.scope ? ITEMS[c.weapon.att.scope].zoom : fsc ? fsc.zoom : 1, dist0 = tr.dist || 50;
     const scopeK = dist0 > 60 ? (zk >= 3 ? 0.65 : zk >= 2 ? 0.8 : 1) : (dist0 < 15 && zk >= 4 ? 1.25 : 1);
     const cls0 = ITEMS[c.weapon.id].cls, wk = cls0 === 'SR' ? 0.45 : cls0 === 'DMR' ? 0.6 : 1, still = Math.hypot(c.vel.x, c.vel.z) < 0.5 && c.stance !== 'stand' ? 0.8 : 1;
     const err = d.aimErr * DEG * settle * scopeK * wk * still * (1 + tsp / 5) * (Math.hypot(c.vel.x, c.vel.z) > 1 ? 1.4 : 1);
@@ -11863,6 +11895,7 @@ function sightInfo(p) {
   const w = p.weapon; if (!w) return { key: 'iron', zoom: 1.05, mag: false, aimT: 0.18, reticle: null };
   const am = ITEMS[w.id].adsMul || 1;
   if (w.att.scope) { const s = ITEMS[w.att.scope]; return { key: w.att.scope, zoom: s.zoom, mag: s.zoom >= 2, aimT: s.aimT * am, reticle: w.att.scope }; }
+  const fs = ITEMS[w.id].fixedScope; if (fs) return { key: fs.key, sens: fs.sens, zoom: fs.zoom, mag: fs.zoom >= 2, aimT: fs.aimT * am, reticle: fs.key };
   return { key: 'iron', zoom: ITEMS[w.id].zoom, mag: false, aimT: 0.16 * am, reticle: null };
 }
 // 차량 추적 카메라: 마우스/드래그로 자유롭게 돌려 보고, 손을 떼면 진행 방향 뒤로 돌아온다
@@ -11901,7 +11934,7 @@ function updateCamera(dt) {
   const fppBase = G.firstPerson && p.mode === 'ground' && p.alive;
   cam.fov = (fppBase ? 78 : lerp(72, 78, adsE)) / Cam.zoom; cam.updateProjectionMatrix();
   // 배율 조준경 흔들림 (호흡). PC는 Shift로 잠시 숨참기
-  const swayBase = adsE > 0.5 ? ({ x3: 0.0011, x4: 0.0017, x6: 0.0027 }[si.key] || 0) : 0;
+  const swayBase = adsE > 0.5 ? ({ x3: 0.0011, x4: 0.0017, x6: 0.0027, w94: 0.001 }[si.key] || 0) : 0;
   const hold = (Input.keys.ShiftLeft || Input.keys.ShiftRight) && swayBase > 0 && Cam.breath > 0;
   Cam.breath = clamp(Cam.breath + (hold ? -dt / 4.5 : dt / 7), 0, 1);
   const amp = swayBase * (p.stance === 'prone' ? 0.35 : p.stance === 'crouch' ? 0.6 : 1) * (p.anim.speed > 0.8 ? 2 : 1) * (hold ? 0.15 : 1) * (IS_TOUCH ? 0.6 : 1);
@@ -12027,7 +12060,7 @@ function updatePlayer(dt) {
   const s = SETTINGS;
   // 시점
   // 스코프별 감도: 100%면 배율과 상관없이 화면에서 같은 속도로 움직인다
-  const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + Cam.si.key] || 1) / Math.max(1, Cam.zoom) : 1;
+  const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + (Cam.si.sens || Cam.si.key)] || 1) / Math.max(1, Cam.zoom) : 1;
   const sensBase = 0.0023 * s.lookSens * sensK;
   p.yaw -= Input.lookX * sensBase; p.pitch -= Input.lookY * sensBase;
   p.pitch = clamp(p.pitch, -1.35, 1.35);
@@ -12117,7 +12150,7 @@ function updatePlayer(dt) {
 const DRIVE_IGNORE = ['prone', 'reload', 'w1', 'w2', 'w3', 'weaponCycle', 'holster', 'throw', 'throwSwap', 'fireMode', 'jump', 'view'];
 // 동승석: 자유 시점 + 조준·사격·장전·무기 교체 (이동은 운전자가)
 function updatePassenger(dt, p, v) {
-  const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + Cam.si.key] || 1) / Math.max(1, Cam.zoom) : 1, sens = 0.0023 * SETTINGS.lookSens * sensK;
+  const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + (Cam.si.sens || Cam.si.key)] || 1) / Math.max(1, Cam.zoom) : 1, sens = 0.0023 * SETTINGS.lookSens * sensK;
   p.yaw -= Input.lookX * sens; p.pitch = clamp(p.pitch - Input.lookY * sens, -1.1, 1.0); Input.lookX = Input.lookY = 0;
   for (const k of ['prone', 'holster', 'throw', 'throwSwap', 'jump', 'view']) Input.consume(k);
   if (Input.consume('reload')) startReload(p);
@@ -12710,7 +12743,7 @@ const DM = (() => {
     const scope = fits.length ? fits[Math.floor(rand() * fits.length)] : null;
     return { id, scope };
   }
-  const loName = (lo) => ITEMS[lo.id].name + (lo.scope ? ' + ' + ITEMS[lo.scope].name : '');
+  const loName = (lo) => ITEMS[lo.id].name + (lo.scope ? ' + ' + ITEMS[lo.scope].name : ITEMS[lo.id].fixedScope ? ' + ' + ITEMS[lo.id].fixedScope.name : '');
 
   // ---------- 시작 ----------
   // cfg(같이 하기): { type, seed, roster:[{id,name,team,slot,human,look,diff,owner}], loadout, myId }
@@ -13603,7 +13636,7 @@ const HUD = (() => {
     const rt = $('reticle'), dotOn = ground && si && (si.key === 'reddot' || si.key === 'holo') && adsE > 0.8 && !p.rl;
     rt.hidden = !dotOn;
     if (dotOn) { if (reticleKey !== si.key) { drawDot(si.key); reticleKey = si.key; } rt.style.opacity = clamp((adsE - 0.8) / 0.15, 0, 1); }
-    const br = $('breath'); br.hidden = !(scopeOn && !IS_TOUCH && (si.key === 'x3' || si.key === 'x4' || si.key === 'x6'));
+    const br = $('breath'); br.hidden = !(scopeOn && !IS_TOUCH && (si.key === 'x3' || si.key === 'x4' || si.key === 'x6' || si.key === 'w94'));
     if (!br.hidden) br.firstElementChild.style.width = Math.round(Cam.breath * 100) + '%';
     if (hmT > 0) { hmT -= dt; if (hmT <= 0) $('hitmark').style.opacity = 0; }
     // 진행 표시 (재장전/회복/장착)
@@ -13855,6 +13888,7 @@ const HUD = (() => {
       card.appendChild(h('div', 'micro', `${AMMO_NAMES[d.ammo]} · 탄창 ${w.mag}/${inv.magSize(w)} · 보유 ${inv.count(d.ammo)} · 피해 ${d.dmg}${d.pellets ? '×' + d.pellets : ''} · ${d.modes.map(m => modeName(w.id, m)).join('/')}${d.supply ? ' · 보급 전용' : ''}`));
       const chips = h('div', 'chips');
       for (const slot of ['scope', 'muzzle', 'mag', 'grip']) {
+        if (slot === 'scope' && d.fixedScope) { const c = h('button', 'chip'); c.disabled = true; c.title = '총에 붙어 있어 뗄 수 없음'; c.append(d.fixedScope.name); chips.appendChild(c); continue; }
         const a = w.att[slot], c = h('button', 'chip' + (a ? '' : ' empty'));
         if (a) c.appendChild(ico(a, null, 'ico xs'));
         c.append(a ? ITEMS[a].name + ' ✕' : { scope: '조준경', muzzle: '총구', mag: '탄창', grip: '손잡이' }[slot]);
@@ -13929,7 +13963,7 @@ const HUD = (() => {
     const cv = $('scopeCv'), dpr = Math.min(2, window.devicePixelRatio || 1), W = window.innerWidth, H = window.innerHeight;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + 'px'; cv.style.height = H + 'px';
     const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const R = Math.min(W, H) * ({ x2: 0.47, x3: 0.45, x4: 0.43, x6: 0.41 }[key] || 0.43), cx = W / 2, cy = H / 2;
+    const R = Math.min(W, H) * ({ x2: 0.47, x3: 0.45, x4: 0.43, x6: 0.41, w94: 0.44 }[key] || 0.43), cx = W / 2, cy = H / 2;
     c.fillStyle = '#000'; c.beginPath(); c.rect(0, 0, W, H); c.arc(cx, cy, R, 0, TAU, true); c.fill('evenodd');
     const edge = c.createRadialGradient(cx, cy, R * 0.72, cx, cy, R); edge.addColorStop(0, 'rgba(0,0,0,0)'); edge.addColorStop(0.82, 'rgba(0,0,0,0.3)'); edge.addColorStop(1, 'rgba(0,0,0,0.95)');
     c.fillStyle = edge; c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
@@ -13948,6 +13982,9 @@ const HUD = (() => {
       red(() => { c.lineWidth = 2.6; c.beginPath(); c.moveTo(cx - 10, cy + 11); c.lineTo(cx, cy); c.lineTo(cx + 10, cy + 11); c.stroke(); });
       line(cx, cy + 16, cx, cy + R * 0.62, 1.4, ink);
       [0.16, 0.27, 0.38, 0.49].forEach((f, i) => line(cx - (16 - i * 3), cy + R * f, cx + (16 - i * 3), cy + R * f, 1.4, ink));
+    } else if (key === 'w94') {
+      // 고전 듀플렉스: 바깥쪽 굵은 기둥 + 가운데 가는 십자 (빛나는 점 없음)
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { line(cx + dx * R, cy + dy * R, cx + dx * R * 0.3, cy + dy * R * 0.3, 5, ink); line(cx + dx * R * 0.3, cy + dy * R * 0.3, cx, cy, 1.1, ink); }
     } else if (key === 'x4') {
       line(cx - R, cy, cx - R * 0.5, cy, 4, ink); line(cx + R * 0.5, cy, cx + R, cy, 4, ink);
       line(cx - R * 0.5, cy, cx - R * 0.08, cy, 1.1, ink); line(cx + R * 0.08, cy, cx + R * 0.5, cy, 1.1, ink);
@@ -17364,7 +17401,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };
