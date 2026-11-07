@@ -49,6 +49,7 @@ const Zone = {
   timeToNextEdge() { if (!this.next) return 999; return this.state === 'wait' ? this.timer + this.phases[this.phase].shrink * this.scale * 0.6 : this.timer * 0.6; },
   update(dt) {
     if (!this.cur) return;
+    if (Dev.cheat('zone')) return;   // 개발자 도구: 자기장 멈춤 (줄어들지도 피해를 주지도 않음)
     this.timer -= dt;
     const P = this.phases[this.phase];
     if (this.state === 'wait') {

@@ -142,6 +142,7 @@ const Cloud = (() => {
     }
     store.set('account', { id: u.id, name });
     status = 'online'; lastSync = Date.now();
+    Dev.onLogin();   // 개발자 계정이면 모든 스킨 지급 (10_dev.js)
     refreshUi();
     if (G.onAuth) try { G.onAuth(true); } catch (e) { console.warn(e); } // 친구·파티 연결
     return note;
@@ -208,6 +209,7 @@ const Cloud = (() => {
     chip.classList.toggle('on', !!user); chip.classList.toggle('err', status === 'error' && !!user);
     chip.title = user ? `${name} · ${status === 'error' ? '동기화 실패' : '기록이 서버에 저장됩니다'}` : '로그인하면 기록이 서버에 저장됩니다';
     const op = $('opName'); if (op) op.textContent = user ? name : '오퍼레이터';
+    Dev.refresh();
     const P = $('acctPanel'); if (!P || P.hidden) return;
     $('acctForm').hidden = !!user; $('acctInfo').hidden = !user;
     if (user) {

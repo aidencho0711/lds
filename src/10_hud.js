@@ -5,7 +5,7 @@
 const $ = (id) => document.getElementById(id);
 const HUD = (() => {
   let loot = [], focusIdx = 0, lastHp = 100, lastLootKey = '', toastQ = [];
-  const modals = ['mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes'];
+  const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes'];
   const ico = (id, att, cls = 'ico') => { const w = h('span', cls), src = Models.icon(id, att); if (src) { const im = h('img'); im.src = src; im.alt = ''; im.draggable = false; w.appendChild(im); } return w; };
   const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
 
@@ -563,6 +563,7 @@ const HUD = (() => {
         // 짧게 누르면 마커 찍기/지우기
         if (drag && !drag.moved && e.type === 'pointerup') {
           const [fx, fy] = frac(e), [x, z] = viewToWorld(fx, fy), near = 14 / Math.max(1, MV.z * 0.6);
+          if (Dev.mapTap(x, z)) { drag = null; return; }   // 개발자 도구: 순간이동
           if (G.marker && Math.hypot(G.marker.x - x, G.marker.z - z) < near * (SIZE / 700)) G.marker = null; else G.marker = { x, z };
           G.updateMarker(); drawBig(); Audio.ui();
         }

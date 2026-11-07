@@ -951,3 +951,26 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
   .att-cell { padding: 3px 1px; } .att-cell .amt .ico-cur { width: 16px; height: 16px; }
   .mis-sec h4 { margin: 6px 0 4px; } .mq { padding: 4px 6px; gap: 6px; } .mq-txt b { font-size: 0.72rem; }
 }
+
+/* ---------- 개발자 도구 (개발자 계정만) ---------- */
+.dev-btn { border-color: rgba(70, 200, 255, 0.55); }
+.dev-btn svg { stroke: #46c8ff; }
+.acct-chip.dev { border-color: rgba(70, 200, 255, 0.7); }
+.acct-chip.dev svg { color: #46c8ff; }
+.btn.dev-pause { border-color: rgba(70, 200, 255, 0.55); color: #8fdcff; }
+#devPanel { z-index: 26; }
+.dev-menu { gap: 10px; }
+.dev-who { font-size: 0.78rem; color: var(--dim); }
+.dev-sec { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.dev-h { font-family: var(--f-display); font-weight: 700; letter-spacing: 0.1em; font-size: 0.8rem; color: #46c8ff; }
+.dev-note { font-size: 0.74rem; color: var(--dim); }
+.dev-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.dev-row .btn { padding: 0.5rem 0.8rem; font-size: 0.82rem; }
+.dev-row .btn:disabled { opacity: 0.4; cursor: default; }
+.dev-row .btn.dev-tg.on { border-color: #46c8ff; background: rgba(70, 200, 255, 0.16); color: #bfeeff; }
+.dev-sel { min-width: 0; flex: 1 1 160px; max-width: 260px; height: 36px; padding: 0 8px; background: var(--panel-2); color: var(--sand); border: 1px solid var(--line-2); border-radius: 4px; font: inherit; font-size: 0.85rem; }
+.dev-sel:disabled { opacity: 0.4; }
+.dev-msg { min-height: 1.2em; margin: 2px 0 0; font-size: 0.8rem; color: var(--dim); }
+.dev-msg.ok { color: #8fdcff; } .dev-msg.bad { color: var(--red); }
+#devStats { position: fixed; left: 50%; top: calc(36px + var(--sat, 0px)); transform: translateX(-50%); z-index: 15; pointer-events: none; padding: 2px 8px; border-radius: 3px; background: rgba(0, 0, 0, 0.55); color: #8fdcff; font: 600 11px/1.4 ui-monospace, 'SFMono-Regular', Menlo, monospace; white-space: nowrap; }
+#devStats[hidden] { display: none; }

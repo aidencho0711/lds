@@ -90,7 +90,7 @@ const DM = (() => {
     Audio.wind(0.04);
     const my = G.player.team;
     HUD.toast(`${GAME_TYPES[type].name} — ${TEAM_NAMES[my]} 팀 · 먼저 ${DM_RULES.killTarget}킬`, 'info');
-    if (type === 'tdm') setTimeout(() => G.dm === S && HUD.toast(`이번 판 무기: ${loName(S.loadout)}`, 'ok'), 1600);
+    if (type === 'tdm') { const s0 = S; setTimeout(() => s0 && G.dm === s0 && HUD.toast(`이번 판 무기: ${loName(s0.loadout)}`, 'ok'), 1600); }   // 1.6초 안에 나가면 S가 비어 있으므로 시작한 판을 붙잡아 둔다
     else setTimeout(() => G.dm === S && G.player && G.player.dmLoad && HUD.toast(`시작 무기: ${loName(G.player.dmLoad)} — 처치할 때마다 바뀝니다`, 'ok'), 1600);
     if (G.net) Net.ready();
   }

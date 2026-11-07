@@ -22,6 +22,7 @@
       </nav>
       <div class="lb-right">
         <button class="icon-btn friend-btn" id="friendBtn" type="button" hidden title="친구 · 파티"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.9-3.1 3.2-4.7 6-4.7s5.1 1.6 6 4.7"/><circle cx="16.8" cy="9.6" r="2.5"/><path d="M15.7 14.9c2.4-.3 4.3 1.1 5.1 3.9"/></svg><span>친구</span><b class="badge" id="friendBadge" hidden>0</b></button>
+        <button class="icon-btn dev-btn" id="devBtn" type="button" hidden title="개발자 도구"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5.2 5.2L4 16l4 4 5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>DEV</span></button>
         <button class="acct-chip" id="acctChip" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4"/></svg><span>로그인</span></button>
         <button class="lv-chip" type="button" data-tab-go="record" title="전적"><span class="lv-hex" id="lvBadge">1</span><span class="lv-txt"><b>LV <span id="lvNum">1</span></b><span class="bar"><i id="xpBar"></i></span></span></button>
         <button class="icon-btn hl" type="button" data-ui="matchCfg" title="경기 설정"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>경기 설정</span></button>
@@ -320,9 +321,19 @@
       <button class="btn" data-ui="settings">설정</button>
       <button class="btn" data-ui="help">조작법</button>
       <button class="btn" data-ui="layout">모바일 버튼 배치 편집</button>
+      <button class="btn dev-pause" data-ui="dev" id="devPauseBtn" hidden>개발자 도구</button>
       <button class="btn danger" data-ui="quit" id="quitBtn">경기 포기 (로비로)</button>
     </div>
   </section>
+
+  <!-- 개발자 도구 (개발자 계정만) -->
+  <section id="devPanel" class="overlay" hidden>
+    <div class="menu wide dev-menu">
+      <div class="acct-head"><div class="eyebrow">개발자 도구</div><button class="map-x acct-x" type="button" id="devClose" aria-label="닫기">✕</button></div>
+      <div id="devBody"></div>
+    </div>
+  </section>
+  <div id="devStats" hidden></div>
 
   <!-- 설정 -->
   <section id="settingsPanel" class="overlay" hidden>

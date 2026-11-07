@@ -123,7 +123,8 @@ function fireWeapon(c, origin, dir) {
   const d = ITEMS[wi.id];
   if (wi.mag <= 0) { if (c.isPlayer) Audio.dryfire(); return false; }
   // 남은 시간을 이어 받아 프레임 단위 반올림으로 연사 속도가 떨어지지 않게 한다
-  wi.mag--; c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); G.stats.shots++;
+  if (!(c.isPlayer && Dev.cheat('ammo'))) wi.mag--;   // 개발자 도구: 무한 탄약
+  c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); G.stats.shots++;
   if (c.spawnProt) c.spawnProt = 0; // 데스매치: 쏘면 부활 보호 해제
   const spread = weaponSpread(c) * DEG;
   const pellets = d.pellets || 1;
@@ -605,6 +606,7 @@ function applyParts(gun, A) {
 // ---------- 피해 ----------
 function applyDamage(t, dmg, part, attacker, cause, hx, hy, hz) {
   if (!t.alive || t.mode === 'plane') return 0;
+  if (t.isPlayer && Dev.cheat('god')) return 0;   // 개발자 도구: 무적 (같이 하기에선 꺼짐)
   if (sameTeam(attacker, t)) return 0; // 팀원 공격 없음 (총·주먹·수류탄·차량)
   if (G.dm && t.spawnProt > G.time) return 0; // 데스매치 부활 직후 보호
   if (attacker && attacker !== t) shareHit(attacker, t);

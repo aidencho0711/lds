@@ -956,6 +956,29 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
   .att-cell { padding: 3px 1px; } .att-cell .amt .ico-cur { width: 16px; height: 16px; }
   .mis-sec h4 { margin: 6px 0 4px; } .mq { padding: 4px 6px; gap: 6px; } .mq-txt b { font-size: 0.72rem; }
 }
+
+/* ---------- 개발자 도구 (개발자 계정만) ---------- */
+.dev-btn { border-color: rgba(70, 200, 255, 0.55); }
+.dev-btn svg { stroke: #46c8ff; }
+.acct-chip.dev { border-color: rgba(70, 200, 255, 0.7); }
+.acct-chip.dev svg { color: #46c8ff; }
+.btn.dev-pause { border-color: rgba(70, 200, 255, 0.55); color: #8fdcff; }
+#devPanel { z-index: 26; }
+.dev-menu { gap: 10px; }
+.dev-who { font-size: 0.78rem; color: var(--dim); }
+.dev-sec { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.dev-h { font-family: var(--f-display); font-weight: 700; letter-spacing: 0.1em; font-size: 0.8rem; color: #46c8ff; }
+.dev-note { font-size: 0.74rem; color: var(--dim); }
+.dev-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.dev-row .btn { padding: 0.5rem 0.8rem; font-size: 0.82rem; }
+.dev-row .btn:disabled { opacity: 0.4; cursor: default; }
+.dev-row .btn.dev-tg.on { border-color: #46c8ff; background: rgba(70, 200, 255, 0.16); color: #bfeeff; }
+.dev-sel { min-width: 0; flex: 1 1 160px; max-width: 260px; height: 36px; padding: 0 8px; background: var(--panel-2); color: var(--sand); border: 1px solid var(--line-2); border-radius: 4px; font: inherit; font-size: 0.85rem; }
+.dev-sel:disabled { opacity: 0.4; }
+.dev-msg { min-height: 1.2em; margin: 2px 0 0; font-size: 0.8rem; color: var(--dim); }
+.dev-msg.ok { color: #8fdcff; } .dev-msg.bad { color: var(--red); }
+#devStats { position: fixed; left: 50%; top: calc(36px + var(--sat, 0px)); transform: translateX(-50%); z-index: 15; pointer-events: none; padding: 2px 8px; border-radius: 3px; background: rgba(0, 0, 0, 0.55); color: #8fdcff; font: 600 11px/1.4 ui-monospace, 'SFMono-Regular', Menlo, monospace; white-space: nowrap; }
+#devStats[hidden] { display: none; }
 </style>
 <div id="app">
   <canvas id="gl"></canvas>
@@ -977,6 +1000,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
       </nav>
       <div class="lb-right">
         <button class="icon-btn friend-btn" id="friendBtn" type="button" hidden title="친구 · 파티"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.9-3.1 3.2-4.7 6-4.7s5.1 1.6 6 4.7"/><circle cx="16.8" cy="9.6" r="2.5"/><path d="M15.7 14.9c2.4-.3 4.3 1.1 5.1 3.9"/></svg><span>친구</span><b class="badge" id="friendBadge" hidden>0</b></button>
+        <button class="icon-btn dev-btn" id="devBtn" type="button" hidden title="개발자 도구"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5.2 5.2L4 16l4 4 5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>DEV</span></button>
         <button class="acct-chip" id="acctChip" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4"/></svg><span>로그인</span></button>
         <button class="lv-chip" type="button" data-tab-go="record" title="전적"><span class="lv-hex" id="lvBadge">1</span><span class="lv-txt"><b>LV <span id="lvNum">1</span></b><span class="bar"><i id="xpBar"></i></span></span></button>
         <button class="icon-btn hl" type="button" data-ui="matchCfg" title="경기 설정"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>경기 설정</span></button>
@@ -1275,9 +1299,19 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
       <button class="btn" data-ui="settings">설정</button>
       <button class="btn" data-ui="help">조작법</button>
       <button class="btn" data-ui="layout">모바일 버튼 배치 편집</button>
+      <button class="btn dev-pause" data-ui="dev" id="devPauseBtn" hidden>개발자 도구</button>
       <button class="btn danger" data-ui="quit" id="quitBtn">경기 포기 (로비로)</button>
     </div>
   </section>
+
+  <!-- 개발자 도구 (개발자 계정만) -->
+  <section id="devPanel" class="overlay" hidden>
+    <div class="menu wide dev-menu">
+      <div class="acct-head"><div class="eyebrow">개발자 도구</div><button class="map-x acct-x" type="button" id="devClose" aria-label="닫기">✕</button></div>
+      <div id="devBody"></div>
+    </div>
+  </section>
+  <div id="devStats" hidden></div>
 
   <!-- 설정 -->
   <section id="settingsPanel" class="overlay" hidden>
@@ -1379,6 +1413,9 @@ const CLOUD_CFG = {
   idDomain: 'lds-training.vercel.app',
   sdk: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js',
 };
+// 개발자 계정 아이디(소문자로 비교). 이 아이디로 로그인하면 모든 스킨 + 개발자 도구 (10_dev.js)
+//  주의: 아이디는 먼저 가입한 사람이 가지므로, 쓰려는 아이디는 직접 먼저 가입해 둘 것
+const DEV_IDS = ['개발자'];
 
 // ---------- 00_core.js ----------
 // ============================================================
@@ -9479,7 +9516,8 @@ function fireWeapon(c, origin, dir) {
   const d = ITEMS[wi.id];
   if (wi.mag <= 0) { if (c.isPlayer) Audio.dryfire(); return false; }
   // 남은 시간을 이어 받아 프레임 단위 반올림으로 연사 속도가 떨어지지 않게 한다
-  wi.mag--; c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); G.stats.shots++;
+  if (!(c.isPlayer && Dev.cheat('ammo'))) wi.mag--;   // 개발자 도구: 무한 탄약
+  c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); G.stats.shots++;
   if (c.spawnProt) c.spawnProt = 0; // 데스매치: 쏘면 부활 보호 해제
   const spread = weaponSpread(c) * DEG;
   const pellets = d.pellets || 1;
@@ -9961,6 +9999,7 @@ function applyParts(gun, A) {
 // ---------- 피해 ----------
 function applyDamage(t, dmg, part, attacker, cause, hx, hy, hz) {
   if (!t.alive || t.mode === 'plane') return 0;
+  if (t.isPlayer && Dev.cheat('god')) return 0;   // 개발자 도구: 무적 (같이 하기에선 꺼짐)
   if (sameTeam(attacker, t)) return 0; // 팀원 공격 없음 (총·주먹·수류탄·차량)
   if (G.dm && t.spawnProt > G.time) return 0; // 데스매치 부활 직후 보호
   if (attacker && attacker !== t) shareHit(attacker, t);
@@ -12175,6 +12214,7 @@ const Zone = {
   timeToNextEdge() { if (!this.next) return 999; return this.state === 'wait' ? this.timer + this.phases[this.phase].shrink * this.scale * 0.6 : this.timer * 0.6; },
   update(dt) {
     if (!this.cur) return;
+    if (Dev.cheat('zone')) return;   // 개발자 도구: 자기장 멈춤 (줄어들지도 피해를 주지도 않음)
     this.timer -= dt;
     const P = this.phases[this.phase];
     if (this.state === 'wait') {
@@ -13094,6 +13134,7 @@ const Cloud = (() => {
     }
     store.set('account', { id: u.id, name });
     status = 'online'; lastSync = Date.now();
+    Dev.onLogin();   // 개발자 계정이면 모든 스킨 지급 (10_dev.js)
     refreshUi();
     if (G.onAuth) try { G.onAuth(true); } catch (e) { console.warn(e); } // 친구·파티 연결
     return note;
@@ -13160,6 +13201,7 @@ const Cloud = (() => {
     chip.classList.toggle('on', !!user); chip.classList.toggle('err', status === 'error' && !!user);
     chip.title = user ? `${name} · ${status === 'error' ? '동기화 실패' : '기록이 서버에 저장됩니다'}` : '로그인하면 기록이 서버에 저장됩니다';
     const op = $('opName'); if (op) op.textContent = user ? name : '오퍼레이터';
+    Dev.refresh();
     const P = $('acctPanel'); if (!P || P.hidden) return;
     $('acctForm').hidden = !!user; $('acctInfo').hidden = !user;
     if (user) {
@@ -13197,6 +13239,180 @@ const Cloud = (() => {
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'
 const playerName = () => (Cloud.user && Cloud.name) || '나';
+
+// ---------- 10_dev.js ----------
+// ============================================================
+// 10_dev.js — 개발자 계정: 모든 스킨 + 개발자 도구
+//  · 개발자 계정 = 로그인한 아이디가 DEV_IDS(00_config.js)에 있는 계정 (지금은 '개발자')
+//  · 로그인할 때마다 옷·차량·총기 스킨을 모두 그 계정 기록에 넣는다 → 서버에 저장, 새 스킨이 생기면 다음 로그인 때 추가
+//  · 개발자 도구: 로비 오른쪽 위 'DEV' 버튼 · 경기 중 메뉴 → '개발자 도구'
+//    재화·레벨·출석·미션 / 경기: 무적 · 무한 탄약 · 총 지급(부착물·탄약 포함) · 장비 풀세트 · 차량 소환
+//    · 지도 눌러 순간이동 · 자기장 멈춤 / 다음 단계 · 적 모두 탈락 / FPS·좌표 표시
+//  · 같이 하기(파티) 경기에서는 경기 치트가 꺼진다 (다른 사람의 경기에 영향을 주지 않게)
+//  · 켜고 끄는 값은 이 기기에만 저장(서버로 가지 않음)
+//  · 한계: 재화·판정이 모두 기기에서 돌아가는 구조라 서버가 지켜 주는 권한이 아니다. 아이디는 먼저 가입한 사람이 가진다
+// ============================================================
+const Dev = (() => {
+  const F = Object.assign({ god: false, ammo: false, tp: false, zone: false, stats: false }, store.get('dev', null) || {});
+  const save = () => store.set('dev', F);
+  const is = () => !!(Cloud.user && Cloud.name && DEV_IDS.includes(String(Cloud.name).normalize('NFC').trim().toLowerCase()));
+  const inMatch = () => G.state === 'play' && !!G.player;
+  const cheatsOk = () => is() && inMatch() && !G.net;
+  const cheat = (k) => !!F[k] && is() && !G.net;   // 경기 코드에서 부르는 검사 (같이 하기에선 항상 꺼짐)
+  const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+
+  // ---------- 로그인 · 표시 ----------
+  function onLogin() {
+    if (!is()) return refresh();
+    const n = Eco.devGrantAll();
+    if (n) setTimeout(() => HUD.lobbyNote(`개발자 계정 — 스킨 ${n}개를 지급했습니다 (옷·차량·총기 전부)`), 400);
+    refresh();
+  }
+  function refresh() {
+    const on = is();
+    const b = $('devBtn'); if (b) b.hidden = !on;
+    const pb = $('devPauseBtn'); if (pb) pb.hidden = !on;
+    const chip = $('acctChip'); if (chip) chip.classList.toggle('dev', on);
+    const st = $('devStats'); if (st) st.hidden = !(on && F.stats);
+    if (!on && !$('devPanel').hidden) close();
+  }
+
+  // ---------- 경기 치트 ----------
+  const SCOPE_FOR = { SR: ['x6', 'x4', 'x3'], DMR: ['x4', 'x3', 'x2'] };
+  function giveGun(id) {
+    const p = G.player, d = ITEMS[id]; if (!p || !d || d.type !== 'weapon' || !p.alive) return '지금은 줄 수 없습니다';
+    const w = newWeapon(id, d.mag);
+    if (!w.att.scope) for (const s of SCOPE_FOR[d.cls] || ['reddot', 'holo', 'x2']) if (attFits(s, id)) { w.att.scope = s; break; }
+    for (const a of ['comp', 'extmag', 'grip']) if (attFits(a, id)) w.att[ITEMS[a].slot] = a;
+    w.mag = p.inv.magSize(w);
+    const inv = p.inv; let slot;
+    if (d.slot === 'secondary') slot = 2;
+    else slot = !inv.weapons[0] ? 0 : !inv.weapons[1] ? 1 : inv.cur === 1 ? 1 : 0;
+    inv.weapons[slot] = w; inv.cur = slot;
+    inv.items[d.ammo] = (inv.items[d.ammo] || 0) + w.mag * 5;
+    p.rl = null; p.cycle = null; p.equipT = 0.3; p.setVisibleGear(); HUD.refreshInventory();
+    return `${d.name} 지급 (${[w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].filter(Boolean).map((a) => ITEMS[a].name).join(' · ') || '부착물 없음'})`;
+  }
+  function kit() {
+    const p = G.player; if (!p || !p.alive) return '지금은 줄 수 없습니다';
+    const inv = p.inv;
+    inv.gear = { helmet: { id: 'helm3', dur: ITEMS.helm3.dur }, vest: { id: 'vest3', dur: ITEMS.vest3.dur }, bag: { id: 'bag3' } };
+    for (const [id, n] of [['medkit', 2], ['firstaid', 5], ['bandage', 10], ['drink', 5], ['frag', 3], ['smoke', 2]]) inv.items[id] = Math.max(inv.items[id] || 0, n);
+    for (const w of inv.weapons) if (w) inv.items[ITEMS[w.id].ammo] = Math.max(inv.items[ITEMS[w.id].ammo] || 0, inv.magSize(w) * 5);
+    p.hp = 100; p.boost = 100; p.setVisibleGear(); HUD.refreshInventory();
+    return '헬멧·조끼·가방 3레벨 + 회복 아이템·수류탄 · 체력·부스트 가득';
+  }
+  function spawnVeh(type) {
+    const p = G.player; if (!p || !p.alive || p.mode !== 'ground' || p.veh) return '땅에 서 있을 때만 소환할 수 있습니다';
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), x = p.pos.x + fx * 5, z = p.pos.z + fz * 5;
+    Veh.make(type, x, z, p.yaw);
+    return `${VEH_TYPES[type].name} 소환 (앞 5m)`;
+  }
+  // 적 모두 탈락 (비행기 안 포함). 처치 기록·알림이 쏟아지지 않게 처치자 없이 → 배틀로얄이면 바로 우승 화면
+  function killAll() {
+    const p = G.player; if (!p) return '';
+    if (G.training) return '훈련장 더미는 쏴서 쓰러뜨리세요';
+    let n = 0;
+    for (const c of CHARS.slice()) if (c !== p && c.alive && !sameTeam(p, c)) { killChar(c, null, 'dev'); n++; }
+    return n ? `적 ${n}명 탈락` : '남은 적이 없습니다';
+  }
+  function zoneNext() {
+    if (G.training || G.dm || !Zone.cur) return '자기장이 없는 모드입니다';
+    if (Zone.state === 'final') return '마지막 단계입니다';
+    Zone.timer = Math.min(Zone.timer, 0.05);
+    return Zone.state === 'wait' ? '자기장 축소를 바로 시작합니다' : '이번 축소를 바로 끝냅니다';
+  }
+  // 지도(전체 지도)를 짧게 누른 자리로 이동 — 순간이동이 켜져 있을 때. 처리했으면 true
+  function mapTap(x, z) {
+    if (!cheat('tp') || !inMatch()) return false;
+    const p = G.player; if (!p.alive || p.mode !== 'ground') { HUD.toast('땅에 있을 때만 순간이동할 수 있습니다', 'warn'); return true; }
+    if (p.veh) Veh.exit(p, true, true);
+    const lim = HALF - 2; x = clamp(x, -lim, lim); z = clamp(z, -lim, lim);
+    p.pos.set(x, groundAt(x, z, 999) + 0.05, z); p.vel.set(0, 0, 0); p.onGround = true;
+    HUD.closeMap(); HUD.toast(`순간이동 (${Math.round(x)}, ${Math.round(z)})`, 'ok');
+    return true;
+  }
+
+  // ---------- FPS · 좌표 ----------
+  let fpsN = 0, fpsT = 0, fpsMs = 0, fps = 0, statT = 0;
+  function frame() {
+    if (!F.stats) return;
+    const now = performance.now();
+    if (fpsT) { fpsN++; fpsMs += now - fpsT; }
+    fpsT = now;
+    if (now - statT < 300) return;
+    statT = now; const el = $('devStats'); if (!el || el.hidden) return;
+    if (fpsN) { fps = 1000 / (fpsMs / fpsN); } const ms = fpsN ? fpsMs / fpsN : 0; fpsN = 0; fpsMs = 0;
+    const p = G.player, inf = G.renderer && G.renderer.info;
+    let t = `FPS ${fps.toFixed(0)} · ${ms.toFixed(1)}ms`;
+    if (G.state === 'play' && p) t += ` · X ${p.pos.x.toFixed(1)} Y ${p.pos.y.toFixed(1)} Z ${p.pos.z.toFixed(1)} · 생존 ${CHARS.filter((c) => c.alive).length}`;
+    if (inf) t += ` · 메모리 ${inf.memory.geometries}/${inf.memory.textures}`;
+    el.textContent = t;
+  }
+
+  // ---------- 패널 ----------
+  function close() { $('devPanel').hidden = true; }
+  function open() { if (!is()) return; render(); $('devPanel').hidden = false; Audio.ui(); }
+  function render() {
+    const box = $('devBody'); if (!box) return;
+    box.innerHTML = '';
+    const msg = h('p', 'dev-msg'); msg.id = 'devMsg';
+    const say = (t, ok = true) => { msg.textContent = t || ''; msg.className = 'dev-msg' + (ok ? ' ok' : ' bad'); };
+    const sec = (title, note) => { const s = h('div', 'dev-sec'); s.appendChild(h('div', 'dev-h', title)); if (note) s.appendChild(h('div', 'dev-note', note)); box.appendChild(s); const r = h('div', 'dev-row'); s.appendChild(r); return r; };
+    const btn = (row, label, fn, opt = {}) => {
+      const b = h('button', 'btn' + (opt.on !== undefined ? ' dev-tg' + (opt.on ? ' on' : '') : '')); b.type = 'button'; b.textContent = label; if (opt.dis) b.disabled = true;
+      b.addEventListener('click', () => { Audio.ui(); const r = fn(); if (typeof r === 'string') say(r); render2(); });
+      row.appendChild(b); return b;
+    };
+    const tg = (row, k, label, needMatch = true) => btn(row, label + (F[k] ? ' 켬' : ' 끔'), () => { F[k] = !F[k]; save(); refresh(); return `${label} ${F[k] ? '켬' : '끔'}`; }, { on: F[k], dis: needMatch && !!G.net });
+    let render2 = () => {};
+    const L = levelFromXp(STATS.xp || 0), own = (o, all) => `${o}/${all}`;
+    box.appendChild(h('div', 'dev-who', `개발자 계정: ${Cloud.name} · 옷 ${own(Eco.ownedSkins().size, Object.keys(Body.SKINS).length)} · 차량 ${own((STATS.vskins || []).length, Object.keys(VSKINS).length)} · 총기 ${own((STATS.gskins || []).length, Object.keys(GSKINS).length)}`));
+    // 재화·레벨·미션 (로비·경기 어디서나)
+    let r = sec('재화', `골드 탄피 ${Eco.gold.toLocaleString()} · 차량 코인 ${Eco.coin} · 총기 코인 ${Eco.gcoin}`);
+    btn(r, `${GOLD_NAME} +10,000`, () => { Eco.devAdd('gold', 10000); return `${GOLD_NAME} +10,000`; });
+    btn(r, '차량 코인 +100', () => { Eco.devAdd('coin', 100); return '차량 교환 코인 +100'; });
+    btn(r, '총기 코인 +100', () => { Eco.devAdd('gcoin', 100); return '총기 교환 코인 +100'; });
+    r = sec('레벨 · 미션', `지금 레벨 ${L.lv} (${L.cur}/${L.need} XP)`);
+    const lvUp = (k) => { for (let i = 0; i < k; i++) { const l = levelFromXp(STATS.xp || 0); STATS.xp = (STATS.xp || 0) + (l.need - l.cur); } saveStats(); HUD.renderLobby(); return `레벨 ${levelFromXp(STATS.xp).lv}`; };
+    btn(r, '레벨 +1', () => lvUp(1)); btn(r, '레벨 +5', () => lvUp(5));
+    btn(r, '출석 다시 받기', () => { Eco.devAttend(); HUD.renderLobby(); return '오늘 출석 보상을 다시 받을 수 있습니다'; });
+    btn(r, '미션 모두 완료', () => { Eco.devQuests(); HUD.renderLobby(); return '일일·주간 미션을 모두 완료 상태로 (보상은 미션 탭에서 받기)'; });
+    btn(r, '스킨 다시 지급', () => { const n = Eco.devGrantAll(); return n ? `스킨 ${n}개 지급` : '이미 모든 스킨을 가지고 있습니다'; });
+    // 경기
+    const note = !inMatch() ? '경기·훈련장·데스매치 중에 메뉴 → 개발자 도구에서 씁니다. 켜고 끄는 항목은 여기서 미리 켜 둘 수 있습니다'
+      : G.net ? '같이 하기 경기에서는 꺼집니다 (다른 사람의 경기에 영향을 주지 않게)' : '이 경기에서 바로 적용';
+    r = sec('경기', note);
+    tg(r, 'god', '무적'); tg(r, 'ammo', '무한 탄약'); tg(r, 'tp', '지도 눌러 순간이동'); tg(r, 'zone', '자기장 멈춤');
+    const off = !cheatsOk();
+    const r2 = h('div', 'dev-row'); r.parentNode.appendChild(r2);
+    const gsel = h('select', 'dev-sel'); const byCls = {};
+    for (const id in ITEMS) { const d = ITEMS[id]; if (d.type === 'weapon') (byCls[d.cls] = byCls[d.cls] || []).push(id); }
+    for (const cls of ['AR', 'SMG', 'SG', 'DMR', 'SR', 'LMG', 'PISTOL']) { if (!byCls[cls]) continue; const og = document.createElement('optgroup'); og.label = cls; for (const id of byCls[cls]) { const o = document.createElement('option'); o.value = id; o.textContent = ITEMS[id].name; og.appendChild(o); } gsel.appendChild(og); }
+    gsel.value = F.gun && ITEMS[F.gun] ? F.gun : 'm416'; gsel.disabled = off; gsel.addEventListener('change', () => { F.gun = gsel.value; save(); });
+    r2.appendChild(gsel); btn(r2, '총 지급', () => giveGun(gsel.value), { dis: off });
+    const r3 = h('div', 'dev-row'); r.parentNode.appendChild(r3);
+    const vsel = h('select', 'dev-sel');
+    for (const k in VEH_TYPES) { const o = document.createElement('option'); o.value = k; o.textContent = VEH_TYPES[k].name; vsel.appendChild(o); }
+    vsel.value = F.veh && VEH_TYPES[F.veh] ? F.veh : 'uaz'; vsel.disabled = off; vsel.addEventListener('change', () => { F.veh = vsel.value; save(); });
+    r3.appendChild(vsel); btn(r3, '차량 소환', () => spawnVeh(vsel.value), { dis: off });
+    const r4 = h('div', 'dev-row'); r.parentNode.appendChild(r4);
+    btn(r4, '장비 풀세트', kit, { dis: off });
+    btn(r4, '자기장 다음 단계', zoneNext, { dis: off || G.training || !!G.dm });
+    btn(r4, '적 모두 탈락', killAll, { dis: off || G.training });
+    // 표시
+    r = sec('표시');
+    tg(r, 'stats', 'FPS·좌표 표시', false);
+    box.appendChild(msg);
+    render2 = () => { const keep = msg.textContent, cls = msg.className; render(); const m = $('devMsg'); if (m) { m.textContent = keep; m.className = cls; } };
+  }
+  function setup() {
+    $('devBtn').addEventListener('click', () => { Audio.init(); open(); });
+    $('devClose').addEventListener('click', () => { Audio.ui(); close(); });
+    refresh();
+  }
+  return { is, cheat, onLogin, refresh, open, close, setup, frame, mapTap, flags: F, _giveGun: giveGun, _kit: kit, _spawnVeh: spawnVeh, _killAll: killAll };
+})();
 
 // ---------- 10_dm.js ----------
 // ============================================================
@@ -13291,7 +13507,7 @@ const DM = (() => {
     Audio.wind(0.04);
     const my = G.player.team;
     HUD.toast(`${GAME_TYPES[type].name} — ${TEAM_NAMES[my]} 팀 · 먼저 ${DM_RULES.killTarget}킬`, 'info');
-    if (type === 'tdm') setTimeout(() => G.dm === S && HUD.toast(`이번 판 무기: ${loName(S.loadout)}`, 'ok'), 1600);
+    if (type === 'tdm') { const s0 = S; setTimeout(() => s0 && G.dm === s0 && HUD.toast(`이번 판 무기: ${loName(s0.loadout)}`, 'ok'), 1600); }   // 1.6초 안에 나가면 S가 비어 있으므로 시작한 판을 붙잡아 둔다
     else setTimeout(() => G.dm === S && G.player && G.player.dmLoad && HUD.toast(`시작 무기: ${loName(G.player.dmLoad)} — 처치할 때마다 바뀝니다`, 'ok'), 1600);
     if (G.net) Net.ready();
   }
@@ -13738,7 +13954,20 @@ const Eco = (() => {
     }
     return out;
   }
-  return { E, today, weekKey, owns, ownsVeh, ownsGun, ownedSkins, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  // ---------- 개발자 계정 (10_dev.js) ----------
+  // 모든 옷·차량·총기 스킨을 기록에 넣는다 (이미 있으면 그대로). 넣은 개수
+  function devGrantAll() {
+    E(); let n = 0;
+    const add = (arr, ids) => { const s = new Set(arr); for (const id of ids) if (!s.has(id)) { arr.push(id); n++; } };
+    add(STATS.skins, Object.keys(Body.SKINS).filter((k) => !/_basic$/.test(k)));
+    add(STATS.vskins, Object.keys(VSKINS)); add(STATS.gskins, Object.keys(GSKINS));
+    if (n) changed('dev');
+    return n;
+  }
+  function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; changed('dev'); }
+  function devAttend() { E().att.last = ''; changed('dev'); }
+  function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
+  return { E, today, weekKey, owns, ownsVeh, ownsGun, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();
 
@@ -13750,7 +13979,7 @@ const Eco = (() => {
 const $ = (id) => document.getElementById(id);
 const HUD = (() => {
   let loot = [], focusIdx = 0, lastHp = 100, lastLootKey = '', toastQ = [];
-  const modals = ['mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes'];
+  const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes'];
   const ico = (id, att, cls = 'ico') => { const w = h('span', cls), src = Models.icon(id, att); if (src) { const im = h('img'); im.src = src; im.alt = ''; im.draggable = false; w.appendChild(im); } return w; };
   const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
 
@@ -14308,6 +14537,7 @@ const HUD = (() => {
         // 짧게 누르면 마커 찍기/지우기
         if (drag && !drag.moved && e.type === 'pointerup') {
           const [fx, fy] = frac(e), [x, z] = viewToWorld(fx, fy), near = 14 / Math.max(1, MV.z * 0.6);
+          if (Dev.mapTap(x, z)) { drag = null; return; }   // 개발자 도구: 순간이동
           if (G.marker && Math.hypot(G.marker.x - x, G.marker.z - z) < near * (SIZE / 700)) G.marker = null; else G.marker = { x, z };
           G.updateMarker(); drawBig(); Audio.ui();
         }
@@ -17794,6 +18024,7 @@ G.ui = function (a) {
     case 'help': $('helpPanel').hidden = false; break;
     case 'closeHelp': $('helpPanel').hidden = true; break;
     case 'resume': G.pause(false); break;
+    case 'dev': Dev.open(); break;
     case 'closeMap': HUD.closeMap(); break;
     case 'closeInv': HUD.closeInv(); break;
     case 'layout': Touch.openEditor(); break;
@@ -17854,6 +18085,7 @@ let _last = performance.now();
 function loop() {
   requestAnimationFrame(loop);
   const t = performance.now(); let dt = (t - _last) / 1000; _last = t; dt = Math.min(dt, 0.05);
+  Dev.frame();
   try {
     if (G.state === 'lobby' || G.state === 'loading') {
       GunSkin.update(dt);   // 총기 스킨: 빛 애니메이션·꺼내기 효과 (경기 중에는 G.update와 함께 — 멈추면 같이 멈춤)
@@ -17883,7 +18115,7 @@ function boot() {
   Lobby.init();
   setupInput($('gl'));
   setupTouch($('touch'));
-  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Shop.setup(); Cloud.setup(); Cloud.init();
+  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Shop.setup(); Dev.setup(); Cloud.setup(); Cloud.init();
   $('rotateDismiss').addEventListener('click', () => { G.rotateDismissed = true; $('rotateHint').hidden = true; });
   G.onResize();
   document.addEventListener('pointerdown', () => { Audio.init(); if (G.state === 'lobby') Audio.music(true); }, { once: true });
@@ -17892,7 +18124,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, SkinFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, SkinFx, Dev, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

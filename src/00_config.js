@@ -12,3 +12,6 @@ const CLOUD_CFG = {
   idDomain: 'lds-training.vercel.app',
   sdk: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js',
 };
+// 개발자 계정 아이디(소문자로 비교). 이 아이디로 로그인하면 모든 스킨 + 개발자 도구 (10_dev.js)
+//  주의: 아이디는 먼저 가입한 사람이 가지므로, 쓰려는 아이디는 직접 먼저 가입해 둘 것
+const DEV_IDS = ['개발자'];

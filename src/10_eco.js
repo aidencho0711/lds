@@ -249,6 +249,19 @@ const Eco = (() => {
     }
     return out;
   }
-  return { E, today, weekKey, owns, ownsVeh, ownsGun, ownedSkins, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  // ---------- 개발자 계정 (10_dev.js) ----------
+  // 모든 옷·차량·총기 스킨을 기록에 넣는다 (이미 있으면 그대로). 넣은 개수
+  function devGrantAll() {
+    E(); let n = 0;
+    const add = (arr, ids) => { const s = new Set(arr); for (const id of ids) if (!s.has(id)) { arr.push(id); n++; } };
+    add(STATS.skins, Object.keys(Body.SKINS).filter((k) => !/_basic$/.test(k)));
+    add(STATS.vskins, Object.keys(VSKINS)); add(STATS.gskins, Object.keys(GSKINS));
+    if (n) changed('dev');
+    return n;
+  }
+  function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; changed('dev'); }
+  function devAttend() { E().att.last = ''; changed('dev'); }
+  function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
+  return { E, today, weekKey, owns, ownsVeh, ownsGun, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();
