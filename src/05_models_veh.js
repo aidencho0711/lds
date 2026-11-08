@@ -25,6 +25,8 @@ const VehModels = (() => {
       // 스킨용: 거울 같은 크롬, 진한 광택 도장(펄)
       chrome: S({ vertexColors: true, roughness: 0.14, metalness: 1.0, envMapIntensity: 1.25 }),
       gloss: S({ vertexColors: true, roughness: 0.2, metalness: 0.55, envMapIntensity: 1.0 }),
+      // 스킨 차량 유리: 기본 유리보다 옅게(안이 보이게 — 너무 어두우면 안에 탄 사람이 안 보여 유리해짐), 정점 색으로 살짝 물들임
+      sglass: S({ vertexColors: true, roughness: 0.04, metalness: 0.25, transparent: true, opacity: 0.36, depthWrite: false, envMapIntensity: 1.7 }),
     };
     return MAT;
   }
@@ -265,7 +267,7 @@ const VehModels = (() => {
   const BUILD = { sedan: buildSedan, pickup: buildPickup, uaz: buildUaz, moto: buildMoto, horse: buildHorse };
   const SKIN_BUILD = {};
   function register(id, fn) { SKIN_BUILD[id] = fn; }
-  const KEYS = ['paint', 'matte', 'glass', 'lamp', 'tail', 'coat', 'chrome', 'gloss', 'glow'];
+  const KEYS = ['paint', 'matte', 'glass', 'sglass', 'lamp', 'tail', 'coat', 'chrome', 'gloss', 'glow'];
   function geos(type, skin) {
     const key = skin && SKIN_BUILD[skin] ? skin : type;
     if (GEO[key]) return GEO[key];
@@ -319,11 +321,11 @@ const VehModels = (() => {
   function wreck(parts) {
     const M = mats();
     for (const m of parts.meshes) {
-      if (m.material === M.glass || m.material === M.lamp || m.material === M.tail || m.material === GLOWM) m.visible = false;
+      if (m.material === M.glass || m.material === M.sglass || m.material === M.lamp || m.material === M.tail || m.material === GLOWM) m.visible = false;
       else if (m.material === M.paint || m.material === M.coat || m.material === M.chrome || m.material === M.gloss) m.material = M.wreck;
     }
   }
-  function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) if (m.material !== mats().glass && m.material !== GLOWM) m.castShadow = on; }
+  function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) if (m.material !== mats().glass && m.material !== mats().sglass && m.material !== GLOWM) m.castShadow = on; }
   return { instance, wreck, setShadows, mats, register, has: (id) => !!SKIN_BUILD[id],
     kit: { VB, mtx, arch, side, tube, ball, wheelGeo, SEAT_C, TRIM, CHROME, buildHorse } };
 })();
