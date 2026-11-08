@@ -63,7 +63,7 @@ function addLights(scene, t, shadowSize) {
   sun.castShadow = shadowSize > 0;
   if (shadowSize) {
     sun.shadow.mapSize.set(shadowSize, shadowSize);
-    const s = sun.shadow.camera; s.left = s.bottom = -55; s.right = s.top = 55; s.near = 1; s.far = 320;
+    const s = sun.shadow.camera, hw = SHADOW_HALF(shadowSize); s.left = s.bottom = -hw; s.right = s.top = hw; s.near = 1; s.far = 320;
     sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
   }
   scene.add(sun); scene.add(sun.target);
@@ -548,11 +548,11 @@ G.update = function (dt) {
   if (G.noises.length > 80 || (G.noises.length && G.time - G.noises[0].t > 2)) G.noises = G.noises.filter(n => G.time - n.t < 2);
   // 거리 기반 표시 최적화
   const Q = QUALITY[SETTINGS.quality], cam = G.camera.position;
-  const lodD = SETTINGS.quality === 'low' ? 18 : SETTINGS.quality === 'high' ? 45 : 30;
+  const lodD = Q.lod || (SETTINGS.quality === 'low' ? 18 : SETTINGS.quality === 'high' ? 45 : 30), shD = Q.shadow || 45;
   for (const c of CHARS) if (!c.isPlayer && c.mode !== 'plane') {
     const d = Math.hypot(c.pos.x - cam.x, c.pos.z - cam.z);
     c.root.visible = d < Q.botDraw || c.mode !== 'ground' || !!c.dummy;
-    c.rig.setShadow(d < 45); c.rig.setLod(d > lodD && !c.dummy ? 1 : 0); c.rig.backGuns.visible = d < 60;   // 정밀 메시 거리: 품질 낮음 18m·보통 30m·높음 45m, 60m 밖은 등의 총 생략
+    c.rig.setShadow(d < shD); c.rig.setLod(d > lodD && !c.dummy ? 1 : 0); c.rig.backGuns.visible = d < Math.max(60, lodD + 15);   // 정밀 메시 거리: 낮음 18m·보통 30m·높음 45m·엑스트라 70m(캐릭터 그림자 90m), 그 밖은 등의 총 생략
   }
   lootCullT -= dt;
   if (lootCullT <= 0) {
@@ -662,7 +662,10 @@ G.applySettings = function (key) {
   if (key === 'quality') { const far = G.training ? Training.viewFar() : Q.far; r.setPixelRatio(Q.pr); G.onResize(); if (G.scene && G.scene.fog) { G.scene.fog.far = far; G.scene.fog.near = far * (G.training ? 0.3 : 0.25); if (G.sky) G.sky.scale.setScalar(far / (G.sky.geometry.parameters.radius / 0.92)); } G.camera.far = far + 200; G.camera.updateProjectionMatrix(); }
   if (key === 'shadows') {
     const s = SHADOW_SIZE[SETTINGS.shadows]; r.shadowMap.enabled = s > 0;
-    for (const L of [G.sun, Lobby.lights && Lobby.lights.sun]) if (L) { L.castShadow = s > 0; if (s) { L.shadow.mapSize.set(s, s); if (L.shadow.map) { L.shadow.map.dispose(); L.shadow.map = null; } } }
+    for (const L of [G.sun, Lobby.lights && Lobby.lights.sun]) if (L) {
+      L.castShadow = s > 0;
+      if (s) { L.shadow.mapSize.set(s, s); if (L.shadow.map) { L.shadow.map.dispose(); L.shadow.map = null; } const c = L.shadow.camera, hw = SHADOW_HALF(s); c.left = c.bottom = -hw; c.right = c.top = hw; c.updateProjectionMatrix(); }
+    }
     for (const sc of [G.scene, Lobby.scene]) if (sc) sc.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); });
   }
   if (key === 'sfx' || key === 'music') Audio.applyVolumes();
@@ -676,11 +679,35 @@ function applyCssVars() {
 function fatal(msg) { const f = $('fatal'); f.hidden = false; f.innerHTML = ''; const d = document.createElement('div'); d.innerHTML = '<p class="eyebrow">실행 오류</p>'; const p = document.createElement('p'); p.textContent = msg; d.appendChild(p); const b = document.createElement('button'); b.className = 'btn'; b.textContent = '새로고침'; b.onclick = () => location.reload(); d.appendChild(b); f.appendChild(d); }
 
 // ---------- 루프 ----------
+//  FPS 제한(설정 30·60·120, 0 = 제한 없음 → 화면 주사율까지): 일정 기반 — 다음 프레임 목표 시각을 정해 두고, 그보다 일찍 온 화면 갱신은 건너뛴다.
+//  허용 오차는 간격의 20% (예: 144Hz 화면에서 60fps — 주기가 간격의 정수배가 아니어도 평균이 목표에 맞음). 한 간격 넘게 밀리면 지금부터 다시 맞춤
+const FrameGate = {
+  next: 0, fps: 0,
+  pass(t) {
+    const f = SETTINGS.fps | 0; if (f !== this.fps) { this.fps = f; this.next = 0; }
+    if (!f) return true;
+    const iv = 1000 / f;
+    if (this.next && t < this.next - iv * 0.2) return false;
+    this.next = this.next && t - this.next < iv ? this.next + iv : t + iv;
+    return true;
+  },
+};
+// FPS 표시: 실제로 그린 프레임 수 (0.5초마다 갱신, 경기 중에만 · 개발자 통계가 켜져 있으면 그쪽에 이미 나오므로 숨김)
+const FpsBox = { n: 0, t0: 0, el: null,
+  tick(t) {
+    if (!this.t0) { this.t0 = t; this.n = 0; return; }   // 시작 프레임은 세지 않음 (간격 수 = 프레임 수)
+    this.n++; if (t - this.t0 < 500) return;
+    const el = this.el || (this.el = $('fpsBox')), dev = $('devStats'), show = !!SETTINGS.showFps && G.state === 'play' && !(dev && !dev.hidden);
+    if (el) { el.hidden = !show; if (show) el.textContent = Math.round(this.n * 1000 / (t - this.t0)) + ' FPS' + (SETTINGS.fps ? ' / ' + SETTINGS.fps : ''); }
+    this.n = 0; this.t0 = t;
+  } };
 let _last = performance.now();
-function loop() {
+function loop(ts) {
   requestAnimationFrame(loop);
-  const t = performance.now(); let dt = (t - _last) / 1000; _last = t; dt = Math.min(dt, 0.05);
-  Dev.frame();
+  const t = performance.now();
+  if (!FrameGate.pass(ts === undefined ? t : ts)) return;   // 목표 시각 전 → 이번 화면 갱신은 건너뜀
+  let dt = (t - _last) / 1000; _last = t; dt = Math.min(dt, 0.05);
+  Dev.frame(); FpsBox.tick(t);
   try {
     if (G.state === 'lobby' || G.state === 'loading') {
       GunSkin.update(dt);   // 총기 스킨: 빛 애니메이션·꺼내기 효과 (경기 중에는 G.update와 함께 — 멈추면 같이 멈춤)
@@ -719,7 +746,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, SkinFx, Dev, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, SkinFx, Dev, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

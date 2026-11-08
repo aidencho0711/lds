@@ -92,6 +92,7 @@ const DEFAULT_SETTINGS = {
   mode: 'classic', map: 'kalden', time: 'day', look: null, body: null, vlook: null, glook: null, gshow: null,
   sens_iron: 1, sens_reddot: 1, sens_holo: 1, sens_x2: 1, sens_x3: 1, sens_x4: 1, sens_x6: 1,
   touchLayout: {}, stickFixed: false, queue: 'normal', squad: 'solo', game: 'br',
+  fps: 0, showFps: false,   // v20: 프레임 제한(30·60·120, 0 = 제한 없음 — 화면 주사율까지) · FPS 표시
 };
 let SETTINGS = Object.assign({}, DEFAULT_SETTINGS, store.get('settings', {}));
 delete SETTINGS.outfit;   // v14: 옛 복장 번호는 창고 장착 정보(look)로 대체
@@ -100,7 +101,7 @@ let onDataSaved = null;
 const dataSaved = (what) => { if (onDataSaved) try { onDataSaved(what); } catch (e) { console.warn(e); } };
 function saveSettings() { store.set('settings', SETTINGS); dataSaved('settings'); }
 // 기기마다 다른 설정(화면 품질·버튼 배치 등)은 서버에 올리지 않는다
-const DEVICE_SETTINGS = ['quality', 'shadows', 'touchLayout', 'btnScale', 'hudScale', 'hudOpacity', 'stickFixed', 'touchSens'];
+const DEVICE_SETTINGS = ['quality', 'shadows', 'touchLayout', 'btnScale', 'hudScale', 'hudOpacity', 'stickFixed', 'touchSens', 'fps', 'showFps'];
 
 let STATS = Object.assign({ matches: 0, wins: 0, kills: 0, xp: 0, best: 99, recent: [] }, store.get('stats', {}));
 // 데스매치 전적은 배틀로얄 전적(경기·우승·처치)과 따로 센다 — 경험치만 공유
@@ -117,8 +118,13 @@ const QUALITY = {
   low:    { pr: 0.8, grass: 0,    trees: 0.65, far: 260, near: 60,  botDraw: 160 },
   medium: { pr: 1.0, grass: 1600, trees: 1.0,  far: 380, near: 90,  botDraw: 230 },
   high:   { pr: Math.min(window.devicePixelRatio || 1, 1.75), grass: 4000, trees: 1.25, far: 520, near: 120, botDraw: 320 },
+  // v20 엑스트라: '높음'보다 선명(해상도 배율 최대 2)·멀리(시야 640m, 봇 420m)·풀 많이, 정밀 캐릭터·캐릭터 그림자를 더 멀리(lod·shadow).
+  //  나무 수는 '높음'과 같게 — 맵 생성 시간·메모리를 늘리지 않는다
+  extra:  { pr: Math.min(window.devicePixelRatio || 1, 2), grass: 6500, trees: 1.25, far: 640, near: 150, botDraw: 420, lod: 70, shadow: 90 },
 };
-const SHADOW_SIZE = { off: 0, low: 1024, high: 2048 };
+// 그림자 지도 해상도 · 'ultra'(최고 4096)는 그림자 범위도 넓힌다(SHADOW_HALF)
+const SHADOW_SIZE = { off: 0, low: 1024, high: 2048, ultra: 4096 };
+const SHADOW_HALF = (size) => (size >= 4096 ? 80 : 55);
 
 const MAPS = {
   kalden:    { name: '칼덴 섬',   seed: 1337, desc: '강이 섬을 가르고 도시와 군사기지가 마주 보는 섬', mountain: 32, lakes: 1 },

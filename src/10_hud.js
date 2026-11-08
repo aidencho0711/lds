@@ -655,8 +655,11 @@ const HUD = (() => {
 
   // ---------- 설정 ----------
   const SET_DEFS = [
-    ['quality', '그래픽 품질', 'seg', [['low', '낮음'], ['medium', '중간'], ['high', '높음']]],
-    ['shadows', '그림자 품질', 'seg', [['off', '끔'], ['low', '낮음'], ['high', '높음']]],
+    ['quality', '그래픽 품질', 'seg', [['low', '낮음'], ['medium', '중간'], ['high', '높음'], ['extra', '엑스트라']]],
+    ['shadows', '그림자 품질', 'seg', [['off', '끔'], ['low', '낮음'], ['high', '높음'], ['ultra', '최고']]],
+    ['fps', '프레임 제한 (FPS)', 'seg', [[30, '30'], [60, '60'], [120, '120'], [0, '무제한']]],
+    ['showFps', 'FPS 표시', 'seg', [[false, '끔'], [true, '켬']]],
+    ['_note', 'fps'],
     ['lookSens', '시야 감도 (마우스)', 'range', [0.3, 2.5, 0.05]],
     ['touchSens', '카메라 감도 (터치)', 'range', [0.3, 2.5, 0.05]],
     ['_h', '조준 감도 — 조준경별 · 100% = 배율과 관계없이 화면에서 같은 속도'],
@@ -684,11 +687,27 @@ const HUD = (() => {
     for (const [key, label, type, opt] of SET_DEFS) {
       if (key === '_h') { g.appendChild(h('div', 'set-head', label)); continue; }
       if (key === '_layout') { const r = h('div', 'set-row'); const b = h('button', 'btn', label); b.addEventListener('click', () => { Audio.ui(); Touch.openEditor(); }); r.appendChild(b); g.appendChild(r); continue; }
+      if (key === '_note') {
+        // 엑스트라 품질·120fps 주의 (둘 다 고르면 강조)
+        const both = SETTINGS.quality === 'extra' && SETTINGS.fps === 120, n = h('div', 'set-note' + (both ? ' warn' : ''));
+        n.textContent = (both ? '⚠ 지금 엑스트라 품질과 120fps를 같이 골랐습니다. ' : '') + '엑스트라 품질과 120fps는 서로 상충합니다 — 둘 다 켜면 기기가 버거워 오히려 프레임이 떨어지거나 발열이 커질 수 있습니다. ' +
+          '120fps는 화면이 120Hz이고 브라우저가 허용할 때만 적용됩니다(절전 모드·일부 브라우저는 60Hz로 묶음). 무제한은 화면 주사율까지 그립니다.';
+        g.appendChild(n); continue;
+      }
       const r = h('div', 'set-row'), hdr = h('div', 'hdr'); hdr.append(label);
       const val = h('b', '', type === 'range' ? fmtSet(key, SETTINGS[key]) : ''); hdr.appendChild(val); r.appendChild(hdr);
       if (type === 'seg') {
         const s = h('div', 'seg');
-        for (const [v, l] of opt) { const b = h('button', SETTINGS[key] === v ? 'on' : '', l); b.addEventListener('click', () => { SETTINGS[key] = v; saveSettings(); G.applySettings(key); renderSettings(); Audio.ui(); }); s.appendChild(b); }
+        for (const [v, l] of opt) {
+          const b = h('button', SETTINGS[key] === v ? 'on' : '', l);
+          b.addEventListener('click', () => {
+            SETTINGS[key] = v;
+            // 엑스트라 품질을 고르면 그림자도 최고로 (그림자가 꺼져 있지 않을 때) — 따로 낮출 수 있음
+            if (key === 'quality' && v === 'extra' && SETTINGS.shadows !== 'off' && SETTINGS.shadows !== 'ultra') { SETTINGS.shadows = 'ultra'; G.applySettings('shadows'); }
+            saveSettings(); G.applySettings(key); renderSettings(); Audio.ui();
+          });
+          s.appendChild(b);
+        }
         r.appendChild(s);
       } else {
         const inp = h('input'); inp.type = 'range'; inp.id = 'set_' + key; inp.min = opt[0]; inp.max = opt[1]; inp.step = opt[2]; inp.value = SETTINGS[key];
