@@ -2052,6 +2052,19 @@ const Audio = (() => {
       const t = ctx.currentTime;
       if (flesh) noise(out, t, 0.09, 'lowpass', 900, 1, 1); else { noise(out, t, 0.07, 'highpass', 2800, 1, 0.8); tone(out, t, 0.05, 'sine', 2600 + Math.random() * 1500, 1800, 0.12); }
     },
+    // 주먹: 'swing' = 휘두르는 바람(대역 잡음이 위로 쓸렸다 내려감) / 'hit' = 몸통 울림(저역 사인) + 둔탁한 퍽 + 살 맞는 찰싹
+    punch(pos, kind, own) {
+      const hit = kind === 'hit', range = hit ? 45 : 22;
+      if (!ctx || (!own && geom(pos).d > range) || (hit && !throttle('punch', 0.04)) || !voice(0.2)) return;   // 먼 주먹은 목소리 자리를 차지하지 않게
+      const out = spatial(own ? null : pos, hit ? 0.62 : (own ? 0.16 : 0.22), range); if (!out) return;
+      const t = ctx.currentTime, j = 0.9 + Math.random() * 0.2;
+      if (hit) { tone(out, t, 0.12, 'sine', 125 * j, 52, 0.9); noise(out, t, 0.07, 'lowpass', 1100 * j, 0.9, 0.9); noise(out, t, 0.025, 'bandpass', 2400 * j, 1.4, 0.45); return; }
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.playbackRate.value = j;
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.6;
+      f.frequency.setValueAtTime(480 * j, t); f.frequency.exponentialRampToValueAtTime(1500 * j, t + 0.08); f.frequency.exponentialRampToValueAtTime(650 * j, t + 0.17);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.55, t + 0.055); g.gain.exponentialRampToValueAtTime(0.001, t + 0.17);
+      src.connect(f); f.connect(g); g.connect(out); src.start(t, Math.random()); src.stop(t + 0.2);
+    },
     hitmarker() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.06, 'square', 1800, 1500, 0.08); },
     headshot() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.09, 'square', 2600, 2200, 0.09); },
     hurt() { if (!ctx || !throttle('hurt', 0.12)) return; const t = ctx.currentTime; noise(sfxBus, t, 0.18, 'lowpass', 400, 1, 0.5); },
@@ -5201,6 +5214,14 @@ function setFingers(A, P, w = 1) {
   A.thumb1.rotation.set(R[0] - 0.25 * P[4] * w, s * 0.15 * P[4] * w, R[2] - s * 0.45 * P[4] * w); A.thumb2.rotation.set(0, 0, -s * 0.7 * P[4] * w);
 }
 function mixFing(a, b, k) { for (let i = 0; i < 5; i++) _fing[i] = lerp(a[i], b[i], k); return _fing; }
+// 꽉 쥔 주먹(주먹질): 손가락을 끝까지 말고 엄지는 검지·중지 앞으로 접어 넣는다
+//  FING.fist는 엄지가 손바닥 아래로 벌어져서 가까이(1인칭) 보면 갈고리처럼 보임 — 엄지 첫 마디를 x축으로 +0.8 돌리면 접힌다 (좌우 공통)
+function setFist(A, w = 1) {
+  const s = A.side, R = Body.REST['thumb1' + (s > 0 ? 'L' : 'R')];
+  A.fin1.rotation.set(0, 0, -s * 1.85 * w); A.fin2.rotation.set(0, 0, -s * 1.8 * w);
+  A.idx1.rotation.set(0, 0, -s * 1.8 * w); A.idx2.rotation.set(0, 0, -s * 1.75 * w);
+  A.thumb1.rotation.set(R[0] + 0.8 * w, R[1], R[2]); A.thumb2.rotation.set(0, 0, -s * 0.6 * w);
+}
 // 총 부품 위치(anchor)별 손 모양 / 손 방향(총 좌표계 기준 쿼터니언)
 const ANCHOR_FING = { grip: 'trig', fore: 'fore', well: 'mag', pouch: 'mag', pouchR: 'mag', charge: 'pinch', chargeBack: 'pinch', port: 'pinch', bolt: 'pinch', boltUp: 'pinch', boltBack: 'pinch', cover: 'claw', coverUp: 'claw', tray: 'flat', lever: 'grip', breech: 'pinch', foreOpen: 'fore',
   vfore: 'grip', wellRock: 'mag', knock: 'mag', catch: 'flat', catchIn: 'flat', knob: 'pinch', knobBack: 'pinch', drum: 'claw', drumOut: 'claw', pan: 'claw', panOut: 'claw', stop: 'grip', gate: 'pinch', clip: 'pinch', clipPush: 'pinch' };
@@ -5391,6 +5412,7 @@ function resetPose(r) {
   for (const A of [r.armL, r.armR]) { const R = Body.REST['thumb1' + (A.side > 0 ? 'L' : 'R')]; A.thumb1.rotation.set(R[0], R[1], R[2]); }
   r.hips.position.set(0, 0.97, 0); r.body.position.set(0, 0, 0); r.body.rotation.set(0, 0, 0);
 }
+const _fv1 = new THREE.Vector3(), _fv2 = new THREE.Vector3(), _fv3 = new THREE.Vector3(), _fq1 = new THREE.Quaternion(), _fq2 = new THREE.Quaternion();   // 주먹 자세용
 const _bw = new THREE.Vector3(), _fw = new THREE.Vector3(), _rq = new THREE.Quaternion(), _lt = new THREE.Vector3(), _rt = new THREE.Vector3(), _pl = new THREE.Vector3(), _pr = new THREE.Vector3(), _hq = new THREE.Quaternion();
 // 몸(가슴) 로컬 점 → 월드
 const chestPt = (r, x, y, z, out) => out.set(x, y, z).applyMatrix4(r.chest.matrixWorld);
@@ -5422,6 +5444,9 @@ function animateChar(c, dt) {
   const hasGun = !!(c.weapon && !c.knocked && r.gunObj);
   a.armed = lerp(a.armed, hasGun && c.equipT <= 0 ? 1 : 0, k);
   const armed = a.armed * (1 - busy);
+  // 주먹 가드: 맨손으로 지르는 중이거나 방금 쳤을 때 (달리기 시작하면 내림)
+  const pu = c.punch, guardOn = !hasGun && c.alive && !c.knocked && (!!pu || (G.time - (c.punchT || -99) < PUNCH.guardT && !c.sprint));
+  a.guard = lerp(a.guard || 0, guardOn ? 1 : 0, clamp(dt * 12, 0, 1));
   a.knock = lerp(a.knock || 0, c.knocked ? 1 : 0, k);
   a.aim = lerp(a.aim, c.aiming ? 1 : 0, k);
   const ready = c.aiming || c.combatFacing || (c.fireHold && c.weapon && !tm) || (G.time - (c.lastShotT || -99) < 1.5) || !!c.rl || !!c.cycle;
@@ -5443,6 +5468,7 @@ function animateChar(c, dt) {
   const mv = sp > 0.6;
   let targetYaw = c.yaw;
   if (!c.isPlayer || !(c.aiming || c.fireHold || c.firstPerson)) { if (mv && !c.aiming && !c.combatFacing && !(a.ready > 0.5 && c.isPlayer)) targetYaw = Math.atan2(c.vel.x, c.vel.z); }
+  if (pu || a.guard > 0.5) targetYaw = c.yaw;   // 주먹·가드: 치는 쪽을 본다
   if (rv) targetYaw = Math.atan2(rv.pos.x - c.pos.x, rv.pos.z - c.pos.z);
   if (V) targetYaw = Math.atan2(V.dx, V.dz); else if (c.rollT > 0) targetYaw = c.rollYaw;
   c.bodyYaw += angleDiff(c.bodyYaw, targetYaw) * clamp(dt * (a.prone > 0.5 ? 4 : V || c.rollT > 0 ? 20 : 11), 0, 1);
@@ -5557,6 +5583,26 @@ function animateChar(c, dt) {
   }
   // ----- 손 동작 (IK): 줍기·회복·투척·넘기·오르기·부활·스카이다이빙·낙하산·무기 꺼내기 -----
   const ik = (Ar, wpos, pole, q, w, fing) => { if (w <= 0.01) return; Ar.clav.updateMatrixWorld(true); armIK(Ar, wpos, pole, q, w); if (fine && fing) setFingers(Ar, FING[fing], w); };
+  // 주먹: 가드(두 주먹을 턱 앞, 팔꿈치는 아래로 모음) → 지르기(한 팔을 조준 방향으로 뻗고 어깨를 틀어 넣음) → 복귀
+  const gw = a.guard * (1 - busy) * (1 - a.prone) * (1 - Math.max(a.fall, a.chute, a.swim, a.air)) * (1 - a.knock);
+  if (gw > 0.01) {
+    const ext = pu ? punchExt(pu.t) : 0, cp = Math.cos(pitch);
+    if (pu) { r.spine.rotation.y -= pu.side * 0.3 * ext * gw; r.chest.rotation.y -= pu.side * 0.14 * ext * gw; r.root.updateMatrixWorld(true); }
+    _fv3.set(Math.sin(c.yaw) * cp, Math.sin(pitch), Math.cos(c.yaw) * cp);   // 조준 방향(월드)
+    for (const Ar of [r.armL, r.armR]) {
+      const s = Ar.side, e = pu && pu.side === s ? ext : 0;
+      // 손 방향 (chestDir가 _t3·_t4를 덮어쓰므로 위치보다 먼저): 가드 = 주먹 마디가 위·앞, 손바닥은 안쪽 / 지르기 = 마디가 앞, 손바닥은 아래로 비틀어
+      handQuat(_fq1, chestDir(r, -s * 0.05, 0.75, 0.6, _fv1), chestDir(r, -s, 0, -0.3, _fv2), s);
+      if (e > 0) {
+        chestDir(r, -s * 0.3, 0.04, 0, _fv1).add(_fv3).normalize();                          // 지르는 방향: 조준 방향 + 몸 가운데 쪽으로 조금
+        handQuat(_fq2, _fv1, chestDir(r, -s * 0.35, -1, 0, _fv2), s); _fq1.slerp(_fq2, e);
+      }
+      chestPt(r, s * 0.13, 0.21, 0.23, _t1);                                                 // 가드: 턱 앞
+      if (e > 0) { _t2.setFromMatrixPosition(Ar.sh.matrixWorld).addScaledVector(_fv1, (UA + FA) * 0.95); _t1.lerp(_t2, e); }   // 어깨에서 팔을 거의 다 펴서
+      chestPt(r, s * lerp(0.3, 0.45, e), lerp(-0.32, -0.15, e), lerp(0.12, 0.05, e), _t3);   // 팔꿈치: 아래로 (지를 때는 옆으로 조금)
+      ik(Ar, _t1, _t3, _fq1, gw, null); if (fine) setFist(Ar, gw);
+    }
+  }
   // 줍기: 오른손을 발 앞 바닥으로
   if (pk > 0.01) {
     _t1.set(c.pos.x + Math.sin(c.bodyYaw) * 0.45 - Math.cos(c.bodyYaw) * 0.12, c.pos.y + (a.prone > 0.5 ? 0.1 : 0.12), c.pos.z + Math.cos(c.bodyYaw) * 0.45 + Math.sin(c.bodyYaw) * 0.12);
@@ -9573,14 +9619,41 @@ function fireWeapon(c, origin, dir) {
   return true;
 }
 const _shotEnd = [0, 0, 0, 0];
-// 맨손 근접 공격 (무기·탄약이 없을 때)
-function melee(c, origin, dir) {
+// ---------- 맨손 근접 공격 (무기·탄약이 없을 때) ----------
+//  가드(주먹을 턱 높이) → 지르기(out) → 잠깐 뻗은 채(hold) → 복귀(back). 맞힘 판정은 주먹이 거의 다 뻗은 순간(hitAt)
+//  누르고 있으면 cycle 간격으로 좌우 번갈아 연타, combo 안에 다시 치면 반대손. 마지막 주먹 뒤 guardT 동안 가드 유지
+const PUNCH = { out: 0.11, hold: 0.05, back: 0.2, hitAt: 0.09, cycle: 0.5, combo: 0.9, guardT: 2.2, dmg: 14, reach: 1.9 };
+// 주먹이 뻗은 정도 0~1 (나갈 때는 빠르게 감속, 돌아올 때는 부드럽게)
+function punchExt(t) {
+  const P = PUNCH, u = t / P.out;
+  return t < P.out ? 1 - (1 - u) * (1 - u) : t < P.out + P.hold ? 1 : 1 - sstep(P.out + P.hold, P.out + P.hold + P.back, t);
+}
+// 주먹 시작. dir = 치는 방향(월드). 피해는 updatePunch에서 hitAt에 준다
+function melee(c, dir) {
   if (c.fireCd > 0 || c.heal || c.inWater || c.knocked || c.revive) return false;
-  c.fireCd = 0.55;
-  const h = rayChars(origin.x, origin.y, origin.z, dir.x, dir.y, dir.z, 1.9, c);
-  c.anim.flinch = 0.4; c.anim.flinchDir = 1;
-  if (h.char) { applyDamage(h.char, 14, h.part === 'head' ? 'body' : h.part, c, 'fist'); if (c.isPlayer) Audio.impact(h.char.pos, true); return true; }
-  return false;
+  c.fireCd = PUNCH.cycle;
+  const side = G.time - (c.punchT || -99) < PUNCH.combo ? -(c.punchSide || -1) : 1;   // 처음은 왼손 잽, 이어 치면 좌우 번갈아
+  c.punchSide = side; c.punchT = G.time;
+  c.punch = { t: 0, side, hit: false, dx: dir.x, dy: dir.y, dz: dir.z, remote: false };
+  Audio.punch(c.pos, 'swing', c.isPlayer);
+  if (G.net) Net.sendPunch(c, side);   // 같이 하기: 다른 기기에도 지르기 동작·소리
+  return true;
+}
+// 주먹 진행 (플레이어·봇 공용, 남의 기기 캐릭터는 동작·소리만 — 피해는 때린 쪽 기기가 'hit'으로 보냄)
+const _po = new THREE.Vector3();
+function updatePunch(c, dt) {
+  const pu = c.punch;
+  if (!c.alive || c.knocked) { c.punch = null; return; }
+  pu.t += dt;
+  if (!pu.hit && pu.t >= PUNCH.hitAt) {
+    pu.hit = true; c.eye(_po);
+    const h = rayChars(_po.x, _po.y, _po.z, pu.dx, pu.dy, pu.dz, PUNCH.reach, c);
+    if (h.char) {
+      if (!pu.remote) applyDamage(h.char, PUNCH.dmg, h.part === 'head' ? 'body' : h.part, c, 'fist');
+      Audio.punch(h.char.pos, 'hit', c.isPlayer);
+    }
+  }
+  if (pu.t >= PUNCH.out + PUNCH.hold + PUNCH.back) c.punch = null;
 }
 // 탄피/산탄피 배출 (가까운 경우만)
 function ejectCase(c, d, drop) {
@@ -11358,7 +11431,7 @@ class Brain {
       // 맨손: 붙어서 주먹
       if (!tr.visible) return;
       this.faceToward(tgt.pos.x, tgt.pos.y + 1.2, tgt.pos.z, dt, 8);
-      if (tr.dist < 1.8) { c.eye(_e); _d.set(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch)); melee(c, _e, _d); }
+      if (tr.dist < 1.8) { _d.set(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch)); melee(c, _d); }
       return;
     }
     // 추적 시간이 길수록 조준 안정
@@ -12411,6 +12484,25 @@ function updateHoldVM(dt, p) {
   vmHeld(A.L, itL); vmHeld(A.R, itR);
   if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
 }
+// 1인칭 맨손: 가드(두 주먹을 화면 아래 양쪽, 손등이 보이게 — 손바닥이 보이면 갈고리처럼 보임) → 지르기(화면 가운데로 뻗음) → 복귀
+const _fvP = new THREE.Vector3(), _fvJ = new THREE.Vector3(), _fvD = new THREE.Vector3(), _fvN = new THREE.Vector3(), _fvQ = new THREE.Quaternion(), _fvQ2 = new THREE.Quaternion();
+function updateFistVM(dt, p) {
+  const A = vmArms(); A.root.visible = true; vmResetArms(A); vmHeld(A.L, null); vmHeld(A.R, null);
+  const pu = p.punch, low = 1 - smoothstep01(clamp(p.anim.guard, 0, 1));   // 가드를 내리면 화면 아래로
+  const bobAmp = clamp(p.anim.speed / 5, 0, 1), bobX = Math.sin(p.anim.phase) * 0.008 * bobAmp, bobY = -Math.abs(Math.cos(p.anim.phase)) * 0.01 * bobAmp;
+  for (const Ar of [A.L, A.R]) {
+    const s = Ar.side, x = -s, e = pu && pu.side === s ? punchExt(pu.t) : 0;   // x: 카메라 공간 오른쪽 부호 (왼손 −1, 오른손 +1)
+    // 자리 (카메라 공간: x 오른쪽, y 위, −z 앞)
+    _fvP.set(x * 0.13 + bobX, -0.11 - low * 0.36 + bobY, -0.45);
+    _fvJ.set(x * 0.035, -0.07, -0.72); _fvP.lerp(_fvJ, e);
+    // 손 방향: 손목이 꺾이지 않게 마디 방향을 팔뚝 방향에 맞춘다 (손이 아래로 처지면 손가락이 보여 갈고리처럼 보임)
+    //  가드 = 마디가 위·앞(팔뚝이 서 있음), 손등이 카메라 쪽 / 지르기 = 어깨→주먹 방향, 손바닥은 아래
+    handQuat(_fvQ, _fvD.set(x * 0.03, 0.72, -0.69), _fvN.set(-x * 0.4, -0.85, 0.25), s);
+    if (e > 0) { _fvD.copy(_fvJ).sub(_fvN.setFromMatrixPosition(Ar.sh.matrixWorld)).normalize(); handQuat(_fvQ2, _fvD, _fvN.set(-x * 0.22, -1, 0), s); _fvQ.slerp(_fvQ2, e); }
+    vmReach(Ar, _fvP, _fvQ, _vpole.set(x * 0.5, -0.8, 0.1), FING.fist); setFist(Ar);
+  }
+  if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
+}
 function sightInfo(p) {
   const w = p.weapon; if (!w) return { key: 'iron', zoom: 1.05, mag: false, aimT: 0.18, reticle: null };
   const am = ITEMS[w.id].adsMul || 1;
@@ -12492,10 +12584,11 @@ function updateCamera(dt) {
   Cam.recoilP = lerp(Cam.recoilP, 0, clamp(dt * 9, 0, 1));
   // 뷰모델: 1인칭이거나 정조준 중일 때. 배율 조준경을 끝까지 당기면 스코프 화면으로 대체
   const holding = p.alive && !p.knocked && p.mode === 'ground' && !p.veh && (p.heal || p.throwMode || p.throwAnim > 0);
-  VM.active = holding ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
+  const fists = !holding && !p.weapon && p.alive && !p.knocked && p.mode === 'ground' && !p.veh && p.anim.guard > 0.02;   // 맨손 가드·주먹
+  VM.active = holding || fists ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
   VM.root.visible = VM.active;
-  if (VM.pivot) VM.pivot.visible = !holding;
-  if (VM.active) { if (holding) updateHoldVM(dt, p); else updateViewModel(dt, p, adsE); }
+  if (VM.pivot) VM.pivot.visible = !holding && !fists;
+  if (VM.active) { if (holding) updateHoldVM(dt, p); else if (fists) updateFistVM(dt, p); else updateViewModel(dt, p, adsE); }
 }
 function updateViewModel(dt, p, adsE) {
   const w = p.weapon, sk = p.skinOf(w.id);
@@ -12621,7 +12714,7 @@ function updatePlayer(dt) {
   const wantAim = (Input.aim || Input.aimToggle) && p.weapon && p.reloadT <= 0 && p.equipT <= 0 && !p.inWater;
   const sprintKey = Input.keys.ShiftLeft || Input.keys.ShiftRight || Input.touchSprint || Input.touchSprintBtn;
   // 사격 중에는 달리기를 끊는다 → 조이스틱을 끝까지 민 상태에서도 이동하며 쏠 수 있음
-  const firing = Input.fire && !!p.weapon && !p.throwMode;
+  const firing = Input.fire && !p.throwMode;   // 맨손이면 주먹 — 역시 달리기를 끊는다
   p.sprint = !!sprintKey && mz > 0.3 && !wantAim && !p.heal && !p.inWater && !firing && !p.vault;
   if (p.sprint && p.stance !== 'stand') p.stance = 'stand';
   p.aiming = !!wantAim && !p.sprint && !p.throwMode;
@@ -12654,7 +12747,9 @@ function updatePlayer(dt) {
   if (p.throwMode) updateThrow(p, dt);
   else if (!p.vault) {
     playerFire(p);
-    if (Input.fire && !p.weapon && !p.firedThisPress && p.fireCd <= 0) { p.eye(_aimO); G.camera.getWorldDirection(_aimD); melee(p, _aimO, _aimD); p.firedThisPress = true; }
+    // 맨손: 누르면 주먹, 누르고 있으면 좌우 번갈아 연타 (던지기 등 다른 동작에 쓴 누름으로는 시작하지 않음)
+    if (Input.fire && !p.weapon && (!p.firedThisPress || p.punchHold) && p.fireCd <= 0) { G.camera.getWorldDirection(_aimD); p.punchHold = melee(p, _aimD) || p.punchHold; p.firedThisPress = true; }
+    if (!Input.fire) p.punchHold = false;
   }
   // 상호작용 (주변 아이템)
   updateNearbyLoot(p);
@@ -12959,6 +13054,7 @@ function doPickup(p, it) {
 
 // 공용: 재장전/회복/장착 타이머 (플레이어·봇)
 function updateCharTimers(c, dt) {
+  if (c.punch) updatePunch(c, dt);
   if (!c.alive) return;
   if (c.pickT > 0) c.pickT = Math.max(0, c.pickT - dt);
   if (c.rollT > 0) c.rollT = Math.max(0, c.rollT - dt);
@@ -15261,6 +15357,7 @@ const Net = (() => {
       case 'rev': netRevive(e); break;
       case 'shot': remoteShot(e); break;
       case 'throw': remoteThrow(e); break;
+      case 'pu': remotePunch(e); break;
       case 'gadd': { if (N.items.has(e.u)) break; N.applying++; spawnItem(G.scene, e.i, e.n, e.x, e.y, e.z, e.in || null, e.u); N.applying--; break; }
       case 'gdel': { const it = N.items.get(e.u); if (it && it.alive) { N.applying++; removeItem(it); N.applying--; } break; }
       case 'gcnt': { const it = N.items.get(e.u); if (it) it.count = e.n; break; }
@@ -15515,6 +15612,16 @@ const Net = (() => {
     if (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 25) Audio.spoon(c.pos, false);
   }
 
+  // 주먹: 지르기 동작·휘두르는 소리만 (맞힘 소리는 받은 쪽에서 판정만 따로, 피해는 때린 쪽 기기가 'hit'으로 보냄)
+  function sendPunch(c, side) { if (mine(c)) ev({ k: 'pu', c: c.id, s: side }); }
+  function remotePunch(e) {
+    const c = charById(e.c); if (!c || mine(c) || !c.alive || c.knocked) return;
+    const pt = c.pitch || 0, cp = Math.cos(pt);
+    c.punch = { t: 0, side: e.s > 0 ? 1 : -1, hit: false, dx: Math.sin(c.yaw) * cp, dy: Math.sin(pt), dz: Math.cos(c.yaw) * cp, remote: true };
+    c.punchSide = c.punch.side; c.punchT = G.time;
+    Audio.punch(c.pos, 'swing', false);
+  }
+
   // ---------- 아이템 ----------
   function itemAdded(it, uid) {
     if (uid !== undefined && uid !== null) it.u = uid;
@@ -15637,7 +15744,7 @@ const Net = (() => {
   function status() { if (!N) return null; return { host: N.host, peers: [...N.peers.values()].map((p) => ({ uid: p.uid, name: p.name, open: p.open, relay: p.relay, rx: Math.round(now() - p.lastRx) })), tx: N.stats.tx, rx: N.stats.rx, items: N.items.size, vehs: N.vehs.length }; }
 
   return { makeConfig, join, ready, onParty, tick, active, isHost, isGuest, mine, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
-    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, status, ev, flush,
+    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, status, ev, flush,
     get state() { return N; } };
 })();
 
@@ -17943,6 +18050,7 @@ G.update = function (dt) {
   for (const c of CHARS) {
     if (c.mode === 'plane') continue;
     if (!c.net || c.net.mine) updateCharTimers(c, dt);
+    else if (c.punch) updatePunch(c, dt);   // 다른 기기 캐릭터의 주먹: 동작·소리만
     // 화면에 안 보이는 캐릭터는 관절 애니메이션 생략
     if (c.isPlayer || c.root.visible) animateChar(c, dt);
     footsteps(c, dt);

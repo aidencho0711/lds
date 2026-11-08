@@ -148,6 +148,25 @@ function updateHoldVM(dt, p) {
   vmHeld(A.L, itL); vmHeld(A.R, itR);
   if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
 }
+// 1인칭 맨손: 가드(두 주먹을 화면 아래 양쪽, 손등이 보이게 — 손바닥이 보이면 갈고리처럼 보임) → 지르기(화면 가운데로 뻗음) → 복귀
+const _fvP = new THREE.Vector3(), _fvJ = new THREE.Vector3(), _fvD = new THREE.Vector3(), _fvN = new THREE.Vector3(), _fvQ = new THREE.Quaternion(), _fvQ2 = new THREE.Quaternion();
+function updateFistVM(dt, p) {
+  const A = vmArms(); A.root.visible = true; vmResetArms(A); vmHeld(A.L, null); vmHeld(A.R, null);
+  const pu = p.punch, low = 1 - smoothstep01(clamp(p.anim.guard, 0, 1));   // 가드를 내리면 화면 아래로
+  const bobAmp = clamp(p.anim.speed / 5, 0, 1), bobX = Math.sin(p.anim.phase) * 0.008 * bobAmp, bobY = -Math.abs(Math.cos(p.anim.phase)) * 0.01 * bobAmp;
+  for (const Ar of [A.L, A.R]) {
+    const s = Ar.side, x = -s, e = pu && pu.side === s ? punchExt(pu.t) : 0;   // x: 카메라 공간 오른쪽 부호 (왼손 −1, 오른손 +1)
+    // 자리 (카메라 공간: x 오른쪽, y 위, −z 앞)
+    _fvP.set(x * 0.13 + bobX, -0.11 - low * 0.36 + bobY, -0.45);
+    _fvJ.set(x * 0.035, -0.07, -0.72); _fvP.lerp(_fvJ, e);
+    // 손 방향: 손목이 꺾이지 않게 마디 방향을 팔뚝 방향에 맞춘다 (손이 아래로 처지면 손가락이 보여 갈고리처럼 보임)
+    //  가드 = 마디가 위·앞(팔뚝이 서 있음), 손등이 카메라 쪽 / 지르기 = 어깨→주먹 방향, 손바닥은 아래
+    handQuat(_fvQ, _fvD.set(x * 0.03, 0.72, -0.69), _fvN.set(-x * 0.4, -0.85, 0.25), s);
+    if (e > 0) { _fvD.copy(_fvJ).sub(_fvN.setFromMatrixPosition(Ar.sh.matrixWorld)).normalize(); handQuat(_fvQ2, _fvD, _fvN.set(-x * 0.22, -1, 0), s); _fvQ.slerp(_fvQ2, e); }
+    vmReach(Ar, _fvP, _fvQ, _vpole.set(x * 0.5, -0.8, 0.1), FING.fist); setFist(Ar);
+  }
+  if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
+}
 function sightInfo(p) {
   const w = p.weapon; if (!w) return { key: 'iron', zoom: 1.05, mag: false, aimT: 0.18, reticle: null };
   const am = ITEMS[w.id].adsMul || 1;
@@ -229,10 +248,11 @@ function updateCamera(dt) {
   Cam.recoilP = lerp(Cam.recoilP, 0, clamp(dt * 9, 0, 1));
   // 뷰모델: 1인칭이거나 정조준 중일 때. 배율 조준경을 끝까지 당기면 스코프 화면으로 대체
   const holding = p.alive && !p.knocked && p.mode === 'ground' && !p.veh && (p.heal || p.throwMode || p.throwAnim > 0);
-  VM.active = holding ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
+  const fists = !holding && !p.weapon && p.alive && !p.knocked && p.mode === 'ground' && !p.veh && p.anim.guard > 0.02;   // 맨손 가드·주먹
+  VM.active = holding || fists ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
   VM.root.visible = VM.active;
-  if (VM.pivot) VM.pivot.visible = !holding;
-  if (VM.active) { if (holding) updateHoldVM(dt, p); else updateViewModel(dt, p, adsE); }
+  if (VM.pivot) VM.pivot.visible = !holding && !fists;
+  if (VM.active) { if (holding) updateHoldVM(dt, p); else if (fists) updateFistVM(dt, p); else updateViewModel(dt, p, adsE); }
 }
 function updateViewModel(dt, p, adsE) {
   const w = p.weapon, sk = p.skinOf(w.id);
@@ -358,7 +378,7 @@ function updatePlayer(dt) {
   const wantAim = (Input.aim || Input.aimToggle) && p.weapon && p.reloadT <= 0 && p.equipT <= 0 && !p.inWater;
   const sprintKey = Input.keys.ShiftLeft || Input.keys.ShiftRight || Input.touchSprint || Input.touchSprintBtn;
   // 사격 중에는 달리기를 끊는다 → 조이스틱을 끝까지 민 상태에서도 이동하며 쏠 수 있음
-  const firing = Input.fire && !!p.weapon && !p.throwMode;
+  const firing = Input.fire && !p.throwMode;   // 맨손이면 주먹 — 역시 달리기를 끊는다
   p.sprint = !!sprintKey && mz > 0.3 && !wantAim && !p.heal && !p.inWater && !firing && !p.vault;
   if (p.sprint && p.stance !== 'stand') p.stance = 'stand';
   p.aiming = !!wantAim && !p.sprint && !p.throwMode;
@@ -391,7 +411,9 @@ function updatePlayer(dt) {
   if (p.throwMode) updateThrow(p, dt);
   else if (!p.vault) {
     playerFire(p);
-    if (Input.fire && !p.weapon && !p.firedThisPress && p.fireCd <= 0) { p.eye(_aimO); G.camera.getWorldDirection(_aimD); melee(p, _aimO, _aimD); p.firedThisPress = true; }
+    // 맨손: 누르면 주먹, 누르고 있으면 좌우 번갈아 연타 (던지기 등 다른 동작에 쓴 누름으로는 시작하지 않음)
+    if (Input.fire && !p.weapon && (!p.firedThisPress || p.punchHold) && p.fireCd <= 0) { G.camera.getWorldDirection(_aimD); p.punchHold = melee(p, _aimD) || p.punchHold; p.firedThisPress = true; }
+    if (!Input.fire) p.punchHold = false;
   }
   // 상호작용 (주변 아이템)
   updateNearbyLoot(p);
@@ -696,6 +718,7 @@ function doPickup(p, it) {
 
 // 공용: 재장전/회복/장착 타이머 (플레이어·봇)
 function updateCharTimers(c, dt) {
+  if (c.punch) updatePunch(c, dt);
   if (!c.alive) return;
   if (c.pickT > 0) c.pickT = Math.max(0, c.pickT - dt);
   if (c.rollT > 0) c.rollT = Math.max(0, c.rollT - dt);

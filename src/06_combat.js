@@ -180,14 +180,41 @@ function fireWeapon(c, origin, dir) {
   return true;
 }
 const _shotEnd = [0, 0, 0, 0];
-// 맨손 근접 공격 (무기·탄약이 없을 때)
-function melee(c, origin, dir) {
+// ---------- 맨손 근접 공격 (무기·탄약이 없을 때) ----------
+//  가드(주먹을 턱 높이) → 지르기(out) → 잠깐 뻗은 채(hold) → 복귀(back). 맞힘 판정은 주먹이 거의 다 뻗은 순간(hitAt)
+//  누르고 있으면 cycle 간격으로 좌우 번갈아 연타, combo 안에 다시 치면 반대손. 마지막 주먹 뒤 guardT 동안 가드 유지
+const PUNCH = { out: 0.11, hold: 0.05, back: 0.2, hitAt: 0.09, cycle: 0.5, combo: 0.9, guardT: 2.2, dmg: 14, reach: 1.9 };
+// 주먹이 뻗은 정도 0~1 (나갈 때는 빠르게 감속, 돌아올 때는 부드럽게)
+function punchExt(t) {
+  const P = PUNCH, u = t / P.out;
+  return t < P.out ? 1 - (1 - u) * (1 - u) : t < P.out + P.hold ? 1 : 1 - sstep(P.out + P.hold, P.out + P.hold + P.back, t);
+}
+// 주먹 시작. dir = 치는 방향(월드). 피해는 updatePunch에서 hitAt에 준다
+function melee(c, dir) {
   if (c.fireCd > 0 || c.heal || c.inWater || c.knocked || c.revive) return false;
-  c.fireCd = 0.55;
-  const h = rayChars(origin.x, origin.y, origin.z, dir.x, dir.y, dir.z, 1.9, c);
-  c.anim.flinch = 0.4; c.anim.flinchDir = 1;
-  if (h.char) { applyDamage(h.char, 14, h.part === 'head' ? 'body' : h.part, c, 'fist'); if (c.isPlayer) Audio.impact(h.char.pos, true); return true; }
-  return false;
+  c.fireCd = PUNCH.cycle;
+  const side = G.time - (c.punchT || -99) < PUNCH.combo ? -(c.punchSide || -1) : 1;   // 처음은 왼손 잽, 이어 치면 좌우 번갈아
+  c.punchSide = side; c.punchT = G.time;
+  c.punch = { t: 0, side, hit: false, dx: dir.x, dy: dir.y, dz: dir.z, remote: false };
+  Audio.punch(c.pos, 'swing', c.isPlayer);
+  if (G.net) Net.sendPunch(c, side);   // 같이 하기: 다른 기기에도 지르기 동작·소리
+  return true;
+}
+// 주먹 진행 (플레이어·봇 공용, 남의 기기 캐릭터는 동작·소리만 — 피해는 때린 쪽 기기가 'hit'으로 보냄)
+const _po = new THREE.Vector3();
+function updatePunch(c, dt) {
+  const pu = c.punch;
+  if (!c.alive || c.knocked) { c.punch = null; return; }
+  pu.t += dt;
+  if (!pu.hit && pu.t >= PUNCH.hitAt) {
+    pu.hit = true; c.eye(_po);
+    const h = rayChars(_po.x, _po.y, _po.z, pu.dx, pu.dy, pu.dz, PUNCH.reach, c);
+    if (h.char) {
+      if (!pu.remote) applyDamage(h.char, PUNCH.dmg, h.part === 'head' ? 'body' : h.part, c, 'fist');
+      Audio.punch(h.char.pos, 'hit', c.isPlayer);
+    }
+  }
+  if (pu.t >= PUNCH.out + PUNCH.hold + PUNCH.back) c.punch = null;
 }
 // 탄피/산탄피 배출 (가까운 경우만)
 function ejectCase(c, d, drop) {

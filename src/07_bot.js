@@ -1000,7 +1000,7 @@ class Brain {
       // 맨손: 붙어서 주먹
       if (!tr.visible) return;
       this.faceToward(tgt.pos.x, tgt.pos.y + 1.2, tgt.pos.z, dt, 8);
-      if (tr.dist < 1.8) { c.eye(_e); _d.set(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch)); melee(c, _e, _d); }
+      if (tr.dist < 1.8) { _d.set(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch)); melee(c, _d); }
       return;
     }
     // 추적 시간이 길수록 조준 안정

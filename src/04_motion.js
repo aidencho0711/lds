@@ -97,6 +97,14 @@ function setFingers(A, P, w = 1) {
   A.thumb1.rotation.set(R[0] - 0.25 * P[4] * w, s * 0.15 * P[4] * w, R[2] - s * 0.45 * P[4] * w); A.thumb2.rotation.set(0, 0, -s * 0.7 * P[4] * w);
 }
 function mixFing(a, b, k) { for (let i = 0; i < 5; i++) _fing[i] = lerp(a[i], b[i], k); return _fing; }
+// 꽉 쥔 주먹(주먹질): 손가락을 끝까지 말고 엄지는 검지·중지 앞으로 접어 넣는다
+//  FING.fist는 엄지가 손바닥 아래로 벌어져서 가까이(1인칭) 보면 갈고리처럼 보임 — 엄지 첫 마디를 x축으로 +0.8 돌리면 접힌다 (좌우 공통)
+function setFist(A, w = 1) {
+  const s = A.side, R = Body.REST['thumb1' + (s > 0 ? 'L' : 'R')];
+  A.fin1.rotation.set(0, 0, -s * 1.85 * w); A.fin2.rotation.set(0, 0, -s * 1.8 * w);
+  A.idx1.rotation.set(0, 0, -s * 1.8 * w); A.idx2.rotation.set(0, 0, -s * 1.75 * w);
+  A.thumb1.rotation.set(R[0] + 0.8 * w, R[1], R[2]); A.thumb2.rotation.set(0, 0, -s * 0.6 * w);
+}
 // 총 부품 위치(anchor)별 손 모양 / 손 방향(총 좌표계 기준 쿼터니언)
 const ANCHOR_FING = { grip: 'trig', fore: 'fore', well: 'mag', pouch: 'mag', pouchR: 'mag', charge: 'pinch', chargeBack: 'pinch', port: 'pinch', bolt: 'pinch', boltUp: 'pinch', boltBack: 'pinch', cover: 'claw', coverUp: 'claw', tray: 'flat', lever: 'grip', breech: 'pinch', foreOpen: 'fore',
   vfore: 'grip', wellRock: 'mag', knock: 'mag', catch: 'flat', catchIn: 'flat', knob: 'pinch', knobBack: 'pinch', drum: 'claw', drumOut: 'claw', pan: 'claw', panOut: 'claw', stop: 'grip', gate: 'pinch', clip: 'pinch', clipPush: 'pinch' };
@@ -287,6 +295,7 @@ function resetPose(r) {
   for (const A of [r.armL, r.armR]) { const R = Body.REST['thumb1' + (A.side > 0 ? 'L' : 'R')]; A.thumb1.rotation.set(R[0], R[1], R[2]); }
   r.hips.position.set(0, 0.97, 0); r.body.position.set(0, 0, 0); r.body.rotation.set(0, 0, 0);
 }
+const _fv1 = new THREE.Vector3(), _fv2 = new THREE.Vector3(), _fv3 = new THREE.Vector3(), _fq1 = new THREE.Quaternion(), _fq2 = new THREE.Quaternion();   // 주먹 자세용
 const _bw = new THREE.Vector3(), _fw = new THREE.Vector3(), _rq = new THREE.Quaternion(), _lt = new THREE.Vector3(), _rt = new THREE.Vector3(), _pl = new THREE.Vector3(), _pr = new THREE.Vector3(), _hq = new THREE.Quaternion();
 // 몸(가슴) 로컬 점 → 월드
 const chestPt = (r, x, y, z, out) => out.set(x, y, z).applyMatrix4(r.chest.matrixWorld);
@@ -318,6 +327,9 @@ function animateChar(c, dt) {
   const hasGun = !!(c.weapon && !c.knocked && r.gunObj);
   a.armed = lerp(a.armed, hasGun && c.equipT <= 0 ? 1 : 0, k);
   const armed = a.armed * (1 - busy);
+  // 주먹 가드: 맨손으로 지르는 중이거나 방금 쳤을 때 (달리기 시작하면 내림)
+  const pu = c.punch, guardOn = !hasGun && c.alive && !c.knocked && (!!pu || (G.time - (c.punchT || -99) < PUNCH.guardT && !c.sprint));
+  a.guard = lerp(a.guard || 0, guardOn ? 1 : 0, clamp(dt * 12, 0, 1));
   a.knock = lerp(a.knock || 0, c.knocked ? 1 : 0, k);
   a.aim = lerp(a.aim, c.aiming ? 1 : 0, k);
   const ready = c.aiming || c.combatFacing || (c.fireHold && c.weapon && !tm) || (G.time - (c.lastShotT || -99) < 1.5) || !!c.rl || !!c.cycle;
@@ -339,6 +351,7 @@ function animateChar(c, dt) {
   const mv = sp > 0.6;
   let targetYaw = c.yaw;
   if (!c.isPlayer || !(c.aiming || c.fireHold || c.firstPerson)) { if (mv && !c.aiming && !c.combatFacing && !(a.ready > 0.5 && c.isPlayer)) targetYaw = Math.atan2(c.vel.x, c.vel.z); }
+  if (pu || a.guard > 0.5) targetYaw = c.yaw;   // 주먹·가드: 치는 쪽을 본다
   if (rv) targetYaw = Math.atan2(rv.pos.x - c.pos.x, rv.pos.z - c.pos.z);
   if (V) targetYaw = Math.atan2(V.dx, V.dz); else if (c.rollT > 0) targetYaw = c.rollYaw;
   c.bodyYaw += angleDiff(c.bodyYaw, targetYaw) * clamp(dt * (a.prone > 0.5 ? 4 : V || c.rollT > 0 ? 20 : 11), 0, 1);
@@ -453,6 +466,26 @@ function animateChar(c, dt) {
   }
   // ----- 손 동작 (IK): 줍기·회복·투척·넘기·오르기·부활·스카이다이빙·낙하산·무기 꺼내기 -----
   const ik = (Ar, wpos, pole, q, w, fing) => { if (w <= 0.01) return; Ar.clav.updateMatrixWorld(true); armIK(Ar, wpos, pole, q, w); if (fine && fing) setFingers(Ar, FING[fing], w); };
+  // 주먹: 가드(두 주먹을 턱 앞, 팔꿈치는 아래로 모음) → 지르기(한 팔을 조준 방향으로 뻗고 어깨를 틀어 넣음) → 복귀
+  const gw = a.guard * (1 - busy) * (1 - a.prone) * (1 - Math.max(a.fall, a.chute, a.swim, a.air)) * (1 - a.knock);
+  if (gw > 0.01) {
+    const ext = pu ? punchExt(pu.t) : 0, cp = Math.cos(pitch);
+    if (pu) { r.spine.rotation.y -= pu.side * 0.3 * ext * gw; r.chest.rotation.y -= pu.side * 0.14 * ext * gw; r.root.updateMatrixWorld(true); }
+    _fv3.set(Math.sin(c.yaw) * cp, Math.sin(pitch), Math.cos(c.yaw) * cp);   // 조준 방향(월드)
+    for (const Ar of [r.armL, r.armR]) {
+      const s = Ar.side, e = pu && pu.side === s ? ext : 0;
+      // 손 방향 (chestDir가 _t3·_t4를 덮어쓰므로 위치보다 먼저): 가드 = 주먹 마디가 위·앞, 손바닥은 안쪽 / 지르기 = 마디가 앞, 손바닥은 아래로 비틀어
+      handQuat(_fq1, chestDir(r, -s * 0.05, 0.75, 0.6, _fv1), chestDir(r, -s, 0, -0.3, _fv2), s);
+      if (e > 0) {
+        chestDir(r, -s * 0.3, 0.04, 0, _fv1).add(_fv3).normalize();                          // 지르는 방향: 조준 방향 + 몸 가운데 쪽으로 조금
+        handQuat(_fq2, _fv1, chestDir(r, -s * 0.35, -1, 0, _fv2), s); _fq1.slerp(_fq2, e);
+      }
+      chestPt(r, s * 0.13, 0.21, 0.23, _t1);                                                 // 가드: 턱 앞
+      if (e > 0) { _t2.setFromMatrixPosition(Ar.sh.matrixWorld).addScaledVector(_fv1, (UA + FA) * 0.95); _t1.lerp(_t2, e); }   // 어깨에서 팔을 거의 다 펴서
+      chestPt(r, s * lerp(0.3, 0.45, e), lerp(-0.32, -0.15, e), lerp(0.12, 0.05, e), _t3);   // 팔꿈치: 아래로 (지를 때는 옆으로 조금)
+      ik(Ar, _t1, _t3, _fq1, gw, null); if (fine) setFist(Ar, gw);
+    }
+  }
   // 줍기: 오른손을 발 앞 바닥으로
   if (pk > 0.01) {
     _t1.set(c.pos.x + Math.sin(c.bodyYaw) * 0.45 - Math.cos(c.bodyYaw) * 0.12, c.pos.y + (a.prone > 0.5 ? 0.1 : 0.12), c.pos.z + Math.cos(c.bodyYaw) * 0.45 + Math.sin(c.bodyYaw) * 0.12);

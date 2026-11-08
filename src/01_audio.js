@@ -466,6 +466,19 @@ const Audio = (() => {
       const t = ctx.currentTime;
       if (flesh) noise(out, t, 0.09, 'lowpass', 900, 1, 1); else { noise(out, t, 0.07, 'highpass', 2800, 1, 0.8); tone(out, t, 0.05, 'sine', 2600 + Math.random() * 1500, 1800, 0.12); }
     },
+    // 주먹: 'swing' = 휘두르는 바람(대역 잡음이 위로 쓸렸다 내려감) / 'hit' = 몸통 울림(저역 사인) + 둔탁한 퍽 + 살 맞는 찰싹
+    punch(pos, kind, own) {
+      const hit = kind === 'hit', range = hit ? 45 : 22;
+      if (!ctx || (!own && geom(pos).d > range) || (hit && !throttle('punch', 0.04)) || !voice(0.2)) return;   // 먼 주먹은 목소리 자리를 차지하지 않게
+      const out = spatial(own ? null : pos, hit ? 0.62 : (own ? 0.16 : 0.22), range); if (!out) return;
+      const t = ctx.currentTime, j = 0.9 + Math.random() * 0.2;
+      if (hit) { tone(out, t, 0.12, 'sine', 125 * j, 52, 0.9); noise(out, t, 0.07, 'lowpass', 1100 * j, 0.9, 0.9); noise(out, t, 0.025, 'bandpass', 2400 * j, 1.4, 0.45); return; }
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.playbackRate.value = j;
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.6;
+      f.frequency.setValueAtTime(480 * j, t); f.frequency.exponentialRampToValueAtTime(1500 * j, t + 0.08); f.frequency.exponentialRampToValueAtTime(650 * j, t + 0.17);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.55, t + 0.055); g.gain.exponentialRampToValueAtTime(0.001, t + 0.17);
+      src.connect(f); f.connect(g); g.connect(out); src.start(t, Math.random()); src.stop(t + 0.2);
+    },
     hitmarker() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.06, 'square', 1800, 1500, 0.08); },
     headshot() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.09, 'square', 2600, 2200, 0.09); },
     hurt() { if (!ctx || !throttle('hurt', 0.12)) return; const t = ctx.currentTime; noise(sfxBus, t, 0.18, 'lowpass', 400, 1, 0.5); },

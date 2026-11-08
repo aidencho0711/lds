@@ -537,6 +537,7 @@ G.update = function (dt) {
   for (const c of CHARS) {
     if (c.mode === 'plane') continue;
     if (!c.net || c.net.mine) updateCharTimers(c, dt);
+    else if (c.punch) updatePunch(c, dt);   // 다른 기기 캐릭터의 주먹: 동작·소리만
     // 화면에 안 보이는 캐릭터는 관절 애니메이션 생략
     if (c.isPlayer || c.root.visible) animateChar(c, dt);
     footsteps(c, dt);

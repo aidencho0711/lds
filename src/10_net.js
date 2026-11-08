@@ -185,6 +185,7 @@ const Net = (() => {
       case 'rev': netRevive(e); break;
       case 'shot': remoteShot(e); break;
       case 'throw': remoteThrow(e); break;
+      case 'pu': remotePunch(e); break;
       case 'gadd': { if (N.items.has(e.u)) break; N.applying++; spawnItem(G.scene, e.i, e.n, e.x, e.y, e.z, e.in || null, e.u); N.applying--; break; }
       case 'gdel': { const it = N.items.get(e.u); if (it && it.alive) { N.applying++; removeItem(it); N.applying--; } break; }
       case 'gcnt': { const it = N.items.get(e.u); if (it) it.count = e.n; break; }
@@ -439,6 +440,16 @@ const Net = (() => {
     if (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 25) Audio.spoon(c.pos, false);
   }
 
+  // 주먹: 지르기 동작·휘두르는 소리만 (맞힘 소리는 받은 쪽에서 판정만 따로, 피해는 때린 쪽 기기가 'hit'으로 보냄)
+  function sendPunch(c, side) { if (mine(c)) ev({ k: 'pu', c: c.id, s: side }); }
+  function remotePunch(e) {
+    const c = charById(e.c); if (!c || mine(c) || !c.alive || c.knocked) return;
+    const pt = c.pitch || 0, cp = Math.cos(pt);
+    c.punch = { t: 0, side: e.s > 0 ? 1 : -1, hit: false, dx: Math.sin(c.yaw) * cp, dy: Math.sin(pt), dz: Math.cos(c.yaw) * cp, remote: true };
+    c.punchSide = c.punch.side; c.punchT = G.time;
+    Audio.punch(c.pos, 'swing', false);
+  }
+
   // ---------- 아이템 ----------
   function itemAdded(it, uid) {
     if (uid !== undefined && uid !== null) it.u = uid;
@@ -561,6 +572,6 @@ const Net = (() => {
   function status() { if (!N) return null; return { host: N.host, peers: [...N.peers.values()].map((p) => ({ uid: p.uid, name: p.name, open: p.open, relay: p.relay, rx: Math.round(now() - p.lastRx) })), tx: N.stats.tx, rx: N.stats.rx, items: N.items.size, vehs: N.vehs.length }; }
 
   return { makeConfig, join, ready, onParty, tick, active, isHost, isGuest, mine, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
-    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, status, ev, flush,
+    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, status, ev, flush,
     get state() { return N; } };
 })();
