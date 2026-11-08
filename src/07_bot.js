@@ -517,6 +517,8 @@ class Brain {
   }
   drive(dt) {
     const c = this.c, v = c.veh, T = v.T, C = v.ctrl, sp = Math.hypot(v.vx, v.vz);
+    // 운전 목적지 없이 운전석에 있음(같이 하기: 운전하던 파티원이 나가 봇이 이어받음) → 세우고 내림
+    if (!this.driveDest && !this.exitReq) this.exitReq = 'arrived';
     if (this.exitReq) {
       C.throttle = sp > 1 ? -1 : 0; C.steer = 0; C.hand = sp > 1;
       if (sp < (this.exitReq === 'damaged' ? 99 : 3.5)) {

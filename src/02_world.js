@@ -148,6 +148,10 @@ async function generateWorld(mapId, scene, progress) {
   // ----- 거시 레이아웃 -----
   const big = !!M.big, SC_ = HALF / 350, TR = !!M.training, AR = !!M.arena, FLAT = TR || AR;
   w.big = big; w.isTraining = TR; w.isArena = AR;
+  // v2 생성기(노르덴 개편·키나루 정글): 02_world_v2.js. 작은 맵은 아래 기존 경로를 그대로 탄다(결과 불변)
+  const V2 = M.v2 || '', JG = V2 === 'jungle';
+  const K = V2 ? { M, w, rng, R, RI, RP, n1, n2, n3, n4, V2, JG } : null;
+  w.v2 = V2; w.roadLines = [];
   // 산(여러 개 가능)·호수·강. 대형 맵은 산맥 4개, 호수 3개, 큰 강 1개
   const mounts = [], lakes = [];
   const mA = R(0, TAU);
@@ -165,20 +169,23 @@ async function generateWorld(mapId, scene, progress) {
     }
   }
   const mount = mounts[0], lake = lakes[0];
-  const river = big ? { axisX: rng() < 0.5, v0: R(-600, 600), ph: R(0, TAU), ph2: R(0, TAU), w: 15, A1: 330, F1: 0.0012, A2: 120, F2: 0.0037 }
+  const river = V2 ? null : big ? { axisX: rng() < 0.5, v0: R(-600, 600), ph: R(0, TAU), ph2: R(0, TAU), w: 15, A1: 330, F1: 0.0012, A2: 120, F2: 0.0037 }
     : { axisX: rng() < 0.5, v0: FLAT ? 1e6 : R(-60, 60), ph: R(0, TAU), ph2: R(0, TAU), w: 9, A1: 42, F1: 0.011, A2: 16, F2: 0.029 };
   w.mount = mount; w.lake = lake; w.river = river; w.mounts = mounts; w.lakes = lakes;
   const riverF = (u) => river.v0 + river.A1 * Math.sin(u * river.F1 + river.ph) + river.A2 * Math.sin(u * river.F2 + river.ph2);
   const riverDF = (u) => river.A1 * river.F1 * Math.cos(u * river.F1 + river.ph) + river.A2 * river.F2 * Math.cos(u * river.F2 + river.ph2);
-  function riverDist(x, z) {
+  let riverDist = function (x, z) {
     const u = river.axisX ? x : z, v = river.axisX ? z : x;
     return Math.abs(v - riverF(u)) / Math.sqrt(1 + riverDF(u) ** 2);
-  }
-  w.riverDist = riverDist;
-  w.riverPt = (u) => river.axisX ? [u, riverF(u)] : [riverF(u), u];
-  const edgeF = (x, z) => { const d = Math.max(Math.abs(x), Math.abs(z)) * 0.65 + Math.hypot(x, z) * 0.35; return sstep(HALF * 0.8, HALF * 0.98, d); };
+  };
+  let edgeF = (x, z) => { const d = Math.max(Math.abs(x), Math.abs(z)) * 0.65 + Math.hypot(x, z) * 0.35; return sstep(HALF * 0.8, HALF * 0.98, d); };
   // 대형 맵 산맥은 저주파 잡음으로 반경을 비틀어 둥근 덩어리 대신 길게 뻗은 능선 모양으로
-  const mountW = (x, z) => { let m = 0; for (const mt of mounts) { let d = Math.hypot(x - mt.x, z - mt.z); if (d > mt.r * 1.7) continue; if (big) d *= 1 + fbm(n3, x * 0.0009 + 7, z * 0.0009 - 3, 2) * 0.9; const v = sstep(mt.r, mt.r * 0.2, d); if (v > m) m = v; } return m; };
+  let mountW = (x, z) => { let m = 0; for (const mt of mounts) { let d = Math.hypot(x - mt.x, z - mt.z); if (d > mt.r * 1.7) continue; if (big) d *= 1 + fbm(n3, x * 0.0009 + 7, z * 0.0009 - 3, 2) * 0.9; const v = sstep(mt.r, mt.r * 0.2, d); if (v > m) m = v; } return m; };
+  // v2: 해안선·산맥·강·호수를 새로 정의 (산맥 꺾은선, 두 갈래 강 등)
+  if (V2) { const L = v2Layout(K); riverDist = L.riverDist; edgeF = L.edgeF; mountW = L.mountW; w.river = L.river; w.lakes = L.lakes; lakes.push(...L.lakes); w.ranges = L.ranges; }
+  const RV = V2 ? w.river : river;   // 강 폭 등 (v2는 v2Layout 이 만든 강)
+  w.riverDist = riverDist;
+  if (!V2) w.riverPt = (u) => river.axisX ? [u, riverF(u)] : [riverF(u), u];
   // 훈련장 지형: 6m 평지 + 서쪽 오프로드 언덕 몇 개
   const TR_HILLS = [[-150, -90, 34, 5], [-135, 15, 24, 3.2], [-115, -155, 38, 6.5], [-170, -20, 20, 2.4], [-95, -40, 16, 1.8]];
   function rawH(x, z) {
@@ -198,6 +205,7 @@ async function generateWorld(mapId, scene, progress) {
     h = lerp(h, -9, edgeF(x, z));
     return h;
   }
+  if (V2) rawH = K.rawH;   // v2: 구릉·꺾은선 산맥·강 계곡·해안선
 
   // ----- 관심 지점(POI) 배치 -----
   const NAMES = {
@@ -206,7 +214,7 @@ async function generateWorld(mapId, scene, progress) {
     village: ['솔레 마을', '오크린 마을', '리베 마을', '파인홀', '브룩사이드', '모스글렌', '애쉬포드', '실버크릭', '톨브리지', '하트우드', '스톤웰', '펀우드', '밀브룩', '레드윅', '로웰', '케스윅', '던모어', '글렌포트', '하이턴', '이스트밀'],
     depot: ['북부 물류창고', '그레이야드 창고', '남부 보급창', '이스트게이트 창고'],
   };
-  const poiSpec = FLAT ? [] : big
+  const poiSpec = FLAT || V2 ? [] : big
     ? [['city', 110, 'high'], ['city', 105, 'high'], ['city', 100, 'high'], ['military', 82, 'top'], ['military', 78, 'top'], ['industrial', 64, 'mid'], ['industrial', 62, 'mid'], ['industrial', 60, 'mid'],
       ['depot', 36, 'mid'], ['depot', 34, 'mid'], ['depot', 34, 'mid']].concat(Array.from({ length: 6 }, () => ['farm', 52, 'low']), Array.from({ length: 18 }, () => ['village', 44, 'low']))
     : [['city', 88, 'high'], ['military', 70, 'top'], ['industrial', 60, 'mid'], ['farm', 52, 'low'], ['village', 42, 'low'], ['village', 40, 'low'], ['village', 40, 'low'], ['depot', 34, 'mid']];
@@ -226,6 +234,7 @@ async function generateWorld(mapId, scene, progress) {
       break;
     }
   }
+  if (V2) v2PlacePois(K, NAMES);   // v2: 지역 종류·이름·배치(후보 중 기존 지역에서 가장 먼 곳)
   // POI 공간 색인 (64m 칸, 영향 반경 r+60) — 높이맵·표면·식생 계산에서 전체 POI 순회를 피함
   const PC = 64, PN = Math.ceil(SIZE / PC), poiGrid = new Array(PN * PN).fill(EMPTY_LIST);
   for (const p of w.pois) {
@@ -240,6 +249,7 @@ async function generateWorld(mapId, scene, progress) {
     for (const p of poisNear(x, z)) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r + 34) h = lerp(h, p.h, sstep(p.r + 34, p.r + 2, d)); }
     return h;
   }
+  if (V2) { K.poisNear = poisNear; afterTowns = v2AfterTowns(K); K.afterTowns = afterTowns; }   // v2: 채석장 구덩이·계단논·해안 지역
 
   // ----- 도로망: 최소신장트리 + 보조 연결 -----
   const P = w.pois, inTree = [0], edges = [];
@@ -267,7 +277,8 @@ async function generateWorld(mapId, scene, progress) {
     const road = { ax, az, bx, bz, len, n, prof: sm, width, kind, dx: (bx - ax) / len, dz: (bz - az) / len };
     w.roads.push(road); return road;
   }
-  for (const [a, b] of edges) addRoad(P[a].x, P[a].z, P[b].x, P[b].z, 7, 'main');
+  if (!V2) for (const [a, b] of edges) addRoad(P[a].x, P[a].z, P[b].x, P[b].z, 7, 'main');
+  else v2Roads(K);   // v2: A* 도로망(경사·강 비용, 재사용 할인) → 직선화 → 곡선화
   if (TR) {
     const L = 205, c4 = [[-L, -L], [L, -L], [L, L], [-L, L]];
     for (let i = 0; i < 4; i++) addRoad(c4[i][0], c4[i][1], c4[(i + 1) % 4][0], c4[(i + 1) % 4][1], 9, 'main');
@@ -306,6 +317,7 @@ async function generateWorld(mapId, scene, progress) {
     return [best, bh, br];
   }
   w.roadDist = (x, z) => roadInfo(x, z)[0];
+  if (V2) { K.roadInfo = roadInfo; v2Roadside(K); }   // v2: 길가 마을·주유소 (지도 라벨은 확대했을 때만)
 
   await yieldUI(0.15, '높이맵 계산');
   // ----- 최종 높이맵 + 표면 종류 -----
@@ -315,8 +327,8 @@ async function generateWorld(mapId, scene, progress) {
     for (let i = 0; i < HF_N; i++) {
       const x = -HALF + i * HF_RES;
       let h = afterTowns(x, z);
-      const rd = riverDist(x, z), carve = sstep(river.w + 8, river.w * 0.55, rd);
-      const [rdist, rh] = roadInfo(x, z);
+      const rd = riverDist(x, z), carve = sstep(RV.w + 8, RV.w * 0.55, rd);
+      const [rdist, rh, rroad] = roadInfo(x, z);
       const rw = sstep(7.5, 3.6, rdist) * (1 - carve);
       h = lerp(h, rh, rw);
       h = lerp(h, -2.8, carve);
@@ -338,6 +350,7 @@ async function generateWorld(mapId, scene, progress) {
         else if (fbm(n4, x * 0.012, z * 0.012, 3) > 0.25) s = 8;
         w.surf[j * HF_N + i] = s; continue;
       }
+      if (V2) { w.surf[j * HF_N + i] = v2Surf(K, x, z, h, mw, rdist, carve, rroad); continue; }
       if (rdist < 4.6 && carve < 0.5) s = 4;
       else if (h < 1.1 || carve > 0.4) s = 3;
       else if (mw > 0.45 && h > 22 + fbm(n4, x * 0.05, z * 0.05, 2) * 6) s = 2;
@@ -358,7 +371,7 @@ async function generateWorld(mapId, scene, progress) {
   for (let j = 1; j < HF_N - 1; j++) for (let i = 1; i < HF_N - 1; i++) {
     const k = j * HF_N + i, hf = w.hf;
     const sl = Math.max(Math.abs(hf[k + 1] - hf[k - 1]), Math.abs(hf[k + HF_N] - hf[k - HF_N])) / (2 * HF_RES);
-    if (sl > 0.75 && w.surf[k] !== 4 && w.surf[k] !== 3) w.surf[k] = 2;
+    if (sl > (V2 ? 1.05 : 0.75) && w.surf[k] !== 4 && w.surf[k] !== 3 && w.surf[k] !== 11 && w.surf[k] !== 9 && w.surf[k] !== 10) w.surf[k] = 2;   // v2: 비탈은 숲·풀로 남기고 아주 가파른 곳만
   }
 
   // ----- 충돌 박스 API -----
@@ -645,7 +658,7 @@ async function generateWorld(mapId, scene, progress) {
     if (!roadClear(r, roadM)) return null;
     const [mx, mn] = baseHeight(r);
     if (mx - mn > maxSlope || mn < 1.4) return null;
-    if (riverDist(cx, cz) < river.w + 10 + Math.max(wd, dp) / 2) return null;
+    if (riverDist(cx, cz) < RV.w + 10 + Math.max(wd, dp) / 2) return null;
     claim(r[0], r[1], r[2], r[3]);
     flattenRect(r, mx);
     const F = frame(cx, cz, rot, mx);
@@ -832,6 +845,8 @@ async function generateWorld(mapId, scene, progress) {
   if (AR) buildArena();
 
   await yieldUI(0.4, '건물 배치');
+  if (V2) Object.assign(K, { PAL, DOOR, WIN, frame, placeLot, addBox, addCollider, addRamp, claim, footprintFree, roadClear, flattenRect, baseHeight, worldRect, buildHouse, buildWarehouse, buildTower, buildContainer, buildCar, prism, getBatch, RV,
+    mapRect: (x0, z0, x1, z1) => { (w.mapRects || (w.mapRects = [])).push([Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1)]); } });
   // ----- POI 별 구조물 -----
   for (const p of w.pois) {
     if (p.type === 'city') {
@@ -847,11 +862,11 @@ async function generateWorld(mapId, scene, progress) {
             continue;
           }
           const rot = RI(0, 3);
-          if (central && rng() < 0.55) {
-            const F = placeLot(bx + ox, bz + oz, rot, 12, 12, 'tower', 3, 1, 0.5); if (F) buildTower(F, R(10, 13), R(10, 13), R(16, 38), RP(PAL.city));
+          if (central && rng() < (p.towerP !== undefined ? p.towerP : 0.55)) {
+            const F = placeLot(bx + ox, bz + oz, rot, 12, 12, 'tower', 3, 1, 0.5); if (F) buildTower(F, R(10, 13), R(10, 13), R(p.towerH || 16, p.towerH ? p.towerH + 8 : 38), RP(p.pal || PAL.city));
           } else {
             const wd = R(9, 12), dp = R(8, 11), F = placeLot(bx + ox, bz + oz, rot, wd, dp, 'house', 3, 1, 0.5);
-            if (F) buildHouse(F, wd, dp, rng() < 0.65 ? 2 : 1, RP(PAL.city), { flatRoof: true, balcony: rng() < 0.4, tier: p.tier });
+            if (F) buildHouse(F, wd, dp, rng() < 0.65 ? 2 : 1, RP(p.pal || PAL.city), { flatRoof: true, balcony: rng() < 0.4, tier: p.tier });
           }
         }
       }
@@ -927,23 +942,23 @@ async function generateWorld(mapId, scene, progress) {
         const a = R(0, TAU), d = R(8, p.r - 6), wd = R(7, 11), dp = R(6.5, 9.5);
         const F = placeLot(p.x + Math.cos(a) * d, p.z + Math.sin(a) * d, RI(0, 3), wd, dp, 'house', 1.5);
         if (!F) continue; i++;
-        buildHouse(F, wd, dp, rng() < 0.45 ? 2 : 1, RP(PAL.house), { balcony: rng() < 0.5, tier: 'low' });
+        buildHouse(F, wd, dp, rng() < 0.45 ? 2 : 1, RP(p.pal || PAL.house), { balcony: rng() < 0.5, tier: 'low' });
       }
       for (let i = 0; i < 3; i++) { const F = placeLot(p.x + R(-p.r, p.r), p.z + R(-p.r, p.r), RI(0, 3), 4, 3.5, 'shed', 1.2); if (F) { const c = 0x7a6248; F.box(-2.1, -1, -1.85, 2.1, 0.1, 1.85, PAL.found, { nav: true }); F.wallX(-1.75, -2, 2, 0.1, 2.5, 0.15, [DOOR(-0.9)], c); F.wallX(1.75, -2, 2, 0.1, 2.5, 0.15, [], c); F.wallZ(-2, -1.68, 1.68, 0.1, 2.5, 0.15, [], c); F.wallZ(2, -1.68, 1.68, 0.1, 2.5, 0.15, [WIN(-0.6, 1.2)], c); F.box(-2.3, 2.6, -2.1, 2.3, 2.8, 2.1, 0x4a4036); F.loot(0, 0.12, 0.6, 'low'); } }
-    }
+    } else if (V2) v2Build(K, p);   // v2: 특수 지역·정글 지역·길가 마을·주유소
   }
   // ----- 외딴 집/오두막 -----
-  for (let i = 0, tries = 0; !FLAT && i < (big ? 240 : 26) && tries < (big ? 9000 : 900); tries++) {
+  for (let i = 0, tries = 0; !FLAT && i < (V2 ? (JG ? 60 : 150) : big ? 240 : 26) && tries < (big ? 9000 : 900); tries++) {
     const x = R(-HALF * 0.78, HALF * 0.78), z = R(-HALF * 0.78, HALF * 0.78);
     if (poisNear(x, z).some(p => Math.hypot(p.x - x, p.z - z) < p.r + 25)) continue;
     const wd = R(6.5, 9), dp = R(6, 8.5), F = placeLot(x, z, RI(0, 3), wd, dp, 'house', 1.0, 3, 2);
     if (!F) continue; i++;
-    buildHouse(F, wd, dp, rng() < 0.3 ? 2 : 1, RP(PAL.house), { balcony: rng() < 0.4, tier: 'low' });
+    buildHouse(F, wd, dp, rng() < 0.3 ? 2 : 1, RP(JG ? V2_PAL.wood : PAL.house), { balcony: rng() < 0.4, tier: 'low' });
   }
   // ----- 다리 -----
   for (const r of w.roads) {
     let first = -1, last = -1;
-    for (let s = 0; s <= r.len; s += 1) { const x = r.ax + r.dx * s, z = r.az + r.dz * s; if (riverDist(x, z) < river.w + 7) { if (first < 0) first = s; last = s; } }
+    for (let s = 0; s <= r.len; s += 1) { const x = r.ax + r.dx * s, z = r.az + r.dz * s; if (riverDist(x, z) < RV.w + 7) { if (first < 0) first = s; last = s; } }
     if (first < 0) continue;
     first = Math.max(0, first - 3); last = Math.min(r.len, last + 3);
     const at = (s) => { const f = s / r.len * r.n, i = Math.floor(f); return lerp(r.prof[i], r.prof[Math.min(r.n, i + 1)], f - i); };
@@ -953,11 +968,14 @@ async function generateWorld(mapId, scene, progress) {
     // 다리 데크는 도로 방향 축에 정렬 (사선 도로는 근사)
     const rot = alongX ? 1 : 0;
     const slope = Math.min(Math.abs(r.dx), Math.abs(r.dz)) / Math.max(Math.abs(r.dx), Math.abs(r.dz));
-    const F = frame(cx, cz, rot, y), hw = 4 + slope * L / 2;
-    F.box(-hw, -0.6, -L / 2, hw, 0.05, L / 2, 0x5d5b57, { nav: true });
-    F.box(-hw, 0.05, -L / 2, -hw + 0.3, 1.0, L / 2, 0x77746e); F.box(hw - 0.3, 0.05, -L / 2, hw, 1.0, L / 2, 0x77746e);
-    for (let s = -L / 2 + 3; s < L / 2 - 2; s += 8) F.box(-0.8, -8, s, 0.8, -0.6, s + 1.4, 0x6a6862, { noCollide: true });
-    w.bridges.push({ cx, cz, L, y, rot, hw });
+    if (V2 && r.line) { v2Bridge(K, r, first, last, y); w.bridges.push({ cx, cz, L, y, rot, hw: r.width / 2 + 0.9, dir: [r.dx, r.dz] }); }   // v2: 도로 방향으로 돌린 상판
+    else {
+      const F = frame(cx, cz, rot, y), hw = 4 + slope * L / 2;
+      F.box(-hw, -0.6, -L / 2, hw, 0.05, L / 2, 0x5d5b57, { nav: true });
+      F.box(-hw, 0.05, -L / 2, -hw + 0.3, 1.0, L / 2, 0x77746e); F.box(hw - 0.3, 0.05, -L / 2, hw, 1.0, L / 2, 0x77746e);
+      for (let s = -L / 2 + 3; s < L / 2 - 2; s += 8) F.box(-0.8, -8, s, 0.8, -0.6, s + 1.4, 0x6a6862, { noCollide: true });
+      w.bridges.push({ cx, cz, L, y, rot, hw });
+    }
     // 진입로: 데크보다 낮은 쪽 도로를 16m에 걸쳐 데크 높이까지 완만하게 돋운다 (차량이 턱에 막히지 않게)
     const ramp = (s0, s1) => {
       const x0 = r.ax + r.dx * s0, z0 = r.az + r.dz * s0, x1 = r.ax + r.dx * s1, z1 = r.az + r.dz * s1, m = r.width / 2 + 4;
@@ -976,7 +994,9 @@ async function generateWorld(mapId, scene, progress) {
 
   // ----- 지형 메시 -----
   // 기본 맵: 4x4 청크를 미리 생성. 대형 맵: 500m 청크를 카메라 주변에서만 만들고 멀어지면 해제(스트리밍)
-  const SC = [[0.32, 0.47, 0.22], [0.48, 0.40, 0.28], [0.47, 0.45, 0.42], [0.76, 0.69, 0.50], [0.30, 0.29, 0.27], [0.50, 0.49, 0.46], [0.62, 0.55, 0.26], [0.42, 0.50, 0.21], [0.27, 0.38, 0.19]];
+  // 9 논물(어두운 청록) · 10 벼(밝은 연두) · 11 흙길(정글 도로) — v2 맵에서만 쓰임
+  const SC = [[0.32, 0.47, 0.22], [0.48, 0.40, 0.28], [0.47, 0.45, 0.42], [0.76, 0.69, 0.50], [0.30, 0.29, 0.27], [0.50, 0.49, 0.46], [0.62, 0.55, 0.26], [0.42, 0.50, 0.21], [0.27, 0.38, 0.19], [0.25, 0.40, 0.34], [0.46, 0.60, 0.20], [0.50, 0.38, 0.25]];
+  if (JG) SC[8] = [0.20, 0.33, 0.15];   // 정글 숲바닥은 더 짙게
   const terrMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   const TCH = big ? 16 : 4, per = (HF_N - 1) / TCH;
   function terrainChunk(ci, cj) {
@@ -1027,12 +1047,13 @@ async function generateWorld(mapId, scene, progress) {
   const lineMat = new THREE.MeshLambertMaterial({ color: 0xc9b25a, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   const rp = [], ri = [], lp = [], li = [];
   for (const r of w.roads) {
+    if (r.line) continue;   // v2 꺾은선 도로는 아래 v2Ribbons 가 이음매(마이터)까지 한 줄로 그린다
     const nx = -r.dz, nz = r.dx, hw = r.width / 2, steps = Math.ceil(r.len / 3);
     const base = rp.length / 3;
     for (let s = 0; s <= steps; s++) {
       const t = s / steps * r.len, x = r.ax + r.dx * t, z = r.az + r.dz * t;
       for (const sd of [-1, 1]) { const px = x + nx * hw * sd, pz = z + nz * hw * sd; rp.push(px, Math.max(heightAt(px, pz), heightAt(x, z)) + 0.07, pz); }
-      if (s < steps && w.riverDist(x, z) > river.w + 6) { const a = base + s * 2; ri.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+      if (s < steps && w.riverDist(x, z) > RV.w + 6) { const a = base + s * 2; ri.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
       if (r.kind === 'main' && s % 3 === 0 && s < steps) { // 중앙 점선
         const t2 = Math.min(r.len, t + 2.2), x2 = r.ax + r.dx * t2, z2 = r.az + r.dz * t2, lb = lp.length / 3;
         for (const [qx, qz] of [[x, z], [x2, z2]]) for (const sd of [-1, 1]) lp.push(qx + nx * 0.12 * sd, Math.max(heightAt(qx, qz), heightAt(qx + nx * 0.12 * sd, qz + nz * 0.12 * sd)) + 0.09, qz + nz * 0.12 * sd);
@@ -1040,7 +1061,10 @@ async function generateWorld(mapId, scene, progress) {
       }
     }
   }
-  for (const [p, i, mat] of [[rp, ri, roadMat], [lp, li, lineMat]]) {
+  const dp_ = [], di_ = [], dirtMat = new THREE.MeshLambertMaterial({ color: 0x6b5539, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  if (V2) v2Ribbons(K, rp, ri, lp, li, dp_, di_);   // v2: 꺾은선 도로(마이터 이음매) · 정글 흙길
+  for (const [p, i, mat] of [[rp, ri, roadMat], [lp, li, lineMat], [dp_, di_, dirtMat]]) {
+    if (!i.length) continue;
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setIndex(i);
     // 법선은 위쪽 고정 (뒤집힘 방지)
     const nrm = new Float32Array(p.length); for (let k = 1; k < nrm.length; k += 3) nrm[k] = 1;
@@ -1052,7 +1076,7 @@ async function generateWorld(mapId, scene, progress) {
   // ----- 나무 / 바위 / 덤불 / 풀 -----
   const Q = QUALITY[SETTINGS.quality] || QUALITY.medium;
   const trees = [], rocks = [], bushes = [];
-  const treeTarget = Math.floor((big ? 42000 : 1500) * Q.trees);
+  const treeTarget = V2 ? 0 : Math.floor((big ? 42000 : 1500) * Q.trees);   // v2 식생은 v2Vegetation
   for (let t = 0; t < treeTarget * 6 && trees.length < treeTarget; t++) {
     if (big && t % 20000 === 0) await yieldUI(0.68 + 0.08 * trees.length / treeTarget, '숲과 바위 생성');
     const x = R(-HALF * 0.9, HALF * 0.9), z = R(-HALF * 0.9, HALF * 0.9);
@@ -1060,7 +1084,7 @@ async function generateWorld(mapId, scene, progress) {
     if (rng() > dens * 0.9) continue;
     const h = heightAt(x, z), s = surfaceAt(x, z);
     if (h < 1.4 || s === 4 || s === 5 || s === 6 || s === 7 || s === 3) continue;
-    if (riverDist(x, z) < river.w + 9 || w.roadDist(x, z) < 6.5) continue;
+    if (riverDist(x, z) < RV.w + 9 || w.roadDist(x, z) < 6.5) continue;
     if (poisNear(x, z).some(p => Math.hypot(p.x - x, p.z - z) < p.r + (p.type === 'village' ? -4 : 6))) continue;
     if (!footprintFree(x - 0.6, z - 0.6, x + 0.6, z + 0.6, 1.2)) continue;
     if (TR && Math.max(Math.abs(x), Math.abs(z)) < 222) continue;
@@ -1070,9 +1094,9 @@ async function generateWorld(mapId, scene, progress) {
     trees.push({ x, z, y: h, pine, sc, rot: R(0, TAU) });
     addCollider(x - 0.28 * sc, h - 0.5, z - 0.28 * sc, x + 0.28 * sc, h + 6.5 * sc, z + 0.28 * sc, { kind: 'tree' });
   }
-  for (let t = 0; t < (big ? 50000 : 2500) && rocks.length < (big ? 5000 : 340); t++) {
+  for (let t = 0; t < (V2 ? 0 : big ? 50000 : 2500) && rocks.length < (big ? 5000 : 340); t++) {
     const x = R(-HALF * 0.88, HALF * 0.88), z = R(-HALF * 0.88, HALF * 0.88), h = heightAt(x, z), s = surfaceAt(x, z);
-    if (h < 1.2 || s === 4 || s === 5 || riverDist(x, z) < river.w + 4 || w.roadDist(x, z) < 6) continue;
+    if (h < 1.2 || s === 4 || s === 5 || riverDist(x, z) < RV.w + 4 || w.roadDist(x, z) < 6) continue;
     if (rng() > 0.25 + mountW(x, z) * 0.8 + (s === 2 ? 0.4 : 0)) continue;
     if (poisNear(x, z).some(p => Math.hypot(p.x - x, p.z - z) < p.r)) continue;
     if (TR && Math.max(Math.abs(x), Math.abs(z)) < 222) continue;
@@ -1083,7 +1107,7 @@ async function generateWorld(mapId, scene, progress) {
     claim(x - sx * 0.7, z - sz * 0.7, x + sx * 0.7, z + sz * 0.7);
     addCollider(x - sx * 0.68, h - 0.6, z - sz * 0.68, x + sx * 0.68, h + sy * 0.85, z + sz * 0.68, { kind: 'rock' });
   }
-  for (let t = 0; t < (big ? 60000 : 4000) && bushes.length < (big ? 14000 : 700) * Q.trees; t++) {
+  for (let t = 0; t < (V2 ? 0 : big ? 60000 : 4000) && bushes.length < (big ? 14000 : 700) * Q.trees; t++) {
     const x = R(-HALF * 0.88, HALF * 0.88), z = R(-HALF * 0.88, HALF * 0.88), h = heightAt(x, z), s = surfaceAt(x, z);
     if (h < 1.3 || s === 4 || s === 5 || s === 3 || w.roadDist(x, z) < 5) continue;
     if (TR && Math.max(Math.abs(x), Math.abs(z)) < 222) continue;
@@ -1103,7 +1127,15 @@ async function generateWorld(mapId, scene, progress) {
   const mk = (geo, mat, list, fn) => {
     if (!big) return mk1(geo, mat, list, fn);
     const by = new Map(); for (const it of list) { const k = chunk(it.x, it.z); if (!by.has(k)) by.set(k, []); by.get(k).push(it); }
-    let last = null; for (const [k, l] of by) { last = mk1(geo, mat, l, fn); regChunk(k, last); }
+    let last = null;
+    for (const [k, l] of by) {
+      // 구역마다 경계 구(球)를 가진 지오메트리(정점 버퍼는 공유) → 카메라 뒤·시야 밖 구역은 시야 절두체에서 걸러진다
+      const g2 = new THREE.BufferGeometry(); for (const n in geo.attributes) g2.setAttribute(n, geo.attributes[n]); if (geo.index) g2.setIndex(geo.index);
+      let y0 = 1e9, y1 = -1e9; for (const it of l) { if (it.y < y0) y0 = it.y; if (it.y > y1) y1 = it.y; }
+      const cs = SIZE / CH, ci = k % CH, cj = Math.floor(k / CH);
+      g2.boundingSphere = new THREE.Sphere(new THREE.Vector3(-HALF + (ci + 0.5) * cs, (y0 + y1) / 2 + 8, -HALF + (cj + 0.5) * cs), Math.hypot(cs * 0.5, cs * 0.5, (y1 - y0) / 2 + 16) + 12);
+      last = mk1(g2, mat, l, fn); last.frustumCulled = true; regChunk(k, last);
+    }
     return last;
   };
   const vegMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
@@ -1126,6 +1158,7 @@ async function generateWorld(mapId, scene, progress) {
     if (im) im.castShadow = false;
   }
   w.trees = trees; w.rocks = rocks;
+  if (V2) { Object.assign(K, { Q, mk, vegMat, heightAt, surfaceAt, footprintFree, claim, addCollider, yieldUI }); await v2Vegetation(K); }
 
   // ----- 병합 메시 확정 -----
   const solidMat = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -1148,7 +1181,8 @@ async function generateWorld(mapId, scene, progress) {
 function buildMinimapImage(w) {
   const S = w.big ? 2048 : 1024, cv = document.createElement('canvas'); cv.width = cv.height = S;
   const g = cv.getContext('2d'), img = g.createImageData(S, S), d = img.data;
-  const SC = [[86, 120, 62], [124, 104, 74], [128, 122, 114], [196, 180, 132], [70, 70, 70], [140, 138, 132], [160, 142, 70], [110, 128, 56], [72, 100, 54]];
+  const SC = [[86, 120, 62], [124, 104, 74], [128, 122, 114], [196, 180, 132], [70, 70, 70], [140, 138, 132], [160, 142, 70], [110, 128, 56], [72, 100, 54], [64, 104, 92], [118, 156, 54], [132, 102, 68]];
+  if (w.v2 === 'jungle') SC[8] = [52, 86, 42];
   for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
     const x = -HALF + (px + 0.5) / S * SIZE, z = -HALF + (py + 0.5) / S * SIZE, h = heightAt(x, z);
     let c;
@@ -1162,7 +1196,7 @@ function buildMinimapImage(w) {
   g.putImageData(img, 0, 0);
   const toP = (v) => (v + HALF) / SIZE * S;
   g.lineCap = 'round';
-  for (const r of w.roads) { g.strokeStyle = r.kind === 'street' ? '#5c5c5c' : '#d8cfb0'; g.lineWidth = r.width / SIZE * S * 0.9; g.beginPath(); g.moveTo(toP(r.ax), toP(r.az)); g.lineTo(toP(r.bx), toP(r.bz)); g.stroke(); }
+  for (const r of w.roads) { g.strokeStyle = r.kind === 'street' ? '#5c5c5c' : r.kind === 'dirt' ? '#b89a6c' : '#d8cfb0'; g.lineWidth = r.width / SIZE * S * 0.9; g.beginPath(); g.moveTo(toP(r.ax), toP(r.az)); g.lineTo(toP(r.bx), toP(r.bz)); g.stroke(); }
   g.fillStyle = '#3a3633';
   for (const b of w.buildings) { const r = b.rect; g.fillRect(toP(r[0] + 1.5), toP(r[1] + 1.5), (r[2] - r[0] - 3) / SIZE * S, (r[3] - r[1] - 3) / SIZE * S); }
   for (const r of w.mapRects || []) g.fillRect(toP(r[0]), toP(r[1]), Math.max(2, (r[2] - r[0]) / SIZE * S), Math.max(2, (r[3] - r[1]) / SIZE * S));

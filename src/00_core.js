@@ -130,10 +130,18 @@ const MAPS = {
   kalden:    { name: '칼덴 섬',   seed: 1337, desc: '강이 섬을 가르고 도시와 군사기지가 마주 보는 섬', mountain: 32, lakes: 1 },
   ironridge: { name: '아이언리지', seed: 90817, desc: '북쪽 산맥과 큰 호수, 산업 단지가 있는 거친 섬', mountain: 46, lakes: 1 },
   // 대형 맵: 8km x 8km. 높이맵 4m 간격, 지형 스트리밍, 최대 봇 99
-  norden: { name: '노르덴 (8km)', seed: 40417, desc: '8×8km 대륙형 섬 · 도시 3 · 군사기지 2 · 마을 18 · 산맥 4', mountain: 70, big: true, half: 4000, hfRes: 4, maxBots: 99, wait0Min: 230,
+  //  v2: 새 생성기(02_world_v2.js) — 꺾은선 산맥·A* 도로·길가 마을·특수 지역. veh/horses/gold: 차량·말·골드 주머니 수
+  norden: { name: '노르덴 (8km)', seed: 40417, desc: '8×8km 대륙형 섬 · 산맥 3줄 · 도시 3 · 특수 지역 9 · 길가 마을 46 · 주유소 8', mountain: 70, big: true, v2: 'norden', half: 4000, hfRes: 4, maxBots: 99, wait0Min: 230,
+    veh: 170, horses: 34, gold: 48,
     plane: { L: 5200, speed: 120, alt: 460, off: 1600 }, zone0: 3900, zoneOff: 500,
     zone: [{ wait: 270, shrink: 270, r: 2300, dps: 0.4 }, { wait: 150, shrink: 150, r: 1300, dps: 1.0 }, { wait: 120, shrink: 110, r: 700, dps: 2 }, { wait: 90, shrink: 80, r: 350, dps: 3.5 },
       { wait: 70, shrink: 60, r: 170, dps: 6 }, { wait: 50, shrink: 45, r: 80, dps: 9 }, { wait: 35, shrink: 35, r: 30, dps: 13 }, { wait: 25, shrink: 30, r: 10, dps: 16 }] },
+  // 4km 열대 정글 섬: 두 갈래 강으로 땅이 셋으로 나뉨. 빽빽한 숲 · 자기장이 8km 맵보다 빨리 줄어든다
+  kinaru: { name: '키나루 (4km)', seed: 72091, desc: '4×4km 열대 정글 섬 · 두 갈래 강 · 사원 유적 · 계단논 · 수상 마을 · 리조트', big: true, v2: 'jungle', half: 2000, hfRes: 2.5, maxBots: 64, wait0Min: 150,
+    veh: 64, horses: 8, gold: 24, fog: { color: 0x9db8b4, near: 0.12, far: 0.8 },
+    plane: { L: 2700, speed: 95, alt: 400, off: 800 }, zone0: 1950, zoneOff: 260,
+    zone: [{ wait: 200, shrink: 200, r: 1150, dps: 0.5 }, { wait: 120, shrink: 110, r: 650, dps: 1.2 }, { wait: 100, shrink: 85, r: 350, dps: 2.5 }, { wait: 75, shrink: 60, r: 180, dps: 4 },
+      { wait: 55, shrink: 45, r: 90, dps: 7 }, { wait: 40, shrink: 35, r: 40, dps: 10 }, { wait: 30, shrink: 30, r: 15, dps: 14 }, { wait: 20, shrink: 25, r: 5, dps: 16 }] },
   // 훈련장: 봇·자기장 없는 평지. 로비의 '훈련장' 버튼으로만 들어간다 (맵 선택 목록에는 없음)
   training: { name: '훈련장', seed: 2468, desc: '사격장·더미·차량·장애물 코스', training: true, half: 320, mountain: 0 },
   // 데스매치 전용: 72×72m 컨테이너 야드 (팀 데스매치·웨폰 데스매치 공용, 맵 선택 목록에는 없음)
@@ -144,10 +152,19 @@ const GAME_TYPES = {
   br:  { name: '배틀로얄', short: '배틀로얄', desc: '자기장 · 파밍 · 최후의 1인(팀)' },
   tdm: { name: '팀 데스매치', short: '팀 데스매치', desc: '4 대 4 · 전원 같은 무작위 총과 스코프 · 40킬 먼저', dm: true },
   wdm: { name: '웨폰 데스매치', short: '웨폰 데스매치', desc: '4 대 4 · 처치할 때마다 총·스코프가 바뀜 · 40킬 먼저', dm: true },
+  // v20 대결: 친구와 라운드제 (파티원은 번갈아 양 팀으로, 빈자리는 봇) — 10_dm.js가 데스매치 규칙 대신 라운드 규칙으로 진행
+  duel1: { name: '1대1 대결', short: '1:1 대결', desc: '친구와 1 대 1 · 먼저 4라운드 · 라운드 90초 · 매 라운드 같은 무작위 총', dm: true, duel: 1 },
+  duel2: { name: '2대2 대결', short: '2:2 대결', desc: '친구와 2 대 2 · 먼저 4라운드 · 라운드 90초 · 빈자리는 봇', dm: true, duel: 2 },
 };
 const DM_RULES = { killTarget: 40, timeLimit: 600, respawn: 3, protect: 2, teamSize: 4, regenDelay: 4, regenRate: 22 };
+// 대결: 먼저 이길 라운드 수 · 라운드 시간 · 시작 전 준비(움직일 수 없음) · 라운드 사이 쉬는 시간(초)
+const DUEL_RULES = { win: 4, round: 90, prep: 3, gap: 3.5 };
+const dmTeamSize = (g) => (GAME_TYPES[g] && GAME_TYPES[g].duel) || DM_RULES.teamSize;
+const isDuel = (g) => !!(GAME_TYPES[g] && GAME_TYPES[g].duel);
 const isDmGame = (g) => !!(GAME_TYPES[g] && GAME_TYPES[g].dm);
 const mapMaxBots = (id) => (MAPS[id] && MAPS[id].maxBots) || 48;
+// 맵 한 변 길이(km) 표기: 8×8km, 4×4km, 0.7×0.7km
+const mapKm = (id) => { const M = MAPS[id] || {}, k = (M.half || 350) * 2 / 1000; return `${k >= 2 ? k : k.toFixed(1)}×${k >= 2 ? k : k.toFixed(1)}km`; };
 const MODES = {
   classic: { name: '클래식', zoneScale: 1.0, desc: '자기장 6단계 · 약 12분' },
   rapid:   { name: '쾌속전', zoneScale: 0.55, desc: '자기장 6단계 · 약 7분' },
@@ -167,4 +184,5 @@ const CRAWL_SPEED = 0.95;
 const DIFFICULTY_NAMES ={ easy: '쉬움', normal: '보통', hard: '어려움', mixed: '혼합' };
 // 내 외형: 장착 스킨(SETTINGS.look) + 몸(SETTINGS.body) — 파티·같이 하기에서 이 묶음을 주고받는다
 // veh: 장착한 차량 스킨(차종별) — 경기에서 운전석에 탈 때 그 차량을 내 스킨으로 바꾼다
-const myLook = () => ({ eq: SETTINGS.look || null, body: SETTINGS.body || null, veh: typeof Eco !== 'undefined' ? Eco.vlook() : null, gun: typeof Eco !== 'undefined' ? Eco.glook() : null });
+// 파티원에게 보내는 외형 묶음: 옷·몸 · 차량 스킨(veh) · 총기 스킨(gun) · 로비에서 들고 있는 총(sg — 파티원 화면의 로비에도 그 총·스킨으로)
+const myLook = () => ({ eq: SETTINGS.look || null, body: SETTINGS.body || null, veh: typeof Eco !== 'undefined' ? Eco.vlook() : null, gun: typeof Eco !== 'undefined' ? Eco.glook() : null, sg: typeof Eco !== 'undefined' ? Eco.showGun() : null });

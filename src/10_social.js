@@ -363,6 +363,7 @@ const Party = (() => {
     const notReady = P.members.filter((m) => m.uid !== me() && m.st !== 'lobby');
     if (notReady.length) { HUD.lobbyNote(`${notReady.map((m) => m.name).join(', ')}님이 아직 게임 중입니다`); return true; }
     if (SETTINGS.queue === 'ranked' && !isDmGame(SETTINGS.game) && !L.rankOk) { HUD.lobbyNote(`파티원 중 레벨 3 미만이 있어 랭크전을 할 수 없습니다 (${L.lowNames.join(', ')})`); return true; }
+    if (isDuel(SETTINGS.game) && P.members.length > dmTeamSize(SETTINGS.game) * 2) { HUD.lobbyNote(`${GAME_TYPES[SETTINGS.game].name}은 ${dmTeamSize(SETTINGS.game) * 2}명까지 할 수 있습니다 (지금 파티 ${P.members.length}명)`); return true; }
     const humans = P.members.map((m) => ({ uid: m.uid, name: m.name, look: m.look, lv: m.lv }));
     const cfg = Net.makeConfig(humans);
     send('start', { cfg });

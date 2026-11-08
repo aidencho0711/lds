@@ -96,7 +96,8 @@ const Lobby = {
     this.mates = []; this.setTeam(1);
   },
   // 듀오·스쿼드: 캐릭터 옆에 팀원을 세워 둔다 (오른쪽·뒤 — 왼쪽 패널에 가리지 않게)
-  // looks: 파티원 외형 {eq, body} (있으면 그 외형으로, 없으면 기본 옷 + 무작위 얼굴)
+  // looks: 파티원 외형 {eq, body, gun, sg} (있으면 그 외형으로, 없으면 기본 옷 + 무작위 얼굴)
+  //  파티원은 자기가 로비에서 들고 있는 총(sg)을 장착한 스킨으로 든다 — 울트라레어면 빛 띠·부속품과 함께 나타남
   setTeam(n, looks) {
     const key = n + '|' + (looks ? JSON.stringify(looks) : '');
     if (this.teamN === key) return; this.teamN = key;
@@ -105,7 +106,11 @@ const Lobby = {
     const spots = [[1.3, -0.5, -0.25], [2.45, -1.25, -0.45], [-1.05, -1.55, 0.35]], rng = mulberry32(4242);
     for (let i = 0; i < n - 1 && i < spots.length; i++) {
       const pl = looks && looks[i], body = Body.randomBody(rng), rig = buildRig(pl ? Body.makeLook(pl.eq, pl.body) : Body.makeLook(null, body));
-      rig.gunObj = buildGunMesh(['akm', 'aug', 'mini14'][i] || 'm416', { scope: i === 2 ? 'x4' : 'reddot' }); rig.gunMount.add(rig.gunObj);
+      const gid = pl && pl.sg && ITEMS[pl.sg] && ITEMS[pl.sg].type === 'weapon' ? pl.sg : (['akm', 'aug', 'mini14'][i] || 'm416');
+      const sk = pl && pl.gun && pl.gun[gid] && typeof GSKINS !== 'undefined' && GSKINS[pl.gun[gid]] && GSKINS[pl.gun[gid]].gun === gid ? pl.gun[gid] : null, att = {};
+      if (pl && pl.sg) { for (const s of ['x2', 'reddot']) if (attFits(s, gid)) { att.scope = s; break; } } else att.scope = i === 2 ? 'x4' : 'reddot';
+      rig.gunObj = buildGunMesh(gid, att, sk); rig.gunMount.add(rig.gunObj); rig.matesSkin = sk;
+      if (sk) GunSkin.draw(rig.gunObj, 0.55, null, true);
       rig.setGear(2, i === 1 ? 0 : 2, i === 2 ? 3 : 2);
       rig.root.position.set(spots[i][0], 0, spots[i][1]); rig.baseYaw = spots[i][2]; rig.ph = i * 1.7 + 0.6;
       this.scene.add(rig.root); this.mates.push(rig);
@@ -233,13 +238,13 @@ function updateDrop(c, dt, sx, sz, dive) {
   const ground = groundAt(c.pos.x, c.pos.z, c.pos.y);
   const hgt = c.pos.y - Math.max(ground, WATER_Y);
   if (c.mode === 'fall') {
-    const gm = W.big ? 2.2 : 1; // 대형 맵은 활강 거리를 늘려 먼 지역까지 닿게 한다
+    const gm = glideMul(); // 대형 맵은 활강 거리를 늘려 먼 지역까지 닿게 한다 (맵 크기 비례)
     const vy = -(34 + dive * 14), hs = (6 + dive * 16) * gm;
     c.vel.y += clamp(vy - c.vel.y, -30 * dt, 30 * dt);
     c.vel.x += clamp(sx * hs - c.vel.x, -12 * dt, 12 * dt); c.vel.z += clamp(sz * hs - c.vel.z, -12 * dt, 12 * dt);
     if (hgt < (c.isPlayer ? 95 : c.brain.chuteH)) openChute(c);
   } else if (c.mode === 'chute') {
-    const vy = -(5.2 + dive * 2.2), hs = (3.5 + Math.max(0, dive) * 6.5) * (W.big ? 2.2 : 1);
+    const vy = -(5.2 + dive * 2.2), hs = (3.5 + Math.max(0, dive) * 6.5) * glideMul();
     c.vel.y += clamp(vy - c.vel.y, -25 * dt, 25 * dt);
     c.vel.x += clamp(sx * hs - c.vel.x, -6 * dt, 6 * dt); c.vel.z += clamp(sz * hs - c.vel.z, -6 * dt, 6 * dt);
   }
@@ -254,17 +259,20 @@ function updateDrop(c, dt, sx, sz, dive) {
   }
   c.bodyYaw = c.yaw; c.root.position.copy(c.pos); c.root.rotation.y = c.bodyYaw;
 }
+// 활강 배율: 작은 맵 1 · 4km 1.5 · 8km 2.2
+function glideMul() { return W && W.big ? clamp(0.8 + HALF / 2850, 1, 2.2) : 1; }
 function openChute(c) { if (c.mode === 'fall') { c.mode = 'chute'; if (c.isPlayer) HUD.toast('낙하산 전개', 'info'); } }
 
 // 봇 착지 목표: 확산되도록 POI·외곽을 섞어 선택, 지붕이 아닌 열린 땅
 // 비행 경로에서의 수직 거리
 function planeLat(x, z) { const pl = G.plane; return Math.abs((x - pl.ax) * -pl.dz + (z - pl.az) * pl.dx); }
 // 대형 맵: 봇이 활강해서 닿을 수 있는 거리(약 400m) 안의 POI/건물만 착지 후보로 — 그 밖을 고르면 들판에 떨어져 맨손이 된다
-const BIG_DROP_LAT = 1100;
+// 8km 1100m · 4km 550m (맵 크기 비례)
+const bigDropLat = () => HALF * 0.275;
 function dropCands() {
   if (G.dropCands && G.dropCands.plane === G.plane) return G.dropCands;
-  const pois = W.pois.filter(p => planeLat(p.x, p.z) < BIG_DROP_LAT + p.r * 0.4);
-  let blds = W.buildings.filter(b => planeLat(b.x, b.z) < BIG_DROP_LAT);
+  const pois = W.pois.filter(p => planeLat(p.x, p.z) < bigDropLat() + p.r * 0.4);
+  let blds = W.buildings.filter(b => planeLat(b.x, b.z) < bigDropLat());
   // 첫 안전구역(+200m) 안 건물이 충분하면 그것만
   const nz = Zone.next, zb = nz ? blds.filter(b => Math.hypot(b.x - nz.x, b.z - nz.z) < nz.r + 200) : blds;
   if (zb.length >= 15) blds = zb;
@@ -280,10 +288,10 @@ function pickDropTarget() {
       const P = C ? C.pois : W.pois, nz = Zone.next;
       // 대형 맵: 첫 안전구역 안/근처 지역을 선호 (먼 곳에 내리면 자기장에 쫓겨 파밍을 못 한다)
       const zw = p => { if (!W.big || !nz) return 1; const o = Math.max(0, Math.hypot(p.x - nz.x, p.z - nz.z) - nz.r) / 250; return 1 / (1 + o * o); };
-      const p = weightedPick(P.map(p => [p, { city: 4, military: 3, industrial: 2.4, depot: 1.6, farm: 1.4, village: 1.6 }[p.type] * zw(p)]));
+      const p = weightedPick(P.map(p => [p, (p.dropW || { city: 4, military: 3, industrial: 2.4, depot: 1.6, farm: 1.4, village: 1.6 }[p.type] || 1.2) * zw(p)]));
       const a = Math.random() * TAU, d = Math.random() * (p.r + 25); x = p.x + Math.cos(a) * d; z = p.z + Math.sin(a) * d;
     } else { x = rnd(-HALF * 0.75, HALF * 0.75); z = rnd(-HALF * 0.75, HALF * 0.75); }
-    if (W.big && i < 50 && planeLat(x, z) > BIG_DROP_LAT + 40) continue;
+    if (W.big && i < 50 && planeLat(x, z) > bigDropLat() + 40) continue;
     if (!Nav.isFree(x, z)) continue;
     const h = heightAt(x, z); if (h < 0.8) continue;
     if (groundAt(x, z, 9999) - h > 1.0) continue; // 지붕/구조물 위 제외
@@ -310,7 +318,10 @@ async function startMatch(cfg) {
   disposeMatch();
   const sc = new THREE.Scene(); G.scene = sc;
   const t = TIMES[SETTINGS.time], Q = QUALITY[SETTINGS.quality];
-  G.sky = skyDome(t, Q.far * 0.92); sc.add(G.sky); sc.fog = new THREE.Fog(t.fog, Q.far * 0.25, Q.far);
+  // 맵별 안개 (정글: 조금 가깝고 푸르게) — 하늘 지평선 색도 안개 쪽으로 맞춰 경계가 안 보이게
+  const FG = MAPS[SETTINGS.map].fog, fogC = FG ? new THREE.Color(t.fog).lerp(new THREE.Color(FG.color), SETTINGS.time === 'day' ? 0.7 : 0.3).getHex() : t.fog;
+  G.fogK = FG ? [FG.near, FG.far] : [0.25, 1];
+  G.sky = skyDome(FG ? Object.assign({}, t, { hor: new THREE.Color(t.hor).lerp(new THREE.Color(fogC), 0.6).getHex() }) : t, Q.far * 0.92); sc.add(G.sky); sc.fog = new THREE.Fog(fogC, Q.far * G.fogK[0], Q.far * G.fogK[1]);
   const L = addLights(sc, t, SHADOW_SIZE[SETTINGS.shadows]); G.sun = L.sun; G.hemi = L.hemi; G.sunDir = new THREE.Vector3(...t.dir).normalize();
   G.renderer.shadowMap.enabled = SHADOW_SIZE[SETTINGS.shadows] > 0;
   G.camera.far = Q.far + 200; G.camera.updateProjectionMatrix();
@@ -503,6 +514,10 @@ G.update = function (dt) {
       if ((Input.consume('interact') || Input.consume('jump')) && p.mode === 'fall' && G.time - p.jumpT > 1) openChute(p);
       updateDrop(p, dt, sx, sz, clamp(mz, -1, 1));
       Audio.wind(p.mode === 'fall' ? 1 : 0.35);
+    } else if (G.frozen && !p.veh) {
+      // 대결 준비·라운드 사이: 둘러보기만 (움직이기·쏘기 없음)
+      if (!modal) { p.yaw -= Input.lookX * 0.0023 * SETTINGS.lookSens; p.pitch = clamp(p.pitch - Input.lookY * 0.0023 * SETTINGS.lookSens, -1.3, 0.8); }
+      Input.lookX = Input.lookY = 0; stepPhysics(p, dt, 0, 0, 0, false);
     } else if (!modal) { if (p.veh) updateDriving(dt); else updatePlayer(dt); }
     else { Input.lookX = Input.lookY = 0; if (p.veh) { p.veh.ctrl.throttle = 0; p.veh.ctrl.steer = 0; } else stepPhysics(p, dt, 0, 0, 0, false); }
   }
@@ -513,6 +528,7 @@ G.update = function (dt) {
     if (c.net && !c.net.mine) { Net.updateProxy(c, dt); continue; } // 다른 기기가 움직이는 캐릭터: 받은 상태 보간
     if (c.isPlayer || !c.alive) continue;
     const b = c.brain; if (!b) continue;
+    if (G.frozen && c.mode === 'ground') { stepPhysics(c, dt, 0, 0, 0, false); continue; }   // 대결 준비·라운드 사이: 봇도 멈춤
     if (c.mode === 'fall' || c.mode === 'chute') {
       if (b.followJump && p) { // 플레이어를 따라 강하
         b.dropTarget.x = p.pos.x + b.followOff[0]; b.dropTarget.z = p.pos.z + b.followOff[1];
@@ -559,7 +575,7 @@ G.update = function (dt) {
     lootCullT = 0.25;
     for (const it of GROUND) if (it.alive) { const d = Math.hypot(it.x - cam.x, it.z - cam.z); if (d < Q.near) itemMesh(it).visible = true; else if (it.mesh) it.mesh.visible = false; }
     // 대형 맵: 카메라 주변 지형 스트리밍 + 먼 구역 숨김
-    if (W.streamTerrain) { W.streamTerrain(cam.x, cam.z, Q.far + 250, 2); W.cullChunks(cam.x, cam.z, Q.far); }
+    if (W.streamTerrain) { W.streamTerrain(cam.x, cam.z, Q.far + 250, 2); W.cullChunks(cam.x, cam.z, Q.far * (G.fogK ? G.fogK[1] : 1)); }   // 안개 너머 구역은 숨김
   }
   // 줍기 대상 표시 링
   const fi = p && p.alive && p.mode === 'ground' && !p.veh ? HUD.focusItem() : null;
@@ -659,7 +675,7 @@ G.startMatch = () => { if (Party.tryStart()) return; return isDmGame(SETTINGS.ga
 G.startMatchNet = (cfg) => startMatch(cfg);
 G.applySettings = function (key) {
   const r = G.renderer, Q = QUALITY[SETTINGS.quality];
-  if (key === 'quality') { const far = G.training ? Training.viewFar() : Q.far; r.setPixelRatio(Q.pr); G.onResize(); if (G.scene && G.scene.fog) { G.scene.fog.far = far; G.scene.fog.near = far * (G.training ? 0.3 : 0.25); if (G.sky) G.sky.scale.setScalar(far / (G.sky.geometry.parameters.radius / 0.92)); } G.camera.far = far + 200; G.camera.updateProjectionMatrix(); }
+  if (key === 'quality') { const far = G.training ? Training.viewFar() : Q.far; r.setPixelRatio(Q.pr); G.onResize(); if (G.scene && G.scene.fog) { const fk = !G.training && G.fogK ? G.fogK : [G.training ? 0.3 : 0.25, 1]; G.scene.fog.far = far * fk[1]; G.scene.fog.near = far * fk[0]; if (G.sky) G.sky.scale.setScalar(far / (G.sky.geometry.parameters.radius / 0.92)); } G.camera.far = far + 200; G.camera.updateProjectionMatrix(); }
   if (key === 'shadows') {
     const s = SHADOW_SIZE[SETTINGS.shadows]; r.shadowMap.enabled = s > 0;
     for (const L of [G.sun, Lobby.lights && Lobby.lights.sun]) if (L) {

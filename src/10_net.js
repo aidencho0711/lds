@@ -27,10 +27,13 @@ const Net = (() => {
     const cfg = { v: NET_VER, mid: (Math.random() * 1e9).toString(36), host: Cloud.uid, game, dm, seed, humans,
       s: { map: SETTINGS.map, mode: SETTINGS.mode, squad: SETTINGS.squad, queue: SETTINGS.queue, time: SETTINGS.time, difficulty: SETTINGS.difficulty, bots: SETTINGS.bots } };
     if (dm) {
-      cfg.loadout = game === 'tdm' ? DM.loadout(mulberry32(seed), DM.TDM_GUNS, null) : null;
-      const roster = humans.map((hm, i) => ({ id: i, team: 0, human: true, name: hm.name, look: hm.look, uid: hm.uid }));
-      const nm = shuffled(BOT_NAMES, mulberry32(seed ^ 0x5bd1e995));
-      for (let i = humans.length; i < DM_RULES.teamSize * 2; i++) roster.push({ id: i, team: i < DM_RULES.teamSize ? 0 : 1, name: nm[i % nm.length] });
+      const duel = isDuel(game), ts = dmTeamSize(game);
+      cfg.loadout = game === 'tdm' || duel ? DM.loadout(mulberry32(seed), DM.TDM_GUNS, null) : null;
+      // 데스매치: 파티원은 모두 같은 팀(블루) · 대결: 파티원을 번갈아 양 팀으로 (1대1 = 서로 상대)
+      const roster = humans.map((hm, i) => ({ id: i, team: duel ? i % 2 : 0, human: true, name: hm.name, look: hm.look, uid: hm.uid }));
+      const nm = shuffled(BOT_NAMES, mulberry32(seed ^ 0x5bd1e995)), cnt = [0, 0]; for (const r of roster) cnt[r.team]++;
+      let id = humans.length;
+      for (const t of [0, 1]) while (cnt[t] < ts) { roster.push({ id, team: t, name: nm[id % nm.length] }); id++; cnt[t]++; }
       cfg.roster = roster;
     } else {
       cfg.ranked = SETTINGS.queue === 'ranked' && Rank.unlocked();
@@ -194,6 +197,7 @@ const Net = (() => {
       case 'zone': applyZone(e.z); break;
       case 'air': if (!N.host) Airdrop.launch(e.x, e.z, e.a, true); break;
       case 'score': if (G.dm) DM.applyScore(e.sc, e.over, e.win, e.t); break;
+      case 'duel': if (G.dm) DM.applyDuel(e); break;   // 대결 라운드 진행 (방장이 정함)
       case 'loot': recvLoot(e); break;
       case 'lootReq': if (N.host) sendLoot(N.peers.get(from)); break;
       case 'vehs': recvVehs(e); break;

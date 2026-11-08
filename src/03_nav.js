@@ -112,7 +112,7 @@ const Nav = (() => {
     }
     // 다리: 근사 격자에서 강을 막힌 벽으로 보지 않도록 다리 상판 아래 칸을 연다
     if (!exact) for (const br of world.bridges || []) {
-      const along = br.rot === 1 ? [1, 0] : [0, 1];
+      const along = br.dir || (br.rot === 1 ? [1, 0] : [0, 1]);   // v2 다리는 도로 방향(dir)
       for (let s = -br.L / 2 - CS; s <= br.L / 2 + CS; s += CS / 2) {
         const x = br.cx + along[0] * s, z = br.cz + along[1] * s;
         const i = clamp(Math.floor((x + HALF) / CS), 0, CN - 1), j = clamp(Math.floor((z + HALF) / CS), 0, CN - 1);

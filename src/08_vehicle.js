@@ -99,7 +99,7 @@ const Veh = (() => {
     return false;
   }
   function spawnAll() {
-    const big = !!W.big, total = big ? 170 : 14;
+    const big = !!W.big, MP = MAPS[W.mapId] || {}, total = MP.veh || (big ? 170 : 14);
     const rnd01 = Math.random;
     const roadT = () => weightedPick([['sedan', 30], ['pickup', 25], ['uaz', 12], ['moto', 20]]);
     let placed = 0, tries = 0;
@@ -107,8 +107,8 @@ const Veh = (() => {
     // 1) 군사기지: UAZ
     for (const p of W.pois.filter((p) => p.type === 'military')) for (let k = 0, n = 0; k < 30 && n < (big ? 4 : 2); k++) { const a = rnd01() * TAU, d = rnd01() * p.r * 0.8; if (tryPut('uaz', p.x + Math.cos(a) * d, p.z + Math.sin(a) * d, rnd01() * TAU)) n++; }
     // 2) 농장·마을: 말
-    const rural = W.pois.filter((p) => p.type === 'farm' || p.type === 'village');
-    const horses = big ? 34 : 3;
+    const rural = W.pois.filter((p) => p.type === 'farm' || p.type === 'village' || p.type === 'hamlet');
+    const horses = MP.horses || (big ? 34 : 3);
     for (let k = 0, n = 0; k < horses * 25 && n < horses && rural.length; k++) { const p = pick(rural), a = rnd01() * TAU, d = p.r * (0.6 + rnd01() * 0.8); if (tryPut('horse', p.x + Math.cos(a) * d, p.z + Math.sin(a) * d, rnd01() * TAU)) n++; }
     // 3) 도시 주차장
     for (const pk of W.parking) { if (rnd01() < 0.6) tryPut(rnd01() < 0.6 ? 'sedan' : 'pickup', pk[0] + rnd01() * 4 - 2, pk[1] + rnd01() * 4 - 2, rnd01() < 0.5 ? 0 : Math.PI / 2); }
@@ -163,7 +163,7 @@ const Veh = (() => {
     const T = v.T, C = v.ctrl;
     let fx = Math.sin(v.yaw), fz = Math.cos(v.yaw), rx = Math.cos(v.yaw), rz = -Math.sin(v.yaw);
     let f = v.vx * fx + v.vz * fz, l = v.vx * rx + v.vz * rz;
-    const sfc = surfaceAt(v.pos.x, v.pos.z), road = v.onBox || sfc === 4 || sfc === 5;
+    const sfc = surfaceAt(v.pos.x, v.pos.z), road = v.onBox || sfc === 4 || sfc === 5 || sfc === 11;   // 11: 정글 흙길(포장 도로와 같은 접지)
     let sf = road ? 1 : sfc === 3 ? T.off * 0.82 : sfc === 2 ? T.off * 0.9 : T.off;
     if (v.depth > 0.2) sf *= clamp(1 - v.depth / (T.wade * 1.25), 0.2, 1);
     const burning = v.burnT > 0 && !T.animal;

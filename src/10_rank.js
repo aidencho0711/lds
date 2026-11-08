@@ -45,7 +45,7 @@ const Rank = (() => {
     if (!placed()) return pick(['easy', 'normal', 'normal', 'hard']);
     const m = MIX[tierOf(S.rp).t]; return weightedPick([['easy', m[0]], ['normal', m[1]], ['hard', m[2]]]);
   }
-  function botCount(mapId) { return MAPS[mapId] && MAPS[mapId].big ? 99 : 40; }
+  function botCount(mapId) { return MAPS[mapId] && MAPS[mapId].big ? mapMaxBots(mapId) : 40; }
   // 경기 결과 반영 → 결과 화면용 요약
   function apply(r) {
     S.games++; if (r.win) S.wins++;

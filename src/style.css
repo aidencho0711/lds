@@ -729,6 +729,11 @@ body.touch .dnum { font-size: 1rem; } body.touch .dnum.head { font-size: 1.15rem
 #dmRespawn span { font-size: 0.8rem; color: var(--dim); } #dmRespawn b { font-family: var(--f-display); font-size: 2.6rem; line-height: 1; color: var(--amber); } #dmRespawn small { font-size: 0.72rem; color: var(--dim); }
 #dmProt { position: absolute; left: 50%; top: calc(50% + 46px); transform: translateX(-50%); padding: 3px 10px; border-radius: 3px; background: rgba(80, 160, 230, 0.28); border: 1px solid rgba(140, 196, 255, 0.6); color: #cfe6ff; font-size: 0.78rem; pointer-events: none; z-index: 6; }
 #dmProt[hidden] { display: none; }
+/* v20 대결: 라운드 시작·승패 큰 글씨 */
+#duelBanner { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%) scale(var(--hud-s)); padding: 10px 28px; border-radius: 6px; background: rgba(10, 13, 15, 0.62); color: #f3efe6; font-family: var(--f-display); font-size: 1.5rem; letter-spacing: 0.04em; white-space: nowrap; pointer-events: none; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); }
+#duelBanner[hidden] { display: none; }
+#duelBanner.go { color: #ffd166; } #duelBanner.win { color: #7fe3a0; } #duelBanner.lose { color: #ff7a6b; } #duelBanner.draw { color: #c9d1d9; }
+body.touch #duelBanner { font-size: 1.15rem; top: 26%; }
 body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel .tord, body.dm #hbBag { display: none !important; }
 .game-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 4px; }
 .game-opt { appearance: none; text-align: left; border: 1px solid var(--line-2); background: rgba(255, 255, 255, 0.04); color: var(--sand); border-radius: 5px; padding: 10px 12px; cursor: pointer; font: inherit; display: flex; flex-direction: column; gap: 3px; }

@@ -209,7 +209,7 @@ function populateLoot(scene) {
   }
   // 골드 탄피 주머니: 작은 맵 8개 · 대형 맵 48개 (훈련장·데스매치 맵에는 없음)
   if (W.lootSpots.length && !(MAPS[SETTINGS.map] && (MAPS[SETTINGS.map].training || MAPS[SETTINGS.map].arena))) {
-    const n = W.big ? 48 : 8, AMT = { low: [10, 16], mid: [14, 22], high: [20, 30], top: [26, 40] };
+    const n = MAPS[SETTINGS.map].gold || (W.big ? 48 : 8), AMT = { low: [10, 16], mid: [14, 22], high: [20, 30], top: [26, 40] };
     for (let i = 0; i < n; i++) { const s = W.lootSpots[Math.floor(Math.random() * W.lootSpots.length)], A = AMT[s.tier] || AMT.mid; spawnItem(scene, 'gold', Math.round(rnd(A[0], A[1])), s.x + rnd(-0.3, 0.3), s.y, s.z + rnd(-0.3, 0.3)); }
   }
 }

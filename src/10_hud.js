@@ -431,7 +431,14 @@ const HUD = (() => {
     if (G.marker) { const [mx, my] = toPx(G.marker.x, G.marker.z); ctx.fillStyle = '#f0a43a'; ctx.beginPath(); ctx.moveTo(mx, my); ctx.arc(mx, my - 9, 5, Math.PI * 0.8, Math.PI * 0.2); ctx.closePath(); ctx.fill(); }
     if (opts.labels) {
       ctx.font = `600 ${Math.round(S / 52)}px 'IBM Plex Sans KR', sans-serif`; ctx.textAlign = 'center';
-      for (const poi of W.pois) { const [lx, ly] = toPx(poi.x, poi.z); ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(poi.name, lx + 1, ly + 1); ctx.fillStyle = '#f2ecd8'; ctx.fillText(poi.name, lx, ly); }
+      // 길가 마을·주유소(minor)는 확대했을 때만 (2km 이하가 보일 때) — 전체 지도에서는 글자가 겹친다
+      const showMinor = (opts.span || SIZE) <= 2100;
+      for (const poi of W.pois) {
+        if (poi.minor && !showMinor) continue;
+        const [lx, ly] = toPx(poi.x, poi.z); if (lx < -60 || ly < -20 || lx > S + 60 || ly > S + 20) continue;
+        if (poi.minor) { ctx.save(); ctx.font = `500 ${Math.round(S / 66)}px 'IBM Plex Sans KR', sans-serif`; ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillText(poi.name, lx + 1, ly + 1); ctx.fillStyle = '#d9d3bf'; ctx.fillText(poi.name, lx, ly); ctx.restore(); continue; }
+        ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText(poi.name, lx + 1, ly + 1); ctx.fillStyle = '#f2ecd8'; ctx.fillText(poi.name, lx, ly);
+      }
       // 격자: 8×8 구역(A~H, 1~8) + 확대하면 100m/500m 보조선
       const span = opts.span || SIZE, cell = SIZE / 8, sub = span <= 1400 ? 100 : span <= 3200 ? 500 : 0;
       if (sub && sub < cell) {
@@ -507,7 +514,7 @@ const HUD = (() => {
   }
   // ---------- 전체 지도: 확대(휠·두 손가락·버튼)와 끌어서 이동 ----------
   const MV = { z: 1, cx: 0, cz: 0 };
-  const mapMaxZ = () => (W && W.big ? 24 : 6);
+  const mapMaxZ = () => (W ? Math.max(6, Math.round(SIZE / 333)) : 6);   // 8km 24배 · 4km 12배 · 작은 맵 6배
   function clampView() { const h = SIZE / 2 / MV.z; MV.cx = clamp(MV.cx, -HALF + h, HALF - h); MV.cz = clamp(MV.cz, -HALF + h, HALF - h); }
   function viewToWorld(fx, fy) { const span = SIZE / MV.z; return [MV.cx + (fx - 0.5) * span, MV.cz + (fy - 0.5) * span]; } // fx,fy: 지도 안 비율(0~1)
   function zoomAt(f, fx, fy) {
@@ -899,8 +906,7 @@ const HUD = (() => {
     if (t === 'custom') { if (prev !== t) renderWarehouse(); showcase(); }   // 뽑기로 얻은 옷이 바로 보이게
   }
   const ringSet = (id, f) => { $(id).style.strokeDashoffset = (100.5 * (1 - clamp(f, 0, 1))).toFixed(1); };
-  const mapSize = (k) => MAPS[k].big ? '8×8km' : `${(HALF0 * 2 / 1000).toFixed(1)}×${(HALF0 * 2 / 1000).toFixed(1)}km`;
-  const HALF0 = 350;
+  const mapSize = (k) => mapKm(k);
   function renderLobby() {
     const L = levelFromXp(STATS.xp);
     $('lvBadge').textContent = L.lv; $('lvNum').textContent = L.lv; $('xpBar').style.width = (L.cur / L.need * 100) + '%';
@@ -956,11 +962,19 @@ const HUD = (() => {
     }
     const partyN = lock ? lock.size : 1;
     $('segDiff').parentElement.classList.toggle('locked', ranked); $('fldBots').classList.toggle('locked', ranked || dm); $('segSquad').parentElement.classList.toggle('locked', dm || (ranked && partyN < 2)); $('segMode').parentElement.classList.toggle('locked', dm);
-    const TS = dm ? DM_RULES.teamSize : ranked && partyN < 2 ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
+    const duel = isDuel(SETTINGS.game), DTS = dmTeamSize(SETTINGS.game);
+    const TS = dm ? DTS : ranked && partyN < 2 ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
     if (Lobby.setTeam) { const pm = lock ? Party.members() : null; Lobby.setTeam(pm ? pm.length : dm ? 1 : TS, pm ? pm.filter((m) => m.uid !== Cloud.uid).map((m) => m.look || {}) : null); }
-    const sqName = dm ? '4 대 4' : ranked && partyN < 2 ? '솔로' : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).name;
+    const sqName = dm ? `${DTS} 대 ${DTS}` : ranked && partyN < 2 ? '솔로' : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).name;
     $('cfgNote').hidden = !(ranked || dm);
-    if (dm) $('cfgNote').textContent = `${GT.name}: 4 대 4 고정(빈자리는 봇) · 먼저 ${DM_RULES.killTarget}킬 · 최대 ${DM_RULES.timeLimit / 60}분 · 봇 난이도·시간대·시점만 적용`;
+    if (duel) {
+      // 대결: 파티원은 번갈아 양 팀으로 (방장이 블루) — 미리 보여 줌
+      const pm = lock ? Party.members() : null, team = [[], []];
+      if (pm) pm.forEach((m, i) => team[i % 2].push(m.uid === Cloud.uid ? '나' : m.name));
+      const fill = (t) => team[t].concat(Array(Math.max(0, DTS - team[t].length)).fill('봇')).join(' · ');
+      $('cfgNote').textContent = `${GT.name}: ${pm ? `블루 [${fill(0)}] vs 레드 [${fill(1)}]` : `나${DTS > 1 ? ' · 봇' : ''} vs 봇 ${DTS}명 (친구를 파티에 초대하면 상대 팀으로)`} · 먼저 ${DUEL_RULES.win}라운드 · 라운드 ${DUEL_RULES.round}초 · 라운드마다 모두 같은 무작위 총` +
+        (pm && pm.length > DTS * 2 ? ` · ⚠ ${DTS * 2}명까지 가능 (지금 ${pm.length}명)` : '');
+    } else if (dm) $('cfgNote').textContent = `${GT.name}: 4 대 4 고정(빈자리는 봇) · 먼저 ${DM_RULES.killTarget}킬 · 최대 ${DM_RULES.timeLimit / 60}분 · 봇 난이도·시간대·시점만 적용`;
     else if (ranked) $('cfgNote').textContent = `랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 고정 · 봇 난이도는 ${Rank.placed() ? '현재 티어' : '배치고사 기준(혼합)'}에 맞춰 자동 설정`;
     // 랭크 카드 (랭크 대기열에서만)
     const rs = Rank.status(), rc0 = $('rankCard');
@@ -973,8 +987,8 @@ const HUD = (() => {
     const viewKo = SETTINGS.view === 'fpp' ? '1인칭' : '3인칭';
     if (dm) {
       $('mcImg').style.backgroundImage = `url(${LOBBY_ART.arena || LOBBY_ART.kalden})`;
-      $('mcTop').textContent = `${GT.name} · 4 대 4 · ${viewKo}`; $('mcName').textContent = MAPS.arena.name;
-      $('mcTime').textContent = `최대 ${DM_RULES.timeLimit / 60}분`; $('mcPlayers').textContent = '8명 · 2팀'; $('mcWarn').hidden = true;
+      $('mcTop').textContent = `${GT.name} · ${DTS} 대 ${DTS} · ${viewKo}`; $('mcName').textContent = MAPS.arena.name;
+      $('mcTime').textContent = duel ? `먼저 ${DUEL_RULES.win}라운드 · 라운드 ${DUEL_RULES.round}초` : `최대 ${DM_RULES.timeLimit / 60}분`; $('mcPlayers').textContent = `${DTS * 2}명 · 2팀`; $('mcWarn').hidden = true;
     } else {
       $('mcImg').style.backgroundImage = `url(${LOBBY_ART[SETTINGS.map]})`;
       $('mcTop').textContent = `${ranked ? '랭크 · ' + sqName : sqName} · ${viewKo} · ${MODES[SETTINGS.mode].name}`;
@@ -1000,8 +1014,8 @@ const HUD = (() => {
       if (M.training) continue; // 훈련장은 로비의 별도 버튼
       if (!!M.arena !== dm) continue; // 데스매치는 전용 맵 하나
       const on = dm || k === SETTINGS.map, b = h('button', 'map-opt' + (on ? ' on' : '') + (dm ? ' fixed' : '')); b.type = 'button';
-      const im = h('div', 'mo-img'); im.style.backgroundImage = `url(${LOBBY_ART[k] || LOBBY_ART.kalden})`; im.appendChild(h('em', M.big ? 'big' : '', M.big ? '8×8km · 렉 주의' : M.arena ? '72×72m' : mapSize(k)));
-      const tx = h('div', 'mo-txt'); tx.appendChild(h('b', '', M.name.replace(/\s*\(.*\)$/, ''))); tx.appendChild(h('span', '', M.desc)); tx.appendChild(h('span', '', M.arena ? '팀 데스매치·웨폰 데스매치 전용' : `봇 최대 ${mapMaxBots(k)}명`));
+      const im = h('div', 'mo-img'); im.style.backgroundImage = `url(${LOBBY_ART[k] || LOBBY_ART.kalden})`; im.appendChild(h('em', M.big ? 'big' : '', M.big ? `${mapSize(k)} · 렉 주의` : M.arena ? '72×72m' : mapSize(k)));
+      const tx = h('div', 'mo-txt'); tx.appendChild(h('b', '', M.name.replace(/\s*\(.*\)$/, ''))); tx.appendChild(h('span', '', M.desc)); tx.appendChild(h('span', '', M.arena ? '데스매치·대결 전용' : `봇 최대 ${mapMaxBots(k)}명`));
       b.appendChild(im); b.appendChild(tx);
       if (!dm) b.addEventListener('click', () => {
         if (lock && !lock.leader) { showLobbyNote('모드와 맵은 방장만 바꿀 수 있습니다'); return; }
@@ -1011,10 +1025,10 @@ const HUD = (() => {
       mg.appendChild(b);
     }
     $('mapWarn').hidden = dm || !MP.big;
-    if (!dm && MP.big) $('mapWarn').textContent = `⚠ 대형 맵(8×8km)은 기기 성능에 따라 렉이 걸릴 수 있습니다. 로딩에 수십 초가 걸리고 메모리를 많이 씁니다(휴대폰은 경기 설정에서 봇 수를 줄이는 것을 권장). 봇 최대 ${maxB}명 · 차량 170대 · 한 판 약 ${mins}분.`;
+    if (!dm && MP.big) $('mapWarn').textContent = `⚠ 대형 맵(${mapSize(SETTINGS.map)})은 기기 성능에 따라 렉이 걸릴 수 있습니다. 로딩에 ${MP.half >= 4000 ? '수십 초' : '십여 초'}가 걸리고 메모리를 많이 씁니다(휴대폰은 경기 설정에서 봇 수를 줄이는 것을 권장). 봇 최대 ${maxB}명 · 차량 ${MP.veh || 170}대 · 한 판 약 ${mins}분.`;
     // 출격 버튼 · 요약
     const humans = Math.min(partyN, TS), mateBots = Math.max(0, Math.min(TS, total) - humans);
-    if (dm) $('matchBrief').textContent = `${GT.name} · ${MAPS.arena.name} · ${TIMES_KO[SETTINGS.time] || ''} · 4 대 4 (${partyN > 1 ? `파티 ${partyN}명 + ` : ''}봇 ${8 - partyN}명, ${DIFFICULTY_NAMES[SETTINGS.difficulty]}) · 목표: 먼저 ${DM_RULES.killTarget}킬 (최대 ${DM_RULES.timeLimit / 60}분)`;
+    if (dm) { const dts = dmTeamSize(SETTINGS.game), dg = isDuel(SETTINGS.game); $('matchBrief').textContent = `${GT.name} · ${MAPS.arena.name} · ${TIMES_KO[SETTINGS.time] || ''} · ${dts} 대 ${dts} (${partyN > 1 ? `파티 ${partyN}명 + ` : ''}봇 ${Math.max(0, dts * 2 - partyN)}명, ${DIFFICULTY_NAMES[SETTINGS.difficulty]}) · 목표: ${dg ? `먼저 ${DUEL_RULES.win}라운드 (라운드 ${DUEL_RULES.round}초)` : `먼저 ${DM_RULES.killTarget}킬 (최대 ${DM_RULES.timeLimit / 60}분)`}`; }
     else $('matchBrief').textContent = `${ranked ? '랭크전 · ' : ''}${MAPS[SETTINGS.map].name} · ${MODES[SETTINGS.mode].name} · ${TIMES_KO[SETTINGS.time] || ''} · 봇 ${nb}명(${ranked ? '자동' : DIFFICULTY_NAMES[SETTINGS.difficulty]}) · ${TS > 1 ? `${sqName}(${TS}인 팀 · ${partyN > 1 ? `파티 ${humans}명` : '나'}${mateBots ? ` + 봇 ${mateBots}명` : ''}) · 목표: ${nTeams}팀 중 최후의 팀` : `목표: ${total}명 중 최후의 1인`}`;
     $('playBtn').classList.toggle('ranked', ranked); $('playBtn').querySelector('span').textContent = ranked ? '랭크 출격' : '출격';
     $('playSub').textContent = dm ? `${GT.name} · ${MAPS.arena.name}` : ranked ? `${MAPS[SETTINGS.map].name} · ${rs.label}` : `${sqName} · ${MAPS[SETTINGS.map].name} · ${DIFFICULTY_NAMES[SETTINGS.difficulty]}`;
