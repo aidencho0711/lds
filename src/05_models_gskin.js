@@ -1,8 +1,9 @@
 // ============================================================
 // 05_models_gskin.js — 총기 스킨 (v17)
 //  · 목록 GSKINS: 총 · 상자(총기 상자 g1 아스널 · g2 네온 / 옷 상자 br·sp·sup에 2개씩) · 레어도
-//    등급이 높을수록 화려하게: 희귀 = 단색 도장 → 초희귀 = 무늬(위장·체크·홀로) → 슈퍼레어 = 금속 광택·빛나는 선
-//    → 울트라레어(빨강) = 움직이는 빛 + 사격·꺼내기·넣기 효과
+//    등급이 높을수록 화려하게: 희귀 = 단색 도장 → 초희귀 = 무늬(위장·체크·홀로) → 슈퍼레어 = 금속 광택·빛나는 선 + 약한 효과(lite)
+//    → 울트라레어(빨강) = 움직이는 빛 + 사격·꺼내기·넣기·맞힘·처치 효과 + 꺼내면 돋아나는 부속품(05_models_gparts.js, v20)
+//  · 슈퍼레어 lite: 스킨 색 작은 섬광·조각 몇 개(사격·맞힘), 작은 고리(처치). 몸체 빛·탄도 색·휘장·꺼내기 효과는 울트라레어만
 //  · 재질: 합친 지오메트리의 정점마다 재질 종류(kd: 플라스틱·나무·무광 금속·광택 금속…)를 남겨 두고(05_models.js)
 //    셰이더가 종류별로 스킨 색·무늬·금속감을 고른다. 무늬는 물체 공간 3방향 투영(삼평면) → 부품 UV와 무관하게 크기가 같다
 //  · 총 인스턴스마다 재질을 따로 만든다(프로그램은 공유) → 내 총만 번쩍이고, 1인칭·3인칭 총이 따로 사라지고 나타난다
@@ -20,13 +21,19 @@ const GSKINS = (() => {
     g1_m416_digi: { gun: 'm416', box: 'g1', rar: 3, name: '디지털 사막', pat: 'digital', pal: ['#b39e78', '#8f7a55', '#d1bf98', '#6a5a40'], sc: 4.5, body: { p: 1, mr: [0.12, 0.72] } },
     g1_kar98k_tiger: { gun: 'kar98k', box: 'g1', rar: 3, name: '타이거 스트라이프', pat: 'tiger', pal: ['#7d7a52', '#232319', '#4e4c2c', '#9a9468'], sc: 3.6, furn: { p: 1, mr: [0, 0.65] } },
     g1_dp28_snow: { gun: 'dp28', box: 'g1', rar: 3, name: '설원', pat: 'camo', pal: ['#e4e8eb', '#b9bfc4', '#8b9298', '#f7f9fa'], sc: 3.5, body: { p: 1, mr: [0.1, 0.62] }, furn: { p: 1, mr: [0, 0.66] } },
-    g1_akm_gold: { gun: 'akm', box: 'g1', rar: 4, name: '황금 각인', pat: 'engrave', pal: ['#c8962f', '#f3d77e', '#7a5414', '#4a3008'], sc: 4, env: 1.0, body: { p: 1, mr: [1, 0.26] }, furn: { c: 0x17110e, mr: [0.15, 0.32] }, steel: { c: 0xe2bd58, mr: [1, 0.22] } },
+    g1_akm_gold: { gun: 'akm', box: 'g1', rar: 4, name: '황금 각인', pat: 'engrave', pal: ['#c8962f', '#f3d77e', '#7a5414', '#4a3008'], sc: 4, env: 1.0, body: { p: 1, mr: [1, 0.26] }, furn: { c: 0x17110e, mr: [0.15, 0.32] }, steel: { c: 0xe2bd58, mr: [1, 0.22] },
+      lite: { kind: 'spark', c: 0xffc94a, c2: 0xfff1b8, lite: 1 } },
     g1_m24_carbon: { gun: 'm24', box: 'g1', rar: 4, name: '카본 블랙', pat: 'carbon', pal: ['#0c0d10', '#4c525c', '#1a1c21'], sc: 7, env: 0.9, body: { p: 1, mr: [0.35, 0.3] }, furn: { p: 1, mr: [0.35, 0.3] }, steel: { c: 0xd8b04a, mr: [1, 0.24] },
-      glow: { pat: 'lines', c: 0xffa63a, k: 1.4, anim: 0 } },
+      glow: { pat: 'lines', c: 0xffa63a, k: 1.4, anim: 0 }, lite: { kind: 'ember', c: 0xffa63a, c2: 0xffdc96, lite: 1 } },
     g1_m416_magma: { gun: 'm416', box: 'g1', rar: 5, name: '마그마 코어', pat: 'lava', pal: ['#17110f', '#3a2620', '#ff6a1e'], sc: 3.2, env: 0.5, body: { p: 1, mr: [0.25, 0.62] }, steel: { c: 0x2a2220, mr: [0.8, 0.45] },
-      glow: { pat: 'lava', c: 0xff5414, k: 2.8, anim: 2 }, fx: { kind: 'ember', c: 0xff5a1e, c2: 0xffc04a, tr: 0xff6a2a }, desc: '갈라진 틈으로 용암이 흐르는 몸체 · 쏠 때 불씨' },
+      glow: { pat: 'lava', c: 0xff5414, k: 2.8, anim: 2 }, fx: { kind: 'ember', c: 0xff5a1e, c2: 0xffc04a, tr: 0xff6a2a },
+      parts: 'magma', en: 0xff6a1e, enK: 2.6, enAnim: 2, desc: '갈라진 틈으로 용암이 흐르는 몸체 · 꺼내면 용암 바위 장갑이 돋음 · 쏠 때 불씨' },
     g1_beryl_dragon: { gun: 'beryl', box: 'g1', rar: 5, name: '홍룡', pat: 'scales', pal: ['#4a080d', '#a51c25', '#d9b04c', '#1c0306'], sc: 3.4, env: 0.85, body: { p: 1, mr: [0.65, 0.32] }, furn: { p: 1, mr: [0.65, 0.32] }, steel: { c: 0xe6c25a, mr: [1, 0.22] },
-      glow: { pat: 'scales', c: 0xff3a1a, k: 1.25, anim: 1 }, fx: { kind: 'flame', c: 0xff3a1a, c2: 0xffc24a, tr: 0xff4a22 }, desc: '금테 붉은 비늘이 숨 쉬듯 빛남 · 쏠 때 불꽃' },
+      glow: { pat: 'scales', c: 0xff3a1a, k: 1.25, anim: 1 }, fx: { kind: 'flame', c: 0xff3a1a, c2: 0xffc24a, tr: 0xff4a22 },
+      parts: 'dragon', en: 0xff3a1a, enK: 2.4, enAnim: 1, desc: '금테 붉은 비늘이 숨 쉬듯 빛남 · 꺼내면 금빛 뿔·날개가 펼쳐짐 · 쏠 때 불꽃' },
+    g1_awm_frost: { gun: 'awm', box: 'g1', rar: 5, name: '서리 결정', pat: 'digital', pal: ['#9fc3dc', '#6f95b4', '#c9e1f0', '#4d6f8c'], sc: 4.2, env: 1.0, body: { p: 1, mr: [0.55, 0.3] }, furn: { p: 1, mr: [0.35, 0.34] }, steel: { c: 0xbfe6ff, mr: [1, 0.16] },
+      glow: { pat: 'veins', c: 0x6fdcff, k: 1.7, anim: 1 }, fx: { kind: 'frost', c: 0x7fe4ff, c2: 0xeafcff, tr: 0x9be9ff },
+      parts: 'frost', en: 0x7fe4ff, enK: 2.6, enAnim: 1, desc: '얼음 금이 간 서릿빛 몸체 · 꺼내면 얼음 결정이 돋음 · 쏠 때 얼음 파편' },
     // ---------- 네온 상자 (g2): 사이버·스트리트 테마 ----------
     g2_vk9_mint: { gun: 'vk9', box: 'g2', rar: 1, name: '민트 팝', body: { c: 0x74d6b9, mr: [0.08, 0.5] } },
     g2_deagle_pink: { gun: 'deagle', box: 'g2', rar: 1, name: '핑크 크롬', env: 1.0, body: { c: 0x232227, mr: [0.3, 0.5] }, steel: { c: 0xff9ccc, mr: [0.55, 0.28] } },
@@ -35,12 +42,17 @@ const GSKINS = (() => {
     g2_vector_graffiti: { gun: 'vector', box: 'g2', rar: 3, name: '그래피티', pat: 'graffiti', pal: ['#ecebe4', '#ff3d8b', '#2ad4ff', '#ffd23f', '#16181c'], sc: 3, body: { p: 1, mr: [0.05, 0.55] } },
     g2_aug_holo: { gun: 'aug', box: 'g2', rar: 3, name: '홀로그램', pat: 'holo', sc: 2.4, env: 1.1, body: { p: 1, mr: [0.85, 0.2] } },
     g2_s686_checker: { gun: 's686', box: 'g2', rar: 3, name: '레이싱 체커', pat: 'checker', pal: ['#f2f2ee', '#141416'], sc: 7, body: { c: 0xc61e26, mr: [0.4, 0.38] }, furn: { p: 1, mr: [0.05, 0.42] } },
-    g2_m416_circuit: { gun: 'm416', box: 'g2', rar: 4, name: '사이버 회로', env: 0.8, body: { c: 0x15181d, mr: [0.45, 0.38] }, glow: { pat: 'circuit', c: 0x2ae8ff, k: 1.6, anim: 0 }, sc: 2.6 },
-    g2_kar98k_wave: { gun: 'kar98k', box: 'g2', rar: 4, name: '네온 웨이브', env: 0.7, body: { c: 0x101015, mr: [0.4, 0.4] }, furn: { c: 0x1c1424, mr: [0.1, 0.38] }, glow: { pat: 'wave', c: 0xff3df0, k: 1.7, anim: 0 }, sc: 3 },
+    g2_m416_circuit: { gun: 'm416', box: 'g2', rar: 4, name: '사이버 회로', env: 0.8, body: { c: 0x15181d, mr: [0.45, 0.38] }, glow: { pat: 'circuit', c: 0x2ae8ff, k: 1.6, anim: 0 }, sc: 2.6, lite: { kind: 'glitch', c: 0x2ae8ff, c2: 0xb8fbff, lite: 1 } },
+    g2_kar98k_wave: { gun: 'kar98k', box: 'g2', rar: 4, name: '네온 웨이브', env: 0.7, body: { c: 0x101015, mr: [0.4, 0.4] }, furn: { c: 0x1c1424, mr: [0.1, 0.38] }, glow: { pat: 'wave', c: 0xff3df0, k: 1.7, anim: 0 }, sc: 3, lite: { kind: 'spark', c: 0xff3df0, c2: 0xffc2f8, lite: 1 } },
     g2_akm_plasma: { gun: 'akm', box: 'g2', rar: 5, name: '플라즈마', pat: 'camo', pal: ['#140709', '#2a0b12', '#0c0507', '#3a0d18'], sc: 3, env: 0.7, body: { p: 1, mr: [0.55, 0.35] }, furn: { p: 1, mr: [0.3, 0.38] }, steel: { c: 0x2a1418, mr: [0.9, 0.3] },
-      glow: { pat: 'veins', c: 0xff2448, k: 2.6, anim: 2 }, fx: { kind: 'spark', c: 0xff2a5a, c2: 0xffc8d8, tr: 0xff3a66 }, desc: '검붉은 몸체에 번개 같은 혈관이 흐름 · 쏠 때 전기 스파크' },
+      glow: { pat: 'veins', c: 0xff2448, k: 2.6, anim: 2 }, fx: { kind: 'spark', c: 0xff2a5a, c2: 0xffc8d8, tr: 0xff3a66 },
+      parts: 'plasma', en: 0xff2a5a, enK: 2.8, enAnim: 2, desc: '검붉은 몸체에 번개 같은 혈관이 흐름 · 꺼내면 총열에 코일이 감김 · 쏠 때 전기 스파크' },
     g2_vector_glitch: { gun: 'vector', box: 'g2', rar: 5, name: '크림슨 글리치', pat: 'glitch', pal: ['#1a0a0d', '#3d0d14', '#0d0d10', '#6e1420', '#262629'], sc: 3.4, env: 0.6, body: { p: 1, mr: [0.3, 0.42] }, steel: { c: 0x1d1d22, mr: [0.8, 0.35] },
-      glow: { pat: 'glitch', c: 0xff2436, k: 2.4, anim: 3 }, fx: { kind: 'glitch', c: 0xff2436, c2: 0x3ff0ff, tr: 0xff3046 }, desc: '화면이 깨지듯 깜빡이는 붉은 블록 · 쏠 때 디지털 파편' },
+      glow: { pat: 'glitch', c: 0xff2436, k: 2.4, anim: 3 }, fx: { kind: 'glitch', c: 0xff2436, c2: 0x3ff0ff, tr: 0xff3046 },
+      parts: 'glitch', en: 0xff2436, enK: 2.4, enAnim: 3, desc: '화면이 깨지듯 깜빡이는 붉은 블록 · 꺼내면 몸체 둘레에 블록이 떠오름 · 쏠 때 디지털 파편' },
+    g2_s12k_void: { gun: 's12k', box: 'g2', rar: 5, name: '공허', pat: 'camo', pal: ['#0d0714', '#1b0e29', '#08050d', '#2b1442'], sc: 3.2, env: 0.7, body: { p: 1, mr: [0.45, 0.32] }, furn: { p: 1, mr: [0.3, 0.4] }, steel: { c: 0x1a1024, mr: [0.9, 0.26] },
+      glow: { pat: 'wave', c: 0xa64bff, k: 2.2, anim: 2 }, fx: { kind: 'void', c: 0xa64bff, c2: 0xe6c8ff, tr: 0xb45cff },
+      parts: 'void', en: 0xb04aff, enK: 2.8, enAnim: 2, desc: '보랏빛 물결이 일렁이는 칠흑 몸체 · 꺼내면 총열 둘레에 고리가 돎 · 쏠 때 빨려 드는 빛' },
     // ---------- 옷 상자에 2개씩 ----------
     br_s686_hunter: { gun: 's686', box: 'br', rar: 1, name: '사냥꾼', body: { c: 0x3b3e33, mr: [0.45, 0.45] }, furn: { c: 0x7a4626, mr: [0, 0.5] } },
     br_mini14_wood: { gun: 'mini14', box: 'br', rar: 3, name: '산림 위장', pat: 'camo', pal: ['#4e5636', '#3b4129', '#6a6a44', '#2b2b22'], sc: 3.5, body: { p: 1, mr: [0.1, 0.7] }, furn: { p: 1, mr: [0, 0.72] } },
@@ -261,6 +273,7 @@ uniform vec3 uBodyCol; uniform vec3 uFurnCol; uniform vec3 uSteelCol; uniform ve
 uniform vec4 uMR; uniform vec2 uSteelMR;
 uniform vec3 uGlowCol; uniform float uGlowAmt; uniform float uGlowAnim;
 uniform float uTime; uniform float uFlash; uniform float uSweepOn; uniform float uSweepZ; uniform vec3 uFxCol;
+uniform vec3 uEnCol; uniform float uEnAmt; uniform float uEnAnim; uniform float uDeploy;
 vec3 gsTri(sampler2D t, vec3 p, vec3 n) {
   vec3 w = abs(n); w = w * w; w = w * w; w /= (w.x + w.y + w.z + 1e-5);
   return texture2D(t, p.zy * uScale).rgb * w.x + texture2D(t, p.zx * uScale).rgb * w.y + texture2D(t, p.xy * uScale).rgb * w.z;
@@ -283,9 +296,11 @@ float gsHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) *
 	float gsDet = mix(0.45, 1.0, smoothstep(0.035, 0.14, dot(vColor, vec3(0.3, 0.59, 0.11))));
 	if (gsMode > 1.5) diffuseColor.rgb = gsTri(uPat, vOP, gsNrm) * gsDet;
 	else if (gsMode > 0.5) diffuseColor.rgb = (gsRole < 0.5 ? uBodyCol : gsRole < 1.5 ? uFurnCol : uSteelCol) * gsDet;
+	if (gsR > 6.5) diffuseColor.rgb = uEnCol * 0.3;
 `;
   const F_MR = `
 	if (gsMode > 0.5) { if (gsRole < 0.5) { metalnessFactor = uMR.x; roughnessFactor = uMR.y; } else if (gsRole < 1.5) { metalnessFactor = uMR.z; roughnessFactor = uMR.w; } else { metalnessFactor = uSteelMR.x; roughnessFactor = uSteelMR.y; } }
+	if (gsR > 6.5) { metalnessFactor = 0.0; roughnessFactor = 0.3; }
 `;
   const F_EMIT = `
 	if (uGlowAmt > 0.0 && gsRole < 1.5) {
@@ -297,6 +312,14 @@ float gsHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) *
 		totalEmissiveRadiance += uGlowCol * gsG * uGlowAmt * (gsA + uFlash * 1.8);
 	}
 	totalEmissiveRadiance += uFxCol * gsEdge * 2.6;
+	// 부속품의 발광 부품(kd 7 = energy): 스킨 색으로 빛나고, 펼쳐질 때(uDeploy) 번쩍
+	if (gsR > 6.5) {
+		float gsE = 1.0;
+		if (uEnAnim > 2.5) { float gsB = floor(uTime * 11.0) + floor(vOP.y * 40.0) * 5.0 + floor(vOP.z * 30.0) * 3.0; gsE = 0.3 + 0.7 * step(0.25, gsHash(vec3(gsB, 3.0, 1.0))); }
+		else if (uEnAnim > 1.5) { float gsW = 0.5 + 0.5 * sin(uTime * 4.0 - vOP.z * 40.0 - vOP.x * 20.0); gsE = 0.55 + 0.45 * gsW; }
+		else if (uEnAnim > 0.5) gsE = 0.78 + 0.22 * sin(uTime * 2.2);
+		totalEmissiveRadiance += uEnCol * uEnAmt * (gsE + uFlash * 1.2 + uDeploy * 2.5);
+	}
 `;
   function patchV(s) { return s.replace('void main() {', V_HEAD + 'void main() {').replace('#include <begin_vertex>', '#include <begin_vertex>' + V_BODY); }
   function patchF(s) {
@@ -320,12 +343,13 @@ float gsHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) *
       uMode: { value: new THREE.Vector3(mode(b), mode(f), mode(s)) },
       uMR: { value: new THREE.Vector4((b.mr || [0.15, 0.6])[0], (b.mr || [0.15, 0.6])[1], (f.mr || [0, 0.7])[0], (f.mr || [0, 0.7])[1]) }, uSteelMR: { value: new THREE.Vector2((s.mr || [0.9, 0.3])[0], (s.mr || [0.9, 0.3])[1]) },
       uGlowCol: { value: new THREE.Color(gl ? gl.c : 0) }, uGlowAmt: { value: gl ? gl.k : 0 }, uGlowAnim: { value: gl ? gl.anim || 0 : 0 },
+      uEnCol: { value: new THREE.Color(d.en || 0) }, uEnAmt: { value: d.enK || 2.2 }, uEnAnim: { value: d.enAnim || 1 },
     });
   }
   function makeMat(base, U, d) {
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: base.roughness, metalness: base.metalness, envMap: base.envMap, envMapIntensity: d.env !== undefined ? Math.max(d.env, base.envMapIntensity) : base.envMapIntensity });
     m.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); sh.vertexShader = patchV(sh.vertexShader); sh.fragmentShader = patchF(sh.fragmentShader); };
-    m.customProgramCacheKey = () => 'gskin-v1';
+    m.customProgramCacheKey = () => 'gskin-v2';
     return m;
   }
   // 그리기 직전에 총 공간 행렬(빛 띠 위치 계산용) — 효과가 진행 중일 때만
@@ -335,8 +359,8 @@ float gsHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) *
   // 만들어진 총(그룹)에 스킨을 입힌다
   function apply(g, id) {
     const d = GSKINS[id]; if (!d || d.gun !== g.userData.id) return g;
-    const U = Object.assign({ uTime: TIME, uFlash: { value: 0 }, uSweepOn: { value: 0 }, uSweepZ: { value: 0 }, uGunInv: { value: new THREE.Matrix4() }, uFxCol: { value: new THREE.Color(d.fx ? d.fx.c : rarOf(d.rar).hex) } }, staticU(id));
-    const I = { g, id, d, U, flash: 0, sweep: null, frm: -1, z0: -0.4, z1: 0.6 }, mats = {};
+    const U = Object.assign({ uTime: TIME, uFlash: { value: 0 }, uSweepOn: { value: 0 }, uSweepZ: { value: 0 }, uGunInv: { value: new THREE.Matrix4() }, uFxCol: { value: new THREE.Color(d.fx ? d.fx.c : rarOf(d.rar).hex) }, uDeploy: { value: 0 } }, staticU(id));
+    const I = { g, id, d, U, flash: 0, sweep: null, dep: null, parts: null, frm: -1, z0: -0.4, z1: 0.6 }, mats = {};
     const walk = (o) => {
       if (o.userData.noSkin) return;
       if (o.isMesh && o.material && o.material.userData) {
@@ -350,8 +374,38 @@ float gsHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) *
     const body = g.children[0]; let z0 = 1e9, z1 = -1e9;
     if (body) for (const m of body.children) { const gb = m.geometry && m.geometry.boundingBox; if (gb) { z0 = Math.min(z0, gb.min.z); z1 = Math.max(z1, gb.max.z); } }
     if (z0 < z1) { I.z0 = z0; I.z1 = z1; } else { _bb.setFromObject(g); I.z0 = _bb.min.z; I.z1 = _bb.max.z; }
+    // 울트라레어 부속품 (05_models_gparts.js): 같은 스킨 재질을 써서 꺼내기·넣기 빛 띠에 같이 나타나고 사라진다
+    const pm = mats['cls:metal'] || mats['cls:matte'] || mats['cls:diel'];
+    if (d.parts && pm && typeof GunParts !== 'undefined') {
+      I.parts = GunParts.attach(g, d.parts, pm, I.z0, I.z1);
+      if (I.parts) for (const p of I.parts) { p.mesh.userData.gsInst = I; p.mesh.onBeforeRender = beforeRender; }
+    }
     g.userData.skin = I;
     return g;
+  }
+  // ---------- 부속품 전개: 빛 띠가 총구에 닿을 즈음부터 총 앞쪽 부속품부터 차례로 튀어나옴 ----------
+  const DEP = { at: 0.8, wave: 0.26, each: 0.2, flare: 0.4 };   // at: 빛 띠 진행의 몇 % 에서 시작 · wave: 총구→개머리판까지 걸리는 시간 · each: 부속품 하나가 펼쳐지는 시간
+  const backOut = (u) => { const a = 1.9, v = u - 1; return 1 + (a + 1) * v * v * v + a * v * v; };
+  function setParts(I, k) { if (I.parts) for (const p of I.parts) { p.inner.scale.setScalar(Math.max(0.001, k)); p.inner.position.y = 0; p.popped = k > 0.5; } }
+  function updateDeploy(I, dt) {
+    const D = I.dep; D.t += dt; const t0 = D.dur * DEP.at; let done = true;
+    for (const p of I.parts) {
+      const u = clamp((D.t - t0 - (1 - p.zn) * DEP.wave) / DEP.each, 0, 1);
+      if (u < 1) done = false;
+      if (u > 0 && !p.popped) { p.popped = true; partPop(I, p); }
+      p.inner.scale.setScalar(u > 0 ? Math.max(0.001, backOut(u)) : 0.001);
+      p.inner.position.y = p.ring ? 0 : -0.014 * (1 - Math.min(1, u * 1.5));   // 몸체 안쪽에서 밀려 나옴
+    }
+    const fl = D.t < t0 ? 0 : clamp(1 - (D.t - t0 - DEP.wave) / DEP.flare, 0, 1);
+    I.U.uDeploy.value = fl;
+    if (done && fl <= 0) { I.dep = null; I.U.uDeploy.value = 0; }
+  }
+  // 부속품이 튀어나올 때 그 자리에 작은 빛 조각
+  function partPop(I, p) {
+    const g = I.g, sc = sceneOf(g); if (!sc || !shown(g) || !I.d.fx) return;
+    const vm = isVM(sc), k = vm ? 0.8 : 1.8, fx = I.d.fx, P = pool(sc);
+    p.outer.getWorldPosition(_p);
+    for (let i = 0; i < 5; i++) { _r.set(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(0.3 + Math.random() * 0.5); emit(P, _p, _r.x, _r.y, _r.z, pick(fx), (0.008 + Math.random() * 0.008) * k, 0.2 + Math.random() * 0.2, { drag: 3, sq: fx.kind === 'glitch' || fx.kind === 'frost' }); }
   }
 
   // ---------- 입자: 장면마다 점 구름 하나(그리기 1번) — 동그란 빛 / 네모 파편 ----------
@@ -441,14 +495,34 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       emit(P, _p, 0, 0, 0, fx.c, 0.16 * k, 0.06, { grow: 0.6 });
       for (let i = 0; i < 12; i++) { const sp = 0.8 + Math.random() * 1.8; _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(1.8); emit(P, _p, _d.x * sp + _r.x, _d.y * sp + _r.y, _d.z * sp + _r.z, pick(fx), (0.014 + Math.random() * 0.016) * k, 0.18 + Math.random() * 0.22, { sq: 1, drag: 4 }); }
     },
+    // 서리: 하얀 고리 + 앞으로 흩어지며 떨어지는 얼음 조각 + 옅은 서리 김
+    frost(P, k, fx) {
+      emit(P, _p, 0, 0, 0, fx.c2, 0.2 * k, 0.07, { grow: 1.1 });
+      emit(P, _p, _d.x * 0.5, _d.y * 0.5, _d.z * 0.5, fx.c, 0.12 * k, 0.32, { grow: 1.6, drag: 2.5 });
+      for (let i = 0; i < 12; i++) { const sp = 1.5 + Math.random() * 3; _r.set(Math.random() - 0.5, Math.random() - 0.2, Math.random() - 0.5).normalize().multiplyScalar(1.4); emit(P, _p, _d.x * sp + _r.x, _d.y * sp + _r.y, _d.z * sp + _r.z, pick(fx), (0.009 + Math.random() * 0.012) * k, 0.3 + Math.random() * 0.3, { sq: 1, g: -4, drag: 2 }); }
+    },
+    // 공허: 보랏빛이 총구로 빨려 들었다가(안쪽으로 모이는 입자) 짧게 터짐
+    void(P, k, fx) {
+      emit(P, _p, 0, 0, 0, fx.c, 0.24 * k, 0.08, { grow: -0.6 });
+      emit(P, _p, 0, 0, 0, fx.c2, 0.08 * k, 0.05, { grow: 1.2 });
+      for (let i = 0; i < 12; i++) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(); const R = 0.09 + Math.random() * 0.08; _q.copy(_p).addScaledVector(_r, R); emit(P, _q, -_r.x * R * 5, -_r.y * R * 5, -_r.z * R * 5, pick(fx), (0.01 + Math.random() * 0.01) * k, 0.2, { drag: 0 }); }
+      for (let i = 0; i < 6; i++) { const sp = 2 + Math.random() * 3; emit(P, _p, _d.x * sp + (Math.random() - 0.5), _d.y * sp + (Math.random() - 0.5), _d.z * sp + (Math.random() - 0.5), fx.c, (0.012 + Math.random() * 0.01) * k, 0.25 + Math.random() * 0.15, { drag: 5 }); }
+    },
   };
+  // 슈퍼레어(약한 효과): 스킨 색 작은 섬광 + 조각 몇 개. 몸체 빛·탄도 색·효과음 없음 — 울트라레어와 등급 차이가 보이게
+  function liteShot(P, k, fx) {
+    emit(P, _p, 0, 0, 0, fx.c, 0.1 * k, 0.05, { grow: 0.8 });
+    const sq = fx.kind === 'glitch';
+    for (let i = 0; i < 4; i++) { const sp = 1 + Math.random() * 2; _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(1.2); emit(P, _p, _d.x * sp + _r.x, _d.y * sp + _r.y + (fx.kind === 'ember' ? 0.6 : 0), _d.z * sp + _r.z, pick(fx), (0.007 + Math.random() * 0.006) * k, 0.12 + Math.random() * 0.12, { sq, drag: 5, g: fx.kind === 'ember' ? -1.5 : 0 }); }
+  }
   function shot(g, c) {
-    const I = g && g.userData.skin; if (!I || !I.d.fx) return;
-    I.flash = 1; ACTIVE.add(I);
+    const I = g && g.userData.skin, fx = I && (I.d.fx || I.d.lite); if (!fx) return;
+    if (!fx.lite) { I.flash = 1; ACTIVE.add(I); }
     const sc = sceneOf(g); if (!sc || !shown(g)) return;
-    const vm = isVM(sc), k = vm ? 1.45 : 2.4, m = g.userData.meta, fx = I.d.fx;   // 1인칭은 총구가 화면 구석이라 조금 크게
-    if (!vm && G.camera && _q.setFromMatrixPosition(g.matrixWorld).distanceTo(G.camera.position) > 70) return;
+    const vm = isVM(sc), k = vm ? 1.45 : 2.4, m = g.userData.meta;   // 1인칭은 총구가 화면 구석이라 조금 크게
+    if (!vm && G.camera && _q.setFromMatrixPosition(g.matrixWorld).distanceTo(G.camera.position) > (fx.lite ? 40 : 70)) return;
     _p.set(0, m.boreY, m.muzzleZ + 0.015); g.localToWorld(_p); _d.set(0, m.boreY, m.muzzleZ + 1); g.localToWorld(_d); _d.sub(_p).normalize();
+    if (fx.lite) { liteShot(pool(sc), k, fx); return; }
     (SHOT[fx.kind] || SHOT.ember)(pool(sc), k, fx);
     if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('shot', fx.kind, c && !own(c) ? c.pos : null, own(c));
   }
@@ -458,6 +532,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     const I = g && g.userData.skin; if (!I || !I.d.fx) return;
     g.updateWorldMatrix(true, true); I.U.uGunInv.value.copy(g.matrixWorld).invert();
     I.sweep = { t: 0, dur, out: false, c }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.z0 - 0.05; ACTIVE.add(I);
+    if (I.parts) { setParts(I, 0); I.dep = { t: 0, dur }; }   // 부속품은 접어 두었다가 빛 띠를 따라 펼침
     if (!quiet && typeof Audio !== 'undefined' && Audio.skinFx && shown(g)) Audio.skinFx('draw', I.d.fx.kind, c && !own(c) ? c.pos : null, own(c));
   }
   // 손에서 떠난 총: 장면에 그대로 두고(지금 자리·자세) 총구부터 사라지게 한 뒤 지운다. 효과가 없는 총이면 false
@@ -465,6 +540,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     const I = g && g.userData.skin; if (!I || !I.d.fx) return false;
     const sc = sceneOf(g); if (!sc || !shown(g)) return false;
     sc.attach(g); g.updateMatrixWorld(true); I.U.uGunInv.value.copy(g.matrixWorld).invert();
+    if (I.dep) { I.dep = null; I.U.uDeploy.value = 0; setParts(I, 1); }   // 부속품은 빛 띠가 지나가며 몸체와 같이 사라짐
     // 1인칭: 화면 아래로 가라앉으며 사라짐 (총구가 멀어 앞에서부터 사라지는 게 잘 안 보이므로)
     I.sweep = { t: 0, dur, out: true, c, sink: isVM(sc) ? 0.32 : 0 }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.z1 + 0.05; ACTIVE.add(I);
     if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('holster', I.d.fx.kind, c && !own(c) ? c.pos : null, own(c));
@@ -493,7 +569,8 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
         if (u < 1) sweepParticles(I, z, dt);
         else { I.U.uSweepOn.value = 0; I.sweep = null; if (s.out && I.g.parent) I.g.parent.remove(I.g); }
       }
-      if (!I.sweep && I.flash <= 0) ACTIVE.delete(I);
+      if (I.dep) updateDeploy(I, dt);
+      if (!I.sweep && !I.dep && I.flash <= 0) ACTIVE.delete(I);
     }
     SkinFx.update(dt);   // 맞힘·처치 효과 (입자를 내보낸 뒤 같은 프레임에 갱신)
     updateParticles(dt);

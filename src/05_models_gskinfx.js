@@ -61,6 +61,17 @@ const SkinFx = (() => {
     g.lineWidth = 1.5; g.beginPath(); g.arc(C, C, 63, 0, TAU); g.stroke();
     g.fillStyle = 'rgba(255,200,100,0.9)'; for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; g.beginPath(); g.arc(C + Math.cos(a) * 70, C + Math.sin(a) * 70, 2.6, 0, TAU); g.fill(); }
   });
+  // 얼음 금(흰색 — 바닥 자국 색으로 물듦) · 공허 소용돌이
+  const iceTex = () => ctex('ice', 256, 256, (g) => {
+    halo(g, 110, [[0, 'rgba(255,255,255,0.8)'], [0.35, 'rgba(200,240,255,0.3)'], [1, 'rgba(160,220,255,0)']]);
+    const L = cracks(128, 128, 7, 11, 9, 0.35, 0.22);
+    strokeAll(g, L, 5, 'rgba(210,245,255,0.55)', 6); strokeAll(g, L, 1.6, 'rgba(255,255,255,1)');
+  });
+  const swirlTex = () => ctex('swirl', 256, 256, (g) => {
+    halo(g, 120, [[0, 'rgba(0,0,0,0)'], [0.25, 'rgba(255,255,255,0.15)'], [0.7, 'rgba(255,255,255,0.35)'], [1, 'rgba(255,255,255,0)']]);
+    g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineCap = 'round';
+    for (let k = 0; k < 5; k++) { g.lineWidth = 3 - k * 0.4; g.beginPath(); for (let i = 0; i <= 80; i++) { const t = i / 80, a = k * TAU / 5 + t * 4.2, r = 18 + t * 100; const x = 128 + Math.cos(a) * r, y = 128 + Math.sin(a) * r; i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); }
+  });
   const pixTex = () => ctex('pix', 256, 256, (g) => {
     const S = 16;
     for (let y = 0; y < 256; y += S) for (let x = 0; x < 256; x += S) {
@@ -272,14 +283,32 @@ const SkinFx = (() => {
       for (let i = 0; i < 9; i++) { _v.set(rnd(-1, 1), rnd(-0.4, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1, 2.6) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.03, 0.06) * k, rnd(0.15, 0.3), { sq: 1, drag: 5, so: 0.85 }); }
       for (let i = 0; i < 3; i++) { _a.copy(p).add(_v.set(rnd(-0.16, 0.16), rnd(-0.16, 0.16), rnd(-0.16, 0.16))); E(P, _a, 0, 0, 0, pick(fx), rnd(0.08, 0.14) * k, rnd(0.06, 0.12), { sq: 1, so: 0.85 }); }
     },
+    // 서리: 얼음 조각이 튀고 하얀 김이 퍼짐
+    frost(P, p, d, fx, k, s) {
+      E(P, p, 0, 0, 0, 0xffffff, 0.3 * k, 0.07, { grow: 0.8, so: 0.3 }); E(P, p, 0, 0.1, 0, fx.c, 0.32 * k, 0.5, { grow: 1.3, drag: 2, so: 0.55 });
+      for (let i = 0; i < 9; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1.5, 3.5) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.03, 0.055) * k, rnd(0.3, 0.55), { sq: 1, g: -6, drag: 1.5, so: 0.85 }); }
+    },
+    // 공허: 보랏빛이 맞은 자리로 빨려 들었다가 작게 터짐
+    void(P, p, d, fx, k, s) {
+      E(P, p, 0, 0, 0, fx.c, 0.5 * k, 0.12, { grow: -0.7, so: 0.6 }); E(P, p, 0, 0, 0, fx.c2, 0.14 * k, 0.06, { grow: 1.4, so: 0.4 });
+      for (let i = 0; i < 10; i++) { _v.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize(); const R = rnd(0.2, 0.4) * s; _a.copy(p).addScaledVector(_v, R); E(P, _a, -_v.x * R * 6, -_v.y * R * 6, -_v.z * R * 6, pick(fx), rnd(0.03, 0.05) * k, 0.16, { so: 0.8 }); }
+    },
   };
+  // 슈퍼레어(약한 효과): 작은 섬광 + 조각 몇 개, 몸에 남는 효과는 짧게
+  function liteHit(P, p, d, fx, k, s) {
+    const sq = fx.kind === 'glitch';
+    E(P, p, 0, 0, 0, fx.c2, 0.2 * k, 0.06, { sq, grow: 0.5, so: 0.35 });
+    for (let i = 0; i < 4; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1, 2.4) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.02, 0.035) * k, rnd(0.15, 0.3), { sq, drag: 5, g: fx.kind === 'ember' ? -4 : 0, so: 0.7 }); }
+  }
   // 몸에 남는 효과: 초당 개수 · 한 번에 하나씩
-  const RATE = { ember: 50, flame: 44, spark: 36, glitch: 44 };
+  const RATE = { ember: 50, flame: 44, spark: 36, glitch: 44, frost: 40, void: 40 };
   const BODYFX = {
     ember(P, p, fx, k) { E(P, p, rnd(-0.12, 0.12), rnd(0.15, 0.9), rnd(-0.12, 0.12), Math.random() < 0.6 ? fx.c : fx.c2, rnd(0.1, 0.17) * k, rnd(0.4, 0.8), { g: 0.6, drag: 1.5, so: 0.85 }); },
     flame(P, p, fx, k) { E(P, p, rnd(-0.08, 0.08), rnd(0.4, 1.1), rnd(-0.08, 0.08), Math.random() < 0.3 ? 0xffd27a : fx.c, rnd(0.18, 0.28) * k, rnd(0.2, 0.36), { grow: 1.2, drag: 1.5, so: 0.8 }); },
     spark(P, p, fx, k) { E(P, p, rnd(-1.5, 1.5), rnd(-1, 1.5), rnd(-1.5, 1.5), pick(fx), rnd(0.05, 0.08) * k, rnd(0.08, 0.18), { drag: 6, so: 0.55 }); },
     glitch(P, p, fx, k) { E(P, p, 0, 0, 0, pick(fx), rnd(0.09, 0.19) * k, rnd(0.05, 0.15), { sq: 1, so: 0.85 }); },
+    frost(P, p, fx, k) { E(P, p, rnd(-0.1, 0.1), rnd(-0.4, -0.1), rnd(-0.1, 0.1), Math.random() < 0.5 ? fx.c2 : fx.c, rnd(0.08, 0.15) * k, rnd(0.5, 0.9), { grow: 0.8, drag: 1.2, so: 0.6 }); },
+    void(P, p, fx, k) { E(P, p, rnd(-0.1, 0.1), rnd(0.3, 0.9), rnd(-0.1, 0.1), Math.random() < 0.7 ? fx.c : fx.c2, rnd(0.1, 0.17) * k, rnd(0.35, 0.6), { grow: -0.4, drag: 1.2, so: 0.85 }); },
   };
   function body(t, fx, dur, corpse) {
     const s = BODY.get(t);
@@ -293,10 +322,11 @@ const SkinFx = (() => {
     if (!t) { let best = 1.3; for (const c of CHARS) { if (c === by || !c.alive) continue; const dd = Math.hypot(c.pos.x - x, c.pos.y + 1 - y, c.pos.z - z); if (dd < best) { best = dd; t = c; } } }
     const k = farK(_a, 6, 4), s = Math.sqrt(k), P = pool(), p = _a.clone();
     // 같은 표적을 아주 빠르게 연달아 맞히면(고속 연사) 터짐을 줄이고 빛만
-    if (t && G.time - (t._fxHitT || -9) < 0.03) E(P, p, 0, 0, 0, fx.c2, 0.25 * k, 0.06, { sq: fx.kind === 'glitch', grow: 0.6, so: 0.4 });
+    if (t && G.time - (t._fxHitT || -9) < 0.03) E(P, p, 0, 0, 0, fx.c2, (fx.lite ? 0.12 : 0.25) * k, 0.06, { sq: fx.kind === 'glitch', grow: 0.6, so: 0.4 });
+    else if (fx.lite) liteHit(P, p, _t.set(dx, dy, dz), fx, k * 0.7, s);
     else (HIT[fx.kind] || HIT.ember)(P, p, _t.set(dx, dy, dz), fx, k, s, t);
-    if (t) { t._fxHitT = G.time; body(t, fx, 1.0, false); }
-    if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('hit', fx.kind, by && by.isPlayer ? null : p, !!(by && by.isPlayer));
+    if (t) { t._fxHitT = G.time; body(t, fx, fx.lite ? 0.3 : 1.0, false); }
+    if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('hit', fx.kind, by && by.isPlayer ? null : p, !!(by && by.isPlayer), !!fx.lite);
   }
 
   // ---------- 처치 ----------
@@ -373,7 +403,41 @@ const SkinFx = (() => {
       });
       body(t, fx, 1.8, true);
     },
+    // 서리: 바닥이 얼어붙고(얼음 금) 얼음 결정이 솟았다 부서져 떨어짐 · 얼음 껍질(돔) · 하얀 냉기 고리
+    frost(t, fx, gp, cp, k) {
+      const P = pool();
+      glow(cp, 0xffffff, 4.2, 0.35); light(cp, fx.c, 6, 0.7); dome(cp, fx.c, 1.6, 0.9);
+      ring(gp, fx.c2, 4.4, 0.8); ring(gp, fx.c, 2.6, 0.6, null, 0.1);
+      decal(gp, iceTex(), 4.2, 3.0, 0xffffff, 0x2a6a9a);
+      pillar(gp, fx.c, 0.6, 3.6, 0.8);
+      for (let i = 0; i < 46; i++) { const a = Math.random() * TAU, r = Math.random() * 0.5, o = rnd(0.5, 2.6); _a.set(gp.x + Math.cos(a) * r, gp.y + 0.3, gp.z + Math.sin(a) * r); E(P, _a, Math.cos(a) * o, rnd(3.5, 8), Math.sin(a) * o, Math.random() < 0.5 ? fx.c : fx.c2, rnd(0.1, 0.2) * k, rnd(0.9, 1.5), { sq: 1, g: -9.8, drag: 0.4, so: 0.85 }); }
+      for (let i = 0; i < 30; i++) { const a = Math.random() * TAU, r = rnd(0.3, 1.8); _a.set(gp.x + Math.cos(a) * r, gp.y + rnd(0.05, 0.5), gp.z + Math.sin(a) * r); E(P, _a, Math.cos(a) * 0.5, rnd(0.1, 0.5), Math.sin(a) * 0.5, 0xeafcff, rnd(0.3, 0.5) * k, rnd(1, 1.8), { grow: 1, drag: 1, so: 0.35 }); }
+      body(t, fx, 2.0, true);
+    },
+    // 공허: 주변이 한 점으로 빨려 들어가며 검보라 구가 줄어들다(안쪽으로 모이는 입자) 터지고 · 바닥에 소용돌이 자국 · 보라 고리
+    void(t, fx, gp, cp, k) {
+      const P = pool();
+      const sp = new THREE.Mesh(geo().sph, domeMat(fx.c)); sp.position.copy(cp); sp.renderOrder = 6;
+      add(sp, 0.55, (e, u) => { sp.scale.setScalar(2.4 * (1 - u) + 0.05); sp.material.uniforms.uA.value = 0.4 + u * 0.6; sp.material.uniforms.uT.value = e.t; });
+      for (let i = 0; i < 60; i++) { _v.set(rnd(-1, 1), rnd(-0.6, 1), rnd(-1, 1)).normalize(); const R = rnd(1.6, 3); _a.copy(cp).addScaledVector(_v, R); E(P, _a, -_v.x * R * 1.9, -_v.y * R * 1.9, -_v.z * R * 1.9, Math.random() < 0.7 ? fx.c : fx.c2, rnd(0.08, 0.14) * k, 0.5, { so: 0.85 }); }
+      decal(gp, swirlTex(), 4.4, 2.6, 0xe6c8ff, 0x3a0a5a);
+      let burst = false;
+      add(null, 0.6, (e) => {
+        if (e.t < 0.5 || burst) return; burst = true;
+        glow(cp, fx.c2, 5, 0.4); light(cp, fx.c, 7, 0.6); ring(gp, fx.c, 4.8, 0.7); pillar(gp, fx.c, 0.5, 5, 0.7);
+        for (let i = 0; i < 50; i++) { _v.set(rnd(-1, 1), rnd(-0.3, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(4, 9)); E(P, cp, _v.x, _v.y, _v.z, Math.random() < 0.25 ? 0xffffff : pick(fx), rnd(0.06, 0.11) * k, rnd(0.3, 0.6), { drag: 4, so: 0.5 }); }
+      });
+      body(t, fx, 2.0, true);
+    },
   };
+  // 슈퍼레어(약한 효과): 작은 빛 + 바닥 고리 하나 + 위로 흩어지는 조각 몇 개 — 휘장·빛 기둥·바닥 자국·조명 없음
+  function liteKill(t, fx, gp, cp, k) {
+    const P = pool();
+    glow(cp, fx.c, 1.8, 0.3);
+    ring(gp, fx.c, 1.9, 0.5, fx.kind === 'glitch' ? sqRingTex() : null);
+    for (let i = 0; i < 16; i++) { const a = Math.random() * TAU; E(P, cp, Math.cos(a) * rnd(0.4, 1.4), rnd(1, 3), Math.sin(a) * rnd(0.4, 1.4), pick(fx), rnd(0.05, 0.09) * k, rnd(0.4, 0.7), { sq: fx.kind === 'glitch', g: -4, drag: 1.5, so: 0.75 }); }
+    body(t, fx, 0.6, true);
+  }
   // 주변을 잠깐 그 색으로 비춤 (총구 화염용 점광원을 빌려 씀 → 조명 개수가 그대로라 셰이더를 다시 만들지 않는다)
   let LIGHT = null;
   function light(p, color, i0, dur) { if (!G.muzzleLight || !G.camera || p.distanceTo(G.camera.position) > 70) return; LIGHT = { p: p.clone(), color, i0, t: 0, dur }; }
@@ -385,15 +449,16 @@ const SkinFx = (() => {
   // t: 쓰러진 캐릭터 · by: 처치한 캐릭터 · cause: 무기 id (그 총에 장착한 스킨이 울트라레어일 때만)
   function kill(t, by, cause) {
     if (!scene || !t || !by || by === t || !by.skinOf) return;
-    const sk = by.skinOf(cause), d = sk && GSKINS[sk], fx = d && d.fx; if (!fx) return;
-    if (by.isPlayer && typeof HUD !== 'undefined' && HUD.skinKill) HUD.skinKill(fx, GunSkin.name(sk));
+    const sk = by.skinOf(cause), d = sk && GSKINS[sk], fx = d && (d.fx || d.lite); if (!fx) return;
+    if (by.isPlayer && !fx.lite && typeof HUD !== 'undefined' && HUD.skinKill) HUD.skinKill(fx, GunSkin.name(sk));   // 휘장은 울트라레어만
     if (!G.camera) return;
     const cp = new THREE.Vector3(); t.chest(cp);
-    if (cp.distanceTo(G.camera.position) > 320) return;
+    if (cp.distanceTo(G.camera.position) > (fx.lite ? 160 : 320)) return;
     const gp = ground(t.pos.x, t.pos.y, t.pos.z), k = farK(cp, 25, 2.5);
     if (t.inWater) gp.y = t.pos.y + 0.3;
-    (KILL[fx.kind] || KILL.ember)(t, fx, gp, cp, k);
-    if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('kill', fx.kind, by.isPlayer ? null : cp, !!by.isPlayer);
+    if (fx.lite) liteKill(t, fx, gp, cp, k);
+    else (KILL[fx.kind] || KILL.ember)(t, fx, gp, cp, k);
+    if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('kill', fx.kind, by.isPlayer ? null : cp, !!by.isPlayer, !!fx.lite);
   }
 
   // ---------- 매 프레임 (GunSkin.update 안에서, 입자 갱신 전에) ----------
@@ -413,7 +478,7 @@ const SkinFx = (() => {
         if (s.t >= s.dur || !c.root || !c.root.parent || (s.corpse && c.alive)) { BODY.delete(c); continue; }
         if (!cam || !c.root.visible || c.pos.distanceTo(cam.position) > 140) continue;
         const f = 1 - s.t / s.dur, k = farK(c.pos, 6, 3.5), kind = s.fx.kind;
-        s.acc += dt * (RATE[kind] || 20) * (s.corpse ? 1.4 : 1) * (0.35 + 0.65 * f);
+        s.acc += dt * (RATE[kind] || 20) * (s.corpse ? 1.4 : 1) * (0.35 + 0.65 * f) * (s.fx.lite ? 0.35 : 1);
         for (; s.acc >= 1; s.acc--) { bodyPoint(c, _a); (BODYFX[kind] || BODYFX.ember)(P, _a, s.fx, k); }
         if (kind === 'spark') { s.bt -= dt; if (s.bt <= 0) { s.bt = rnd(0.05, 0.1) / (s.corpse ? 1.4 : 1); bodyPoint(c, _a); bodyPoint(c, _b); if (_a.distanceTo(_b) > 0.12) arc(_a, _b, Math.random() < 0.5 ? 0xffe8f2 : s.fx.c, 0.06 * Math.sqrt(k), rnd(0.1, 0.2)); } }
       }

@@ -129,7 +129,7 @@ function fireWeapon(c, origin, dir) {
   const spread = weaponSpread(c) * DEG;
   const pellets = d.pellets || 1;
   const g = gunObj(c), meta = g && g.userData.meta;
-  const skFx = g && g.userData.skin && g.userData.skin.d.fx;   // 울트라레어 총기 스킨이면 맞힘·처치 효과
+  const skI = g && g.userData.skin, skFx = skI && (skI.d.fx || skI.d.lite);   // 울트라레어(lite면 슈퍼레어 약한 효과) 총기 스킨이면 맞힘 효과
   const muzzle = meta ? gunWorldPoint(c, 0, meta.boreY, meta.muzzleZ + 0.01, _mz) : null;
   const tStart = muzzle && muzzle.distanceTo(origin) < 3 ? muzzle : origin;
   // 직교 기저

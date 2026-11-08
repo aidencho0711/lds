@@ -425,7 +425,8 @@ const Net = (() => {
     const start = muzzle && muzzle.distanceTo(_o) < 3 ? muzzle : _o;
     FX.tracer(c, start, e.e[0], e.e[1], e.e[2], GunSkin.tracerCol(g));
     if (e.i) FX.impact(e.e[0], e.e[1], e.e[2], e.i === 'char' ? 'blood' : e.i === 'terrain' ? 'dirt' : 'spark');
-    if (e.i === 'char' && g && g.userData.skin && g.userData.skin.d.fx) SkinFx.hit(null, e.e[0], e.e[1], e.e[2], _dv.x, _dv.y, _dv.z, g.userData.skin.d.fx, c);
+    const skd = g && g.userData.skin && g.userData.skin.d, skfx = skd && (skd.fx || skd.lite);
+    if (e.i === 'char' && skfx) SkinFx.hit(null, e.e[0], e.e[1], e.e[2], _dv.x, _dv.y, _dv.z, skfx, c);
     FX.flash(c, g, meta, start, _dv, d);
     if (g && g.userData.skin) GunSkin.shot(g, c);
     Audio.gunshot(_o, e.w, false, isIndoor(c.pos.x, c.pos.z, c.pos.y));
