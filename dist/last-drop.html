@@ -5149,6 +5149,7 @@ function armIK(A, T, P, Qh, w, out, sc) {
   A.sh.quaternion.slerp(_qb, w);
   if (Qh) {
     _qd.copy(_qa).multiply(_qc).invert().multiply(Qh);                            // 손 로컬
+    if (_qd.w < 0) _qd.set(-_qd.x, -_qd.y, -_qd.z, -_qd.w);                       // 같은 회전의 짧은 쪽(w ≥ 0) — 안 그러면 비틀림이 ±180° 넘게 잡혀 팔꿈치가 꼬인다
     // 손목 비틀림의 절반을 아래팔로 나눠 손목이 꼬이지 않게
     const tw = Math.atan2(_qd.y, _qd.w) * 2 * 0.5;
     _qh.setFromAxisAngle(AX_Y, tw); _qc.multiply(_qh); _qh.invert(); _qd.premultiply(_qh);
@@ -5393,9 +5394,9 @@ const _bw = new THREE.Vector3(), _fw = new THREE.Vector3(), _rq = new THREE.Quat
 // 몸(가슴) 로컬 점 → 월드
 const chestPt = (r, x, y, z, out) => out.set(x, y, z).applyMatrix4(r.chest.matrixWorld);
 const bodyPt = (r, x, y, z, out) => out.set(x, y, z).applyMatrix4(r.body.matrixWorld);
-// 가슴 로컬 방향 → 월드 방향
-const chestDir = (r, x, y, z, out) => { r.chest.matrixWorld.decompose(_t4, _qg, _t3); return out.set(x, y, z).applyQuaternion(_qg); };
-const bodyDir = (r, x, y, z, out) => { r.body.matrixWorld.decompose(_t4, _qg, _t3); return out.set(x, y, z).applyQuaternion(_qg); };
+// 가슴 로컬 방향 → 월드 방향 (worldQuat 는 전용 임시 벡터에 분해 — _t3(팔꿈치 방향 점)·_t4 를 덮어쓰면 안 된다)
+const chestDir = (r, x, y, z, out) => out.set(x, y, z).applyQuaternion(worldQuat(r.chest, _qg));
+const bodyDir = (r, x, y, z, out) => out.set(x, y, z).applyQuaternion(worldQuat(r.body, _qg));
 
 function animateChar(c, dt) {
   if (c.veh) { Veh.animateRider(c, dt); return; }
@@ -5646,6 +5647,7 @@ function animateChar(c, dt) {
       bodyPt(r, s * 0.7, lerp(1.25, 1.05, dv), lerp(0.05, -0.2, dv), _t3);
       handQuat(_hq, bodyDir(r, s * 0.1, 1, lerp(0.3, -0.2, dv), _t4), bodyDir(r, 0, 0, 1, _t5), s);
       ik(Ar, _t1, _t3, _hq, a.fall, 'open');
+      if (dv > 0.01) Ar.hand.quaternion.slerp(_qh.identity(), dv);   // 급강하: 손을 아래팔과 일직선으로 (박스 자세 손 방향 그대로면 엉덩이 옆 손목이 뒤로 접힌다)
     }
     r.neck.rotation.x = lerp(r.neck.rotation.x, -0.75, a.fall); r.head.rotation.x = lerp(r.head.rotation.x, -0.45, a.fall);
   }
