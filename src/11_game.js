@@ -18,6 +18,7 @@ const TIPS = [
   '오토바이는 가장 빠르지만(150km/h) 몸이 그대로 드러납니다. UAZ는 느려도 가장 튼튼합니다.',
   '듀오·스쿼드에서는 쓰러져도 바로 죽지 않고 기절합니다. 팀원이 옆에서 F(부활 버튼)를 10초 누르면 살아납니다.',
   '기절한 적은 아직 탈락이 아닙니다. 팀원이 살리기 전에 확인 사살하거나, 팀 전체를 쓰러뜨리면 한꺼번에 탈락합니다.',
+  '듀오·스쿼드에서 팀원이 탈락하면 리콜 카드가 떨어집니다. 주워서 지도의 리콜 타워(하늘색 삼각형)에서 8초 등록하면 수송기로 돌아옵니다.',
 ];
 
 const G = {
@@ -222,15 +223,17 @@ function overIsland(x, z) {
   if (W && W.big) return Math.max(Math.abs(x), Math.abs(z)) * 0.65 + Math.hypot(x, z) * 0.35 < HALF * 0.84;
   return Math.abs(x) < HALF - 25 && Math.abs(z) < HALF - 25;
 }
+// 캐릭터가 탄 수송기: 리콜로 복귀하는 중이면 리콜 수송기(08_recall.js), 아니면 경기 시작 수송기
+const planeOf = (c) => (c && c.rplane) || G.plane;
 function jumpOut(c) {
   if (c.mode !== 'plane') return;
-  const pl = G.plane;
+  const pl = planeOf(c);
   c.mode = 'fall'; c.pos.set(pl.pos.x + rnd(-2, 2), pl.pos.y - 3, pl.pos.z + rnd(-2, 2));
-  c.vel.set(pl.dx * 14, -5, pl.dz * 14); c.root.visible = true; c.jumpT = G.time;
+  c.vel.set(pl.dx * 14, -5, pl.dz * 14); c.root.visible = true; c.jumpT = G.time; c.rplane = null;
   if (c.isPlayer) {
     Audio.plane(false); HUD.toast('강하! W로 하강 속도를 높이고, F로 낙하산을 펼치세요', 'info');
-    // 플레이어 팀원 봇: 플레이어를 따라 0.3~1.4초 뒤에 뛰어내린다
-    let k = 0; for (const m of teamMembers(c)) if (m !== c && m.mode === 'plane' && m.brain) m.brain.jumpAt = pl.t + 0.3 + 0.35 * k++;
+    // 플레이어 팀원 봇: 플레이어를 따라 0.3~1.4초 뒤에 뛰어내린다 (같은 수송기에 탄 팀원만)
+    let k = 0; for (const m of teamMembers(c)) if (m !== c && m.mode === 'plane' && m.brain && planeOf(m) === pl) m.brain.jumpAt = pl.t + 0.3 + 0.35 * k++;
   }
 }
 // 자유낙하/낙하산 이동 (플레이어·봇 공용)
@@ -344,7 +347,7 @@ async function startMatch(cfg) {
   if (net) { Net.indexVehicles(); Net.baseline(); }
   FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; PathQ.clear(); G.myNade = null;
   Zone.init(sc, MODES[SETTINGS.mode].zoneScale, SETTINGS.map);
-  Airdrop.init(sc);
+  Airdrop.init(sc); Recall.init(sc);
   setupPlane(sc, net ? cfg.plane : null);
   if (W.streamTerrain) { W.streamTerrain(G.plane.pos.x, G.plane.pos.z, Q.far + 250, 99); W.cullChunks(G.plane.pos.x, G.plane.pos.z, Q.far); }
   // 캐릭터 생성
@@ -406,7 +409,7 @@ async function startMatch(cfg) {
 function disposeMatch() {
   Training.dispose(); DM.dispose();
   if (!G.scene) return;
-  Zone.dispose(G.scene); Airdrop.dispose(); Veh.dispose();
+  Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose();
   G.scene.traverse(o => { if (o.geometry && !o.isSprite) o.geometry.dispose(); });
   for (const c of CHARS) if (c.rig && c.rig.skel) c.rig.skel.dispose();   // 뼈대 텍스처(GPU) 해제
   G.scene = null; CHARS = []; GROUND = []; W = null; G.player = null; G.plane = null; G.dropCands = null;
@@ -433,7 +436,7 @@ G.onDeath = function (c, killer) {
 // 관전: 살아 있는 팀원 순환
 function nextSpectate() {
   const p = G.player; if (!p || p.alive) return;
-  const list = teamMembers(p).filter(m => m !== p && m.alive); if (!list.length) return;
+  const list = teamMembers(p).filter(m => m !== p && m.alive && m.mode !== 'plane'); if (!list.length) return;   // 리콜 수송기에 탄 팀원은 관전하지 않음
   const i = list.indexOf(G.spec); G.spec = list[(i + 1) % list.length];
 }
 G.viewChar = () => { const p = G.player; return p && !p.alive && G.spec && G.spec.alive ? G.spec : p; };
@@ -488,7 +491,7 @@ G.update = function (dt) {
     pl.t += dt; const d = pl.t * pl.speed;
     pl.pos.set(pl.ax + pl.dx * d, pl.alt, pl.az + pl.dz * d); pl.mesh.position.copy(pl.pos);
     for (const pr of pl.mesh.userData.props) pr.rotation.z += dt * 30;
-    const left = CHARS.filter(c => c.mode === 'plane');
+    const left = CHARS.filter(c => c.mode === 'plane' && !c.rplane);   // 리콜 수송기 탑승자는 08_recall.js가
     for (const c of left) {
       c.pos.copy(pl.pos);
       if (!c.isPlayer && c.brain && pl.t >= c.brain.jumpAt && overIsland(pl.pos.x, pl.pos.z)) jumpOut(c);
@@ -504,7 +507,8 @@ G.update = function (dt) {
     if (p.mode === 'plane') {
       if (!modal || !$('mapPanel').hidden) { p.yaw -= Input.lookX * 0.0023 * SETTINGS.lookSens; p.pitch = clamp(p.pitch - Input.lookY * 0.0023 * SETTINGS.lookSens, -1.2, 0.6); }
       Input.lookX = Input.lookY = 0;
-      if (Input.consume('interact') || Input.consume('jump')) { if (G.previewT <= 0 && overIsland(pl.pos.x, pl.pos.z)) jumpOut(p); else HUD.toast(G.previewT > 0 ? '지도를 닫으면 출발합니다' : '섬 상공에서만 강하할 수 있습니다', 'warn'); }
+      const pp = planeOf(p);
+      if (Input.consume('interact') || Input.consume('jump')) { if (G.previewT <= 0 && overIsland(pp.pos.x, pp.pos.z)) jumpOut(p); else HUD.toast(G.previewT > 0 ? '지도를 닫으면 출발합니다' : '섬 상공에서만 강하할 수 있습니다', 'warn'); }
     } else if (p.mode === 'fall' || p.mode === 'chute') {
       if (!modal) { p.yaw -= Input.lookX * 0.0023 * SETTINGS.lookSens; p.pitch = clamp(p.pitch - Input.lookY * 0.0023 * SETTINGS.lookSens, -1.3, 0.8); }
       Input.lookX = Input.lookY = 0;
@@ -559,7 +563,7 @@ G.update = function (dt) {
     footsteps(c, dt);
   }
   separateChars();
-  if (!G.training && !G.dm) { if (!G.over || G.win) Zone.update(dt); Airdrop.update(dt); }
+  if (!G.training && !G.dm) { if (!G.over || G.win) Zone.update(dt); Airdrop.update(dt); Recall.update(dt); }
   updateProjectiles(dt); FX.update(dt);
   if (G.noises.length > 80 || (G.noises.length && G.time - G.noises[0].t > 2)) G.noises = G.noises.filter(n => G.time - n.t < 2);
   // 거리 기반 표시 최적화
@@ -582,10 +586,11 @@ G.update = function (dt) {
   if (G.focusRing) { G.focusRing.visible = !!fi; if (fi) { G.focusRing.position.set(fi.x, fi.y + 0.015, fi.z); G.focusRing.material.opacity = 0.35 + Math.sin(G.time * 5) * 0.2; } }
   // 카메라 / 그림자 / 오디오 리스너
   if (p) {
-    if (p.mode === 'plane' && pl) {
+    const pp = planeOf(p);
+    if (p.mode === 'plane' && pp) {
       const a = p.yaw, dist = 42;
-      G.camera.position.set(pl.pos.x - Math.sin(a) * dist * Math.cos(p.pitch - 0.3), pl.pos.y + 12 - Math.sin(p.pitch - 0.3) * dist, pl.pos.z - Math.cos(a) * dist * Math.cos(p.pitch - 0.3));
-      G.camera.lookAt(pl.pos.x, pl.pos.y, pl.pos.z); G.camera.fov = 70; G.camera.updateProjectionMatrix();
+      G.camera.position.set(pp.pos.x - Math.sin(a) * dist * Math.cos(p.pitch - 0.3), pp.pos.y + 12 - Math.sin(p.pitch - 0.3) * dist, pp.pos.z - Math.cos(a) * dist * Math.cos(p.pitch - 0.3));
+      G.camera.lookAt(pp.pos.x, pp.pos.y, pp.pos.z); G.camera.fov = 70; G.camera.updateProjectionMatrix();
       p.root.visible = false; VM.active = false;
     } else if (!p.alive && G.spec && G.spec.alive && !G.over) {
       spectateCamera(dt, G.spec); p.root.visible = true;
@@ -599,7 +604,7 @@ G.update = function (dt) {
     if (G.training) Training.hud(dt);
     if (G.dm) DM.hud(dt);
     G.sky.position.copy(G.camera.position);
-    const focus = p.mode === 'plane' ? pl.pos : G.viewChar().pos;
+    const focus = p.mode === 'plane' ? pp.pos : G.viewChar().pos;
     if (G.sun) { G.sun.target.position.set(focus.x, focus.y, focus.z); G.sun.position.set(focus.x + G.sunDir.x * 150, focus.y + G.sunDir.y * 150, focus.z + G.sunDir.z * 150); }
     Audio.setListener(G.camera.position.x, G.camera.position.y, G.camera.position.z, p.yaw, p.mode === 'ground' && isIndoor(p.pos.x, p.pos.z, p.pos.y));
   }
@@ -762,7 +767,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, SkinFx, Dev, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, SkinFx, Dev, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

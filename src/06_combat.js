@@ -691,6 +691,7 @@ function knockChar(t, attacker, cause) {
   t.knocked = true; t.knockN++; t.knockedBy = by; t.hp = 100; t.knockT = G.time;
   t.heal = null; t.rl = null; t.cycle = null; t.aiming = false; t.sprint = false; t.burstQ = 0; t.fireHold = false; t.combatFacing = false;
   if (t.revive) cancelRevive(t);
+  if (t.recall) Recall.cancel(t);
   if (t.veh) Veh.exit(t, true, true);
   t.stance = 'prone'; t.setVisibleGear();
   if (by) by.knocks++;
@@ -766,6 +767,7 @@ function killChar(t, attacker, cause) {
   // 팀: 서 있는 팀원이 없으면 기절한 팀원도 모두 탈락 (기절시킨 적에게 처치 인정)
   if (G.teams && G.teamSize > 1 && !teamHasStanding(t.team)) for (const m of G.teams[t.team].members) if (m.alive && m.knocked) killChar(m, m.knockedBy, 'wipe');
   if (G.teams) { const T = G.teams[t.team]; if (T && !T.place && !teamAlive(T)) T.place = aliveTeamCount() + 1; }
+  Recall.onDeath(t);   // 리콜 카드(내 것 + 들고 있던 팀원 것)를 그 자리에
   if (G.net) Net.sendDeath(t, attacker, cause);
   G.onDeath(t, attacker);
 }

@@ -390,6 +390,7 @@ function updatePlayer(dt) {
   if (p.inWater) speed = 2.3;
   // 부활 중: 움직이거나 쏘면 취소
   if (p.revive) { if (analog > 0.05 || Input.fire || p.sprint) cancelRevive(p); else speed = 0; }
+  if (p.recall) { if (analog > 0.05 || Input.fire || p.sprint) Recall.cancel(p); else speed = 0; }   // 리콜 등록 중도 같음
   if (p.weapon && ITEMS[p.weapon.id].moveMul) speed *= ITEMS[p.weapon.id].moveMul;
   if (mz < -0.2) speed *= 0.8;
   speed *= clamp(analog, 0, 1);
@@ -418,9 +419,11 @@ function updatePlayer(dt) {
   // 상호작용 (주변 아이템)
   updateNearbyLoot(p);
   if (Input.consume('interact')) {
-    const km = !p.revive && nearestKnockedMate(p, 1.9), v = !km && Veh.nearestEnterable(p);
+    const km = !p.revive && nearestKnockedMate(p, 1.9), rp = !km && !p.revive && !p.recall && Recall.promptFor(p), v = !km && !(rp && rp.act) && Veh.nearestEnterable(p);
     if (p.revive) cancelRevive(p);
+    else if (p.recall) Recall.cancel(p);
     else if (km) startRevive(p, km);
+    else if (rp && rp.act) Recall.start(p, rp.tw);
     else if (v) { if (Veh.enter(p, v)) HUD.setLoot([]); }
     else { const it = HUD.focusItem(); if (it) doPickup(p, it); }
   }
@@ -628,6 +631,7 @@ function enterThrow(p, type) {
   if (p.knocked || p.veh || p.mode !== 'ground') return false;
   if (p.heal) p.heal = null;
   if (p.revive) cancelRevive(p);
+  if (p.recall) Recall.cancel(p);
   p.reloadT = 0; p.cycle = null; p.burstQ = 0; p.aiming = false;
   if (Input.aimToggle) { Input.aimToggle = false; const ab = $('tb_aim'); if (ab) ab.classList.remove('active'); }
   p.throwMode = { type, pin: false, cook: 0, armed: !Input.fire };
@@ -698,12 +702,12 @@ const ThrowViz = (() => {
 })();
 function updateNearbyLoot(p) {
   itemsNear(p.pos.x, p.pos.z, 2.6, _near);
-  const list = _near.filter(it => Math.abs(it.y - p.pos.y) < 1.6);
-  // 바라보는 방향에 가까운 순서
+  const list = _near.filter(it => Math.abs(it.y - p.pos.y) < 1.6 && (it.id !== 'rcard' || Recall.canTake(p, it)));   // 다른 팀 리콜 카드는 목록에 없음
+  // 바라보는 방향에 가까운 순서 (팀원 리콜 카드는 맨 앞 — 시체 소지품에 묻히지 않게)
   const yaw = p.yaw;
   list.sort((a, b) => {
-    const sa = Math.abs(angleDiff(yaw, Math.atan2(a.x - p.pos.x, a.z - p.pos.z))) + Math.hypot(a.x - p.pos.x, a.z - p.pos.z) * 0.3;
-    const sb = Math.abs(angleDiff(yaw, Math.atan2(b.x - p.pos.x, b.z - p.pos.z))) + Math.hypot(b.x - p.pos.x, b.z - p.pos.z) * 0.3;
+    const sa = Math.abs(angleDiff(yaw, Math.atan2(a.x - p.pos.x, a.z - p.pos.z))) + Math.hypot(a.x - p.pos.x, a.z - p.pos.z) * 0.3 - (a.id === 'rcard' ? 9 : 0);
+    const sb = Math.abs(angleDiff(yaw, Math.atan2(b.x - p.pos.x, b.z - p.pos.z))) + Math.hypot(b.x - p.pos.x, b.z - p.pos.z) * 0.3 - (b.id === 'rcard' ? 9 : 0);
     return sa - sb;
   });
   HUD.setLoot(list.slice(0, 6));
@@ -725,6 +729,7 @@ function updateCharTimers(c, dt) {
   if (c.throwAnim > 0) c.throwAnim = Math.max(0, c.throwAnim - dt);
   if (c.knocked) { updateKnocked(c, dt); return; }
   if (c.revive) updateRevive(c, dt);
+  if (c.recall && !c.recall.net) Recall.updateReg(c, dt);
   c.fireCd -= dt; c.bloom = Math.max(0, c.bloom - dt * 2.4);
   if (c.equipT > 0) { c.equipT -= dt; if (c.equipT <= 0.25 && c.rig.gunId !== (c.weapon && c.weapon.id)) c.setVisibleGear(); }
   if (c.rl) updateReload(c, dt);

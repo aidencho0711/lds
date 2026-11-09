@@ -509,6 +509,13 @@ const Audio = (() => {
       else if (kind === 'follow') { tone(sfxBus, t, 0.08, 'sine', 990, 980, 0.16); tone(sfxBus, t + 0.09, 0.1, 'sine', 740, 730, 0.16); }
       else { tone(sfxBus, t, 0.08, 'sine', 740, 760, 0.16); tone(sfxBus, t + 0.09, 0.1, 'sine', 990, 1010, 0.16); }
     },
+    // 리콜 타워 단말기: 등록 시작(짧은 두 음) · 완료(올라가는 세 음 + 전파 잡음) · 실패(낮은 경고음)
+    recall(kind) {
+      if (!ctx) return; const t = ctx.currentTime;
+      if (kind === 'done') { for (let i = 0; i < 3; i++) tone(sfxBus, t + i * 0.11, 0.1, 'sine', 660 + i * 220, 680 + i * 220, 0.14); noise(sfxBus, t + 0.34, 0.3, 'bandpass', 2600, 2, 0.05); }
+      else if (kind === 'fail') tone(sfxBus, t, 0.16, 'square', 320, 290, 0.08);
+      else { tone(sfxBus, t, 0.06, 'square', 880, 880, 0.07); tone(sfxBus, t + 0.08, 0.06, 'square', 1175, 1175, 0.07); }
+    },
     zoneWarn() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.25, 'sawtooth', 440, 430, 0.12); tone(sfxBus, t + 0.3, 0.35, 'sawtooth', 330, 320, 0.12); },
     zoneTick() { if (!ctx || !throttle('ztick', 0.9)) return; const t = ctx.currentTime; tone(sfxBus, t, 0.12, 'sine', 160, 120, 0.25); },
     explosion(pos) {

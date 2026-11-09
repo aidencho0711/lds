@@ -266,9 +266,32 @@ class Brain {
       case 'bag': { const g = inv.gear.bag; return !g ? 26 : (d.lvl > ITEMS[g.id].lvl ? 20 : 0); }
       case 'att': return inv.weapons.some(w => w && attFits(it.id, w.id) && (!w.att[d.slot] || (d.slot === 'scope' && ITEMS[w.att.scope].zoom < d.zoom))) ? 12 : 0;
       case 'throw': return (it.id === 'frag' ? inv.count('frag') < 2 : inv.count('smoke') < 1) && inv.room(it.id) > 0 ? 9 : 0;
+      case 'card': return Recall.canTake(this.c, it) && Recall.useful(it) ? 70 : 0;   // 팀원 리콜 카드
     }
     return 0;
   }
+  // ---------- 리콜: 팀원 카드 줍기 → 가까운 리콜 타워에서 등록 ----------
+  //  적이 안 보이고(35m 안 위협 없음) 최근 맞지 않았을 때만. 반환 true = 이번 판단은 여기서 끝
+  recallThink(threatD) {
+    const c = this.c;
+    if (!Recall.open()) return false;
+    const calm = threatD > 35 && G.time - c.lastDamageT > 3;
+    if (Recall.validCards(c).length) {
+      if (this.state === 'RECALL' && this.rcTower) return true;
+      if (!calm) return false;
+      const tw = Recall.bestTower(c, this.rcSkip); if (!tw) return false;
+      this.rcTower = tw; this.rcBest = 1e9; this.rcBestT = G.time; this.setState('RECALL'); return true;
+    }
+    const lt = this.lootTarget;
+    if (this.state === 'LOOT' && lt && lt.alive && lt.id === 'rcard' && this.stateT < 60) return true;
+    if (!calm) return false;
+    const cd = Recall.nearCard(c, W.big ? 300 : 160); if (!cd) return false;
+    // 가다가 막혀 포기한 카드는 8초 뒤 다시 시도 (다른 자리에서 가면 닿는 경우가 많다)
+    if (this.ignore.has(cd)) { if (!this.rcIgn || this.rcIgn.it !== cd) this.rcIgn = { it: cd, t: G.time }; if (G.time - this.rcIgn.t < 8) return false; this.ignore.delete(cd); this.rcIgn = null; }
+    cd.claim = c; this.lootTarget = cd; this.setState('LOOT'); return true;
+  }
+  // 카드를 들고 있거나 가지러 가는 중 (차량 타기 등 다른 일로 새지 않게)
+  rcBusy() { const lt = this.lootTarget; return this.state === 'RECALL' || (this.state === 'LOOT' && !!lt && lt.id === 'rcard'); }
   // anchor·anchorR: 이 지점에서 anchorR 안의 물건만 (플레이어 팀원은 플레이어 곁에서만 줍는다)
   findLoot(radius, anchor, anchorR) {
     const c = this.c; itemsNear(c.pos.x, c.pos.z, radius, _items);
@@ -326,6 +349,11 @@ class Brain {
       const rem = c.revive.total - c.revive.t, shot = G.time - c.lastDamageT < 1.2;
       if (rem > 4 && (threatD < 25 || (shot && (rem > 6 || c.hp < 60)))) cancelRevive(c, true);
     }
+    // 리콜 등록 중: 남은 시간이 2.5초를 넘고 맞거나 25m 안에 적이 보이면 멈추고 싸운다 (아니면 끝까지)
+    if (c.recall) {
+      const rem = c.recall.total - c.recall.t, shot = G.time - c.lastDamageT < 1.2;
+      if (rem > 2.5 && (threatD < 25 || shot)) Recall.cancel(c, true); else return;
+    }
     if (this.state === 'REVIVE' && this.reviveTgt && this.reviveTgt.alive && this.reviveTgt.knocked && (calm || c.revive) && this.stateT < 45) return;
     if (calm && !(this.state === 'REVIVE' && this.stateT >= 45)) {
       const m = this.knockedMate();
@@ -343,12 +371,13 @@ class Brain {
     // 차량: 자기장이 멀면 근처 차량을 타러 간다 (적이 안 보일 때)
     const noEnemy = !tgt || !tr.visible;
     // 동승: 팀원이 운전 중이거나 플레이어가 탄 차에 빈자리가 있으면 타러 간다
-    if (noEnemy && !recovering) {
+    const rcb = this.rcBusy();
+    if (noEnemy && !recovering && !rcb) {
       if (this.state === 'BOARD' && this.vehTarget && Veh.freeSeats(this.vehTarget) && !this.vehTarget.dead && this.stateT < 20) return;
       const bv = this.boardTarget(); if (bv) { this.vehTarget = bv; this.setState('BOARD'); return; }
     }
     if (this.state === 'TOVEH' && this.vehTarget && !this.vehTarget.driver && !this.vehTarget.dead && this.stateT < 25 && noEnemy) return;
-    if (noEnemy && (usable || zonePressure) && this.wantVehicle()) {
+    if (noEnemy && !rcb && (usable || zonePressure) && this.wantVehicle()) {
       const crew = 1 + (G.teamSize > 1 ? teamMembers(c).filter(m => m !== c && standing(m) && Math.hypot(m.pos.x - c.pos.x, m.pos.z - c.pos.z) < 60).length : 0);
       const v = Veh.nearestFree(c.pos.x, c.pos.z, W.big ? 90 : 60, (o) => Math.hypot(o.vx, o.vz) < 1 && o.seats.length >= Math.min(crew, 4) && !(this.badVeh && this.badVeh.has(o)));
       if (v) { this.vehTarget = v; this.setState('TOVEH'); return; }
@@ -389,6 +418,8 @@ class Brain {
     if (healable && c.hp < 80 && G.time - c.lastDamageT > (cautious ? 1.5 : 2.5) && (!tgt || G.time - tr.last > (cautious ? 1.5 : 3))) { this.startHeal(); this.setState('HEAL'); return; }
     if (!inZoneNow && (Zone.state === 'shrink' || c.outsideZoneT > 1)) { this.setState('ZONE'); return; }
     if (zonePressure && !(this.state === 'LOOT' && this.lootTarget && Math.hypot(this.lootTarget.x - c.pos.x, this.lootTarget.z - c.pos.z) < 8)) { this.setState('ZONE'); return; }
+    // 리콜 (듀오·스쿼드): 팀원 카드 줍기 / 카드를 들고 리콜 타워로 — 플레이어 지시·따라가기보다 먼저
+    if (G.teamSize > 1 && this.recallThink(threatD)) return;
     // 플레이어 지시: 이동(지점 주변 경계, 근처 물건만) / 공격(목표의 마지막 보고 위치로)
     if (ord && ord.kind === 'move' && !recovering) {
       const sp = this.orderSlot(ord);
@@ -903,11 +934,27 @@ class Brain {
         // 경로 끝(벽·가구 옆이라 격자 칸이 막힌 경우 등)에서 6m 안이면 직접 다가간다
         // (경로가 불완전해 끝에서 재탐색만 반복하는 경우 포함)
         if (dist < 6 && (!wish ? !this.wantPath : (!wish[0] && !wish[1] && this.stateT > 1))) { wish = [(it.x - c.pos.x) / dist, (it.z - c.pos.z) / dist]; speed = 2.6; }
+        else if (it.id === 'rcard' && dist < 3.5 && Math.abs(it.y - c.pos.y) < 1.2) { wish = [(it.x - c.pos.x) / dist, (it.z - c.pos.z) / dist]; speed = 2.6; }   // 리콜 카드: 바로 옆이면 곧장
         // 진척 감시(남은 경로 길이 기준): 4초 동안 0.5m도 줄지 않으면(창문 너머·선반 위 등) 포기
         const rem = this.pathRemain(it.x, it.z);
         if (this.lootProg !== it) { this.lootProg = it; this.lootBest = rem; this.lootBestT = G.time; }
         else if (rem < this.lootBest - 0.5) { this.lootBest = rem; this.lootBestT = G.time; }
         if ((!wish && !this.wantPath && this.stateT > 0.5) || G.time - this.lootBestT > 4) { this.ignore.add(it); this.lootTarget = null; this.lootProg = null; this.setState('EXPLORE'); }
+        this.scan(dt);
+        break;
+      }
+      case 'RECALL': { // 팀원 리콜 카드를 들고 가까운 리콜 타워 단말기 앞으로 → 멈춰 서서 8초 등록
+        const tw = this.rcTower;
+        if (!tw || !Recall.open() || !Recall.validCards(c).length) { if (c.recall) Recall.cancel(c, true); this.rcTower = null; this.setState('EXPLORE'); break; }
+        if (c.recall) { this.faceToward(tw.cx, tw.y + 1.3, tw.cz, dt, 4); break; }
+        const dx = tw.ix - c.pos.x, dz = tw.iz - c.pos.z, dist = Math.hypot(dx, dz) || 1;
+        if (dist < 1.4 && Math.abs(tw.y - c.pos.y) < 1.5) { if (!Recall.start(c, tw)) { this.rcTower = null; this.setState('EXPLORE'); } break; }
+        this.moveGoal(tw.ix, tw.iz, 'recall'); wish = this.steer(); speed = dist > 10 ? 6.2 : 3.0; c.sprint = dist > 10;
+        if (dist < 10 && (!wish || (!wish[0] && !wish[1])) && !this.wantPath) wish = [dx / dist, dz / dist];
+        // 10초 동안 1m도 못 다가가면(막힌 곳) 다른 타워로
+        const rem = this.pathRemain(tw.ix, tw.iz);
+        if (rem < this.rcBest - 1) { this.rcBest = rem; this.rcBestT = G.time; }
+        else if (G.time - this.rcBestT > 10) { (this.rcSkip || (this.rcSkip = new Set())).add(tw); this.rcTower = null; this.setState('EXPLORE'); }
         this.scan(dt);
         break;
       }
@@ -941,7 +988,7 @@ class Brain {
     if (wish && c.onGround && Math.hypot(c.vel.x, c.vel.z) < 0.6 && this.stuckT > 0.8 && Math.random() < 0.05) jump = true;
     this.checkStuck(dt, !!wish && (wish[0] || wish[1]));
     const wx = wish ? wish[0] : 0, wz = wish ? wish[1] : 0;
-    if (!c.combatFacing && !wish && this.state !== 'DETECT' && this.state !== 'COVER' && this.state !== 'MOVE' && this.state !== 'HEAL') this.scan(dt);
+    if (!c.combatFacing && !wish && this.state !== 'DETECT' && this.state !== 'COVER' && this.state !== 'MOVE' && this.state !== 'HEAL' && !c.recall) this.scan(dt);
     stepPhysics(c, dt, wx, wz, c.inWater ? 2.2 : speed, jump);
   }
   pickExploreGoal() {

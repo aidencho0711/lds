@@ -1159,6 +1159,8 @@ async function generateWorld(mapId, scene, progress) {
   }
   w.trees = trees; w.rocks = rocks;
   if (V2) { Object.assign(K, { Q, mk, vegMat, heightAt, surfaceAt, footprintFree, claim, addCollider, yieldUI }); await v2Vegetation(K); }
+  // 리콜 타워 (08_recall.js): 별도 시드 난수 · 충돌 상자는 맨 뒤에 붙음 → 위에서 만든 지형·건물·전리품·나무는 그대로
+  placeRecallTowers({ M, w, flat: FLAT, getBatch, addBox, addCollider, footprintFree, poisNear, riverDist, RV });
 
   // ----- 병합 메시 확정 -----
   const solidMat = new THREE.MeshLambertMaterial({ vertexColors: true });

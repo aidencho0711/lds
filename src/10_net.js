@@ -8,6 +8,7 @@
 //     (Supabase 무료 플랜 실시간 메시지 한도가 프로젝트 전체 초당 100개라 직접 연결이 기본)
 //  피해: 쏜 쪽이 맞힌 것을 판정 → 맞은 캐릭터의 주인 기기로 'hit' → 주인이 방어구 계산·기절·사망 처리 후 결과를 알림
 //  아이템: 시작 아이템·차량은 같은 시드로 각자 생성(방장이 개수·위치 합계로 검증, 다르면 목록 전송), 이후 줍기·버리기는 사건으로
+//  리콜(08_recall.js): 'rc' — 등록 요청은 방장에게, 방장이 확인해 승인을 모두에게. 되살리기는 그 캐릭터의 주인 기기
 // ============================================================
 const NET_VER = 1;
 const NET_ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }].concat(CLOUD_CFG.turn || []);
@@ -189,6 +190,7 @@ const Net = (() => {
       case 'shot': remoteShot(e); break;
       case 'throw': remoteThrow(e); break;
       case 'pu': remotePunch(e); break;
+      case 'rc': Recall.onNet(e, from); break;   // 리콜: 등록 요청(→방장)·승인(방장→모두)·단말기 작동·거절
       case 'gadd': { if (N.items.has(e.u)) break; N.applying++; spawnItem(G.scene, e.i, e.n, e.x, e.y, e.z, e.in || null, e.u); N.applying--; break; }
       case 'gdel': { const it = N.items.get(e.u); if (it && it.alive) { N.applying++; removeItem(it); N.applying--; } break; }
       case 'gcnt': { const it = N.items.get(e.u); if (it) it.count = e.n; break; }
@@ -273,7 +275,7 @@ const Net = (() => {
     const life = a[12], snap = life !== n.life || !n.buf.length;
     n.life = life; n.lastA = a; n.rxT = t;
     const alive = !!(f & FL.alive);
-    if (alive && !c.alive) { c.alive = true; c.anim.dead = 0; c.root.visible = true; c.hp = a[7]; }
+    if (alive && !c.alive) { c.alive = true; c.anim.dead = 0; c.root.visible = !(f & FL.plane); c.hp = a[7]; }   // 리콜로 되살아나면 수송기 안(숨김)
     else if (!alive && c.alive && !n.deathSeen) { n.pendDead = t; }   // 사망 사건이 곧 온다 (못 받으면 아래에서 처리)
     c.knocked = !!(f & FL.knocked) && alive; c.aiming = !!(f & FL.aiming); c.sprint = !!(f & FL.sprint); c.onGround = !!(f & FL.ground); c.inWater = !!(f & FL.water);
     c.combatFacing = !!(f & FL.ready); if (f & FL.ready) c.lastShotT = Math.max(c.lastShotT || -99, G.time - 1.2);

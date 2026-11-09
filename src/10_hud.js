@@ -182,7 +182,9 @@ const HUD = (() => {
         const bar = h('div', 'thp'); bar.appendChild(h('i')); r.appendChild(bar); panel.appendChild(r);
         if (!m.isPlayer) { const t = h('div', 'ttag'); t.style.setProperty('--tc', teamColor(m)); t.appendChild(h('b', '', String(m.slot + 1))); t.appendChild(h('span')); tags.appendChild(t); }
       }
+      panel.appendChild(h('div', 'trc'));   // 리콜 상황 한 줄 (팀원 줄 뒤 — 줄 번호는 그대로)
     }
+    const rc = panel.lastChild, rt = Recall.hudLine(p); if (rc.textContent !== rt) rc.textContent = rt; rc.hidden = !rt;
     const cam = G.camera, W2 = window.innerWidth, H2 = window.innerHeight;
     let ti = 0;
     const ord = G.teamOrder, hd = panel.firstChild, ol = ord ? (ord.kind === 'attack' ? `공격 · ${ord.target.name}` : '이동 지점 경계') : '따라오기';
@@ -271,7 +273,7 @@ const HUD = (() => {
       if ($('knockTxt').textContent !== t) $('knockTxt').textContent = t;
     }
     const sb = $('specBar'); sb.hidden = !spec;
-    if (spec) { const t = `관전 중 · ${G.spec.name}${G.spec.knocked ? ' (기절)' : ''}`; if ($('specName').textContent !== t) $('specName').textContent = t; }
+    if (spec) { const rl = Recall.specLine(p), t = `관전 중 · ${G.spec.name}${G.spec.knocked ? ' (기절)' : ''}${rl ? ' · ' + rl : ''}`; if ($('specName').textContent !== t) $('specName').textContent = t; }
     // 체력
     const hp = Math.max(0, p.hp);
     $('hpFill').style.width = hp + '%'; $('hpLag').style.width = hp + '%';
@@ -343,11 +345,12 @@ const HUD = (() => {
     const free = !v && p.alive && !p.knocked && p.mode === 'ground';
     const riding = !!v && p.seat > 0;
     const km = free && !p.revive ? nearestKnockedMate(p, 1.9) : null;
-    const nv = free && !km ? Veh.nearestEnterable(p) : null, vp = $('vehPrompt');
-    vp.hidden = !(nv || km);
-    if (!vp.hidden) { const fs = nv ? Veh.freeSeats(nv) : 0, t = km ? `${IS_TOUCH ? '부활 버튼' : 'F'} · ${km.name} 부활 (${REVIVE_T}초)` : (IS_TOUCH ? '탑승 버튼' : 'F') + ' · ' + nv.T.name + ' ' + (nv.seats[0] ? `동승 (빈자리 ${fs})` : '탑승'); if (vp.textContent !== t) vp.textContent = t; }
+    const rp = free && !km && !p.revive && !p.recall ? Recall.promptFor(p) : null;   // 리콜 타워 단말기 앞
+    const nv = free && !km && !(rp && rp.act) ? Veh.nearestEnterable(p) : null, vp = $('vehPrompt');
+    vp.hidden = !(nv || km || rp);
+    if (!vp.hidden) { const fs = nv ? Veh.freeSeats(nv) : 0, t = km ? `${IS_TOUCH ? '부활 버튼' : 'F'} · ${km.name} 부활 (${REVIVE_T}초)` : rp && (rp.act || !nv) ? rp.text : (IS_TOUCH ? '탑승 버튼' : 'F') + ' · ' + nv.T.name + ' ' + (nv.seats[0] ? `동승 (빈자리 ${fs})` : '탑승'); if (vp.textContent !== t) vp.textContent = t; vp.classList.toggle('rc', !!rp && t === rp.text); }
     document.body.classList.toggle('driving', !!v && !riding); document.body.classList.toggle('riding', riding);
-    const ib = $('tb_interact'); if (ib) { const lb = v ? '하차' : p.revive ? '취소' : km ? '부활' : nv ? '탑승' : '줍기'; if (ib.textContent !== lb) ib.textContent = lb; }
+    const ib = $('tb_interact'); if (ib) { const lb = v ? '하차' : p.revive || p.recall ? '취소' : km ? '부활' : rp && rp.act ? '리콜' : nv ? '탑승' : '줍기'; if (ib.textContent !== lb) ib.textContent = lb; }
     if (IS_TOUCH || $('tb_jump')) {
       setLbl('tb_jump', p.vaultHint === 'vault' ? '넘기' : p.vaultHint === 'climb' ? '오르기' : '점프'); const jb = $('tb_jump'); if (jb) jb.classList.toggle('hint', !!p.vaultHint);
       setLbl('tb_heal', p.heal ? '취소' : '회복'); setLbl('tb_throw', p.throwMode ? '취소' : '투척');
@@ -385,6 +388,7 @@ const HUD = (() => {
     // 진행 표시 (재장전/회복/장착)
     let prog = null;
     if (p.revive) prog = [`${p.revive.tgt.name} 부활 중 · 움직이면 취소`, p.revive.t / p.revive.total];
+    else if (p.recall) prog = ['리콜 등록 중 · 움직이면 취소', p.recall.t / p.recall.total];
     else if (p.rl) prog = [p.rl.kind === 'mag' || p.rl.kind === 'belt' ? '재장전' : `장전 ${p.weapon ? p.weapon.mag : 0}/${p.weapon ? p.inv.magSize(p.weapon) : 0}`, p.rl.t / p.rl.total];
     else if (p.heal) prog = [ITEMS[p.heal.id].name + ' 사용 중', 1 - p.heal.t / p.heal.total];
     $('progress').hidden = !prog;
@@ -394,8 +398,8 @@ const HUD = (() => {
     if (p.mode === 'plane' || p.mode === 'fall' || p.mode === 'chute') {
       dp.hidden = false;
       $('jumpBtn').hidden = p.mode !== 'plane'; $('chuteBtn').hidden = p.mode !== 'fall';
-      const gh = p.mode === 'plane' ? G.plane.pos.y - heightAt(G.plane.pos.x, G.plane.pos.z) : p.pos.y - heightAt(p.pos.x, p.pos.z);
-      $('dropInfo').textContent = p.mode === 'plane' ? `수송기 탑승 중 · 고도 ${Math.round(gh)}m · ${IS_TOUCH ? '미니맵을 눌러' : '지도(M)에서'} 착지 지점을 고르세요` : `고도 ${Math.round(gh)}m · 낙하 속도 ${Math.round(-p.vel.y)}m/s`;
+      const pp = planeOf(p), gh = p.mode === 'plane' ? pp.pos.y - heightAt(pp.pos.x, pp.pos.z) : p.pos.y - heightAt(p.pos.x, p.pos.z);
+      $('dropInfo').textContent = p.mode === 'plane' ? `${p.rplane ? '리콜 수송기' : '수송기'} 탑승 중 · 고도 ${Math.round(gh)}m · ${IS_TOUCH ? '미니맵을 눌러' : '지도(M)에서'} 착지 지점을 고르세요` : `고도 ${Math.round(gh)}m · 낙하 속도 ${Math.round(-p.vel.y)}m/s`;
     } else dp.hidden = true;
     const vc = G.viewChar ? G.viewChar() : p;
     if (!$('mapPanel').hidden) { bigT -= dt; if (bigT <= 0) { bigT = 0.3; drawBig(); } }
@@ -427,6 +431,8 @@ const HUD = (() => {
       ctx.fillStyle = '#e2662a'; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5; ctx.fillRect(cx - s, cy - s, s * 2, s * 2); ctx.strokeRect(cx - s, cy - s, s * 2, s * 2);
       ctx.fillStyle = '#f2ecd8'; ctx.fillRect(cx - s * 0.6, cy - 1, s * 1.2, 2); ctx.fillRect(cx - 1, cy - s * 0.6, 2, s * 1.2);
     }
+    // 리콜 타워 · 팀원 리콜 카드 · 리콜 수송기 (듀오·스쿼드)
+    Recall.drawMap(ctx, toPx, opts);
     // 마커
     if (G.marker) { const [mx, my] = toPx(G.marker.x, G.marker.z); ctx.fillStyle = '#f0a43a'; ctx.beginPath(); ctx.moveTo(mx, my); ctx.arc(mx, my - 9, 5, Math.PI * 0.8, Math.PI * 0.2); ctx.closePath(); ctx.fill(); }
     if (opts.labels) {
@@ -485,7 +491,7 @@ const HUD = (() => {
     }
     // 플레이어 (위치 + 방향)
     if (p && p.alive) {
-      const src = p.mode === 'plane' ? G.plane.pos : p.pos, [x, y] = toPx(src.x, src.z);
+      const src = p.mode === 'plane' ? planeOf(p).pos : p.pos, [x, y] = toPx(src.x, src.z);
       ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI - p.yaw);
       if (opts.cone) { ctx.fillStyle = 'rgba(240,164,58,0.18)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, opts.cone, -Math.PI / 2 - 0.6, -Math.PI / 2 + 0.6); ctx.closePath(); ctx.fill(); }
       ctx.fillStyle = '#f0a43a'; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
@@ -498,7 +504,7 @@ const HUD = (() => {
     const S = Math.round(cv.clientWidth * Math.min(2, window.devicePixelRatio || 1));
     if (cv.width !== S) { cv.width = cv.height = S; }
     const ctx = cv.getContext('2d');
-    const src = p.mode === 'plane' ? G.plane.pos : p.pos;
+    const src = p.mode === 'plane' ? planeOf(p).pos : p.pos;
     const R = W.isArena ? 42 : p.mode === 'ground' ? (p.veh ? 240 : 110) : 260, scale = S / (R * 2);
     const img = W.minimap, k = img.width / SIZE;
     ctx.fillStyle = '#2c6474'; ctx.fillRect(0, 0, S, S);

@@ -69,6 +69,8 @@ const ITEMS = {
   smoke: { type: 'throw', name: '연막탄', w: 12, color: 0x8a8a8a },
   // ----- 상점 재화: 줍는 즉시 계정에 들어감(가방 무게 없음). count = 골드 탄피 양 -----
   gold: { type: 'gold', name: '골드 탄피 주머니', w: 0, color: 0xd8b04a },
+  // ----- 리콜 카드 (08_recall.js): 탈락한 팀원이 떨어뜨림 · 그 팀만 주울 수 있음 · 가방 무게 없음 (inst = {who, team, t}) -----
+  rcard: { type: 'card', name: '리콜 카드', w: 0, color: 0x2ec4d6 },
 };
 const AMMO_NAMES = { a556: '5.56', a762: '7.62', a9: '9mm', a12: '12G', a300: '.300', a45: '.45' };
 // 탄피 모델 종류 (배출·손에 든 탄)
@@ -150,6 +152,7 @@ function spawnItem(scene, id, count, x, y, z, inst, uid) {
   const it = { id, count, inst: inst || null, x, y, z, ry: Math.random() * TAU, alive: true, mesh: null, scene };
   GROUND.push(it); gridPush(itemGrid, itemCell(x, z), it);
   if (G.net) Net.itemAdded(it, uid); // 같이 하기: 번호를 붙이고 다른 기기에 알림
+  if (id === 'rcard') Recall.track(it);
   return it;
 }
 function itemMesh(it) {
@@ -170,6 +173,7 @@ function itemLabel(it) {
   if (d.type === 'weapon') return d.name + (it.inst && it.inst.mag ? ` (${it.inst.mag}발)` : '');
   if (d.type === 'vest' || d.type === 'helmet') return d.name + (it.inst ? ` ${Math.round(it.inst.dur / d.dur * 100)}%` : '');
   if (d.type === 'gold') return `${d.name} (+${it.count})`;
+  if (d.type === 'card') return `${d.name} · ${Recall.cardName(it)}`;
   if (it.count > 1) return `${d.name} ×${it.count}`;
   return d.name;
 }
@@ -245,6 +249,12 @@ function pickupItemRaw(c, it, scene, opts = {}) {
     const n = it.count; removeItem(it);
     if (c.isPlayer) { c.goldN = (c.goldN || 0) + 1; c.goldAmt = (c.goldAmt || 0) + n; Eco.found(n); if (Audio.gacha) Audio.gacha('small', 2); }
     return { ok: true, msg: `${GOLD_NAME} +${n}` };
+  }
+  if (d.type === 'card') {
+    // 리콜 카드: 같은 팀만 · 들고 있으면 리콜 타워 단말기에서 등록할 수 있다 (가방과 무관)
+    if (!Recall.canTake(c, it)) return { ok: false, msg: '팀원의 리콜 카드만 주울 수 있습니다' };
+    const who = it.inst.who, nm = Recall.cardName(it); removeItem(it); (c.cards || (c.cards = [])).push(who); Recall.held(c);
+    return { ok: true, msg: Recall.useful(it) ? `${nm}의 리콜 카드 — 지도의 리콜 타워에서 등록하세요` : `${nm}의 리콜 카드 (리콜할 수 없음)` };
   }
   if (d.type === 'weapon') {
     const inst = it.inst || newWeapon(it.id, 0);

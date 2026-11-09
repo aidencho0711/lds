@@ -105,6 +105,13 @@ const Models = (() => {
     smoke: (c, w, h) => { c.fillStyle = '#d9dcd2'; c.fillRect(0, 0, w, h); c.fillStyle = '#2e6b3a'; c.fillRect(0, 0, w, h * 0.25); c.fillRect(0, h * 0.75, w, h * 0.25); for (const ox of [0, w / 2]) txt(c, 'SMOKE · GREEN', ox + w / 4, h / 2, 34, '#1d2a1f', 800); },
     patch3: (c, w, h) => { c.fillStyle = '#2b2c26'; c.fillRect(0, 0, w, h); c.strokeStyle = '#8a8470'; c.lineWidth = 4; c.strokeRect(5, 5, w - 10, h - 10); txt(c, 'ARMOR III', w / 2, h / 2, 46, '#d6d0b8', 800); },
     patch1: (c, w, h) => { c.fillStyle = '#20262e'; c.fillRect(0, 0, w, h); txt(c, 'ARMOR', w / 2, h / 2, 54, '#cfd6de', 800); },
+    // 리콜 카드 인쇄면(투명 바탕): 안테나 그림 + RECALL + 일련번호
+    rcard: (c, w, h) => {
+      c.clearRect(0, 0, w, h); c.strokeStyle = '#8fe8ff'; c.fillStyle = '#8fe8ff'; c.lineWidth = 8;
+      c.beginPath(); c.moveTo(w * 0.72, h * 0.78); c.lineTo(w * 0.72, h * 0.42); c.stroke(); c.beginPath(); c.arc(w * 0.72, h * 0.38, 9, 0, TAU); c.fill();
+      for (let i = 1; i <= 3; i++) { c.lineWidth = 6; c.beginPath(); c.arc(w * 0.72, h * 0.38, 10 + i * 15, -Math.PI * 0.85, -Math.PI * 0.15); c.stroke(); }
+      txt(c, 'RECALL', w * 0.3, h * 0.4, 64, '#e8fbff', 800); txt(c, 'ID 0417-26', w * 0.3, h * 0.66, 30, '#9fc7d6', 500);
+    },
   };
   function label(key, w = 256, h = 384) { return MT(ctex('lbl:' + key, w, h, LABELS[key]), key === 'a762' ? { alpha: true, rough: 0.7 } : {}); }
 
@@ -461,6 +468,13 @@ const Models = (() => {
       cs(0.0, 0.0, 0, true); cs(0.012, 0.008, 0.6, true);
       cs(0.1, 0.03, 0.4); cs(0.085, -0.06, 1.9); cs(-0.06, 0.09, 2.6); cs(0.04, 0.1, 0.9); cs(-0.1, -0.03, 1.2);
     },
+    // 리콜 카드: 남색 카드 + 하늘색 띠 + 금속 칩 + 인쇄면 (바닥에서 찾기 쉽게 실물보다 크게)
+    rcard(g) {
+      A(g, RB(0.2, 0.012, 0.13, 0.012, 0.003), M('polymer', 0x1c2b3c), 0, 0.006, 0);
+      A(g, BX(0.2, 0.003, 0.026), M('anod', 0x2ec4d6), 0, 0.0125, -0.043);
+      A(g, RB(0.034, 0.003, 0.026, 0.004, 0.001), M('brass', 0xd9b453), -0.062, 0.0128, 0.016);
+      A(g, PL(0.15, 0.09), MT(ctex('lbl:rcard', 384, 232, LABELS.rcard), { alpha: true }), 0.022, 0.0132, 0.012, -Math.PI / 2);
+    },
     // 헬멧·조끼·가방: 몸에 걸친 장비(05_models_gear.js)와 같은 모델 → 바닥·아이콘·착용 모습이 일치
     vest(g, id) { Gear.build.vest[ITEMS[id].lvl](g); },
     helmet(g, id) { Gear.build.helmet[ITEMS[id].lvl](g); },
@@ -517,7 +531,7 @@ const Models = (() => {
 
   // ---------- 아이콘 ----------
   let iconScene = null, iconCam = null, iconRT = null;
-  const VIEW = { gold: [0.7, 0.9, 1.1], weapon: [-1, 0.14, -0.05], att: [-1, 0.42, 0.4], ammo: [0.75, 0.9, 1.1], heal: [0.65, 1.0, 1.0], boost: [0.6, 0.35, 1.0], vest: [0.4, 0.22, 1], helmet: [0.85, 0.45, 1], bag: [0.6, 0.3, 1], throw: [0.7, 0.55, 1], bandage: [0.25, 1.4, 0.6], firstaid: [0.5, 0.9, 1] };
+  const VIEW = { gold: [0.7, 0.9, 1.1], weapon: [-1, 0.14, -0.05], att: [-1, 0.42, 0.4], ammo: [0.75, 0.9, 1.1], heal: [0.65, 1.0, 1.0], boost: [0.6, 0.35, 1.0], vest: [0.4, 0.22, 1], helmet: [0.85, 0.45, 1], bag: [0.6, 0.3, 1], throw: [0.7, 0.55, 1], bandage: [0.25, 1.4, 0.6], firstaid: [0.5, 0.9, 1], card: [0.2, 1.5, 0.75] };
   function setupIcon() {
     iconScene = new THREE.Scene();
     iconScene.add(new THREE.HemisphereLight(0xe2ebf3, 0x2a2622, 0.6));
