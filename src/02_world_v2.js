@@ -16,12 +16,12 @@ const V2_PAL = {
 // 지역 이름 (자체 작명 — 실제 게임 지명·배치는 쓰지 않는다)
 const V2_NAMES = {
   norden: { power: ['토르 발전소'], prison: ['그레이월 교도소'], school: ['린덴 학교'], hospital: ['화이트오크 병원'], quarry: ['스톤피트 채석장'], castle: ['올드크라운 성터'], radar: ['아이스아이 레이더 기지'], mansion: ['블랙우드 저택'], lighthouse: ['케이프 등대'] },
-  jungle: { camp: ['바란 정글 훈련소'], city: ['루마 읍내', '테반 읍내'], temple: ['솔라 사원 유적'], resort: ['코랄 리조트'], watervil: ['펭가 수상 마을'], docks: ['마루 부두'], military: ['독사 기지', '수리 기지', '표범 기지'],
+  jungle: { base: ['카랑 중앙 훈련기지'], camp: ['바란 정글 훈련소'], city: ['루마 읍내', '테반 읍내'], temple: ['솔라 사원 유적'], resort: ['코랄 리조트'], watervil: ['펭가 수상 마을'], docks: ['마루 부두'], military: ['독사 기지', '수리 기지', '표범 기지'],
     quarry: ['붉은 채석장'], paddy: ['윗다랑이', '안개 다랑이', '바람 다랑이'],
     village: ['아루 마을', '비농 마을', '사틴 마을', '켈루 마을', '마딘 마을', '포랑 마을', '누사 마을', '리잔 마을', '오반 마을', '타링 마을', '세무 마을', '가롱 마을'] },
 };
 // 입구가 있는 특수 지역 (도로가 가운데를 지나가지 않게)
-const V2_GATED = new Set(['power', 'prison', 'quarry', 'castle', 'radar', 'hospital', 'school', 'mansion', 'lighthouse', 'camp', 'temple', 'resort', 'docks', 'paddy']);
+const V2_GATED = new Set(['power', 'prison', 'quarry', 'castle', 'radar', 'hospital', 'school', 'mansion', 'lighthouse', 'camp', 'temple', 'resort', 'docks', 'paddy', 'base']);
 // 정면(로컬 -z)이 (vx,vz) 쪽을 보게 하는 frame 회전
 const v2FaceRot = (vx, vz) => Math.abs(vx) > Math.abs(vz) ? (vx < 0 ? 1 : 3) : (vz < 0 ? 0 : 2);
 // 입구 쪽이 로컬 -z(정문)가 되는 회전
@@ -127,6 +127,7 @@ function v2PlacePois(K, NAMES) {
   const { w, R, rng, JG } = K, H = HALF, NM = V2_NAMES[JG ? 'jungle' : 'norden'];
   const rep = (n, a) => Array.from({ length: n }, () => a);
   const S = JG ? [
+    ['base', 135, 'top', { dropW: 6, center: true }],   // 섬 가운데 큰 훈련 기지 (첫 강하 격전지)
     ['camp', 82, 'top', { dropW: 3.2 }], ['city', 92, 'high', { pal: V2_PAL.tropic, towerP: 0.25, towerH: 9 }], ['city', 88, 'high', { pal: V2_PAL.tropic, towerP: 0.25, towerH: 9 }],
     ['temple', 72, 'high', { dropW: 3 }], ['docks', 82, 'mid', { coast: true, dropW: 2.4 }], ['resort', 78, 'mid', { coast: true, dropW: 2.4 }], ['watervil', 90, 'mid', { coast: 'sea', dropW: 1.6 }],
     ...rep(3, ['military', 62, 'top']), ['quarry', 80, 'mid', { dropW: 1.8 }], ...rep(3, ['paddy', 105, 'low', { dropW: 1.2 }]), ...rep(12, ['village', 40, 'low', { pal: V2_PAL.wood }]),
@@ -170,7 +171,8 @@ function v2PlacePois(K, NAMES) {
     const o = o0 || {}, cands = [];
     const dmin = (x, z) => { let md = 1e9; for (const p of w.pois) md = Math.min(md, Math.hypot(p.x - x, p.z - z) - p.r - r); return md; };
     for (let a = 0; a < (o.coast ? 9000 : 3000) && cands.length < 24; a++) {
-      let x = R(-H * 0.85, H * 0.85), z = R(-H * 0.85, H * 0.85);
+      const lim = o.center ? H * (a < 1500 ? 0.3 : 0.45) : H * 0.85;   // 가운데 지역은 섬 중심 근처에서만
+      let x = R(-lim, lim), z = R(-lim, lim);
       if (dmin(x, z) < gap) continue;
       const ex = ok(type, x, z, r, o); if (!ex) continue;
       if (ex.x !== undefined) { x = ex.x; z = ex.z; delete ex.x; delete ex.z; }   // 해안 쪽으로 옮긴 경우
@@ -178,7 +180,8 @@ function v2PlacePois(K, NAMES) {
       cands.push([x, z, md, ex]);
     }
     if (!cands.length) continue;
-    cands.sort((a, b) => b[2] - a[2]);
+    if (o.center) cands.sort((a, b) => Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]));   // 가운데 지역: 섬 중심에 가장 가까운 후보
+    else cands.sort((a, b) => b[2] - a[2]);
     const c = cands[Math.floor(rng() * Math.min(3, cands.length))];   // 가장 먼 후보 (상위 3개 중 하나)
     const hh = K.rawH(c[0], c[1]);
     const h = o.coast === 'sea' ? -1.2 : type === 'castle' || type === 'radar' ? clamp(hh, 3, 400) : type === 'resort' ? clamp(hh, 2.6, 3.6) : clamp(hh, 3, type === 'quarry' ? 70 : o.coast ? 7 : 26);
@@ -189,7 +192,7 @@ function v2PlacePois(K, NAMES) {
     else if (V2_GATED.has(type)) {
       // 특수 지역: 도로는 가장자리 입구(섬 안쪽 방향, 해안 지역은 바다 반대쪽)에서 끝난다 → 건물 배치가 도로에 막히지 않게
       let ex = p.seaDir ? -p.seaDir[0] : -p.x, ez = p.seaDir ? -p.seaDir[1] : -p.z; const l = Math.hypot(ex, ez) || 1; ex /= l; ez /= l;
-      p.ent = [ex, ez]; p.rx = p.x + ex * r * 0.95; p.rz = p.z + ez * r * 0.95;
+      p.ent = [ex, ez]; p.rx = p.x + ex * r * 1.02; p.rz = p.z + ez * r * 1.02;   // 담장 바로 바깥
     }
     if (type === 'quarry') p.qs = clamp((h - 2) / 4.2, 1.2, 3.3);   // 구덩이 한 단 높이 (바닥이 물에 잠기지 않게)
     w.pois.push(p);
@@ -233,6 +236,7 @@ function v2Surf(K, x, z, h, mw, rdist, carve, road) {
       case 'castle': case 'temple': if (d < p.r - 4) return fbm(K.n4, x * 0.1, z * 0.1, 2) > 0 ? 1 : 0; break;
       case 'resort': case 'mansion': if (d < p.r - 4) return 0; break;
       case 'school': case 'hospital': case 'camp': if (d < p.r - 4) return d < p.r * 0.62 ? 5 : 0; break;
+      case 'base': if (d < p.r - 4) return d < p.r * 0.5 ? 5 : fbm(K.n4, x * 0.05, z * 0.05, 2) > -0.05 ? 1 : 0; break;   // 가운데 연병장·건물은 포장, 바깥 훈련장은 흙
       case 'lighthouse': if (d < p.r) return 1; break;
       case 'watervil': break;
       default: if (d < p.r - 4) return 5;
@@ -283,7 +287,7 @@ function v2Roads(K) {
     hN[k] = h; blk[k] = h < 1.3 || K.edgeF(x, z) > 0.02 && h < 3 ? 1 : 0; rv[k] = K.riverDist(x, z) < RW + GC * 0.72 ? 1 : 0;
   }
   // 입구가 있는 특수 지역 안쪽은 비싸게 → 다른 지역으로 가는 도로가 가로지르지 않는다
-  for (const p of P) if (p.ent) for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) if (Math.hypot(cc(i) - p.x, cc(j) - p.z) < p.r * 0.8) pc[j * GN + i] = 8;
+  for (const p of P) if (p.ent) for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) if (Math.hypot(cc(i) - p.x, cc(j) - p.z) < p.r * 0.97) pc[j * GN + i] = 8;   // 담장 안쪽 전체
   // 이진 힙 A*
   const g = new Float32Array(NN), from = new Int32Array(NN), stamp = new Uint32Array(NN), closed = new Uint32Array(NN); let cur = 0;
   const hk = [], hf = [];
@@ -677,6 +681,43 @@ function v2Build(K, p) {
       break;
     }
     // ----- 정글 -----
+    case 'base': { // 중앙 훈련기지(자체 설계): 담장 · 가운데 연병장 둘레 큰 막사·본부 · 바깥 둘레 식당·격납고·체육관·창고·사격장·장애물 코스·급수탑
+      const rot = v2EntRot(p), O = G(rot), fr = p.r - 8, MIL = PAL.military;
+      const face = (lx, lz) => { const a = O.pt(0, 0), b = O.pt(lx, lz); return v2FaceRot(b[0] - a[0], b[1] - a[1]); };   // 로컬 방향 → 정면 회전
+      const lot = (lx, lz, wd, dp, kind, fx, fz) => { const q = O.pt(lx, lz); return K.placeLot(q[0], q[1], face(fx, fz), wd, dp, kind, 3, 1, 0.5); };
+      // 가운데 연병장 둘레: 큰 막사 2(3층) · 본부(2층) · 의무동(2층) — 모두 연병장 쪽을 봄 (본부는 정문 쪽)
+      let F = lot(0, 54, 34, 11, 'house', 0, -1); if (F) v2Block(K, F, 34, 11, 3, 0x7a7a62, 0x3d4434, { tier: 'top' });
+      F = lot(-56, 0, 32, 11, 'house', 1, 0); if (F) v2Block(K, F, 32, 11, 3, 0x6f6f58, 0x3d4434, { tier: 'top' });
+      F = lot(0, -52, 26, 11, 'house', 0, -1); if (F) v2Block(K, F, 26, 11, 2, 0x8a8670, 0x44443a, { tier: 'top' });
+      F = lot(56, 2, 20, 10, 'house', -1, 0); if (F) { v2Block(K, F, 20, 10, 2, 0xd8d6cc, 0x5d6168, { tier: 'high' }); F.box(-0.3, 5.0, -5.35, 0.3, 6.6, -5.15, 0xc8302a, { noCollide: true }); F.box(-0.8, 5.5, -5.35, 0.8, 6.1, -5.15, 0xc8302a, { noCollide: true }); }
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { F = lot(sx * 40, sz * 34, 14, 7, 'barracks', -sx, -sz); if (F) K.buildHouse(F, 14, 7, 1, RP(MIL), { flatRoof: true, tier: 'top' }); }
+      // 연병장: 국기 게양대 · 사열대(지붕 덮인 단)
+      O.box(-0.12, 0, -16, 0.12, 14, -15.76, 0x9aa0a4); O.box(0.12, 11.8, -15.92, 2.6, 13.4, -15.84, 0x3d6a3a, { noCollide: true });
+      { const T = K.frame(...O.pt(0, 30), rot, p.h); T.box(-7, -0.4, -2.5, 7, 1.0, 2.5, 0x77736a, { nav: true }); T.ramp(-1.2, -5.2, 1.2, -2.5, 0, 1.0, 'z', 0x6e6c66); for (const x of [-6.6, 6.6]) T.box(x - 0.15, 1.0, 1.9, x + 0.15, 4.0, 2.2, 0x6a6e72); T.box(-7.4, 4.0, -1.2, 7.4, 4.3, 2.6, 0x4a4f52); T.loot(-3, 1.02, 0, 'top'); T.loot(3, 1.02, 0, 'top'); v2ClaimL(K, O, -7.5, 24.5, 7.5, 33); }
+      // 바깥 둘레: 식당 · 격납고(차량) · 체육관 · 창고 컨테이너
+      F = lot(-84, -62, 22, 14, 'warehouse', 1, 0); if (F) K.buildWarehouse(F, 22, 14, 6, 0x8c8a7a, { tier: 'high', roof: 0x4a4f52 });
+      F = lot(84, -64, 28, 18, 'hangar', -1, 0); if (F) K.buildWarehouse(F, 28, 18, 8.5, 0x6a7060, { bigDoor: 10, tier: 'top', roof: 0x3e4438 });
+      F = lot(-86, 64, 22, 16, 'warehouse', 1, 0); if (F) K.buildWarehouse(F, 22, 16, 8, 0x7d7a68, { tier: 'high', roof: 0x44443a });
+      for (const lz of [44, 66, 88]) { F = lot(92, lz, 8, 7, 'containers', -1, 0); if (!F) continue; for (let c = 0; c < 3; c++) { K.buildContainer(F, -3.8 + c * 2.6, -3.05, 0, RP(PAL.container), c === 1 && rng() < 0.75, 'top'); if (rng() < 0.5) K.buildContainer(F, -3.8 + c * 2.6, -3.05, 2.6, RP(PAL.container), false); } }
+      { const q = O.pt(84, -36), T = K.frame(q[0], q[1], rot, p.h); T.box(-10, -0.2, -6, 10, 0.04, 6, 0x3a3c3e, { noCollide: true }); w.parking.push(T.pt(-5, 0), T.pt(5, 0)); }
+      // 사격장: 지붕 덮인 사대 + 25·50m 표적 + 모래주머니
+      { const T = K.frame(...O.pt(0, 92), rot, p.h);
+        T.box(-24, -0.2, -2, 24, 0.06, 2, 0x6e6c66, { noCollide: true }); for (const x of [-24, -8, 8, 24]) T.box(x - 0.15, 0, 1.6, x + 0.15, 3.2, 1.9, 0x6a5a45); T.box(-24.5, 3.2, -2.2, 24.5, 3.45, 2.4, 0x5d6648);
+        for (let i = -3; i <= 3; i++) { T.box(i * 6.5 - 1.6, 0, -0.4, i * 6.5 + 1.6, 1.0, 0.4, PAL.sand); for (const D of [14, 26]) { T.box(i * 6.5 - 0.06, 0, D, i * 6.5 + 0.06, 1.2, D + 0.12, 0x6a5a45); T.box(i * 6.5 - 0.5, 1.2, D, i * 6.5 + 0.5, 2.1, D + 0.06, 0xe8e2d4, { noCollide: true }); } }
+        T.loot(-12, 0.08, -1.2, 'high'); T.loot(12, 0.08, -1.2, 'high'); v2ClaimL(K, O, -25, 89, 25, 120); }
+      // 장애물 코스: 높낮이가 다른 벽 · 오르는 탑(경사로) · 기어가는 틀
+      for (let i = 0; i < 7; i++) { const lx = -104 + i * 7; O.box(lx, 0, -14, lx + 0.4, i % 3 === 2 ? 2.0 : i % 2 ? 1.0 : 1.4, 14, 0x7a5c35); }
+      { const T = K.frame(...O.pt(-62, 0), rot, p.h); for (const [a, b] of [[-2, -2], [1.8, -2], [-2, 1.8], [1.8, 1.8]]) T.box(a, 0, b, a + 0.25, 4.2, b + 0.25, 0x6a5a45); T.box(-2.2, 4.0, -2.2, 2.2, 4.25, 2.2, 0x6a5a45); T.ramp(-0.6, -8, 0.6, -2.2, 0, 4.25, 'z', 0x6a5a45); T.loot(0, 4.3, 0.5, 'top'); v2ClaimL(K, O, -65, -9, -59, 3); }
+      for (let i = 0; i < 4; i++) { const lz = -40 - i * 6; O.box(-104, 0.6, lz, -76, 0.8, lz + 0.3, 0x6a5a45, { noCollide: true }); for (const lx of [-104, -76]) O.box(lx, 0, lz, lx + 0.3, 0.8, lz + 0.3, 0x6a5a45); }
+      // 급수탑 (멀리서 보이는 표지) · 천막
+      { const q = O.pt(104, 4), y = heightAt(q[0], q[1]); for (const [a, b] of [[-2.4, -2.4], [2.1, -2.4], [-2.4, 2.1], [2.1, 2.1]]) K.addBox(q[0] + a, y - 0.5, q[1] + b, q[0] + a + 0.3, y + 14, q[1] + b + 0.3, 0x6a6e72); v2Geo(K, new THREE.CylinderGeometry(3.4, 3.4, 4.5, 14), q[0], y + 16.2, q[1], 0x7d8a6a); v2Geo(K, new THREE.ConeGeometry(3.6, 1.6, 14), q[0], y + 19.2, q[1], 0x4a5240); K.addBox(q[0] - 3, y + 13.9, q[1] - 3, q[0] + 3, y + 18.5, q[1] + 3, 0, { invisible: true }); K.claim(q[0] - 3.5, q[1] - 3.5, q[0] + 3.5, q[1] + 3.5); K.mapRect(q[0] - 3, q[1] - 3, q[0] + 3, q[1] + 3); }
+      for (const lx of [36, 50, 64]) { const q = O.pt(lx, -100), T = K.frame(q[0], q[1], rot, heightAt(q[0], q[1])); T.box(-2.2, 0, -3, 2.2, 0.1, 3, 0x4a4a3a, { noCollide: true }); T.geo(K.prism(4.6, 6.2, 2.4), 0, 0, 0, 0x5d6648); T.box(-1.6, 0, -2.6, 1.6, 1.6, 2.6, 0, { invisible: true }); T.loot(0, 0.12, 0, 'high'); K.claim(q[0] - 3.2, q[1] - 3.2, q[0] + 3.2, q[1] + 3.2); }
+      // 담장(2.8m, 넘을 수 없음) · 문 4곳 · 모서리 감시탑
+      for (const [a, b, c, d] of [[-fr, -fr, fr, -fr], [-fr, fr, fr, fr], [-fr, -fr, -fr, fr], [fr, -fr, fr, fr]]) v2Wall(K, O, a, b, c, d, 2.8, 0.5, 0x8f8b7e, { gate: [[0, -fr, 7], [-fr, 0, 5], [fr, 0, 5], [0, fr, 5]] });
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const q = O.pt(sx * (fr - 6), sz * (fr - 6)); v2Watchtower(K, q[0], q[1], 7, 'top'); }
+      for (let i = 0; i < 6; i++) { const lx = R(-30, 30), lz = R(-30, 22); O.loot(lx, 0.05, lz, 'high'); }
+      break;
+    }
     case 'camp': { // 정글 훈련소: 본부·막사·장애물 코스·감시탑·천막
       const rot = v2EntRot(p), O = G(rot), fr = p.r - 6;
       let F = v2Lot(K, O, 0, -22, 18, 9, 'house'); if (F) v2Block(K, F, 18, 9, 2, 0x6b6a56, 0x3d4434, { tier: 'top' });

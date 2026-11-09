@@ -199,16 +199,27 @@ const GunParts = (() => {
     return GEO[key];
   }
   // 총(그룹)에 부속품을 붙인다. mat: 이 총의 스킨 재질 · z0~z1: 몸체 길이. 돌려준 목록으로 GunSkin이 전개 애니메이션
+  // 정조준 시야를 가리는 부속품인가 (총 공간 경계 상자로 판정)
+  //  · 조준선 기둥: 가운데(|x| < 4.5cm)에서 가늠자 높이 바로 아래부터 위로 올라온 것
+  //  · 눈앞: 뒤 가늠자보다 뒤쪽(눈과 가늠자 사이)에서 총열 높이 위로 올라온 것
+  const _bx = new THREE.Box3();
+  function blocksSight(m, box) {
+    const sightY = m.ironY || (m.railY || 0.06) + 0.012, rearZ = m.ironRearZ !== undefined ? m.ironRearZ : -0.1;
+    if (box.max.y > sightY - 0.014 && box.min.x < 0.045 && box.max.x > -0.045) return true;
+    return box.max.z < rearZ + 0.03 && box.max.y > (m.boreY || 0) - 0.01 && box.min.x < 0.1 && box.max.x > -0.1;
+  }
   function attach(g, set, mat, z0, z1) {
     if (!SETS[set] || !g.children[0]) return null;
-    const list = [], comp = g.userData.att && g.userData.att.muzzle;
+    const list = [], comp = g.userData.att && g.userData.att.muzzle, meta = Models.GUNS[g.userData.id].meta;
     for (const a of anchors(g, set, z0, z1)) {
       if (comp && a.P.mz > 0) continue;   // 보정기를 달면 총구 앞 부속품은 생략 (보정기와 겹침)
-      const outer = new THREE.Group(), inner = new THREE.Group(), mesh = new THREE.Mesh(geoOf(set, a), mat);
+      const geo = geoOf(set, a), outer = new THREE.Group(), inner = new THREE.Group(), mesh = new THREE.Mesh(geo, mat);
       outer.position.fromArray(a.p); outer.rotation.z = a.rz; outer.add(inner); inner.add(mesh);
       if (!a.ring) outer.scale.setScalar(SIZE[set] || 1);   // 옆·위 부속품은 실루엣이 바뀌어 보일 만큼 키움 (고리는 총열 반지름에 맞춰 지음)
       outer.name = 'gpart'; g.add(outer);
-      list.push({ outer, inner, mesh, zn: a.zn, ring: a.ring, popped: true });
+      outer.updateMatrix(); _bx.copy(geo.boundingBox).applyMatrix4(outer.matrix);
+      // sight: 1인칭 정조준 때 접어 넣는 부속품 (GunSkin.update 가 Cam.ads 에 맞춰 접고 편다)
+      list.push({ outer, inner, mesh, zn: a.zn, ring: a.ring, popped: true, sight: blocksSight(meta, _bx) });
     }
     return list.length ? list : null;
   }

@@ -105,7 +105,7 @@ const Veh = (() => {
     let placed = 0, tries = 0;
     const tryPut = (type, x, z, yaw) => { if (spotOk(type, x, z, yaw)) { make(type, x, z, yaw); placed++; return true; } return false; };
     // 1) 군사기지: UAZ
-    for (const p of W.pois.filter((p) => p.type === 'military')) for (let k = 0, n = 0; k < 30 && n < (big ? 4 : 2); k++) { const a = rnd01() * TAU, d = rnd01() * p.r * 0.8; if (tryPut('uaz', p.x + Math.cos(a) * d, p.z + Math.sin(a) * d, rnd01() * TAU)) n++; }
+    for (const p of W.pois.filter((p) => p.type === 'military' || p.type === 'base')) for (let k = 0, n = 0; k < 30 && n < (big ? 4 : 2); k++) { const a = rnd01() * TAU, d = rnd01() * p.r * 0.8; if (tryPut('uaz', p.x + Math.cos(a) * d, p.z + Math.sin(a) * d, rnd01() * TAU)) n++; }
     // 2) 농장·마을: 말
     const rural = W.pois.filter((p) => p.type === 'farm' || p.type === 'village' || p.type === 'hamlet');
     const horses = MP.horses || (big ? 34 : 3);

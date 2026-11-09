@@ -556,6 +556,21 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       emit(P, _p, _q.x, _q.y + 0.15, _q.z, pick(fx), (0.011 + Math.random() * 0.011) * k, 0.25 + Math.random() * 0.25, { drag: 2, sq: fx.kind === 'glitch' });
     }
   }
+  // 1인칭 정조준: 조준선·눈앞을 가리는 부속품(GunParts 의 sight)은 몸체 안으로 접어 넣고, 조준을 풀면 다시 편다
+  function adsFold(dt) {
+    const vg = typeof VM !== 'undefined' && VM.gun, I = vg && vg.userData.skin; if (!I || !I.parts) return;
+    const want = typeof Cam !== 'undefined' ? Cam.ads : 0;
+    I.adsK = I.adsK === undefined ? want : I.adsK + (want - I.adsK) * Math.min(1, dt * 16);
+    const f = clamp(I.adsK * 1.6, 0, 1), k = f * f * (3 - 2 * f);   // 조준이 반쯤 들어오면 이미 다 접힘
+    if (k <= 0.001 && !I.folded) return;
+    I.folded = k > 0.001;
+    for (const p of I.parts) {
+      if (!p.sight) continue;
+      const base = I.dep ? p.inner.scale.x : 1;
+      p.inner.scale.setScalar(Math.max(0.001, base * (1 - k)));
+      if (!I.dep) p.inner.position.y = p.ring ? 0 : -0.014 * k;
+    }
+  }
   function update(dt) {
     CLOCK += dt; TIME.value = CLOCK % 600; FRM++;
     for (const I of ACTIVE) {
@@ -572,6 +587,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       if (I.dep) updateDeploy(I, dt);
       if (!I.sweep && !I.dep && I.flash <= 0) ACTIVE.delete(I);
     }
+    adsFold(dt);
     SkinFx.update(dt);   // 맞힘·처치 효과 (입자를 내보낸 뒤 같은 프레임에 갱신)
     updateParticles(dt);
   }

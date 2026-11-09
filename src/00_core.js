@@ -137,7 +137,7 @@ const MAPS = {
     zone: [{ wait: 270, shrink: 270, r: 2300, dps: 0.4 }, { wait: 150, shrink: 150, r: 1300, dps: 1.0 }, { wait: 120, shrink: 110, r: 700, dps: 2 }, { wait: 90, shrink: 80, r: 350, dps: 3.5 },
       { wait: 70, shrink: 60, r: 170, dps: 6 }, { wait: 50, shrink: 45, r: 80, dps: 9 }, { wait: 35, shrink: 35, r: 30, dps: 13 }, { wait: 25, shrink: 30, r: 10, dps: 16 }] },
   // 4km 열대 정글 섬: 두 갈래 강으로 땅이 셋으로 나뉨. 빽빽한 숲 · 자기장이 8km 맵보다 빨리 줄어든다
-  kinaru: { name: '키나루 (4km)', seed: 72091, desc: '4×4km 열대 정글 섬 · 두 갈래 강 · 사원 유적 · 계단논 · 수상 마을 · 리조트', big: true, v2: 'jungle', half: 2000, hfRes: 2.5, maxBots: 64, wait0Min: 150,
+  kinaru: { name: '키나루 (4km)', seed: 72091, desc: '4×4km 열대 정글 섬 · 중앙 훈련기지 · 두 갈래 강 · 사원 유적 · 계단논 · 수상 마을', big: true, v2: 'jungle', half: 2000, hfRes: 2.5, maxBots: 74, wait0Min: 150,
     veh: 64, horses: 8, gold: 24, fog: { color: 0x9db8b4, near: 0.12, far: 0.8 },
     plane: { L: 2700, speed: 95, alt: 400, off: 800 }, zone0: 1950, zoneOff: 260,
     zone: [{ wait: 200, shrink: 200, r: 1150, dps: 0.5 }, { wait: 120, shrink: 110, r: 650, dps: 1.2 }, { wait: 100, shrink: 85, r: 350, dps: 2.5 }, { wait: 75, shrink: 60, r: 180, dps: 4 },
@@ -162,7 +162,9 @@ const DUEL_RULES = { win: 4, round: 90, prep: 3, gap: 3.5 };
 const dmTeamSize = (g) => (GAME_TYPES[g] && GAME_TYPES[g].duel) || DM_RULES.teamSize;
 const isDuel = (g) => !!(GAME_TYPES[g] && GAME_TYPES[g].duel);
 const isDmGame = (g) => !!(GAME_TYPES[g] && GAME_TYPES[g].dm);
-const mapMaxBots = (id) => (MAPS[id] && MAPS[id].maxBots) || 48;
+// 한 판 최대 인원: 기본 75명(봇 74 + 나) · 노르덴 100명
+const MATCH_BOTS = 74;
+const mapMaxBots = (id) => (MAPS[id] && MAPS[id].maxBots) || MATCH_BOTS;
 // 맵 한 변 길이(km) 표기: 8×8km, 4×4km, 0.7×0.7km
 const mapKm = (id) => { const M = MAPS[id] || {}, k = (M.half || 350) * 2 / 1000; return `${k >= 2 ? k : k.toFixed(1)}×${k >= 2 ? k : k.toFixed(1)}km`; };
 const MODES = {
