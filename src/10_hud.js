@@ -365,7 +365,7 @@ const HUD = (() => {
       if (vh.dataset.k !== key) {
         vh.dataset.k = key; const occ = v.seats.filter(Boolean).length;
         $('vehName').textContent = p.seat === 0 ? `${v.T.name} · 최고 ${v.T.kmh}km/h · ${occ}/${v.seats.length}명` : `${v.T.name} · ${p.seat + 1}번 좌석(동승) · ${occ}/${v.seats.length}명`;
-        $('vehKeys').textContent = p.seat === 0 ? 'W/S 가속·후진 · A/D 조향 · Space 핸드브레이크 · C 좌석 · F 하차' : '마우스 조준·사격 · R 장전 · C 좌석 · F 하차';
+        $('vehKeys').textContent = p.seat === 0 ? 'W/S 가속·후진 · A/D 조향 · Space 핸드브레이크 · C 좌석 · F 하차' : '우클릭 조준 = 창밖으로 몸 내밀기 · 사격 · R 장전 · C 좌석 · F 하차';
       }
       $('vehSpd').textContent = kmh; $('vehHp').style.width = hpP + '%'; vh.classList.toggle('low', hpP < 30 || v.burnT > 0);
     }
@@ -373,9 +373,9 @@ const HUD = (() => {
     const riding = !!v && p.seat > 0;
     const km = free && !p.revive ? nearestKnockedMate(p, 1.9) : null;
     const rp = free && !km && !p.revive && !p.recall ? Recall.promptFor(p) : null;   // 리콜 타워 단말기 앞
-    const nv = free && !km && !(rp && rp.act) ? Veh.nearestEnterable(p) : null, vp = $('vehPrompt');
+    const nv = free && !km && !(rp && rp.act) ? Veh.nearestBoardable(p) : null, vp = $('vehPrompt');
     vp.hidden = !(nv || km || rp);
-    if (!vp.hidden) { const fs = nv ? Veh.freeSeats(nv) : 0, t = km ? `${IS_TOUCH ? '부활 버튼' : 'F'} · ${km.name} 부활 (${REVIVE_T}초)` : rp && (rp.act || !nv) ? rp.text : (IS_TOUCH ? '탑승 버튼' : 'F') + ' · ' + nv.T.name + ' ' + (nv.seats[0] ? `동승 (빈자리 ${fs})` : '탑승'); if (vp.textContent !== t) vp.textContent = t; vp.classList.toggle('rc', !!rp && t === rp.text); }
+    if (!vp.hidden) { const fs = nv ? Veh.freeSeats(nv) : 0, t = km ? `${IS_TOUCH ? '부활 버튼' : 'F'} · ${km.name} 부활 (${REVIVE_T}초)` : rp && (rp.act || !nv) ? rp.text : (IS_TOUCH ? '탑승 버튼' : 'F') + ' · ' + nv.T.name + ' ' + (!fs ? '동승 (봇 팀원과 자리 바꾸기)' : nv.seats[0] ? `동승 (빈자리 ${fs})` : '탑승'); if (vp.textContent !== t) vp.textContent = t; vp.classList.toggle('rc', !!rp && t === rp.text); }
     document.body.classList.toggle('driving', !!v && !riding); document.body.classList.toggle('riding', riding);
     const ib = $('tb_interact'); if (ib) { const lb = v ? '하차' : p.revive || p.recall ? '취소' : km ? '부활' : rp && rp.act ? '리콜' : nv ? '탑승' : '줍기'; if (ib.textContent !== lb) ib.textContent = lb; }
     if (IS_TOUCH || $('tb_jump')) {
@@ -1072,6 +1072,7 @@ const HUD = (() => {
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: '이벤트', title: '골드 탄피 이벤트 — 골드 러시 · 행운의 골드 상자 · 매치 보너스 · 주간 챌린지 · 현상금', img: () => LOBBY_ART.vehicles, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=event]'); if (b) b.click(); } },
     { tag: '신규', title: '상점 오픈 — 상자 3종 · 차량 뽑기 · 교환소, 미션·출석 보상', img: () => LOBBY_ART.vehicles, act: () => setTab('shop') },
     { tag: '신규', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
     { tag: '신규 모드', title: '팀 데스매치 · 웨폰 데스매치 — 4 대 4, 먼저 40킬', img: () => LOBBY_ART.arena, act: () => G.ui('mapPick') },

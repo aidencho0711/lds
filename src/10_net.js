@@ -195,6 +195,7 @@ const Net = (() => {
       case 'gdel': { const it = N.items.get(e.u); if (it && it.alive) { N.applying++; removeItem(it); N.applying--; } break; }
       case 'gcnt': { const it = N.items.get(e.u); if (it) it.count = e.n; break; }
       case 'vhit': { const v = N.vehs[e.n]; if (v && !vehRemote(v)) Veh.damage(v, e.d, e.a >= 0 ? charById(e.a) : null, e.c); break; }
+      case 'vseat': { const v = N.vehs[e.n], who = charById(e.c); if (v && who) Veh.yieldSeat(v, who); break; }   // 파티원이 봇이 앉은 차에 타려 함 → 방장이 봇을 내리게 함
       case 'vboom': { const v = N.vehs[e.n]; if (v && vehRemote(v)) Veh.netBoom(v); break; }
       case 'zone': applyZone(e.z); break;
       case 'air': if (!N.host) Airdrop.launch(e.x, e.z, e.a, true); break;

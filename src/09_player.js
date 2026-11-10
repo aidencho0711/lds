@@ -418,13 +418,15 @@ function updatePlayer(dt) {
   }
   // 상호작용 (주변 아이템)
   updateNearbyLoot(p);
+  // 봇에게 자리를 부탁해 둔 차: 자리가 나면 바로 탄다 (같이 하기 파티원 기기 — 봇은 방장 기기가 움직임)
+  if (p.pendingBoard) { const pb = p.pendingBoard; if (p.veh || !p.alive || G.time > pb.until) p.pendingBoard = null; else if (Veh.freeSeats(pb.v) && Veh.nearestEnterable(p, 3) === pb.v) { p.pendingBoard = null; if (Veh.enter(p, pb.v)) HUD.setLoot([]); } }
   if (Input.consume('interact')) {
-    const km = !p.revive && nearestKnockedMate(p, 1.9), rp = !km && !p.revive && !p.recall && Recall.promptFor(p), v = !km && !(rp && rp.act) && Veh.nearestEnterable(p);
+    const km = !p.revive && nearestKnockedMate(p, 1.9), rp = !km && !p.revive && !p.recall && Recall.promptFor(p), v = !km && !(rp && rp.act) && Veh.nearestBoardable(p);
     if (p.revive) cancelRevive(p);
     else if (p.recall) Recall.cancel(p);
     else if (km) startRevive(p, km);
     else if (rp && rp.act) Recall.start(p, rp.tw);
-    else if (v) { if (Veh.enter(p, v)) HUD.setLoot([]); }
+    else if (v) { const r = Veh.board(p, v); if (r === 'in') HUD.setLoot([]); else if (r === 'wait') HUD.toast('봇 팀원이 자리를 비켜 줍니다…', 'info'); }
     else { const it = HUD.focusItem(); if (it) doPickup(p, it); }
   }
 }

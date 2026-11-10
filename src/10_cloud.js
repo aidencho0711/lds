@@ -82,6 +82,13 @@ const Cloud = (() => {
   //  이 기기에서 바뀐 양만 서버 값에 더해 합친 뒤 올린다 → 재화가 되살아나거나 얻은 스킨이 사라지지 않음
   let base = null, pullT = 0;
   const snap = (o) => JSON.parse(JSON.stringify(o || {}));
+  // 관리자 초기화(supabase/admin.sql admin_reset): 서버 기록의 reset 표식이 이 기기와 다르면 이 기기의 옛 기록을 버리고 따름
+  const isReset = (srv) => !!(srv && srv.reset && srv.reset !== STATS.reset);
+  function adoptReset(srv) {
+    STATS = Object.assign({ matches: 0, wins: 0, kills: 0, xp: 0, best: 99, recent: [] }, snap(srv)); STATS.dm = Object.assign({}, DM_STATS0);
+    store.set('stats', STATS); Rank.replace({}); base = snap(STATS); afterMerge();
+    if (G.state === 'lobby') HUD.lobbyNote('관리자가 이 계정의 기록을 초기화했습니다');
+  }
   function afterMerge() {
     store.set('stats', STATS);
     if (G.state === 'lobby') { try { HUD.renderLobby(); Shop.badge(); const sp = document.querySelector('[data-pane=shop]'), mp = document.querySelector('[data-pane=mission]'); if (sp && !sp.hidden) Shop.render(); if (mp && !mp.hidden) Shop.renderMissions(); } catch (e) { console.warn(e); } }
@@ -92,7 +99,8 @@ const Cloud = (() => {
     busy = true; dirty = false; status = 'syncing'; render();
     try {
       const cur = await sb.from('player_data').select('stats').eq('user_id', user.id).maybeSingle();
-      if (!cur.error && cur.data && cur.data.stats && base && cur.data.stats.sync && cur.data.stats.sync !== base.sync) { STATS = Eco.mergeStats(base, STATS, cur.data.stats); afterMerge(); }
+      if (!cur.error && cur.data && isReset(cur.data.stats)) adoptReset(cur.data.stats);
+      else if (!cur.error && cur.data && cur.data.stats && base && cur.data.stats.sync && cur.data.stats.sync !== base.sync) { STATS = Eco.mergeStats(base, STATS, cur.data.stats); afterMerge(); }
       STATS.sync = Eco.DEV + ':' + Date.now().toString(36); store.set('stats', STATS);
       const d = pack();
       const { error } = await sb.from('player_data').upsert({ user_id: user.id, stats: d.stats, rank: d.rank, settings: d.settings });
@@ -109,7 +117,9 @@ const Cloud = (() => {
     pullT = Date.now();
     try {
       const cur = await sb.from('player_data').select('stats').eq('user_id', user.id).maybeSingle();
-      const srv = cur.data && cur.data.stats; if (cur.error || !srv || !base || !srv.sync || srv.sync === base.sync) return false;
+      const srv = cur.data && cur.data.stats;
+      if (!cur.error && isReset(srv)) { adoptReset(srv); return true; }
+      if (cur.error || !srv || !base || !srv.sync || srv.sync === base.sync) return false;
       const localChanged = JSON.stringify(STATS) !== JSON.stringify(base);
       STATS = Eco.mergeStats(base, STATS, srv); STATS.sync = srv.sync; base = snap(srv); afterMerge();
       if (localChanged) { dirty = true; schedule(500); }
@@ -133,7 +143,8 @@ const Cloud = (() => {
     if (r.error) throw r.error;
     row = r.data;
     let note;
-    if (hasProgress(row)) { apply(row); base = snap(row.stats); note = `${name}님의 기록을 불러왔습니다`; }
+    if (row && isReset(row.stats) && !hasProgress(row)) { apply(row); base = snap(row.stats); note = '관리자가 이 계정의 기록을 초기화했습니다'; }
+    else if (hasProgress(row)) { apply(row); base = snap(row.stats); note = `${name}님의 기록을 불러왔습니다`; }
     else { // 새 계정(또는 아직 기록이 없는 계정): 지금 이 기기의 기록을 계정으로 옮김
       await pushNow();
       // '옮김'이므로 로그아웃 뒤 게스트 기록은 새로 시작 (같은 기록이 게스트·계정 양쪽에 복사되지 않게). 기기별 설정은 유지

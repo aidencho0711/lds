@@ -1139,6 +1139,40 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 #markTag.edge span, #pingTag.edge span, #dangerTag.edge span { font-size: 0.72rem; }
 #markTag.edge::before, #pingTag.edge::before, #dangerTag.edge::before { content: ''; position: absolute; left: 9px; top: 9px; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 11px solid currentColor;
   transform: rotate(var(--ang, 0rad)) translateX(17px) translateY(-7px); transform-origin: 0 7px; filter: drop-shadow(0 0 2px #000); }
+
+/* v20 상점 → 골드 이벤트 */
+.shop-tabs .ev-tab { position: relative; color: #ffd36b; }
+.ev-head { margin: 4px 2px 10px; font-size: 0.8rem; color: var(--dim); }
+.ev-card { position: relative; display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 8px; background: linear-gradient(100deg, rgba(240, 164, 58, 0.06), rgba(13, 17, 19, 0.55) 45%); }
+.ev-card.ready { border-color: rgba(255, 196, 80, 0.85); box-shadow: 0 0 0 1px rgba(255, 196, 80, 0.25), 0 0 18px rgba(255, 170, 40, 0.18); background: linear-gradient(100deg, rgba(255, 190, 70, 0.18), rgba(13, 17, 19, 0.6) 55%); }
+.ev-ico { width: 44px; height: 44px; display: grid; place-items: center; font-size: 1.6rem; border-radius: 10px; background: radial-gradient(circle at 35% 30%, rgba(255, 220, 140, 0.35), rgba(120, 70, 10, 0.35)); }
+.ev-card.ready .ev-ico { animation: evBob 1.6s ease-in-out infinite; }
+@keyframes evBob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-3px) rotate(3deg); } }
+.ev-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ev-txt b { font-size: 0.98rem; color: var(--sand); }
+.ev-txt span { font-size: 0.74rem; color: var(--dim); line-height: 1.35; }
+.ev-txt .ev-prog { color: #ffd36b; font-weight: 700; }
+.ev-btn { appearance: none; border: 0; border-radius: 6px; padding: 9px 14px; min-width: 92px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; font-size: 0.86rem; color: var(--amber-ink, #1a1206); background: linear-gradient(180deg, #ffd36b, #f0a43a); cursor: pointer; white-space: nowrap; }
+.ev-btn.off { background: rgba(233, 226, 207, 0.12); color: var(--dim); cursor: default; }
+.ev-btn.sm { min-width: 0; padding: 7px 10px; font-size: 0.78rem; }
+.ev-steps { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.ev-note { grid-column: 2 / -1; font-size: 0.68rem; color: var(--dim); }
+@media (max-height: 520px), (max-width: 860px) { .ev-card { grid-template-columns: 34px 1fr auto; gap: 8px; padding: 8px 10px; } .ev-ico { width: 34px; height: 34px; font-size: 1.2rem; } .ev-txt b { font-size: 0.86rem; } .ev-btn { min-width: 70px; padding: 7px 9px; } .ev-steps { grid-column: 1 / -1; justify-content: flex-start; } }
+
+/* v20 개발자 도구 → 계정 관리 */
+.acc-top { flex-wrap: wrap; }
+.acc-top .acc-q { flex: 1; min-width: 120px; }
+.acc-msg { color: #8fe0a0; }
+.dev-note.bad { color: #ff8a7d; }
+.acc-list { display: flex; flex-direction: column; gap: 6px; max-height: 42vh; overflow: auto; margin-top: 6px; padding-right: 4px; }
+.acc-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: rgba(13, 17, 19, 0.55); }
+.acc-row.admin { border-color: rgba(70, 200, 255, 0.55); }
+.acc-row.me { background: rgba(70, 200, 255, 0.08); }
+.acc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.acc-name { font-size: 0.9rem; color: var(--sand); }
+.acc-meta { font-size: 0.7rem; color: var(--dim); }
+.acc-btns { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.acc-btns .btn.sm { padding: 5px 9px; font-size: 0.74rem; }
 </style>
 <div id="app">
   <canvas id="gl"></canvas>
@@ -1156,7 +1190,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
           <button type="button" data-tab="play" class="on">플레이</button>
           <button type="button" data-tab="record">전적</button>
           <button type="button" data-tab="custom">창고</button>
-          <button type="button" data-tab="shop">상점</button>
+          <button type="button" data-tab="shop">상점<i class="tab-dot" id="shopDot" hidden></i></button>
           <button type="button" data-tab="mission">미션<i class="tab-dot" id="misDot" hidden></i></button>
         </div>
         <div class="lb-sub" id="segQueue"></div>
@@ -1215,7 +1249,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
         </div>
         <!-- 상점: 뽑기 4종 · 교환소 -->
         <div class="pane panel-pane shop-pane" data-pane="shop" hidden>
-          <div class="shop-top"><div class="shop-tabs" id="shopTabs"><button type="button" data-st="gacha" class="on">뽑기</button><button type="button" data-st="exch">교환소</button></div><div class="wallet" id="shopWallet"></div></div>
+          <div class="shop-top"><div class="shop-tabs" id="shopTabs"><button type="button" data-st="gacha" class="on">뽑기</button><button type="button" data-st="exch">교환소</button><button type="button" data-st="event" class="ev-tab">골드 이벤트<i class="tab-dot" id="evDot" hidden></i></button></div><div class="wallet" id="shopWallet"></div></div>
           <div class="shop-body" id="shopBody"></div>
           <p class="micro shop-foot" id="shopFoot"></p>
         </div>
@@ -6978,6 +7012,7 @@ function smoothstep01(t) { return t * t * (3 - 2 * t); }
 // ---------- 탑승 자세 (08_vehicle.js의 Veh.animateRider가 부름) ----------
 //  운전: 두 손을 핸들(차) / 손잡이(오토바이) / 고삐(말)에. 동승자: 총을 들고 조준 방향으로 상체를 돌림
 const WHEEL = { sedan: [0.4, 0.98, 0.42, -0.45, 0.17], pickup: [0.42, 1.24, 0.72, -0.5, 0.18], uaz: [0.42, 1.28, 0.5, -0.65, 0.19] };
+const _lw = new THREE.Vector3(), _lq = new THREE.Quaternion();
 function poseRider(c, v, dt) {
   const r = c.rig, a = c.anim, T = v.T, pose = T.pose, Tm = G.time || 0;
   resetPose(r);
@@ -6987,6 +7022,12 @@ function poseRider(c, v, dt) {
   const bob = pose === 'horse' ? Math.sin(v.phase * 2) * 0.03 * clamp(Math.abs(v.f) / 6, 0, 1) : 0;
   r.hips.position.y = 0.95 + bob;
   const st = v.steer, seat = T.seats[c.seat || 0] || T.seat;
+  // 동승석 사격(v20): 조준하거나 쏘면 창 쪽으로 옮겨 앉아 상체를 창밖으로 내민다 (08_vehicle.js syncRider 가 자리를 옮김)
+  //  — 머리·상체가 밖으로 나와 맞을 수도 있다. 픽업 적재함은 이미 바깥이라 조금만
+  const wantLean = pose === 'car' && c.seat > 0 && c.weapon && c.equipT <= 0 && c.aiming;   // 조준 상태는 같이 하기로 전해지므로 모든 기기에서 같은 자리
+  c.leanK = clamp((c.leanK || 0) + (wantLean ? dt * 5 : -dt * 3.5), 0, 1);
+  const lk = c.leanK > 0 ? smoothstep01(c.leanK) * (v.type === 'pickup' && c.seat >= 2 ? 0.4 : 1) : 0, lside = seat[0] < 0 ? -1 : 1;
+  if (lk) r.hips.rotation.y = -lside * 0.9 * lk;   // 창틀에 걸터앉듯 엉덩이를 돌려 다리는 차 안쪽으로
   for (const L of [r.legL, r.legR]) {
     const s = L.side;
     if (pose === 'car') { L.hip.rotation.set(-1.42, 0, s * 0.08); L.knee.rotation.x = 1.25; L.foot.rotation.x = -0.25; }
@@ -6998,7 +7039,9 @@ function poseRider(c, v, dt) {
   r.neck.rotation.set(pose === 'moto' ? -0.35 : -0.05, look * 0.5, 0); r.head.rotation.set(0, look * 0.5, 0);
   a.flinch = Math.max(0, a.flinch - dt * 5); r.spine.rotation.z = a.flinch * 0.25 * a.flinchDir;
   const shoot = c.seat > 0 && c.weapon && c.equipT <= 0 && r.gunObj;
-  if (shoot) { const tw = clamp(angleDiff(v.yaw, c.yaw), -2.7, 2.7); r.spine.rotation.set(-(c.pitch || 0) * 0.3 + (pose === 'moto' ? 0.15 : 0), tw * 0.6, 0); r.chest.rotation.y = tw * 0.25; r.neck.rotation.set(-(c.pitch || 0) * 0.3, tw * 0.15, 0); }
+  if (shoot) { const tw = clamp(angleDiff(v.yaw, c.yaw), -2.7, 2.7); r.spine.rotation.set(-(c.pitch || 0) * 0.3 + (pose === 'moto' ? 0.15 : 0), tw * 0.6 - r.hips.rotation.y, 0); r.chest.rotation.y = tw * 0.25; r.neck.rotation.set(-(c.pitch || 0) * 0.3, tw * 0.15, 0);
+    if (lk) { _lw.set(lside, 0, 0).applyAxisAngle(AX_Y, -r.hips.rotation.y); _lq.setFromAxisAngle(_lw.crossVectors(AX_Y, _lw).normalize(), 0.55 * lk); r.spine.quaternion.premultiply(_lq); }   // 상체를 창 쪽으로 기울여 밖으로
+  }
   r.root.updateMatrixWorld(true);
   for (const A of [r.armL, r.armR]) { A.sh.rotation.set(-0.4, 0, A.side * 0.1); A.el.rotation.x = -0.8; setFingers(A, FING.relax); }
   r.gunMount.visible = !!shoot;
@@ -12700,7 +12743,7 @@ class Brain {
     // 동승: 팀원이 운전 중이거나 플레이어가 탄 차에 빈자리가 있으면 타러 간다
     const rcb = this.rcBusy();
     if (noEnemy && !recovering && !rcb) {
-      if (this.state === 'BOARD' && this.vehTarget && Veh.freeSeats(this.vehTarget) && !this.vehTarget.dead && this.stateT < 20) return;
+      if (this.state === 'BOARD' && this.vehTarget && this.seatsLeftFor(this.vehTarget) > 0 && !this.vehTarget.dead && this.stateT < 20) return;
       const bv = this.boardTarget(); if (bv) { this.vehTarget = bv; this.setState('BOARD'); return; }
     }
     if (this.state === 'TOVEH' && this.vehTarget && !this.vehTarget.driver && !this.vehTarget.dead && this.stateT < 25 && noEnemy) return;
@@ -12822,12 +12865,18 @@ class Brain {
     return d > (W.big ? 320 : 150);
   }
   // 동승할 차: 같은 팀이 운전 중(또는 플레이어가 탑승)이고 빈자리가 있으며 60m 안, 느리게 움직이는 차
+  // 남은 자리: 근처(80m)에 아직 차에 안 탄 사람 팀원이 있으면 그 수만큼 남겨 둔다 (같이 하는 친구가 탈 자리)
+  seatsLeftFor(v) {
+    const c = this.c; let wait = 0;
+    for (const m of teamMembers(c)) if (m !== c && m.human && !m.botized && m.alive && !m.knocked && !m.veh && m.mode === 'ground' && Math.hypot(m.pos.x - v.pos.x, m.pos.z - v.pos.z) < 80) wait++;
+    return Veh.freeSeats(v) - wait;
+  }
   boardTarget() {
-    if (!(G.teamSize > 1)) return null;
+    if (!(G.teamSize > 1) || this.boardBlockT > G.time) return null;
     const c = this.c;
     for (const m of teamMembers(c)) {
       if (m === c || !m.alive || !m.veh || (m.seat !== 0 && !m.isPlayer)) continue;
-      const v = m.veh; if (v.dead || v.burnT > 0 || !Veh.freeSeats(v) || v.T.animal) continue;
+      const v = m.veh; if (v.dead || v.burnT > 0 || this.seatsLeftFor(v) <= 0 || v.T.animal) continue;
       if (Math.hypot(v.pos.x - c.pos.x, v.pos.z - c.pos.z) < 60 && Math.hypot(v.vx, v.vz) < 6) return v;
     }
     return null;
@@ -13225,7 +13274,7 @@ class Brain {
       }
       case 'BOARD': { // 팀원 차에 타러 달려감 (동승석만)
         const v = this.vehTarget;
-        if (!v || v.dead || v.burnT > 0 || !Veh.freeSeats(v)) { this.vehTarget = null; this.setState('EXPLORE'); break; }
+        if (!v || v.dead || v.burnT > 0 || this.seatsLeftFor(v) <= 0) { this.vehTarget = null; this.setState('EXPLORE'); break; }
         const dv = Math.hypot(v.pos.x - c.pos.x, v.pos.z - c.pos.z);
         if (Veh.nearestEnterable(c, 2.4) === v) { if (Veh.enter(c, v, undefined, true)) { this.setState('RIDE'); this.thinkT = 0.2; } else { this.vehTarget = null; this.setState('EXPLORE'); } break; }
         this.moveGoal(v.pos.x, v.pos.z, 'veh'); wish = this.steer(); speed = 6.2; c.sprint = true;
@@ -14379,6 +14428,37 @@ const Veh = (() => {
     }
     return best;
   }
+  // ---------- 사람 팀원 우선 (v20) ----------
+  //  봇 팀원이 동승석을 모두 차지해 같이 하는 친구가 못 타던 문제: 꽉 찬 차라도 같은 팀 봇이 앉은 자리는 사람에게 비켜 준다
+  const isBotChar = (o) => !!o && (!o.human || !!o.botized);
+  function botSeatFor(v, c) { for (let i = v.seats.length - 1; i > 0; i--) { const o = v.seats[i]; if (o && o !== c && o.alive && isBotChar(o) && o.team === c.team) return i; } return -1; }
+  // 봇 하나를 내리게 해 자리를 비운다 (그 봇이 이 기기에서 움직일 때만 — 파티원 기기는 방장에게 'vseat' 로 요청)
+  function yieldSeat(v, c) {
+    const i = botSeatFor(v, c); if (i < 0) return false;
+    const b = v.seats[i]; if (G.net && !Net.mine(b)) return false;
+    exit(b, true, true);
+    if (b.brain) { b.brain.vehTarget = null; b.brain.boardBlockT = G.time + 10; b.brain.setState('EXPLORE'); }
+    return true;
+  }
+  // 탈 수 있는 차: 빈자리가 있거나, 같은 팀 봇이 앉아 있어 비켜 받을 수 있는 차
+  function nearestBoardable(c, r = 2.2) {
+    const v = nearestEnterable(c, r); if (v) return v;
+    let best = null, bd = r;
+    for (const o of near(c.pos.x, c.pos.z, 8)) {
+      if (o.dead || o.burnT > 0 || botSeatFor(o, c) < 0 || Math.abs(c.pos.y - o.pos.y) > 1.6) continue;
+      const T = o.T, fx = Math.sin(o.yaw), fz = Math.cos(o.yaw), rx = Math.cos(o.yaw), rz = -Math.sin(o.yaw);
+      const dx = c.pos.x - (o.pos.x + fx * T.zc), dz = c.pos.z - (o.pos.z + fz * T.zc), lz = dx * fx + dz * fz, lx = dx * rx + dz * rz;
+      const d = Math.hypot(Math.max(0, Math.abs(lx) - T.hw), Math.max(0, Math.abs(lz) - T.hl)); if (d < bd) { bd = d; best = o; }
+    }
+    return best;
+  }
+  // 사람이 타기: 빈자리면 바로, 아니면 봇에게 자리를 받아서 (파티원 기기는 방장에게 요청하고 잠시 기다림)
+  function board(c, v) {
+    if (freeSeats(v)) return enter(c, v) ? 'in' : false;
+    if (yieldSeat(v, c)) return enter(c, v) ? 'in' : false;
+    if (G.net && botSeatFor(v, c) >= 0) { Net.ev({ k: 'vseat', n: v.nid, c: c.id }, Net.state.cfg.host); c.pendingBoard = { v, until: G.time + 2.5 }; return 'wait'; }
+    return false;
+  }
   // seat: 원하는 좌석(없으면 운전석이 비면 운전석, 아니면 첫 빈 동승석). passengerOnly: 봇 팀원은 동승석만
   function enter(c, v, seat, passengerOnly) {
     if (!v || v.dead || c.veh || c.knocked || !c.alive || v.burnT > 0) return false;
@@ -14391,7 +14471,7 @@ const Veh = (() => {
     if (i === 0) { c.rl = null; v.ctrl.throttle = 0; v.ctrl.steer = 0; v.ctrl.hand = false; }
     c.setVisibleGear(); syncRider(v);
     if (c.isPlayer) {
-      HUD.toast(i === 0 ? `${v.T.name} 운전 · 최고 속도 ${v.T.kmh}km/h` : `${v.T.name} ${i + 1}번 좌석 — 사격 가능`, 'ok');
+      HUD.toast(i === 0 ? `${v.T.name} 운전 · 최고 속도 ${v.T.kmh}km/h` : `${v.T.name} ${i + 1}번 좌석 — 조준하면 창밖으로 몸을 내밀어 사격`, 'ok');
       c.yaw = v.yaw; c.pitch = -0.12; Cam.vLookT = -9; Audio.vehDoor && Audio.vehDoor(v.T.animal);
     }
     return true;
@@ -14422,7 +14502,7 @@ const Veh = (() => {
       v.seats[c.seat] = null; if (c.seat === 0) { v.driver = null; v.ctrl.throttle = 0; v.ctrl.steer = 0; v.ctrl.hand = false; }
       v.seats[i] = c; c.seat = i; if (i === 0) { v.driver = c; v.lastDriver = c; c.rl = null; applyDriverSkin(v, c); }
       c.aiming = false; c.setVisibleGear(); syncRider(v);
-      if (c.isPlayer) { HUD.toast(i === 0 ? '운전석' : `${i + 1}번 좌석 — 사격 가능`, 'info'); Audio.vehDoor && Audio.vehDoor(v.T.animal); }
+      if (c.isPlayer) { HUD.toast(i === 0 ? '운전석' : `${i + 1}번 좌석 — 조준하면 창밖으로 몸을 내밀어 사격`, 'info'); Audio.vehDoor && Audio.vehDoor(v.T.animal); }
       return true;
     }
     if (c.isPlayer) HUD.toast('빈 좌석이 없습니다', 'warn');
@@ -14460,7 +14540,9 @@ const Veh = (() => {
     for (let i = 0; i < v.seats.length; i++) {
       const c = v.seats[i]; if (!c) continue;
       if (!done) { v.P.root.updateMatrixWorld(true); done = true; }
-      const st = T.seats[i]; _seat.set(st[0], st[1] - 0.9, st[2]); v.P.body.localToWorld(_seat);
+      // 창밖으로 몸 내밀기(동승석 사격): 창 쪽으로 0.45m · 창틀 쪽으로 0.22m (04_motion.js poseRider 의 leanK)
+      const st = T.seats[i], lk = i > 0 && c.leanK ? smoothstep01(c.leanK) * (v.type === 'pickup' && i >= 2 ? 0.4 : 1) : 0, ls = st[0] < 0 ? -1 : 1;
+      _seat.set(st[0] + ls * 0.45 * lk, st[1] - 0.9 + 0.22 * lk, st[2]); v.P.body.localToWorld(_seat);
       c.pos.copy(_seat); c.vel.set(v.vx, v.vy, v.vz); c.bodyYaw = v.yaw; c.onGround = true; c.inWater = false;
       if (!c.isPlayer && i === 0) c.yaw = v.yaw;
     }
@@ -14578,7 +14660,7 @@ const Veh = (() => {
     for (const v of near(x, z, r)) { if (v.dead || v.seats.some(Boolean) || v.burnT > 0 || v.hp < v.T.hp * 0.3) continue; if (pred && !pred(v)) continue; const d = Math.hypot(v.pos.x - x, v.pos.z - z); if (d < bd) { bd = d; best = v; } }
     return best;
   }
-  return { init, dispose, spawnAll, make, remove, update, ray, damage, blast, netBoom, pushChar, nearestEnterable, enter, exit, switchSeat, riders, freeSeats, animateRider, syncRider, nearestFree, near, setSkin,
+  return { init, dispose, spawnAll, make, remove, update, ray, damage, blast, netBoom, pushChar, nearestEnterable, nearestBoardable, board, yieldSeat, botSeatFor, enter, exit, switchSeat, riders, freeSeats, animateRider, syncRider, nearestFree, near, setSkin,
     get list() { return list; }, get active() { return list.length > 0; } };
 })();
 
@@ -15101,13 +15183,15 @@ function updatePlayer(dt) {
   }
   // 상호작용 (주변 아이템)
   updateNearbyLoot(p);
+  // 봇에게 자리를 부탁해 둔 차: 자리가 나면 바로 탄다 (같이 하기 파티원 기기 — 봇은 방장 기기가 움직임)
+  if (p.pendingBoard) { const pb = p.pendingBoard; if (p.veh || !p.alive || G.time > pb.until) p.pendingBoard = null; else if (Veh.freeSeats(pb.v) && Veh.nearestEnterable(p, 3) === pb.v) { p.pendingBoard = null; if (Veh.enter(p, pb.v)) HUD.setLoot([]); } }
   if (Input.consume('interact')) {
-    const km = !p.revive && nearestKnockedMate(p, 1.9), rp = !km && !p.revive && !p.recall && Recall.promptFor(p), v = !km && !(rp && rp.act) && Veh.nearestEnterable(p);
+    const km = !p.revive && nearestKnockedMate(p, 1.9), rp = !km && !p.revive && !p.recall && Recall.promptFor(p), v = !km && !(rp && rp.act) && Veh.nearestBoardable(p);
     if (p.revive) cancelRevive(p);
     else if (p.recall) Recall.cancel(p);
     else if (km) startRevive(p, km);
     else if (rp && rp.act) Recall.start(p, rp.tw);
-    else if (v) { if (Veh.enter(p, v)) HUD.setLoot([]); }
+    else if (v) { const r = Veh.board(p, v); if (r === 'in') HUD.setLoot([]); else if (r === 'wait') HUD.toast('봇 팀원이 자리를 비켜 줍니다…', 'info'); }
     else { const it = HUD.focusItem(); if (it) doPickup(p, it); }
   }
 }
@@ -15523,6 +15607,13 @@ const Cloud = (() => {
   //  이 기기에서 바뀐 양만 서버 값에 더해 합친 뒤 올린다 → 재화가 되살아나거나 얻은 스킨이 사라지지 않음
   let base = null, pullT = 0;
   const snap = (o) => JSON.parse(JSON.stringify(o || {}));
+  // 관리자 초기화(supabase/admin.sql admin_reset): 서버 기록의 reset 표식이 이 기기와 다르면 이 기기의 옛 기록을 버리고 따름
+  const isReset = (srv) => !!(srv && srv.reset && srv.reset !== STATS.reset);
+  function adoptReset(srv) {
+    STATS = Object.assign({ matches: 0, wins: 0, kills: 0, xp: 0, best: 99, recent: [] }, snap(srv)); STATS.dm = Object.assign({}, DM_STATS0);
+    store.set('stats', STATS); Rank.replace({}); base = snap(STATS); afterMerge();
+    if (G.state === 'lobby') HUD.lobbyNote('관리자가 이 계정의 기록을 초기화했습니다');
+  }
   function afterMerge() {
     store.set('stats', STATS);
     if (G.state === 'lobby') { try { HUD.renderLobby(); Shop.badge(); const sp = document.querySelector('[data-pane=shop]'), mp = document.querySelector('[data-pane=mission]'); if (sp && !sp.hidden) Shop.render(); if (mp && !mp.hidden) Shop.renderMissions(); } catch (e) { console.warn(e); } }
@@ -15533,7 +15624,8 @@ const Cloud = (() => {
     busy = true; dirty = false; status = 'syncing'; render();
     try {
       const cur = await sb.from('player_data').select('stats').eq('user_id', user.id).maybeSingle();
-      if (!cur.error && cur.data && cur.data.stats && base && cur.data.stats.sync && cur.data.stats.sync !== base.sync) { STATS = Eco.mergeStats(base, STATS, cur.data.stats); afterMerge(); }
+      if (!cur.error && cur.data && isReset(cur.data.stats)) adoptReset(cur.data.stats);
+      else if (!cur.error && cur.data && cur.data.stats && base && cur.data.stats.sync && cur.data.stats.sync !== base.sync) { STATS = Eco.mergeStats(base, STATS, cur.data.stats); afterMerge(); }
       STATS.sync = Eco.DEV + ':' + Date.now().toString(36); store.set('stats', STATS);
       const d = pack();
       const { error } = await sb.from('player_data').upsert({ user_id: user.id, stats: d.stats, rank: d.rank, settings: d.settings });
@@ -15550,7 +15642,9 @@ const Cloud = (() => {
     pullT = Date.now();
     try {
       const cur = await sb.from('player_data').select('stats').eq('user_id', user.id).maybeSingle();
-      const srv = cur.data && cur.data.stats; if (cur.error || !srv || !base || !srv.sync || srv.sync === base.sync) return false;
+      const srv = cur.data && cur.data.stats;
+      if (!cur.error && isReset(srv)) { adoptReset(srv); return true; }
+      if (cur.error || !srv || !base || !srv.sync || srv.sync === base.sync) return false;
       const localChanged = JSON.stringify(STATS) !== JSON.stringify(base);
       STATS = Eco.mergeStats(base, STATS, srv); STATS.sync = srv.sync; base = snap(srv); afterMerge();
       if (localChanged) { dirty = true; schedule(500); }
@@ -15574,7 +15668,8 @@ const Cloud = (() => {
     if (r.error) throw r.error;
     row = r.data;
     let note;
-    if (hasProgress(row)) { apply(row); base = snap(row.stats); note = `${name}님의 기록을 불러왔습니다`; }
+    if (row && isReset(row.stats) && !hasProgress(row)) { apply(row); base = snap(row.stats); note = '관리자가 이 계정의 기록을 초기화했습니다'; }
+    else if (hasProgress(row)) { apply(row); base = snap(row.stats); note = `${name}님의 기록을 불러왔습니다`; }
     else { // 새 계정(또는 아직 기록이 없는 계정): 지금 이 기기의 기록을 계정으로 옮김
       await pushNow();
       // '옮김'이므로 로그아웃 뒤 게스트 기록은 새로 시작 (같은 기록이 게스트·계정 양쪽에 복사되지 않게). 기기별 설정은 유지
@@ -15815,9 +15910,60 @@ const Dev = (() => {
     el.textContent = t;
   }
 
+  // ---------- 계정 관리 (서버 함수 — supabase/admin.sql) ----------
+  //  목록(최근 저장 순·이름 검색) · 골드 탄피 지급 · 기록 초기화 · 계정 삭제. 초기화·삭제는 두 번 눌러야 실행
+  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '' };
+  const rpcErr = (e) => { const m = String((e && e.message) || e || ''); return e && e.code === 'PGRST202' || /could not find|does not exist/i.test(m) ? '서버 설정 필요: Supabase SQL Editor에서 supabase/admin.sql 을 실행해 주세요' : /not admin/i.test(m) ? '관리자로 등록되지 않은 계정입니다 (이 계정이 있는 상태에서 admin.sql 을 실행해야 등록됨)' : Cloud.msgOf(e); };
+  const RES = { denied: '관리자만 할 수 있습니다', self: '자기 계정은 지울 수 없습니다', admin: '다른 관리자 계정은 지울 수 없습니다', notfound: '없는 계정입니다', amount: '지급 양이 올바르지 않습니다 (1 ~ 1,000,000)' };
+  async function accLoad() {
+    const sb = Cloud.client(); if (!sb || !Cloud.user) { ACC.err = '로그인이 필요합니다'; renderAcc(); return; }
+    ACC.busy = true; ACC.err = ''; renderAcc();
+    try { const { data, error } = await sb.rpc('admin_list', { p_q: ACC.q }); if (error) throw error; ACC.list = data || []; }
+    catch (e) { ACC.err = rpcErr(e); ACC.list = null; }
+    ACC.busy = false; renderAcc();
+  }
+  async function accDo(fn, args, okMsg) {
+    const sb = Cloud.client(); if (!sb) return;
+    ACC.busy = true; ACC.msg = '처리 중…'; renderAcc();
+    try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; ACC.msg = data === 'ok' ? okMsg : RES[data] || `실패: ${data}`; }
+    catch (e) { ACC.msg = rpcErr(e); }
+    ACC.busy = false; await accLoad();
+  }
+  function renderAcc() {
+    const host = $('devAcc'); if (!host) return; host.innerHTML = '';
+    const top = h('div', 'dev-row acc-top');
+    const q = h('input', 'dev-sel acc-q'); q.placeholder = '아이디 검색'; q.value = ACC.q; q.maxLength = 10;
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { ACC.q = q.value.trim(); accLoad(); } });
+    const sbtn = h('button', 'btn', '검색'); sbtn.type = 'button'; sbtn.onclick = () => { ACC.q = q.value.trim(); accLoad(); };
+    const amt = h('select', 'dev-sel'); for (const v of [1000, 5000, 10000, 50000, 100000]) { const o = document.createElement('option'); o.value = v; o.textContent = `골드 ${v.toLocaleString()}`; amt.appendChild(o); }
+    amt.value = ACC.amt; amt.onchange = () => { ACC.amt = +amt.value; };
+    top.append(q, sbtn, amt); host.appendChild(top);
+    if (ACC.msg) host.appendChild(h('div', 'dev-note acc-msg', ACC.msg));
+    if (ACC.busy && !ACC.list) { host.appendChild(h('div', 'dev-note', '불러오는 중…')); return; }
+    if (ACC.err) { host.appendChild(h('div', 'dev-note bad', ACC.err)); return; }
+    if (!ACC.list) return;
+    host.appendChild(h('div', 'dev-note', `계정 ${ACC.list.length}개 (최근 저장 순${ACC.q ? ` · '${ACC.q}' 검색` : ''})`));
+    const L = h('div', 'acc-list');
+    for (const u of ACC.list) {
+      const r = h('div', 'acc-row' + (u.admin ? ' admin' : '') + (u.id === Cloud.uid ? ' me' : ''));
+      const info = h('div', 'acc-info');
+      info.appendChild(h('b', 'acc-name', u.username + (u.admin ? ' ★관리자' : '') + (u.id === Cloud.uid ? ' (나)' : '')));
+      info.appendChild(h('span', 'acc-meta', `Lv ${levelFromXp(u.xp || 0).lv} · ${u.matches}판 ${u.wins}승 ${u.kills}킬 · 골드 ${(u.gold || 0).toLocaleString()} · RP ${u.rp} · ${u.updated_at ? '저장 ' + new Date(u.updated_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '기록 없음'}`));
+      r.appendChild(info);
+      const bs = h('div', 'acc-btns');
+      const mk = (label, cls, fn) => { const b = h('button', 'btn sm ' + cls, label); b.type = 'button'; b.disabled = ACC.busy; b.onclick = fn; bs.appendChild(b); return b; };
+      mk(`골드 +${ACC.amt.toLocaleString()}`, 'amber', () => accDo('admin_gold', { p_id: u.id, p_amount: ACC.amt }, `${u.username}님에게 ${GOLD_NAME} ${ACC.amt.toLocaleString()} 지급 — 접속 중이면 다음 저장 때 합쳐짐`));
+      const sure = (k, label, fn) => mk(ACC.sure === k + u.id ? `정말 ${label}?` : label, 'danger', () => { if (ACC.sure === k + u.id) { ACC.sure = ''; fn(); } else { ACC.sure = k + u.id; clearTimeout(ACC.sureT); ACC.sureT = setTimeout(() => { ACC.sure = ''; renderAcc(); }, 3000); renderAcc(); } });
+      sure('reset', '초기화', () => accDo('admin_reset', { p_id: u.id }, `${u.username}님의 기록을 초기화했습니다 (전적·레벨·재화·스킨·랭크)`));
+      if (!u.admin && u.id !== Cloud.uid) sure('del', '삭제', () => accDo('admin_delete', { p_id: u.id }, `${u.username} 계정을 삭제했습니다 (되돌릴 수 없음)`));
+      r.appendChild(bs); L.appendChild(r);
+    }
+    host.appendChild(L);
+  }
+
   // ---------- 패널 ----------
   function close() { $('devPanel').hidden = true; }
-  function open() { if (!is()) return; render(); $('devPanel').hidden = false; Audio.ui(); }
+  function open() { if (!is()) return; ACC.list = null; ACC.err = ''; ACC.msg = ''; render(); $('devPanel').hidden = false; Audio.ui(); }   // 열 때마다 계정 목록을 새로
   function render() {
     const box = $('devBody'); if (!box) return;
     box.innerHTML = '';
@@ -15868,6 +16014,11 @@ const Dev = (() => {
     // 표시
     r = sec('표시');
     tg(r, 'stats', 'FPS·좌표 표시', false);
+    // 계정 관리 (서버)
+    const as = h('div', 'dev-sec'); as.appendChild(h('div', 'dev-h', '계정 관리'));
+    as.appendChild(h('div', 'dev-note', '모든 계정 목록 · 골드 탄피 지급 · 기록 초기화(전적·레벨·재화·스킨·랭크) · 계정 삭제(되돌릴 수 없음). 서버 함수 supabase/admin.sql 필요'));
+    const acc = h('div', 'acc-box'); acc.id = 'devAcc'; as.appendChild(acc); box.appendChild(as);
+    renderAcc(); if (ACC.list === null && !ACC.busy && !ACC.err) accLoad();
     box.appendChild(msg);
     render2 = () => { const keep = msg.textContent, cls = msg.className; render(); const m = $('devMsg'); if (m) { m.textContent = keep; m.className = cls; } };
   }
@@ -16328,6 +16479,16 @@ const WEEKLY = {
   w_pull5: { name: '상점 상자 5번 뽑기', goal: 5, key: 'pull', gold: 100 },
 };
 const DAILY_BONUS = 50;   // 일일 미션 4개를 모두 받으면
+// ---------- 골드 탄피 이벤트 (v20, 상점 → 이벤트) — 날마다·주마다 돌아오는 상시 이벤트 ----------
+//  rush: 하루 한 번 무료 · lucky: 4시간마다 무료 행운 상자(무작위) · match: 배틀로얄 한 판 끝날 때 자동(하루 6판까지)
+//  week: 이번 주 판수 3·7·12판 달성 보상 · bounty: 이번 주 처치 10명마다(주 5번까지)
+const GOLD_EV = {
+  rush: 200,
+  lucky: { gap: 4 * 3600e3, table: [[50, 40], [100, 30], [200, 18], [500, 9], [1000, 3]] },
+  match: { max: 6, base: 30, kill: 10, top10: 40, win: 150 },
+  week: [[3, 300], [7, 600], [12, 1200]],
+  bounty: { per: 10, gold: 150, max: 5 },
+};
 
 const Eco = (() => {
   const DEV = (() => { let d = store.get('devId', null); if (!d) { d = Math.random().toString(36).slice(2, 10); store.set('devId', d); } return d; })();
@@ -16479,10 +16640,47 @@ const Eco = (() => {
     const add = { play: m.quit ? 0 : 1, kill: m.kills, head: m.heads, dmg: Math.round(m.dmg), top10: m.place <= 10 ? 1 : 0, drive: Math.round(m.drive), loot: m.loot, heal: m.heals, goldFind: m.goldN, drop: m.drops, win: m.win ? 1 : 0 };
     for (const k in add) questAdd(k, add[k], true);
     questAdd('surv', Math.round(m.surv), true);
+    const evGold = evMatch(m);   // 골드 이벤트: 매치 보너스(자동)·주간 누적
     changed('match');
+    return evGold;
   }
   // 경기 중 골드 탄피 주머니 (바로 지급)
   function found(n) { E().gold += n; changed('found'); }
+  // ---------- 골드 탄피 이벤트 ----------
+  function evS() {
+    const e = E(), d = today(), w = weekKey();
+    if (!e.ev || typeof e.ev !== 'object') e.ev = {};
+    const v = e.ev;
+    if (v.d !== d) { v.d = d; v.rush = 0; v.mg = 0; v.mgGold = 0; }
+    if (v.w !== w) { v.w = w; v.wm = 0; v.wk = 0; v.wc = []; v.bc = 0; }
+    if (!Array.isArray(v.wc)) v.wc = [];
+    return v;
+  }
+  function evInfo() {
+    const v = evS(), now = Date.now(), luckyAt = (v.spinT || 0) + GOLD_EV.lucky.gap;
+    const bountyReady = Math.min(GOLD_EV.bounty.max, Math.floor((v.wk || 0) / GOLD_EV.bounty.per)) - (v.bc || 0);
+    return { rush: !v.rush, luckyIn: Math.max(0, luckyAt - now), mg: v.mg || 0, mgGold: v.mgGold || 0, wm: v.wm || 0, wk: v.wk || 0, wc: v.wc, bc: v.bc || 0, bountyReady: Math.max(0, bountyReady),
+      weekReady: GOLD_EV.week.filter(([n], i) => (v.wm || 0) >= n && !v.wc.includes(i)).length };
+  }
+  function evClaim(kind, arg) {
+    const e = E(), v = evS();
+    let gold = 0;
+    if (kind === 'rush') { if (v.rush) return { err: '오늘은 이미 받았습니다' }; v.rush = 1; gold = GOLD_EV.rush; }
+    else if (kind === 'lucky') { if (Date.now() < (v.spinT || 0) + GOLD_EV.lucky.gap) return { err: '아직 열 수 없습니다' }; v.spinT = Date.now(); gold = weightedPick(GOLD_EV.lucky.table); }
+    else if (kind === 'week') { const T = GOLD_EV.week[arg]; if (!T || v.wc.includes(arg)) return { err: '이미 받았습니다' }; if ((v.wm || 0) < T[0]) return { err: `이번 주 ${T[0]}판을 채워야 합니다` }; v.wc.push(arg); gold = T[1]; }
+    else if (kind === 'bounty') { if (evInfo().bountyReady <= 0) return { err: `이번 주 처치 ${GOLD_EV.bounty.per}명마다 받을 수 있습니다` }; v.bc = (v.bc || 0) + 1; gold = GOLD_EV.bounty.gold; }
+    else return { err: '없는 이벤트' };
+    e.gold += gold; changed('event'); return { gold };
+  }
+  // 배틀로얄 한 판 끝 (matchEnd 에서): 매치 보너스 자동 지급 + 주간 판수·처치 누적
+  function evMatch(m) {
+    const v = evS(); if (m.quit) return 0;
+    v.wm = (v.wm || 0) + 1; v.wk = (v.wk || 0) + (m.kills || 0);
+    if ((v.mg || 0) >= GOLD_EV.match.max) return 0;
+    const M = GOLD_EV.match, g = M.base + (m.kills || 0) * M.kill + (m.place <= 10 ? M.top10 : 0) + (m.win ? M.win : 0);
+    v.mg = (v.mg || 0) + 1; v.mgGold = (v.mgGold || 0) + g; E().gold += g; return g;
+  }
+  function evClaimable() { const I = evInfo(); return I.rush || I.luckyIn <= 0 || I.weekReady > 0 || I.bountyReady > 0; }
   // ---------- 장착(차량) ----------
   function vlook() { const v = SETTINGS.vlook && typeof SETTINGS.vlook === 'object' ? SETTINGS.vlook : {}; const out = {}; for (const t in VEH_SKIN_TYPES) out[t] = v[t] && VSKINS[v[t]] && VSKINS[v[t]].veh === t && ownsVeh(v[t]) ? v[t] : null; return out; }
   function equipVeh(type, id) { const v = vlook(); v[type] = id && ownsVeh(id) ? id : null; SETTINGS.vlook = v; saveSettings(); for (const f of listeners) try { f('vequip'); } catch (err) { console.warn(err); } }
@@ -16524,6 +16722,15 @@ const Eco = (() => {
         if (lq.w === sq.w) { q.wp = {}; for (const k of new Set([...Object.keys(lq.wp || {}), ...Object.keys(sq.wp || {})])) q.wp[k] = Math.max((lq.wp || {})[k] || 0, (sq.wp || {})[k] || 0); q.wc = [...new Set([...(lq.wc || []), ...(sq.wc || [])])]; }
         e.q = q;
       } else e.q = lq || sq || null;
+      // 골드 이벤트: 같은 날·같은 주면 받은 기록은 큰 쪽(합집합)으로 → 다른 기기에서 다시 받을 수 없게
+      const lv = le.ev, sv = se.ev;
+      if (lv && sv) {
+        const v = Object.assign({}, lv.d >= sv.d ? lv : sv);
+        if (lv.d === sv.d) { v.rush = Math.max(lv.rush || 0, sv.rush || 0); v.mg = Math.max(lv.mg || 0, sv.mg || 0); v.mgGold = Math.max(lv.mgGold || 0, sv.mgGold || 0); }
+        if (lv.w === sv.w) { v.w = lv.w; v.wm = Math.max(lv.wm || 0, sv.wm || 0); v.wk = Math.max(lv.wk || 0, sv.wk || 0); v.wc = [...new Set([...(lv.wc || []), ...(sv.wc || [])])]; v.bc = Math.max(lv.bc || 0, sv.bc || 0); }
+        v.spinT = Math.max(lv.spinT || 0, sv.spinT || 0);
+        e.ev = v;
+      } else e.ev = lv || sv || undefined;
       e.welcome = 1; e.rev = Math.max(le.rev || 0, se.rev || 0) + 1; e.dev = DEV;
       out.eco = e;
     }
@@ -16542,7 +16749,7 @@ const Eco = (() => {
   function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, owns, ownsVeh, ownsGun, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();
 
@@ -16914,7 +17121,7 @@ const HUD = (() => {
       if (vh.dataset.k !== key) {
         vh.dataset.k = key; const occ = v.seats.filter(Boolean).length;
         $('vehName').textContent = p.seat === 0 ? `${v.T.name} · 최고 ${v.T.kmh}km/h · ${occ}/${v.seats.length}명` : `${v.T.name} · ${p.seat + 1}번 좌석(동승) · ${occ}/${v.seats.length}명`;
-        $('vehKeys').textContent = p.seat === 0 ? 'W/S 가속·후진 · A/D 조향 · Space 핸드브레이크 · C 좌석 · F 하차' : '마우스 조준·사격 · R 장전 · C 좌석 · F 하차';
+        $('vehKeys').textContent = p.seat === 0 ? 'W/S 가속·후진 · A/D 조향 · Space 핸드브레이크 · C 좌석 · F 하차' : '우클릭 조준 = 창밖으로 몸 내밀기 · 사격 · R 장전 · C 좌석 · F 하차';
       }
       $('vehSpd').textContent = kmh; $('vehHp').style.width = hpP + '%'; vh.classList.toggle('low', hpP < 30 || v.burnT > 0);
     }
@@ -16922,9 +17129,9 @@ const HUD = (() => {
     const riding = !!v && p.seat > 0;
     const km = free && !p.revive ? nearestKnockedMate(p, 1.9) : null;
     const rp = free && !km && !p.revive && !p.recall ? Recall.promptFor(p) : null;   // 리콜 타워 단말기 앞
-    const nv = free && !km && !(rp && rp.act) ? Veh.nearestEnterable(p) : null, vp = $('vehPrompt');
+    const nv = free && !km && !(rp && rp.act) ? Veh.nearestBoardable(p) : null, vp = $('vehPrompt');
     vp.hidden = !(nv || km || rp);
-    if (!vp.hidden) { const fs = nv ? Veh.freeSeats(nv) : 0, t = km ? `${IS_TOUCH ? '부활 버튼' : 'F'} · ${km.name} 부활 (${REVIVE_T}초)` : rp && (rp.act || !nv) ? rp.text : (IS_TOUCH ? '탑승 버튼' : 'F') + ' · ' + nv.T.name + ' ' + (nv.seats[0] ? `동승 (빈자리 ${fs})` : '탑승'); if (vp.textContent !== t) vp.textContent = t; vp.classList.toggle('rc', !!rp && t === rp.text); }
+    if (!vp.hidden) { const fs = nv ? Veh.freeSeats(nv) : 0, t = km ? `${IS_TOUCH ? '부활 버튼' : 'F'} · ${km.name} 부활 (${REVIVE_T}초)` : rp && (rp.act || !nv) ? rp.text : (IS_TOUCH ? '탑승 버튼' : 'F') + ' · ' + nv.T.name + ' ' + (!fs ? '동승 (봇 팀원과 자리 바꾸기)' : nv.seats[0] ? `동승 (빈자리 ${fs})` : '탑승'); if (vp.textContent !== t) vp.textContent = t; vp.classList.toggle('rc', !!rp && t === rp.text); }
     document.body.classList.toggle('driving', !!v && !riding); document.body.classList.toggle('riding', riding);
     const ib = $('tb_interact'); if (ib) { const lb = v ? '하차' : p.revive || p.recall ? '취소' : km ? '부활' : rp && rp.act ? '리콜' : nv ? '탑승' : '줍기'; if (ib.textContent !== lb) ib.textContent = lb; }
     if (IS_TOUCH || $('tb_jump')) {
@@ -17621,6 +17828,7 @@ const HUD = (() => {
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: '이벤트', title: '골드 탄피 이벤트 — 골드 러시 · 행운의 골드 상자 · 매치 보너스 · 주간 챌린지 · 현상금', img: () => LOBBY_ART.vehicles, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=event]'); if (b) b.click(); } },
     { tag: '신규', title: '상점 오픈 — 상자 3종 · 차량 뽑기 · 교환소, 미션·출석 보상', img: () => LOBBY_ART.vehicles, act: () => setTab('shop') },
     { tag: '신규', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
     { tag: '신규 모드', title: '팀 데스매치 · 웨폰 데스매치 — 4 대 4, 먼저 40킬', img: () => LOBBY_ART.arena, act: () => G.ui('mapPick') },
@@ -17914,6 +18122,7 @@ const Net = (() => {
       case 'gdel': { const it = N.items.get(e.u); if (it && it.alive) { N.applying++; removeItem(it); N.applying--; } break; }
       case 'gcnt': { const it = N.items.get(e.u); if (it) it.count = e.n; break; }
       case 'vhit': { const v = N.vehs[e.n]; if (v && !vehRemote(v)) Veh.damage(v, e.d, e.a >= 0 ? charById(e.a) : null, e.c); break; }
+      case 'vseat': { const v = N.vehs[e.n], who = charById(e.c); if (v && who) Veh.yieldSeat(v, who); break; }   // 파티원이 봇이 앉은 차에 타려 함 → 방장이 봇을 내리게 함
       case 'vboom': { const v = N.vehs[e.n]; if (v && vehRemote(v)) Veh.netBoom(v); break; }
       case 'zone': applyZone(e.z); break;
       case 'air': if (!N.host) Airdrop.launch(e.x, e.z, e.a, true); break;
@@ -18749,6 +18958,7 @@ const Shop = (() => {
     document.querySelectorAll('#shopTabs button').forEach((b) => b.classList.toggle('on', b.dataset.st === tab));
     const body = $('shopBody'); if (!body) return;
     body.innerHTML = '';
+    if (tab === 'event') { renderEvents(body); badge(); return; }
     if (tab === 'gacha') {
       const grid = h('div', 'gc-grid');
       for (const [k, B] of Object.entries(BOXES)) {
@@ -18924,7 +19134,36 @@ const Shop = (() => {
     const now = new Date(), mid = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1), left = Math.max(0, mid - now) / 60000;
     $('misReset').textContent = `초기화까지 ${Math.floor(left / 60)}시간 ${Math.floor(left % 60)}분`;
   }
-  function badge() { const d = $('misDot'); if (d) d.hidden = !Eco.claimable(); }
+  // ---------- 골드 탄피 이벤트 (상점 → 골드 이벤트) ----------
+  const fmtLeft = (ms) => { const m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
+  let evTimer = null;
+  function renderEvents(body) {
+    const I = Eco.evInfo(), EV = GOLD_EV;
+    const card = (cls, icon, title, sub, prog, btnTxt, can, onClick, note) => {
+      const c = h('div', 'ev-card ' + cls + (can ? ' ready' : ''));
+      c.innerHTML = `<span class="ev-ico">${icon}</span><span class="ev-txt"><b>${title}</b><span>${sub}</span>${prog ? `<span class="ev-prog">${prog}</span>` : ''}</span>`;
+      const b = h('button', 'ev-btn' + (can ? '' : ' off')); b.type = 'button'; b.innerHTML = btnTxt; b.disabled = !can;
+      b.addEventListener('click', (e) => { e.stopPropagation(); if (can) onClick(); }); c.appendChild(b);
+      if (note) c.appendChild(h('span', 'ev-note', note));
+      body.appendChild(c);
+    };
+    const got = (r, what) => { if (r.err) { HUD.lobbyNote(r.err); return; } Audio.ui(); HUD.lobbyNote(`${what} · ${GOLD_NAME} +${fmt(r.gold)}`); wallet($('shopWallet')); render(); };
+    body.appendChild(h('p', 'ev-head', `골드 탄피를 많이 모을 수 있는 상시 이벤트 — 날마다·주마다 다시 열립니다`));
+    card('rush', '🎁', '골드 러시', `하루 한 번 무료로 ${fmt(EV.rush)} 골드 탄피`, I.rush ? '오늘 받을 수 있음' : '내일 다시 열림', I.rush ? `받기 ${curHtml('gold', EV.rush)}` : '받음', I.rush, () => got(Eco.evClaim('rush'), '골드 러시'));
+    const lk = I.luckyIn <= 0;
+    card('lucky', '🎰', '행운의 골드 상자', `4시간마다 무료 · 50 ~ 1,000 골드 탄피 무작위 (1,000은 3%)`, lk ? '지금 열 수 있음' : `다음 상자까지 ${fmtLeft(I.luckyIn)}`, lk ? '열기' : '대기 중', lk, () => got(Eco.evClaim('lucky'), '행운의 골드 상자'));
+    card('match', '⚔', '매치 보너스', `배틀로얄 한 판마다 자동 지급 · 기본 ${EV.match.base} + 처치당 ${EV.match.kill} + 10위 안 ${EV.match.top10} + 우승 ${EV.match.win} (하루 ${EV.match.max}판까지)`, `오늘 ${I.mg} / ${EV.match.max}판 · 받은 양 ${fmt(I.mgGold)}`, '자동', false, () => {}, '경기가 끝나면 바로 들어옵니다 (중간에 나가면 제외)');
+    const wk = h('div', 'ev-card week' + (I.weekReady ? ' ready' : ''));
+    wk.innerHTML = `<span class="ev-ico">📅</span><span class="ev-txt"><b>주간 출격 챌린지</b><span>이번 주 배틀로얄 판수를 채우면 보상 · 월요일 초기화</span><span class="ev-prog">이번 주 ${I.wm}판</span></span>`;
+    const steps = h('span', 'ev-steps');
+    EV.week.forEach(([n, g], i) => { const done = I.wc.includes(i), can = !done && I.wm >= n, b = h('button', 'ev-btn sm' + (can ? '' : ' off')); b.type = 'button'; b.disabled = !can; b.innerHTML = done ? `${n}판 ✓` : `${n}판 ${curHtml('gold', g)}`; b.addEventListener('click', () => got(Eco.evClaim('week', i), `주간 ${n}판 달성`)); steps.appendChild(b); });
+    wk.appendChild(steps); body.appendChild(wk);
+    const br = I.bountyReady > 0;
+    card('bounty', '🎯', '처치 현상금', `이번 주 처치 ${EV.bounty.per}명마다 ${fmt(EV.bounty.gold)} 골드 탄피 (주 ${EV.bounty.max}번까지)`, `이번 주 처치 ${I.wk}명 · 받은 횟수 ${I.bc} / ${EV.bounty.max}`, br ? `받기 ${curHtml('gold', EV.bounty.gold)}` : '대기 중', br, () => got(Eco.evClaim('bounty'), '처치 현상금'));
+    $('shopFoot').textContent = `이벤트 보상은 로그인하면 계정에 저장되고, 다른 기기에서 같은 날·같은 주 보상을 다시 받을 수는 없습니다. 훈련장·데스매치는 판수·처치에 들어가지 않습니다.`;
+    clearTimeout(evTimer); if (!lk) evTimer = setTimeout(() => { const P = document.querySelector('[data-pane=shop]'); if (tab === 'event' && P && !P.hidden) render(); }, Math.min(60000, I.luckyIn + 200));
+  }
+  function badge() { const d = $('misDot'); if (d) d.hidden = !Eco.claimable(); const ev = Eco.evClaimable(), s = $('shopDot'), e2 = $('evDot'); if (s) s.hidden = !ev; if (e2) e2.hidden = !ev; }
   // 탭이 바뀔 때 (HUD.setTab에서 호출): 로비 3D 진열
   function onTab(t) {
     if ((t === 'shop' || t === 'mission') && Cloud.user) Cloud.pull();
@@ -20656,6 +20895,7 @@ async function startMatch(cfg) {
   humans.forEach((hm, i) => {
     const me = !net || hm.uid === Cloud.uid;
     const hl = hm.look || {}, c = new Character({ id: i, name: hm.name, isPlayer: me, look: Body.makeLook(hl.eq, hl.body) });
+    c.human = true;   // 사람(파티원 포함) — 봇은 사람 팀원에게 차 자리를 비켜 준다 (08_vehicle.js yieldSeat)
     c.vlook = hl.veh || null; c.glook = hl.gun || null;   // 차량·총기 스킨 (파티원은 그 사람의 장착 목록)
     if (net) c.net = Net.charNet(hm.uid);
     CHARS.push(c); joinTeam(c); if (me) player = c;
@@ -20761,7 +21001,7 @@ function endMatch() {
   STATS.recent = STATS.recent.slice(0, 5);
   G.statsSaved = saveStats();
   // 미션: 배틀로얄 경기 기록 반영 (훈련장·데스매치는 여기로 오지 않음)
-  try { Eco.matchEnd({ quit: !!G.quit, win, place, kills: p.kills, heads: p.headshots || 0, dmg: p.damageDealt || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0, surv: p.alive || win && !p.deathTime ? G.time : p.deathTime || 0 }); } catch (e) { console.warn('미션 반영 실패', e); }
+  try { const evG = Eco.matchEnd({ quit: !!G.quit, win, place, kills: p.kills, heads: p.headshots || 0, dmg: p.damageDealt || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0, surv: p.alive || win && !p.deathTime ? G.time : p.deathTime || 0 }); if (evG) HUD.toast(`골드 이벤트 · 매치 보너스 +${evG} 골드 탄피`, 'ok'); } catch (e) { console.warn('미션 반영 실패', e); }
   HUD.showResult(win, p, nT);
 }
 

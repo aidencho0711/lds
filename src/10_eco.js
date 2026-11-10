@@ -51,6 +51,16 @@ const WEEKLY = {
   w_pull5: { name: '상점 상자 5번 뽑기', goal: 5, key: 'pull', gold: 100 },
 };
 const DAILY_BONUS = 50;   // 일일 미션 4개를 모두 받으면
+// ---------- 골드 탄피 이벤트 (v20, 상점 → 이벤트) — 날마다·주마다 돌아오는 상시 이벤트 ----------
+//  rush: 하루 한 번 무료 · lucky: 4시간마다 무료 행운 상자(무작위) · match: 배틀로얄 한 판 끝날 때 자동(하루 6판까지)
+//  week: 이번 주 판수 3·7·12판 달성 보상 · bounty: 이번 주 처치 10명마다(주 5번까지)
+const GOLD_EV = {
+  rush: 200,
+  lucky: { gap: 4 * 3600e3, table: [[50, 40], [100, 30], [200, 18], [500, 9], [1000, 3]] },
+  match: { max: 6, base: 30, kill: 10, top10: 40, win: 150 },
+  week: [[3, 300], [7, 600], [12, 1200]],
+  bounty: { per: 10, gold: 150, max: 5 },
+};
 
 const Eco = (() => {
   const DEV = (() => { let d = store.get('devId', null); if (!d) { d = Math.random().toString(36).slice(2, 10); store.set('devId', d); } return d; })();
@@ -202,10 +212,47 @@ const Eco = (() => {
     const add = { play: m.quit ? 0 : 1, kill: m.kills, head: m.heads, dmg: Math.round(m.dmg), top10: m.place <= 10 ? 1 : 0, drive: Math.round(m.drive), loot: m.loot, heal: m.heals, goldFind: m.goldN, drop: m.drops, win: m.win ? 1 : 0 };
     for (const k in add) questAdd(k, add[k], true);
     questAdd('surv', Math.round(m.surv), true);
+    const evGold = evMatch(m);   // 골드 이벤트: 매치 보너스(자동)·주간 누적
     changed('match');
+    return evGold;
   }
   // 경기 중 골드 탄피 주머니 (바로 지급)
   function found(n) { E().gold += n; changed('found'); }
+  // ---------- 골드 탄피 이벤트 ----------
+  function evS() {
+    const e = E(), d = today(), w = weekKey();
+    if (!e.ev || typeof e.ev !== 'object') e.ev = {};
+    const v = e.ev;
+    if (v.d !== d) { v.d = d; v.rush = 0; v.mg = 0; v.mgGold = 0; }
+    if (v.w !== w) { v.w = w; v.wm = 0; v.wk = 0; v.wc = []; v.bc = 0; }
+    if (!Array.isArray(v.wc)) v.wc = [];
+    return v;
+  }
+  function evInfo() {
+    const v = evS(), now = Date.now(), luckyAt = (v.spinT || 0) + GOLD_EV.lucky.gap;
+    const bountyReady = Math.min(GOLD_EV.bounty.max, Math.floor((v.wk || 0) / GOLD_EV.bounty.per)) - (v.bc || 0);
+    return { rush: !v.rush, luckyIn: Math.max(0, luckyAt - now), mg: v.mg || 0, mgGold: v.mgGold || 0, wm: v.wm || 0, wk: v.wk || 0, wc: v.wc, bc: v.bc || 0, bountyReady: Math.max(0, bountyReady),
+      weekReady: GOLD_EV.week.filter(([n], i) => (v.wm || 0) >= n && !v.wc.includes(i)).length };
+  }
+  function evClaim(kind, arg) {
+    const e = E(), v = evS();
+    let gold = 0;
+    if (kind === 'rush') { if (v.rush) return { err: '오늘은 이미 받았습니다' }; v.rush = 1; gold = GOLD_EV.rush; }
+    else if (kind === 'lucky') { if (Date.now() < (v.spinT || 0) + GOLD_EV.lucky.gap) return { err: '아직 열 수 없습니다' }; v.spinT = Date.now(); gold = weightedPick(GOLD_EV.lucky.table); }
+    else if (kind === 'week') { const T = GOLD_EV.week[arg]; if (!T || v.wc.includes(arg)) return { err: '이미 받았습니다' }; if ((v.wm || 0) < T[0]) return { err: `이번 주 ${T[0]}판을 채워야 합니다` }; v.wc.push(arg); gold = T[1]; }
+    else if (kind === 'bounty') { if (evInfo().bountyReady <= 0) return { err: `이번 주 처치 ${GOLD_EV.bounty.per}명마다 받을 수 있습니다` }; v.bc = (v.bc || 0) + 1; gold = GOLD_EV.bounty.gold; }
+    else return { err: '없는 이벤트' };
+    e.gold += gold; changed('event'); return { gold };
+  }
+  // 배틀로얄 한 판 끝 (matchEnd 에서): 매치 보너스 자동 지급 + 주간 판수·처치 누적
+  function evMatch(m) {
+    const v = evS(); if (m.quit) return 0;
+    v.wm = (v.wm || 0) + 1; v.wk = (v.wk || 0) + (m.kills || 0);
+    if ((v.mg || 0) >= GOLD_EV.match.max) return 0;
+    const M = GOLD_EV.match, g = M.base + (m.kills || 0) * M.kill + (m.place <= 10 ? M.top10 : 0) + (m.win ? M.win : 0);
+    v.mg = (v.mg || 0) + 1; v.mgGold = (v.mgGold || 0) + g; E().gold += g; return g;
+  }
+  function evClaimable() { const I = evInfo(); return I.rush || I.luckyIn <= 0 || I.weekReady > 0 || I.bountyReady > 0; }
   // ---------- 장착(차량) ----------
   function vlook() { const v = SETTINGS.vlook && typeof SETTINGS.vlook === 'object' ? SETTINGS.vlook : {}; const out = {}; for (const t in VEH_SKIN_TYPES) out[t] = v[t] && VSKINS[v[t]] && VSKINS[v[t]].veh === t && ownsVeh(v[t]) ? v[t] : null; return out; }
   function equipVeh(type, id) { const v = vlook(); v[type] = id && ownsVeh(id) ? id : null; SETTINGS.vlook = v; saveSettings(); for (const f of listeners) try { f('vequip'); } catch (err) { console.warn(err); } }
@@ -247,6 +294,15 @@ const Eco = (() => {
         if (lq.w === sq.w) { q.wp = {}; for (const k of new Set([...Object.keys(lq.wp || {}), ...Object.keys(sq.wp || {})])) q.wp[k] = Math.max((lq.wp || {})[k] || 0, (sq.wp || {})[k] || 0); q.wc = [...new Set([...(lq.wc || []), ...(sq.wc || [])])]; }
         e.q = q;
       } else e.q = lq || sq || null;
+      // 골드 이벤트: 같은 날·같은 주면 받은 기록은 큰 쪽(합집합)으로 → 다른 기기에서 다시 받을 수 없게
+      const lv = le.ev, sv = se.ev;
+      if (lv && sv) {
+        const v = Object.assign({}, lv.d >= sv.d ? lv : sv);
+        if (lv.d === sv.d) { v.rush = Math.max(lv.rush || 0, sv.rush || 0); v.mg = Math.max(lv.mg || 0, sv.mg || 0); v.mgGold = Math.max(lv.mgGold || 0, sv.mgGold || 0); }
+        if (lv.w === sv.w) { v.w = lv.w; v.wm = Math.max(lv.wm || 0, sv.wm || 0); v.wk = Math.max(lv.wk || 0, sv.wk || 0); v.wc = [...new Set([...(lv.wc || []), ...(sv.wc || [])])]; v.bc = Math.max(lv.bc || 0, sv.bc || 0); }
+        v.spinT = Math.max(lv.spinT || 0, sv.spinT || 0);
+        e.ev = v;
+      } else e.ev = lv || sv || undefined;
       e.welcome = 1; e.rev = Math.max(le.rev || 0, se.rev || 0) + 1; e.dev = DEV;
       out.eco = e;
     }
@@ -265,6 +321,6 @@ const Eco = (() => {
   function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, owns, ownsVeh, ownsGun, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();

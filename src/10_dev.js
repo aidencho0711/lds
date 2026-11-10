@@ -107,9 +107,60 @@ const Dev = (() => {
     el.textContent = t;
   }
 
+  // ---------- 계정 관리 (서버 함수 — supabase/admin.sql) ----------
+  //  목록(최근 저장 순·이름 검색) · 골드 탄피 지급 · 기록 초기화 · 계정 삭제. 초기화·삭제는 두 번 눌러야 실행
+  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '' };
+  const rpcErr = (e) => { const m = String((e && e.message) || e || ''); return e && e.code === 'PGRST202' || /could not find|does not exist/i.test(m) ? '서버 설정 필요: Supabase SQL Editor에서 supabase/admin.sql 을 실행해 주세요' : /not admin/i.test(m) ? '관리자로 등록되지 않은 계정입니다 (이 계정이 있는 상태에서 admin.sql 을 실행해야 등록됨)' : Cloud.msgOf(e); };
+  const RES = { denied: '관리자만 할 수 있습니다', self: '자기 계정은 지울 수 없습니다', admin: '다른 관리자 계정은 지울 수 없습니다', notfound: '없는 계정입니다', amount: '지급 양이 올바르지 않습니다 (1 ~ 1,000,000)' };
+  async function accLoad() {
+    const sb = Cloud.client(); if (!sb || !Cloud.user) { ACC.err = '로그인이 필요합니다'; renderAcc(); return; }
+    ACC.busy = true; ACC.err = ''; renderAcc();
+    try { const { data, error } = await sb.rpc('admin_list', { p_q: ACC.q }); if (error) throw error; ACC.list = data || []; }
+    catch (e) { ACC.err = rpcErr(e); ACC.list = null; }
+    ACC.busy = false; renderAcc();
+  }
+  async function accDo(fn, args, okMsg) {
+    const sb = Cloud.client(); if (!sb) return;
+    ACC.busy = true; ACC.msg = '처리 중…'; renderAcc();
+    try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; ACC.msg = data === 'ok' ? okMsg : RES[data] || `실패: ${data}`; }
+    catch (e) { ACC.msg = rpcErr(e); }
+    ACC.busy = false; await accLoad();
+  }
+  function renderAcc() {
+    const host = $('devAcc'); if (!host) return; host.innerHTML = '';
+    const top = h('div', 'dev-row acc-top');
+    const q = h('input', 'dev-sel acc-q'); q.placeholder = '아이디 검색'; q.value = ACC.q; q.maxLength = 10;
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { ACC.q = q.value.trim(); accLoad(); } });
+    const sbtn = h('button', 'btn', '검색'); sbtn.type = 'button'; sbtn.onclick = () => { ACC.q = q.value.trim(); accLoad(); };
+    const amt = h('select', 'dev-sel'); for (const v of [1000, 5000, 10000, 50000, 100000]) { const o = document.createElement('option'); o.value = v; o.textContent = `골드 ${v.toLocaleString()}`; amt.appendChild(o); }
+    amt.value = ACC.amt; amt.onchange = () => { ACC.amt = +amt.value; };
+    top.append(q, sbtn, amt); host.appendChild(top);
+    if (ACC.msg) host.appendChild(h('div', 'dev-note acc-msg', ACC.msg));
+    if (ACC.busy && !ACC.list) { host.appendChild(h('div', 'dev-note', '불러오는 중…')); return; }
+    if (ACC.err) { host.appendChild(h('div', 'dev-note bad', ACC.err)); return; }
+    if (!ACC.list) return;
+    host.appendChild(h('div', 'dev-note', `계정 ${ACC.list.length}개 (최근 저장 순${ACC.q ? ` · '${ACC.q}' 검색` : ''})`));
+    const L = h('div', 'acc-list');
+    for (const u of ACC.list) {
+      const r = h('div', 'acc-row' + (u.admin ? ' admin' : '') + (u.id === Cloud.uid ? ' me' : ''));
+      const info = h('div', 'acc-info');
+      info.appendChild(h('b', 'acc-name', u.username + (u.admin ? ' ★관리자' : '') + (u.id === Cloud.uid ? ' (나)' : '')));
+      info.appendChild(h('span', 'acc-meta', `Lv ${levelFromXp(u.xp || 0).lv} · ${u.matches}판 ${u.wins}승 ${u.kills}킬 · 골드 ${(u.gold || 0).toLocaleString()} · RP ${u.rp} · ${u.updated_at ? '저장 ' + new Date(u.updated_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '기록 없음'}`));
+      r.appendChild(info);
+      const bs = h('div', 'acc-btns');
+      const mk = (label, cls, fn) => { const b = h('button', 'btn sm ' + cls, label); b.type = 'button'; b.disabled = ACC.busy; b.onclick = fn; bs.appendChild(b); return b; };
+      mk(`골드 +${ACC.amt.toLocaleString()}`, 'amber', () => accDo('admin_gold', { p_id: u.id, p_amount: ACC.amt }, `${u.username}님에게 ${GOLD_NAME} ${ACC.amt.toLocaleString()} 지급 — 접속 중이면 다음 저장 때 합쳐짐`));
+      const sure = (k, label, fn) => mk(ACC.sure === k + u.id ? `정말 ${label}?` : label, 'danger', () => { if (ACC.sure === k + u.id) { ACC.sure = ''; fn(); } else { ACC.sure = k + u.id; clearTimeout(ACC.sureT); ACC.sureT = setTimeout(() => { ACC.sure = ''; renderAcc(); }, 3000); renderAcc(); } });
+      sure('reset', '초기화', () => accDo('admin_reset', { p_id: u.id }, `${u.username}님의 기록을 초기화했습니다 (전적·레벨·재화·스킨·랭크)`));
+      if (!u.admin && u.id !== Cloud.uid) sure('del', '삭제', () => accDo('admin_delete', { p_id: u.id }, `${u.username} 계정을 삭제했습니다 (되돌릴 수 없음)`));
+      r.appendChild(bs); L.appendChild(r);
+    }
+    host.appendChild(L);
+  }
+
   // ---------- 패널 ----------
   function close() { $('devPanel').hidden = true; }
-  function open() { if (!is()) return; render(); $('devPanel').hidden = false; Audio.ui(); }
+  function open() { if (!is()) return; ACC.list = null; ACC.err = ''; ACC.msg = ''; render(); $('devPanel').hidden = false; Audio.ui(); }   // 열 때마다 계정 목록을 새로
   function render() {
     const box = $('devBody'); if (!box) return;
     box.innerHTML = '';
@@ -160,6 +211,11 @@ const Dev = (() => {
     // 표시
     r = sec('표시');
     tg(r, 'stats', 'FPS·좌표 표시', false);
+    // 계정 관리 (서버)
+    const as = h('div', 'dev-sec'); as.appendChild(h('div', 'dev-h', '계정 관리'));
+    as.appendChild(h('div', 'dev-note', '모든 계정 목록 · 골드 탄피 지급 · 기록 초기화(전적·레벨·재화·스킨·랭크) · 계정 삭제(되돌릴 수 없음). 서버 함수 supabase/admin.sql 필요'));
+    const acc = h('div', 'acc-box'); acc.id = 'devAcc'; as.appendChild(acc); box.appendChild(as);
+    renderAcc(); if (ACC.list === null && !ACC.busy && !ACC.err) accLoad();
     box.appendChild(msg);
     render2 = () => { const keep = msg.textContent, cls = msg.className; render(); const m = $('devMsg'); if (m) { m.textContent = keep; m.className = cls; } };
   }

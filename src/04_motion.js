@@ -624,6 +624,7 @@ function smoothstep01(t) { return t * t * (3 - 2 * t); }
 // ---------- 탑승 자세 (08_vehicle.js의 Veh.animateRider가 부름) ----------
 //  운전: 두 손을 핸들(차) / 손잡이(오토바이) / 고삐(말)에. 동승자: 총을 들고 조준 방향으로 상체를 돌림
 const WHEEL = { sedan: [0.4, 0.98, 0.42, -0.45, 0.17], pickup: [0.42, 1.24, 0.72, -0.5, 0.18], uaz: [0.42, 1.28, 0.5, -0.65, 0.19] };
+const _lw = new THREE.Vector3(), _lq = new THREE.Quaternion();
 function poseRider(c, v, dt) {
   const r = c.rig, a = c.anim, T = v.T, pose = T.pose, Tm = G.time || 0;
   resetPose(r);
@@ -633,6 +634,12 @@ function poseRider(c, v, dt) {
   const bob = pose === 'horse' ? Math.sin(v.phase * 2) * 0.03 * clamp(Math.abs(v.f) / 6, 0, 1) : 0;
   r.hips.position.y = 0.95 + bob;
   const st = v.steer, seat = T.seats[c.seat || 0] || T.seat;
+  // 동승석 사격(v20): 조준하거나 쏘면 창 쪽으로 옮겨 앉아 상체를 창밖으로 내민다 (08_vehicle.js syncRider 가 자리를 옮김)
+  //  — 머리·상체가 밖으로 나와 맞을 수도 있다. 픽업 적재함은 이미 바깥이라 조금만
+  const wantLean = pose === 'car' && c.seat > 0 && c.weapon && c.equipT <= 0 && c.aiming;   // 조준 상태는 같이 하기로 전해지므로 모든 기기에서 같은 자리
+  c.leanK = clamp((c.leanK || 0) + (wantLean ? dt * 5 : -dt * 3.5), 0, 1);
+  const lk = c.leanK > 0 ? smoothstep01(c.leanK) * (v.type === 'pickup' && c.seat >= 2 ? 0.4 : 1) : 0, lside = seat[0] < 0 ? -1 : 1;
+  if (lk) r.hips.rotation.y = -lside * 0.9 * lk;   // 창틀에 걸터앉듯 엉덩이를 돌려 다리는 차 안쪽으로
   for (const L of [r.legL, r.legR]) {
     const s = L.side;
     if (pose === 'car') { L.hip.rotation.set(-1.42, 0, s * 0.08); L.knee.rotation.x = 1.25; L.foot.rotation.x = -0.25; }
@@ -644,7 +651,9 @@ function poseRider(c, v, dt) {
   r.neck.rotation.set(pose === 'moto' ? -0.35 : -0.05, look * 0.5, 0); r.head.rotation.set(0, look * 0.5, 0);
   a.flinch = Math.max(0, a.flinch - dt * 5); r.spine.rotation.z = a.flinch * 0.25 * a.flinchDir;
   const shoot = c.seat > 0 && c.weapon && c.equipT <= 0 && r.gunObj;
-  if (shoot) { const tw = clamp(angleDiff(v.yaw, c.yaw), -2.7, 2.7); r.spine.rotation.set(-(c.pitch || 0) * 0.3 + (pose === 'moto' ? 0.15 : 0), tw * 0.6, 0); r.chest.rotation.y = tw * 0.25; r.neck.rotation.set(-(c.pitch || 0) * 0.3, tw * 0.15, 0); }
+  if (shoot) { const tw = clamp(angleDiff(v.yaw, c.yaw), -2.7, 2.7); r.spine.rotation.set(-(c.pitch || 0) * 0.3 + (pose === 'moto' ? 0.15 : 0), tw * 0.6 - r.hips.rotation.y, 0); r.chest.rotation.y = tw * 0.25; r.neck.rotation.set(-(c.pitch || 0) * 0.3, tw * 0.15, 0);
+    if (lk) { _lw.set(lside, 0, 0).applyAxisAngle(AX_Y, -r.hips.rotation.y); _lq.setFromAxisAngle(_lw.crossVectors(AX_Y, _lw).normalize(), 0.55 * lk); r.spine.quaternion.premultiply(_lq); }   // 상체를 창 쪽으로 기울여 밖으로
+  }
   r.root.updateMatrixWorld(true);
   for (const A of [r.armL, r.armR]) { A.sh.rotation.set(-0.4, 0, A.side * 0.1); A.el.rotation.x = -0.8; setFingers(A, FING.relax); }
   r.gunMount.visible = !!shoot;

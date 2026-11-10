@@ -190,6 +190,7 @@ const Shop = (() => {
     document.querySelectorAll('#shopTabs button').forEach((b) => b.classList.toggle('on', b.dataset.st === tab));
     const body = $('shopBody'); if (!body) return;
     body.innerHTML = '';
+    if (tab === 'event') { renderEvents(body); badge(); return; }
     if (tab === 'gacha') {
       const grid = h('div', 'gc-grid');
       for (const [k, B] of Object.entries(BOXES)) {
@@ -365,7 +366,36 @@ const Shop = (() => {
     const now = new Date(), mid = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1), left = Math.max(0, mid - now) / 60000;
     $('misReset').textContent = `초기화까지 ${Math.floor(left / 60)}시간 ${Math.floor(left % 60)}분`;
   }
-  function badge() { const d = $('misDot'); if (d) d.hidden = !Eco.claimable(); }
+  // ---------- 골드 탄피 이벤트 (상점 → 골드 이벤트) ----------
+  const fmtLeft = (ms) => { const m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
+  let evTimer = null;
+  function renderEvents(body) {
+    const I = Eco.evInfo(), EV = GOLD_EV;
+    const card = (cls, icon, title, sub, prog, btnTxt, can, onClick, note) => {
+      const c = h('div', 'ev-card ' + cls + (can ? ' ready' : ''));
+      c.innerHTML = `<span class="ev-ico">${icon}</span><span class="ev-txt"><b>${title}</b><span>${sub}</span>${prog ? `<span class="ev-prog">${prog}</span>` : ''}</span>`;
+      const b = h('button', 'ev-btn' + (can ? '' : ' off')); b.type = 'button'; b.innerHTML = btnTxt; b.disabled = !can;
+      b.addEventListener('click', (e) => { e.stopPropagation(); if (can) onClick(); }); c.appendChild(b);
+      if (note) c.appendChild(h('span', 'ev-note', note));
+      body.appendChild(c);
+    };
+    const got = (r, what) => { if (r.err) { HUD.lobbyNote(r.err); return; } Audio.ui(); HUD.lobbyNote(`${what} · ${GOLD_NAME} +${fmt(r.gold)}`); wallet($('shopWallet')); render(); };
+    body.appendChild(h('p', 'ev-head', `골드 탄피를 많이 모을 수 있는 상시 이벤트 — 날마다·주마다 다시 열립니다`));
+    card('rush', '🎁', '골드 러시', `하루 한 번 무료로 ${fmt(EV.rush)} 골드 탄피`, I.rush ? '오늘 받을 수 있음' : '내일 다시 열림', I.rush ? `받기 ${curHtml('gold', EV.rush)}` : '받음', I.rush, () => got(Eco.evClaim('rush'), '골드 러시'));
+    const lk = I.luckyIn <= 0;
+    card('lucky', '🎰', '행운의 골드 상자', `4시간마다 무료 · 50 ~ 1,000 골드 탄피 무작위 (1,000은 3%)`, lk ? '지금 열 수 있음' : `다음 상자까지 ${fmtLeft(I.luckyIn)}`, lk ? '열기' : '대기 중', lk, () => got(Eco.evClaim('lucky'), '행운의 골드 상자'));
+    card('match', '⚔', '매치 보너스', `배틀로얄 한 판마다 자동 지급 · 기본 ${EV.match.base} + 처치당 ${EV.match.kill} + 10위 안 ${EV.match.top10} + 우승 ${EV.match.win} (하루 ${EV.match.max}판까지)`, `오늘 ${I.mg} / ${EV.match.max}판 · 받은 양 ${fmt(I.mgGold)}`, '자동', false, () => {}, '경기가 끝나면 바로 들어옵니다 (중간에 나가면 제외)');
+    const wk = h('div', 'ev-card week' + (I.weekReady ? ' ready' : ''));
+    wk.innerHTML = `<span class="ev-ico">📅</span><span class="ev-txt"><b>주간 출격 챌린지</b><span>이번 주 배틀로얄 판수를 채우면 보상 · 월요일 초기화</span><span class="ev-prog">이번 주 ${I.wm}판</span></span>`;
+    const steps = h('span', 'ev-steps');
+    EV.week.forEach(([n, g], i) => { const done = I.wc.includes(i), can = !done && I.wm >= n, b = h('button', 'ev-btn sm' + (can ? '' : ' off')); b.type = 'button'; b.disabled = !can; b.innerHTML = done ? `${n}판 ✓` : `${n}판 ${curHtml('gold', g)}`; b.addEventListener('click', () => got(Eco.evClaim('week', i), `주간 ${n}판 달성`)); steps.appendChild(b); });
+    wk.appendChild(steps); body.appendChild(wk);
+    const br = I.bountyReady > 0;
+    card('bounty', '🎯', '처치 현상금', `이번 주 처치 ${EV.bounty.per}명마다 ${fmt(EV.bounty.gold)} 골드 탄피 (주 ${EV.bounty.max}번까지)`, `이번 주 처치 ${I.wk}명 · 받은 횟수 ${I.bc} / ${EV.bounty.max}`, br ? `받기 ${curHtml('gold', EV.bounty.gold)}` : '대기 중', br, () => got(Eco.evClaim('bounty'), '처치 현상금'));
+    $('shopFoot').textContent = `이벤트 보상은 로그인하면 계정에 저장되고, 다른 기기에서 같은 날·같은 주 보상을 다시 받을 수는 없습니다. 훈련장·데스매치는 판수·처치에 들어가지 않습니다.`;
+    clearTimeout(evTimer); if (!lk) evTimer = setTimeout(() => { const P = document.querySelector('[data-pane=shop]'); if (tab === 'event' && P && !P.hidden) render(); }, Math.min(60000, I.luckyIn + 200));
+  }
+  function badge() { const d = $('misDot'); if (d) d.hidden = !Eco.claimable(); const ev = Eco.evClaimable(), s = $('shopDot'), e2 = $('evDot'); if (s) s.hidden = !ev; if (e2) e2.hidden = !ev; }
   // 탭이 바뀔 때 (HUD.setTab에서 호출): 로비 3D 진열
   function onTab(t) {
     if ((t === 'shop' || t === 'mission') && Cloud.user) Cloud.pull();

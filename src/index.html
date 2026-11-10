@@ -18,7 +18,7 @@
           <button type="button" data-tab="play" class="on">플레이</button>
           <button type="button" data-tab="record">전적</button>
           <button type="button" data-tab="custom">창고</button>
-          <button type="button" data-tab="shop">상점</button>
+          <button type="button" data-tab="shop">상점<i class="tab-dot" id="shopDot" hidden></i></button>
           <button type="button" data-tab="mission">미션<i class="tab-dot" id="misDot" hidden></i></button>
         </div>
         <div class="lb-sub" id="segQueue"></div>
@@ -77,7 +77,7 @@
         </div>
         <!-- 상점: 뽑기 4종 · 교환소 -->
         <div class="pane panel-pane shop-pane" data-pane="shop" hidden>
-          <div class="shop-top"><div class="shop-tabs" id="shopTabs"><button type="button" data-st="gacha" class="on">뽑기</button><button type="button" data-st="exch">교환소</button></div><div class="wallet" id="shopWallet"></div></div>
+          <div class="shop-top"><div class="shop-tabs" id="shopTabs"><button type="button" data-st="gacha" class="on">뽑기</button><button type="button" data-st="exch">교환소</button><button type="button" data-st="event" class="ev-tab">골드 이벤트<i class="tab-dot" id="evDot" hidden></i></button></div><div class="wallet" id="shopWallet"></div></div>
           <div class="shop-body" id="shopBody"></div>
           <p class="micro shop-foot" id="shopFoot"></p>
         </div>

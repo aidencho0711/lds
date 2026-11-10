@@ -377,7 +377,7 @@ class Brain {
     // 동승: 팀원이 운전 중이거나 플레이어가 탄 차에 빈자리가 있으면 타러 간다
     const rcb = this.rcBusy();
     if (noEnemy && !recovering && !rcb) {
-      if (this.state === 'BOARD' && this.vehTarget && Veh.freeSeats(this.vehTarget) && !this.vehTarget.dead && this.stateT < 20) return;
+      if (this.state === 'BOARD' && this.vehTarget && this.seatsLeftFor(this.vehTarget) > 0 && !this.vehTarget.dead && this.stateT < 20) return;
       const bv = this.boardTarget(); if (bv) { this.vehTarget = bv; this.setState('BOARD'); return; }
     }
     if (this.state === 'TOVEH' && this.vehTarget && !this.vehTarget.driver && !this.vehTarget.dead && this.stateT < 25 && noEnemy) return;
@@ -499,12 +499,18 @@ class Brain {
     return d > (W.big ? 320 : 150);
   }
   // 동승할 차: 같은 팀이 운전 중(또는 플레이어가 탑승)이고 빈자리가 있으며 60m 안, 느리게 움직이는 차
+  // 남은 자리: 근처(80m)에 아직 차에 안 탄 사람 팀원이 있으면 그 수만큼 남겨 둔다 (같이 하는 친구가 탈 자리)
+  seatsLeftFor(v) {
+    const c = this.c; let wait = 0;
+    for (const m of teamMembers(c)) if (m !== c && m.human && !m.botized && m.alive && !m.knocked && !m.veh && m.mode === 'ground' && Math.hypot(m.pos.x - v.pos.x, m.pos.z - v.pos.z) < 80) wait++;
+    return Veh.freeSeats(v) - wait;
+  }
   boardTarget() {
-    if (!(G.teamSize > 1)) return null;
+    if (!(G.teamSize > 1) || this.boardBlockT > G.time) return null;
     const c = this.c;
     for (const m of teamMembers(c)) {
       if (m === c || !m.alive || !m.veh || (m.seat !== 0 && !m.isPlayer)) continue;
-      const v = m.veh; if (v.dead || v.burnT > 0 || !Veh.freeSeats(v) || v.T.animal) continue;
+      const v = m.veh; if (v.dead || v.burnT > 0 || this.seatsLeftFor(v) <= 0 || v.T.animal) continue;
       if (Math.hypot(v.pos.x - c.pos.x, v.pos.z - c.pos.z) < 60 && Math.hypot(v.vx, v.vz) < 6) return v;
     }
     return null;
@@ -902,7 +908,7 @@ class Brain {
       }
       case 'BOARD': { // 팀원 차에 타러 달려감 (동승석만)
         const v = this.vehTarget;
-        if (!v || v.dead || v.burnT > 0 || !Veh.freeSeats(v)) { this.vehTarget = null; this.setState('EXPLORE'); break; }
+        if (!v || v.dead || v.burnT > 0 || this.seatsLeftFor(v) <= 0) { this.vehTarget = null; this.setState('EXPLORE'); break; }
         const dv = Math.hypot(v.pos.x - c.pos.x, v.pos.z - c.pos.z);
         if (Veh.nearestEnterable(c, 2.4) === v) { if (Veh.enter(c, v, undefined, true)) { this.setState('RIDE'); this.thinkT = 0.2; } else { this.vehTarget = null; this.setState('EXPLORE'); } break; }
         this.moveGoal(v.pos.x, v.pos.z, 'veh'); wish = this.steer(); speed = 6.2; c.sprint = true;

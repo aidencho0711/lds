@@ -425,6 +425,37 @@ const Veh = (() => {
     }
     return best;
   }
+  // ---------- 사람 팀원 우선 (v20) ----------
+  //  봇 팀원이 동승석을 모두 차지해 같이 하는 친구가 못 타던 문제: 꽉 찬 차라도 같은 팀 봇이 앉은 자리는 사람에게 비켜 준다
+  const isBotChar = (o) => !!o && (!o.human || !!o.botized);
+  function botSeatFor(v, c) { for (let i = v.seats.length - 1; i > 0; i--) { const o = v.seats[i]; if (o && o !== c && o.alive && isBotChar(o) && o.team === c.team) return i; } return -1; }
+  // 봇 하나를 내리게 해 자리를 비운다 (그 봇이 이 기기에서 움직일 때만 — 파티원 기기는 방장에게 'vseat' 로 요청)
+  function yieldSeat(v, c) {
+    const i = botSeatFor(v, c); if (i < 0) return false;
+    const b = v.seats[i]; if (G.net && !Net.mine(b)) return false;
+    exit(b, true, true);
+    if (b.brain) { b.brain.vehTarget = null; b.brain.boardBlockT = G.time + 10; b.brain.setState('EXPLORE'); }
+    return true;
+  }
+  // 탈 수 있는 차: 빈자리가 있거나, 같은 팀 봇이 앉아 있어 비켜 받을 수 있는 차
+  function nearestBoardable(c, r = 2.2) {
+    const v = nearestEnterable(c, r); if (v) return v;
+    let best = null, bd = r;
+    for (const o of near(c.pos.x, c.pos.z, 8)) {
+      if (o.dead || o.burnT > 0 || botSeatFor(o, c) < 0 || Math.abs(c.pos.y - o.pos.y) > 1.6) continue;
+      const T = o.T, fx = Math.sin(o.yaw), fz = Math.cos(o.yaw), rx = Math.cos(o.yaw), rz = -Math.sin(o.yaw);
+      const dx = c.pos.x - (o.pos.x + fx * T.zc), dz = c.pos.z - (o.pos.z + fz * T.zc), lz = dx * fx + dz * fz, lx = dx * rx + dz * rz;
+      const d = Math.hypot(Math.max(0, Math.abs(lx) - T.hw), Math.max(0, Math.abs(lz) - T.hl)); if (d < bd) { bd = d; best = o; }
+    }
+    return best;
+  }
+  // 사람이 타기: 빈자리면 바로, 아니면 봇에게 자리를 받아서 (파티원 기기는 방장에게 요청하고 잠시 기다림)
+  function board(c, v) {
+    if (freeSeats(v)) return enter(c, v) ? 'in' : false;
+    if (yieldSeat(v, c)) return enter(c, v) ? 'in' : false;
+    if (G.net && botSeatFor(v, c) >= 0) { Net.ev({ k: 'vseat', n: v.nid, c: c.id }, Net.state.cfg.host); c.pendingBoard = { v, until: G.time + 2.5 }; return 'wait'; }
+    return false;
+  }
   // seat: 원하는 좌석(없으면 운전석이 비면 운전석, 아니면 첫 빈 동승석). passengerOnly: 봇 팀원은 동승석만
   function enter(c, v, seat, passengerOnly) {
     if (!v || v.dead || c.veh || c.knocked || !c.alive || v.burnT > 0) return false;
@@ -437,7 +468,7 @@ const Veh = (() => {
     if (i === 0) { c.rl = null; v.ctrl.throttle = 0; v.ctrl.steer = 0; v.ctrl.hand = false; }
     c.setVisibleGear(); syncRider(v);
     if (c.isPlayer) {
-      HUD.toast(i === 0 ? `${v.T.name} 운전 · 최고 속도 ${v.T.kmh}km/h` : `${v.T.name} ${i + 1}번 좌석 — 사격 가능`, 'ok');
+      HUD.toast(i === 0 ? `${v.T.name} 운전 · 최고 속도 ${v.T.kmh}km/h` : `${v.T.name} ${i + 1}번 좌석 — 조준하면 창밖으로 몸을 내밀어 사격`, 'ok');
       c.yaw = v.yaw; c.pitch = -0.12; Cam.vLookT = -9; Audio.vehDoor && Audio.vehDoor(v.T.animal);
     }
     return true;
@@ -468,7 +499,7 @@ const Veh = (() => {
       v.seats[c.seat] = null; if (c.seat === 0) { v.driver = null; v.ctrl.throttle = 0; v.ctrl.steer = 0; v.ctrl.hand = false; }
       v.seats[i] = c; c.seat = i; if (i === 0) { v.driver = c; v.lastDriver = c; c.rl = null; applyDriverSkin(v, c); }
       c.aiming = false; c.setVisibleGear(); syncRider(v);
-      if (c.isPlayer) { HUD.toast(i === 0 ? '운전석' : `${i + 1}번 좌석 — 사격 가능`, 'info'); Audio.vehDoor && Audio.vehDoor(v.T.animal); }
+      if (c.isPlayer) { HUD.toast(i === 0 ? '운전석' : `${i + 1}번 좌석 — 조준하면 창밖으로 몸을 내밀어 사격`, 'info'); Audio.vehDoor && Audio.vehDoor(v.T.animal); }
       return true;
     }
     if (c.isPlayer) HUD.toast('빈 좌석이 없습니다', 'warn');
@@ -506,7 +537,9 @@ const Veh = (() => {
     for (let i = 0; i < v.seats.length; i++) {
       const c = v.seats[i]; if (!c) continue;
       if (!done) { v.P.root.updateMatrixWorld(true); done = true; }
-      const st = T.seats[i]; _seat.set(st[0], st[1] - 0.9, st[2]); v.P.body.localToWorld(_seat);
+      // 창밖으로 몸 내밀기(동승석 사격): 창 쪽으로 0.45m · 창틀 쪽으로 0.22m (04_motion.js poseRider 의 leanK)
+      const st = T.seats[i], lk = i > 0 && c.leanK ? smoothstep01(c.leanK) * (v.type === 'pickup' && i >= 2 ? 0.4 : 1) : 0, ls = st[0] < 0 ? -1 : 1;
+      _seat.set(st[0] + ls * 0.45 * lk, st[1] - 0.9 + 0.22 * lk, st[2]); v.P.body.localToWorld(_seat);
       c.pos.copy(_seat); c.vel.set(v.vx, v.vy, v.vz); c.bodyYaw = v.yaw; c.onGround = true; c.inWater = false;
       if (!c.isPlayer && i === 0) c.yaw = v.yaw;
     }
@@ -624,6 +657,6 @@ const Veh = (() => {
     for (const v of near(x, z, r)) { if (v.dead || v.seats.some(Boolean) || v.burnT > 0 || v.hp < v.T.hp * 0.3) continue; if (pred && !pred(v)) continue; const d = Math.hypot(v.pos.x - x, v.pos.z - z); if (d < bd) { bd = d; best = v; } }
     return best;
   }
-  return { init, dispose, spawnAll, make, remove, update, ray, damage, blast, netBoom, pushChar, nearestEnterable, enter, exit, switchSeat, riders, freeSeats, animateRider, syncRider, nearestFree, near, setSkin,
+  return { init, dispose, spawnAll, make, remove, update, ray, damage, blast, netBoom, pushChar, nearestEnterable, nearestBoardable, board, yieldSeat, botSeatFor, enter, exit, switchSeat, riders, freeSeats, animateRider, syncRider, nearestFree, near, setSkin,
     get list() { return list; }, get active() { return list.length > 0; } };
 })();

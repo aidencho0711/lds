@@ -1136,3 +1136,37 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 #markTag.edge span, #pingTag.edge span, #dangerTag.edge span { font-size: 0.72rem; }
 #markTag.edge::before, #pingTag.edge::before, #dangerTag.edge::before { content: ''; position: absolute; left: 9px; top: 9px; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 11px solid currentColor;
   transform: rotate(var(--ang, 0rad)) translateX(17px) translateY(-7px); transform-origin: 0 7px; filter: drop-shadow(0 0 2px #000); }
+
+/* v20 상점 → 골드 이벤트 */
+.shop-tabs .ev-tab { position: relative; color: #ffd36b; }
+.ev-head { margin: 4px 2px 10px; font-size: 0.8rem; color: var(--dim); }
+.ev-card { position: relative; display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 8px; background: linear-gradient(100deg, rgba(240, 164, 58, 0.06), rgba(13, 17, 19, 0.55) 45%); }
+.ev-card.ready { border-color: rgba(255, 196, 80, 0.85); box-shadow: 0 0 0 1px rgba(255, 196, 80, 0.25), 0 0 18px rgba(255, 170, 40, 0.18); background: linear-gradient(100deg, rgba(255, 190, 70, 0.18), rgba(13, 17, 19, 0.6) 55%); }
+.ev-ico { width: 44px; height: 44px; display: grid; place-items: center; font-size: 1.6rem; border-radius: 10px; background: radial-gradient(circle at 35% 30%, rgba(255, 220, 140, 0.35), rgba(120, 70, 10, 0.35)); }
+.ev-card.ready .ev-ico { animation: evBob 1.6s ease-in-out infinite; }
+@keyframes evBob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-3px) rotate(3deg); } }
+.ev-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ev-txt b { font-size: 0.98rem; color: var(--sand); }
+.ev-txt span { font-size: 0.74rem; color: var(--dim); line-height: 1.35; }
+.ev-txt .ev-prog { color: #ffd36b; font-weight: 700; }
+.ev-btn { appearance: none; border: 0; border-radius: 6px; padding: 9px 14px; min-width: 92px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; font-size: 0.86rem; color: var(--amber-ink, #1a1206); background: linear-gradient(180deg, #ffd36b, #f0a43a); cursor: pointer; white-space: nowrap; }
+.ev-btn.off { background: rgba(233, 226, 207, 0.12); color: var(--dim); cursor: default; }
+.ev-btn.sm { min-width: 0; padding: 7px 10px; font-size: 0.78rem; }
+.ev-steps { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.ev-note { grid-column: 2 / -1; font-size: 0.68rem; color: var(--dim); }
+@media (max-height: 520px), (max-width: 860px) { .ev-card { grid-template-columns: 34px 1fr auto; gap: 8px; padding: 8px 10px; } .ev-ico { width: 34px; height: 34px; font-size: 1.2rem; } .ev-txt b { font-size: 0.86rem; } .ev-btn { min-width: 70px; padding: 7px 9px; } .ev-steps { grid-column: 1 / -1; justify-content: flex-start; } }
+
+/* v20 개발자 도구 → 계정 관리 */
+.acc-top { flex-wrap: wrap; }
+.acc-top .acc-q { flex: 1; min-width: 120px; }
+.acc-msg { color: #8fe0a0; }
+.dev-note.bad { color: #ff8a7d; }
+.acc-list { display: flex; flex-direction: column; gap: 6px; max-height: 42vh; overflow: auto; margin-top: 6px; padding-right: 4px; }
+.acc-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: rgba(13, 17, 19, 0.55); }
+.acc-row.admin { border-color: rgba(70, 200, 255, 0.55); }
+.acc-row.me { background: rgba(70, 200, 255, 0.08); }
+.acc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.acc-name { font-size: 0.9rem; color: var(--sand); }
+.acc-meta { font-size: 0.7rem; color: var(--dim); }
+.acc-btns { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.acc-btns .btn.sm { padding: 5px 9px; font-size: 0.74rem; }
