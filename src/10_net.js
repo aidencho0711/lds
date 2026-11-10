@@ -34,13 +34,14 @@ const Net = (() => {
       const roster = humans.map((hm, i) => ({ id: i, team: duel ? i % 2 : 0, human: true, name: hm.name, look: hm.look, uid: hm.uid }));
       const nm = shuffled(BOT_NAMES, mulberry32(seed ^ 0x5bd1e995)), cnt = [0, 0]; for (const r of roster) cnt[r.team]++;
       let id = humans.length;
-      for (const t of [0, 1]) while (cnt[t] < ts) { roster.push({ id, team: t, name: nm[id % nm.length] }); id++; cnt[t]++; }
+      for (const t of [0, 1]) while (cnt[t] < ts) { roster.push({ id, team: t, name: nm[id % nm.length], diff: BotSkin.pickDiff(false) }); id++; cnt[t]++; }
       cfg.roster = roster;
     } else {
       cfg.ranked = SETTINGS.queue === 'ranked' && Rank.unlocked();
       const want = (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.duo).size;
       cfg.teamSize = Math.max(want, humans.length);
       cfg.nBots = cfg.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, humans.length, mapMaxBots(SETTINGS.map));
+      cfg.bd = BotSkin.diffCodes(Math.max(0, cfg.nBots - humans.length + 1), cfg.ranked);   // 봇 난이도(한 글자씩) — 파티원 기기도 봇 스킨을 같게 입힌다
       cfg.plane = { a: Math.random() * TAU, off: Math.random() * 2 - 1 };
     }
     return cfg;

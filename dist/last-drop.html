@@ -1173,6 +1173,39 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .acc-meta { font-size: 0.7rem; color: var(--dim); }
 .acc-btns { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
 .acc-btns .btn.sm { padding: 5px 9px; font-size: 0.74rem; }
+/* v20 계정 관리 → 계정 상세 (이름을 누르면 펼침) */
+.acc-info { cursor: pointer; }
+.acc-info:hover .acc-name { color: #fff; }
+.acc-row.open { border-color: var(--amber); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.acc-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; background: #59615f; }
+.acc-dot.on, .acc-on.on { background: #4cd36a; color: #4cd36a; }
+.acc-dot.game, .acc-on.game { background: #ffb23e; color: #ffb23e; }
+.acc-on { background: none !important; font-size: 0.74rem; font-weight: 700; }
+.acc-on.off { color: var(--dim); }
+.acc-arw { margin-left: 6px; font-size: 0.7rem; color: var(--dim); }
+.acc-det { margin-top: -7px; padding: 12px; border: 1px solid var(--amber); border-top: 0; border-radius: 0 0 6px 6px; background: rgba(20, 24, 26, 0.92); display: flex; flex-direction: column; gap: 10px; }
+.acc-dh { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.acc-dpf { flex: none; }
+.acc-dn { flex: 1; min-width: 120px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.acc-dn > b { font-size: 1.05rem; color: var(--sand); }
+.acc-dn .ttl { font-size: 0.7rem; padding: 1px 12px; }
+.acc-dtier { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border: 1px solid var(--line); border-radius: 6px; background: rgba(0, 0, 0, 0.25); }
+.acc-dtier img { width: 46px; height: 46px; }
+.acc-dtier div { display: flex; flex-direction: column; }
+.acc-dtier b { font-size: 0.9rem; color: #fff; }
+.acc-dtier small, .acc-dlv small { font-size: 0.7rem; color: var(--dim); }
+.acc-dlv { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acc-dlv b { font-size: 0.85rem; color: var(--amber); min-width: 46px; }
+.acc-bar { flex: 1; min-width: 100px; height: 7px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.acc-bar i { display: block; height: 100%; background: linear-gradient(90deg, #d98c22, #ffc65a); }
+.acc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+.acc-cell { padding: 6px 8px; border-radius: 5px; background: rgba(255, 255, 255, 0.04); display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.acc-cell small { font-size: 0.66rem; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-cell b { font-size: 0.86rem; color: var(--sand); }
+.acc-recent { display: flex; flex-direction: column; gap: 3px; }
+.acc-sub { font-size: 0.7rem; color: var(--dim); }
+.acc-rrow { font-size: 0.76rem; color: var(--sand); padding: 4px 8px; border-left: 2px solid var(--line); background: rgba(255, 255, 255, 0.03); }
+.acc-dacc { line-height: 1.5; }
 </style>
 <div id="app">
   <canvas id="gl"></canvas>
@@ -13484,6 +13517,82 @@ class Brain {
   }
 }
 
+// ---------- 07_bot_skin.js ----------
+// ============================================================
+// 봇 스킨 — 난이도가 높을수록 높은 등급의 옷·총·차량 스킨을 입는다
+//  · 등급: 0 일반 · 1 고급 · 2 희귀 · 3 영웅 · 4 슈퍼레어 · 5 울트라레어 (RARITY)
+//  · 옷(상의·하의·신발·장갑)은 몸 메시 하나로 합쳐져 외형마다 ~0.9MB 라, 경기마다 '옷 묶음'을 몇 벌만 만들어
+//    봇들이 나눠 입는다 (지금까지의 봇 얼굴 14종과 비슷한 수). 모자·낙하산·총·차량은 따로 붙는 메시라 봇마다 따로 뽑는다
+//  · 같이 하기: 시드와 봇 번호·난이도만으로 정해지므로 모든 기기에서 같은 봇이 같은 스킨
+// ============================================================
+const BotSkin = (() => {
+  // 난이도별 등급 가중치 [0, 1, 2, 3, 4, 5] — 그 등급의 스킨이 없으면 한 단계씩 낮춰 고른다 (총·차량의 0 = 스킨 없음)
+  const W = {
+    easy:    [62, 30, 0, 8, 0, 0],
+    normal:  [30, 36, 0, 24, 9, 1],
+    hard:    [10, 22, 0, 33, 25, 10],
+    extreme: [0, 4, 0, 16, 38, 42],
+  };
+  const KEYS = ['easy', 'normal', 'hard', 'extreme'], CODE = { easy: 'e', normal: 'n', hard: 'h', extreme: 'x' };
+  const fromCode = (ch) => ({ e: 'easy', n: 'normal', h: 'hard', x: 'extreme' })[ch] || 'normal';
+  const wOf = (dk) => W[dk] || W.normal;
+  function rarPick(R, dk) { const w = wOf(dk); let s = 0; for (const x of w) s += x; let r = R() * s; for (let i = 0; i < w.length; i++) { r -= w[i]; if (r < 0) return i; } return 0; }
+  // 표(tab)에서 조건에 맞는 것 중 등급 r 인 것 하나 (없으면 r-1, r-2 …). 0까지 내려가면 base (기본값/없음)
+  function pickRar(R, list, r, base) {
+    for (let k = r; k >= 0; k--) { const L = list.filter((x) => x.rar === k); if (L.length) return L[Math.floor(R() * L.length)].id; }
+    return base;
+  }
+  let OUT = null, GUN = null, VEH = null;   // 슬롯·총·차량별 후보 목록 (처음 쓸 때 만든다)
+  function lists() {
+    if (OUT) return;
+    OUT = {};
+    for (const id in Body.SKINS) { const s = Body.SKINS[id]; (OUT[s.slot] || (OUT[s.slot] = [])).push({ id, rar: s.rar || 0 }); }
+    GUN = {}; for (const id in GSKINS) { const s = GSKINS[id]; (GUN[s.gun] || (GUN[s.gun] = [])).push({ id, rar: s.rar || 1 }); }
+    VEH = {}; for (const id in VSKINS) { const s = VSKINS[id]; (VEH[s.veh] || (VEH[s.veh] = [])).push({ id, rar: s.rar || 3 }); }
+  }
+  // 옷 묶음 한 벌 (상의·하의·신발·장갑). 묶음 안에서는 등급을 비슷하게 맞춘다 (한 번 뽑은 등급 ± 1)
+  function outfit(R, dk) {
+    lists(); const r0 = rarPick(R, dk), near = () => Math.max(0, Math.min(5, r0 + (R() < 0.3 ? (R() < 0.5 ? -1 : 1) : 0)));
+    const eq = { top: pickRar(R, OUT.top, near(), 'top_basic'), bottom: pickRar(R, OUT.bottom, near(), 'bottom_basic'), shoes: pickRar(R, OUT.shoes, near(), 'shoes_basic') };
+    // 장갑: 높은 난이도일수록 자주 낀다
+    eq.gloves = R() < [0.15, 0.35, 0.55, 0.75][KEYS.indexOf(dk)] ? pickRar(R, OUT.gloves || [], Math.max(1, near()), null) : null;
+    // 울트라 상의를 뽑았으면 같은 계열 하의를 맞춰 입힐 때가 많다 (골드·크롬·네온 세트)
+    const set = /_(gold|chrome|neon)$/.exec(eq.top); if (set && R() < 0.7) { const b = OUT.bottom.find((x) => x.id.endsWith('_' + set[1])); if (b) eq.bottom = b.id; }
+    return eq;
+  }
+  // 경기 하나의 옷 묶음 표: 난이도마다 n 벌 (경기에 나오는 난이도 수가 많으면 벌 수를 줄여 전체를 16벌 안팎으로)
+  //  ds: 이번 경기 봇 난이도 목록 · seed: 같이 하기면 모두 같은 값
+  function pool(ds, seed) {
+    const R = mulberry32((seed ^ 0x51ed270b) | 0), used = KEYS.filter((k) => ds.includes(k));
+    const per = Math.max(3, Math.round(16 / Math.max(1, used.length))), P = {};
+    for (const k of used) { P[k] = []; for (let i = 0; i < per; i++) P[k].push({ eq: outfit(R, k), body: Body.randomBody(R) }); }
+    return P;
+  }
+  // 봇 한 명분: 옷 묶음 하나 + 모자·낙하산 + 총별 스킨 + 차량별 스킨
+  //  i: 봇 번호(경기 안에서 고정) · P: pool() 결과
+  function forBot(P, dk, seed, i) {
+    lists();
+    const R = mulberry32(((seed ^ 0x2c1b3c6d) + Math.imul(i + 1, 0x9e3779b1)) | 0), L = P[dk] || P[Object.keys(P)[0]];
+    const o = L[Math.floor(R() * L.length)], eq = Object.assign({}, o.eq);
+    // 모자: 반쯤은 맨머리, 쓰면 난이도 등급으로
+    eq.hat = R() < [0.35, 0.5, 0.6, 0.7][KEYS.indexOf(dk)] ? pickRar(R, OUT.hat || [], Math.max(0, rarPick(R, dk)), null) : null;
+    eq.chute = pickRar(R, OUT.chute || [], rarPick(R, dk), 'chute_basic');
+    const gun = {}; for (const g in GUN) { const s = pickRar(R, GUN[g], rarPick(R, dk), null); if (s) gun[g] = s; }
+    const veh = {}; for (const t in VEH) { const s = pickRar(R, VEH[t], rarPick(R, dk), null); if (s) veh[t] = s; }
+    return { look: Body.makeLook(eq, o.body), gun, veh };
+  }
+  // 난이도 하나 고르기 (랭크전 = 내 티어 비율, 아니면 설정. '섞어서'는 쉬움·보통·보통·어려움)
+  function pickDiff(ranked) { return ranked ? Rank.botDifficulty() : SETTINGS.difficulty === 'mixed' ? pick(['easy', 'normal', 'normal', 'hard']) : SETTINGS.difficulty; }
+  // 같이 하기 설정용: 봇 n명의 난이도를 한 글자씩 ('enhx')
+  const diffCodes = (n, ranked) => { let s = ''; for (let i = 0; i < n; i++) s += CODE[pickDiff(ranked)] || 'n'; return s; };
+  // 이번 경기 봇 몸 메시 열쇠들 — 경기가 끝나면 지워 메모리를 돌려받는다 (사람이 쓰는 외형은 남김)
+  function purge(botLooks, keepLooks) {
+    const keep = new Set(keepLooks.map(Body.lookKey)), C = Body.cache;
+    for (const L of botLooks) { const k = Body.lookKey(L); if (keep.has(k)) continue; for (const s of ['#0', '#1', '#arms']) { const g = C.get(k + s); if (g) { g.dispose(); C.delete(k + s); } } }
+  }
+  return { W, KEYS, pool, forBot, pickDiff, diffCodes, fromCode, purge };
+})();
+
 // ---------- 08_airdrop.js ----------
 // ============================================================
 // 08_airdrop.js — 보급상자: 자기장 1~4단계 축소가 시작될 때마다 수송기가 다음 안전 구역 안에
@@ -15912,7 +16021,7 @@ const Dev = (() => {
 
   // ---------- 계정 관리 (서버 함수 — supabase/admin.sql) ----------
   //  목록(최근 저장 순·이름 검색) · 골드 탄피 지급 · 기록 초기화 · 계정 삭제. 초기화·삭제는 두 번 눌러야 실행
-  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '' };
+  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '', sel: '', det: {} };
   const rpcErr = (e) => { const m = String((e && e.message) || e || ''); return e && e.code === 'PGRST202' || /could not find|does not exist/i.test(m) ? '서버 설정 필요: Supabase SQL Editor에서 supabase/admin.sql 을 실행해 주세요' : /not admin/i.test(m) ? '관리자로 등록되지 않은 계정입니다 (이 계정이 있는 상태에서 admin.sql 을 실행해야 등록됨)' : Cloud.msgOf(e); };
   const RES = { denied: '관리자만 할 수 있습니다', self: '자기 계정은 지울 수 없습니다', admin: '다른 관리자 계정은 지울 수 없습니다', notfound: '없는 계정입니다', amount: '지급 양이 올바르지 않습니다 (1 ~ 1,000,000)' };
   async function accLoad() {
@@ -15927,7 +16036,78 @@ const Dev = (() => {
     ACC.busy = true; ACC.msg = '처리 중…'; renderAcc();
     try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; ACC.msg = data === 'ok' ? okMsg : RES[data] || `실패: ${data}`; }
     catch (e) { ACC.msg = rpcErr(e); }
-    ACC.busy = false; await accLoad();
+    ACC.busy = false; ACC.det = {}; await accLoad();
+  }
+  // ---------- 계정 상세 (목록에서 계정을 누르면 그 아래에 펼침) ----------
+  //  서버 함수 admin_get 이 있으면 전체 기록(stats·rank)까지, 없으면(옛 admin.sql) 목록 값만 보여 준다
+  async function detLoad(u) {
+    const sb = Cloud.client(); if (!sb) return;
+    ACC.det[u.id] = { busy: true }; renderAcc();
+    try { const { data, error } = await sb.rpc('admin_get', { p_id: u.id }); if (error) throw error; ACC.det[u.id] = data ? { d: data } : { err: '없는 계정입니다' }; }
+    catch (e) { ACC.det[u.id] = e && e.code === 'PGRST202' || /could not find|does not exist/i.test(String((e && e.message) || '')) ? { old: true } : { err: rpcErr(e) }; }
+    if (ACC.sel === u.id) renderAcc();
+  }
+  const fmtT = (t, y) => t ? new Date(t).toLocaleString('ko-KR', Object.assign(y ? { year: '2-digit' } : {}, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })) : '-';
+  const agoT = (t) => { if (!t) return ''; const s = (Date.now() - new Date(t).getTime()) / 1000; return s < 60 ? '방금' : s < 3600 ? `${Math.floor(s / 60)}분 전` : s < 86400 ? `${Math.floor(s / 3600)}시간 전` : `${Math.floor(s / 86400)}일 전`; };
+  // 접속 상태: 로비 채널 presence (Social.online) — 내 계정은 항상 접속 중
+  function onlineOf(id) {
+    if (id === Cloud.uid) return { on: true, st: G.state === 'play' ? 'game' : 'lobby' };
+    const o = Social.online && Social.online.get(id); return o ? { on: true, st: o.st, pn: o.pn } : { on: false };
+  }
+  const lastT = (x, u) => Math.max(x.last_sign_in_at ? +new Date(x.last_sign_in_at) : 0, u.updated_at ? +new Date(u.updated_at) : 0);   // 마지막 흔적 = 로그인·저장 중 늦은 쪽
+  const onlineText = (o) => !o.on ? '오프라인' : o.st === 'game' ? '게임 중' : '로비' + (o.pn > 1 ? ` · 파티 ${o.pn}명` : '');
+  function detailCard(u) {
+    const D = ACC.det[u.id] || {}, box = h('div', 'acc-det');
+    if (D.busy) { box.appendChild(h('div', 'dev-note', '상세 정보 불러오는 중…')); return box; }
+    if (D.err) { box.appendChild(h('div', 'dev-note bad', D.err)); return box; }
+    const x = D.d || {}, S = x.stats || {}, R = Object.assign({ rp: u.rp || 0, placed: 0, games: 0, wins: 0, peak: 0 }, x.rank || {});
+    const xp = S.xp != null ? S.xp : u.xp || 0, L = levelFromXp(xp), m = S.matches != null ? S.matches : u.matches, w = S.wins != null ? S.wins : u.wins, k = S.kills != null ? S.kills : u.kills;
+    const E = S.eco || {}, P = S.prof || {}, on = onlineOf(u.id);
+    // 머리: 계정 사진 · 이름 · 칭호 · 접속 상태
+    const hd = h('div', 'acc-dh');
+    const pf = h('div', 'acc-dpf'); pf.innerHTML = Prof.frameHTML(P.fr || 'none', P.av || 'helmet', 54); hd.appendChild(pf);
+    const nm = h('div', 'acc-dn'); nm.appendChild(h('b', '', u.username + (u.admin ? ' ★관리자' : '')));
+    if (P.ti) { const t = h('div', ''); t.innerHTML = Prof.titleHTML(P.ti, 'sm'); nm.appendChild(t); }
+    const st = h('span', 'acc-on ' + (on.on ? on.st === 'game' ? 'game' : 'on' : 'off'), (on.on ? '● ' : '○ ') + onlineText(on) + (on.on || !lastT(x, u) ? '' : ` · 마지막 접속 ${agoT(lastT(x, u))}`));
+    nm.appendChild(st); hd.appendChild(nm);
+    // 티어: 엠블럼 + 이름 (레벨 3 미만 = 잠김, 배치 3판 전 = 배치고사)
+    const ti = Rank.tierOf(R.rp), lock = L.lv < 3, plc = !lock && (D.d ? (R.placed || 0) < 3 : !u.rp);
+    const tierBox = h('div', 'acc-dtier');
+    const em = h('img', ''); em.alt = ''; em.src = lock ? Rank.emblem(-2, 0, 96) : plc ? Rank.emblem(-1, 0, 96) : Rank.emblem(ti.t, ti.div, 96); tierBox.appendChild(em);
+    const tl = h('div', ''); tl.appendChild(h('b', '', lock ? '랭크 잠김' : plc ? '배치고사' : ti.label));
+    tl.appendChild(h('small', '', lock ? '레벨 3부터' : plc ? `${R.placed || 0} / 3 완료` : `${R.rp} RP` + (R.peak > R.rp ? ` · 최고 ${Rank.tierOf(R.peak).label}` : '')));
+    tierBox.appendChild(tl); hd.appendChild(tierBox);
+    box.appendChild(hd);
+    // 레벨 막대
+    const lvb = h('div', 'acc-dlv'); lvb.appendChild(h('b', '', `Lv ${L.lv}`));
+    const bar = h('div', 'acc-bar'), fill = h('i', ''); fill.style.width = (100 * L.cur / L.need).toFixed(1) + '%'; bar.appendChild(fill); lvb.appendChild(bar);
+    lvb.appendChild(h('small', '', `${L.cur.toLocaleString()} / ${L.need.toLocaleString()} XP · 누적 ${xp.toLocaleString()}`)); box.appendChild(lvb);
+    // 숫자 칸
+    const grid = h('div', 'acc-grid');
+    const cell = (k2, v) => { const c = h('div', 'acc-cell'); c.appendChild(h('small', '', k2)); c.appendChild(h('b', '', String(v))); grid.appendChild(c); };
+    const own = (arr, tab) => { const L2 = (arr || []).filter((id) => tab[id]); return `${L2.length}종` + (L2.some((id) => tab[id].rar >= 5) ? ` (울트라 ${L2.filter((id) => tab[id].rar >= 5).length})` : ''); };
+    cell('경기', m); cell('우승', w); cell('우승률', m ? (100 * w / m).toFixed(1) + '%' : '-'); cell('처치', k); cell('경기당 처치', m ? (k / m).toFixed(1) : '-');
+    cell('최고 순위', m && S.best && S.best < 99 ? '#' + S.best : '-'); cell('랭크 경기', R.games ? `${R.games}판 ${R.wins || 0}승` : '-');
+    if (S.dm && S.dm.matches) cell('데스매치', `${S.dm.wins || 0}승 / ${S.dm.matches}판`);
+    cell(GOLD_NAME, (E.gold != null ? E.gold : u.gold || 0).toLocaleString()); if (D.d) { cell(COIN_NAME, (E.coin || 0).toLocaleString()); cell(GCOIN_NAME, (E.gcoin || 0).toLocaleString()); }
+    if (D.d) { cell('옷 스킨', own(S.skins, Body.SKINS)); cell('총 스킨', own(S.gskins, GSKINS)); cell('차량 스킨', own(S.vskins, VSKINS)); }
+    box.appendChild(grid);
+    // 최근 경기
+    if (S.recent && S.recent.length) {
+      const rc = h('div', 'acc-recent'); rc.appendChild(h('small', 'acc-sub', '최근 경기'));
+      for (const r of S.recent.slice(0, 5)) {
+        const mp = MAPS[r.map] ? MAPS[r.map].name.replace(/\s*\(.*\)/, '') : r.map || '';
+        rc.appendChild(h('div', 'acc-rrow', r.dm ? `${GAME_TYPES[r.dm] ? GAME_TYPES[r.dm].short || GAME_TYPES[r.dm].name : '데스매치'} · ${r.win ? '승리' : r.draw ? '무승부' : '패배'} ${r.us}:${r.them} · ${r.kills}킬`
+          : `${mp}${r.ranked ? ' · 랭크' : ''}${r.sq > 1 ? ` · ${r.sq}인` : ''} · #${r.rank}/${r.total} · ${r.kills}킬${r.delta ? ` · ${r.delta > 0 ? '+' : ''}${r.delta} RP` : ''}`));
+      }
+      box.appendChild(rc);
+    }
+    // 계정
+    const ac = h('div', 'acc-meta acc-dacc');
+    ac.textContent = `가입 ${fmtT(u.created_at || x.created_at, 1)} · 마지막 저장 ${fmtT(u.updated_at)}` + (x.last_sign_in_at ? ` · 마지막 로그인 ${fmtT(x.last_sign_in_at)}` : '') + (x.name_changed_at ? ` · 아이디 변경 ${fmtT(x.name_changed_at)}` : '') + ` · 고유번호 ${String(u.id).slice(0, 8)}`;
+    box.appendChild(ac);
+    if (D.old) box.appendChild(h('div', 'dev-note', '재화·스킨·최근 경기·랭크 상세는 Supabase SQL Editor에서 supabase/admin.sql 을 다시 실행하면 보입니다'));
+    return box;
   }
   function renderAcc() {
     const host = $('devAcc'); if (!host) return; host.innerHTML = '';
@@ -15942,12 +16122,15 @@ const Dev = (() => {
     if (ACC.busy && !ACC.list) { host.appendChild(h('div', 'dev-note', '불러오는 중…')); return; }
     if (ACC.err) { host.appendChild(h('div', 'dev-note bad', ACC.err)); return; }
     if (!ACC.list) return;
-    host.appendChild(h('div', 'dev-note', `계정 ${ACC.list.length}개 (최근 저장 순${ACC.q ? ` · '${ACC.q}' 검색` : ''})`));
+    host.appendChild(h('div', 'dev-note', `계정 ${ACC.list.length}개 · 접속 중 ${ACC.list.filter((u) => onlineOf(u.id).on).length}명 · 이름을 누르면 상세 정보 (최근 저장 순${ACC.q ? ` · '${ACC.q}' 검색` : ''})`));
     const L = h('div', 'acc-list');
     for (const u of ACC.list) {
-      const r = h('div', 'acc-row' + (u.admin ? ' admin' : '') + (u.id === Cloud.uid ? ' me' : ''));
-      const info = h('div', 'acc-info');
-      info.appendChild(h('b', 'acc-name', u.username + (u.admin ? ' ★관리자' : '') + (u.id === Cloud.uid ? ' (나)' : '')));
+      const r = h('div', 'acc-row' + (u.admin ? ' admin' : '') + (u.id === Cloud.uid ? ' me' : '') + (ACC.sel === u.id ? ' open' : ''));
+      const info = h('div', 'acc-info'), on = onlineOf(u.id);
+      info.title = '눌러서 상세 정보'; info.onclick = () => { ACC.sel = ACC.sel === u.id ? '' : u.id; if (ACC.sel && !ACC.det[u.id]) detLoad(u); else renderAcc(); Audio.ui(); };
+      const nm = h('b', 'acc-name'); nm.appendChild(h('i', 'acc-dot ' + (on.on ? on.st === 'game' ? 'game' : 'on' : 'off'))); nm.title = onlineText(on);
+      nm.appendChild(document.createTextNode(u.username + (u.admin ? ' ★관리자' : '') + (u.id === Cloud.uid ? ' (나)' : '')));
+      nm.appendChild(h('span', 'acc-arw', ACC.sel === u.id ? '▴' : '▾')); info.appendChild(nm);
       info.appendChild(h('span', 'acc-meta', `Lv ${levelFromXp(u.xp || 0).lv} · ${u.matches}판 ${u.wins}승 ${u.kills}킬 · 골드 ${(u.gold || 0).toLocaleString()} · RP ${u.rp} · ${u.updated_at ? '저장 ' + new Date(u.updated_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '기록 없음'}`));
       r.appendChild(info);
       const bs = h('div', 'acc-btns');
@@ -15957,13 +16140,14 @@ const Dev = (() => {
       sure('reset', '초기화', () => accDo('admin_reset', { p_id: u.id }, `${u.username}님의 기록을 초기화했습니다 (전적·레벨·재화·스킨·랭크)`));
       if (!u.admin && u.id !== Cloud.uid) sure('del', '삭제', () => accDo('admin_delete', { p_id: u.id }, `${u.username} 계정을 삭제했습니다 (되돌릴 수 없음)`));
       r.appendChild(bs); L.appendChild(r);
+      if (ACC.sel === u.id) L.appendChild(detailCard(u));
     }
     host.appendChild(L);
   }
 
   // ---------- 패널 ----------
   function close() { $('devPanel').hidden = true; }
-  function open() { if (!is()) return; ACC.list = null; ACC.err = ''; ACC.msg = ''; render(); $('devPanel').hidden = false; Audio.ui(); }   // 열 때마다 계정 목록을 새로
+  function open() { if (!is()) return; ACC.list = null; ACC.err = ''; ACC.msg = ''; ACC.sel = ''; ACC.det = {}; render(); $('devPanel').hidden = false; Audio.ui(); }   // 열 때마다 계정 목록을 새로
   function render() {
     const box = $('devBody'); if (!box) return;
     box.innerHTML = '';
@@ -16106,12 +16290,16 @@ const DM = (() => {
     // 참가자: 혼자면 나 + 봇(데스매치 7명 · 대결은 팀 크기만큼). 같이 하기면 방장이 정한 명단
     const roster = cfg.roster || defaultRoster(TSZ);
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
+    // 봇 난이도·스킨 (07_bot_skin.js): 혼자면 여기서 정하고, 같이 하기면 방장이 명단에 적은 난이도(r.diff)로 모든 기기에서 같게
+    if (!cfg.roster) for (const r of roster) if (!r.human && !r.diff) r.diff = botDiff();
+    const BP = BotSkin.pool([...new Set(roster.filter((r) => !r.human && r.diff).map((r) => r.diff))], seed); G.botLooks = [];
     roster.forEach((r, i) => {
       const me = cfg.roster ? r.id === cfg.myId : r.human;
-      const hl = r.human ? (r.look || (me ? myLook() : {})) : null;
-      const look = hl ? Body.makeLook(hl.eq, hl.body) : Body.makeLook(null, Body.randomBody(mulberry32((seed + 7919 * (r.id + 1)) | 0)));
+      const hl = r.human ? (r.look || (me ? myLook() : {})) : null, sk = !hl && r.diff ? BotSkin.forBot(BP, r.diff, seed, r.id) : null;
+      const look = hl ? Body.makeLook(hl.eq, hl.body) : sk ? sk.look : Body.makeLook(null, Body.randomBody(mulberry32((seed + 7919 * (r.id + 1)) | 0)));
       const c = new Character({ id: r.id, name: r.name || names[i % names.length], isPlayer: me, look, team: r.team });
       if (hl) c.glook = hl.gun || (me ? Eco.glook() : null);   // 총기 스킨
+      if (sk) { c.glook = sk.gun; G.botLooks.push(look); }
       c.slot = G.teams[r.team].members.length; G.teams[r.team].members.push(c); CHARS.push(c); sc.add(c.root);
       if (me) G.player = c;
       if (r.net) { c.net = r.net; if (!c.net.mine) c.root.visible = false; } // 같이 하기: 다른 기기가 움직이는 캐릭터 (받은 상태로 그림)
@@ -17961,13 +18149,14 @@ const Net = (() => {
       const roster = humans.map((hm, i) => ({ id: i, team: duel ? i % 2 : 0, human: true, name: hm.name, look: hm.look, uid: hm.uid }));
       const nm = shuffled(BOT_NAMES, mulberry32(seed ^ 0x5bd1e995)), cnt = [0, 0]; for (const r of roster) cnt[r.team]++;
       let id = humans.length;
-      for (const t of [0, 1]) while (cnt[t] < ts) { roster.push({ id, team: t, name: nm[id % nm.length] }); id++; cnt[t]++; }
+      for (const t of [0, 1]) while (cnt[t] < ts) { roster.push({ id, team: t, name: nm[id % nm.length], diff: BotSkin.pickDiff(false) }); id++; cnt[t]++; }
       cfg.roster = roster;
     } else {
       cfg.ranked = SETTINGS.queue === 'ranked' && Rank.unlocked();
       const want = (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.duo).size;
       cfg.teamSize = Math.max(want, humans.length);
       cfg.nBots = cfg.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, humans.length, mapMaxBots(SETTINGS.map));
+      cfg.bd = BotSkin.diffCodes(Math.max(0, cfg.nBots - humans.length + 1), cfg.ranked);   // 봇 난이도(한 글자씩) — 파티원 기기도 봇 스킨을 같게 입힌다
       cfg.plane = { a: Math.random() * TAU, off: Math.random() * 2 - 1 };
     }
     return cfg;
@@ -20905,10 +21094,15 @@ async function startMatch(cfg) {
   const names = BOT_NAMES.slice(); for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(srand() * (i + 1)); const t0 = names[i]; names[i] = names[j]; names[j] = t0; }
   const nBots = net ? Math.max(0, cfg.nBots - humans.length + 1) : G.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, 1, mapMaxBots(SETTINGS.map));
   const pl = G.plane, hostSide = !net || Net.isHost(), H0 = humans.length;
+  // 봇 난이도 → 스킨 (07_bot_skin.js): 같이 하기면 방장이 정한 난이도(cfg.bd)와 시드로 모든 기기에서 같은 스킨
+  const bseed = net ? cfg.seed : (Math.random() * 2147483647) | 0, dks = [];
+  for (let i = 0; i < nBots; i++) dks.push(net && cfg.bd ? BotSkin.fromCode(cfg.bd[i]) : hostSide ? BotSkin.pickDiff(G.ranked) : null);
+  const BP = BotSkin.pool([...new Set(dks.filter(Boolean))], bseed); G.botLooks = [];
   for (let i = 0; i < nBots; i++) {
-    const b = new Character({ id: i + H0, name: (names[i % names.length]) + (i >= names.length ? '_' + i : ''), look: Body.makeLook(null, Body.randomBody(srand)) });
+    const body0 = Body.randomBody(srand), dk = dks[i], sk = dk ? BotSkin.forBot(BP, dk, bseed, i) : null;
+    const b = new Character({ id: i + H0, name: (names[i % names.length]) + (i >= names.length ? '_' + i : ''), look: sk ? sk.look : Body.makeLook(null, body0) });
+    if (sk) { b.glook = sk.gun; b.vlook = sk.veh; G.botLooks.push(b.look); }
     if (!hostSide) { b.net = Net.charNet(cfg.host); joinTeam(b); CHARS.push(b); continue; } // 파티원 기기: 봇은 방장이 움직인다
-    const dk = G.ranked ? Rank.botDifficulty() : SETTINGS.difficulty === 'mixed' ? pick(['easy', 'normal', 'normal', 'hard']) : SETTINGS.difficulty;
     const br = new Brain(b, dk);
     const T = joinTeam(b), lead = T.members[0];
     if (b.team === player.team && (!net || Net.isHost())) {
@@ -20944,6 +21138,7 @@ function disposeMatch() {
   Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose();
   G.scene.traverse(o => { if (o.geometry && !o.isSprite) o.geometry.dispose(); });
   for (const c of CHARS) if (c.rig && c.rig.skel) c.rig.skel.dispose();   // 뼈대 텍스처(GPU) 해제
+  if (G.botLooks) { const ml = myLook(); BotSkin.purge(G.botLooks, CHARS.filter((c) => c.human || c.isPlayer).map((c) => c.look).concat([Body.makeLook(ml.eq, ml.body)])); G.botLooks = null; }   // 봇 옷 묶음 몸 메시(CPU) 정리
   G.scene = null; CHARS = []; GROUND = []; W = null; G.player = null; G.plane = null; G.dropCands = null;
   Audio.plane(false);
 }

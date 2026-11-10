@@ -73,12 +73,16 @@ const DM = (() => {
     // 참가자: 혼자면 나 + 봇(데스매치 7명 · 대결은 팀 크기만큼). 같이 하기면 방장이 정한 명단
     const roster = cfg.roster || defaultRoster(TSZ);
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
+    // 봇 난이도·스킨 (07_bot_skin.js): 혼자면 여기서 정하고, 같이 하기면 방장이 명단에 적은 난이도(r.diff)로 모든 기기에서 같게
+    if (!cfg.roster) for (const r of roster) if (!r.human && !r.diff) r.diff = botDiff();
+    const BP = BotSkin.pool([...new Set(roster.filter((r) => !r.human && r.diff).map((r) => r.diff))], seed); G.botLooks = [];
     roster.forEach((r, i) => {
       const me = cfg.roster ? r.id === cfg.myId : r.human;
-      const hl = r.human ? (r.look || (me ? myLook() : {})) : null;
-      const look = hl ? Body.makeLook(hl.eq, hl.body) : Body.makeLook(null, Body.randomBody(mulberry32((seed + 7919 * (r.id + 1)) | 0)));
+      const hl = r.human ? (r.look || (me ? myLook() : {})) : null, sk = !hl && r.diff ? BotSkin.forBot(BP, r.diff, seed, r.id) : null;
+      const look = hl ? Body.makeLook(hl.eq, hl.body) : sk ? sk.look : Body.makeLook(null, Body.randomBody(mulberry32((seed + 7919 * (r.id + 1)) | 0)));
       const c = new Character({ id: r.id, name: r.name || names[i % names.length], isPlayer: me, look, team: r.team });
       if (hl) c.glook = hl.gun || (me ? Eco.glook() : null);   // 총기 스킨
+      if (sk) { c.glook = sk.gun; G.botLooks.push(look); }
       c.slot = G.teams[r.team].members.length; G.teams[r.team].members.push(c); CHARS.push(c); sc.add(c.root);
       if (me) G.player = c;
       if (r.net) { c.net = r.net; if (!c.net.mine) c.root.visible = false; } // 같이 하기: 다른 기기가 움직이는 캐릭터 (받은 상태로 그림)

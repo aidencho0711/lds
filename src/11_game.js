@@ -377,10 +377,15 @@ async function startMatch(cfg) {
   const names = BOT_NAMES.slice(); for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(srand() * (i + 1)); const t0 = names[i]; names[i] = names[j]; names[j] = t0; }
   const nBots = net ? Math.max(0, cfg.nBots - humans.length + 1) : G.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, 1, mapMaxBots(SETTINGS.map));
   const pl = G.plane, hostSide = !net || Net.isHost(), H0 = humans.length;
+  // 봇 난이도 → 스킨 (07_bot_skin.js): 같이 하기면 방장이 정한 난이도(cfg.bd)와 시드로 모든 기기에서 같은 스킨
+  const bseed = net ? cfg.seed : (Math.random() * 2147483647) | 0, dks = [];
+  for (let i = 0; i < nBots; i++) dks.push(net && cfg.bd ? BotSkin.fromCode(cfg.bd[i]) : hostSide ? BotSkin.pickDiff(G.ranked) : null);
+  const BP = BotSkin.pool([...new Set(dks.filter(Boolean))], bseed); G.botLooks = [];
   for (let i = 0; i < nBots; i++) {
-    const b = new Character({ id: i + H0, name: (names[i % names.length]) + (i >= names.length ? '_' + i : ''), look: Body.makeLook(null, Body.randomBody(srand)) });
+    const body0 = Body.randomBody(srand), dk = dks[i], sk = dk ? BotSkin.forBot(BP, dk, bseed, i) : null;
+    const b = new Character({ id: i + H0, name: (names[i % names.length]) + (i >= names.length ? '_' + i : ''), look: sk ? sk.look : Body.makeLook(null, body0) });
+    if (sk) { b.glook = sk.gun; b.vlook = sk.veh; G.botLooks.push(b.look); }
     if (!hostSide) { b.net = Net.charNet(cfg.host); joinTeam(b); CHARS.push(b); continue; } // 파티원 기기: 봇은 방장이 움직인다
-    const dk = G.ranked ? Rank.botDifficulty() : SETTINGS.difficulty === 'mixed' ? pick(['easy', 'normal', 'normal', 'hard']) : SETTINGS.difficulty;
     const br = new Brain(b, dk);
     const T = joinTeam(b), lead = T.members[0];
     if (b.team === player.team && (!net || Net.isHost())) {
@@ -416,6 +421,7 @@ function disposeMatch() {
   Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose();
   G.scene.traverse(o => { if (o.geometry && !o.isSprite) o.geometry.dispose(); });
   for (const c of CHARS) if (c.rig && c.rig.skel) c.rig.skel.dispose();   // 뼈대 텍스처(GPU) 해제
+  if (G.botLooks) { const ml = myLook(); BotSkin.purge(G.botLooks, CHARS.filter((c) => c.human || c.isPlayer).map((c) => c.look).concat([Body.makeLook(ml.eq, ml.body)])); G.botLooks = null; }   // 봇 옷 묶음 몸 메시(CPU) 정리
   G.scene = null; CHARS = []; GROUND = []; W = null; G.player = null; G.plane = null; G.dropCands = null;
   Audio.plane(false);
 }

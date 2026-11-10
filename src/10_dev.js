@@ -109,7 +109,7 @@ const Dev = (() => {
 
   // ---------- 계정 관리 (서버 함수 — supabase/admin.sql) ----------
   //  목록(최근 저장 순·이름 검색) · 골드 탄피 지급 · 기록 초기화 · 계정 삭제. 초기화·삭제는 두 번 눌러야 실행
-  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '' };
+  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '', sel: '', det: {} };
   const rpcErr = (e) => { const m = String((e && e.message) || e || ''); return e && e.code === 'PGRST202' || /could not find|does not exist/i.test(m) ? '서버 설정 필요: Supabase SQL Editor에서 supabase/admin.sql 을 실행해 주세요' : /not admin/i.test(m) ? '관리자로 등록되지 않은 계정입니다 (이 계정이 있는 상태에서 admin.sql 을 실행해야 등록됨)' : Cloud.msgOf(e); };
   const RES = { denied: '관리자만 할 수 있습니다', self: '자기 계정은 지울 수 없습니다', admin: '다른 관리자 계정은 지울 수 없습니다', notfound: '없는 계정입니다', amount: '지급 양이 올바르지 않습니다 (1 ~ 1,000,000)' };
   async function accLoad() {
@@ -124,7 +124,78 @@ const Dev = (() => {
     ACC.busy = true; ACC.msg = '처리 중…'; renderAcc();
     try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; ACC.msg = data === 'ok' ? okMsg : RES[data] || `실패: ${data}`; }
     catch (e) { ACC.msg = rpcErr(e); }
-    ACC.busy = false; await accLoad();
+    ACC.busy = false; ACC.det = {}; await accLoad();
+  }
+  // ---------- 계정 상세 (목록에서 계정을 누르면 그 아래에 펼침) ----------
+  //  서버 함수 admin_get 이 있으면 전체 기록(stats·rank)까지, 없으면(옛 admin.sql) 목록 값만 보여 준다
+  async function detLoad(u) {
+    const sb = Cloud.client(); if (!sb) return;
+    ACC.det[u.id] = { busy: true }; renderAcc();
+    try { const { data, error } = await sb.rpc('admin_get', { p_id: u.id }); if (error) throw error; ACC.det[u.id] = data ? { d: data } : { err: '없는 계정입니다' }; }
+    catch (e) { ACC.det[u.id] = e && e.code === 'PGRST202' || /could not find|does not exist/i.test(String((e && e.message) || '')) ? { old: true } : { err: rpcErr(e) }; }
+    if (ACC.sel === u.id) renderAcc();
+  }
+  const fmtT = (t, y) => t ? new Date(t).toLocaleString('ko-KR', Object.assign(y ? { year: '2-digit' } : {}, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })) : '-';
+  const agoT = (t) => { if (!t) return ''; const s = (Date.now() - new Date(t).getTime()) / 1000; return s < 60 ? '방금' : s < 3600 ? `${Math.floor(s / 60)}분 전` : s < 86400 ? `${Math.floor(s / 3600)}시간 전` : `${Math.floor(s / 86400)}일 전`; };
+  // 접속 상태: 로비 채널 presence (Social.online) — 내 계정은 항상 접속 중
+  function onlineOf(id) {
+    if (id === Cloud.uid) return { on: true, st: G.state === 'play' ? 'game' : 'lobby' };
+    const o = Social.online && Social.online.get(id); return o ? { on: true, st: o.st, pn: o.pn } : { on: false };
+  }
+  const lastT = (x, u) => Math.max(x.last_sign_in_at ? +new Date(x.last_sign_in_at) : 0, u.updated_at ? +new Date(u.updated_at) : 0);   // 마지막 흔적 = 로그인·저장 중 늦은 쪽
+  const onlineText = (o) => !o.on ? '오프라인' : o.st === 'game' ? '게임 중' : '로비' + (o.pn > 1 ? ` · 파티 ${o.pn}명` : '');
+  function detailCard(u) {
+    const D = ACC.det[u.id] || {}, box = h('div', 'acc-det');
+    if (D.busy) { box.appendChild(h('div', 'dev-note', '상세 정보 불러오는 중…')); return box; }
+    if (D.err) { box.appendChild(h('div', 'dev-note bad', D.err)); return box; }
+    const x = D.d || {}, S = x.stats || {}, R = Object.assign({ rp: u.rp || 0, placed: 0, games: 0, wins: 0, peak: 0 }, x.rank || {});
+    const xp = S.xp != null ? S.xp : u.xp || 0, L = levelFromXp(xp), m = S.matches != null ? S.matches : u.matches, w = S.wins != null ? S.wins : u.wins, k = S.kills != null ? S.kills : u.kills;
+    const E = S.eco || {}, P = S.prof || {}, on = onlineOf(u.id);
+    // 머리: 계정 사진 · 이름 · 칭호 · 접속 상태
+    const hd = h('div', 'acc-dh');
+    const pf = h('div', 'acc-dpf'); pf.innerHTML = Prof.frameHTML(P.fr || 'none', P.av || 'helmet', 54); hd.appendChild(pf);
+    const nm = h('div', 'acc-dn'); nm.appendChild(h('b', '', u.username + (u.admin ? ' ★관리자' : '')));
+    if (P.ti) { const t = h('div', ''); t.innerHTML = Prof.titleHTML(P.ti, 'sm'); nm.appendChild(t); }
+    const st = h('span', 'acc-on ' + (on.on ? on.st === 'game' ? 'game' : 'on' : 'off'), (on.on ? '● ' : '○ ') + onlineText(on) + (on.on || !lastT(x, u) ? '' : ` · 마지막 접속 ${agoT(lastT(x, u))}`));
+    nm.appendChild(st); hd.appendChild(nm);
+    // 티어: 엠블럼 + 이름 (레벨 3 미만 = 잠김, 배치 3판 전 = 배치고사)
+    const ti = Rank.tierOf(R.rp), lock = L.lv < 3, plc = !lock && (D.d ? (R.placed || 0) < 3 : !u.rp);
+    const tierBox = h('div', 'acc-dtier');
+    const em = h('img', ''); em.alt = ''; em.src = lock ? Rank.emblem(-2, 0, 96) : plc ? Rank.emblem(-1, 0, 96) : Rank.emblem(ti.t, ti.div, 96); tierBox.appendChild(em);
+    const tl = h('div', ''); tl.appendChild(h('b', '', lock ? '랭크 잠김' : plc ? '배치고사' : ti.label));
+    tl.appendChild(h('small', '', lock ? '레벨 3부터' : plc ? `${R.placed || 0} / 3 완료` : `${R.rp} RP` + (R.peak > R.rp ? ` · 최고 ${Rank.tierOf(R.peak).label}` : '')));
+    tierBox.appendChild(tl); hd.appendChild(tierBox);
+    box.appendChild(hd);
+    // 레벨 막대
+    const lvb = h('div', 'acc-dlv'); lvb.appendChild(h('b', '', `Lv ${L.lv}`));
+    const bar = h('div', 'acc-bar'), fill = h('i', ''); fill.style.width = (100 * L.cur / L.need).toFixed(1) + '%'; bar.appendChild(fill); lvb.appendChild(bar);
+    lvb.appendChild(h('small', '', `${L.cur.toLocaleString()} / ${L.need.toLocaleString()} XP · 누적 ${xp.toLocaleString()}`)); box.appendChild(lvb);
+    // 숫자 칸
+    const grid = h('div', 'acc-grid');
+    const cell = (k2, v) => { const c = h('div', 'acc-cell'); c.appendChild(h('small', '', k2)); c.appendChild(h('b', '', String(v))); grid.appendChild(c); };
+    const own = (arr, tab) => { const L2 = (arr || []).filter((id) => tab[id]); return `${L2.length}종` + (L2.some((id) => tab[id].rar >= 5) ? ` (울트라 ${L2.filter((id) => tab[id].rar >= 5).length})` : ''); };
+    cell('경기', m); cell('우승', w); cell('우승률', m ? (100 * w / m).toFixed(1) + '%' : '-'); cell('처치', k); cell('경기당 처치', m ? (k / m).toFixed(1) : '-');
+    cell('최고 순위', m && S.best && S.best < 99 ? '#' + S.best : '-'); cell('랭크 경기', R.games ? `${R.games}판 ${R.wins || 0}승` : '-');
+    if (S.dm && S.dm.matches) cell('데스매치', `${S.dm.wins || 0}승 / ${S.dm.matches}판`);
+    cell(GOLD_NAME, (E.gold != null ? E.gold : u.gold || 0).toLocaleString()); if (D.d) { cell(COIN_NAME, (E.coin || 0).toLocaleString()); cell(GCOIN_NAME, (E.gcoin || 0).toLocaleString()); }
+    if (D.d) { cell('옷 스킨', own(S.skins, Body.SKINS)); cell('총 스킨', own(S.gskins, GSKINS)); cell('차량 스킨', own(S.vskins, VSKINS)); }
+    box.appendChild(grid);
+    // 최근 경기
+    if (S.recent && S.recent.length) {
+      const rc = h('div', 'acc-recent'); rc.appendChild(h('small', 'acc-sub', '최근 경기'));
+      for (const r of S.recent.slice(0, 5)) {
+        const mp = MAPS[r.map] ? MAPS[r.map].name.replace(/\s*\(.*\)/, '') : r.map || '';
+        rc.appendChild(h('div', 'acc-rrow', r.dm ? `${GAME_TYPES[r.dm] ? GAME_TYPES[r.dm].short || GAME_TYPES[r.dm].name : '데스매치'} · ${r.win ? '승리' : r.draw ? '무승부' : '패배'} ${r.us}:${r.them} · ${r.kills}킬`
+          : `${mp}${r.ranked ? ' · 랭크' : ''}${r.sq > 1 ? ` · ${r.sq}인` : ''} · #${r.rank}/${r.total} · ${r.kills}킬${r.delta ? ` · ${r.delta > 0 ? '+' : ''}${r.delta} RP` : ''}`));
+      }
+      box.appendChild(rc);
+    }
+    // 계정
+    const ac = h('div', 'acc-meta acc-dacc');
+    ac.textContent = `가입 ${fmtT(u.created_at || x.created_at, 1)} · 마지막 저장 ${fmtT(u.updated_at)}` + (x.last_sign_in_at ? ` · 마지막 로그인 ${fmtT(x.last_sign_in_at)}` : '') + (x.name_changed_at ? ` · 아이디 변경 ${fmtT(x.name_changed_at)}` : '') + ` · 고유번호 ${String(u.id).slice(0, 8)}`;
+    box.appendChild(ac);
+    if (D.old) box.appendChild(h('div', 'dev-note', '재화·스킨·최근 경기·랭크 상세는 Supabase SQL Editor에서 supabase/admin.sql 을 다시 실행하면 보입니다'));
+    return box;
   }
   function renderAcc() {
     const host = $('devAcc'); if (!host) return; host.innerHTML = '';
@@ -139,12 +210,15 @@ const Dev = (() => {
     if (ACC.busy && !ACC.list) { host.appendChild(h('div', 'dev-note', '불러오는 중…')); return; }
     if (ACC.err) { host.appendChild(h('div', 'dev-note bad', ACC.err)); return; }
     if (!ACC.list) return;
-    host.appendChild(h('div', 'dev-note', `계정 ${ACC.list.length}개 (최근 저장 순${ACC.q ? ` · '${ACC.q}' 검색` : ''})`));
+    host.appendChild(h('div', 'dev-note', `계정 ${ACC.list.length}개 · 접속 중 ${ACC.list.filter((u) => onlineOf(u.id).on).length}명 · 이름을 누르면 상세 정보 (최근 저장 순${ACC.q ? ` · '${ACC.q}' 검색` : ''})`));
     const L = h('div', 'acc-list');
     for (const u of ACC.list) {
-      const r = h('div', 'acc-row' + (u.admin ? ' admin' : '') + (u.id === Cloud.uid ? ' me' : ''));
-      const info = h('div', 'acc-info');
-      info.appendChild(h('b', 'acc-name', u.username + (u.admin ? ' ★관리자' : '') + (u.id === Cloud.uid ? ' (나)' : '')));
+      const r = h('div', 'acc-row' + (u.admin ? ' admin' : '') + (u.id === Cloud.uid ? ' me' : '') + (ACC.sel === u.id ? ' open' : ''));
+      const info = h('div', 'acc-info'), on = onlineOf(u.id);
+      info.title = '눌러서 상세 정보'; info.onclick = () => { ACC.sel = ACC.sel === u.id ? '' : u.id; if (ACC.sel && !ACC.det[u.id]) detLoad(u); else renderAcc(); Audio.ui(); };
+      const nm = h('b', 'acc-name'); nm.appendChild(h('i', 'acc-dot ' + (on.on ? on.st === 'game' ? 'game' : 'on' : 'off'))); nm.title = onlineText(on);
+      nm.appendChild(document.createTextNode(u.username + (u.admin ? ' ★관리자' : '') + (u.id === Cloud.uid ? ' (나)' : '')));
+      nm.appendChild(h('span', 'acc-arw', ACC.sel === u.id ? '▴' : '▾')); info.appendChild(nm);
       info.appendChild(h('span', 'acc-meta', `Lv ${levelFromXp(u.xp || 0).lv} · ${u.matches}판 ${u.wins}승 ${u.kills}킬 · 골드 ${(u.gold || 0).toLocaleString()} · RP ${u.rp} · ${u.updated_at ? '저장 ' + new Date(u.updated_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '기록 없음'}`));
       r.appendChild(info);
       const bs = h('div', 'acc-btns');
@@ -154,13 +228,14 @@ const Dev = (() => {
       sure('reset', '초기화', () => accDo('admin_reset', { p_id: u.id }, `${u.username}님의 기록을 초기화했습니다 (전적·레벨·재화·스킨·랭크)`));
       if (!u.admin && u.id !== Cloud.uid) sure('del', '삭제', () => accDo('admin_delete', { p_id: u.id }, `${u.username} 계정을 삭제했습니다 (되돌릴 수 없음)`));
       r.appendChild(bs); L.appendChild(r);
+      if (ACC.sel === u.id) L.appendChild(detailCard(u));
     }
     host.appendChild(L);
   }
 
   // ---------- 패널 ----------
   function close() { $('devPanel').hidden = true; }
-  function open() { if (!is()) return; ACC.list = null; ACC.err = ''; ACC.msg = ''; render(); $('devPanel').hidden = false; Audio.ui(); }   // 열 때마다 계정 목록을 새로
+  function open() { if (!is()) return; ACC.list = null; ACC.err = ''; ACC.msg = ''; ACC.sel = ''; ACC.det = {}; render(); $('devPanel').hidden = false; Audio.ui(); }   // 열 때마다 계정 목록을 새로
   function render() {
     const box = $('devBody'); if (!box) return;
     box.innerHTML = '';

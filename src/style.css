@@ -1170,3 +1170,36 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .acc-meta { font-size: 0.7rem; color: var(--dim); }
 .acc-btns { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
 .acc-btns .btn.sm { padding: 5px 9px; font-size: 0.74rem; }
+/* v20 계정 관리 → 계정 상세 (이름을 누르면 펼침) */
+.acc-info { cursor: pointer; }
+.acc-info:hover .acc-name { color: #fff; }
+.acc-row.open { border-color: var(--amber); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.acc-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; background: #59615f; }
+.acc-dot.on, .acc-on.on { background: #4cd36a; color: #4cd36a; }
+.acc-dot.game, .acc-on.game { background: #ffb23e; color: #ffb23e; }
+.acc-on { background: none !important; font-size: 0.74rem; font-weight: 700; }
+.acc-on.off { color: var(--dim); }
+.acc-arw { margin-left: 6px; font-size: 0.7rem; color: var(--dim); }
+.acc-det { margin-top: -7px; padding: 12px; border: 1px solid var(--amber); border-top: 0; border-radius: 0 0 6px 6px; background: rgba(20, 24, 26, 0.92); display: flex; flex-direction: column; gap: 10px; }
+.acc-dh { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.acc-dpf { flex: none; }
+.acc-dn { flex: 1; min-width: 120px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.acc-dn > b { font-size: 1.05rem; color: var(--sand); }
+.acc-dn .ttl { font-size: 0.7rem; padding: 1px 12px; }
+.acc-dtier { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border: 1px solid var(--line); border-radius: 6px; background: rgba(0, 0, 0, 0.25); }
+.acc-dtier img { width: 46px; height: 46px; }
+.acc-dtier div { display: flex; flex-direction: column; }
+.acc-dtier b { font-size: 0.9rem; color: #fff; }
+.acc-dtier small, .acc-dlv small { font-size: 0.7rem; color: var(--dim); }
+.acc-dlv { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acc-dlv b { font-size: 0.85rem; color: var(--amber); min-width: 46px; }
+.acc-bar { flex: 1; min-width: 100px; height: 7px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.acc-bar i { display: block; height: 100%; background: linear-gradient(90deg, #d98c22, #ffc65a); }
+.acc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+.acc-cell { padding: 6px 8px; border-radius: 5px; background: rgba(255, 255, 255, 0.04); display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.acc-cell small { font-size: 0.66rem; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-cell b { font-size: 0.86rem; color: var(--sand); }
+.acc-recent { display: flex; flex-direction: column; gap: 3px; }
+.acc-sub { font-size: 0.7rem; color: var(--dim); }
+.acc-rrow { font-size: 0.76rem; color: var(--sand); padding: 4px 8px; border-left: 2px solid var(--line); background: rgba(255, 255, 255, 0.03); }
+.acc-dacc { line-height: 1.5; }
