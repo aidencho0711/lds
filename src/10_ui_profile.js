@@ -1,0 +1,218 @@
+// ============================================================
+// 10_ui_profile.js — 계정 꾸미기 (v20): 프로필 사진 · 테두리 · 칭호 · 계정 정보 창 · 로비 칭호 표시
+//  · 사진: 기본 4장 + 레벨이 오르면 하나씩 해금 (모두 SVG 로 직접 그림 — 외부 그림 없음)
+//  · 테두리: 기본 + 랭크 티어 10종(최고 도달 티어까지 해금, 티어가 높을수록 화려하고 움직임) + 칭호 테두리
+//  · 칭호: 수집가(울트라레어 스킨 3종 이상) · 전쟁의 신(승률 20% 초과, 10판 이상) · 마스터 이상 티어 칭호(최고 도달 티어)
+//  · 저장: STATS.prof = { av, fr, ti } — 로그인하면 서버(player_data.stats)에 같이 저장
+//    파티원에게는 myLook().pf 로 전해져 로비에서 파티원 캐릭터 아래에도 칭호가 나온다
+//  · 아이디 변경: 3일에 한 번 (서버 함수 change_username — supabase/profile.sql, 서버에서도 3일 제한)
+// ============================================================
+const Prof = (() => {
+  // ---------- 프로필 사진 (64×64, 바탕 그라데이션 + 흰 그림) ----------
+  const AV = [
+    { id: 'helmet', name: '전투모', lv: 1, bg: ['#5c6b4a', '#2d3626'], svg: '<path d="M12 40c0-15 9-25 22-25s20 9 20 22v3H12z"/><path d="M8 40h50v5H8z"/><path d="M20 45l-3 9h4l4-9z" opacity=".7"/><path d="M22 25c4-4 9-6 14-6" fill="none" stroke="#fff" stroke-width="2" opacity=".5"/>' },
+    { id: 'scope', name: '조준선', lv: 1, bg: ['#4b5560', '#20262c'], svg: '<circle cx="32" cy="32" r="17" fill="none" stroke="#fff" stroke-width="3"/><path d="M32 8v14M32 42v14M8 32h14M42 32h14" stroke="#fff" stroke-width="3"/><circle cx="32" cy="32" r="3"/>' },
+    { id: 'chute', name: '낙하산', lv: 1, bg: ['#3d7aa8', '#173a58'], svg: '<path d="M10 28c2-12 12-18 22-18s20 6 22 18c-3-3-7-3-9 0-3-3-8-3-11 0-3-3-8-3-11 0-3-3-8-3-13 0z"/><path d="M12 28l18 22M52 28L34 50M24 28l7 22M40 28l-7 22" stroke="#fff" stroke-width="1.6" fill="none"/><rect x="29" y="47" width="6" height="9" rx="2"/>' },
+    { id: 'compass', name: '나침반', lv: 1, bg: ['#7a6a48', '#3a3020'], svg: '<circle cx="32" cy="32" r="19" fill="none" stroke="#fff" stroke-width="3"/><path d="M32 14l6 18-6 18-6-18z"/><path d="M32 14l6 18H26z" fill="#ff5a4a"/>' },
+    { id: 'ammo', name: '탄약', lv: 3, bg: ['#8a6a2a', '#3e2c0c'], svg: '<g><path d="M17 26c0-6 3-11 5-13 2 2 5 7 5 13v26H17z"/><path d="M29 22c0-6 3-11 5-13 2 2 5 7 5 13v30H29z"/><path d="M41 26c0-6 3-11 5-13 2 2 5 7 5 13v26H41z"/></g><path d="M15 46h38v3H15z" fill="#3e2c0c" opacity=".55"/>' },
+    { id: 'wolf', name: '늑대', lv: 6, bg: ['#5a6676', '#222831'], svg: '<path d="M14 12l10 14h16l10-14 2 22-8 10-12 12-12-12-8-10z"/><path d="M25 34l5 3-5 1zM39 34l-5 3 5 1z" fill="#222831"/><path d="M29 46h6l-3 4z" fill="#222831"/>' },
+    { id: 'eagle', name: '독수리', lv: 9, bg: ['#a0662c', '#432508'], svg: '<path d="M12 44c4-16 14-28 30-28 6 0 10 3 12 7l-8 3c-2-2-5-2-7 0l-3 6 9 2-11 4-8 10z"/><circle cx="43" cy="22" r="2" fill="#432508"/><path d="M50 23l6 4-8 1z" fill="#ffd36b"/>' },
+    { id: 'mask', name: '방독면', lv: 12, bg: ['#3e5a52', '#14231f'], svg: '<path d="M14 26c0-9 8-14 18-14s18 5 18 14v10c0 9-8 16-18 16S14 45 14 36z"/><circle cx="24" cy="29" r="6" fill="#14231f"/><circle cx="40" cy="29" r="6" fill="#14231f"/><circle cx="24" cy="29" r="3" fill="#6fe0c8" opacity=".8"/><circle cx="40" cy="29" r="3" fill="#6fe0c8" opacity=".8"/><rect x="26" y="42" width="12" height="12" rx="3" fill="#14231f"/><path d="M28 45h8M28 48h8M28 51h8" stroke="#fff" stroke-width="1.2" opacity=".6"/>' },
+    { id: 'flame', name: '불꽃', lv: 16, bg: ['#c2402a', '#4a0c06'], svg: '<path d="M32 8c3 10 14 15 14 29 0 10-6 18-14 18s-14-8-14-18c0-7 4-11 6-15 1 5 3 7 5 8-1-8 1-15 3-22z"/><path d="M32 30c2 5 7 7 7 14 0 5-3 8-7 8s-7-3-7-8c0-4 3-6 4-8 1 2 2 3 3 3 0-4-1-6 0-9z" fill="#ffcf5a"/>' },
+    { id: 'crown', name: '왕관', lv: 20, bg: ['#9a7a1a', '#3a2a02'], svg: '<path d="M10 22l10 10 12-18 12 18 10-10-5 26H15z"/><path d="M15 48h34v6H15z"/><circle cx="32" cy="36" r="3.5" fill="#ff4a5a"/><circle cx="21" cy="40" r="2.5" fill="#5ab8ff"/><circle cx="43" cy="40" r="2.5" fill="#5ab8ff"/>' },
+    { id: 'bolt', name: '번개', lv: 25, bg: ['#5a3ab8', '#1a0c4a'], svg: '<path d="M36 6L14 36h14l-6 22 24-32H32z"/><path d="M36 6L14 36h14" fill="none" stroke="#c7b8ff" stroke-width="1.5"/>' },
+    { id: 'nova', name: '초신성', lv: 30, bg: ['#1a1440', '#05030f'], svg: '<path d="M32 6l4 20 20 6-20 6-4 20-4-20-20-6 20-6z" fill="#fff"/><path d="M32 18l2 12 12 2-12 2-2 12-2-12-12-2 12-2z" fill="#ffd36b"/><circle cx="14" cy="14" r="1.6"/><circle cx="52" cy="50" r="1.4"/><circle cx="50" cy="14" r="1"/>' },
+  ];
+  const avOf = (id) => AV.find((a) => a.id === id) || AV[0];
+  function avatarSVG(id) {
+    const a = avOf(id), g = 'pg' + a.id;
+    return `<svg viewBox="0 0 64 64" aria-hidden="true"><defs><radialGradient id="${g}" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="${a.bg[0]}"/><stop offset="1" stop-color="${a.bg[1]}"/></radialGradient></defs><rect width="64" height="64" fill="url(#${g})"/><g fill="#f4efe2">${a.svg}</g></svg>`;
+  }
+
+  // ---------- 테두리 ----------
+  //  kind: base · tier(t = RANK_TIERS 번호, 최고 도달 티어 이상이면 해금) · title(그 칭호를 얻으면 해금)
+  const FR = [
+    { id: 'none', name: '기본', kind: 'base', desc: '처음부터' },
+    ...['iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'legend', 'eternal'].map((id, t) => ({ id, name: '', kind: 'tier', t, desc: '' })),
+    { id: 'collector', name: '수집가', kind: 'title', title: 'collector', desc: '칭호 「수집가」' },
+    { id: 'wargod', name: '전쟁의 신', kind: 'title', title: 'wargod', desc: '칭호 「전쟁의 신」' },
+  ];
+  for (const f of FR) if (f.kind === 'tier') { f.name = RANK_TIERS[f.t].name; f.desc = `랭크 ${RANK_TIERS[f.t].name} 도달`; }
+  // 장식(테두리 위·옆에 붙는 그림, viewBox -16..80) — 높은 티어일수록 많아짐
+  const gemAt = (x, y, r, c) => `<path d="M${x} ${y - r}l${r * 0.8} ${r}-${r * 0.8} ${r}-${r * 0.8}-${r}z" fill="${c}" stroke="#fff" stroke-width=".8"/>`;
+  const ORN = {
+    gold: `<circle cx="32" cy="1" r="3.2" fill="#ffd36b" stroke="#7a4e05"/><circle cx="32" cy="63" r="3.2" fill="#ffd36b" stroke="#7a4e05"/><circle cx="1" cy="32" r="3.2" fill="#ffd36b" stroke="#7a4e05"/><circle cx="63" cy="32" r="3.2" fill="#ffd36b" stroke="#7a4e05"/>`,
+    platinum: gemAt(32, 1, 5, '#7ff0e0') + gemAt(9, 9, 3.5, '#5fc9bd') + gemAt(55, 9, 3.5, '#5fc9bd') + gemAt(9, 55, 3.5, '#5fc9bd') + gemAt(55, 55, 3.5, '#5fc9bd'),
+    diamond: `<path d="M32 -9l9 9-9 11-9-11z" fill="#9fd4ff" stroke="#fff" stroke-width="1"/><path d="M23 0h18" stroke="#fff" stroke-width=".8"/>` + gemAt(0, 32, 5, '#5aa8f2') + gemAt(64, 32, 5, '#5aa8f2'),
+    master: `<path d="M2 26c-9-6-16-4-18 4 6-2 10 0 12 4-6 0-9 3-9 7 5-3 10-3 15 0z" fill="#a45cf0" stroke="#e4ccff" stroke-width="1"/><path d="M62 26c9-6 16-4 18 4-6-2-10 0-12 4 6 0 9 3 9 7-5-3-10-3-15 0z" fill="#a45cf0" stroke="#e4ccff" stroke-width="1"/><path d="M32 -10l8 10-8 9-8-9z" fill="#d6a8ff" stroke="#fff" stroke-width="1"/>`,
+    grandmaster: Array.from({ length: 10 }, (_, i) => { const a = i / 10 * Math.PI * 2, x = 32 + Math.cos(a) * 38, y = 32 + Math.sin(a) * 38, x1 = 32 + Math.cos(a - 0.16) * 30, y1 = 32 + Math.sin(a - 0.16) * 30, x2 = 32 + Math.cos(a + 0.16) * 30, y2 = 32 + Math.sin(a + 0.16) * 30; return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x.toFixed(1)} ${y.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}z" fill="#e8384a" stroke="#ffb3a0" stroke-width=".7"/>`; }).join(''),
+    legend: `<path d="M18 -4l7 8 7-12 7 12 7-8-3 14H21z" fill="#ffd36b" stroke="#9a6a08" stroke-width="1.2"/><circle cx="32" cy="-1" r="2" fill="#ff4a5a"/><path d="M0 30c-10-8-18-4-19 4 7-3 11 0 13 3-7 1-10 4-10 8 6-3 11-3 16 0z" fill="#ffe08a" stroke="#9a6a08" stroke-width="1"/><path d="M64 30c10-8 18-4 19 4-7-3-11 0-13 3 7 1 10 4 10 8-6-3-11-3-16 0z" fill="#ffe08a" stroke="#9a6a08" stroke-width="1"/>`,
+    eternal: `<path d="M17 -6l8 9 7-14 7 14 8-9-3 16H20z" fill="#e8d4ff" stroke="#7a3cff" stroke-width="1.2"/><circle cx="32" cy="-4" r="2.4" fill="#fff"/><path d="M-2 28c-11-10-20-5-21 4 8-4 13 0 15 3-8 1-11 5-11 9 7-4 13-4 18 0z" fill="#c58cff" stroke="#fff" stroke-width="1"/><path d="M66 28c11-10 20-5 21 4-8-4-13 0-15 3 8 1 11 5 11 9-7-4-13-4-18 0z" fill="#c58cff" stroke="#fff" stroke-width="1"/>`,
+    collector: ['#5ec46e', '#4d8fff', '#a46bff', '#ff5fb4', '#ff3d3d', '#ffd36b'].map((c, i) => { const a = -Math.PI / 2 + i / 6 * Math.PI * 2; return gemAt(32 + Math.cos(a) * 32, 32 + Math.sin(a) * 32, 4.6, c); }).join(''),
+    wargod: `<path d="M-6 66L52 8l4 4L-2 70z" fill="#d8d8d8" stroke="#5d0712" stroke-width="1"/><path d="M70 66L12 8l-4 4 58 58z" fill="#d8d8d8" stroke="#5d0712" stroke-width="1"/><path d="M50 4l10 0-2 6zM14 4H4l2 6z" fill="#e8384a"/><path d="M-9 63l8 8M73 63l-8 8" stroke="#7a2a1a" stroke-width="4" stroke-linecap="round"/>`,
+  };
+  const ORN_FX = { eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>' };
+  function frameHTML(fr, av, size = 44, extra = '') {
+    const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id];
+    return `<span class="pf fr-${f.id}${extra ? ' ' + extra : ''}" style="--s:${size}px">${ORN_FX[f.id] || ''}<span class="pf-av">${avatarSVG(av)}</span><span class="pf-ring"></span>${f.id === 'grandmaster' ? '<span class="pf-spk"><svg viewBox="-16 -16 96 96">' + o + '</svg></span>' : o ? `<span class="pf-orn"><svg viewBox="-16 -16 96 96">${o}</svg></span>` : ''}</span>`;
+  }
+
+  // ---------- 칭호 ----------
+  const ultraOwned = () => {
+    let n = 0;
+    for (const id of STATS.skins || []) if (Body.SKINS[id] && Body.SKINS[id].rar === 5) n++;
+    for (const id of STATS.vskins || []) if (typeof VSKINS !== 'undefined' && VSKINS[id] && VSKINS[id].rar === 5) n++;
+    for (const id of STATS.gskins || []) if (typeof GSKINS !== 'undefined' && GSKINS[id] && GSKINS[id].rar === 5) n++;
+    return n;
+  };
+  const peakT = () => Rank.tierOf(Math.max(Rank.state.peak || 0, Rank.state.rp || 0)).t;
+  const placedOk = () => Rank.placed();
+  const TI = [
+    { id: 'collector', name: '수집가', desc: '울트라레어 스킨 3종 이상 보유', prog: () => `${Math.min(3, ultraOwned())} / 3`, ok: () => ultraOwned() >= 3, fr: 'collector' },
+    { id: 'wargod', name: '전쟁의 신', desc: '승률 20% 초과 (10판 이상)', prog: () => STATS.matches ? `${(STATS.wins / STATS.matches * 100).toFixed(1)}% · ${STATS.matches}판` : '0판', ok: () => STATS.matches >= 10 && STATS.wins / STATS.matches > 0.2, fr: 'wargod' },
+    ...[6, 7, 8, 9].map((t) => ({ id: 'tier_' + RANK_TIERS[t].id, name: RANK_TIERS[t].name, desc: `랭크 ${RANK_TIERS[t].name} 도달`, prog: () => placedOk() ? `최고 ${RANK_TIERS[peakT()].name}` : '배치고사 전', ok: () => placedOk() && peakT() >= t, fr: RANK_TIERS[t].id, tier: t })),
+  ];
+  const tiOf = (id) => TI.find((t) => t.id === id) || null;
+
+  // ---------- 상태 ----------
+  const P0 = { av: 'helmet', fr: 'none', ti: null };
+  const st = () => (STATS.prof && typeof STATS.prof === 'object' ? STATS.prof : (STATS.prof = Object.assign({}, P0)));
+  const lv = () => levelFromXp(STATS.xp || 0).lv;
+  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && lv() >= a.lv; };
+  const frOk = (id) => { const f = FR.find((x) => x.id === id); if (!f) return false; if (f.kind === 'base') return true; if (f.kind === 'tier') return placedOk() && peakT() >= f.t; const t = tiOf(f.title); return !!t && t.ok(); };
+  const tiOk = (id) => { const t = tiOf(id); return !!t && t.ok(); };
+  // 지금 보여 줄 값 (조건이 사라진 것은 기본으로)
+  function my() { const s = st(); return { av: avOk(s.av) ? s.av : 'helmet', fr: frOk(s.fr) ? s.fr : 'none', ti: s.ti && tiOk(s.ti) ? s.ti : null }; }
+  function set(k, v) { const s = st(); s[k] = v; saveStats(); changed(); }
+  function changed() { renderChip(); if (G.state === 'lobby' && typeof Party !== 'undefined' && Party.touch) Party.touch(); render(); }
+  const titleName = (id) => { const t = tiOf(id); return t ? t.name : ''; };
+  const titleHTML = (id, cls = '') => { const t = tiOf(id); return t ? `<span class="ttl ttl-${t.id}${cls ? ' ' + cls : ''}">${t.name}</span>` : ''; };
+
+  // ---------- 왼쪽 위 계정 칩 ----------
+  function renderChip() {
+    const chip = $('acctChip'); if (!chip) return;
+    const u = Cloud.user, m = my();
+    const name = u ? Cloud.name : Cloud.status === 'restoring' ? '접속 중…' : '로그인';
+    $('acctPf').innerHTML = frameHTML(u ? m.fr : 'none', u ? m.av : 'helmet', 40);
+    $('acctName').textContent = name;
+    const tt = $('acctTitle'); tt.innerHTML = u && m.ti ? titleHTML(m.ti, 'sm') : u ? `<span class="ac-sub">Lv ${lv()}</span>` : '<span class="ac-sub">기록 저장</span>';
+  }
+
+  // ---------- 계정 정보 창 ----------
+  let tab = 'stats', nameMsg = '';
+  const NAME_GAP = 3 * 864e5;
+  const fmtLeft = (ms) => { const h = Math.ceil(ms / 36e5); return h > 24 ? `${Math.floor(h / 24)}일 ${h % 24}시간` : `${h}시간`; };
+  function open(t) { if (!Cloud.user) { Cloud.open(); return; } if (t) tab = t; nameMsg = ''; $('profPanel').hidden = false; render(); }
+  function close() { $('profPanel').hidden = true; }
+  function render() {
+    const P = $('profPanel'); if (!P || P.hidden) return;
+    const m = my(), u = Cloud.user;
+    $('profPf').innerHTML = frameHTML(m.fr, m.av, 76);
+    $('profName').textContent = u ? Cloud.name : '게스트';
+    $('profTtl').innerHTML = m.ti ? titleHTML(m.ti) : '<span class="micro">칭호 없음</span>';
+    const rs = Rank.status();
+    $('profSub').textContent = `Lv ${lv()} · ${rs.label}${placedOk() ? ` · 최고 ${RANK_TIERS[peakT()].name}` : ''}`;
+    document.querySelectorAll('#profTabs button').forEach((b) => b.classList.toggle('on', b.dataset.pt === tab));
+    const B = $('profBody'); B.innerHTML = '';
+    if (tab === 'stats') {
+      const S = STATS, D = S.dm || DM_STATS0, wr = S.matches ? (S.wins / S.matches * 100).toFixed(1) + '%' : '-';
+      const g = document.createElement('div'); g.className = 'stat-grid prof-stats';
+      for (const [k, v] of [['경기', S.matches], ['우승', S.wins], ['처치', S.kills], ['최고 순위', S.matches ? '#' + S.best : '-'], ['우승률', wr], ['경기당 처치', S.matches ? (S.kills / S.matches).toFixed(1) : '-'], ['랭크', rs.label], ['데스매치 승 / 판', D.matches ? `${D.wins} / ${D.matches}` : '-'], ['레벨', lv()], ['울트라레어 스킨', ultraOwned() + '종']]) {
+        const d = document.createElement('div'); d.innerHTML = `<span>${k}</span><b>${v}</b>`; g.appendChild(d);
+      }
+      B.appendChild(g);
+      const img = document.createElement('img'); img.className = 'prof-emb'; img.src = rs.emb; img.alt = ''; B.appendChild(img);
+    } else if (tab === 'av') {
+      const g = document.createElement('div'); g.className = 'prof-grid';
+      for (const a of AV) {
+        const ok = lv() >= a.lv, b = document.createElement('button'); b.type = 'button'; b.className = 'prof-it' + (m.av === a.id ? ' on' : '') + (ok ? '' : ' lock');
+        b.innerHTML = frameHTML('none', a.id, 58) + `<b>${a.name}</b><small>${ok ? (m.av === a.id ? '사용 중' : '선택') : `Lv ${a.lv} 해금`}</small>`;
+        b.onclick = () => { if (!ok) { msg(`레벨 ${a.lv}에 해금됩니다 (지금 Lv ${lv()})`); return; } set('av', a.id); Audio.ui(); };
+        g.appendChild(b);
+      }
+      B.appendChild(g);
+    } else if (tab === 'fr') {
+      const g = document.createElement('div'); g.className = 'prof-grid';
+      for (const f of FR) {
+        const ok = frOk(f.id), b = document.createElement('button'); b.type = 'button'; b.className = 'prof-it' + (m.fr === f.id ? ' on' : '') + (ok ? '' : ' lock');
+        b.innerHTML = frameHTML(f.id, m.av, 58) + `<b>${f.name}</b><small>${ok ? (m.fr === f.id ? '사용 중' : '선택') : f.desc}</small>`;
+        b.onclick = () => { if (!ok) { msg(`잠김 — ${f.desc} 시 해금`); return; } set('fr', f.id); Audio.ui(); };
+        g.appendChild(b);
+      }
+      B.appendChild(g);
+      B.appendChild(el('p', 'micro', '랭크 테두리는 최고로 도달한 티어까지 쓸 수 있습니다. 티어가 높을수록 장식이 늘고 움직입니다.'));
+    } else if (tab === 'ti') {
+      const L = document.createElement('div'); L.className = 'prof-ti';
+      const none = document.createElement('button'); none.type = 'button'; none.className = 'ti-row' + (!m.ti ? ' on' : ''); none.innerHTML = '<span class="ti-none">칭호 달지 않기</span>'; none.onclick = () => { set('ti', null); Audio.ui(); }; L.appendChild(none);
+      for (const t of TI) {
+        const ok = t.ok(), b = document.createElement('button'); b.type = 'button'; b.className = 'ti-row' + (m.ti === t.id ? ' on' : '') + (ok ? '' : ' lock');
+        b.innerHTML = `${titleHTML(t.id)}<span class="ti-d"><b>${t.desc}</b><small>${ok ? (m.ti === t.id ? '달고 있음' : '얻음 · 눌러서 달기') : '진행: ' + t.prog()}</small></span>${frameHTML(t.fr, m.av, 34)}`;
+        b.onclick = () => { if (!ok) { msg(`아직 얻지 못했습니다 — ${t.desc}`); return; } set('ti', t.id); if (frOk(t.fr) && st().fr === 'none') set('fr', t.fr); Audio.ui(); };
+        L.appendChild(b);
+      }
+      B.appendChild(L);
+      B.appendChild(el('p', 'micro', '단 칭호는 로비에서 내 캐릭터 아래에 표시되고, 파티원 화면에도 보입니다. 칭호를 얻으면 같은 주제의 테두리도 해금됩니다.'));
+    } else if (tab === 'acct') {
+      const left = Math.max(0, (STATS.nameT || 0) + NAME_GAP - Date.now());
+      const box = document.createElement('div'); box.className = 'prof-acct';
+      box.innerHTML = `<div class="eyebrow">아이디 변경</div><p class="micro">3일에 한 번 바꿀 수 있습니다. 바꾸면 다음 로그인부터 새 아이디로 로그인합니다 (비밀번호는 그대로).</p>
+        <form class="fr-add" id="profNameForm" autocomplete="off"><input id="profNewName" maxlength="10" placeholder="새 아이디 (2~10자)" ${left ? 'disabled' : ''}><button class="btn amber" type="submit" ${left ? 'disabled' : ''}>변경</button></form>
+        <p class="acct-msg${nameMsg.startsWith('!') ? ' bad' : nameMsg ? ' ok' : ''}" id="profNameMsg">${left ? `다음 변경까지 ${fmtLeft(left)}` : (nameMsg || '').replace(/^!/, '')}</p>
+        <div class="eyebrow mt">저장</div><p class="micro" id="profSync">${Cloud.status === 'error' ? '저장 실패 — ' + Cloud.lastError : '전적·레벨·랭크·꾸미기·설정이 서버에 저장되어 다른 기기에서도 이어집니다.'}</p>
+        <div class="acct-btns"><button class="btn" type="button" id="profSyncNow">지금 저장</button><button class="btn danger" type="button" id="profLogout">로그아웃</button></div>`;
+      B.appendChild(box);
+      $('profNameForm').onsubmit = async (e) => {
+        e.preventDefault(); const v = $('profNewName').value;
+        nameMsg = '바꾸는 중…'; $('profNameMsg').textContent = nameMsg;
+        try { await Cloud.rename(v); STATS.nameT = Date.now(); saveStats(); nameMsg = `아이디를 「${Cloud.name}」(으)로 바꿨습니다`; changed(); HUD.lobbyNote(nameMsg); }
+        catch (err) { nameMsg = '!' + (err.message || String(err)); render(); }
+      };
+      $('profSyncNow').onclick = async () => { const ok = await Cloud.pushNow(); $('profSync').textContent = ok ? '저장했습니다' : '저장 실패 — ' + Cloud.lastError; };
+      $('profLogout').onclick = async () => { await Cloud.signOut(); close(); HUD.lobbyNote('로그아웃했습니다 — 이 기기의 게스트 기록으로 돌아왔습니다'); };
+    }
+  }
+  function el(t, c, txt) { const e = document.createElement(t); if (c) e.className = c; if (txt !== undefined) e.textContent = txt; return e; }
+  function msg(t) { HUD.lobbyNote(t); }
+
+  // ---------- 로비: 캐릭터 아래 칭호 (파티원은 이름 + 칭호) ----------
+  const _v = new THREE.Vector3(), tagEls = [];
+  function lobbyTags(L) {
+    const box = $('lobbyTags'); if (!box) return;
+    const show = G.state === 'lobby' && !$('lobby').hidden && !L.sc;
+    const items = [];
+    if (show) {
+      const m = Cloud.user ? my() : null;
+      if (m && m.ti) items.push({ obj: L.rig.root, html: titleHTML(m.ti) });
+      (L.mates || []).forEach((r, i) => { const inf = (L.mateInfo || [])[i]; if (!inf || !r.root.visible) return; const pf = inf.pf || {}; items.push({ obj: r.root, html: `<span class="lt-name">${esc(inf.name || '')}</span>${pf.ti ? titleHTML(pf.ti) : ''}` }); });
+    }
+    while (tagEls.length < items.length) { const d = document.createElement('div'); d.className = 'lt'; box.appendChild(d); tagEls.push(d); }
+    const W = window.innerWidth, H = window.innerHeight, placed = [];
+    tagEls.forEach((d, i) => {
+      const it = items[i]; if (!it) { d.hidden = true; return; }
+      it.obj.getWorldPosition(_v); _v.y -= 0.02; _v.project(L.cam);
+      if (_v.z > 1) { d.hidden = true; return; }
+      d.hidden = false; if (d._h !== it.html) { d.innerHTML = it.html; d._h = it.html; d._w = 0; }
+      const w = d._w || (d._w = d.offsetWidth || 100), h = d.offsetHeight || 22, x = (_v.x + 1) / 2 * W;
+      let y = (1 - _v.y) / 2 * H + 6;
+      // 옆 사람 칭호와 겹치면 아래로 비켜 세움
+      for (let k = 0; k < 4; k++) { const hit = placed.find((p) => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - y) < Math.max(p.h, h) - 2); if (!hit) break; y = hit.y + hit.h + 2; }
+      placed.push({ x, y, w, h });
+      d.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translateX(-50%)`;
+    });
+  }
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function setup() {
+    // 오른쪽 위 화살표 메뉴: 누르면 경기 설정·조작법·설정이 차례로 펼쳐짐 (바깥을 누르거나 하나를 고르면 닫힘)
+    const mb = $('moreBtn'), mn = $('lbMenu');
+    const setMenu = (on) => { mn.hidden = false; mn.classList.toggle('open', on); mb.classList.toggle('open', on); mb.setAttribute('aria-expanded', on ? 'true' : 'false'); if (!on) setTimeout(() => { if (!mn.classList.contains('open')) mn.hidden = true; }, 260); };
+    mb.addEventListener('click', (e) => { e.stopPropagation(); Audio.init(); Audio.ui(); setMenu(!mn.classList.contains('open')); });
+    mn.addEventListener('click', () => setMenu(false));
+    document.addEventListener('pointerdown', (e) => { if (mn.classList.contains('open') && !$('lbMore').contains(e.target)) setMenu(false); });
+    $('profClose').addEventListener('click', close);
+    document.querySelectorAll('#profTabs button').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.pt; nameMsg = ''; Audio.init(); Audio.ui(); render(); }));
+    $('profPanel').addEventListener('click', (e) => { if (e.target === $('profPanel')) close(); });
+    renderChip();
+  }
+  return { AV, FR, TI, my, set, open, close, render, renderChip, setup, lobbyTags, frameHTML, avatarSVG, titleHTML, titleName, ultraOwned, earned: () => TI.filter((t) => t.ok()).map((t) => t.id) };
+})();

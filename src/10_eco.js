@@ -229,6 +229,9 @@ const Eco = (() => {
     out.skins = [...new Set([...(S.skins || []), ...(L.skins || [])])];
     out.vskins = [...new Set([...(S.vskins || []), ...(L.vskins || [])])];
     out.gskins = [...new Set([...(S.gskins || []), ...(L.gskins || [])])];
+    // 프로필 꾸미기(사진·테두리·칭호): 이 기기에서 바꿨으면 이 기기 것, 아니면 서버 것 · 아이디 변경 시각은 최근 것
+    out.prof = JSON.stringify(L.prof || null) !== JSON.stringify(B.prof || null) ? L.prof : (S.prof || L.prof);
+    out.nameT = Math.max(L.nameT || 0, S.nameT || 0) || undefined;
     const Be = B.eco || {}, Le = L.eco, Se = S.eco;
     if (Le || Se) {
       const le = Le || {}, se = Se || {}, e = Object.assign({}, se.v ? se : le);

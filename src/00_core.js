@@ -187,4 +187,4 @@ const DIFFICULTY_NAMES ={ easy: '쉬움', normal: '보통', hard: '어려움', m
 // 내 외형: 장착 스킨(SETTINGS.look) + 몸(SETTINGS.body) — 파티·같이 하기에서 이 묶음을 주고받는다
 // veh: 장착한 차량 스킨(차종별) — 경기에서 운전석에 탈 때 그 차량을 내 스킨으로 바꾼다
 // 파티원에게 보내는 외형 묶음: 옷·몸 · 차량 스킨(veh) · 총기 스킨(gun) · 로비에서 들고 있는 총(sg — 파티원 화면의 로비에도 그 총·스킨으로)
-const myLook = () => ({ eq: SETTINGS.look || null, body: SETTINGS.body || null, veh: typeof Eco !== 'undefined' ? Eco.vlook() : null, gun: typeof Eco !== 'undefined' ? Eco.glook() : null, sg: typeof Eco !== 'undefined' ? Eco.showGun() : null });
+const myLook = () => ({ eq: SETTINGS.look || null, body: SETTINGS.body || null, veh: typeof Eco !== 'undefined' ? Eco.vlook() : null, gun: typeof Eco !== 'undefined' ? Eco.glook() : null, sg: typeof Eco !== 'undefined' ? Eco.showGun() : null, pf: typeof Prof !== 'undefined' ? Prof.my() : null });   // pf: 프로필 사진·테두리·칭호 (10_ui_profile.js)

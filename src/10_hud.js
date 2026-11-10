@@ -970,7 +970,7 @@ const HUD = (() => {
     $('segDiff').parentElement.classList.toggle('locked', ranked); $('fldBots').classList.toggle('locked', ranked || dm); $('segSquad').parentElement.classList.toggle('locked', dm || (ranked && partyN < 2)); $('segMode').parentElement.classList.toggle('locked', dm);
     const duel = isDuel(SETTINGS.game), DTS = dmTeamSize(SETTINGS.game);
     const TS = dm ? DTS : ranked && partyN < 2 ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
-    if (Lobby.setTeam) { const pm = lock ? Party.members() : null; Lobby.setTeam(pm ? pm.length : dm ? 1 : TS, pm ? pm.filter((m) => m.uid !== Cloud.uid).map((m) => m.look || {}) : null); }
+    if (Lobby.setTeam) { const pm = lock ? Party.members() : null, others = pm ? pm.filter((m) => m.uid !== Cloud.uid) : null; Lobby.setTeam(pm ? pm.length : dm ? 1 : TS, others ? others.map((m) => m.look || {}) : null, others ? others.map((m) => ({ name: m.name, pf: (m.look || {}).pf || null })) : null); }
     const sqName = dm ? `${DTS} 대 ${DTS}` : ranked && partyN < 2 ? '솔로' : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).name;
     $('cfgNote').hidden = !(ranked || dm);
     if (duel) {

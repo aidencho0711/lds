@@ -204,8 +204,7 @@ const Cloud = (() => {
     const chip = $('acctChip'); if (!chip) return;
     chip.hidden = !enabled;
     if (!enabled) return;
-    const t = user ? name : status === 'restoring' ? '접속 중…' : '로그인';
-    chip.querySelector('span').textContent = t;
+    if (typeof Prof !== 'undefined') Prof.renderChip();   // 사진·테두리 + 이름 + 칭호 (10_ui_profile.js)
     chip.classList.toggle('on', !!user); chip.classList.toggle('err', status === 'error' && !!user);
     chip.title = user ? `${name} · ${status === 'error' ? '동기화 실패' : '기록이 서버에 저장됩니다'}` : '로그인하면 기록이 서버에 저장됩니다';
     const op = $('opName'); if (op) op.textContent = user ? name : '오퍼레이터';
@@ -221,7 +220,24 @@ const Cloud = (() => {
       $('acctHint').textContent = mode === 'signup' ? '아이디는 게임 속 이름으로 표시됩니다 (2~10자, 한글·영문·숫자·_). 비밀번호를 잊으면 찾을 수 없으니 꼭 기억해 두세요.' : '처음이면 회원가입 탭에서 아이디를 만드세요. 로그인하지 않아도 게임은 그대로 할 수 있습니다.';
     }
   }
-  function open() { if (!enabled) return; $('acctPanel').hidden = false; $('acctMsg').textContent = ''; $('acctMsg').className = 'acct-msg'; render(); if (!user) { loadSdk().catch(() => {}); setTimeout(() => $('acctId').focus(), 50); } }
+  // 아이디 변경 (서버 함수 change_username: 3일에 한 번, 로그인 아이디(내부 이메일)도 같이 바뀜 — supabase/profile.sql)
+  async function rename(nm) {
+    if (!sb || !user) throw new Error('로그인이 필요합니다');
+    const bad = checkId(nm); if (bad) throw new Error(bad);
+    nm = nm.normalize('NFC').trim();
+    if (nm.toLowerCase() === (name || '').toLowerCase()) throw new Error('지금 아이디와 같습니다');
+    const { data, error } = await sb.rpc('change_username', { p_name: nm });
+    if (error) { const m = (error.message || '').toLowerCase(); throw new Error(m.includes('could not find') || m.includes('does not exist') || error.code === 'PGRST202' ? '서버 설정 필요: Supabase SQL Editor에서 supabase/profile.sql 을 실행해 주세요' : msgOf(error)); }
+    const r = String(data || '');
+    if (r === 'taken') throw new Error('이미 사용 중인 아이디입니다');
+    if (r === 'invalid') throw new Error('아이디는 2~10자, 한글·영문·숫자·밑줄(_)만 쓸 수 있습니다');
+    if (r.startsWith('wait:')) { const t = Number(r.slice(5)) * 1000, h = Math.ceil((t - Date.now()) / 36e5); throw new Error(`아이디는 3일에 한 번 바꿀 수 있습니다 (${h > 24 ? Math.floor(h / 24) + '일 ' + (h % 24) + '시간' : h + '시간'} 뒤 가능)`); }
+    if (r !== 'ok') throw new Error('바꾸지 못했습니다: ' + r);
+    name = nm; store.set('account', { id: user.id, name });
+    refreshUi();
+    return name;
+  }
+  function open() { if (!enabled) return; if (user && typeof Prof !== 'undefined') { Prof.open(); return; } $('acctPanel').hidden = false; $('acctMsg').textContent = ''; $('acctMsg').className = 'acct-msg'; render(); if (!user) { loadSdk().catch(() => {}); setTimeout(() => $('acctId').focus(), 50); } }
   function close() { $('acctPanel').hidden = true; $('acctPw').value = ''; $('acctPw2').value = ''; }
   function setup() {
     const chip = $('acctChip'); if (!chip) return;
@@ -242,7 +258,7 @@ const Cloud = (() => {
     $('acctSyncNow').addEventListener('click', async () => { const ok = await pushNow(); render(); if (ok) msg('저장했습니다', true); });
     render();
   }
-  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
+  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
     get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get status() { return status; }, get lastError() { return lastErr; } };
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'
