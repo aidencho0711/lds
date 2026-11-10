@@ -11,7 +11,11 @@ const DIFF = {
   easy:   { key: 'easy', view: 75, fov: 55, react: [0.9, 1.5], aimErr: 2.4, settle: 1.8, burst: [2, 4], pause: [0.6, 1.2], cover: 0.15, retreatHp: 25, hear: 0.7, zoneLead: 0.6, grenade: 0, strafe: 0.25, fireRange: 0.8, think: 0.34, headshot: 0.03 },
   normal: { key: 'normal', view: 115, fov: 65, react: [0.45, 0.8], aimErr: 1.25, settle: 1.2, burst: [3, 6], pause: [0.35, 0.8], cover: 0.45, retreatHp: 38, hear: 1.0, zoneLead: 0.9, grenade: 0.25, strafe: 0.5, fireRange: 1.0, think: 0.24, headshot: 0.08 },
   hard:   { key: 'hard', view: 160, fov: 75, react: [0.22, 0.45], aimErr: 0.7, settle: 0.8, burst: [3, 7], pause: [0.25, 0.55], cover: 0.8, retreatHp: 50, hear: 1.35, zoneLead: 1.2, grenade: 0.5, strafe: 0.75, fireRange: 1.2, think: 0.16, headshot: 0.15 },
+  // 익스트림(v20): 반응·조준·헤드샷이 어려움보다 한 단계 위. 좌우 무빙을 자주 바꾸고 웅크렸다 일어서며(머리 맞히기 어렵게),
+  //  두 명 이상에게 노출되면 바로 엄폐, 재장전은 거의 항상 엄폐 뒤에서. 랭크 높은 티어에 섞여 나온다
+  extreme: { key: 'extreme', view: 200, fov: 88, react: [0.1, 0.24], aimErr: 0.4, settle: 0.45, burst: [4, 9], pause: [0.12, 0.3], cover: 0.95, retreatHp: 55, hear: 1.7, zoneLead: 1.5, grenade: 0.75, strafe: 0.95, fireRange: 1.35, think: 0.1, headshot: 0.3 },
 };
+const isTopBot = (d) => d.key === 'hard' || d.key === 'extreme';
 const STATE_KO = { LANDING: '착지', EXPLORE: '탐색', LOOT: '파밍', MOVE: '이동', DETECT: '적 탐지', COMBAT: '전투', COVER: '엄폐', RETREAT: '후퇴', HEAL: '회복', ZONE: '안전구역 복귀', DEAD: '탈락', TOVEH: '차량으로', DRIVE: '운전', BOARD: '동승하러', RIDE: '동승', KNOCKED: '기절', REVIVE: '부활', REGROUP: '합류', HOLD: '엄폐 대기', FOLLOW: '따라가기', ORDER: '지시 이동', DANGER: '위험 경계' };
 
 // 경로 요청 큐 (프레임당 처리량 제한)
@@ -406,6 +410,12 @@ class Brain {
       }
       if (this.state === 'COVER' && this.cover && this.coverT < 3.5) return;
       if ((c.reloadT > 0 || c.hp < d.retreatHp + 15) && Math.random() < d.cover && this.findCover(tgt)) { this.setState('COVER'); return; }
+      // 익스트림 판단: 둘 이상에게 노출된 채 체력이 줄었으면 맞서지 않고 엄폐부터
+      if (d.key === 'extreme' && c.hp < 75 && this.state !== 'COVER') {
+        let n = 0; for (const [o, r] of this.aware) if (r.visible && o.alive && o.team !== c.team && !o.knocked && ++n >= 2) break;
+        if (n >= 2 && this.findCover(tgt)) { this.setState('COVER'); return; }
+      }
+      if (d.key === 'extreme' && Math.random() < 0.25) this.chooseWeapon(tr.dist);   // 거리에 맞는 총으로 더 자주 바꿈
       this.setState('COMBAT'); return;
     }
     // 최근에 본 적 → 수색 / 무기 상황 따라 판단
@@ -452,7 +462,7 @@ class Brain {
     if (!usable) { const l = this.findLoot(45); if (l) { this.lootTarget = l; this.setState('LOOT'); return; } }
     // 보급상자: 착지한 상자를 처음 알게 되면 한 번 결정 — 난이도에 따라 확률적으로 찾아간다
     const ad = !tgt ? Airdrop.nearest(c.pos.x, c.pos.z, 230) : null, seen = this.crates || (this.crates = new Set());
-    if (ad && !seen.has(ad)) { seen.add(ad); if (Math.random() < (d.key === 'hard' ? 0.85 : d.key === 'normal' ? 0.6 : 0.35) && Zone.inside(ad.x, ad.z, Zone.next || Zone.cur, 0)) this.investigate = { x: ad.x, z: ad.z, t: G.time + 40, kind: 'crate' }; }
+    if (ad && !seen.has(ad)) { seen.add(ad); if (Math.random() < (d.key === 'extreme' ? 0.95 : d.key === 'hard' ? 0.85 : d.key === 'normal' ? 0.6 : 0.35) && Zone.inside(ad.x, ad.z, Zone.next || Zone.cur, 0)) this.investigate = { x: ad.x, z: ad.z, t: G.time + 40, kind: 'crate' }; }
     // 맨손 봇은 소리를 조사하지 않는다 (예전엔 판단마다 30% 확률을 굴려 사실상 항상 총소리 쪽으로 달려가 파밍을 못 했다)
     // 팀원이 알려 준 적 위치로 지원 (플레이어 팀원은 플레이어 근처 35m 안일 때만)
     if (this.intel && G.time - this.intel.t < 6 && usable && !cautious && this.intel.o.alive && (!this.investigate || G.time - this.investigate.t > 4)) {
@@ -617,7 +627,7 @@ class Brain {
     const power = clamp(Math.sqrt(dist * GRAVITY * 0.9) * 0.82, 8, 22);
     _d.set(dx / dist * 0.8, 0.45, dz / dist * 0.8).normalize();
     // 수류탄 신관 7초: 봇은 핀을 뽑고 잠시 쥐었다가(쿠킹) 던진 것으로 친다 — 숙련도에 따라 남은 시간 2.6~5.8초
-    const left = this.d.key === 'hard' ? rnd(2.6, 3.6) : this.d.key === 'easy' ? rnd(4.8, 5.8) : rnd(3.4, 4.6);
+    const left = this.d.key === 'extreme' ? rnd(2.0, 2.8) : this.d.key === 'hard' ? rnd(2.6, 3.6) : this.d.key === 'easy' ? rnd(4.8, 5.8) : rnd(3.4, 4.6);
     if (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 20) Audio.pin(c.pos, false);
     if (throwItem(c, 'frag', _e, _d, power, left)) this.grenadeCd = 8;
   }
@@ -752,7 +762,11 @@ class Brain {
           if (this.cautious) { wantStance = 'crouch'; this.faceToward(tr.x, tr.y + 1.2, tr.z, dt, 3); break; } // 쫓아가지 않고 그 자리에서 경계
           this.moveGoal(tr.x, tr.z, 'chase', tr.y); wish = this.steer(); speed = 4.6; break;
         }
-        this.strafeT -= dt; if (this.strafeT <= 0) { this.strafeT = rnd(0.6, 1.8); this.strafeDir = Math.random() < 0.5 ? -1 : 1; this.strafeOn = Math.random() < d.strafe; }
+        const ext = d.key === 'extreme';
+        // 익스트림: 좌우 방향을 짧게 자주 바꾸고(예측하기 어렵게) 가끔 웅크렸다 일어선다
+        this.strafeT -= dt; if (this.strafeT <= 0) { this.strafeT = ext ? rnd(0.3, 0.85) : rnd(0.6, 1.8); this.strafeDir = Math.random() < 0.5 ? -1 : 1; this.strafeOn = Math.random() < d.strafe; }
+        if (ext && this.strafeOn && Math.random() < dt * 0.7) this.duckT = rnd(0.25, 0.45);
+        if (this.duckT > 0) this.duckT -= dt;
         const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
         let mx = 0, mz = 0;
         if (dist > pref * 1.6 && !this.cautious) { mx += fx; mz += fz; }
@@ -761,9 +775,10 @@ class Brain {
         const L = Math.hypot(mx, mz);
         if (L > 0.1) {
           mx /= L; mz /= L;
-          if (Nav.isFree(c.pos.x + mx * 1.2, c.pos.z + mz * 1.2)) { wish = [mx, mz]; speed = 2.8; c.aiming = true; } else this.strafeDir *= -1;
+          if (Nav.isFree(c.pos.x + mx * 1.2, c.pos.z + mz * 1.2)) { wish = [mx, mz]; speed = ext ? 3.4 : 2.8; c.aiming = true; } else this.strafeDir *= -1;
         } else c.aiming = true;
-        if (((cls === 'DMR' || cls === 'SR') && dist > 60 || cls === 'LMG' && dist > 45) && !this.strafeOn) { wantStance = d.key === 'hard' && dist > 90 ? 'prone' : 'crouch'; wish = null; c.aiming = true; }
+        if (ext && this.duckT > 0) { wantStance = 'crouch'; break; }
+        if (((cls === 'DMR' || cls === 'SR') && dist > 60 || cls === 'LMG' && dist > 45) && !this.strafeOn) { wantStance = isTopBot(d) && dist > 90 ? 'prone' : 'crouch'; wish = null; c.aiming = true; }
         else if (!wish && d.key !== 'easy' && Math.random() < 0.002) wantStance = 'crouch';
         else if (!wish) wantStance = this.lastStance === 'crouch' ? 'crouch' : 'stand';
         break;
@@ -909,7 +924,7 @@ class Brain {
         const inv = this.investigate;
         if (!inv) { this.setState('EXPLORE'); break; }
         this.moveGoal(inv.x, inv.z, 'investigate');
-        wish = this.steer(); speed = this.d.key === 'hard' ? 4.0 : 4.6;
+        wish = this.steer(); speed = isTopBot(this.d) ? 4.0 : 4.6;
         if (!wish && !this.wantPath) { this.lookAround = (this.lookAround || 0) + dt; this.scan(dt * 2.5); if (this.lookAround > 3) { this.investigate = null; this.lookAround = 0; this.goal = null; } }
         else this.faceToward(inv.x, c.pos.y + 1.5, inv.z, dt, 2.5);
         if (d.key !== 'easy' && Math.hypot(inv.x - c.pos.x, inv.z - c.pos.z) < 25) wantStance = 'crouch';

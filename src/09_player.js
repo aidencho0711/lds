@@ -552,7 +552,8 @@ function updateTeamOrder() {
   if (ord.kind === 'attack') {
     if (!ord.target.alive) { G.teamOrder = null; teamCallout('목표 처치 확인', 'ok'); }
     else if (G.time - ord.t > 40) { G.teamOrder = null; teamCallout('목표를 놓쳤다, 따라간다'); }
-  } else if (ord.kind === 'move' && (Math.hypot(ord.x - p.pos.x, ord.z - p.pos.z) > 160 || G.time - ord.t > 150)) { G.teamOrder = null; teamCallout('너무 멀어졌다, 따라간다'); }
+  // 이동 지시: 땅 위에서 160m 넘게 멀어지면 취소. 수송기·강하 중에는 거리로 취소하지 않는다 (예전엔 비행기에서 찍은 핑이 바로 사라짐)
+  } else if (ord.kind === 'move' && ((p.mode === 'ground' && Math.hypot(ord.x - p.pos.x, ord.z - p.pos.z) > 160) || G.time - ord.t > 150)) { G.teamOrder = null; teamCallout('너무 멀어졌다, 따라간다'); }
 }
 // 사격 입력 처리 (걸을 때·동승석 공용)
 function playerFire(p) {

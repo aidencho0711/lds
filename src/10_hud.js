@@ -168,7 +168,7 @@ const HUD = (() => {
   function teamColor(c) { return TEAM_COLORS[c.slot % TEAM_COLORS.length]; }
   function updateTeam(p) {
     const on = G.teamSize > 1 && G.teams, panel = $('teamPanel'), tags = $('teamTags');
-    panel.hidden = !on; tags.hidden = !on; if (!on) return;
+    panel.hidden = !on; tags.hidden = !on; if (!on) { updateMarkTag(p); return; }   // 솔로: 내 지도 마커만
     const ms = G.teams[p.team].members;
     if (panel.dataset.k !== String(ms.length)) {
       panel.dataset.k = String(ms.length); panel.innerHTML = ''; tags.innerHTML = '';
@@ -216,33 +216,60 @@ const HUD = (() => {
   // 핑 표시: 3D 기둥 + 화면 표식(종류·거리)
   let pingMesh = null;
   let dangerMesh = null;
+  // 화면 표식: 화면 안이면 그 자리, 밖(또는 뒤)이면 화면 가장자리에 붙여 방향 화살표 — 수송기 위처럼 멀리서도 놓치지 않게
+  const _cv = new THREE.Vector3();
+  function placeTag(tg, x, y, z) {
+    const W = innerWidth, H = innerHeight;
+    _tp.set(x, y, z).project(G.camera);
+    if (_tp.z < 1 && Math.abs(_tp.x) < 0.97 && Math.abs(_tp.y) < 0.95) { tg.classList.remove('edge'); tg.style.visibility = ''; tg.style.transform = `translate(${((_tp.x + 1) / 2 * W).toFixed(0)}px, ${((1 - _tp.y) / 2 * H).toFixed(0)}px)`; return; }
+    _cv.set(x, y, z).applyMatrix4(G.camera.matrixWorldInverse);
+    let dx = _cv.x, dy = _cv.y; if (_cv.z > 0 && Math.hypot(dx, dy) < 1e-3) dy = -1;   // 바로 뒤 → 아래쪽
+    const mx = W / 2 - 46, my = H / 2 - 40, k = Math.min(mx / Math.max(1e-6, Math.abs(dx)), my / Math.max(1e-6, Math.abs(dy)));
+    tg.classList.add('edge'); tg.style.visibility = '';
+    tg.style.transform = `translate(${(W / 2 + dx * k).toFixed(0)}px, ${(H / 2 - dy * k).toFixed(0)}px)`;
+    tg.style.setProperty('--ang', Math.atan2(-dy, dx).toFixed(3) + 'rad');
+  }
+  // 3D 기둥: 시야 거리(카메라 far)보다 멀면 같은 방향·같은 화면 크기로 당겨 와서 그리고, 멀수록 굵게 (수송기 고도에서도 보이게)
+  function pillarAt(m, x, gy, z, h) {
+    const cam = G.camera, cp = cam.position, g = m.geometry.parameters, d = Math.hypot(x - cp.x, z - cp.z), lim = cam.far * 0.8, k = d > lim ? lim / d : 1;
+    const r = Math.max(g.radiusTop, d * 0.003) * k, hh = h * k;
+    m.position.set(cp.x + (x - cp.x) * k, cp.y + (gy - cp.y) * k + hh / 2, cp.z + (z - cp.z) * k);
+    m.scale.set(r / g.radiusTop, hh / g.height, r / g.radiusTop);
+  }
+  const fmtDist = (d) => d >= 1000 ? (d / 1000).toFixed(1) + 'km' : Math.round(d) + 'm';
+  // 내 지도 마커: 화면 표식(거리) + 기둥
+  function updateMarkTag(p) {
+    const mk = G.marker, tg = $('markTag'); if (!tg) return;
+    tg.hidden = !mk; if (!mk) return;
+    const gy = heightAt(mk.x, mk.z);
+    if (G.markerMesh && G.markerMesh.visible) pillarAt(G.markerMesh, mk.x, gy, mk.z, 220);
+    placeTag(tg, mk.x, gy + 2.5, mk.z);
+    const vc = p.mode === 'plane' && G.plane ? G.plane.pos : (G.viewChar ? G.viewChar() : p).pos, txt = `마커 · ${fmtDist(Math.hypot(mk.x - vc.x, mk.z - vc.z))}`;
+    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt;
+  }
   function updateDanger(p) {
     const dg = G.danger, tg = $('dangerTag');
     if (!dangerMesh) dangerMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 70, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xe0453a, transparent: true, opacity: 0.5, fog: false, depthWrite: false }));
     if (G.scene && dangerMesh.parent !== G.scene) G.scene.add(dangerMesh);
     dangerMesh.visible = !!dg; tg.hidden = !dg; if (!dg) return;
     const gy = dg.y !== undefined ? dg.y : heightAt(dg.x, dg.z);
-    dangerMesh.position.set(dg.x, gy + 35, dg.z); dangerMesh.material.opacity = 0.3 + (Math.floor(G.time * 4) % 2) * 0.3;
-    _tp.set(dg.x, gy + 2.4, dg.z).project(G.camera);
-    const vis = _tp.z < 1 && Math.abs(_tp.x) < 1.1 && Math.abs(_tp.y) < 1.1; tg.style.visibility = vis ? '' : 'hidden';
-    if (vis) tg.style.transform = `translate(${((_tp.x + 1) / 2 * innerWidth).toFixed(0)}px, ${((1 - _tp.y) / 2 * innerHeight).toFixed(0)}px)`;
-    const vc = G.viewChar ? G.viewChar() : p, txt = `위험 · ${Math.round(Math.hypot(dg.x - vc.pos.x, dg.z - vc.pos.z))}m`;
+    pillarAt(dangerMesh, dg.x, gy, dg.z, 90); dangerMesh.material.opacity = 0.3 + (Math.floor(G.time * 4) % 2) * 0.3;
+    placeTag(tg, dg.x, gy + 2.4, dg.z);
+    const vc = p.mode === 'plane' && G.plane ? { pos: G.plane.pos } : G.viewChar ? G.viewChar() : p, txt = `위험 · ${fmtDist(Math.hypot(dg.x - vc.pos.x, dg.z - vc.pos.z))}`;
     if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt;
   }
   function updatePing(p) {
-    updateDanger(p);
+    updateDanger(p); updateMarkTag(p);
     const ord = G.teamOrder, tg = $('pingTag');
     if (!pingMesh) pingMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 60, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xf2c94c, transparent: true, opacity: 0.5, fog: false, depthWrite: false }));
     if (G.scene && pingMesh.parent !== G.scene) G.scene.add(pingMesh);
     pingMesh.visible = !!ord; tg.hidden = !ord; if (!ord) return;
     const atk = ord.kind === 'attack', gy = ord.y !== undefined && !atk ? ord.y : heightAt(ord.x, ord.z);
-    pingMesh.material.color.setHex(atk ? 0xe0453a : 0xf2c94c); pingMesh.position.set(ord.x, gy + 30, ord.z);
+    pingMesh.material.color.setHex(atk ? 0xe0453a : 0xf2c94c); pillarAt(pingMesh, ord.x, gy, ord.z, 140);
     pingMesh.material.opacity = 0.35 + Math.sin(G.time * 6) * 0.12;
-    _tp.set(ord.x, gy + 2.2, ord.z).project(G.camera);
-    const vis = _tp.z < 1 && Math.abs(_tp.x) < 1.1 && Math.abs(_tp.y) < 1.1; tg.style.visibility = vis ? '' : 'hidden';
-    if (vis) tg.style.transform = `translate(${((_tp.x + 1) / 2 * innerWidth).toFixed(0)}px, ${((1 - _tp.y) / 2 * innerHeight).toFixed(0)}px)`;
-    const vc = G.viewChar ? G.viewChar() : p, d = Math.round(Math.hypot(ord.x - vc.pos.x, ord.z - vc.pos.z)), txt = `${atk ? '공격' : '이동'} · ${d}m`;
-    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt; tg.className = atk ? 'atk' : '';
+    placeTag(tg, ord.x, gy + 2.2, ord.z);
+    const vc = p.mode === 'plane' && G.plane ? { pos: G.plane.pos } : G.viewChar ? G.viewChar() : p, txt = `${atk ? '공격' : '이동'} · ${fmtDist(Math.hypot(ord.x - vc.pos.x, ord.z - vc.pos.z))}`;
+    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt; tg.classList.toggle('atk', atk);
   }
   // 팀원(또는 내가 핑으로) 발견한 적: 미니맵에 6초 표시, 팀원이 발견하면 '적 발견' 알림 (8초에 한 번)
   let spotCallT = -99;
@@ -687,7 +714,7 @@ const HUD = (() => {
     ['sfx', '효과음 음량', 'range', [0, 1, 0.05]],
     ['music', '배경음 음량', 'range', [0, 1, 0.05]],
     ['view', '시점', 'seg', [['tpp', '3인칭'], ['fpp', '1인칭']]],
-    ['difficulty', '봇 난이도', 'seg', [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움'], ['mixed', '혼합']]],
+    ['difficulty', '봇 난이도', 'seg', [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움'], ['extreme', '익스트림'], ['mixed', '혼합']]],
     ['bots', '봇 수', 'range', [8, 48, 1]],
     ['_h', '화면 · 모바일 조작'],
     ['btnScale', '모바일 버튼 전체 크기', 'range', [0.7, 1.5, 0.05]],
@@ -1093,14 +1120,16 @@ const HUD = (() => {
     const g = $('tierGrid'); g.innerHTML = ''; const cur = Rank.placed() ? Rank.tierOf(Rank.state.rp) : null;
     RANK_TIERS.forEach((T, t) => {
       const d = h('div', 'tier' + (cur && cur.t === t ? ' me' : '')), im = h('img'); im.src = Rank.emblem(t, cur && cur.t === t ? cur.div : 1, 160); im.alt = '';
-      d.appendChild(im); d.appendChild(h('b', '', T.name)); d.appendChild(h('span', '', t === 9 ? '3600 RP 이상' : `${t * 400}–${t * 400 + 399} RP`)); g.appendChild(d);
+      d.appendChild(im); d.appendChild(h('b', '', T.name)); d.appendChild(h('span', '', t === 9 ? '3600 RP 이상' : `${t * 400}–${t * 400 + 399} RP`));
+      const mx = Rank.mixOf(t); if (mx && mx[3]) d.appendChild(h('span', 'tier-ext', `익스트림 봇 ${mx[3]}%`));
+      g.appendChild(d);
     });
     const ul = $('rankRules'); ul.innerHTML = '';
     const st = Rank.state;
     [`레벨 3부터 참여할 수 있습니다. 처음 3판은 배치고사이며, 결과에 따라 시작 티어가 정해집니다(최대 플래티넘 1).`,
       `각 티어는 4 → 3 → 2 → 1 단계로 올라갑니다. 한 단계는 100 RP, 한 티어는 400 RP입니다.`,
       `RP는 순위(상위일수록 크게), 우승, 처치, 가한 피해로 오르고, 하위권이면 내려갑니다. 높은 티어일수록 오르기 어렵습니다.`,
-      `봇 수는 고정(기본 맵 40명, 대형 맵 99명)이고 봇 난이도는 티어가 높을수록 어려워집니다. 경기 도중 나가면 패배 처리와 추가 감점이 있습니다.`,
+      `봇 수는 고정(기본 맵·키나루 74명, 노르덴 99명)이고 봇 난이도는 티어가 높을수록 어려워집니다. 골드부터 익스트림 봇(어려움보다 조준·반응·무빙·판단이 한 단계 위)이 섞이고, 이터널은 절반이 익스트림입니다. 경기 도중 나가면 패배 처리와 추가 감점이 있습니다.`,
       Rank.placed() ? `현재 ${Rank.tierOf(st.rp).label} · ${st.rp} RP · 최고 ${Rank.tierOf(st.peak).label} · 랭크 ${st.games}판 ${st.wins}승` : `배치고사 ${st.placed} / 3 진행`].forEach((t) => ul.appendChild(h('li', '', t)));
   }
   function showResult(win, p, total) {

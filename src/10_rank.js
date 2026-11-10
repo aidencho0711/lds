@@ -39,12 +39,13 @@ const Rank = (() => {
     if (r.quit) d = Math.min(d, -25) - 10; // 탈주 패널티
     return Math.round(clamp(d, -45, 140));
   }
-  // 티어별 봇 난이도 비율 [쉬움, 보통, 어려움]
-  const MIX = [[70, 30, 0], [55, 40, 5], [40, 50, 10], [25, 55, 20], [15, 55, 30], [10, 50, 40], [5, 45, 50], [0, 40, 60], [0, 30, 70], [0, 20, 80]];
+  // 티어별 봇 난이도 비율 [쉬움, 보통, 어려움, 익스트림] — 골드부터 익스트림이 섞이고 이터널은 절반이 익스트림
+  const MIX = [[70, 30, 0, 0], [55, 40, 5, 0], [40, 50, 10, 0], [25, 55, 18, 2], [15, 50, 30, 5], [8, 45, 37, 10], [3, 35, 45, 17], [0, 25, 50, 25], [0, 15, 50, 35], [0, 5, 45, 50]];
   function botDifficulty() {
     if (!placed()) return pick(['easy', 'normal', 'normal', 'hard']);
-    const m = MIX[tierOf(S.rp).t]; return weightedPick([['easy', m[0]], ['normal', m[1]], ['hard', m[2]]]);
+    const m = MIX[tierOf(S.rp).t]; return weightedPick([['easy', m[0]], ['normal', m[1]], ['hard', m[2]], ['extreme', m[3]]]);
   }
+  const mixOf = (t) => MIX[t];
   function botCount(mapId) { return mapMaxBots(mapId); }   // 랭크전: 맵 최대 인원 (기본 75명 · 노르덴 100명)
   // 경기 결과 반영 → 결과 화면용 요약
   function apply(r) {
@@ -245,7 +246,7 @@ const Rank = (() => {
     const ti = tierOf(S.rp);
     return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${S.rp} RP` : `${ti.into} / 100 RP`, tier: ti };
   }
-  return { get state() { return S; }, unlocked, placed, tierOf, apply, botDifficulty, botCount, emblem, status, placementScore, rpDelta, reset() { S = { rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }; save(); }, _set(o) { Object.assign(S, o); save(); },
+  return { get state() { return S; }, unlocked, placed, tierOf, apply, botDifficulty, botCount, mixOf, emblem, status, placementScore, rpDelta, reset() { S = { rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }; save(); }, _set(o) { Object.assign(S, o); save(); },
     // 계정 전환: 통째로 바꿔 끼움 (저장 알림 없이)
     replace(o) { S = Object.assign({ rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }, o || {}); store.set('rank', S); } };
 })();

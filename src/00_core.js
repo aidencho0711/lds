@@ -183,7 +183,7 @@ const REVIVE_T = 10;                 // 부활에 걸리는 시간(초)
 const REVIVE_HP = 15;                // 부활 직후 체력
 const BLEED_T = [40, 25, 15];        // 기절 후 출혈로 쓰러질 때까지(초): 첫 기절 / 두 번째 / 세 번째부터
 const CRAWL_SPEED = 0.95;
-const DIFFICULTY_NAMES ={ easy: '쉬움', normal: '보통', hard: '어려움', mixed: '혼합' };
+const DIFFICULTY_NAMES ={ easy: '쉬움', normal: '보통', hard: '어려움', extreme: '익스트림', mixed: '혼합' };
 // 내 외형: 장착 스킨(SETTINGS.look) + 몸(SETTINGS.body) — 파티·같이 하기에서 이 묶음을 주고받는다
 // veh: 장착한 차량 스킨(차종별) — 경기에서 운전석에 탈 때 그 차량을 내 스킨으로 바꾼다
 // 파티원에게 보내는 외형 묶음: 옷·몸 · 차량 스킨(veh) · 총기 스킨(gun) · 로비에서 들고 있는 총(sg — 파티원 화면의 로비에도 그 총·스킨으로)

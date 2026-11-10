@@ -1125,3 +1125,14 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .ti-none { flex: 1; padding: 4px 8px; color: var(--dim); font-weight: 700; }
 .prof-acct { display: flex; flex-direction: column; gap: 6px; padding: 10px 4px; }
 @media (max-height: 520px) { .menu.prof { max-height: 96vh; gap: 6px; } .prof-hero { padding: 2px 4px 0 12px; } .prof-hero .pf { --s: 56px !important; } .prof-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); padding-top: 12px; } }
+.tier .tier-ext { display: block; margin-top: 2px; font-size: 0.66rem; font-weight: 700; color: #ff7a6a; }
+
+/* v20 지도 마커 화면 표식 · 화면 밖이면 가장자리에 붙어 방향 화살표 (수송기에서도 보이게) */
+#markTag { position: absolute; left: 0; top: 0; margin: -30px 0 0 -11px; display: flex; align-items: center; gap: 5px; pointer-events: none; font-size: 0.78rem; font-weight: 700; color: #ffc46a; text-shadow: 0 1px 2px #000, 0 0 4px #000; white-space: nowrap; will-change: transform; z-index: 6; }
+#markTag[hidden] { display: none; }
+#markTag i { width: 18px; height: 18px; background: #f0a43a; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 0 12px rgba(240, 164, 58, 0.9); animation: markPulse 1.2s ease-in-out infinite; }
+@keyframes markPulse { 0%, 100% { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 0 8px rgba(240, 164, 58, 0.6); } 50% { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 0 18px rgba(255, 196, 106, 1); } }
+#markTag.edge, #pingTag.edge, #dangerTag.edge { margin: -11px 0 0 -11px; }
+#markTag.edge span, #pingTag.edge span, #dangerTag.edge span { font-size: 0.72rem; }
+#markTag.edge::before, #pingTag.edge::before, #dangerTag.edge::before { content: ''; position: absolute; left: 9px; top: 9px; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 11px solid currentColor;
+  transform: rotate(var(--ang, 0rad)) translateX(17px) translateY(-7px); transform-origin: 0 7px; filter: drop-shadow(0 0 2px #000); }

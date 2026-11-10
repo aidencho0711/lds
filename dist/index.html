@@ -1130,6 +1130,17 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .ti-none { flex: 1; padding: 4px 8px; color: var(--dim); font-weight: 700; }
 .prof-acct { display: flex; flex-direction: column; gap: 6px; padding: 10px 4px; }
 @media (max-height: 520px) { .menu.prof { max-height: 96vh; gap: 6px; } .prof-hero { padding: 2px 4px 0 12px; } .prof-hero .pf { --s: 56px !important; } .prof-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); padding-top: 12px; } }
+.tier .tier-ext { display: block; margin-top: 2px; font-size: 0.66rem; font-weight: 700; color: #ff7a6a; }
+
+/* v20 지도 마커 화면 표식 · 화면 밖이면 가장자리에 붙어 방향 화살표 (수송기에서도 보이게) */
+#markTag { position: absolute; left: 0; top: 0; margin: -30px 0 0 -11px; display: flex; align-items: center; gap: 5px; pointer-events: none; font-size: 0.78rem; font-weight: 700; color: #ffc46a; text-shadow: 0 1px 2px #000, 0 0 4px #000; white-space: nowrap; will-change: transform; z-index: 6; }
+#markTag[hidden] { display: none; }
+#markTag i { width: 18px; height: 18px; background: #f0a43a; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 0 12px rgba(240, 164, 58, 0.9); animation: markPulse 1.2s ease-in-out infinite; }
+@keyframes markPulse { 0%, 100% { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 0 8px rgba(240, 164, 58, 0.6); } 50% { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 0 18px rgba(255, 196, 106, 1); } }
+#markTag.edge, #pingTag.edge, #dangerTag.edge { margin: -11px 0 0 -11px; }
+#markTag.edge span, #pingTag.edge span, #dangerTag.edge span { font-size: 0.72rem; }
+#markTag.edge::before, #pingTag.edge::before, #dangerTag.edge::before { content: ''; position: absolute; left: 9px; top: 9px; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 11px solid currentColor;
+  transform: rotate(var(--ang, 0rad)) translateX(17px) translateY(-7px); transform-origin: 0 7px; filter: drop-shadow(0 0 2px #000); }
 </style>
 <div id="app">
   <canvas id="gl"></canvas>
@@ -1349,6 +1360,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
     <div id="teamPanel" hidden></div>
     <div id="teamTags" hidden></div>
     <div id="pingTag" hidden><i></i><span></span></div>
+    <div id="markTag" hidden><i></i><span></span></div>
     <div id="dangerTag" hidden><i>!</i><span></span></div>
     <div id="knockHud" hidden><b id="knockTxt">기절</b><div class="kbar"><i id="knockBar"></i></div><span class="micro">출혈로 체력이 줄어듭니다 · 기어서 엄폐하세요</span></div>
     <div id="specBar" hidden><span id="specName">관전 중</span><button class="btn" type="button" data-ui="specNext">다음 팀원 <kbd>F</kbd></button><button class="btn danger" type="button" data-ui="quit">로비로</button></div>
@@ -1777,7 +1789,7 @@ const REVIVE_T = 10;                 // 부활에 걸리는 시간(초)
 const REVIVE_HP = 15;                // 부활 직후 체력
 const BLEED_T = [40, 25, 15];        // 기절 후 출혈로 쓰러질 때까지(초): 첫 기절 / 두 번째 / 세 번째부터
 const CRAWL_SPEED = 0.95;
-const DIFFICULTY_NAMES ={ easy: '쉬움', normal: '보통', hard: '어려움', mixed: '혼합' };
+const DIFFICULTY_NAMES ={ easy: '쉬움', normal: '보통', hard: '어려움', extreme: '익스트림', mixed: '혼합' };
 // 내 외형: 장착 스킨(SETTINGS.look) + 몸(SETTINGS.body) — 파티·같이 하기에서 이 묶음을 주고받는다
 // veh: 장착한 차량 스킨(차종별) — 경기에서 운전석에 탈 때 그 차량을 내 스킨으로 바꾼다
 // 파티원에게 보내는 외형 묶음: 옷·몸 · 차량 스킨(veh) · 총기 스킨(gun) · 로비에서 들고 있는 총(sg — 파티원 화면의 로비에도 그 총·스킨으로)
@@ -12324,7 +12336,11 @@ const DIFF = {
   easy:   { key: 'easy', view: 75, fov: 55, react: [0.9, 1.5], aimErr: 2.4, settle: 1.8, burst: [2, 4], pause: [0.6, 1.2], cover: 0.15, retreatHp: 25, hear: 0.7, zoneLead: 0.6, grenade: 0, strafe: 0.25, fireRange: 0.8, think: 0.34, headshot: 0.03 },
   normal: { key: 'normal', view: 115, fov: 65, react: [0.45, 0.8], aimErr: 1.25, settle: 1.2, burst: [3, 6], pause: [0.35, 0.8], cover: 0.45, retreatHp: 38, hear: 1.0, zoneLead: 0.9, grenade: 0.25, strafe: 0.5, fireRange: 1.0, think: 0.24, headshot: 0.08 },
   hard:   { key: 'hard', view: 160, fov: 75, react: [0.22, 0.45], aimErr: 0.7, settle: 0.8, burst: [3, 7], pause: [0.25, 0.55], cover: 0.8, retreatHp: 50, hear: 1.35, zoneLead: 1.2, grenade: 0.5, strafe: 0.75, fireRange: 1.2, think: 0.16, headshot: 0.15 },
+  // 익스트림(v20): 반응·조준·헤드샷이 어려움보다 한 단계 위. 좌우 무빙을 자주 바꾸고 웅크렸다 일어서며(머리 맞히기 어렵게),
+  //  두 명 이상에게 노출되면 바로 엄폐, 재장전은 거의 항상 엄폐 뒤에서. 랭크 높은 티어에 섞여 나온다
+  extreme: { key: 'extreme', view: 200, fov: 88, react: [0.1, 0.24], aimErr: 0.4, settle: 0.45, burst: [4, 9], pause: [0.12, 0.3], cover: 0.95, retreatHp: 55, hear: 1.7, zoneLead: 1.5, grenade: 0.75, strafe: 0.95, fireRange: 1.35, think: 0.1, headshot: 0.3 },
 };
+const isTopBot = (d) => d.key === 'hard' || d.key === 'extreme';
 const STATE_KO = { LANDING: '착지', EXPLORE: '탐색', LOOT: '파밍', MOVE: '이동', DETECT: '적 탐지', COMBAT: '전투', COVER: '엄폐', RETREAT: '후퇴', HEAL: '회복', ZONE: '안전구역 복귀', DEAD: '탈락', TOVEH: '차량으로', DRIVE: '운전', BOARD: '동승하러', RIDE: '동승', KNOCKED: '기절', REVIVE: '부활', REGROUP: '합류', HOLD: '엄폐 대기', FOLLOW: '따라가기', ORDER: '지시 이동', DANGER: '위험 경계' };
 
 // 경로 요청 큐 (프레임당 처리량 제한)
@@ -12719,6 +12735,12 @@ class Brain {
       }
       if (this.state === 'COVER' && this.cover && this.coverT < 3.5) return;
       if ((c.reloadT > 0 || c.hp < d.retreatHp + 15) && Math.random() < d.cover && this.findCover(tgt)) { this.setState('COVER'); return; }
+      // 익스트림 판단: 둘 이상에게 노출된 채 체력이 줄었으면 맞서지 않고 엄폐부터
+      if (d.key === 'extreme' && c.hp < 75 && this.state !== 'COVER') {
+        let n = 0; for (const [o, r] of this.aware) if (r.visible && o.alive && o.team !== c.team && !o.knocked && ++n >= 2) break;
+        if (n >= 2 && this.findCover(tgt)) { this.setState('COVER'); return; }
+      }
+      if (d.key === 'extreme' && Math.random() < 0.25) this.chooseWeapon(tr.dist);   // 거리에 맞는 총으로 더 자주 바꿈
       this.setState('COMBAT'); return;
     }
     // 최근에 본 적 → 수색 / 무기 상황 따라 판단
@@ -12765,7 +12787,7 @@ class Brain {
     if (!usable) { const l = this.findLoot(45); if (l) { this.lootTarget = l; this.setState('LOOT'); return; } }
     // 보급상자: 착지한 상자를 처음 알게 되면 한 번 결정 — 난이도에 따라 확률적으로 찾아간다
     const ad = !tgt ? Airdrop.nearest(c.pos.x, c.pos.z, 230) : null, seen = this.crates || (this.crates = new Set());
-    if (ad && !seen.has(ad)) { seen.add(ad); if (Math.random() < (d.key === 'hard' ? 0.85 : d.key === 'normal' ? 0.6 : 0.35) && Zone.inside(ad.x, ad.z, Zone.next || Zone.cur, 0)) this.investigate = { x: ad.x, z: ad.z, t: G.time + 40, kind: 'crate' }; }
+    if (ad && !seen.has(ad)) { seen.add(ad); if (Math.random() < (d.key === 'extreme' ? 0.95 : d.key === 'hard' ? 0.85 : d.key === 'normal' ? 0.6 : 0.35) && Zone.inside(ad.x, ad.z, Zone.next || Zone.cur, 0)) this.investigate = { x: ad.x, z: ad.z, t: G.time + 40, kind: 'crate' }; }
     // 맨손 봇은 소리를 조사하지 않는다 (예전엔 판단마다 30% 확률을 굴려 사실상 항상 총소리 쪽으로 달려가 파밍을 못 했다)
     // 팀원이 알려 준 적 위치로 지원 (플레이어 팀원은 플레이어 근처 35m 안일 때만)
     if (this.intel && G.time - this.intel.t < 6 && usable && !cautious && this.intel.o.alive && (!this.investigate || G.time - this.investigate.t > 4)) {
@@ -12930,7 +12952,7 @@ class Brain {
     const power = clamp(Math.sqrt(dist * GRAVITY * 0.9) * 0.82, 8, 22);
     _d.set(dx / dist * 0.8, 0.45, dz / dist * 0.8).normalize();
     // 수류탄 신관 7초: 봇은 핀을 뽑고 잠시 쥐었다가(쿠킹) 던진 것으로 친다 — 숙련도에 따라 남은 시간 2.6~5.8초
-    const left = this.d.key === 'hard' ? rnd(2.6, 3.6) : this.d.key === 'easy' ? rnd(4.8, 5.8) : rnd(3.4, 4.6);
+    const left = this.d.key === 'extreme' ? rnd(2.0, 2.8) : this.d.key === 'hard' ? rnd(2.6, 3.6) : this.d.key === 'easy' ? rnd(4.8, 5.8) : rnd(3.4, 4.6);
     if (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 20) Audio.pin(c.pos, false);
     if (throwItem(c, 'frag', _e, _d, power, left)) this.grenadeCd = 8;
   }
@@ -13065,7 +13087,11 @@ class Brain {
           if (this.cautious) { wantStance = 'crouch'; this.faceToward(tr.x, tr.y + 1.2, tr.z, dt, 3); break; } // 쫓아가지 않고 그 자리에서 경계
           this.moveGoal(tr.x, tr.z, 'chase', tr.y); wish = this.steer(); speed = 4.6; break;
         }
-        this.strafeT -= dt; if (this.strafeT <= 0) { this.strafeT = rnd(0.6, 1.8); this.strafeDir = Math.random() < 0.5 ? -1 : 1; this.strafeOn = Math.random() < d.strafe; }
+        const ext = d.key === 'extreme';
+        // 익스트림: 좌우 방향을 짧게 자주 바꾸고(예측하기 어렵게) 가끔 웅크렸다 일어선다
+        this.strafeT -= dt; if (this.strafeT <= 0) { this.strafeT = ext ? rnd(0.3, 0.85) : rnd(0.6, 1.8); this.strafeDir = Math.random() < 0.5 ? -1 : 1; this.strafeOn = Math.random() < d.strafe; }
+        if (ext && this.strafeOn && Math.random() < dt * 0.7) this.duckT = rnd(0.25, 0.45);
+        if (this.duckT > 0) this.duckT -= dt;
         const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
         let mx = 0, mz = 0;
         if (dist > pref * 1.6 && !this.cautious) { mx += fx; mz += fz; }
@@ -13074,9 +13100,10 @@ class Brain {
         const L = Math.hypot(mx, mz);
         if (L > 0.1) {
           mx /= L; mz /= L;
-          if (Nav.isFree(c.pos.x + mx * 1.2, c.pos.z + mz * 1.2)) { wish = [mx, mz]; speed = 2.8; c.aiming = true; } else this.strafeDir *= -1;
+          if (Nav.isFree(c.pos.x + mx * 1.2, c.pos.z + mz * 1.2)) { wish = [mx, mz]; speed = ext ? 3.4 : 2.8; c.aiming = true; } else this.strafeDir *= -1;
         } else c.aiming = true;
-        if (((cls === 'DMR' || cls === 'SR') && dist > 60 || cls === 'LMG' && dist > 45) && !this.strafeOn) { wantStance = d.key === 'hard' && dist > 90 ? 'prone' : 'crouch'; wish = null; c.aiming = true; }
+        if (ext && this.duckT > 0) { wantStance = 'crouch'; break; }
+        if (((cls === 'DMR' || cls === 'SR') && dist > 60 || cls === 'LMG' && dist > 45) && !this.strafeOn) { wantStance = isTopBot(d) && dist > 90 ? 'prone' : 'crouch'; wish = null; c.aiming = true; }
         else if (!wish && d.key !== 'easy' && Math.random() < 0.002) wantStance = 'crouch';
         else if (!wish) wantStance = this.lastStance === 'crouch' ? 'crouch' : 'stand';
         break;
@@ -13222,7 +13249,7 @@ class Brain {
         const inv = this.investigate;
         if (!inv) { this.setState('EXPLORE'); break; }
         this.moveGoal(inv.x, inv.z, 'investigate');
-        wish = this.steer(); speed = this.d.key === 'hard' ? 4.0 : 4.6;
+        wish = this.steer(); speed = isTopBot(this.d) ? 4.0 : 4.6;
         if (!wish && !this.wantPath) { this.lookAround = (this.lookAround || 0) + dt; this.scan(dt * 2.5); if (this.lookAround > 3) { this.investigate = null; this.lookAround = 0; this.goal = null; } }
         else this.faceToward(inv.x, c.pos.y + 1.5, inv.z, dt, 2.5);
         if (d.key !== 'easy' && Math.hypot(inv.x - c.pos.x, inv.z - c.pos.z) < 25) wantStance = 'crouch';
@@ -15210,7 +15237,8 @@ function updateTeamOrder() {
   if (ord.kind === 'attack') {
     if (!ord.target.alive) { G.teamOrder = null; teamCallout('목표 처치 확인', 'ok'); }
     else if (G.time - ord.t > 40) { G.teamOrder = null; teamCallout('목표를 놓쳤다, 따라간다'); }
-  } else if (ord.kind === 'move' && (Math.hypot(ord.x - p.pos.x, ord.z - p.pos.z) > 160 || G.time - ord.t > 150)) { G.teamOrder = null; teamCallout('너무 멀어졌다, 따라간다'); }
+  // 이동 지시: 땅 위에서 160m 넘게 멀어지면 취소. 수송기·강하 중에는 거리로 취소하지 않는다 (예전엔 비행기에서 찍은 핑이 바로 사라짐)
+  } else if (ord.kind === 'move' && ((p.mode === 'ground' && Math.hypot(ord.x - p.pos.x, ord.z - p.pos.z) > 160) || G.time - ord.t > 150)) { G.teamOrder = null; teamCallout('너무 멀어졌다, 따라간다'); }
 }
 // 사격 입력 처리 (걸을 때·동승석 공용)
 function playerFire(p) {
@@ -16691,7 +16719,7 @@ const HUD = (() => {
   function teamColor(c) { return TEAM_COLORS[c.slot % TEAM_COLORS.length]; }
   function updateTeam(p) {
     const on = G.teamSize > 1 && G.teams, panel = $('teamPanel'), tags = $('teamTags');
-    panel.hidden = !on; tags.hidden = !on; if (!on) return;
+    panel.hidden = !on; tags.hidden = !on; if (!on) { updateMarkTag(p); return; }   // 솔로: 내 지도 마커만
     const ms = G.teams[p.team].members;
     if (panel.dataset.k !== String(ms.length)) {
       panel.dataset.k = String(ms.length); panel.innerHTML = ''; tags.innerHTML = '';
@@ -16739,33 +16767,60 @@ const HUD = (() => {
   // 핑 표시: 3D 기둥 + 화면 표식(종류·거리)
   let pingMesh = null;
   let dangerMesh = null;
+  // 화면 표식: 화면 안이면 그 자리, 밖(또는 뒤)이면 화면 가장자리에 붙여 방향 화살표 — 수송기 위처럼 멀리서도 놓치지 않게
+  const _cv = new THREE.Vector3();
+  function placeTag(tg, x, y, z) {
+    const W = innerWidth, H = innerHeight;
+    _tp.set(x, y, z).project(G.camera);
+    if (_tp.z < 1 && Math.abs(_tp.x) < 0.97 && Math.abs(_tp.y) < 0.95) { tg.classList.remove('edge'); tg.style.visibility = ''; tg.style.transform = `translate(${((_tp.x + 1) / 2 * W).toFixed(0)}px, ${((1 - _tp.y) / 2 * H).toFixed(0)}px)`; return; }
+    _cv.set(x, y, z).applyMatrix4(G.camera.matrixWorldInverse);
+    let dx = _cv.x, dy = _cv.y; if (_cv.z > 0 && Math.hypot(dx, dy) < 1e-3) dy = -1;   // 바로 뒤 → 아래쪽
+    const mx = W / 2 - 46, my = H / 2 - 40, k = Math.min(mx / Math.max(1e-6, Math.abs(dx)), my / Math.max(1e-6, Math.abs(dy)));
+    tg.classList.add('edge'); tg.style.visibility = '';
+    tg.style.transform = `translate(${(W / 2 + dx * k).toFixed(0)}px, ${(H / 2 - dy * k).toFixed(0)}px)`;
+    tg.style.setProperty('--ang', Math.atan2(-dy, dx).toFixed(3) + 'rad');
+  }
+  // 3D 기둥: 시야 거리(카메라 far)보다 멀면 같은 방향·같은 화면 크기로 당겨 와서 그리고, 멀수록 굵게 (수송기 고도에서도 보이게)
+  function pillarAt(m, x, gy, z, h) {
+    const cam = G.camera, cp = cam.position, g = m.geometry.parameters, d = Math.hypot(x - cp.x, z - cp.z), lim = cam.far * 0.8, k = d > lim ? lim / d : 1;
+    const r = Math.max(g.radiusTop, d * 0.003) * k, hh = h * k;
+    m.position.set(cp.x + (x - cp.x) * k, cp.y + (gy - cp.y) * k + hh / 2, cp.z + (z - cp.z) * k);
+    m.scale.set(r / g.radiusTop, hh / g.height, r / g.radiusTop);
+  }
+  const fmtDist = (d) => d >= 1000 ? (d / 1000).toFixed(1) + 'km' : Math.round(d) + 'm';
+  // 내 지도 마커: 화면 표식(거리) + 기둥
+  function updateMarkTag(p) {
+    const mk = G.marker, tg = $('markTag'); if (!tg) return;
+    tg.hidden = !mk; if (!mk) return;
+    const gy = heightAt(mk.x, mk.z);
+    if (G.markerMesh && G.markerMesh.visible) pillarAt(G.markerMesh, mk.x, gy, mk.z, 220);
+    placeTag(tg, mk.x, gy + 2.5, mk.z);
+    const vc = p.mode === 'plane' && G.plane ? G.plane.pos : (G.viewChar ? G.viewChar() : p).pos, txt = `마커 · ${fmtDist(Math.hypot(mk.x - vc.x, mk.z - vc.z))}`;
+    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt;
+  }
   function updateDanger(p) {
     const dg = G.danger, tg = $('dangerTag');
     if (!dangerMesh) dangerMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 70, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xe0453a, transparent: true, opacity: 0.5, fog: false, depthWrite: false }));
     if (G.scene && dangerMesh.parent !== G.scene) G.scene.add(dangerMesh);
     dangerMesh.visible = !!dg; tg.hidden = !dg; if (!dg) return;
     const gy = dg.y !== undefined ? dg.y : heightAt(dg.x, dg.z);
-    dangerMesh.position.set(dg.x, gy + 35, dg.z); dangerMesh.material.opacity = 0.3 + (Math.floor(G.time * 4) % 2) * 0.3;
-    _tp.set(dg.x, gy + 2.4, dg.z).project(G.camera);
-    const vis = _tp.z < 1 && Math.abs(_tp.x) < 1.1 && Math.abs(_tp.y) < 1.1; tg.style.visibility = vis ? '' : 'hidden';
-    if (vis) tg.style.transform = `translate(${((_tp.x + 1) / 2 * innerWidth).toFixed(0)}px, ${((1 - _tp.y) / 2 * innerHeight).toFixed(0)}px)`;
-    const vc = G.viewChar ? G.viewChar() : p, txt = `위험 · ${Math.round(Math.hypot(dg.x - vc.pos.x, dg.z - vc.pos.z))}m`;
+    pillarAt(dangerMesh, dg.x, gy, dg.z, 90); dangerMesh.material.opacity = 0.3 + (Math.floor(G.time * 4) % 2) * 0.3;
+    placeTag(tg, dg.x, gy + 2.4, dg.z);
+    const vc = p.mode === 'plane' && G.plane ? { pos: G.plane.pos } : G.viewChar ? G.viewChar() : p, txt = `위험 · ${fmtDist(Math.hypot(dg.x - vc.pos.x, dg.z - vc.pos.z))}`;
     if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt;
   }
   function updatePing(p) {
-    updateDanger(p);
+    updateDanger(p); updateMarkTag(p);
     const ord = G.teamOrder, tg = $('pingTag');
     if (!pingMesh) pingMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 60, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xf2c94c, transparent: true, opacity: 0.5, fog: false, depthWrite: false }));
     if (G.scene && pingMesh.parent !== G.scene) G.scene.add(pingMesh);
     pingMesh.visible = !!ord; tg.hidden = !ord; if (!ord) return;
     const atk = ord.kind === 'attack', gy = ord.y !== undefined && !atk ? ord.y : heightAt(ord.x, ord.z);
-    pingMesh.material.color.setHex(atk ? 0xe0453a : 0xf2c94c); pingMesh.position.set(ord.x, gy + 30, ord.z);
+    pingMesh.material.color.setHex(atk ? 0xe0453a : 0xf2c94c); pillarAt(pingMesh, ord.x, gy, ord.z, 140);
     pingMesh.material.opacity = 0.35 + Math.sin(G.time * 6) * 0.12;
-    _tp.set(ord.x, gy + 2.2, ord.z).project(G.camera);
-    const vis = _tp.z < 1 && Math.abs(_tp.x) < 1.1 && Math.abs(_tp.y) < 1.1; tg.style.visibility = vis ? '' : 'hidden';
-    if (vis) tg.style.transform = `translate(${((_tp.x + 1) / 2 * innerWidth).toFixed(0)}px, ${((1 - _tp.y) / 2 * innerHeight).toFixed(0)}px)`;
-    const vc = G.viewChar ? G.viewChar() : p, d = Math.round(Math.hypot(ord.x - vc.pos.x, ord.z - vc.pos.z)), txt = `${atk ? '공격' : '이동'} · ${d}m`;
-    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt; tg.className = atk ? 'atk' : '';
+    placeTag(tg, ord.x, gy + 2.2, ord.z);
+    const vc = p.mode === 'plane' && G.plane ? { pos: G.plane.pos } : G.viewChar ? G.viewChar() : p, txt = `${atk ? '공격' : '이동'} · ${fmtDist(Math.hypot(ord.x - vc.pos.x, ord.z - vc.pos.z))}`;
+    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt; tg.classList.toggle('atk', atk);
   }
   // 팀원(또는 내가 핑으로) 발견한 적: 미니맵에 6초 표시, 팀원이 발견하면 '적 발견' 알림 (8초에 한 번)
   let spotCallT = -99;
@@ -17210,7 +17265,7 @@ const HUD = (() => {
     ['sfx', '효과음 음량', 'range', [0, 1, 0.05]],
     ['music', '배경음 음량', 'range', [0, 1, 0.05]],
     ['view', '시점', 'seg', [['tpp', '3인칭'], ['fpp', '1인칭']]],
-    ['difficulty', '봇 난이도', 'seg', [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움'], ['mixed', '혼합']]],
+    ['difficulty', '봇 난이도', 'seg', [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움'], ['extreme', '익스트림'], ['mixed', '혼합']]],
     ['bots', '봇 수', 'range', [8, 48, 1]],
     ['_h', '화면 · 모바일 조작'],
     ['btnScale', '모바일 버튼 전체 크기', 'range', [0.7, 1.5, 0.05]],
@@ -17616,14 +17671,16 @@ const HUD = (() => {
     const g = $('tierGrid'); g.innerHTML = ''; const cur = Rank.placed() ? Rank.tierOf(Rank.state.rp) : null;
     RANK_TIERS.forEach((T, t) => {
       const d = h('div', 'tier' + (cur && cur.t === t ? ' me' : '')), im = h('img'); im.src = Rank.emblem(t, cur && cur.t === t ? cur.div : 1, 160); im.alt = '';
-      d.appendChild(im); d.appendChild(h('b', '', T.name)); d.appendChild(h('span', '', t === 9 ? '3600 RP 이상' : `${t * 400}–${t * 400 + 399} RP`)); g.appendChild(d);
+      d.appendChild(im); d.appendChild(h('b', '', T.name)); d.appendChild(h('span', '', t === 9 ? '3600 RP 이상' : `${t * 400}–${t * 400 + 399} RP`));
+      const mx = Rank.mixOf(t); if (mx && mx[3]) d.appendChild(h('span', 'tier-ext', `익스트림 봇 ${mx[3]}%`));
+      g.appendChild(d);
     });
     const ul = $('rankRules'); ul.innerHTML = '';
     const st = Rank.state;
     [`레벨 3부터 참여할 수 있습니다. 처음 3판은 배치고사이며, 결과에 따라 시작 티어가 정해집니다(최대 플래티넘 1).`,
       `각 티어는 4 → 3 → 2 → 1 단계로 올라갑니다. 한 단계는 100 RP, 한 티어는 400 RP입니다.`,
       `RP는 순위(상위일수록 크게), 우승, 처치, 가한 피해로 오르고, 하위권이면 내려갑니다. 높은 티어일수록 오르기 어렵습니다.`,
-      `봇 수는 고정(기본 맵 40명, 대형 맵 99명)이고 봇 난이도는 티어가 높을수록 어려워집니다. 경기 도중 나가면 패배 처리와 추가 감점이 있습니다.`,
+      `봇 수는 고정(기본 맵·키나루 74명, 노르덴 99명)이고 봇 난이도는 티어가 높을수록 어려워집니다. 골드부터 익스트림 봇(어려움보다 조준·반응·무빙·판단이 한 단계 위)이 섞이고, 이터널은 절반이 익스트림입니다. 경기 도중 나가면 패배 처리와 추가 감점이 있습니다.`,
       Rank.placed() ? `현재 ${Rank.tierOf(st.rp).label} · ${st.rp} RP · 최고 ${Rank.tierOf(st.peak).label} · 랭크 ${st.games}판 ${st.wins}승` : `배치고사 ${st.placed} / 3 진행`].forEach((t) => ul.appendChild(h('li', '', t)));
   }
   function showResult(win, p, total) {
@@ -18289,12 +18346,13 @@ const Rank = (() => {
     if (r.quit) d = Math.min(d, -25) - 10; // 탈주 패널티
     return Math.round(clamp(d, -45, 140));
   }
-  // 티어별 봇 난이도 비율 [쉬움, 보통, 어려움]
-  const MIX = [[70, 30, 0], [55, 40, 5], [40, 50, 10], [25, 55, 20], [15, 55, 30], [10, 50, 40], [5, 45, 50], [0, 40, 60], [0, 30, 70], [0, 20, 80]];
+  // 티어별 봇 난이도 비율 [쉬움, 보통, 어려움, 익스트림] — 골드부터 익스트림이 섞이고 이터널은 절반이 익스트림
+  const MIX = [[70, 30, 0, 0], [55, 40, 5, 0], [40, 50, 10, 0], [25, 55, 18, 2], [15, 50, 30, 5], [8, 45, 37, 10], [3, 35, 45, 17], [0, 25, 50, 25], [0, 15, 50, 35], [0, 5, 45, 50]];
   function botDifficulty() {
     if (!placed()) return pick(['easy', 'normal', 'normal', 'hard']);
-    const m = MIX[tierOf(S.rp).t]; return weightedPick([['easy', m[0]], ['normal', m[1]], ['hard', m[2]]]);
+    const m = MIX[tierOf(S.rp).t]; return weightedPick([['easy', m[0]], ['normal', m[1]], ['hard', m[2]], ['extreme', m[3]]]);
   }
+  const mixOf = (t) => MIX[t];
   function botCount(mapId) { return mapMaxBots(mapId); }   // 랭크전: 맵 최대 인원 (기본 75명 · 노르덴 100명)
   // 경기 결과 반영 → 결과 화면용 요약
   function apply(r) {
@@ -18495,7 +18553,7 @@ const Rank = (() => {
     const ti = tierOf(S.rp);
     return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${S.rp} RP` : `${ti.into} / 100 RP`, tier: ti };
   }
-  return { get state() { return S; }, unlocked, placed, tierOf, apply, botDifficulty, botCount, emblem, status, placementScore, rpDelta, reset() { S = { rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }; save(); }, _set(o) { Object.assign(S, o); save(); },
+  return { get state() { return S; }, unlocked, placed, tierOf, apply, botDifficulty, botCount, mixOf, emblem, status, placementScore, rpDelta, reset() { S = { rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }; save(); }, _set(o) { Object.assign(S, o); save(); },
     // 계정 전환: 통째로 바꿔 끼움 (저장 알림 없이)
     replace(o) { S = Object.assign({ rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }, o || {}); store.set('rank', S); } };
 })();
