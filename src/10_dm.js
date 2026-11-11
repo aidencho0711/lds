@@ -63,7 +63,7 @@ const DM = (() => {
     Zone.cur = Zone.next = null; Zone.state = 'wait'; Airdrop.init(sc); G.plane = null;
     GROUND = []; itemGrid = new Array(IGN * IGN).fill(EMPTY_LIST);
     CHARS = []; G.noises = []; G.time = 0; G.stats = { shots: 0, hits: 0 }; G.killLog = []; G.knockLog = []; G.marker = null; G.updateMarker(); G.spec = null;
-    G.teamOrder = null; G.spotted = new Map(); G.danger = null; G.ranked = false; G.quit = false; G.rankResult = null;
+    G.teamOrder = null; G.spotted = new Map(); G.danger = null; G.ranked = false; G.hc = false; G.quit = false; G.rankResult = null;
     G.teamSize = TSZ; G.teams = [{ id: 0, members: [], place: 0 }, { id: 1, members: [], place: 0 }];
     const seed = cfg.seed || ((Math.random() * 1e9) | 0);
     const rand = mulberry32(seed);

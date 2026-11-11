@@ -27,7 +27,7 @@ const BotSkin = (() => {
     if (OUT) return;
     OUT = {};
     for (const id in Body.SKINS) { const s = Body.SKINS[id]; (OUT[s.slot] || (OUT[s.slot] = [])).push({ id, rar: s.rar || 0 }); }
-    GUN = {}; for (const id in GSKINS) { const s = GSKINS[id]; (GUN[s.gun] || (GUN[s.gun] = [])).push({ id, rar: s.rar || 1 }); }
+    GUN = {}; for (const id in GSKINS) { const s = GSKINS[id]; if ((s.rar || 0) >= 6) continue; (GUN[s.gun] || (GUN[s.gun] = [])).push({ id, rar: s.rar || 1 }); }
     VEH = {}; for (const id in VSKINS) { const s = VSKINS[id]; (VEH[s.veh] || (VEH[s.veh] = [])).push({ id, rar: s.rar || 3 }); }
   }
   // 옷 묶음 한 벌 (상의·하의·신발·장갑). 묶음 안에서는 등급을 비슷하게 맞춘다 (한 번 뽑은 등급 ± 1)
@@ -61,10 +61,10 @@ const BotSkin = (() => {
     const veh = {}; for (const t in VEH) { const s = pickRar(R, VEH[t], rarPick(R, dk), null); if (s) veh[t] = s; }
     return { look: Body.makeLook(eq, o.body), gun, veh };
   }
-  // 난이도 하나 고르기 (랭크전 = 내 티어 비율, 아니면 설정. '섞어서'는 쉬움·보통·보통·어려움)
-  function pickDiff(ranked) { return ranked ? Rank.botDifficulty() : SETTINGS.difficulty === 'mixed' ? pick(['easy', 'normal', 'normal', 'hard']) : SETTINGS.difficulty; }
+  // 난이도 하나 고르기 (하드코어 = 전원 익스트림, 랭크전 = 내 티어 비율, 아니면 설정. '섞어서'는 쉬움·보통·보통·어려움)
+  function pickDiff(ranked, hc) { return hc ? 'extreme' : ranked ? Rank.botDifficulty() : SETTINGS.difficulty === 'mixed' ? pick(['easy', 'normal', 'normal', 'hard']) : SETTINGS.difficulty; }
   // 같이 하기 설정용: 봇 n명의 난이도를 한 글자씩 ('enhx')
-  const diffCodes = (n, ranked) => { let s = ''; for (let i = 0; i < n; i++) s += CODE[pickDiff(ranked)] || 'n'; return s; };
+  const diffCodes = (n, ranked, hc) => { let s = ''; for (let i = 0; i < n; i++) s += CODE[pickDiff(ranked, hc)] || 'n'; return s; };
   // 이번 경기 봇 몸 메시 열쇠들 — 경기가 끝나면 지워 메모리를 돌려받는다 (사람이 쓰는 외형은 남김)
   function purge(botLooks, keepLooks) {
     const keep = new Set(keepLooks.map(Body.lookKey)), C = Body.cache;

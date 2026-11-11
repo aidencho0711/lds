@@ -185,7 +185,7 @@ const Party = (() => {
   const has = (uid) => !!P && P.members.some((m) => m.uid === uid);
   const canInvite = () => !!Cloud.user && (!P || (isLeader() && size() < PARTY_MAX));
   const uuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'p' + Math.random().toString(16).slice(2) + Date.now().toString(16));
-  function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, look: myLook(), st: G.state === 'lobby' ? 'lobby' : 'game' }; }
+  function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, hc: Rank.hcOk() ? 1 : 0, look: myLook(), st: G.state === 'lobby' ? 'lobby' : 'game' }; }
   function shared() { const o = {}; for (const k of SHARED) o[k] = SETTINGS[k]; return o; }
 
   // ---------- 채널 ----------
@@ -329,7 +329,7 @@ const Party = (() => {
       const sh = JSON.stringify(shared());
       if (sh !== lastShared || now - pushT > 15000) pushState();
     }
-    const mi = memberInfo(), key = JSON.stringify([mi.lv, mi.st, mi.look, mi.name]);
+    const mi = memberInfo(), key = JSON.stringify([mi.lv, mi.hc, mi.st, mi.look, mi.name]);
     if (key !== lastMine) {
       lastMine = key;
       if (isLeader()) { const i = P.members.findIndex((x) => x.uid === me()); if (i >= 0) { P.members[i] = mi; pushState(); } }
@@ -339,11 +339,12 @@ const Party = (() => {
   }
 
   // ---------- 로비 연동 ----------
-  // 혼자면 null. 파티면 { leader, size, rankOk, lowNames }
+  // 혼자면 null. 파티면 { leader, size, rankOk, lowNames, hcOk, hcLow } — hcOk: 모두 하드코어 자격(일반 랭크 최고 다이아 4 이상)
   function lockInfo() {
     if (!P || P.members.length < 2) return null;
     const low = P.members.filter((m) => (m.lv || 1) < 3);
-    return { leader: isLeader(), size: P.members.length, rankOk: !low.length, lowNames: low.map((m) => m.name) };
+    const hcLow = P.members.filter((m) => m.uid === me() ? !Rank.hcOk() : !m.hc);
+    return { leader: isLeader(), size: P.members.length, rankOk: !low.length, lowNames: low.map((m) => m.name), hcOk: !hcLow.length, hcLow: hcLow.map((m) => m.name) };
   }
   const settingsChanged = () => { if (isLeader()) pushState(); };
   function decoratePlay() {
@@ -362,7 +363,8 @@ const Party = (() => {
     if (!L.leader) { HUD.lobbyNote('방장이 출격하면 함께 시작합니다'); return true; }
     const notReady = P.members.filter((m) => m.uid !== me() && m.st !== 'lobby');
     if (notReady.length) { HUD.lobbyNote(`${notReady.map((m) => m.name).join(', ')}님이 아직 게임 중입니다`); return true; }
-    if (SETTINGS.queue === 'ranked' && !isDmGame(SETTINGS.game) && !L.rankOk) { HUD.lobbyNote(`파티원 중 레벨 3 미만이 있어 랭크전을 할 수 없습니다 (${L.lowNames.join(', ')})`); return true; }
+    if (SETTINGS.queue !== 'normal' && !isDmGame(SETTINGS.game) && !L.rankOk) { HUD.lobbyNote(`파티원 중 레벨 3 미만이 있어 랭크전을 할 수 없습니다 (${L.lowNames.join(', ')})`); return true; }
+    if (SETTINGS.queue === 'hardcore' && !isDmGame(SETTINGS.game) && !L.hcOk) { HUD.lobbyNote(`파티원 중 다이아 4를 찍어 보지 못한 사람이 있어 하드코어를 할 수 없습니다 (${L.hcLow.join(', ')})`); return true; }
     if (isDuel(SETTINGS.game) && P.members.length > dmTeamSize(SETTINGS.game) * 2) { HUD.lobbyNote(`${GAME_TYPES[SETTINGS.game].name}은 ${dmTeamSize(SETTINGS.game) * 2}명까지 할 수 있습니다 (지금 파티 ${P.members.length}명)`); return true; }
     const humans = P.members.map((m) => ({ uid: m.uid, name: m.name, look: m.look, lv: m.lv }));
     const cfg = Net.makeConfig(humans);

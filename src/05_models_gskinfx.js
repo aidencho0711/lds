@@ -11,7 +11,7 @@ const SkinFx = (() => {
   const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _t = new THREE.Vector3(), _v = new THREE.Vector3(), _s = new THREE.Vector3(), _n = new THREE.Vector3();
   const UP = new THREE.Vector3(0, 1, 0);
   const E = (...a) => GunSkin.fx.emit(...a), pool = () => GunSkin.fx.pool(scene);
-  const pick = (fx) => (Math.random() < 0.55 ? fx.c : fx.c2);
+  const pick = (fx) => (fx.rainbow ? GunSkin.PRISM[(Math.random() * 6) | 0] : Math.random() < 0.55 ? fx.c : fx.c2);   // 테스터: 무지개
 
   // ---------- 텍스처 (처음 쓸 때 1번 그림) ----------
   const ctex = (key, W, H, fn) => { if (TEX[key]) return TEX[key]; const c = document.createElement('canvas'); c.width = W; c.height = H; fn(c.getContext('2d'), W, H); return (TEX[key] = new THREE.CanvasTexture(c)); };
@@ -293,6 +293,13 @@ const SkinFx = (() => {
       E(P, p, 0, 0, 0, fx.c, 0.5 * k, 0.12, { grow: -0.7, so: 0.6 }); E(P, p, 0, 0, 0, fx.c2, 0.14 * k, 0.06, { grow: 1.4, so: 0.4 });
       for (let i = 0; i < 10; i++) { _v.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize(); const R = rnd(0.2, 0.4) * s; _a.copy(p).addScaledVector(_v, R); E(P, _a, -_v.x * R * 6, -_v.y * R * 6, -_v.z * R * 6, pick(fx), rnd(0.03, 0.05) * k, 0.16, { so: 0.8 }); }
     },
+    // 테스터(프리즘): 하얀 섬광 + 무지개 여섯 조각이 육각으로 튀고 + 작은 반짝임
+    prism(P, p, d, fx, k, s) {
+      E(P, p, 0, 0, 0, 0xffffff, 0.34 * k, 0.07, { grow: 0.9, so: 0.35 }); E(P, p, 0, 0, 0, fx.c, 0.28 * k, 0.16, { grow: 1.2, so: 0.4 });
+      const a0 = Math.random() * TAU;
+      for (let i = 0; i < 6; i++) { const a = a0 + i * TAU / 6; E(P, p, Math.cos(a) * 2.4 * s - d.x, rnd(0.6, 1.6) * s, Math.sin(a) * 2.4 * s - d.z, GunSkin.PRISM[i], rnd(0.05, 0.075) * k, rnd(0.25, 0.4), { sq: 1, drag: 4, so: 0.85 }); }
+      for (let i = 0; i < 6; i++) { _v.set(rnd(-1, 1), rnd(-0.3, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1.5, 3.5) * s); E(P, p, _v.x, _v.y, _v.z, 0xffffff, rnd(0.02, 0.035) * k, rnd(0.2, 0.35), { drag: 5, so: 0.5 }); }
+    },
   };
   // 슈퍼레어(약한 효과): 작은 섬광 + 조각 몇 개, 몸에 남는 효과는 짧게
   function liteHit(P, p, d, fx, k, s) {
@@ -301,7 +308,7 @@ const SkinFx = (() => {
     for (let i = 0; i < 4; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1, 2.4) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.02, 0.035) * k, rnd(0.15, 0.3), { sq, drag: 5, g: fx.kind === 'ember' ? -4 : 0, so: 0.7 }); }
   }
   // 몸에 남는 효과: 초당 개수 · 한 번에 하나씩
-  const RATE = { ember: 50, flame: 44, spark: 36, glitch: 44, frost: 40, void: 40 };
+  const RATE = { ember: 50, flame: 44, spark: 36, glitch: 44, frost: 40, void: 40, prism: 46 };
   const BODYFX = {
     ember(P, p, fx, k) { E(P, p, rnd(-0.12, 0.12), rnd(0.15, 0.9), rnd(-0.12, 0.12), Math.random() < 0.6 ? fx.c : fx.c2, rnd(0.1, 0.17) * k, rnd(0.4, 0.8), { g: 0.6, drag: 1.5, so: 0.85 }); },
     flame(P, p, fx, k) { E(P, p, rnd(-0.08, 0.08), rnd(0.4, 1.1), rnd(-0.08, 0.08), Math.random() < 0.3 ? 0xffd27a : fx.c, rnd(0.18, 0.28) * k, rnd(0.2, 0.36), { grow: 1.2, drag: 1.5, so: 0.8 }); },
@@ -309,6 +316,7 @@ const SkinFx = (() => {
     glitch(P, p, fx, k) { E(P, p, 0, 0, 0, pick(fx), rnd(0.09, 0.19) * k, rnd(0.05, 0.15), { sq: 1, so: 0.85 }); },
     frost(P, p, fx, k) { E(P, p, rnd(-0.1, 0.1), rnd(-0.4, -0.1), rnd(-0.1, 0.1), Math.random() < 0.5 ? fx.c2 : fx.c, rnd(0.08, 0.15) * k, rnd(0.5, 0.9), { grow: 0.8, drag: 1.2, so: 0.6 }); },
     void(P, p, fx, k) { E(P, p, rnd(-0.1, 0.1), rnd(0.3, 0.9), rnd(-0.1, 0.1), Math.random() < 0.7 ? fx.c : fx.c2, rnd(0.1, 0.17) * k, rnd(0.35, 0.6), { grow: -0.4, drag: 1.2, so: 0.85 }); },
+    prism(P, p, fx, k) { E(P, p, rnd(-0.15, 0.15), rnd(0.3, 0.8), rnd(-0.15, 0.15), pick(fx), rnd(0.06, 0.11) * k, rnd(0.35, 0.6), { sq: Math.random() < 0.6, drag: 1.4, so: 0.85 }); },
   };
   function body(t, fx, dur, corpse) {
     const s = BODY.get(t);
@@ -429,7 +437,52 @@ const SkinFx = (() => {
       });
       body(t, fx, 2.0, true);
     },
+    // 테스터(프리즘 감옥): 쓰러진 몸을 무지개 육각 기둥 틀이 감싸고 돌다가 한 점으로 접히며 터짐 → 무지개 조각이 솟아오름
+    //  · 바닥에 무지개 육각 격자 자국 · 색이 다른 고리 세 겹이 차례로 퍼짐 · 하얀 빛 기둥
+    prism(t, fx, gp, cp, k) {
+      const P = pool(), C = GunSkin.PRISM;
+      glow(cp, 0xffffff, 4.4, 0.35); light(cp, 0xbff8ff, 8, 0.9);
+      ring(gp, C[2], 4.6, 0.75); ring(gp, C[0], 3.4, 0.7, null, 0.12); ring(gp, C[4], 2.3, 0.6, null, 0.24);
+      decal(gp, hexTex(), 4.4, 2.8, 0xffffff, 0x2a3a6a);
+      // 육각 기둥 틀: 색 세 묶음(각 묶음 = 세로 모서리 2개 + 위아래 테두리 2변씩) → 같은 선 재질 프로그램을 씀
+      const grp = new THREE.Group(), R = 0.75, H = 2.1, cols = [C[0], C[2], C[4]];
+      for (let gi = 0; gi < 3; gi++) {
+        const v = [];
+        for (const i of [gi * 2, gi * 2 + 1]) {
+          const a = i * TAU / 6, b = (i + 1) * TAU / 6, x0 = Math.cos(a) * R, z0 = Math.sin(a) * R, x1 = Math.cos(b) * R, z1 = Math.sin(b) * R;
+          v.push(x0, 0, z0, x0, H, z0, x0, 0, z0, x1, 0, z1, x0, H, z0, x1, H, z1);
+        }
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+        const ls = new THREE.LineSegments(g, lineMat(cols[gi])); ls.userData.own = true; ls.renderOrder = 8; grp.add(ls);
+      }
+      grp.position.set(gp.x, gp.y, gp.z);
+      let burst = false;
+      add(grp, 1.15, (e, u) => {
+        const open = Math.min(1, u / 0.25), ok = 1 - Math.pow(1 - open, 3), shut = u < 0.58 ? 0 : Math.min(1, (u - 0.58) / 0.16), sk = 1 - shut * shut;
+        grp.rotation.y += e.dt * (2 + shut * 14);
+        grp.scale.set(Math.max(0.02, (0.35 + 0.65 * ok) * sk), Math.max(0.02, ok * (1 - shut * 0.5)), Math.max(0.02, (0.35 + 0.65 * ok) * sk));
+        grp.position.y = gp.y + shut * 0.9;
+        for (const ls of grp.children) ls.material.opacity = u < 0.74 ? 1 : 0;
+        if (!burst && u >= 0.74) {
+          burst = true; _a.set(gp.x, gp.y + 1.05, gp.z); glow(_a, 0xffffff, 5.2, 0.45); light(_a, C[(Math.random() * 6) | 0], 7, 0.5); pillar(gp, 0xe8fbff, 0.45, 6.5, 0.75, stripeTex(), 2);
+          for (let i = 0; i < 72; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1.2), rnd(-1, 1)).normalize().multiplyScalar(rnd(3, 8)); E(P, _a, _v.x, _v.y, _v.z, i % 7 === 0 ? 0xffffff : C[i % 6], rnd(0.08, 0.15) * k, rnd(0.5, 1.0), { sq: i % 2 === 0, g: -3, drag: 1.8, so: 0.8 }); }
+        }
+      });
+      // 틀이 도는 동안 몸에서 무지개 조각이 틀 쪽으로 빨려 나감
+      add(null, 0.7, (e) => { if (Math.random() < 0.7) { bodyPoint(t, _a); _v.set(_a.x - gp.x, 0, _a.z - gp.z).normalize(); E(P, _a, _v.x * 1.2, rnd(0.2, 0.8), _v.z * 1.2, C[(Math.random() * 6) | 0], rnd(0.06, 0.1) * k, 0.4, { sq: 1, drag: 1, so: 0.85 }); } });
+      body(t, fx, 2.2, true);
+    },
   };
+  // 테스터 바닥 자국: 무지개 육각 격자 + 가운데 하얀 빛
+  const hexTex = () => ctex('hex', 256, 256, (g) => {
+    halo(g, 90, [[0, 'rgba(255,255,255,0.85)'], [0.35, 'rgba(200,250,255,0.3)'], [1, 'rgba(160,220,255,0)']]);
+    const R = 15, w = Math.sqrt(3) * R;
+    for (let j = -1; j < 12; j++) for (let i = -1; i < 11; i++) {
+      const x = i * w + (j % 2 ? w / 2 : 0), y = j * R * 1.5, d = Math.hypot(x - 128, y - 128) / 128; if (d > 0.95) continue;
+      g.strokeStyle = `hsla(${(Math.atan2(y - 128, x - 128) / TAU * 360 + 360) % 360},95%,68%,${(1 - d) * 0.95})`; g.lineWidth = 2.2;
+      g.beginPath(); for (let k2 = 0; k2 < 6; k2++) { const a = -Math.PI / 2 + k2 * TAU / 6, px = x + Math.cos(a) * R * 0.92, py = y + Math.sin(a) * R * 0.92; k2 ? g.lineTo(px, py) : g.moveTo(px, py); } g.closePath(); g.stroke();
+    }
+  });
   // 슈퍼레어(약한 효과): 작은 빛 + 바닥 고리 하나 + 위로 흩어지는 조각 몇 개 — 휘장·빛 기둥·바닥 자국·조명 없음
   function liteKill(t, fx, gp, cp, k) {
     const P = pool();

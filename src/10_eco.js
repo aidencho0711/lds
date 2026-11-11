@@ -84,7 +84,10 @@ const Eco = (() => {
   // ---------- 보유 ----------
   const owns = (id) => Body.SKINS[id] && (/_basic$/.test(id) || (STATS.skins || []).includes(id));
   const ownsVeh = (id) => (STATS.vskins || []).includes(id);
-  const ownsGun = (id) => !!GSKINS[id] && (STATS.gskins || []).includes(id);
+  // 베타 테스터: 개발자가 부여(서버 함수 admin_beta → STATS.beta = { on, t }). 테스터 등급(rar 6) 총기 스킨은 베타 테스터인 동안만 가진다
+  const isBeta = () => !!(STATS.beta && STATS.beta.on);
+  const ownsGun = (id) => !!GSKINS[id] && (GSKINS[id].rar >= 6 ? isBeta() : (STATS.gskins || []).includes(id));
+  const gskinsOwned = () => (STATS.gskins || []).filter((id) => GSKINS[id] && GSKINS[id].rar < 6).concat(isBeta() ? Object.keys(GSKINS).filter((id) => GSKINS[id].rar >= 6) : []);
   const gunBox = (box) => !!(BOXES[box] && BOXES[box].gun);
   const gskinsIn = (box, r) => Object.keys(GSKINS).filter((id) => GSKINS[id].box === box && GSKINS[id].rar === r);
   function ownedSkins() { const s = new Set(Object.keys(Body.SKINS).filter((k) => /_basic$/.test(k))); for (const k of (STATS.skins || [])) if (Body.SKINS[k]) s.add(k); return s; }
@@ -279,6 +282,8 @@ const Eco = (() => {
     // 프로필 꾸미기(사진·테두리·칭호): 이 기기에서 바꿨으면 이 기기 것, 아니면 서버 것 · 아이디 변경 시각은 최근 것
     out.prof = JSON.stringify(L.prof || null) !== JSON.stringify(B.prof || null) ? L.prof : (S.prof || L.prof);
     out.nameT = Math.max(L.nameT || 0, S.nameT || 0) || undefined;
+    // 베타 테스터: 개발자(서버)가 바꾼 시각 t 가 늦은 쪽 — 이 기기에서 스스로 바꾸지 않음
+    { const lb = L.beta || null, sb = S.beta || null; out.beta = lb && (!sb || (lb.t || 0) > (sb.t || 0)) ? lb : sb || undefined; }
     const Be = B.eco || {}, Le = L.eco, Se = S.eco;
     if (Le || Se) {
       const le = Le || {}, se = Se || {}, e = Object.assign({}, se.v ? se : le);
@@ -314,13 +319,13 @@ const Eco = (() => {
     E(); let n = 0;
     const add = (arr, ids) => { const s = new Set(arr); for (const id of ids) if (!s.has(id)) { arr.push(id); n++; } };
     add(STATS.skins, Object.keys(Body.SKINS).filter((k) => !/_basic$/.test(k)));
-    add(STATS.vskins, Object.keys(VSKINS)); add(STATS.gskins, Object.keys(GSKINS));
+    add(STATS.vskins, Object.keys(VSKINS)); add(STATS.gskins, Object.keys(GSKINS).filter((id) => GSKINS[id].rar < 6));   // 테스터 스킨은 베타 테스터 칭호로만
     if (n) changed('dev');
     return n;
   }
   function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();

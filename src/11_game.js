@@ -356,7 +356,8 @@ async function startMatch(cfg) {
   // 캐릭터 생성
   CHARS = []; G.noises = []; G.time = 0; G.stats = { shots: 0, hits: 0 }; G.killLog = []; G.knockLog = []; G.marker = null; G.updateMarker(); G.spec = null;
   G.teamOrder = null; G.spotted = new Map(); G.danger = null;
-  G.ranked = net ? !!cfg.ranked : SETTINGS.queue === 'ranked' && Rank.unlocked(); G.quit = false; G.rankResult = null; G.hostGone = false;
+  G.hc = net ? !!cfg.hc : SETTINGS.queue === 'hardcore' && Rank.hcOk();   // 하드코어 랭크전 (다이아 4 이상 경험자 · 전원 익스트림 봇)
+  G.ranked = net ? !!cfg.ranked : (SETTINGS.queue === 'ranked' || G.hc) && Rank.unlocked(); G.quit = false; G.rankResult = null; G.hostGone = false;
   // 팀 구성 (혼자 랭크전은 솔로 고정, 파티 랭크전은 고른 팀 구성)
   const TS = G.teamSize = net ? cfg.teamSize : G.ranked ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
   G.teams = [];
@@ -379,7 +380,7 @@ async function startMatch(cfg) {
   const pl = G.plane, hostSide = !net || Net.isHost(), H0 = humans.length;
   // 봇 난이도 → 스킨 (07_bot_skin.js): 같이 하기면 방장이 정한 난이도(cfg.bd)와 시드로 모든 기기에서 같은 스킨
   const bseed = net ? cfg.seed : (Math.random() * 2147483647) | 0, dks = [];
-  for (let i = 0; i < nBots; i++) dks.push(net && cfg.bd ? BotSkin.fromCode(cfg.bd[i]) : hostSide ? BotSkin.pickDiff(G.ranked) : null);
+  for (let i = 0; i < nBots; i++) dks.push(net && cfg.bd ? BotSkin.fromCode(cfg.bd[i]) : hostSide ? BotSkin.pickDiff(G.ranked, G.hc) : null);
   const BP = BotSkin.pool([...new Set(dks.filter(Boolean))], bseed); G.botLooks = [];
   for (let i = 0; i < nBots; i++) {
     const body0 = Body.randomBody(srand), dk = dks[i], sk = dk ? BotSkin.forBot(BP, dk, bseed, i) : null;
@@ -474,8 +475,9 @@ function endMatch() {
   G.lastXp = xp;
   STATS.matches++; STATS.kills += p.kills; STATS.xp += xp; if (win) STATS.wins++;
   STATS.best = Math.min(STATS.best || 99, place);
-  G.rankResult = G.ranked ? Rank.apply({ place, total: G.teamSize > 1 ? nT : G.total, kills: p.kills, dmg: p.damageDealt, win, quit: !!G.quit }) : null;
-  STATS.recent.unshift({ rank: place, total: nT, kills: p.kills, time: Math.round(p.alive || win && !p.deathTime ? G.time : p.deathTime), map: SETTINGS.map, ranked: !!G.ranked, sq: G.teamSize, party: G.net ? 1 : 0, delta: G.rankResult && !G.rankResult.placement ? G.rankResult.delta : undefined });
+  const rr = { place, total: G.teamSize > 1 ? nT : G.total, kills: p.kills, dmg: p.damageDealt, win, quit: !!G.quit };
+  G.rankResult = G.hc ? Rank.applyHc(rr) : G.ranked ? Rank.apply(rr) : null;
+  STATS.recent.unshift({ rank: place, total: nT, kills: p.kills, time: Math.round(p.alive || win && !p.deathTime ? G.time : p.deathTime), map: SETTINGS.map, ranked: !!G.ranked, hc: G.hc ? 1 : 0, sq: G.teamSize, party: G.net ? 1 : 0, delta: G.rankResult && !G.rankResult.placement ? G.rankResult.delta : undefined });
   STATS.recent = STATS.recent.slice(0, 5);
   G.statsSaved = saveStats();
   // 미션: 배틀로얄 경기 기록 반영 (훈련장·데스매치는 여기로 오지 않음)

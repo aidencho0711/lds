@@ -125,6 +125,7 @@ const Dev = (() => {
     try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; ACC.msg = data === 'ok' ? okMsg : RES[data] || `실패: ${data}`; }
     catch (e) { ACC.msg = rpcErr(e); }
     ACC.busy = false; ACC.det = {}; await accLoad();
+    const su = ACC.sel && ACC.list && ACC.list.find((x) => x.id === ACC.sel); if (su) detLoad(su);   // 펼쳐 둔 상세도 새로
   }
   // ---------- 계정 상세 (목록에서 계정을 누르면 그 아래에 펼침) ----------
   //  서버 함수 admin_get 이 있으면 전체 기록(stats·rank)까지, 없으면(옛 admin.sql) 목록 값만 보여 준다
@@ -165,7 +166,22 @@ const Dev = (() => {
     const tl = h('div', ''); tl.appendChild(h('b', '', lock ? '랭크 잠김' : plc ? '배치고사' : ti.label));
     tl.appendChild(h('small', '', lock ? '레벨 3부터' : plc ? `${R.placed || 0} / 3 완료` : `${R.rp} RP` + (R.peak > R.rp ? ` · 최고 ${Rank.tierOf(R.peak).label}` : '')));
     tierBox.appendChild(tl); hd.appendChild(tierBox);
+    // 하드코어 티어 (일반 랭크 최고 다이아 4 이상이면 자격 · 한 판이라도 했으면 티어)
+    const HC = R.hc || null, hcOk = (R.peak || 0) >= HC_MIN_PEAK;
+    if (D.d && (hcOk || HC)) {
+      const hb = h('div', 'acc-dtier hc'), ht = Rank.hcTierOf(HC ? HC.rp : 0), hi = h('img', ''); hi.alt = ''; hi.src = Rank.hcEmblem(ht.t, ht.div, 96); hb.appendChild(hi);
+      const hl = h('div', ''); hl.appendChild(h('b', '', HC && HC.games ? ht.label : '하드코어 자격')); hl.appendChild(h('small', '', HC && HC.games ? `${HC.rp} RP · ${HC.games}판 ${HC.wins || 0}승` + ((HC.peak || 0) > HC.rp ? ` · 최고 ${Rank.hcTierOf(HC.peak).label}` : '') : '아직 하드코어 기록 없음'));
+      hb.appendChild(hl); hd.appendChild(hb);
+    }
     box.appendChild(hd);
+    // 베타 테스터: 칭호 부여·회수 (서버 함수 admin_beta) — 받으면 베타 테스터 사진·테두리·칭호 + 테스터 등급 총 스킨
+    if (D.d) {
+      const isB = !!(S.beta && S.beta.on), bb = h('div', 'acc-beta');
+      bb.innerHTML = isB ? Prof.titleHTML('beta') + `<span class="acc-meta">베타 테스터 · ${fmtT(S.beta.t, 1)} 부여</span>` : '<span class="acc-meta">베타 테스터 아님</span>';
+      const btn = h('button', 'btn sm ' + (isB ? 'danger' : 'amber'), isB ? '베타 테스터 회수' : '베타 테스터 칭호 부여'); btn.type = 'button'; btn.disabled = ACC.busy;
+      btn.onclick = () => accDo('admin_beta', { p_id: u.id, p_on: !isB }, isB ? `${u.username}님의 베타 테스터 칭호를 회수했습니다` : `${u.username}님에게 베타 테스터 칭호를 부여했습니다 — 사진·테두리·칭호·테스터 총 스킨(접속 중이면 다음 저장 때)`).then(() => { if (u.id === Cloud.uid) Cloud.pushNow(); });   // 내 계정이면 바로 합쳐 받기
+      bb.appendChild(btn); box.appendChild(bb);
+    }
     // 레벨 막대
     const lvb = h('div', 'acc-dlv'); lvb.appendChild(h('b', '', `Lv ${L.lv}`));
     const bar = h('div', 'acc-bar'), fill = h('i', ''); fill.style.width = (100 * L.cur / L.need).toFixed(1) + '%'; bar.appendChild(fill); lvb.appendChild(bar);
@@ -173,7 +189,7 @@ const Dev = (() => {
     // 숫자 칸
     const grid = h('div', 'acc-grid');
     const cell = (k2, v) => { const c = h('div', 'acc-cell'); c.appendChild(h('small', '', k2)); c.appendChild(h('b', '', String(v))); grid.appendChild(c); };
-    const own = (arr, tab) => { const L2 = (arr || []).filter((id) => tab[id]); return `${L2.length}종` + (L2.some((id) => tab[id].rar >= 5) ? ` (울트라 ${L2.filter((id) => tab[id].rar >= 5).length})` : ''); };
+    const own = (arr, tab) => { const L2 = (arr || []).filter((id) => tab[id] && (tab[id].rar || 0) < 6); return `${L2.length}종` + (L2.some((id) => tab[id].rar >= 5) ? ` (울트라 ${L2.filter((id) => tab[id].rar >= 5).length})` : ''); };
     cell('경기', m); cell('우승', w); cell('우승률', m ? (100 * w / m).toFixed(1) + '%' : '-'); cell('처치', k); cell('경기당 처치', m ? (k / m).toFixed(1) : '-');
     cell('최고 순위', m && S.best && S.best < 99 ? '#' + S.best : '-'); cell('랭크 경기', R.games ? `${R.games}판 ${R.wins || 0}승` : '-');
     if (S.dm && S.dm.matches) cell('데스매치', `${S.dm.wins || 0}승 / ${S.dm.matches}판`);
@@ -186,7 +202,7 @@ const Dev = (() => {
       for (const r of S.recent.slice(0, 5)) {
         const mp = MAPS[r.map] ? MAPS[r.map].name.replace(/\s*\(.*\)/, '') : r.map || '';
         rc.appendChild(h('div', 'acc-rrow', r.dm ? `${GAME_TYPES[r.dm] ? GAME_TYPES[r.dm].short || GAME_TYPES[r.dm].name : '데스매치'} · ${r.win ? '승리' : r.draw ? '무승부' : '패배'} ${r.us}:${r.them} · ${r.kills}킬`
-          : `${mp}${r.ranked ? ' · 랭크' : ''}${r.sq > 1 ? ` · ${r.sq}인` : ''} · #${r.rank}/${r.total} · ${r.kills}킬${r.delta ? ` · ${r.delta > 0 ? '+' : ''}${r.delta} RP` : ''}`));
+          : `${mp}${r.ranked ? r.hc ? ' · 하드코어' : ' · 랭크' : ''}${r.sq > 1 ? ` · ${r.sq}인` : ''} · #${r.rank}/${r.total} · ${r.kills}킬${r.delta ? ` · ${r.delta > 0 ? '+' : ''}${r.delta} RP` : ''}`));
       }
       box.appendChild(rc);
     }
@@ -250,7 +266,7 @@ const Dev = (() => {
     const tg = (row, k, label, needMatch = true) => btn(row, label + (F[k] ? ' 켬' : ' 끔'), () => { F[k] = !F[k]; save(); refresh(); return `${label} ${F[k] ? '켬' : '끔'}`; }, { on: F[k], dis: needMatch && !!G.net });
     let render2 = () => {};
     const L = levelFromXp(STATS.xp || 0), own = (o, all) => `${o}/${all}`;
-    box.appendChild(h('div', 'dev-who', `개발자 계정: ${Cloud.name} · 옷 ${own(Eco.ownedSkins().size, Object.keys(Body.SKINS).length)} · 차량 ${own((STATS.vskins || []).length, Object.keys(VSKINS).length)} · 총기 ${own((STATS.gskins || []).length, Object.keys(GSKINS).length)}`));
+    box.appendChild(h('div', 'dev-who', `개발자 계정: ${Cloud.name} · 옷 ${own(Eco.ownedSkins().size, Object.keys(Body.SKINS).length)} · 차량 ${own((STATS.vskins || []).length, Object.keys(VSKINS).length)} · 총기 ${own(Eco.gskinsOwned().length, Object.keys(GSKINS).length)}`));
     // 재화·레벨·미션 (로비·경기 어디서나)
     let r = sec('재화', `골드 탄피 ${Eco.gold.toLocaleString()} · 차량 코인 ${Eco.coin} · 총기 코인 ${Eco.gcoin}`);
     btn(r, `${GOLD_NAME} +10,000`, () => { Eco.devAdd('gold', 10000); return `${GOLD_NAME} +10,000`; });

@@ -566,6 +566,7 @@ const Audio = (() => {
         else if (kind === 'glitch') for (let i = 0; i < 4; i++) tone(out, t + i * 0.07, 0.035, 'square', 300 + Math.random() * 1500, 200 + Math.random() * 900, 0.035);
         else if (kind === 'frost') [2093, 2637, 3136].forEach((f, i) => tone(out, t + 0.04 + i * 0.06, 0.25, 'sine', f, f * 1.01, 0.035));
         else if (kind === 'void') { tone(out, t, 0.45, 'sine', up ? 70 : 140, up ? 140 : 60, 0.16); noise(out, t, 0.4, 'lowpass', 500, 0.8, 0.1); }
+        else if (kind === 'prism') { [1046, 1318, 1568, 2093, 2637].forEach((f, i) => tone(out, t + (up ? i : 4 - i) * 0.055, 0.34, 'sine', f, f * 1.003, 0.04)); tone(out, t, 0.5, 'triangle', up ? 220 : 440, up ? 440 : 220, 0.05); }   // 테스터: 유리 차임 아르페지오
         return;
       }
       // 맞힘: 총성에 묻히지 않게 짧고 높은 소리 (지글 · 화르륵 · 지직 · 삑)
@@ -577,6 +578,7 @@ const Audio = (() => {
         else if (kind === 'glitch') { tone(out, t, 0.03, 'square', 1200 + Math.random() * 1400, 300, 0.035); tone(out, t + 0.035, 0.025, 'square', 2400 + Math.random() * 800, 900, 0.025); }
         else if (kind === 'frost') { noise(out, t, 0.06, 'highpass', 5200, 1.2, 0.08); tone(out, t, 0.12, 'sine', 3300 + Math.random() * 600, 2800, 0.03); }
         else if (kind === 'void') { tone(out, t, 0.12, 'sine', 900, 160, 0.06); noise(out, t, 0.1, 'lowpass', 600, 0.8, 0.06); }
+        else if (kind === 'prism') { tone(out, t, 0.16, 'sine', 2637 + Math.random() * 400, 2600, 0.04); tone(out, t + 0.02, 0.12, 'sine', 3951, 3900, 0.025); }
         return;
       }
       // 처치: 크게 (용암 분출 · 불꽃 용의 포효 · 낙뢰 · 데이터 붕괴)
@@ -603,6 +605,11 @@ const Audio = (() => {
           // 빨려 드는 낮은 소리(음이 올라감) → 터짐
           tone(out, t, 0.5, 'sine', 45, 220, 0.3); noise(out, t, 0.5, 'bandpass', 300, 0.6, 0.18);
           tone(out, t + 0.5, 0.6, 'sine', 110, 35, 0.34); noise(out, t + 0.5, 0.5, 'lowpass', 900, 0.7, 0.28);
+        } else if (kind === 'prism') {
+          // 프리즘 감옥: 낮게 울리며 틀이 돌다가(올라가는 화음) 접히며 맑게 터짐
+          tone(out, t, 0.8, 'sine', 110, 220, 0.2); noise(out, t, 0.7, 'bandpass', 1800, 1.2, 0.08);
+          [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(out, t + 0.05 + i * 0.09, 0.5, 'triangle', f, f, 0.05));
+          noise(out, t + 0.85, 0.5, 'highpass', 4200, 0.8, 0.2); [2093, 2637, 3136, 4186].forEach((f, i) => tone(out, t + 0.85 + i * 0.03, 0.7, 'sine', f, f * 0.995, 0.04)); tone(out, t + 0.85, 0.5, 'sine', 90, 40, 0.3);
         }
         return;
       }
@@ -613,6 +620,7 @@ const Audio = (() => {
       else if (kind === 'glitch') { tone(out, t, 0.035, 'square', 900 + Math.random() * 900, 400, 0.04); tone(out, t + 0.04, 0.03, 'square', 1800 + Math.random() * 800, 600, 0.03); }
       else if (kind === 'frost') { noise(out, t, 0.08, 'highpass', 4800, 1, 0.07); tone(out, t, 0.18, 'sine', 2600, 2400, 0.03); }
       else if (kind === 'void') tone(out, t, 0.14, 'sine', 600, 90, 0.08);
+      else if (kind === 'prism') { tone(out, t, 0.12, 'sine', 1568 + Math.random() * 300, 1500, 0.035); tone(out, t, 0.08, 'triangle', 3136, 3000, 0.02); }
     },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
     engine(id, pos, type, rpm, load, own, skid) {

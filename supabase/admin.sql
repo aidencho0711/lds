@@ -1,6 +1,6 @@
 -- ============================================================
 -- Last Drop Royale — 개발자(관리자) 계정 관리 (v20, Supabase SQL Editor에서 한 번 실행)
---  · 게임의 개발자 도구 → '계정 관리'가 부르는 함수: 계정 목록 · 계정 상세 · 골드 탄피 지급 · 기록 초기화 · 계정 삭제
+--  · 게임의 개발자 도구 → '계정 관리'가 부르는 함수: 계정 목록 · 계정 상세 · 골드 탄피 지급 · 베타 테스터 부여 · 기록 초기화 · 계정 삭제
 --  · 관리자 = public.admins 에 있는 계정. 이 파일을 실행할 때 아이디가 '개발자'인 계정을 관리자로 등록한다
 --    (아이디로 판단하지 않고 계정 고유번호로 등록 → 아이디를 바꿔도 관리자 유지, 다른 사람이 '개발자'를 가져가도 관리자가 아님)
 --  · 모든 함수는 관리자가 아니면 거부한다 (security definer + admins 검사)
@@ -79,8 +79,26 @@ begin
   if not exists (select 1 from public.admins a where a.id = auth.uid()) then return 'denied'; end if;
   if not exists (select 1 from public.profiles where id = p_id) then return 'notfound'; end if;
   insert into public.player_data (user_id, stats, rank)
-    values (p_id, jsonb_build_object('matches', 0, 'wins', 0, 'kills', 0, 'xp', 0, 'best', 99, 'recent', '[]'::jsonb, 'reset', t, 'sync', 'reset:' || t), null)
+    values (p_id, jsonb_build_object('matches', 0, 'wins', 0, 'kills', 0, 'xp', 0, 'best', 99, 'recent', '[]'::jsonb, 'reset', t, 'sync', 'reset:' || t)
+      || coalesce((select jsonb_strip_nulls(jsonb_build_object('beta', d.stats -> 'beta')) from public.player_data d where d.user_id = p_id), '{}'::jsonb), null)   -- 베타 테스터는 초기화해도 유지
     on conflict (user_id) do update set stats = excluded.stats, rank = null;
+  return 'ok';
+end; $$;
+
+-- 베타 테스터 칭호 부여·회수: stats.beta = { on, t } + 동기화 표식 → 접속 중인 기기도 다음 저장 때 받음
+--  받으면 게임에서 베타 테스터 사진·테두리·칭호와 테스터 등급 총기 스킨(프로토타입 β)이 해금된다
+create or replace function public.admin_beta(p_id uuid, p_on boolean) returns text
+language plpgsql security definer set search_path = '' as $$
+declare s jsonb; t bigint := floor(extract(epoch from clock_timestamp()) * 1000)::bigint;
+begin
+  if not exists (select 1 from public.admins a where a.id = auth.uid()) then return 'denied'; end if;
+  if not exists (select 1 from public.profiles where id = p_id) then return 'notfound'; end if;
+  select stats into s from public.player_data where user_id = p_id for update;
+  s := coalesce(s, '{}'::jsonb);
+  s := jsonb_set(s, '{beta}', jsonb_build_object('on', coalesce(p_on, false), 't', t));
+  s := jsonb_set(s, '{sync}', to_jsonb('admin:' || t));
+  insert into public.player_data (user_id, stats) values (p_id, s)
+    on conflict (user_id) do update set stats = excluded.stats;
   return 'ok';
 end; $$;
 
@@ -132,6 +150,7 @@ revoke execute on function public.admin_list(text) from public, anon;
 revoke execute on function public.admin_get(uuid) from public, anon;
 revoke execute on function public.admin_gold(uuid, integer) from public, anon;
 revoke execute on function public.admin_reset(uuid) from public, anon;
+revoke execute on function public.admin_beta(uuid, boolean) from public, anon;
 revoke execute on function public.admin_delete(uuid) from public, anon;
 revoke execute on function public.change_username(text) from public, anon;
 grant execute on function public.is_admin() to authenticated;
@@ -139,5 +158,6 @@ grant execute on function public.admin_list(text) to authenticated;
 grant execute on function public.admin_get(uuid) to authenticated;
 grant execute on function public.admin_gold(uuid, integer) to authenticated;
 grant execute on function public.admin_reset(uuid) to authenticated;
+grant execute on function public.admin_beta(uuid, boolean) to authenticated;
 grant execute on function public.admin_delete(uuid) to authenticated;
 grant execute on function public.change_username(text) to authenticated;

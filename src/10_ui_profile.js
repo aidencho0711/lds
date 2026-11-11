@@ -22,6 +22,8 @@ const Prof = (() => {
     { id: 'crown', name: '왕관', lv: 20, bg: ['#9a7a1a', '#3a2a02'], svg: '<path d="M10 22l10 10 12-18 12 18 10-10-5 26H15z"/><path d="M15 48h34v6H15z"/><circle cx="32" cy="36" r="3.5" fill="#ff4a5a"/><circle cx="21" cy="40" r="2.5" fill="#5ab8ff"/><circle cx="43" cy="40" r="2.5" fill="#5ab8ff"/>' },
     { id: 'bolt', name: '번개', lv: 25, bg: ['#5a3ab8', '#1a0c4a'], svg: '<path d="M36 6L14 36h14l-6 22 24-32H32z"/><path d="M36 6L14 36h14" fill="none" stroke="#c7b8ff" stroke-width="1.5"/>' },
     { id: 'nova', name: '초신성', lv: 30, bg: ['#1a1440', '#05030f'], svg: '<path d="M32 6l4 20 20 6-20 6-4 20-4-20-20-6 20-6z" fill="#fff"/><path d="M32 18l2 12 12 2-12 2-2 12-2-12-12-2 12-2z" fill="#ffd36b"/><circle cx="14" cy="14" r="1.6"/><circle cx="52" cy="50" r="1.4"/><circle cx="50" cy="14" r="1"/>' },
+    // 베타 테스터 전용 (개발자가 칭호를 부여한 계정): 실험 플라스크 속 β
+    { id: 'beta', name: '베타 테스터', lv: 1, beta: true, bg: ['#0f5560', '#03151b'], svg: '<path d="M23 8h18v4h-3v13l12 21c2 4-1 9-5 9H19c-4 0-7-5-5-9l12-21V12h-3z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><path d="M17 45l8-13h14l8 13c1 3-1 5-3 5H20c-2 0-4-2-3-5z" fill="#3ff5d6"/><circle cx="28" cy="38" r="1.6" fill="#fff"/><circle cx="37" cy="42" r="1.2" fill="#fff"/><text x="32" y="49" font-size="13" font-weight="900" text-anchor="middle" fill="#03151b" font-family="Arial,sans-serif">β</text><path d="M50 10l1.5 3.5L55 15l-3.5 1.5L50 20l-1.5-3.5L45 15l3.5-1.5z"/>' },
   ];
   const avOf = (id) => AV.find((a) => a.id === id) || AV[0];
   function avatarSVG(id) {
@@ -36,6 +38,9 @@ const Prof = (() => {
     ...['iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'legend', 'eternal'].map((id, t) => ({ id, name: '', kind: 'tier', t, desc: '' })),
     { id: 'collector', name: '수집가', kind: 'title', title: 'collector', desc: '칭호 「수집가」' },
     { id: 'wargod', name: '전쟁의 신', kind: 'title', title: 'wargod', desc: '칭호 「전쟁의 신」' },
+    // 하드코어 랭크 상위 3티어 (최고 도달 기준) · 베타 테스터
+    ...[2, 3, 4].map((t) => ({ id: 'hc_' + HC_TIERS[t].id, name: HC_TIERS[t].name, kind: 'hc', t, desc: `하드코어 ${HC_TIERS[t].name} 도달` })),
+    { id: 'beta', name: '베타 테스터', kind: 'title', title: 'beta', desc: '칭호 「베타 테스터」(개발자 부여)' },
   ];
   for (const f of FR) if (f.kind === 'tier') { f.name = RANK_TIERS[f.t].name; f.desc = `랭크 ${RANK_TIERS[f.t].name} 도달`; }
   // 장식(테두리 위·옆에 붙는 그림, viewBox -16..80) — 높은 티어일수록 많아짐
@@ -51,7 +56,12 @@ const Prof = (() => {
     collector: ['#5ec46e', '#4d8fff', '#a46bff', '#ff5fb4', '#ff3d3d', '#ffd36b'].map((c, i) => { const a = -Math.PI / 2 + i / 6 * Math.PI * 2; return gemAt(32 + Math.cos(a) * 32, 32 + Math.sin(a) * 32, 4.6, c); }).join(''),
     wargod: `<path d="M-6 66L52 8l4 4L-2 70z" fill="#d8d8d8" stroke="#5d0712" stroke-width="1"/><path d="M70 66L12 8l-4 4 58 58z" fill="#d8d8d8" stroke="#5d0712" stroke-width="1"/><path d="M50 4l10 0-2 6zM14 4H4l2 6z" fill="#e8384a"/><path d="M-9 63l8 8M73 63l-8 8" stroke="#7a2a1a" stroke-width="4" stroke-linecap="round"/>`,
   };
-  const ORN_FX = { eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>' };
+  // 하드코어: 슬레이어 = 엇갈린 칼날 · 리퍼 = 위에 걸친 낫과 녹빛 혼불 · 오버로드 = 뿔 왕관과 불꽃 / 베타 테스터 = 회로 마디 + 아래 β 명판
+  ORN.hc_slayer = `<path d="M-8 70L50 4l5 4L-3 74z" fill="#e6e9eb" stroke="#4a0610" stroke-width="1"/><path d="M72 70L14 4l-5 4 58 66z" fill="#e6e9eb" stroke="#4a0610" stroke-width="1"/><path d="M-11 66l9 9M75 66l-9 9" stroke="#2b2321" stroke-width="5" stroke-linecap="round"/><path d="M32 -9l7 9-7 9-7-9z" fill="#ff3352" stroke="#ffd6d6" stroke-width="1"/>`;
+  ORN.hc_reaper = `<path d="M-4 18C2 -6 30 -14 52 -6c-14-2-30 2-40 14z" fill="#9aa8a2" stroke="#4dffa6" stroke-width="1.2"/><path d="M12 8L60 70" stroke="#2a2a2e" stroke-width="3.2" stroke-linecap="round"/><circle cx="66" cy="20" r="3.2" fill="#4dffa6"/><circle cx="-2" cy="46" r="2.4" fill="#4dffa6"/><circle cx="58" cy="60" r="2" fill="#4dffa6"/>`;
+  ORN.hc_overlord = Array.from({ length: 7 }, (_, i) => { const a = -Math.PI / 2 + (i - 3) * 0.32, L = 14 - Math.abs(i - 3) * 2, x = 32 + Math.cos(a) * 30, y = 32 + Math.sin(a) * 30, x2 = 32 + Math.cos(a) * (30 + L), y2 = 32 + Math.sin(a) * (30 + L), px = -Math.sin(a) * 3.2, py = Math.cos(a) * 3.2; return `<path d="M${(x - px).toFixed(1)} ${(y - py).toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}L${(x + px).toFixed(1)} ${(y + py).toFixed(1)}z" fill="#2a0800" stroke="#ff9a2e" stroke-width="1"/>`; }).join('') + `<circle cx="32" cy="-6" r="3" fill="#ffb02e"/>`;
+  ORN.beta = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => { const a = i / 8 * Math.PI * 2, x = 32 + Math.cos(a) * 34, y = 32 + Math.sin(a) * 34, x2 = 32 + Math.cos(a) * 40, y2 = 32 + Math.sin(a) * 40; return `<path d="M${x.toFixed(1)} ${y.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="#3ff5d6" stroke-width="1.6"/><rect x="${(x2 - 2.2).toFixed(1)}" y="${(y2 - 2.2).toFixed(1)}" width="4.4" height="4.4" fill="#e9fffb" stroke="#0f5560" stroke-width=".6"/>`; }).join('') + `<path d="M18 62h28l5 6-5 6H18l-5-6z" fill="#03151b" stroke="#3ff5d6" stroke-width="1.4"/><text x="32" y="71.5" font-size="9" font-weight="900" text-anchor="middle" fill="#3ff5d6" font-family="Arial,sans-serif">β TESTER</text>`;
+  const ORN_FX = { eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
   function frameHTML(fr, av, size = 44, extra = '') {
     const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id];
     return `<span class="pf fr-${f.id}${extra ? ' ' + extra : ''}" style="--s:${size}px">${ORN_FX[f.id] || ''}<span class="pf-av">${avatarSVG(av)}</span><span class="pf-ring"></span>${f.id === 'grandmaster' ? '<span class="pf-spk"><svg viewBox="-16 -16 96 96">' + o + '</svg></span>' : o ? `<span class="pf-orn"><svg viewBox="-16 -16 96 96">${o}</svg></span>` : ''}</span>`;
@@ -71,15 +81,20 @@ const Prof = (() => {
     { id: 'collector', name: '수집가', desc: '울트라레어 스킨 3종 이상 보유', prog: () => `${Math.min(3, ultraOwned())} / 3`, ok: () => ultraOwned() >= 3, fr: 'collector' },
     { id: 'wargod', name: '전쟁의 신', desc: '승률 20% 초과 (10판 이상)', prog: () => STATS.matches ? `${(STATS.wins / STATS.matches * 100).toFixed(1)}% · ${STATS.matches}판` : '0판', ok: () => STATS.matches >= 10 && STATS.wins / STATS.matches > 0.2, fr: 'wargod' },
     ...[6, 7, 8, 9].map((t) => ({ id: 'tier_' + RANK_TIERS[t].id, name: RANK_TIERS[t].name, desc: `랭크 ${RANK_TIERS[t].name} 도달`, prog: () => placedOk() ? `최고 ${RANK_TIERS[peakT()].name}` : '배치고사 전', ok: () => placedOk() && peakT() >= t, fr: RANK_TIERS[t].id, tier: t })),
+    // 하드코어 랭크 상위 3티어 (최고 도달) — 칭호와 같은 이름의 테두리
+    ...[2, 3, 4].map((t) => ({ id: 'hc_' + HC_TIERS[t].id, name: HC_TIERS[t].name, desc: `하드코어 랭크 ${HC_TIERS[t].name} 도달`, prog: () => hcPeakT() >= 0 ? `최고 ${HC_TIERS[hcPeakT()].name}` : Rank.hcOk() ? '하드코어 기록 없음' : '하드코어 잠김 (일반 랭크 다이아 4 필요)', ok: () => hcPeakT() >= t, fr: 'hc_' + HC_TIERS[t].id, hc: t })),
+    { id: 'beta', name: '베타 테스터', desc: '개발자가 부여한 베타 테스터 (사진·테두리·테스터 등급 총 스킨 함께)', prog: () => '개발자에게 부여받아야 함', ok: () => Eco.isBeta(), fr: 'beta' },
   ];
+  // 하드코어 최고 티어 번호 (한 판도 안 했으면 -1)
+  function hcPeakT() { const H = Rank.hc; return (H.games || 0) > 0 ? Rank.hcTierOf(Math.max(H.peak || 0, H.rp || 0)).t : -1; }
   const tiOf = (id) => TI.find((t) => t.id === id) || null;
 
   // ---------- 상태 ----------
   const P0 = { av: 'helmet', fr: 'none', ti: null };
   const st = () => (STATS.prof && typeof STATS.prof === 'object' ? STATS.prof : (STATS.prof = Object.assign({}, P0)));
   const lv = () => levelFromXp(STATS.xp || 0).lv;
-  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && lv() >= a.lv; };
-  const frOk = (id) => { const f = FR.find((x) => x.id === id); if (!f) return false; if (f.kind === 'base') return true; if (f.kind === 'tier') return placedOk() && peakT() >= f.t; const t = tiOf(f.title); return !!t && t.ok(); };
+  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (a.beta ? Eco.isBeta() : lv() >= a.lv); };
+  const frOk = (id) => { const f = FR.find((x) => x.id === id); if (!f) return false; if (f.kind === 'base') return true; if (f.kind === 'tier') return placedOk() && peakT() >= f.t; if (f.kind === 'hc') return hcPeakT() >= f.t; const t = tiOf(f.title); return !!t && t.ok(); };
   const tiOk = (id) => { const t = tiOf(id); return !!t && t.ok(); };
   // 지금 보여 줄 값 (조건이 사라진 것은 기본으로)
   function my() { const s = st(); return { av: avOk(s.av) ? s.av : 'helmet', fr: frOk(s.fr) ? s.fr : 'none', ti: s.ti && tiOk(s.ti) ? s.ti : null }; }
@@ -96,6 +111,8 @@ const Prof = (() => {
     $('acctPf').innerHTML = frameHTML(u ? m.fr : 'none', u ? m.av : 'helmet', 40);
     $('acctName').textContent = name;
     const tt = $('acctTitle'); tt.innerHTML = u && m.ti ? titleHTML(m.ti, 'sm') : u ? `<span class="ac-sub">Lv ${lv()}</span>` : '<span class="ac-sub">기록 저장</span>';
+    // 베타 테스터를 새로 받았으면 한 번 알림 (부여 시각 t 기준)
+    if (u && Eco.isBeta() && STATS.betaSeen !== STATS.beta.t) { STATS.betaSeen = STATS.beta.t; saveStats(); setTimeout(() => { if (typeof HUD !== 'undefined' && HUD.lobbyNote) HUD.lobbyNote('베타 테스터 칭호를 받았습니다 — 사진·테두리·칭호와 테스터 등급 총 스킨 「프로토타입 β」(M416·AKM·Kar98k)가 해금되었습니다'); }, 500); }
   }
 
   // ---------- 계정 정보 창 ----------
@@ -117,7 +134,7 @@ const Prof = (() => {
     if (tab === 'stats') {
       const S = STATS, D = S.dm || DM_STATS0, wr = S.matches ? (S.wins / S.matches * 100).toFixed(1) + '%' : '-';
       const g = document.createElement('div'); g.className = 'stat-grid prof-stats';
-      for (const [k, v] of [['경기', S.matches], ['우승', S.wins], ['처치', S.kills], ['최고 순위', S.matches ? '#' + S.best : '-'], ['우승률', wr], ['경기당 처치', S.matches ? (S.kills / S.matches).toFixed(1) : '-'], ['랭크', rs.label], ['데스매치 승 / 판', D.matches ? `${D.wins} / ${D.matches}` : '-'], ['레벨', lv()], ['울트라레어 스킨', ultraOwned() + '종']]) {
+      for (const [k, v] of [['경기', S.matches], ['우승', S.wins], ['처치', S.kills], ['최고 순위', S.matches ? '#' + S.best : '-'], ['우승률', wr], ['경기당 처치', S.matches ? (S.kills / S.matches).toFixed(1) : '-'], ['랭크', rs.label], ['하드코어', Rank.hcOk() ? Rank.hcStatus().label : '잠김'], ['데스매치 승 / 판', D.matches ? `${D.wins} / ${D.matches}` : '-'], ['레벨', lv()], ['울트라레어 스킨', ultraOwned() + '종']]) {
         const d = document.createElement('div'); d.innerHTML = `<span>${k}</span><b>${v}</b>`; g.appendChild(d);
       }
       B.appendChild(g);
@@ -125,9 +142,9 @@ const Prof = (() => {
     } else if (tab === 'av') {
       const g = document.createElement('div'); g.className = 'prof-grid';
       for (const a of AV) {
-        const ok = lv() >= a.lv, b = document.createElement('button'); b.type = 'button'; b.className = 'prof-it' + (m.av === a.id ? ' on' : '') + (ok ? '' : ' lock');
-        b.innerHTML = frameHTML('none', a.id, 58) + `<b>${a.name}</b><small>${ok ? (m.av === a.id ? '사용 중' : '선택') : `Lv ${a.lv} 해금`}</small>`;
-        b.onclick = () => { if (!ok) { msg(`레벨 ${a.lv}에 해금됩니다 (지금 Lv ${lv()})`); return; } set('av', a.id); Audio.ui(); };
+        const ok = avOk(a.id), b = document.createElement('button'); b.type = 'button'; b.className = 'prof-it' + (m.av === a.id ? ' on' : '') + (ok ? '' : ' lock') + (a.beta ? ' beta' : '');
+        b.innerHTML = frameHTML('none', a.id, 58) + `<b>${a.name}</b><small>${ok ? (m.av === a.id ? '사용 중' : '선택') : a.beta ? '베타 테스터 전용' : `Lv ${a.lv} 해금`}</small>`;
+        b.onclick = () => { if (!ok) { msg(a.beta ? '베타 테스터 칭호를 받은 계정만 쓸 수 있습니다' : `레벨 ${a.lv}에 해금됩니다 (지금 Lv ${lv()})`); return; } set('av', a.id); Audio.ui(); };
         g.appendChild(b);
       }
       B.appendChild(g);
@@ -140,7 +157,7 @@ const Prof = (() => {
         g.appendChild(b);
       }
       B.appendChild(g);
-      B.appendChild(el('p', 'micro', '랭크 테두리는 최고로 도달한 티어까지 쓸 수 있습니다. 티어가 높을수록 장식이 늘고 움직입니다.'));
+      B.appendChild(el('p', 'micro', '랭크 테두리는 최고로 도달한 티어까지 쓸 수 있습니다. 티어가 높을수록 장식이 늘고 움직입니다. 하드코어 슬레이어·리퍼·오버로드 테두리는 하드코어 랭크 최고 기록으로 해금됩니다.'));
     } else if (tab === 'ti') {
       const L = document.createElement('div'); L.className = 'prof-ti';
       const none = document.createElement('button'); none.type = 'button'; none.className = 'ti-row' + (!m.ti ? ' on' : ''); none.innerHTML = '<span class="ti-none">칭호 달지 않기</span>'; none.onclick = () => { set('ti', null); Audio.ui(); }; L.appendChild(none);
@@ -183,9 +200,9 @@ const Prof = (() => {
     if (show) {
       const m = Cloud.user ? my() : null;
       if (m && m.ti) items.push({ obj: L.rig.root, html: titleHTML(m.ti) });
-      (L.mates || []).forEach((r, i) => { const inf = (L.mateInfo || [])[i]; if (!inf || !r.root.visible) return; const pf = inf.pf || {}; items.push({ obj: r.root, html: `<span class="lt-name">${esc(inf.name || '')}</span>${pf.ti ? titleHTML(pf.ti) : ''}` }); });
+      (L.mates || []).forEach((r, i) => { const inf = (L.mateInfo || [])[i]; if (!inf || !r.root.visible) return; const pf = inf.pf || {}; items.push({ obj: r.root, html: `<span class="lbtag-name">${esc(inf.name || '')}</span>${pf.ti ? titleHTML(pf.ti) : ''}` }); });
     }
-    while (tagEls.length < items.length) { const d = document.createElement('div'); d.className = 'lt'; box.appendChild(d); tagEls.push(d); }
+    while (tagEls.length < items.length) { const d = document.createElement('div'); d.className = 'lbtag'; box.appendChild(d); tagEls.push(d); }
     const W = window.innerWidth, H = window.innerHeight, placed = [];
     tagEls.forEach((d, i) => {
       const it = items[i]; if (!it) { d.hidden = true; return; }

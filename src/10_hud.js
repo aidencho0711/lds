@@ -875,11 +875,11 @@ const HUD = (() => {
     let n = 0;
     if (whCat === 'gun') {
       // 총기: 스킨을 가진 총마다 '기본' + 가진 스킨. 장착하면 경기에서 그 총을 들 때 내 스킨, 로비 캐릭터도 그 총을 든다
-      const gl = Eco.glook(), owned = (STATS.gskins || []).filter((id) => GSKINS[id]), order = Object.keys(ITEMS);
+      const gl = Eco.glook(), owned = Eco.gskinsOwned(), order = Object.keys(ITEMS);   // 테스터 스킨은 베타 테스터인 동안만
       const guns = [...new Set(owned.map((id) => GSKINS[id].gun))].sort((a, b) => order.indexOf(a) - order.indexOf(b));
       const gcard = (gun, id) => {
         const S = id ? GSKINS[id] : null, on = (gl[gun] || null) === (id || null), R = S ? rarOf(S.rar) : null;
-        const b = h('button', 'wh-item gun' + (on ? ' on' : '') + (S ? ' rar' : '') + (whGun === gun && on ? ' sel' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
+        const b = h('button', 'wh-item gun' + (on ? ' on' : '') + (S ? ' rar' : '') + (S && S.rar >= 6 ? ' tester' : '') + (whGun === gun && on ? ' sel' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
         const ico = h('i', 'wh-ico'); ico.appendChild(Shop.gunImgEl(gun, id));
         b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : '기본')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + (S && S.fx ? '효과 · ' : '') + (on ? '장착 중' : '장착하기')));
         b.title = S ? GunSkin.name(id) + (S.desc ? ' — ' + S.desc : '') : GunSkin.short(gun) + ' 기본';
@@ -916,7 +916,7 @@ const HUD = (() => {
       for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
       if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자에서 얻을 수 있습니다.`));
     }
-    $('whCount').textContent = `옷 ${own.size}벌 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${(STATS.gskins || []).length}종`;
+    $('whCount').textContent = `옷 ${own.size}벌 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${Eco.gskinsOwned().length}종`;
   }
   // 창고 3D: 차량 분류면 장착한(없으면 기본) 차량을, 아니면 캐릭터
   function showcase() {
@@ -933,7 +933,7 @@ const HUD = (() => {
     document.querySelectorAll('#lbTabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
     document.querySelectorAll('#lobby .pane').forEach((p) => { p.hidden = p.dataset.pane !== t; });
     $('segQueue').style.visibility = t === 'play' ? '' : 'hidden';
-    const L = document.querySelector('.lb-left'); L.className = 'lb-left tab-' + t + (SETTINGS.queue === 'ranked' && Rank.unlocked() ? ' ranked' : '');
+    const L = document.querySelector('.lb-left'); L.className = 'lb-left tab-' + t + ((SETTINGS.queue === 'ranked' || SETTINGS.queue === 'hardcore') && Rank.unlocked() ? ' ranked' : '');
     document.body.classList.toggle('lobby-wide', t === 'shop' || t === 'mission');
     if (prev !== t || t === 'shop' || t === 'mission') Shop.onTab(t);
     if (t === 'custom') { if (prev !== t) renderWarehouse(); showcase(); }   // 뽑기로 얻은 옷이 바로 보이게
@@ -962,7 +962,7 @@ const HUD = (() => {
         li.append(`${GAME_TYPES[r.dm] ? GAME_TYPES[r.dm].name : '데스매치'}${r.party ? ' · 파티' : ''} · ${r.kills}킬 ${r.deaths}데스 · ${fmtTime(r.time)}`); rc.appendChild(li); continue;
       }
       const li = h('li', r.rank === 1 ? 'win' : ''); li.appendChild(h('b', '', `#${r.rank}/${r.total}`));
-      li.append(`${r.sq > 1 ? ({ 2: '듀오', 3: '트리오', 4: '스쿼드' }[r.sq] || '팀') + ' · ' : ''}${r.party ? '파티 · ' : ''}${r.kills}킬 · ${fmtTime(r.time)} · ${MAPS[r.map] ? MAPS[r.map].name : ''}${r.ranked ? ' · 랭크' + (r.delta !== undefined ? ` ${r.delta >= 0 ? '+' : ''}${r.delta}RP` : ' 배치') : ''}`); rc.appendChild(li);
+      li.append(`${r.sq > 1 ? ({ 2: '듀오', 3: '트리오', 4: '스쿼드' }[r.sq] || '팀') + ' · ' : ''}${r.party ? '파티 · ' : ''}${r.kills}킬 · ${fmtTime(r.time)} · ${MAPS[r.map] ? MAPS[r.map].name : ''}${r.ranked ? (r.hc ? ' · 하드코어' : ' · 랭크') + (r.delta !== undefined ? ` ${r.delta >= 0 ? '+' : ''}${r.delta}RP` : ' 배치') : ''}`); rc.appendChild(li);
     }
     const D = STATS.dm || DM_STATS0;
     $('rcDm').textContent = D.matches ? `${D.wins} / ${D.matches}` : '-'; $('rcDmKd').textContent = D.matches ? (D.kills / Math.max(1, D.deaths)).toFixed(2) : '-';
@@ -979,16 +979,21 @@ const HUD = (() => {
     // 대기열(하위 탭): 일반 / 랭크 (레벨 3 미만 잠김, 배틀로얄만). 파티면 파티원 모두 레벨 3 이상이어야 한다
     const dm = isDmGame(SETTINGS.game), GT = GAME_TYPES[SETTINGS.game] || GAME_TYPES.br;
     const lock = typeof Party !== 'undefined' ? Party.lockInfo() : null;   // 파티: 방장이 아니면 설정 잠김, 랭크 가능 여부
-    const unlocked = Rank.unlocked() && (!lock || lock.rankOk), ranked = SETTINGS.queue === 'ranked' && unlocked && !dm;
+    const unlocked = Rank.unlocked() && (!lock || lock.rankOk), hcUn = unlocked && Rank.hcOk() && (!lock || lock.hcOk);
+    const hc = SETTINGS.queue === 'hardcore' && hcUn && !dm, ranked = (SETTINGS.queue === 'ranked' && unlocked || hc) && !dm;
     const q = $('segQueue'); q.innerHTML = '';
-    for (const [v, l] of [['normal', '일반'], ['ranked', unlocked ? '랭크' : '랭크 🔒']]) {
-      const b = h('button', (v === 'ranked' ? 'ranked' : '') + ((v === 'ranked') === ranked ? ' on' : '') + (v === 'ranked' && !unlocked ? ' lock' : ''), l); b.type = 'button';
+    // 대기열: 일반 / 랭크 / 하드코어 (일반 랭크 최고 다이아 4 이상만 — 파티면 파티원 모두)
+    for (const [v, l] of [['normal', '일반'], ['ranked', unlocked ? '랭크' : '랭크 🔒'], ['hardcore', hcUn ? '하드코어' : '하드코어 🔒']]) {
+      const on = v === 'hardcore' ? hc : v === 'ranked' ? ranked && !hc : !ranked, ok = v === 'hardcore' ? hcUn : v === 'ranked' ? unlocked : true;
+      const b = h('button', (v !== 'normal' ? v : '') + (on ? ' on' : '') + (!ok ? ' lock' : ''), l); b.type = 'button';
       b.addEventListener('click', (e) => {
         e.preventDefault(); Audio.init(); Audio.ui();
         if (lock && !lock.leader) { showLobbyNote('파티 설정은 방장만 바꿀 수 있습니다'); return; }
-        if (v === 'ranked' && !Rank.unlocked()) { showLobbyNote(`랭크전은 레벨 3부터 할 수 있습니다 (현재 레벨 ${levelFromXp(STATS.xp).lv})`); return; }
-        if (v === 'ranked' && lock && !lock.rankOk) { showLobbyNote(`파티원 중 레벨 3 미만이 있어 랭크전을 할 수 없습니다 (${lock.lowNames.join(', ')})`); return; }
-        if (v === 'ranked' && dm) { SETTINGS.game = 'br'; showLobbyNote('랭크전은 배틀로얄만 있습니다 — 배틀로얄로 바꿨습니다'); }
+        if (v !== 'normal' && !Rank.unlocked()) { showLobbyNote(`랭크전은 레벨 3부터 할 수 있습니다 (현재 레벨 ${levelFromXp(STATS.xp).lv})`); return; }
+        if (v !== 'normal' && lock && !lock.rankOk) { showLobbyNote(`파티원 중 레벨 3 미만이 있어 랭크전을 할 수 없습니다 (${lock.lowNames.join(', ')})`); return; }
+        if (v === 'hardcore' && !Rank.hcOk()) { showLobbyNote(`하드코어 랭크전은 일반 랭크 최고 기록이 다이아 4 이상이어야 합니다 (내 최고 ${Rank.placed() ? Rank.tierOf(Rank.state.peak || 0).label : '배치고사 전'})`); return; }
+        if (v === 'hardcore' && lock && !lock.hcOk) { showLobbyNote(`파티원 중 다이아 4를 찍어 보지 못한 사람이 있어 하드코어를 할 수 없습니다 (${lock.hcLow.join(', ')})`); return; }
+        if (v !== 'normal' && dm) { SETTINGS.game = 'br'; showLobbyNote('랭크전은 배틀로얄만 있습니다 — 배틀로얄로 바꿨습니다'); }
         SETTINGS.queue = v; saveSettings(); renderLobby(); if (lock) Party.settingsChanged();
       });
       q.appendChild(b);
@@ -1008,13 +1013,14 @@ const HUD = (() => {
       $('cfgNote').textContent = `${GT.name}: ${pm ? `블루 [${fill(0)}] vs 레드 [${fill(1)}]` : `나${DTS > 1 ? ' · 봇' : ''} vs 봇 ${DTS}명 (친구를 파티에 초대하면 상대 팀으로)`} · 먼저 ${DUEL_RULES.win}라운드 · 라운드 ${DUEL_RULES.round}초 · 라운드마다 모두 같은 무작위 총` +
         (pm && pm.length > DTS * 2 ? ` · ⚠ ${DTS * 2}명까지 가능 (지금 ${pm.length}명)` : '');
     } else if (dm) $('cfgNote').textContent = `${GT.name}: 4 대 4 고정(빈자리는 봇) · 먼저 ${DM_RULES.killTarget}킬 · 최대 ${DM_RULES.timeLimit / 60}분 · 봇 난이도·시간대·시점만 적용`;
+    else if (hc) $('cfgNote').textContent = `하드코어 랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 전원 익스트림 · 스토커 4부터 시작 · 일반 랭크보다 RP가 크게 깎입니다`;
     else if (ranked) $('cfgNote').textContent = `랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 고정 · 봇 난이도는 ${Rank.placed() ? '현재 티어' : '배치고사 기준(혼합)'}에 맞춰 자동 설정`;
-    // 랭크 카드 (랭크 대기열에서만)
-    const rs = Rank.status(), rc0 = $('rankCard');
+    // 랭크 카드 (랭크·하드코어 대기열에서만)
+    const rs = hc ? Rank.hcStatus() : Rank.status(), rc0 = $('rankCard');
     rc0.hidden = !ranked;
     $('rankEmb').src = rs.emb; $('rankLabel').textContent = rs.label; $('rankSub').textContent = rs.sub;
     $('rankBar').style.width = rs.kind === 'ranked' ? (rs.tier.top ? 100 : rs.tier.into) + '%' : rs.kind === 'placement' ? (Rank.state.placed / 3 * 100) + '%' : (levelFromXp(STATS.xp).lv >= 2 ? 50 : 0) + '%';
-    rc0.className = 'rank-card' + (rs.kind === 'locked' ? ' locked' : '') + (rs.kind === 'ranked' && rs.tier.t >= 8 ? ' glow' : '') + (rs.kind === 'ranked' && rs.tier.t === 9 ? ' tier-top' : '');
+    rc0.className = 'rank-card' + (hc ? ' hc' : '') + (rs.kind === 'locked' ? ' locked' : '') + (rs.kind === 'ranked' && rs.tier.t >= (hc ? 3 : 8) ? ' glow' : '') + (rs.kind === 'ranked' && !hc && rs.tier.t === 9 ? ' tier-top' : '');
     // 맵 카드 (왼쪽 아래)
     const nb = ranked ? Rank.botCount(SETTINGS.map) : SETTINGS.bots, total = nb + 1, mins = Math.round(matchMinutes()), nTeams = Math.ceil(total / TS);
     const viewKo = SETTINGS.view === 'fpp' ? '1인칭' : '3인칭';
@@ -1036,7 +1042,7 @@ const HUD = (() => {
       b.addEventListener('click', () => {
         Audio.init(); Audio.ui();
         if (lock && !lock.leader) { showLobbyNote('모드와 맵은 방장만 바꿀 수 있습니다'); return; }
-        SETTINGS.game = k; if (T.dm && SETTINGS.queue === 'ranked') SETTINGS.queue = 'normal';
+        SETTINGS.game = k; if (T.dm && SETTINGS.queue !== 'normal') SETTINGS.queue = 'normal';
         saveSettings(); renderLobby(); if (lock) Party.settingsChanged();
       });
       gg.appendChild(b);
@@ -1062,8 +1068,8 @@ const HUD = (() => {
     // 출격 버튼 · 요약
     const humans = Math.min(partyN, TS), mateBots = Math.max(0, Math.min(TS, total) - humans);
     if (dm) { const dts = dmTeamSize(SETTINGS.game), dg = isDuel(SETTINGS.game); $('matchBrief').textContent = `${GT.name} · ${MAPS.arena.name} · ${TIMES_KO[SETTINGS.time] || ''} · ${dts} 대 ${dts} (${partyN > 1 ? `파티 ${partyN}명 + ` : ''}봇 ${Math.max(0, dts * 2 - partyN)}명, ${DIFFICULTY_NAMES[SETTINGS.difficulty]}) · 목표: ${dg ? `먼저 ${DUEL_RULES.win}라운드 (라운드 ${DUEL_RULES.round}초)` : `먼저 ${DM_RULES.killTarget}킬 (최대 ${DM_RULES.timeLimit / 60}분)`}`; }
-    else $('matchBrief').textContent = `${ranked ? '랭크전 · ' : ''}${MAPS[SETTINGS.map].name} · ${MODES[SETTINGS.mode].name} · ${TIMES_KO[SETTINGS.time] || ''} · 봇 ${nb}명(${ranked ? '자동' : DIFFICULTY_NAMES[SETTINGS.difficulty]}) · ${TS > 1 ? `${sqName}(${TS}인 팀 · ${partyN > 1 ? `파티 ${humans}명` : '나'}${mateBots ? ` + 봇 ${mateBots}명` : ''}) · 목표: ${nTeams}팀 중 최후의 팀` : `목표: ${total}명 중 최후의 1인`}`;
-    $('playBtn').classList.toggle('ranked', ranked); $('playBtn').querySelector('span').textContent = ranked ? '랭크 출격' : '출격';
+    else $('matchBrief').textContent = `${hc ? '하드코어 랭크전 · ' : ranked ? '랭크전 · ' : ''}${MAPS[SETTINGS.map].name} · ${MODES[SETTINGS.mode].name} · ${TIMES_KO[SETTINGS.time] || ''} · 봇 ${nb}명(${ranked ? '자동' : DIFFICULTY_NAMES[SETTINGS.difficulty]}) · ${TS > 1 ? `${sqName}(${TS}인 팀 · ${partyN > 1 ? `파티 ${humans}명` : '나'}${mateBots ? ` + 봇 ${mateBots}명` : ''}) · 목표: ${nTeams}팀 중 최후의 팀` : `목표: ${total}명 중 최후의 1인`}`;
+    $('playBtn').classList.toggle('ranked', ranked); $('playBtn').classList.toggle('hc', hc); $('playBtn').querySelector('span').textContent = hc ? '하드코어 출격' : ranked ? '랭크 출격' : '출격';
     $('playSub').textContent = dm ? `${GT.name} · ${MAPS.arena.name}` : ranked ? `${MAPS[SETTINGS.map].name} · ${rs.label}` : `${sqName} · ${MAPS[SETTINGS.map].name} · ${DIFFICULTY_NAMES[SETTINGS.difficulty]}`;
     if (lock) Party.decoratePlay();
     setTab(lobbyTab);
@@ -1132,6 +1138,20 @@ const HUD = (() => {
       `RP는 순위(상위일수록 크게), 우승, 처치, 가한 피해로 오르고, 하위권이면 내려갑니다. 높은 티어일수록 오르기 어렵습니다.`,
       `봇 수는 고정(기본 맵·키나루 74명, 노르덴 99명)이고 봇 난이도는 티어가 높을수록 어려워집니다. 골드부터 익스트림 봇(어려움보다 조준·반응·무빙·판단이 한 단계 위)이 섞이고, 이터널은 절반이 익스트림입니다. 경기 도중 나가면 패배 처리와 추가 감점이 있습니다.`,
       Rank.placed() ? `현재 ${Rank.tierOf(st.rp).label} · ${st.rp} RP · 최고 ${Rank.tierOf(st.peak).label} · 랭크 ${st.games}판 ${st.wins}승` : `배치고사 ${st.placed} / 3 진행`].forEach((t) => ul.appendChild(h('li', '', t)));
+    // 하드코어 티어표
+    const hg = $('hcGrid'); if (!hg) return; hg.innerHTML = '';
+    const ok = Rank.hcOk(), H = Rank.hc, hcur = ok ? Rank.hcTierOf(H.rp) : null, PERK = ['', '', '칭호·테두리', '칭호·테두리', '칭호·테두리'];
+    HC_TIERS.forEach((T, t) => {
+      const d = h('div', 'tier' + (hcur && hcur.t === t ? ' me' : '')), im = h('img'); im.src = Rank.hcEmblem(t, hcur && hcur.t === t ? hcur.div : 1, 160); im.alt = '';
+      d.appendChild(im); d.appendChild(h('b', '', T.name)); d.appendChild(h('span', '', t === 4 ? '1600 RP 이상' : `${t * 400}–${t * 400 + 399} RP`));
+      if (PERK[t]) d.appendChild(h('span', 'tier-perk', PERK[t]));
+      hg.appendChild(d);
+    });
+    const hl = $('hcRules'); hl.innerHTML = '';
+    [`일반 랭크에서 최고 다이아 4 이상을 찍어 본 사람만 참여할 수 있습니다 (파티면 파티원 모두). 배치고사 없이 스토커 4부터 시작합니다.`,
+      `티어는 스토커 · 헌터 · 슬레이어 · 리퍼 · 오버로드 5종, 각 4 → 3 → 2 → 1 단계(한 단계 100 RP). 오버로드 1부터는 RP만 쌓입니다.`,
+      `봇은 전원 익스트림. 일반 랭크보다 티어 세금과 하위권·탈주 감점이 큽니다. 슬레이어 · 리퍼 · 오버로드에 오르면 그 티어의 칭호와 테두리를 얻습니다(최고 기록 기준, 계정 정보에서 장착).`,
+      ok ? `현재 ${hcur.label} · ${H.rp} RP · 최고 ${Rank.hcTierOf(H.peak || 0).label} · 하드코어 ${H.games || 0}판 ${H.wins || 0}승` : `잠김 — 일반 랭크 최고 ${Rank.placed() ? Rank.tierOf(st.peak || 0).label : '배치고사 전'}`].forEach((t) => hl.appendChild(h('li', '', t)));
   }
   function showResult(win, p, total) {
     $('resultPanel').hidden = false; releaseLock();
@@ -1155,8 +1175,8 @@ const HUD = (() => {
         if (R.revealed) { const a = R.after; $('resEmb').src = Rank.emblem(a.t, a.div, 160); $('resRkKicker').textContent = '배치고사 완료'; $('resRkLabel').textContent = a.label; $('resRkSub').textContent = `시작 티어가 정해졌습니다 · ${a.rp} RP`; $('resRkBar').style.width = (a.top ? 100 : a.into) + '%'; dEl.textContent = ''; void box.offsetWidth; box.classList.add('promo'); }
         else { $('resEmb').src = Rank.emblem(-1, 0, 160); $('resRkKicker').textContent = '배치고사'; $('resRkLabel').textContent = `${R.step} / 3 완료`; $('resRkSub').textContent = `이번 판 점수 ${R.score} · ${3 - R.step}판 남음`; $('resRkBar').style.width = (R.step / 3 * 100) + '%'; dEl.textContent = ''; }
       } else {
-        const a = R.after; $('resEmb').src = Rank.emblem(a.t, a.div, 160);
-        $('resRkKicker').textContent = R.tierUp ? '티어 승급!' : R.promoted ? '승급' : R.demoted ? '강등' : '랭크';
+        const a = R.after; $('resEmb').src = Rank.embOf(a, 160);
+        $('resRkKicker').textContent = (R.hc ? '하드코어 · ' : '') + (R.tierUp ? '티어 승급!' : R.promoted ? '승급' : R.demoted ? '강등' : '랭크');
         $('resRkLabel').textContent = a.label; $('resRkSub').textContent = a.top ? `${a.rp} RP` : `${a.into} / 100 RP · 총 ${a.rp} RP`;
         dEl.textContent = (R.delta >= 0 ? '+' : '') + R.delta; dEl.classList.add(R.delta >= 0 ? 'up' : 'down');
         // 막대: 이전 값에서 새 값으로

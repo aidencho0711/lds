@@ -290,9 +290,10 @@ function updateViewModel(dt, p, adsE) {
   VM.roundR.visible = A.shellR; if (A.shellR) { VM.roundR.position.copy(A.right).add(_hw.set(0.01, 0.025, 0.03)); }
   // 손: 총의 anchor(손바닥 가운데)로 팔 IK
   VM.root.updateMatrixWorld(true);
-  const R = vmArms(); R.root.visible = true; vmResetArms(R); vmHeld(R.L, null); vmHeld(R.R, null);
+  const R = vmArms(), gsI = VM.gun.userData.skin, spinHide = !!(gsI && gsI.spinHide);   // 테스터 스킨 꺼내기: 총이 공중에서 도는 동안 손은 숨김
+  R.root.visible = !spinHide; vmResetArms(R); vmHeld(R.L, null); vmHeld(R.R, null);
   VM.tilt.matrixWorld.decompose(_vs, _vq, _vt);
-  for (const [Ar, anc, info] of [[R.R, A.right, A.ri], [R.L, A.left, A.li]]) {
+  if (!spinHide) for (const [Ar, anc, info] of [[R.R, A.right, A.ri], [R.L, A.left, A.li]]) {
     gripQuat(_vh, info, Ar.side, _vq);
     anchorAdj(info, _hw.copy(anc)).applyMatrix4(VM.tilt.matrixWorld);
     const sl = Ar.side > 0 && info.a === 'fore' && info.b === 'fore' ? _cf.set(0, 0, -1).applyQuaternion(_vq) : null;

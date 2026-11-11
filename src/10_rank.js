@@ -16,6 +16,16 @@ const RANK_TIERS = [
   { id: 'eternal', name: '이터널', c: ['#ffffff', '#c58cff', '#2b1060'], glow: 'rgba(200,160,255,0.8)' },
 ];
 const ROMAN = ['', 'I', 'II', 'III', 'IV'];
+// 하드코어 랭크전 티어 (다이아 4 이상을 찍어 본 사람만): 방패·날개 대신 각진 흑철 휘장 · 갈라진 틈에서 빛이 샌다
+//  스토커 → 헌터 → 슬레이어 → 리퍼 → 오버로드. 단계는 4→1 동일, 오버로드 1부터 상한 없이 RP
+const HC_TIERS = [
+  { id: 'stalker', name: '스토커', c: ['#d6d0cb', '#6d6560', '#221d1b'], glow: null, ln: '#b8433a' },
+  { id: 'hunter', name: '헌터', c: ['#ffd9c2', '#b8673c', '#3e1608'], glow: 'rgba(230,120,60,0.3)', ln: '#ff8a3c' },
+  { id: 'slayer', name: '슬레이어', c: ['#ffd6d6', '#c4203a', '#3c0410'], glow: 'rgba(255,40,70,0.45)', ln: '#ff3352' },
+  { id: 'reaper', name: '리퍼', c: ['#e6fff1', '#2fd486', '#05281a'], glow: 'rgba(50,255,150,0.5)', ln: '#4dffa6' },
+  { id: 'overlord', name: '오버로드', c: ['#fff1c8', '#ff7a18', '#2a0800'], glow: 'rgba(255,110,20,0.7)', ln: '#ffb02e' },
+];
+const HC_MIN_PEAK = 2000;   // 다이아 4 = 2000 RP
 
 const Rank = (() => {
   let S = Object.assign({ rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }, store.get('rank', {}));
@@ -239,6 +249,137 @@ const Rank = (() => {
     if (!cache[key]) { try { cache[key] = draw(t, div, size).toDataURL('image/png'); } catch (e) { cache[key] = ''; } }
     return cache[key];
   }
+  // ---------- 하드코어 랭크전 ----------
+  //  참가: 일반 랭크 최고 기록이 다이아 4(2000 RP) 이상. 배치고사 없이 스토커 4(0 RP)부터
+  //  봇은 전원 익스트림, 티어 세금·감점이 일반 랭크보다 크다. 기록은 S.hc (랭크 기록과 같이 서버에 저장)
+  const HC0 = () => ({ rp: 0, games: 0, wins: 0, peak: 0, history: [] });
+  const hcS = () => (S.hc && typeof S.hc === 'object' ? S.hc : (S.hc = HC0()));
+  const hcOk = () => unlocked() && (S.peak || 0) >= HC_MIN_PEAK;
+  function hcTierOf(rp) {
+    rp = Math.max(0, Math.floor(rp || 0));
+    const t = Math.min(4, Math.floor(rp / 400)), inT = rp - t * 400;
+    const div = t === 4 ? Math.max(1, 4 - Math.floor(inT / 100)) : 4 - Math.floor(inT / 100);
+    const top = t === 4 && div === 1, base = t * 400 + (4 - div) * 100;
+    return { hc: true, t, div, rp, name: HC_TIERS[t].name, label: `${HC_TIERS[t].name} ${div}`, into: rp - base, need: top ? null : 100, top };
+  }
+  function rpDeltaHc(r, t) {
+    const p = (r.place - 1) / Math.max(1, r.total - 1);
+    let d = 52 * (1 - p) ** 2 - 24 + (r.win ? 26 : 0) + Math.min(r.kills, 12) * 6 + Math.min(r.dmg, 2000) / 100 - t * 4;
+    if (r.quit) d = Math.min(d, -35) - 15;
+    return Math.round(clamp(d, -60, 150));
+  }
+  function applyHc(r) {
+    const H = hcS(); H.games++; if (r.win) H.wins++;
+    const before = hcTierOf(H.rp), delta = rpDeltaHc(r, before.t);
+    H.rp = Math.max(0, H.rp + delta); H.peak = Math.max(H.peak || 0, H.rp);
+    const after = hcTierOf(H.rp), rank = (x) => x.t * 4 + (4 - x.div);
+    H.history = [{ place: r.place, total: r.total, kills: r.kills, delta, rp: H.rp }].concat(H.history || []).slice(0, 10); save();
+    return { hc: true, placement: false, delta, before, after, promoted: rank(after) > rank(before), demoted: rank(after) < rank(before), tierUp: after.t > before.t };
+  }
+  // 하드코어 휘장: 위아래가 뾰족한 각진 판(흑철) + 티어별 장식. 단계는 각진 명판에 로마 숫자
+  function blade(g, cx, cy, w, h) {
+    poly(g, [[cx, cy - h / 2], [cx + w * 0.22, cy - h * 0.36], [cx + w / 2, cy - h * 0.3], [cx + w * 0.44, cy + h * 0.08], [cx + w * 0.2, cy + h * 0.3], [cx, cy + h / 2],
+      [cx - w * 0.2, cy + h * 0.3], [cx - w * 0.44, cy + h * 0.08], [cx - w / 2, cy - h * 0.3], [cx - w * 0.22, cy - h * 0.36]]);
+  }
+  // 갈라진 틈: 시드 고정 지그재그 선을 빛 색으로 (겹쳐 그려 번지게)
+  function cracks(g, cx, cy, r, col, n, seed) {
+    const R = mulberry32(seed); g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+    for (let i = 0; i < n; i++) {
+      const a = R() * TAU; let x = cx + Math.cos(a) * r * 0.2, y = cy + Math.sin(a) * r * 0.2; const pts = [[x, y]];
+      for (let k = 0; k < 4; k++) { const aa = a + (R() - 0.5) * 1.1, L = r * (0.12 + R() * 0.14); x += Math.cos(aa) * L; y += Math.sin(aa) * L; pts.push([x, y]); }
+      for (const [lw, al] of [[5, 0.25], [2.2, 0.9]]) { g.beginPath(); pts.forEach(([px, py], j) => j ? g.lineTo(px, py) : g.moveTo(px, py)); g.strokeStyle = col; g.globalAlpha = al; g.lineWidth = lw; g.stroke(); }
+    }
+    g.restore();
+  }
+  function spike(g, x, y, a, L, w, cols) {
+    g.save(); g.translate(x, y); g.rotate(a);
+    g.beginPath(); g.moveTo(0, -w / 2); g.quadraticCurveTo(L * 0.6, -w * 0.25, L, 0); g.quadraticCurveTo(L * 0.6, w * 0.25, 0, w / 2); g.closePath();
+    g.fillStyle = lin(g, 0, 0, L, 0, [[0, cols[2]], [0.6, cols[1]], [1, cols[0]]]); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 1.2; g.stroke(); g.restore();
+  }
+  function hcBlade(g, cx, cy, side) {   // 뒤에 엇갈린 칼날 (슬레이어~)
+    g.save(); g.translate(cx, cy); g.rotate(side * 0.72);
+    poly(g, [[-7, 92], [7, 92], [9, -70], [0, -102], [-9, -70]]); g.fillStyle = lin(g, -9, 0, 9, 0, [[0, '#5d6266'], [0.5, '#f2f5f7'], [1, '#4a4e52']]); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 1.5; g.stroke();
+    g.fillStyle = '#2b2321'; g.fillRect(-20, 66, 40, 8); g.fillStyle = '#5a3b22'; g.fillRect(-5, 74, 10, 26);
+    g.restore();
+  }
+  function scythe(g, cx, cy) {   // 리퍼: 등 뒤 큰 낫
+    g.save(); g.translate(cx, cy + 12); g.scale(0.84, 0.84); g.rotate(-0.5);
+    g.fillStyle = '#2a2a2e'; g.fillRect(-4, -110, 8, 220);
+    g.beginPath(); g.moveTo(2, -108); g.quadraticCurveTo(96, -112, 120, -40); g.quadraticCurveTo(80, -86, 2, -84); g.closePath();
+    g.fillStyle = lin(g, 0, -110, 120, -40, [[0, '#c9fbe2'], [0.4, '#7c8a86'], [1, '#1d2422']]); g.fill(); g.strokeStyle = 'rgba(77,255,166,0.8)'; g.lineWidth = 2; g.stroke();
+    g.restore();
+  }
+  function hornCrown(g, cx, cy, cols) {   // 오버로드: 뿔 왕관
+    for (let i = -3; i <= 3; i++) { const a = -Math.PI / 2 + i * 0.3, L = 46 - Math.abs(i) * 6; spike(g, cx + i * 11, cy + Math.abs(i) * 4, a, L, 15 - Math.abs(i), cols); }
+  }
+  function drawHc(t, div, S = 256) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d');
+    g.scale(S / 256, S / 256);
+    const cx = 128, cy = 118, T = HC_TIERS[t], c = T.c, w = 118 + t * 6, hh = 150 + t * 4;
+    if (T.glow) { g.fillStyle = rad(g, cx, cy, 8, 126, [[0, T.glow], [1, 'rgba(0,0,0,0)']]); g.fillRect(0, 0, 256, 256); }
+    if (t === 4) { rays(g, cx, cy, 34, 128, 18, 'rgba(255,140,40,0.75)', 0.05); flames(g, cx, cy + 22, 104); }
+    if (t === 3) { g.save(); g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + (i - 3) * 0.42; g.fillStyle = rad(g, cx + Math.cos(a) * 70, cy + Math.sin(a) * 74, 2, 34, [[0, 'rgba(80,255,170,0.35)'], [1, 'rgba(0,0,0,0)']]); g.fillRect(0, 0, 256, 256); } g.restore(); scythe(g, cx, cy); }
+    if (t >= 2) { hcBlade(g, cx, cy + 4, -1); hcBlade(g, cx, cy + 4, 1); }
+    // 옆 가시 (헌터~)
+    if (t >= 1) for (const s of [-1, 1]) { spike(g, cx + s * w * 0.46, cy - hh * 0.22, s < 0 ? Math.PI + 0.25 : -0.25, 26 + t * 7, 16, c); if (t >= 3) spike(g, cx + s * w * 0.4, cy + hh * 0.12, s < 0 ? Math.PI - 0.45 : 0.45, 20 + t * 5, 12, c); }
+    if (t === 4) hornCrown(g, cx, cy - hh / 2 + 10, ['#ffe9b0', '#ff8a1e', '#3a0a00']);
+    // 판 본체: 흑철 + 테두리 색
+    blade(g, cx, cy, w, hh);
+    g.save(); g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 12; g.shadowOffsetY = 4;
+    g.fillStyle = lin(g, 0, cy - hh / 2, 0, cy + hh / 2, [[0, '#4a4644'], [0.45, '#1c1a19'], [1, '#0b0a0a']]); g.fill(); g.restore();
+    g.lineWidth = t >= 2 ? 7 : 5; g.strokeStyle = lin(g, 0, cy - hh / 2, 0, cy + hh / 2, metalStops(c)); g.stroke();
+    // 안쪽 판
+    g.save(); g.translate(cx, cy); g.scale(0.74, 0.74); g.translate(-cx, -cy); blade(g, cx, cy, w, hh);
+    g.fillStyle = rad(g, cx, cy - 6, 6, 90, [[0, t >= 3 ? c[2] : '#2a2624'], [1, '#0d0c0c']]); g.fill(); g.lineWidth = 2.5; g.strokeStyle = 'rgba(255,255,255,0.18)'; g.stroke(); g.restore();
+    // 틈에서 새는 빛
+    g.save(); blade(g, cx, cy, w, hh); g.clip(); cracks(g, cx, cy, 70, T.ln, 3 + t * 2, 101 + t * 37); g.restore();
+    // 위쪽 반사
+    g.save(); blade(g, cx, cy, w, hh); g.clip(); g.globalAlpha = 0.16; g.fillStyle = '#fff'; poly(g, [[cx - w / 2, cy - hh * 0.3], [cx, cy - hh / 2], [cx + w * 0.1, cy - hh * 0.34], [cx - w * 0.36, cy - hh * 0.06]]); g.fill(); g.restore();
+    // 중앙 문양
+    g.save(); g.shadowColor = T.ln; g.shadowBlur = 14;
+    if (t === 0) {   // 세 줄 발톱 자국
+      g.strokeStyle = T.ln; g.lineCap = 'round'; g.lineWidth = 7;
+      for (let i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(cx - 22 + i * 14, cy - 30); g.quadraticCurveTo(cx - 4 + i * 14, cy, cx + 14 + i * 14, cy + 30); g.stroke(); }
+    } else if (t === 1) {   // 조준선
+      g.strokeStyle = T.ln; g.lineWidth = 5; g.beginPath(); g.arc(cx, cy, 26, 0, TAU); g.stroke(); g.lineWidth = 4;
+      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { g.beginPath(); g.moveTo(cx + dx * 14, cy + dy * 14); g.lineTo(cx + dx * 38, cy + dy * 38); g.stroke(); }
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(cx, cy, 4, 0, TAU); g.fill();
+    } else if (t === 2) {   // 핏빛 눈
+      g.fillStyle = rad(g, cx, cy, 2, 34, [[0, '#ffffff'], [0.3, '#ff4060'], [1, '#4a0010']]); g.beginPath(); g.ellipse(cx, cy, 34, 18, 0, 0, TAU); g.fill();
+      g.fillStyle = '#120004'; g.beginPath(); g.ellipse(cx, cy, 5, 15, 0, 0, TAU); g.fill();
+    } else if (t === 3) {   // 두건 해골
+      g.fillStyle = '#e9f3ee'; g.beginPath(); g.arc(cx, cy - 6, 24, Math.PI, 0); g.lineTo(cx + 18, cy + 18); g.lineTo(cx - 18, cy + 18); g.closePath(); g.fill();
+      g.fillStyle = '#05281a'; for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * 9, cy - 4, 7, 8, 0, 0, TAU); g.fill(); }
+      g.fillStyle = T.ln; for (const s of [-1, 1]) { g.beginPath(); g.arc(cx + s * 9, cy - 4, 2.6, 0, TAU); g.fill(); }
+      g.fillStyle = '#05281a'; for (let i = -2; i <= 2; i++) g.fillRect(cx + i * 6 - 1.5, cy + 10, 3, 8);
+      g.strokeStyle = 'rgba(77,255,166,0.85)'; g.lineWidth = 4; g.beginPath(); g.arc(cx, cy - 2, 36, Math.PI * 1.08, Math.PI * 1.92); g.stroke();
+    } else {   // 녹은 핵
+      gem(g, cx, cy, 30, ['#fff4c0', '#ff7a18', '#4a0a00'], 6);
+      g.fillStyle = '#140400'; star(g, cx, cy, 13, 4, 0.35, 0); g.fill();
+    }
+    g.restore();
+    if (t >= 3) for (const [x, y, r] of [[cx + 50, cy - 56, 6], [cx - 54, cy + 34, 5], [cx + 36, cy + 58, 4]]) sparkle(g, x, y, r, t === 3 ? 'rgba(160,255,210,0.95)' : 'rgba(255,220,140,0.95)');
+    // 단계: 각진 명판
+    if (div) {
+      const y = 222, pw = 64 + t * 6, ph = 30;
+      poly(g, [[cx - pw / 2, y - ph / 2], [cx + pw / 2, y - ph / 2], [cx + pw / 2 + 10, y], [cx + pw / 2, y + ph / 2], [cx - pw / 2, y + ph / 2], [cx - pw / 2 - 10, y]]);
+      g.fillStyle = lin(g, 0, y - ph / 2, 0, y + ph / 2, [[0, '#3a3634'], [1, '#0e0d0d']]); g.fill(); g.lineWidth = 3; g.strokeStyle = T.ln; g.stroke();
+      g.font = '800 24px "Saira Condensed","Arial Narrow",Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff';
+      g.shadowColor = T.ln; g.shadowBlur = 8; g.fillText(ROMAN[div], cx, y + 1); g.shadowBlur = 0;
+    }
+    return cv;
+  }
+  function hcEmblem(t, div, size = 128) {
+    const key = 'hc' + t + ':' + (div || 0) + ':' + size;
+    if (!cache[key]) { try { cache[key] = drawHc(t, div, size).toDataURL('image/png'); } catch (e) { cache[key] = ''; } }
+    return cache[key];
+  }
+  const embOf = (x, size) => x.hc ? hcEmblem(x.t, x.div, size) : emblem(x.t, x.div, size);   // tierOf / hcTierOf 결과 → 엠블럼
+  function hcStatus() {
+    if (!hcOk()) return { kind: 'locked', hc: true, emb: emblem(-2, 0), label: '하드코어 잠김', sub: `일반 랭크 최고 다이아 4 이상 (현재 최고 ${placed() ? tierOf(S.peak || 0).label : '배치 전'})` };
+    const H = hcS(), ti = hcTierOf(H.rp);
+    return { kind: 'ranked', hc: true, emb: hcEmblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${H.rp} RP` : `${ti.into} / 100 RP`, tier: ti };
+  }
   // 현재 상태의 엠블럼/라벨
   function status() {
     if (!unlocked()) return { kind: 'locked', emb: emblem(-2, 0), label: '랭크 잠김', sub: `레벨 3부터 (현재 레벨 ${levelFromXp(STATS.xp).lv})` };
@@ -246,7 +387,7 @@ const Rank = (() => {
     const ti = tierOf(S.rp);
     return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${S.rp} RP` : `${ti.into} / 100 RP`, tier: ti };
   }
-  return { get state() { return S; }, unlocked, placed, tierOf, apply, botDifficulty, botCount, mixOf, emblem, status, placementScore, rpDelta, reset() { S = { rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }; save(); }, _set(o) { Object.assign(S, o); save(); },
+  return { get state() { return S; }, get hc() { return hcS(); }, hcOk, hcTierOf, applyHc, hcEmblem, hcStatus, embOf, rpDeltaHc, unlocked, placed, tierOf, apply, botDifficulty, botCount, mixOf, emblem, status, placementScore, rpDelta, reset() { S = { rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }; save(); }, _set(o) { Object.assign(S, o); save(); },
     // 계정 전환: 통째로 바꿔 끼움 (저장 알림 없이)
     replace(o) { S = Object.assign({ rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }, o || {}); store.set('rank', S); } };
 })();
