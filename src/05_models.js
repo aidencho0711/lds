@@ -389,11 +389,11 @@ const Models = (() => {
     if (D.rear) g.add(att.scope ? cluster('grf:' + id, D.rearFolded) : cluster('gr:' + id, D.rear));
     if (att.scope && SC[att.scope]) {
       if (meta.railOnScope) { const [z0, z1, y] = meta.railOnScope; const rm = cluster('rail:' + id, (gg) => (D.mount || ((g2) => rail(g2, z0, z1, y, 0.018, M('anod', 0x1e2022))))(gg)); rm.userData.noSkin = true; g.add(rm); }
-      const S = SC[att.scope], s = cluster('sc:' + att.scope, S.build); s.userData.noSkin = true;
+      const S = SC[att.scope], s = cluster('sc:' + att.scope, S.build); s.userData.noSkin = true; s.name = 'scope';
       s.position.set(-hp[0], meta.railY - hp[1], meta.scopeZ - hp[2]); host.add(s);
       meta.sightY = meta.railY + S.eyeY; meta.sightRearZ = meta.scopeZ - S.len / 2; meta.relief = S.relief;
     } else if (meta.fixedScope && SC[meta.fixedScope]) {
-      const S = SC[meta.fixedScope], s = cluster('sc:' + meta.fixedScope, S.build); s.userData.noSkin = true;
+      const S = SC[meta.fixedScope], s = cluster('sc:' + meta.fixedScope, S.build); s.userData.noSkin = true; s.name = 'scope';
       s.position.set(0, meta.railY, meta.scopeZ); g.add(s);
       meta.sightY = meta.railY + S.eyeY; meta.sightRearZ = meta.scopeZ - S.len / 2; meta.relief = S.relief;
     } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.pistol ? 0.4 : 0.3; }

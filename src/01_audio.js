@@ -556,6 +556,15 @@ const Audio = (() => {
       let out = own ? sfxBus : spatial(pos, ph === 'kill' && !lite ? 1.1 : 0.9, ph === 'kill' && !lite ? 140 : 60); if (!out) return;
       if (lite) { const gn = ctx.createGain(); gn.gain.value = 0.5; gn.connect(out); out = gn; if (ph === 'kill') ph = 'hit'; }
       const t = ctx.currentTime;
+      // 테스터 스킨 재장전·살펴보기: ZERO = 디지털 스캔음 · CHAOS = 지직거리는 낮은 웅웅 · FRONTIER = 맑은 종소리
+      if (ph === 'reload' || ph === 'inspect') {
+        if (!throttle('skin' + ph, 0.2) || !voice(0.4)) return;
+        const big = ph === 'inspect';
+        if (kind === 'zero') { [880, 1320, 1760].forEach((f, i) => tone(out, t + i * 0.06, 0.09, 'square', f, f, 0.025)); if (big) { tone(out, t + 0.22, 0.5, 'sine', 660, 1320, 0.05); noise(out, t + 0.2, 0.35, 'highpass', 5000, 0.8, 0.04); } }
+        else if (kind === 'chaos') { tone(out, t, big ? 1.2 : 0.4, 'sawtooth', 55, big ? 90 : 60, 0.05); for (let i = 0; i < (big ? 8 : 4); i++) tone(out, t + i * 0.09 + Math.random() * 0.04, 0.03, 'square', 700 + Math.random() * 1500, 300, 0.03); noise(out, t, big ? 1 : 0.3, 'lowpass', 400, 0.8, 0.06); }
+        else if (kind === 'frontier') { (big ? [1046, 1318, 1568, 2093, 1568, 2637] : [1568, 2093]).forEach((f, i) => tone(out, t + i * (big ? 0.18 : 0.08), 0.9, 'sine', f, f * 0.999, 0.035)); }
+        return;
+      }
       if (ph === 'draw' || ph === 'holster') {
         if (!throttle('skin' + ph, 0.12) || !voice(0.5)) return;
         const up = ph === 'draw', f0 = up ? 520 : 1700, f1 = up ? 1900 : 420;
@@ -567,6 +576,9 @@ const Audio = (() => {
         else if (kind === 'frost') [2093, 2637, 3136].forEach((f, i) => tone(out, t + 0.04 + i * 0.06, 0.25, 'sine', f, f * 1.01, 0.035));
         else if (kind === 'void') { tone(out, t, 0.45, 'sine', up ? 70 : 140, up ? 140 : 60, 0.16); noise(out, t, 0.4, 'lowpass', 500, 0.8, 0.1); }
         else if (kind === 'prism') { [1046, 1318, 1568, 2093, 2637].forEach((f, i) => tone(out, t + (up ? i : 4 - i) * 0.055, 0.34, 'sine', f, f * 1.003, 0.04)); tone(out, t, 0.5, 'triangle', up ? 220 : 440, up ? 440 : 220, 0.05); }   // 테스터: 유리 차임 아르페지오
+        else if (kind === 'zero') { tone(out, t, 0.3, 'square', up ? 440 : 1320, up ? 1320 : 440, 0.03); [1760, 2640].forEach((f, i) => tone(out, t + 0.08 + i * 0.07, 0.12, 'sine', f, f, 0.035)); }
+        else if (kind === 'chaos') { tone(out, t, 0.45, 'sawtooth', up ? 60 : 110, up ? 110 : 50, 0.06); for (let i = 0; i < 4; i++) tone(out, t + i * 0.08, 0.03, 'square', 600 + Math.random() * 1200, 200, 0.03); }
+        else if (kind === 'frontier') [1318, 1568, 2093].forEach((f, i) => tone(out, t + (up ? i : 2 - i) * 0.07, 0.6, 'sine', f, f * 0.999, 0.04));
         return;
       }
       // 맞힘: 총성에 묻히지 않게 짧고 높은 소리 (지글 · 화르륵 · 지직 · 삑)
@@ -579,6 +591,9 @@ const Audio = (() => {
         else if (kind === 'frost') { noise(out, t, 0.06, 'highpass', 5200, 1.2, 0.08); tone(out, t, 0.12, 'sine', 3300 + Math.random() * 600, 2800, 0.03); }
         else if (kind === 'void') { tone(out, t, 0.12, 'sine', 900, 160, 0.06); noise(out, t, 0.1, 'lowpass', 600, 0.8, 0.06); }
         else if (kind === 'prism') { tone(out, t, 0.16, 'sine', 2637 + Math.random() * 400, 2600, 0.04); tone(out, t + 0.02, 0.12, 'sine', 3951, 3900, 0.025); }
+        else if (kind === 'zero') { tone(out, t, 0.05, 'square', 2200, 1800, 0.03); tone(out, t + 0.04, 0.05, 'sine', 3300, 3300, 0.025); }
+        else if (kind === 'chaos') { noise(out, t, 0.12, 'bandpass', 900, 0.8, 0.08); tone(out, t, 0.08, 'sawtooth', 220, 90, 0.04); }
+        else if (kind === 'frontier') tone(out, t, 0.35, 'sine', 2637, 2630, 0.03);
         return;
       }
       // 처치: 크게 (용암 분출 · 불꽃 용의 포효 · 낙뢰 · 데이터 붕괴)
@@ -610,6 +625,17 @@ const Audio = (() => {
           tone(out, t, 0.8, 'sine', 110, 220, 0.2); noise(out, t, 0.7, 'bandpass', 1800, 1.2, 0.08);
           [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(out, t + 0.05 + i * 0.09, 0.5, 'triangle', f, f, 0.05));
           noise(out, t + 0.85, 0.5, 'highpass', 4200, 0.8, 0.2); [2093, 2637, 3136, 4186].forEach((f, i) => tone(out, t + 0.85 + i * 0.03, 0.7, 'sine', f, f * 0.995, 0.04)); tone(out, t + 0.85, 0.5, 'sine', 90, 40, 0.3);
+        } else if (kind === 'zero') {
+          // 데이터 감옥: 디지털 상승음 → 맑게 닫히는 소리
+          [523, 784, 1046, 1568, 2093].forEach((f, i) => tone(out, t + i * 0.08, 0.12, 'square', f, f, 0.03)); tone(out, t, 0.8, 'sine', 140, 280, 0.15);
+          noise(out, t + 0.85, 0.4, 'highpass', 5200, 0.8, 0.15); tone(out, t + 0.85, 0.6, 'sine', 2637, 2600, 0.05); tone(out, t + 0.85, 0.45, 'sine', 90, 40, 0.28);
+        } else if (kind === 'chaos') {
+          // 불안정한 코어: 지직거리며 부풀다가 크게 터짐
+          tone(out, t, 0.4, 'sawtooth', 70, 160, 0.12); for (let i = 0; i < 7; i++) tone(out, t + i * 0.06, 0.03, 'square', 500 + Math.random() * 1800, 200, 0.04);
+          tone(out, t + 0.42, 0.9, 'sine', 80, 28, 0.42); noise(out, t + 0.42, 1.0, 'lowpass', 420, 0.8, 0.35); noise(out, t + 0.45, 0.8, 'highpass', 3000, 0.7, 0.08);
+        } else if (kind === 'frontier') {
+          // 별자리 승천: 맑은 종소리가 차례로 올라감
+          [784, 1046, 1318, 1568, 2093, 2637, 3136].forEach((f, i) => tone(out, t + i * 0.12, 1.1, 'sine', f, f * 0.999, 0.05)); tone(out, t, 0.6, 'sine', 120, 60, 0.2);
         }
         return;
       }
@@ -621,6 +647,9 @@ const Audio = (() => {
       else if (kind === 'frost') { noise(out, t, 0.08, 'highpass', 4800, 1, 0.07); tone(out, t, 0.18, 'sine', 2600, 2400, 0.03); }
       else if (kind === 'void') tone(out, t, 0.14, 'sine', 600, 90, 0.08);
       else if (kind === 'prism') { tone(out, t, 0.12, 'sine', 1568 + Math.random() * 300, 1500, 0.035); tone(out, t, 0.08, 'triangle', 3136, 3000, 0.02); }
+      else if (kind === 'zero') tone(out, t, 0.05, 'square', 1760, 1500, 0.02);
+      else if (kind === 'chaos') noise(out, t, 0.14, 'lowpass', 900, 0.8, 0.06);
+      else if (kind === 'frontier') tone(out, t, 0.2, 'sine', 3136, 3100, 0.015);
     },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
     engine(id, pos, type, rpm, load, own, skid) {

@@ -324,7 +324,9 @@ const HUD = (() => {
     if (wp.dataset.k !== wkey) {
       wp.dataset.k = wkey; wp.innerHTML = '';
       inv.weapons.forEach((w, i) => {
-        if (!w) return; const d = ITEMS[w.id], e = h('div', 'wslot' + (i === inv.cur ? ' cur' : ''));
+        if (!w) return; const d = ITEMS[w.id], sk = p.skinOf(w.id), tst = !!sk && GSKINS[sk].rar >= 6, e = h('div', 'wslot' + (i === inv.cur ? ' cur' : '') + (tst ? ' tester' : ''));
+        if (i === inv.cur) { e.title = '눌러서 총 살펴보기 (N)'; e.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); Input.press('inspect'); }); }   // 모바일: 지금 무기 칸을 누르면 살펴보기
+        if (tst) e.appendChild(h('i', 'beta-badge', 'β' + (GSKINS[sk].no || '')));   // 베타 테스터 한정 컬렉션 표시
         e.appendChild(ico(w.id, w.att, 'ico wide wi'));
         e.appendChild(h('span', 'wn', `${i + 1}  ${d.name}`));
         if (d.modes.length > 1 || i === inv.cur) e.appendChild(h('span', 'wm', modeName(w.id, fireMode(w))));
@@ -882,6 +884,7 @@ const HUD = (() => {
         const b = h('button', 'wh-item gun' + (on ? ' on' : '') + (S ? ' rar' : '') + (S && S.rar >= 6 ? ' tester' : '') + (whGun === gun && on ? ' sel' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
         const ico = h('i', 'wh-ico'); ico.appendChild(Shop.gunImgEl(gun, id));
         b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : '기본')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + (S && S.fx ? '효과 · ' : '') + (on ? '장착 중' : '장착하기')));
+        if (S && S.rar >= 6) { b.appendChild(h('i', 'beta-badge', 'β' + (S.no || ''))); b.appendChild(h('em', 'excl', 'EXCLUSIVE — NEVER AVAILABLE AGAIN')); }   // 베타 테스터 한정 컬렉션
         b.title = S ? GunSkin.name(id) + (S.desc ? ' — ' + S.desc : '') : GunSkin.short(gun) + ' 기본';
         b.addEventListener('click', () => { whGun = gun; if (!on) Eco.equipGun(gun, id); else { SETTINGS.gshow = gun; saveSettings(); Lobby.setGun(false); } renderWarehouse(); showcase(); Audio.init(); Audio.ui(); });
         return b;

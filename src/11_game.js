@@ -164,7 +164,7 @@ const Lobby = {
     else { obj = VehModels.instance(spec.type, spec.skin || null).root; size = spec.type === 'sedan' ? 4.9 : spec.type === 'moto' ? 2.4 : 2.9; }
     obj.position.set(0, spec.kind === 'gun' ? 1.05 : 0.2, 0); obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this.scene.add(obj); this.sc = { obj, size, t0: this.t, kind: spec.kind };
-    if (gun && spec.skin) GunSkin.draw(gun, 0.8, null);
+    if (gun && spec.skin) { GunSkin.draw(gun, 0.8, null); GunSkin.inspect(gun, null, 1.4, 5.5); }   // 테스터 스킨: 진열장에서 살펴보기 연출을 몇 초마다
   },
   update(dt) {
     this.t += dt; const r = this.rig, t = this.t;

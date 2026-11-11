@@ -300,6 +300,21 @@ const SkinFx = (() => {
       for (let i = 0; i < 6; i++) { const a = a0 + i * TAU / 6; E(P, p, Math.cos(a) * 2.4 * s - d.x, rnd(0.6, 1.6) * s, Math.sin(a) * 2.4 * s - d.z, GunSkin.PRISM[i], rnd(0.05, 0.075) * k, rnd(0.25, 0.4), { sq: 1, drag: 4, so: 0.85 }); }
       for (let i = 0; i < 6; i++) { _v.set(rnd(-1, 1), rnd(-0.3, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1.5, 3.5) * s); E(P, p, _v.x, _v.y, _v.z, 0xffffff, rnd(0.02, 0.035) * k, rnd(0.2, 0.35), { drag: 5, so: 0.5 }); }
     },
+    // ZERO PROTOCOL: 하얀 섬광 + 시안 네모 조각이 곧게 튐
+    zero(P, p, d, fx, k, s) {
+      E(P, p, 0, 0, 0, 0xffffff, 0.3 * k, 0.06, { grow: 0.8, so: 0.35 }); E(P, p, 0, 0, 0, fx.c, 0.22 * k, 0.12, { sq: 1, grow: 0.5, so: 0.5 });
+      for (let i = 0; i < 8; i++) { _v.set(rnd(-1, 1), rnd(-0.3, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1.5, 3.2) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.03, 0.05) * k, rnd(0.18, 0.32), { sq: 1, drag: 6, so: 0.85 }); }
+    },
+    // CHAOS CORE: 붉은 번쩍임 + 위로 튀는 불티 + 잠깐 남는 잔광
+    chaos(P, p, d, fx, k, s) {
+      E(P, p, 0, 0, 0, fx.c2, 0.32 * k, 0.07, { grow: 0.8, so: 0.35 }); E(P, p, 0, 0.05, 0, fx.c, 0.18 * k, 0.45, { so: 0.7 });
+      for (let i = 0; i < 9; i++) E(P, p, -d.x * 1.2 + rnd(-1.2, 1.2) * s, rnd(1, 3.2) * s, -d.z * 1.2 + rnd(-1.2, 1.2) * s, pick(fx), rnd(0.03, 0.06) * k, rnd(0.3, 0.6), { g: -6, drag: 1.2, so: 0.8 });
+    },
+    // LAST FRONTIER: 금빛 작은 섬광 + 천천히 흩어지는 별 반짝임
+    frontier(P, p, d, fx, k, s) {
+      E(P, p, 0, 0, 0, 0xfff0c0, 0.28 * k, 0.07, { grow: 0.8, so: 0.3 });
+      for (let i = 0; i < 7; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(0.6, 1.6) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.03, 0.05) * k, rnd(0.45, 0.8), { drag: 2.5, grow: -0.4, so: 0.6 }); }
+    },
   };
   // 슈퍼레어(약한 효과): 작은 섬광 + 조각 몇 개, 몸에 남는 효과는 짧게
   function liteHit(P, p, d, fx, k, s) {
@@ -308,7 +323,7 @@ const SkinFx = (() => {
     for (let i = 0; i < 4; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1, 2.4) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.02, 0.035) * k, rnd(0.15, 0.3), { sq, drag: 5, g: fx.kind === 'ember' ? -4 : 0, so: 0.7 }); }
   }
   // 몸에 남는 효과: 초당 개수 · 한 번에 하나씩
-  const RATE = { ember: 50, flame: 44, spark: 36, glitch: 44, frost: 40, void: 40, prism: 46 };
+  const RATE = { ember: 50, flame: 44, spark: 36, glitch: 44, frost: 40, void: 40, prism: 46, zero: 40, chaos: 48, frontier: 36 };
   const BODYFX = {
     ember(P, p, fx, k) { E(P, p, rnd(-0.12, 0.12), rnd(0.15, 0.9), rnd(-0.12, 0.12), Math.random() < 0.6 ? fx.c : fx.c2, rnd(0.1, 0.17) * k, rnd(0.4, 0.8), { g: 0.6, drag: 1.5, so: 0.85 }); },
     flame(P, p, fx, k) { E(P, p, rnd(-0.08, 0.08), rnd(0.4, 1.1), rnd(-0.08, 0.08), Math.random() < 0.3 ? 0xffd27a : fx.c, rnd(0.18, 0.28) * k, rnd(0.2, 0.36), { grow: 1.2, drag: 1.5, so: 0.8 }); },
@@ -317,6 +332,9 @@ const SkinFx = (() => {
     frost(P, p, fx, k) { E(P, p, rnd(-0.1, 0.1), rnd(-0.4, -0.1), rnd(-0.1, 0.1), Math.random() < 0.5 ? fx.c2 : fx.c, rnd(0.08, 0.15) * k, rnd(0.5, 0.9), { grow: 0.8, drag: 1.2, so: 0.6 }); },
     void(P, p, fx, k) { E(P, p, rnd(-0.1, 0.1), rnd(0.3, 0.9), rnd(-0.1, 0.1), Math.random() < 0.7 ? fx.c : fx.c2, rnd(0.1, 0.17) * k, rnd(0.35, 0.6), { grow: -0.4, drag: 1.2, so: 0.85 }); },
     prism(P, p, fx, k) { E(P, p, rnd(-0.15, 0.15), rnd(0.3, 0.8), rnd(-0.15, 0.15), pick(fx), rnd(0.06, 0.11) * k, rnd(0.35, 0.6), { sq: Math.random() < 0.6, drag: 1.4, so: 0.85 }); },
+    zero(P, p, fx, k) { E(P, p, 0, rnd(0.05, 0.3), 0, pick(fx), rnd(0.06, 0.12) * k, rnd(0.08, 0.2), { sq: 1, so: 0.85 }); },
+    chaos(P, p, fx, k) { E(P, p, rnd(-0.12, 0.12), rnd(0.2, 1), rnd(-0.12, 0.12), pick(fx), rnd(0.08, 0.14) * k, rnd(0.3, 0.6), { g: 0.4, drag: 1.5, so: 0.85 }); },
+    frontier(P, p, fx, k) { E(P, p, rnd(-0.05, 0.05), rnd(0.05, 0.25), rnd(-0.05, 0.05), pick(fx), rnd(0.05, 0.09) * k, rnd(0.5, 0.9), { grow: -0.5, so: 0.6 }); },
   };
   function body(t, fx, dur, corpse) {
     const s = BODY.get(t);
@@ -440,12 +458,12 @@ const SkinFx = (() => {
     // 테스터(프리즘 감옥): 쓰러진 몸을 무지개 육각 기둥 틀이 감싸고 돌다가 한 점으로 접히며 터짐 → 무지개 조각이 솟아오름
     //  · 바닥에 무지개 육각 격자 자국 · 색이 다른 고리 세 겹이 차례로 퍼짐 · 하얀 빛 기둥
     prism(t, fx, gp, cp, k) {
-      const P = pool(), C = GunSkin.PRISM;
+      const P = pool(), C = fx.pal || GunSkin.PRISM, cn = (i) => C[i % C.length];   // ZERO PROTOCOL 은 시안 색 묶음으로 같은 감옥
       glow(cp, 0xffffff, 4.4, 0.35); light(cp, 0xbff8ff, 8, 0.9);
-      ring(gp, C[2], 4.6, 0.75); ring(gp, C[0], 3.4, 0.7, null, 0.12); ring(gp, C[4], 2.3, 0.6, null, 0.24);
-      decal(gp, hexTex(), 4.4, 2.8, 0xffffff, 0x2a3a6a);
+      ring(gp, cn(2), 4.6, 0.75); ring(gp, cn(0), 3.4, 0.7, null, 0.12); ring(gp, cn(4), 2.3, 0.6, null, 0.24);
+      decal(gp, fx.pal ? hexWTex() : hexTex(), 4.4, 2.8, fx.pal ? fx.c : 0xffffff, 0x0a2a3a);
       // 육각 기둥 틀: 색 세 묶음(각 묶음 = 세로 모서리 2개 + 위아래 테두리 2변씩) → 같은 선 재질 프로그램을 씀
-      const grp = new THREE.Group(), R = 0.75, H = 2.1, cols = [C[0], C[2], C[4]];
+      const grp = new THREE.Group(), R = 0.75, H = 2.1, cols = [cn(0), cn(2), cn(4)];
       for (let gi = 0; gi < 3; gi++) {
         const v = [];
         for (const i of [gi * 2, gi * 2 + 1]) {
@@ -464,15 +482,71 @@ const SkinFx = (() => {
         grp.position.y = gp.y + shut * 0.9;
         for (const ls of grp.children) ls.material.opacity = u < 0.74 ? 1 : 0;
         if (!burst && u >= 0.74) {
-          burst = true; _a.set(gp.x, gp.y + 1.05, gp.z); glow(_a, 0xffffff, 5.2, 0.45); light(_a, C[(Math.random() * 6) | 0], 7, 0.5); pillar(gp, 0xe8fbff, 0.45, 6.5, 0.75, stripeTex(), 2);
-          for (let i = 0; i < 72; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1.2), rnd(-1, 1)).normalize().multiplyScalar(rnd(3, 8)); E(P, _a, _v.x, _v.y, _v.z, i % 7 === 0 ? 0xffffff : C[i % 6], rnd(0.08, 0.15) * k, rnd(0.5, 1.0), { sq: i % 2 === 0, g: -3, drag: 1.8, so: 0.8 }); }
+          burst = true; _a.set(gp.x, gp.y + 1.05, gp.z); glow(_a, 0xffffff, 5.2, 0.45); light(_a, C[(Math.random() * C.length) | 0], 7, 0.5); pillar(gp, 0xe8fbff, 0.45, 6.5, 0.75, stripeTex(), 2);
+          for (let i = 0; i < 72; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1.2), rnd(-1, 1)).normalize().multiplyScalar(rnd(3, 8)); E(P, _a, _v.x, _v.y, _v.z, i % 7 === 0 ? 0xffffff : C[i % C.length], rnd(0.08, 0.15) * k, rnd(0.5, 1.0), { sq: i % 2 === 0, g: -3, drag: 1.8, so: 0.8 }); }
         }
       });
       // 틀이 도는 동안 몸에서 무지개 조각이 틀 쪽으로 빨려 나감
-      add(null, 0.7, (e) => { if (Math.random() < 0.7) { bodyPoint(t, _a); _v.set(_a.x - gp.x, 0, _a.z - gp.z).normalize(); E(P, _a, _v.x * 1.2, rnd(0.2, 0.8), _v.z * 1.2, C[(Math.random() * 6) | 0], rnd(0.06, 0.1) * k, 0.4, { sq: 1, drag: 1, so: 0.85 }); } });
+      add(null, 0.7, (e) => { if (Math.random() < 0.7) { bodyPoint(t, _a); _v.set(_a.x - gp.x, 0, _a.z - gp.z).normalize(); E(P, _a, _v.x * 1.2, rnd(0.2, 0.8), _v.z * 1.2, C[(Math.random() * C.length) | 0], rnd(0.06, 0.1) * k, 0.4, { sq: 1, drag: 1, so: 0.85 }); } });
       body(t, fx, 2.2, true);
     },
   };
+  // ZERO PROTOCOL 처치 = 시안 색 데이터 감옥(프리즘 감옥과 같은 동작)
+  KILL.zero = (t, fx, gp, cp, k) => KILL.prism(t, fx, gp, cp, k);
+  // CHAOS CORE 처치 = 불안정한 코어 폭발: 붉은 구가 불규칙하게 부풀었다 줄다가 터짐 → 갈라진 바닥 · 주황 기둥 · 사방으로 불티
+  KILL.chaos = function (t, fx, gp, cp, k) {
+    const P = pool(), sp = new THREE.Mesh(geo().sph, domeMat(fx.c)); sp.position.copy(cp); sp.renderOrder = 6;
+    light(cp, fx.c, 5, 0.6); let burst = false;
+    add(sp, 0.75, (e, u) => {
+      const w = u < 0.55 ? 0.45 + 0.55 * Math.abs(Math.sin(e.t * 19 + Math.sin(e.t * 7) * 2)) : 0;
+      sp.visible = u < 0.55; sp.scale.setScalar(0.3 + 0.9 * w); sp.material.uniforms.uA.value = 0.55 + 0.45 * w; sp.material.uniforms.uT.value = e.t;
+      if (!burst && u >= 0.55) {
+        burst = true; glow(cp, fx.c2, 5.6, 0.4); light(cp, fx.c, 8, 0.7); ring(gp, fx.c, 4.8, 0.7); ring(gp, fx.c2, 2.8, 0.5, null, 0.1);
+        decal(gp, lavaTex(), 4.4, 2.6, 0xfff2c8, 0x8a1006); pillar(gp, fx.c, 0.6, 5.5, 0.8);
+        for (let i = 0; i < 64; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(3, 9)); E(P, cp, _v.x, _v.y, _v.z, pick(fx), rnd(0.07, 0.14) * k, rnd(0.4, 0.9), { g: -6, drag: 1.4, so: 0.8 }); }
+      }
+    });
+    add(null, 0.42, () => { if (Math.random() < 0.8) { bodyPoint(t, _a); E(P, _a, rnd(-0.5, 0.5), rnd(0.2, 1), rnd(-0.5, 0.5), pick(fx), rnd(0.06, 0.1) * k, 0.3, { so: 0.85 }); } });
+    body(t, fx, 2.0, true);
+  };
+  // LAST FRONTIER 처치 = 별자리 승천: 몸 둘레 일곱 별이 금빛 선으로 이어진 채 반짝이며 하늘로 떠오름 · 바닥에 별자리 자국
+  KILL.frontier = function (t, fx, gp, cp, k) {
+    const P = pool();
+    glow(cp, 0xfff0c0, 4, 0.4); light(cp, fx.c, 6, 0.8); ring(gp, fx.c, 4.2, 0.8); ring(gp, 0xffffff, 2.6, 0.6, null, 0.15); decal(gp, starTex(), 4.4, 3.0, 0xffffff, 0x2a3270);
+    const n = 7, pts = [], a0 = Math.random() * TAU;
+    for (let i = 0; i < n; i++) { const a = a0 + (i / n) * TAU * 0.92 + rnd(-0.2, 0.2), r = rnd(0.45, 1.05); pts.push(new THREE.Vector3(Math.cos(a) * r, rnd(0.5, 1.9), Math.sin(a) * r)); }
+    const v = []; const seg = (a, b) => v.push(pts[a].x, pts[a].y, pts[a].z, pts[b].x, pts[b].y, pts[b].z);
+    for (let i = 0; i < n - 1; i++) seg(i, i + 1); seg(2, 5);
+    const grp = new THREE.Group(), gl = new THREE.BufferGeometry(); gl.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+    const ls = new THREE.LineSegments(gl, lineMat(fx.c)); ls.userData.own = true; ls.renderOrder = 8; grp.add(ls);
+    const stars = pts.map((p) => { const s = new THREE.Sprite(sprMat(0xffffff)); s.position.copy(p); s.renderOrder = 8; grp.add(s); return s; });
+    grp.position.set(gp.x, gp.y, gp.z);
+    add(grp, 1.9, (e, u) => {
+      grp.position.y = gp.y + u * u * 3.4; grp.rotation.y += e.dt * 0.5;
+      const op = u < 0.12 ? u / 0.12 : u > 0.7 ? (1 - u) / 0.3 : 1; ls.material.opacity = op;
+      stars.forEach((s, i) => { s.material.opacity = op * (0.7 + 0.3 * Math.sin(e.t * 9 + i)); s.scale.setScalar(0.22 + 0.14 * Math.sin(e.t * 6 + i * 2)); });
+      if (Math.random() < 0.7) { stars[(Math.random() * n) | 0].getWorldPosition(_a); E(P, _a, rnd(-0.2, 0.2), rnd(-0.4, 0.1), rnd(-0.2, 0.2), pick(fx), rnd(0.04, 0.07) * k, 0.6, { grow: -0.4, so: 0.6 }); }
+    });
+    for (let i = 0; i < 30; i++) { bodyPoint(t, _a); E(P, _a, rnd(-0.3, 0.3), rnd(0.6, 2), rnd(-0.3, 0.3), pick(fx), rnd(0.05, 0.09) * k, rnd(0.8, 1.4), { drag: 0.8, grow: -0.3, so: 0.6 }); }
+    body(t, fx, 2.0, true);
+  };
+  // ZERO 바닥 자국: 흰 육각 격자(색은 바닥 자국 색으로) · FRONTIER: 별자리(점과 선) + 금빛 원
+  const hexWTex = () => ctex('hexw', 256, 256, (g) => {
+    halo(g, 90, [[0, 'rgba(255,255,255,0.85)'], [0.35, 'rgba(255,255,255,0.3)'], [1, 'rgba(255,255,255,0)']]);
+    const R = 15, w = Math.sqrt(3) * R;
+    for (let j = -1; j < 12; j++) for (let i = -1; i < 11; i++) {
+      const x = i * w + (j % 2 ? w / 2 : 0), y = j * R * 1.5, d = Math.hypot(x - 128, y - 128) / 128; if (d > 0.95) continue;
+      g.strokeStyle = `rgba(255,255,255,${(1 - d) * 0.95})`; g.lineWidth = 2.2;
+      g.beginPath(); for (let k2 = 0; k2 < 6; k2++) { const a = -Math.PI / 2 + k2 * TAU / 6, px = x + Math.cos(a) * R * 0.92, py = y + Math.sin(a) * R * 0.92; k2 ? g.lineTo(px, py) : g.moveTo(px, py); } g.closePath(); g.stroke();
+    }
+  });
+  const starTex = () => ctex('stars', 256, 256, (g) => {
+    halo(g, 100, [[0, 'rgba(255,240,200,0.7)'], [0.4, 'rgba(255,220,150,0.2)'], [1, 'rgba(255,220,150,0)']]);
+    g.strokeStyle = 'rgba(255,230,170,0.8)'; g.lineWidth = 2; g.beginPath(); g.arc(128, 128, 104, 0, TAU); g.stroke(); g.lineWidth = 1; g.beginPath(); g.arc(128, 128, 92, 0, TAU); g.stroke();
+    const P2 = []; for (let i = 0; i < 9; i++) { const a = i * 0.8 + Math.random() * 0.4, r = 20 + Math.random() * 70; P2.push([128 + Math.cos(a) * r, 128 + Math.sin(a) * r]); }
+    g.strokeStyle = 'rgba(255,240,210,0.75)'; g.lineWidth = 1.6; g.beginPath(); P2.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+    for (const [x, y] of P2) { g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 3.2, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.8)'; g.beginPath(); g.moveTo(x - 9, y); g.lineTo(x + 9, y); g.moveTo(x, y - 9); g.lineTo(x, y + 9); g.stroke(); }
+  });
   // 테스터 바닥 자국: 무지개 육각 격자 + 가운데 하얀 빛
   const hexTex = () => ctex('hex', 256, 256, (g) => {
     halo(g, 90, [[0, 'rgba(255,255,255,0.85)'], [0.35, 'rgba(200,250,255,0.3)'], [1, 'rgba(160,220,255,0)']]);

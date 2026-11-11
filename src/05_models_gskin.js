@@ -53,19 +53,37 @@ const GSKINS = (() => {
     g2_s12k_void: { gun: 's12k', box: 'g2', rar: 5, name: '공허', pat: 'camo', pal: ['#0d0714', '#1b0e29', '#08050d', '#2b1442'], sc: 3.2, env: 0.7, body: { p: 1, mr: [0.45, 0.32] }, furn: { p: 1, mr: [0.3, 0.4] }, steel: { c: 0x1a1024, mr: [0.9, 0.26] },
       glow: { pat: 'wave', c: 0xa64bff, k: 2.2, anim: 2 }, fx: { kind: 'void', c: 0xa64bff, c2: 0xe6c8ff, tr: 0xb45cff },
       parts: 'void', en: 0xb04aff, enK: 2.8, enAnim: 2, desc: '보랏빛 물결이 일렁이는 칠흑 몸체 · 꺼내면 총열 둘레에 고리가 돎 · 쏠 때 빨려 드는 빛' },
-    // ---------- 테스터 (v20): 베타 테스터 전용 — 상자·교환소·봇에 없음. 개발자가 '베타 테스터' 칭호를 준 계정만 가짐 ----------
-    //  프로토타입 β: 세라믹 육각 판 사이 틈으로 무지개 빛이 흐름(시간·위치에 따라 색이 돎) · 총열을 서로 반대로 도는 홀로 고리 두 겹
-    //  · 꺼내면 총이 공중에서 회전하며 손에 붙는 전용 동작 + 육각 조각이 모여듦 · 쏠 때 무지개 육각 섬광 · 처치하면 프리즘 감옥
-    //  · 들고 있으면 둘레에 작은 프리즘 빛이 떠다님
-    t_m416_beta: { gun: 'm416', box: 'beta', rar: 6, tester: 1, name: '프로토타입 β', pat: 'hexlab', pal: ['#e8ecef', '#cdd5db', '#f9fbfc', '#1c2227'], sc: 3.4, env: 1.15, body: { p: 1, mr: [0.3, 0.26] }, furn: { p: 1, mr: [0.25, 0.3] }, steel: { c: 0x1b2127, mr: [1, 0.16] },
-      glow: { pat: 'hexlab', c: 0x8ffcff, k: 2.7, anim: 4 }, fx: { kind: 'prism', c: 0x56f7ff, c2: 0xff7ae6, tr: 0xb4fdff, rainbow: 1 },
-      parts: 'proto', en: 0x9ffcff, enK: 3.1, enAnim: 4, desc: '진주빛 육각 판 틈으로 무지개가 흐름 · 꺼내면 공중에서 회전하며 조립 · 홀로 고리가 총열을 돎' },
-    t_akm_beta: { gun: 'akm', box: 'beta', rar: 6, tester: 1, name: '프로토타입 β · 오닉스', pat: 'hexlab', pal: ['#252b30', '#1b2024', '#343c42', '#07090b'], sc: 3.4, env: 1.0, body: { p: 1, mr: [0.45, 0.24] }, furn: { p: 1, mr: [0.4, 0.28] }, steel: { c: 0xdfe6ec, mr: [1, 0.12] },
-      glow: { pat: 'hexlab', c: 0xff9cf2, k: 3.0, anim: 4 }, fx: { kind: 'prism', c: 0xff7ae6, c2: 0x56f7ff, tr: 0xffc4f6, rainbow: 1 },
-      parts: 'proto', en: 0xffb0f4, enK: 3.1, enAnim: 4, desc: '흑요석 육각 판 틈으로 무지개가 흐름 · 꺼내면 공중에서 회전하며 조립 · 홀로 고리가 총열을 돎' },
-    t_kar98k_beta: { gun: 'kar98k', box: 'beta', rar: 6, tester: 1, name: '프로토타입 β', pat: 'hexlab', pal: ['#e8ecef', '#cdd5db', '#f9fbfc', '#1c2227'], sc: 3.2, env: 1.15, body: { p: 1, mr: [0.3, 0.26] }, furn: { p: 1, mr: [0.25, 0.3] }, steel: { c: 0x1b2127, mr: [1, 0.16] },
-      glow: { pat: 'hexlab', c: 0x8ffcff, k: 2.7, anim: 4 }, fx: { kind: 'prism', c: 0x56f7ff, c2: 0xff7ae6, tr: 0xb4fdff, rainbow: 1 },
-      parts: 'proto', en: 0x9ffcff, enK: 3.1, enAnim: 4, desc: '진주빛 육각 판 틈으로 무지개가 흐름 · 꺼내면 공중에서 회전하며 조립 · 홀로 고리가 총열을 돎' },
+    // ---------- 테스터 (v20): 베타 테스터 한정 컬렉션 — 상자·교환소·봇에 없음. 개발자가 '베타 테스터' 칭호를 준 계정만 가짐 ----------
+    //  공통: 육각 BETA 엠블럼 + 고유 번호(No.001~003, 05_models_gdeco.js) · 공중에서 회전하며 손에 붙는 전용 꺼내기 · 살펴보기(N / 무기 칸 누르기) 연출
+    //  pal: 효과 입자 색 · glowMask: 빛 지도를 쓰는 부위(몸체·손잡이·강철) · flashK: 쏠 때 몸체 번쩍임 세기
+    // ZERO PROTOCOL — 미래형 실험 병기: 티타늄 흰 장갑판 + 검은 기계 패널, 판 사이 틈·총열을 따라 시안 회로가 천천히 차례로 점등
+    //  탄창 옆 에너지 표시등과 BETA-001 · 조준 장치 둘레 홀로그램 · 비스듬히 볼 때만 보이는 FIRST TESTER · 재장전 때 시안 스캔 · 살펴보면 SYSTEM ONLINE
+    t_m416_beta: { gun: 'm416', box: 'beta', rar: 6, tester: 1, no: '001', name: 'ZERO PROTOCOL', pat: 'armor', pal: ['#14181c', '#e8ecef', '#c3cbd2', '#0a0c0e'], sc: 2.6, env: 1.1,
+      body: { p: 1, mr: [0.55, 0.32] }, furn: { p: 1, mr: [0.5, 0.35] }, steel: { c: 0x14171a, mr: [0.85, 0.3] },
+      glow: { pat: 'armor', c: 0x3ff5ff, k: 2.4, anim: 5 }, glowMask: [1, 1, 1], fx: { kind: 'zero', c: 0x3ff5ff, c2: 0xe9feff, tr: 0x8ffcff, pal: [0x3ff5ff, 0x8ffcff, 0xe9feff, 0x1fb8d8] },
+      parts: 'zero', en: 0x3ff5ff, enK: 2.6, enAnim: 5,
+      deco: [{ kind: 'emblem', no: '001', side: 'LR', z: 0.4, dy: -0.006, w: 0.04 }, { kind: 'text', on: 'mag', side: 'LR', text: 'BETA-001', style: 'neon', col: '#3ff5ff', w: 0.045, dy: -0.012 }, { kind: 'pips', on: 'mag', side: 'LR', col: '#3ff5ff', w: 0.028, h: 0.007, dy: 0.012 },
+        { kind: 'text', side: 'LR', z: 0.73, dy: -0.004, text: 'ZERO PROTOCOL', style: 'neon', col: '#3ff5ff', w: 0.07 }, { kind: 'hidden', side: 'L', z: 0.15, dy: -0.036, text: 'FIRST TESTER', col: 0xbff8ff, w: 0.09 }, { kind: 'holo', col: '#5ff8ff', w: 0.05 }],
+      desc: '티타늄 흰 장갑판과 검은 기계 패널 · 시안 회로가 천천히 차례로 점등 · 재장전 때 시안 스캔 · 살펴보면 SYSTEM ONLINE · EXCLUSIVE — NEVER AVAILABLE AGAIN' },
+    // CHAOS CORE — 통제되지 않은 실험 에너지: 다크 건메탈에 갈라진 틈으로 주황 빛 · 검은 총열에 붉은 열전도 무늬 · 붉은 금속으로 바뀐 개머리판·손잡이
+    //  몸통 옆 불안정한 코어와 UNSTABLE CORE 경고 · 탄창의 경고 표시와 실험 번호 · 붉은빛이 불규칙하게 점멸 · 탄창 갈 때 코어 둘레 붉은 입자 · 쏠 때 작은 붉은 잔광
+    t_akm_beta: { gun: 'akm', box: 'beta', rar: 6, tester: 1, no: '002', name: 'CHAOS CORE', pat: 'fracture', pal: ['#17181a', '#2a2c30', '#ff5a12', '#0d0d0e'], sc: 3.0, env: 0.9,
+      body: { p: 1, mr: [0.75, 0.38] }, furn: { c: 0x6a0d09, mr: [0.85, 0.3] }, steel: { p: 1, mr: [0.85, 0.34] },
+      glow: { pat: 'fracture', c: 0xff5a14, k: 2.2, anim: 6 }, glowMask: [1, 0, 1], flashK: 0.45, fx: { kind: 'chaos', c: 0xff4a12, c2: 0xffb04a, tr: 0xff6a2a, pal: [0xff3a0e, 0xff6a1e, 0xffb04a, 0xd81e10] },
+      parts: 'chaos', en: 0xff5014, enK: 3.0, enAnim: 6,
+      deco: [{ kind: 'emblem', no: '002', side: 'LR', z: 0.5, dy: -0.004, w: 0.04 }, { kind: 'text', side: 'LR', z: 0.43, dy: -0.022, text: 'UNSTABLE CORE', style: 'warn', col: '#ff8a2a', w: 0.06 },
+        { kind: 'text', on: 'mag', side: 'LR', text: '⚠ EXP-002', style: 'warn', col: '#ffb21e', w: 0.042, dy: 0.004 }],
+      desc: '갈라진 건메탈 틈으로 주황 빛 · 붉은빛이 불규칙하게 점멸 · 탄창 갈 때 코어에서 붉은 입자 · 살펴보면 코어가 강하게 빛남 · EXCLUSIVE — NEVER AVAILABLE AGAIN' },
+    // LAST FRONTIER — 전설적인 초기 테스트 모델: 아이보리·은 총몸 · 짙은 남색 개머리판의 금빛 기하 문양과 별자리 · 총열을 따라 길게 이어진 금 상감 · 조준경 금테
+    //  THE FIRST GENERATION 각인 · BETA-003 일련번호 · 개발 초기 테스트 기록 각인 · 별자리가 은은하게 반짝 · 살펴보면 별빛이 총몸을 따라 지나감 · 재장전 끝나면 금빛이 한 번
+    t_kar98k_beta: { gun: 'kar98k', box: 'beta', rar: 6, tester: 1, no: '003', name: 'LAST FRONTIER', pat: 'frontier', pal: ['#0d1838', '#16275a', '#e2c27a', '#f6e6b8'], sc: 2.2, env: 1.15,
+      body: { c: 0xe9e1cc, mr: [0.55, 0.26] }, furn: { p: 1, mr: [0.35, 0.3] }, steel: { c: 0xc8ced6, mr: [1, 0.16] },
+      glow: { pat: 'frontier', c: 0xfff0c0, k: 2.0, anim: 7 }, glowMask: [0, 1, 0], flashK: 0.6, fx: { kind: 'frontier', c: 0xf2d590, c2: 0xffffff, tr: 0xffe9b0, pal: [0xf2d590, 0xffe9b0, 0xffffff, 0xc9a24a] },
+      parts: 'frontier', en: 0xe9c87a, enK: 1.1, enAnim: 7,
+      deco: [{ kind: 'emblem', no: '003', side: 'LR', z: 0.5, dy: 0.0, w: 0.036 }, { kind: 'text', side: 'LR', z: 0.63, dy: -0.03, text: 'THE FIRST GENERATION', style: 'engrave', col: '#e2c27a', w: 0.12 },
+        { kind: 'text', side: 'LR', z: 0.43, dy: -0.032, text: 'BETA-003', style: 'engrave', col: '#e2c27a', w: 0.05 }, { kind: 'text', side: 'L', z: 0.13, dy: -0.03, text: 'TEST LOG v0.0.1 · 2026', style: 'engrave', col: '#cfae64', w: 0.06 },
+        { kind: 'rim', col: 0xe9cf8a }],
+      desc: '아이보리·은 총몸 · 남색 개머리판의 금빛 문양과 별자리 · 살펴보면 별빛이 총몸을 따라 지나감 · 재장전 끝나면 금빛 · EXCLUSIVE — NEVER AVAILABLE AGAIN' },
     // ---------- 옷 상자에 2개씩 ----------
     br_s686_hunter: { gun: 's686', box: 'br', rar: 1, name: '사냥꾼', body: { c: 0x3b3e33, mr: [0.45, 0.45] }, furn: { c: 0x7a4626, mr: [0, 0.5] } },
     br_mini14_wood: { gun: 'mini14', box: 'br', rar: 3, name: '산림 위장', pat: 'camo', pal: ['#4e5636', '#3b4129', '#6a6a44', '#2b2b22'], sc: 3.5, body: { p: 1, mr: [0.1, 0.7] }, furn: { p: 1, mr: [0, 0.72] } },
@@ -219,23 +237,82 @@ const GunSkin = (() => {
       c.fillStyle = 'rgba(0,0,0,0.25)'; for (let y = 0; y < S; y += 3) c.fillRect(0, y, S, 1);
       return { alb: a, glow: g };
     },
-    // 테스터(프로토타입 β): 육각 세라믹 판 — 가로 8칸 × 세로 10줄(이어 붙여도 맞도록 세로를 살짝 눌렀음).
-    //  무늬 = 판마다 조금씩 다른 밝기 + 위쪽 반사, 틈은 어둡게 / 빛 지도 = 틈(흰 선) + 꼭짓점 점 + 가끔 판 전체가 옅게
-    hexlab(S, pal, rng) {
-      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), n = 8, m = 10, w = S / n, hh = S / m, R = w / Math.sqrt(3), ky = hh / (1.5 * R), lw = S / 256;
+    // ---------- 테스터 무늬 (v20) ----------
+    // ZERO PROTOCOL: 티타늄 흰 장갑판(모서리 깎임·위쪽 반사·나사) + 검은 기계 패널(통풍 슬롯). 줄·판 경계가 정확히 S 로 나뉘어 이어 붙여도 맞음
+    //  빛 지도 = 판 사이 틈(옅게) + 검은 패널 안의 직각 회로와 마디(밝게)
+    armor(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256, gap = 2.6 * lw;
       c.fillStyle = pal[3]; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
-      const hex = (cx, x, y, k) => { cx.beginPath(); for (let i = 0; i < 6; i++) { const t = -Math.PI / 2 + i * TAU / 6, px = x + Math.cos(t) * R * k, py = y + Math.sin(t) * R * k * ky; i ? cx.lineTo(px, py) : cx.moveTo(px, py); } cx.closePath(); };
-      const c0 = rgb(pal[0]), c1 = rgb(pal[1]), c2 = rgb(pal[2]);
-      for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
-        const x = i * w + (j % 2) * w / 2, y = j * hh, v = rng(), lit = rng() < 0.16, mix = v < 0.5 ? [c0, c1, v * 2] : [c0, c2, (v - 0.5) * 2];
-        const col = `rgb(${mix[0].map((q, k) => Math.round(lerp(q, mix[1][k], mix[2]))).join(',')})`;
-        W9(S, (dx, dy) => {
-          hex(c, x + dx, y + dy, 0.9); const gr = c.createLinearGradient(0, y + dy - R, 0, y + dy + R); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.35, col); gr.addColorStop(1, col); c.fillStyle = gr; c.fill();
-          c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 1.2 * lw; hex(c, x + dx, y + dy, 0.74); c.stroke();
-          gc.strokeStyle = '#fff'; gc.lineWidth = 1.7 * lw; hex(gc, x + dx, y + dy, 0.95); gc.stroke();
-          if (lit) { gc.fillStyle = 'rgba(255,255,255,0.28)'; hex(gc, x + dx, y + dy, 0.86); gc.fill(); }
-          gc.fillStyle = '#fff'; gc.beginPath(); gc.arc(x + dx, y + dy - R * ky, 2.2 * lw, 0, TAU); gc.fill();
-        });
+      const split = (L, n) => { const w = []; let s = 0; for (let i = 0; i < n; i++) { const v = 0.6 + rng(); w.push(v); s += v; } let acc = 0; return w.map((v) => { const o = [acc, v / s * L]; acc += v / s * L; return o; }); };
+      for (const [y, h] of split(S, 5)) for (const [x, w] of split(S, 2 + Math.floor(rng() * 3))) {
+        const x0 = x + gap / 2, y0 = y + gap / 2, W = w - gap, H = h - gap, cut = Math.min(W, H) * 0.18, dark = rng() < 0.32;
+        const plate = (cx) => { cx.beginPath(); cx.moveTo(x0 + cut, y0); cx.lineTo(x0 + W, y0); cx.lineTo(x0 + W, y0 + H - cut); cx.lineTo(x0 + W - cut, y0 + H); cx.lineTo(x0, y0 + H); cx.lineTo(x0, y0 + cut); cx.closePath(); };
+        gc.strokeStyle = 'rgba(255,255,255,0.45)'; gc.lineWidth = 1.2 * lw; plate(gc); gc.stroke();
+        if (!dark) {
+          const gr = c.createLinearGradient(0, y0, 0, y0 + H); gr.addColorStop(0, '#fbfdfe'); gr.addColorStop(0.18, pal[1]); gr.addColorStop(1, pal[2]); plate(c); c.fillStyle = gr; c.fill();
+          c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 1.4 * lw; c.beginPath(); c.moveTo(x0 + cut, y0 + 1.5 * lw); c.lineTo(x0 + W - 2 * lw, y0 + 1.5 * lw); c.stroke();
+          c.strokeStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.moveTo(x0 + 2 * lw, y0 + H - 1.5 * lw); c.lineTo(x0 + W - cut, y0 + H - 1.5 * lw); c.stroke();
+          if (rng() < 0.5) { c.strokeStyle = 'rgba(0,0,0,0.16)'; c.lineWidth = lw; const yy = y0 + H * (0.3 + rng() * 0.4); c.beginPath(); c.moveTo(x0 + W * 0.1, yy); c.lineTo(x0 + W * 0.9, yy); c.stroke(); }
+          c.fillStyle = '#8a939b'; for (const [sx, sy] of [[x0 + 4 * lw + cut * 0.4, y0 + 4 * lw], [x0 + W - 4 * lw, y0 + H - 4 * lw - cut * 0.4]]) { c.beginPath(); c.arc(sx, sy, 1.6 * lw, 0, TAU); c.fill(); }
+        } else {
+          plate(c); c.fillStyle = pal[0]; c.fill();
+          c.fillStyle = '#060708'; const n = Math.max(2, Math.floor(W / (9 * lw))); for (let i = 0; i < n; i++) c.fillRect(x0 + W * 0.12 + i * (W * 0.76 / n), y0 + H * 0.25, W * 0.76 / n * 0.45, H * 0.5);
+          // 직각 회로: 패널 안을 몇 번 꺾으며 지나감 + 끝 마디
+          gc.strokeStyle = '#fff'; gc.fillStyle = '#fff'; gc.lineWidth = 1.5 * lw; gc.lineJoin = 'round';
+          for (let k = 0; k < 2; k++) {
+            let px = x0 + W * (0.1 + rng() * 0.2), py = y0 + H * (0.2 + rng() * 0.6); gc.beginPath(); gc.moveTo(px, py);
+            for (let s2 = 0; s2 < 3; s2++) { if (s2 % 2 === 0) px = Math.min(x0 + W * 0.92, px + W * (0.15 + rng() * 0.3)); else py = clamp(py + (rng() - 0.5) * H * 0.6, y0 + H * 0.12, y0 + H * 0.88); gc.lineTo(px, py); }
+            gc.stroke(); gc.beginPath(); gc.arc(px, py, 2.4 * lw, 0, TAU); gc.fill();
+          }
+        }
+      }
+      return { alb: a, glow: g };
+    },
+    // CHAOS CORE: 다크 건메탈(가로로 긁힌 결) + 가늘게 갈라진 틈(셀 경계)에서 주황 빛. 틈 둘레만 살짝 달아오름
+    fracture(S, pal, rng) {
+      const N = 30, P = []; for (let i = 0; i < N; i++) P.push([rng() * S, rng() * S]);
+      const a = cv(S), g = cv(S), ac = a.getContext('2d'), gc = g.getContext('2d'), A = ac.createImageData(S, S), Gd = gc.createImageData(S, S), n1 = vnoise(rng, 10), n2 = vnoise(rng, 40);
+      const c0 = rgb(pal[0]), c1 = rgb(pal[1]), c2 = rgb(pal[2]), H = S / 2;
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        let d1 = 1e9, d2 = 1e9;
+        for (const [px, py] of P) { let dx = Math.abs(x - px), dy = Math.abs(y - py); if (dx > H) dx = S - dx; if (dy > H) dy = S - dy; const d = dx * dx + dy * dy; if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; }
+        const e = Math.sqrt(d2) - Math.sqrt(d1), crack = clamp(1 - e / (S * 0.008), 0, 1), heat = clamp(1 - e / (S * 0.028), 0, 1);
+        const k = n1(x / S * 10, y / S * 10) * 0.55 + n2(x / S * 40, y / S * 4) * 0.35, i4 = (y * S + x) * 4, hot = Math.pow(crack, 1.4) * 0.95 + heat * heat * 0.12;
+        for (let ch = 0; ch < 3; ch++) A.data[i4 + ch] = lerp(lerp(c0[ch], c1[ch], k), c2[ch], hot);
+        A.data[i4 + 3] = 255;
+        const gv = clamp(Math.pow(crack, 1.3) + heat * heat * 0.22, 0, 1) * 255; Gd.data[i4] = Gd.data[i4 + 1] = Gd.data[i4 + 2] = gv; Gd.data[i4 + 3] = 255;
+      }
+      ac.putImageData(A, 0, 0); gc.putImageData(Gd, 0, 0);
+      return { alb: a, glow: g };
+    },
+    // LAST FRONTIER: 짙은 남색 + 샴페인 골드 기하 문양(사선 겹줄 · 지그재그 띠 · 계단 마름모) + 별과 별자리(점을 잇는 가는 선)
+    //  빛 지도 = 별(빛 번짐) + 별자리 선(옅게). 금 문양은 빛나지 않고 금속처럼
+    frontier(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256;
+      const bg = c.createLinearGradient(0, 0, S, S); bg.addColorStop(0, pal[0]); bg.addColorStop(0.5, pal[1]); bg.addColorStop(1, pal[0]); c.fillStyle = bg; c.fillRect(0, 0, S, S);
+      gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      c.strokeStyle = pal[2]; c.lineCap = 'square';
+      // 사선 겹줄 (기울기 1 → S 마다 반복되어 이어짐)
+      for (const off of [0, S / 2]) for (const dd of [0, 5 * lw]) { c.lineWidth = (dd ? 1.2 : 2.4) * lw; for (const k of [-S, 0, S]) { c.beginPath(); c.moveTo(off + dd + k, 0); c.lineTo(off + dd + k + S, S); c.stroke(); } }
+      // 지그재그 띠 두 줄
+      for (const y0 of [S * 0.25, S * 0.75]) { c.lineWidth = 2 * lw; for (const dy of [-6 * lw, 6 * lw]) { c.beginPath(); for (let x = 0; x <= S; x += S / 16) { const yy = y0 + dy + ((x / (S / 16)) % 2 ? -8 * lw : 8 * lw); x ? c.lineTo(x, yy) : c.moveTo(x, yy); } c.stroke(); } }
+      // 계단 마름모 (가로·세로 S/4 간격)
+      c.fillStyle = pal[2];
+      for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) {
+        const cx = (i + 0.5) * S / 4 + (j % 2) * S / 8, cy = (j + 0.5) * S / 4, s = 3 * lw;
+        W9(S, (dx, dy) => { for (let r = 0; r < 3; r++) for (let q = -r; q <= r; q++) { const sx = cx + dx + q * s * 2; c.fillRect(sx - s * 0.8, cy + dy + (r - 2) * s * 2 - s * 0.8, s * 1.6, s * 1.6); if (r < 2) c.fillRect(sx - s * 0.8, cy + dy + (2 - r) * s * 2 - s * 0.8, s * 1.6, s * 1.6); } });
+      }
+      // 별과 별자리
+      const star = (x, y, r, b) => W9(S, (dx, dy) => {
+        c.fillStyle = b > 0.7 ? pal[3] : 'rgba(255,255,255,0.85)'; c.beginPath(); c.arc(x + dx, y + dy, r * 0.7, 0, TAU); c.fill();
+        const gr = gc.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r * 3); gr.addColorStop(0, `rgba(255,255,255,${b})`); gr.addColorStop(1, 'rgba(255,255,255,0)'); gc.fillStyle = gr; gc.fillRect(x + dx - r * 3, y + dy - r * 3, r * 6, r * 6);
+        if (b > 0.75) { gc.strokeStyle = `rgba(255,255,255,${b * 0.8})`; gc.lineWidth = 0.8 * lw; gc.beginPath(); gc.moveTo(x + dx - r * 4, y + dy); gc.lineTo(x + dx + r * 4, y + dy); gc.moveTo(x + dx, y + dy - r * 4); gc.lineTo(x + dx, y + dy + r * 4); gc.stroke(); }
+      });
+      for (let i = 0; i < 70; i++) star(rng() * S, rng() * S, (0.8 + rng() * 1.2) * lw, 0.25 + rng() * 0.45);
+      for (let k = 0; k < 4; k++) {
+        const pts = []; let x = rng() * S, y = rng() * S; for (let i = 0; i < 5 + Math.floor(rng() * 3); i++) { pts.push([x, y]); x += (rng() - 0.3) * S * 0.12; y += (rng() - 0.5) * S * 0.12; }
+        W9(S, (dx, dy) => { for (const [cx2, col, w2, al] of [[c, pal[3], 1, 0.55], [gc, '#fff', 1.1, 0.35]]) { cx2.strokeStyle = col; cx2.globalAlpha = al; cx2.lineWidth = w2 * lw; cx2.beginPath(); pts.forEach(([px, py], i) => (i ? cx2.lineTo(px + dx, py + dy) : cx2.moveTo(px + dx, py + dy))); cx2.stroke(); cx2.globalAlpha = 1; } });
+        for (const [px, py] of pts) star(px, py, (1.6 + rng()) * lw, 0.8 + rng() * 0.2);
       }
       return { alb: a, glow: g };
     },
@@ -285,7 +362,7 @@ const GunSkin = (() => {
   function texOf(id) {
     if (TEX[id]) return TEX[id];
     const d = GSKINS[id], S = d.rar >= 4 ? 512 : 256, seed = [...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 17), out = { pat: null, glow: null };
-    if (d.pat && PAT2[d.pat]) { const r = PAT2[d.pat](d.pat === 'lava' ? 256 : S, d.pal, mulberry32(seed)); out.pat = toTex(r.alb); if (d.glow && d.glow.pat === d.pat) out.glow = toTex(r.glow); }
+    if (d.pat && PAT2[d.pat]) { const r = PAT2[d.pat](d.pat === 'lava' || d.pat === 'fracture' ? 256 : S, d.pal, mulberry32(seed)); out.pat = toTex(r.alb); if (d.glow && d.glow.pat === d.pat) out.glow = toTex(r.glow); }
     else if (d.pat && PAT[d.pat]) { const c = cv(S); PAT[d.pat](c.getContext('2d'), S, d.pal || [], mulberry32(seed)); out.pat = toTex(c); }
     if (d.glow && !out.glow) {
       const c = cv(S), gc = c.getContext('2d'); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
@@ -304,7 +381,7 @@ const GunSkin = (() => {
 uniform sampler2D uPat; uniform sampler2D uGlow; uniform float uScale;
 uniform vec3 uBodyCol; uniform vec3 uFurnCol; uniform vec3 uSteelCol; uniform vec3 uMode;
 uniform vec4 uMR; uniform vec2 uSteelMR;
-uniform vec3 uGlowCol; uniform float uGlowAmt; uniform float uGlowAnim;
+uniform vec3 uGlowCol; uniform float uGlowAmt; uniform float uGlowAnim; uniform vec3 uGlowMask; uniform float uScanOn; uniform float uScanZ; uniform vec3 uScanCol;
 uniform float uTime; uniform float uFlash; uniform float uSweepOn; uniform float uSweepZ; uniform vec3 uFxCol;
 uniform vec3 uEnCol; uniform float uEnAmt; uniform float uEnAnim; uniform float uDeploy;
 vec3 gsTri(sampler2D t, vec3 p, vec3 n) {
@@ -337,20 +414,29 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
 	if (gsR > 6.5) { metalnessFactor = 0.0; roughnessFactor = 0.3; }
 `;
   const F_EMIT = `
-	if (uGlowAmt > 0.0 && gsRole < 1.5) {
+	float gsGM = gsRole < 0.5 ? uGlowMask.x : gsRole < 1.5 ? uGlowMask.y : gsRole < 2.5 ? uGlowMask.z : 0.0;
+	if (uGlowAmt > 0.0 && gsGM > 0.0) {
 		float gsG = gsTri(uGlow, vOP, gsNrm).r;
 		float gsA = 1.0; vec3 gsGC = uGlowCol;
-		if (uGlowAnim > 3.5) { gsGC = mix(uGlowCol, gsHue(fract(uTime * 0.16 + vOP.z * 2.4 + vOP.y * 1.4)), 0.85); float gsW = 0.5 + 0.5 * sin(uTime * 3.2 - vOP.z * 24.0); gsA = 0.5 + 0.5 * gsW; }	// 테스터: 무지개가 총 길이를 따라 흐름
+		if (uGlowAnim > 6.5) { float gsH = gsHash(floor(vOP * 70.0)); gsA = 0.2 + 0.8 * pow(0.5 + 0.5 * sin(uTime * (0.9 + gsH * 1.8) + gsH * 6.283), 3.0); }	// 별 반짝임 (LAST FRONTIER)
+		else if (uGlowAnim > 5.5) { float gsF = gsHash(vec3(floor(uTime * 9.0), 1.0, 0.0)), gsF2 = gsHash(vec3(floor(uTime * 2.3), 2.0, 0.0)); gsA = 0.3 + 0.7 * mix(gsF * gsF, 1.0, step(0.72, gsF2)); }	// 불규칙 점멸 (CHAOS CORE)
+		else if (uGlowAnim > 4.5) { float gsW = 0.5 + 0.5 * sin(uTime * 1.25 - vOP.z * 7.0 - vOP.y * 3.0); gsA = 0.16 + 0.84 * gsW * gsW * gsW; }	// 회로가 천천히 차례로 점등 (ZERO PROTOCOL)
+		else if (uGlowAnim > 3.5) { gsGC = mix(uGlowCol, gsHue(fract(uTime * 0.16 + vOP.z * 2.4 + vOP.y * 1.4)), 0.85); float gsW = 0.5 + 0.5 * sin(uTime * 3.2 - vOP.z * 24.0); gsA = 0.5 + 0.5 * gsW; }	// 테스터: 무지개가 총 길이를 따라 흐름
 		else if (uGlowAnim > 2.5) { float gsB = floor(uTime * 13.0) + floor(vOP.z * 22.0) * 7.0 + floor(vOP.y * 30.0); gsA = 0.3 + 0.7 * step(0.28, gsHash(vec3(gsB, 1.0, 2.0))); }
 		else if (uGlowAnim > 1.5) { float gsW = 0.5 + 0.5 * sin(uTime * 4.2 - vOP.z * 16.0); gsA = 0.4 + 0.6 * gsW * gsW; }
 		else if (uGlowAnim > 0.5) gsA = 0.72 + 0.28 * sin(uTime * 2.4 + vOP.z * 3.0);
-		totalEmissiveRadiance += gsGC * gsG * uGlowAmt * (gsA + uFlash * 1.8);
+		totalEmissiveRadiance += gsGC * gsG * uGlowAmt * gsGM * (gsA + uFlash * 1.8);
 	}
-	totalEmissiveRadiance += (uGlowAnim > 3.5 ? gsHue(fract(vOP.z * 3.0 + uTime * 0.6)) : uFxCol) * gsEdge * 2.6;
+	totalEmissiveRadiance += (uGlowAnim > 3.5 && uGlowAnim < 4.5 ? gsHue(fract(vOP.z * 3.0 + uTime * 0.6)) : uFxCol) * gsEdge * 2.6;
+	// 스캔 띠 (테스터: 재장전·살펴보기 때 총을 따라 지나가는 빛)
+	if (uScanOn > 0.5) totalEmissiveRadiance += uScanCol * smoothstep(0.035, 0.0, abs(vGZ - uScanZ)) * 3.2;
 	// 부속품의 발광 부품(kd 7 = energy): 스킨 색으로 빛나고, 펼쳐질 때(uDeploy) 번쩍
 	if (gsR > 6.5) {
 		float gsE = 1.0; vec3 gsEC = uEnCol;
-		if (uEnAnim > 3.5) { gsEC = mix(uEnCol, gsHue(fract(uTime * 0.22 + vOP.z * 6.0 + vOP.x * 4.0 + vOP.y * 3.0)), 0.8); gsE = 0.82 + 0.18 * sin(uTime * 5.0 - vOP.z * 40.0); }
+		if (uEnAnim > 6.5) gsE = 0.85 + 0.15 * sin(uTime * 1.6);
+		else if (uEnAnim > 5.5) { float gsF = gsHash(vec3(floor(uTime * 11.0), 5.0, 0.0)); gsE = 0.3 + 0.9 * gsF * gsF; }
+		else if (uEnAnim > 4.5) gsE = 0.5 + 0.5 * (0.5 + 0.5 * sin(uTime * 1.25));
+		else if (uEnAnim > 3.5) { gsEC = mix(uEnCol, gsHue(fract(uTime * 0.22 + vOP.z * 6.0 + vOP.x * 4.0 + vOP.y * 3.0)), 0.8); gsE = 0.82 + 0.18 * sin(uTime * 5.0 - vOP.z * 40.0); }
 		else if (uEnAnim > 2.5) { float gsB = floor(uTime * 11.0) + floor(vOP.y * 40.0) * 5.0 + floor(vOP.z * 30.0) * 3.0; gsE = 0.3 + 0.7 * step(0.25, gsHash(vec3(gsB, 3.0, 1.0))); }
 		else if (uEnAnim > 1.5) { float gsW = 0.5 + 0.5 * sin(uTime * 4.0 - vOP.z * 40.0 - vOP.x * 20.0); gsE = 0.55 + 0.45 * gsW; }
 		else if (uEnAnim > 0.5) gsE = 0.78 + 0.22 * sin(uTime * 2.2);
@@ -378,24 +464,24 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
       uBodyCol: { value: new THREE.Color(b.c !== undefined ? b.c : 0x888888) }, uFurnCol: { value: new THREE.Color(f.c !== undefined ? f.c : 0x888888) }, uSteelCol: { value: new THREE.Color(s.c !== undefined ? s.c : 0x888888) },
       uMode: { value: new THREE.Vector3(mode(b), mode(f), mode(s)) },
       uMR: { value: new THREE.Vector4((b.mr || [0.15, 0.6])[0], (b.mr || [0.15, 0.6])[1], (f.mr || [0, 0.7])[0], (f.mr || [0, 0.7])[1]) }, uSteelMR: { value: new THREE.Vector2((s.mr || [0.9, 0.3])[0], (s.mr || [0.9, 0.3])[1]) },
-      uGlowCol: { value: new THREE.Color(gl ? gl.c : 0) }, uGlowAmt: { value: gl ? gl.k : 0 }, uGlowAnim: { value: gl ? gl.anim || 0 : 0 },
+      uGlowCol: { value: new THREE.Color(gl ? gl.c : 0) }, uGlowAmt: { value: gl ? gl.k : 0 }, uGlowAnim: { value: gl ? gl.anim || 0 : 0 }, uGlowMask: { value: new THREE.Vector3(...(d.glowMask || [1, 1, 0])) },
       uEnCol: { value: new THREE.Color(d.en || 0) }, uEnAmt: { value: d.enK || 2.2 }, uEnAnim: { value: d.enAnim || 1 },
     });
   }
   function makeMat(base, U, d) {
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: base.roughness, metalness: base.metalness, envMap: base.envMap, envMapIntensity: d.env !== undefined ? Math.max(d.env, base.envMapIntensity) : base.envMapIntensity });
     m.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); sh.vertexShader = patchV(sh.vertexShader); sh.fragmentShader = patchF(sh.fragmentShader); };
-    m.customProgramCacheKey = () => 'gskin-v3';
+    m.customProgramCacheKey = () => 'gskin-v4';
     return m;
   }
   // 그리기 직전에 총 공간 행렬(빛 띠 위치 계산용) — 효과가 진행 중일 때만
   let FRM = 0;
-  function beforeRender() { const I = this.userData.gsInst; if (I && I.U.uSweepOn.value > 0.5 && I.frm !== FRM) { I.frm = FRM; I.U.uGunInv.value.copy(I.g.matrixWorld).invert(); } }
+  function beforeRender() { const I = this.userData.gsInst; if (I && (I.U.uSweepOn.value > 0.5 || I.U.uScanOn.value > 0.5) && I.frm !== FRM) { I.frm = FRM; I.U.uGunInv.value.copy(I.g.matrixWorld).invert(); } }
   const _bb = new THREE.Box3();
   // 만들어진 총(그룹)에 스킨을 입힌다
   function apply(g, id) {
     const d = GSKINS[id]; if (!d || d.gun !== g.userData.id) return g;
-    const U = Object.assign({ uTime: TIME, uFlash: { value: 0 }, uSweepOn: { value: 0 }, uSweepZ: { value: 0 }, uGunInv: { value: new THREE.Matrix4() }, uFxCol: { value: new THREE.Color(d.fx ? d.fx.c : rarOf(d.rar).hex) }, uDeploy: { value: 0 } }, staticU(id));
+    const U = Object.assign({ uTime: TIME, uFlash: { value: 0 }, uSweepOn: { value: 0 }, uSweepZ: { value: 0 }, uScanOn: { value: 0 }, uScanZ: { value: 0 }, uScanCol: { value: new THREE.Color(0x3ff5ff) }, uGunInv: { value: new THREE.Matrix4() }, uFxCol: { value: new THREE.Color(d.fx ? d.fx.c : rarOf(d.rar).hex) }, uDeploy: { value: 0 } }, staticU(id));
     const I = { g, id, d, U, flash: 0, sweep: null, dep: null, parts: null, frm: -1, z0: -0.4, z1: 0.6 }, mats = {};
     const walk = (o) => {
       if (o.userData.noSkin) return;
@@ -417,6 +503,7 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
       if (I.parts) for (const p of I.parts) { p.mesh.userData.gsInst = I; p.mesh.onBeforeRender = beforeRender; }
     }
     g.userData.skin = I;
+    if (d.deco && typeof GunDeco !== 'undefined') I.deco = GunDeco.attach(g, d, I.z0, I.z1);   // 테스터: 엠블럼·각인·홀로그램 (05_models_gdeco.js)
     if (d.tester) IDLE.add(I);
     return g;
   }
@@ -508,7 +595,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
   const _p = new THREE.Vector3(), _q = new THREE.Vector3(), _d = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
   // 테스터(rainbow): 무지개 여섯 색 중 하나
   const PRISM = [0xff5ad8, 0x9b7bff, 0x45d8ff, 0x4dffc4, 0xfff07a, 0xffa34a];
-  const pick = (fx) => (fx.rainbow ? PRISM[(Math.random() * 6) | 0] : Math.random() < 0.55 ? fx.c : fx.c2);
+  const pick = (fx) => (fx.pal ? fx.pal[(Math.random() * fx.pal.length) | 0] : fx.rainbow ? PRISM[(Math.random() * 6) | 0] : Math.random() < 0.55 ? fx.c : fx.c2);   // 테스터: 스킨마다 정한 색 묶음
   const own = (c) => !c || !!c.isPlayer;
   // ---------- 사격 ----------
   const SHOT = {
@@ -561,6 +648,23 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     }
     for (let i = 0; i < 10; i++) { const sp = 3 + Math.random() * 5; _q.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(1.4); emit(P, _p, _d.x * sp + _q.x, _d.y * sp + _q.y, _d.z * sp + _q.z, PRISM[(Math.random() * 6) | 0], (0.008 + Math.random() * 0.008) * k, 0.14 + Math.random() * 0.14, { drag: 5, sq: Math.random() < 0.5 }); }
   };
+  // ZERO PROTOCOL: 하얀 섬광 + 총구 둘레 시안 육각 고리(여섯 점) + 앞으로 곧게 뻗는 시안 조각
+  SHOT.zero = function (P, k, fx) {
+    emit(P, _p, 0, 0, 0, 0xffffff, 0.16 * k, 0.05, { grow: 1.2 });
+    _u.set(0, 1, 0); if (Math.abs(_d.y) > 0.9) _u.set(1, 0, 0); _r.crossVectors(_d, _u).normalize(); _u.crossVectors(_r, _d).normalize();
+    for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + 0.26, ca = Math.cos(a), sa = Math.sin(a); emit(P, _p, (_r.x * ca + _u.x * sa) * 1.3 + _d.x, (_r.y * ca + _u.y * sa) * 1.3 + _d.y, (_r.z * ca + _u.z * sa) * 1.3 + _d.z, fx.c, 0.012 * k, 0.16, { drag: 7, sq: 1 }); }
+    for (let i = 0; i < 7; i++) { const sp = 4 + Math.random() * 5; emit(P, _p, _d.x * sp, _d.y * sp, _d.z * sp, pick(fx), (0.006 + Math.random() * 0.006) * k, 0.1 + Math.random() * 0.08, { drag: 6, sq: 1 }); }
+  };
+  // CHAOS CORE: 총구 화염은 그대로 두고 작은 붉은 잔광이 잠깐 남음 + 불티 몇 개
+  SHOT.chaos = function (P, k, fx) {
+    emit(P, _p, _d.x * 0.15, _d.y * 0.15 + 0.03, _d.z * 0.15, fx.c, 0.07 * k, 0.45, { grow: 0.6, drag: 3 });
+    for (let i = 0; i < 4; i++) { const sp = 1 + Math.random() * 2; emit(P, _p, _d.x * sp + (Math.random() - 0.5) * 0.8, _d.y * sp + 0.3 + Math.random() * 0.5, _d.z * sp + (Math.random() - 0.5) * 0.8, pick(fx), (0.006 + Math.random() * 0.005) * k, 0.3 + Math.random() * 0.25, { g: -1.2, drag: 2 }); }
+  };
+  // LAST FRONTIER: 금빛 작은 섬광 + 천천히 흩어지는 별 반짝임
+  SHOT.frontier = function (P, k, fx) {
+    emit(P, _p, 0, 0, 0, 0xfff0c0, 0.12 * k, 0.06, { grow: 1 });
+    for (let i = 0; i < 6; i++) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(0.4 + Math.random() * 0.5); emit(P, _p, _d.x * 1.5 + _r.x, _d.y * 1.5 + _r.y, _d.z * 1.5 + _r.z, pick(fx), (0.005 + Math.random() * 0.004) * k, 0.5 + Math.random() * 0.4, { drag: 3, grow: -0.4 }); }
+  };
   // 슈퍼레어(약한 효과): 스킨 색 작은 섬광 + 조각 몇 개. 몸체 빛·탄도 색·효과음 없음 — 울트라레어와 등급 차이가 보이게
   function liteShot(P, k, fx) {
     emit(P, _p, 0, 0, 0, fx.c, 0.1 * k, 0.05, { grow: 0.8 });
@@ -569,7 +673,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
   }
   function shot(g, c) {
     const I = g && g.userData.skin, fx = I && (I.d.fx || I.d.lite); if (!fx) return;
-    if (!fx.lite) { I.flash = 1; ACTIVE.add(I); }
+    if (!fx.lite) { I.flash = I.d.flashK !== undefined ? I.d.flashK : 1; ACTIVE.add(I); }
     const sc = sceneOf(g); if (!sc || !shown(g)) return;
     const vm = isVM(sc), k = vm ? 1.45 : 2.4, m = g.userData.meta;   // 1인칭은 총구가 화면 구석이라 조금 크게
     if (!vm && G.camera && _q.setFromMatrixPosition(g.matrixWorld).distanceTo(G.camera.position) > (fx.lite ? 40 : 70)) return;
@@ -585,6 +689,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     g.updateWorldMatrix(true, true); I.U.uGunInv.value.copy(g.matrixWorld).invert();
     I.sweep = { t: 0, dur, out: false, c }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.z0 - 0.05; ACTIVE.add(I);
     if (I.parts) { setParts(I, 0); I.dep = { t: 0, dur }; }   // 부속품은 접어 두었다가 빛 띠를 따라 펼침
+    if (I.deco) for (const e of I.deco) e.mesh.visible = false;   // 각인·엠블럼도 빛 띠를 따라 나타남
     if (I.d.tester) spinStart(I, dur);
     if (!quiet && typeof Audio !== 'undefined' && Audio.skinFx && shown(g)) Audio.skinFx('draw', I.d.fx.kind, c && !own(c) ? c.pos : null, own(c));
   }
@@ -602,7 +707,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       _q.set(0, m.boreY, lerp(I.z0, I.z1, Math.random())); g.localToWorld(_q);
       _r.set(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize(); const R = R0 * (0.6 + Math.random() * 0.6), T = 0.22 + Math.random() * 0.16;
       _p.copy(_q).addScaledVector(_r, R);
-      emit(P, _p, -_r.x * R / T, -_r.y * R / T, -_r.z * R / T, PRISM[i % 6], (0.012 + Math.random() * 0.01) * k, T, { sq: 1 });
+      emit(P, _p, -_r.x * R / T, -_r.y * R / T, -_r.z * R / T, I.d.fx.pal ? I.d.fx.pal[i % I.d.fx.pal.length] : PRISM[i % 6], (0.012 + Math.random() * 0.01) * k, T, { sq: 1 });
     }
   }
   function spinUpdate(I, dt) {
@@ -627,11 +732,83 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       const vm = isVM(sc);
       if (!vm && G.camera && _q.setFromMatrixPosition(g.matrixWorld).distanceTo(G.camera.position) > 22) continue;
       I.moteT = (I.moteT || 0) - dt; if (I.moteT > 0) continue;
-      I.moteT = vm ? 0.07 : 0.14;
-      const m = g.userData.meta, a = Math.random() * TAU, r = 0.035 + Math.random() * 0.04, k = vm ? 1 : 2.2;
-      _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, lerp(I.z0, I.z1, Math.random())); g.localToWorld(_p);
-      emit(pool(sc), _p, (Math.random() - 0.5) * 0.06, 0.05 + Math.random() * 0.08, (Math.random() - 0.5) * 0.06, PRISM[(Math.random() * 6) | 0], (0.004 + Math.random() * 0.004) * k, 0.5 + Math.random() * 0.5, { sq: Math.random() < 0.4 });
+      // 주제별: ZERO = 시안 데이터 조각이 천천히 떠오름 · CHAOS = 코어 둘레에서 붉은 불티가 튐(불규칙) · FRONTIER = 개머리판 둘레 금빛 별 반짝임
+      const kind = I.d.fx && I.d.fx.kind, m = g.userData.meta, k = vm ? 1 : 2.2, P = pool(sc), col = pick(I.d.fx);
+      if (kind === 'chaos') {
+        I.moteT = (vm ? 0.08 : 0.16) * (0.4 + Math.random() * 1.6);
+        const core = I.parts && I.parts.find((p) => p.core); if (core) core.outer.getWorldPosition(_p); else { _p.set(0, m.boreY, lerp(I.z0, I.z1, 0.4)); g.localToWorld(_p); }
+        emit(P, _p, (Math.random() - 0.5) * 0.25, 0.08 + Math.random() * 0.22, (Math.random() - 0.5) * 0.25, col, (0.004 + Math.random() * 0.004) * k, 0.35 + Math.random() * 0.3, { g: -0.4, drag: 1.5 });
+      } else if (kind === 'frontier') {
+        I.moteT = vm ? 0.12 : 0.24;
+        const a = Math.random() * TAU, r = 0.03 + Math.random() * 0.04; _p.set(Math.cos(a) * r, m.boreY - 0.02 + Math.sin(a) * r, lerp(I.z0, lerp(I.z0, I.z1, 0.55), Math.random())); g.localToWorld(_p);
+        emit(P, _p, 0, 0.01, 0, col, (0.004 + Math.random() * 0.004) * k, 0.6 + Math.random() * 0.5, { grow: -0.5 });
+      } else {
+        I.moteT = vm ? 0.14 : 0.28;
+        const a = Math.random() * TAU, r = 0.03 + Math.random() * 0.035; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, lerp(I.z0, I.z1, Math.random())); g.localToWorld(_p);
+        emit(P, _p, (Math.random() - 0.5) * 0.02, 0.04 + Math.random() * 0.05, (Math.random() - 0.5) * 0.02, col, (0.0035 + Math.random() * 0.003) * k, 0.6 + Math.random() * 0.5, { sq: 1 });
+      }
     }
+  }
+  // ---------- 테스터: 재장전 · 살펴보기 ----------
+  //  재장전(06_combat.js 가 부름): ZERO = 시작할 때 시안 스캔 띠 · CHAOS = 탄창 갈 때 코어 둘레 붉은 입자 · FRONTIER = 끝나면 금빛 한 번
+  //  살펴보기(09_player.js · 진열장): ZERO = 옆에 SYSTEM ONLINE 홀로그램 · CHAOS = 코어가 강하게 빛나며 맥박 · FRONTIER = 별빛 띠가 총몸을 따라 천천히 지나감
+  function gunsOf(c) {
+    const out = [];
+    if (c && c.isPlayer && typeof VM !== 'undefined' && VM.active && VM.gun) out.push(VM.gun);
+    if (c && c.rig && c.rig.gunObj) out.push(c.rig.gunObj);
+    return out.filter((g) => g.userData.skin && g.userData.skin.d.tester);
+  }
+  function scan(I, dur, col, slow) { I.scan = { t: 0, dur, slow }; I.U.uScanCol.value.setHex(col); I.U.uScanOn.value = 1; I.U.uScanZ.value = I.z0 - 0.05; I.g.updateWorldMatrix(true, false); I.U.uGunInv.value.copy(I.g.matrixWorld).invert(); ACTIVE.add(I); }
+  function reload(c, phase) {
+    for (const g of gunsOf(c)) {
+      const I = g.userData.skin, kind = I.d.fx.kind, sc = sceneOf(g); if (!sc || !shown(g)) continue;
+      const vm = isVM(sc), k = vm ? 1 : 2.4, P = pool(sc), m = g.userData.meta;
+      if (kind === 'zero' && phase === 'start') scan(I, 0.5, 0x3ff5ff);
+      else if (kind === 'chaos' && phase === 'mag') {
+        const core = I.parts && I.parts.find((p) => p.core); if (core) core.outer.getWorldPosition(_q); else { _q.set(0, m.boreY, lerp(I.z0, I.z1, 0.4)); g.localToWorld(_q); }
+        for (let i = 0; i < 18; i++) { _r.set(Math.random() - 0.5, Math.random() - 0.2, Math.random() - 0.5).normalize().multiplyScalar(0.25 + Math.random() * 0.5); emit(P, _q, _r.x, _r.y, _r.z, pick(I.d.fx), (0.005 + Math.random() * 0.006) * k, 0.25 + Math.random() * 0.25, { drag: 3, sq: Math.random() < 0.3 }); }
+        I.U.uDeploy.value = 0.8; I.coreT = 0.35; ACTIVE.add(I);
+      } else if (kind === 'frontier' && phase === 'done') {
+        I.flash = 0.9; ACTIVE.add(I); _q.set(0, m.boreY + 0.01, lerp(I.z0, I.z1, 0.5)); g.localToWorld(_q);
+        emit(P, _q, 0, 0, 0, 0xfff0c0, 0.05 * k, 0.3, { grow: 1.4 });
+        for (let i = 0; i < 8; i++) { _r.set(Math.random() - 0.5, Math.random() * 0.6, Math.random() - 0.5).normalize().multiplyScalar(0.15 + Math.random() * 0.2); emit(P, _q, _r.x, _r.y, _r.z, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.5, { drag: 2 }); }
+      }
+      if (typeof Audio !== 'undefined' && Audio.skinFx && ((kind === 'zero' && phase === 'start') || (kind === 'chaos' && phase === 'mag') || (kind === 'frontier' && phase === 'done'))) Audio.skinFx('reload', kind, c && !own(c) ? c.pos : null, own(c));
+    }
+  }
+  // delay: 진열장처럼 꺼내기 연출이 끝난 뒤에 시작 · loop: 진열장에서 몇 초마다 다시
+  function inspect(g, c, delay = 0, loop = 0) {
+    const I = g && g.userData.skin; if (!I || !I.d.tester) return false;
+    inspectStop(g); I.insp = { t: -delay, dur: 2.3, c, on: false, loop }; ACTIVE.add(I); return true;
+  }
+  function inspectStop(g) {
+    const I = g && g.userData.skin; if (!I || !I.insp) return;
+    if (I.insp.panel) { I.g.remove(I.insp.panel); I.insp.panel.material.dispose(); }
+    if (I.insp.scan && I.scan) { I.scan = null; I.U.uScanOn.value = 0; }
+    I.U.uDeploy.value = 0; I.U.uFlash.value = Math.max(0, I.flash || 0); I.insp = null;
+  }
+  function inspUpdate(I, dt) {
+    const s = I.insp, g = I.g; s.t += dt; if (s.t < 0) return;
+    const sc = sceneOf(g); if (!sc) { inspectStop(g); return; }
+    const kind = I.d.fx.kind, u = s.t / s.dur, vm = isVM(sc), k = vm ? 1 : 2.4, P = pool(sc), m = g.userData.meta;
+    if (!s.on) {
+      s.on = true;
+      if (kind === 'zero') s.panel = GunDeco.panel(g);
+      if (kind === 'frontier') { scan(I, s.dur * 0.85, 0xfff0c0, true); s.scan = true; }
+      if (typeof Audio !== 'undefined' && Audio.skinFx && shown(g)) Audio.skinFx('inspect', kind, s.c && !own(s.c) ? s.c.pos : null, own(s.c));
+    }
+    if (kind === 'zero' && s.panel) {
+      const inK = clamp(u / 0.12, 0, 1), outK = clamp((1 - u) / 0.12, 0, 1), fl = Math.random() < 0.06 ? 0.4 : 1;
+      s.panel.scale.set(0.16 * (0.2 + 0.8 * inK), 0.08 * inK * outK + 0.0005, 1); s.panel.material.opacity = Math.min(inK, outK) * fl;
+      I.U.uFlash.value = Math.max(I.U.uFlash.value, 0.25 * Math.sin(Math.min(1, u * 2) * Math.PI));
+    } else if (kind === 'chaos') {
+      const pulse = 0.5 + 0.5 * Math.sin(s.t * 18), env = Math.sin(Math.min(1, u) * Math.PI);
+      I.U.uDeploy.value = env * (0.6 + 0.6 * pulse);
+      if (Math.random() < dt * 40 * env) { const core = I.parts && I.parts.find((p) => p.core); if (core) core.outer.getWorldPosition(_q); else { _q.set(0, m.boreY, lerp(I.z0, I.z1, 0.4)); g.localToWorld(_q); } _r.set(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(0.2 + Math.random() * 0.35); emit(P, _q, _r.x, _r.y, _r.z, pick(I.d.fx), (0.004 + Math.random() * 0.005) * k, 0.3, { drag: 2 }); }
+    } else if (kind === 'frontier' && I.scan) {
+      if (Math.random() < dt * 30) { const a = Math.random() * TAU, r = 0.02 + Math.random() * 0.03; _q.set(Math.cos(a) * r, m.boreY - 0.01 + Math.sin(a) * r, I.U.uScanZ.value); g.localToWorld(_q); emit(P, _q, 0, 0.02, 0, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.6, { grow: -0.4 }); }
+    }
+    if (u >= 1) { const loop = s.loop, c = s.c; inspectStop(g); if (loop) inspect(g, c, loop, loop); }
   }
   // 손에서 떠난 총: 장면에 그대로 두고(지금 자리·자세) 총구부터 사라지게 한 뒤 지운다. 효과가 없는 총이면 false
   function holster(g, dur = 0.32, c = null) {
@@ -657,10 +834,12 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
   }
   // 1인칭 정조준: 조준선·눈앞을 가리는 부속품(GunParts 의 sight)은 몸체 안으로 접어 넣고, 조준을 풀면 다시 편다
   function adsFold(dt) {
-    const vg = typeof VM !== 'undefined' && VM.gun, I = vg && vg.userData.skin; if (!I || !I.parts) return;
+    const vg = typeof VM !== 'undefined' && VM.gun, I = vg && vg.userData.skin; if (!I || (!I.parts && !I.deco)) return;
     const want = typeof Cam !== 'undefined' ? Cam.ads : 0;
     I.adsK = I.adsK === undefined ? want : I.adsK + (want - I.adsK) * Math.min(1, dt * 16);
     const f = clamp(I.adsK * 1.6, 0, 1), k = f * f * (3 - 2 * f);   // 조준이 반쯤 들어오면 이미 다 접힘
+    if (I.deco) for (const e of I.deco) if (e.kind === 'holo') e.mesh.material.opacity = 0.85 * (1 - k);   // 조준 장치 둘레 홀로그램은 정조준 때 사라짐
+    if (!I.parts) return;
     if (k <= 0.001 && !I.folded) return;
     I.folded = k > 0.001;
     for (const p of I.parts) {
@@ -671,7 +850,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     }
   }
   function update(dt) {
-    CLOCK += dt; TIME.value = CLOCK % 600; FRM++;
+    CLOCK += dt; TIME.value = CLOCK % 600; FRM++; if (typeof GunDeco_T !== 'undefined') GunDeco_T.value = TIME.value;
     for (const I of ACTIVE) {
       if (I.flash > 0) { I.flash = Math.max(0, I.flash - dt * 7); I.U.uFlash.value = I.flash; }
       const s = I.sweep;
@@ -685,7 +864,11 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       }
       if (I.dep) updateDeploy(I, dt);
       if (I.spin) spinUpdate(I, dt);
-      if (!I.sweep && !I.dep && !I.spin && I.flash <= 0) ACTIVE.delete(I);
+      if (I.deco) for (const e of I.deco) e.mesh.visible = !I.sweep || e.zg < I.U.uSweepZ.value;   // 각인·엠블럼은 빛 띠가 지나간 만큼만
+      if (I.scan) { const sc2 = I.scan; sc2.t += dt; const u2 = clamp(sc2.t / sc2.dur, 0, 1), e2 = sc2.slow ? u2 : u2 * u2 * (3 - 2 * u2); I.U.uScanZ.value = lerp(I.z0 - 0.04, I.z1 + 0.04, e2); if (u2 >= 1) { I.scan = null; I.U.uScanOn.value = 0; } }
+      if (I.coreT > 0) { I.coreT -= dt; if (!I.insp) I.U.uDeploy.value = Math.max(0, I.coreT / 0.35) * 0.8; }
+      if (I.insp) inspUpdate(I, dt);
+      if (!I.sweep && !I.dep && !I.spin && !I.scan && !I.insp && !(I.coreT > 0) && I.flash <= 0) ACTIVE.delete(I);
     }
     idleUpdate(dt);
     adsFold(dt);
@@ -696,5 +879,5 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
   const short = (gun) => (ITEMS[gun] ? ITEMS[gun].name.replace(/(\s[가-힣]+)+$/, '') : gun);
   const name = (id) => { const d = GSKINS[id]; return d ? `${short(d.gun)} · ${d.name}` : ''; };
   const tracerCol = (g) => { const I = g && g.userData.skin; return I && I.d.fx ? I.d.fx.tr : 0; };
-  return { apply, shot, draw, holster, update, name, short, tracerCol, texOf, PRISM, fx: { pool, emit }, get time() { return TIME.value; }, _active: ACTIVE, _pools: POOLS, _idle: IDLE };
+  return { apply, shot, draw, holster, update, reload, inspect, inspectStop, name, short, tracerCol, texOf, PRISM, fx: { pool, emit }, get time() { return TIME.value; }, _active: ACTIVE, _pools: POOLS, _idle: IDLE };
 })();

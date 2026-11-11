@@ -368,7 +368,8 @@ function startReload(c) {
   const wi = c.weapon; if (!wi || c.rl || c.equipT > 0 || c.cycle) return false;
   const d = ITEMS[wi.id], ms = c.inv.magSize(wi);
   if (wi.mag >= ms || c.inv.count(d.ammo) <= 0) return false;
-  c.rl = reloadPlan(c, wi, d); c.aiming = false; c.burstQ = 0;
+  c.rl = reloadPlan(c, wi, d); c.aiming = false; c.burstQ = 0; c.inspectT = 0;
+  if (typeof GunSkin !== 'undefined') GunSkin.reload(c, 'start');   // 테스터 스킨: 재장전 연출
   return true;
 }
 function loadMag(c) {
@@ -384,6 +385,7 @@ function reloadEvent(c, name) {
   if (name === 'pumpBack' || ((name === 'boltBack' || name === 'leverDown') && rl.empty)) ejectCase(c, d);
   if (name === 'shellEject') for (let i = 0; i < Math.min(2, rl.fired || 0); i++) ejectCase(c, d, true);
   if (name === 'magFree') dropPartFx(c, 'mag', 'mag:' + wi.id + ':' + (wi.att.mag ? 1 : 0), false);
+  if ((name === 'magFree' || name === 'magIn' || name === 'magInAk') && typeof GunSkin !== 'undefined') GunSkin.reload(c, 'mag');
   if (name === 'clipEject') dropPartFx(c, 'clip', 'clip', true);
   mechSound(c, name);
 }
@@ -392,7 +394,7 @@ function updateReload(c, dt) {
   if (!c.weapon) { c.rl = null; return; }
   rl.t += dt;
   while (c.rl && rl.ev < rl.events.length && rl.t >= rl.events[rl.ev][0]) { const e = rl.events[rl.ev][1]; rl.ev++; reloadEvent(c, e); }
-  if (c.rl && rl.t >= rl.total) { if ((rl.kind === 'mag' || rl.kind === 'belt') && !rl.loaded) loadMag(c); c.rl = null; }
+  if (c.rl && rl.t >= rl.total) { if ((rl.kind === 'mag' || rl.kind === 'belt') && !rl.loaded) loadMag(c); c.rl = null; if (typeof GunSkin !== 'undefined') GunSkin.reload(c, 'done'); }
 }
 // 산탄총·볼트액션 장전 중 사격하면 중단(넣은 탄은 유지)
 function cancelReload(c) {

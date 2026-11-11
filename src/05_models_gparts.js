@@ -185,7 +185,48 @@ const GunParts = (() => {
         B.add(OC(0.0052), 7, 0, 0.042, -0.0085);
       } },
     ],
+    // ---------- 테스터 (v20 개편): 베타 테스터 한정 컬렉션 ----------
+    // ZERO PROTOCOL(M416): 총구 쪽 빛나는 칼라 · 총열덮개 양옆 시안 광선 띠(하우징 포함) · 개머리판 양옆 짧은 광선 막대
+    zero: [
+      { at: 'ring', mz: -0.035, build(B, r) { B.add(TO(r + 0.007, 0.0034, 6, 22), 3, 0, 0, 0); B.add(TO(r + 0.0098, 0.0011, 4, 26), 7, 0, 0, 0.003); B.add(TO(r + 0.0098, 0.0011, 4, 26), 7, 0, 0, -0.003); } },
+      { at: 'LR', z: 0.66, build(B) { B.add(BX(0.0018, 0.0072, 0.15), 3, 0, 0.0009, 0); B.add(BX(0.0016, 0.0026, 0.142), 7, 0, 0.0021, 0); } },
+      { at: 'LR', z: 0.12, build(B) { B.add(BX(0.0018, 0.006, 0.058), 3, 0, 0.0009, 0); B.add(BX(0.0016, 0.0022, 0.052), 7, 0, 0.0021, 0); } },
+    ],
+    // CHAOS CORE(AKM): 총열을 감은 방열 고리 세 겹(붉게 달아오름) · 몸통 양옆 불안정한 에너지 코어(검은 받침 + 빛나는 구 + 덮개 살)
+    chaos: [
+      ...[-0.07, -0.115, -0.16].map((mz) => ({ at: 'ring', mz, build(B, r) { B.add(TO(r + 0.0062, 0.0042, 6, 18), 3, 0, 0, 0); B.add(TO(r + 0.0088, 0.0013, 4, 20), 7, 0, 0, 0); } })),
+      { at: 'LR', z: 0.36, core: true, build(B) {
+        B.add(CY(0.0135, 0.0135, 0.004, 10), 3, 0, 0.002, 0);
+        B.add(IC(0.0078, 1), 7, 0, 0.0062, 0);
+        around(4, Math.PI / 4, (a, c, s) => B.add(BX(0.0016, 0.0105, 0.0016), 3, c * 0.0098, 0.0055, s * 0.0098, s * 0.35, 0, -c * 0.35));
+        B.add(TO(0.0098, 0.0012, 4, 16), 7, 0, 0.0042, 0, HP);
+      } },
+    ],
+    // LAST FRONTIER(Kar98k): 드러난 총열의 샴페인 골드 띠 세 줄과 위·양옆으로 이어진 금 상감 · 개머리 덮개 위 금 상감선 (개머리가 총열 아래 길게 깔려 있어 총구 쪽 15cm 안에만)
+    frontier: [
+      { at: 'ring', mz: -0.025, build(B, r) { B.add(TO(r + 0.0026, 0.0019, 6, 22), 7, 0, 0, 0); } },
+      { at: 'ring', mz: -0.075, build(B, r) { B.add(TO(r + 0.0024, 0.0016, 6, 22), 7, 0, 0, 0); B.add(BX(0.0018, 0.0011, 0.095), 7, 0, r + 0.0004, 0); for (const s of [1, -1]) B.add(BX(0.0011, 0.0011, 0.07), 7, s * (r + 0.0003), 0, 0.005); } },
+      { at: 'ring', mz: -0.125, build(B, r) { B.add(TO(r + 0.0024, 0.0016, 6, 22), 7, 0, 0, 0); } },
+      { at: 'top', z: 0.62, build(B) { B.add(BX(0.0016, 0.0012, 0.16), 7, 0, 0.0006, 0); } },   // 총몸 위 금 상감선
+    ],
   };
+
+  // ---------- 총 몸체 옆면 재기 (각인·엠블럼 자리, 05_models_gdeco.js) ----------
+  //  side: 'L'(+x) · 'R'(−x) · 'top'. zn: 몸체 길이 비율, dy: 총열 높이에서 위아래(m). 그 높이에서 몸체에 광선을 쏴 표면 위치를 돌려준다
+  const PROBE = {};
+  function probe(g, side, zn, dy, z0, z1) {
+    const key = g.userData.id + '|' + side + '|' + zn + '|' + dy; if (key in PROBE) return PROBE[key];
+    const m = g.userData.meta, body = g.children[0], meshes = []; g.updateMatrixWorld(true);
+    body.traverse((o) => { if (o.isMesh) meshes.push(o); });
+    const z = z0 + (z1 - z0) * zn, y = (m.boreY || 0) + (dy || 0); let out = null;
+    for (const dz of [0, 0.006, -0.006, 0.012, -0.012, 0.02, -0.02]) {
+      if (side === 'top') { ray.set(_o.set(0, y + 0.5, z + dz), _d.set(0, -1, 0)); }
+      else { const s = side === 'L' ? 1 : -1; ray.set(_o.set(s * 0.5, y, z + dz), _d.set(-s, 0, 0)); }
+      ray.far = 1; const h = ray.intersectObjects(meshes, false)[0];
+      if (h) { out = [h.point.x, h.point.y, h.point.z]; break; }
+    }
+    return (PROBE[key] = out);
+  }
 
   // ---------- 총 윤곽 재기 (총마다 한 번, 몸체 메시에 광선) ----------
   const ANCH = {};   // `${총}|${세트}` → 자리 목록
@@ -222,7 +263,7 @@ const GunParts = (() => {
     return (ANCH[key] = out);
   }
   // 옆·위 부속품 배율 (세트마다)
-  const SIZE = { magma: 2.1, dragon: 2.0, plasma: 1.8, glitch: 2.0, frost: 2.3, void: 2.1, proto: 2.0 };
+  const SIZE = { magma: 2.1, dragon: 2.0, plasma: 1.8, glitch: 2.0, frost: 2.3, void: 2.1, proto: 2.0, zero: 1.6, chaos: 1.9, frontier: 1.7 };
   // 지오메트리는 (세트 · 부속품 · 반지름)마다 한 번
   const GEO = {};
   function geoOf(set, a) {
@@ -251,9 +292,9 @@ const GunParts = (() => {
       outer.name = 'gpart'; g.add(outer);
       outer.updateMatrix(); _bx.copy(geo.boundingBox).applyMatrix4(outer.matrix);
       // sight: 1인칭 정조준 때 접어 넣는 부속품 (GunSkin.update 가 Cam.ads 에 맞춰 접고 편다)
-      list.push({ outer, inner, mesh, zn: a.zn, ring: a.ring, popped: true, sight: blocksSight(meta, _bx), spin: a.P.spin || 0 });
+      list.push({ outer, inner, mesh, zn: a.zn, ring: a.ring, popped: true, sight: blocksSight(meta, _bx), spin: a.P.spin || 0, core: !!a.P.core });
     }
     return list.length ? list : null;
   }
-  return { attach, SETS, _anch: ANCH };
+  return { attach, probe, SETS, _anch: ANCH };
 })();

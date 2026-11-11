@@ -9,7 +9,8 @@ const Input = {
   consume(a) { if (this.edge.has(a)) { this.edge.delete(a); return true; } return false; },
   reset() { this.pingQ.length = 0; this.pingDown = false; this.keys = {}; this.fire = false; this.aim = false; this.move.x = this.move.z = 0; this.edge.clear(); this.lookX = this.lookY = 0; this.touchSprint = false; },
 };
-const KEYMAP = { Space: 'jump', KeyC: 'crouch', KeyZ: 'prone', Tab: 'inventory', KeyI: 'inventory', KeyM: 'map', KeyF: 'interact', Escape: 'pause', KeyR: 'reload', Digit1: 'w1', Digit2: 'w2', Digit3: 'w3', KeyX: 'holster', KeyG: 'throw', KeyT: 'throwSwap', KeyH: 'heal', KeyJ: 'drink', KeyV: 'view', KeyP: 'pause', KeyB: 'fireMode', KeyQ: 'ping' };
+const KEYMAP = { Space: 'jump', KeyC: 'crouch', KeyZ: 'prone', Tab: 'inventory', KeyI: 'inventory', KeyM: 'map', KeyF: 'interact', Escape: 'pause', KeyR: 'reload', Digit1: 'w1', Digit2: 'w2', Digit3: 'w3', KeyX: 'holster', KeyG: 'throw', KeyT: 'throwSwap', KeyH: 'heal', KeyJ: 'drink', KeyV: 'view', KeyP: 'pause', KeyB: 'fireMode', KeyQ: 'ping', KeyN: 'inspect' };
+const INSPECT_DUR = 2.4;   // 총 살펴보기 길이(초)
 
 function setupInput(canvas) {
   const inGame = () => G.state === 'play' && !G.paused && !HUD.modalOpen();
@@ -278,11 +279,14 @@ function updateViewModel(dt, p, adsE) {
   const eq = clamp(p.equipT / 0.6, 0, 1), sprintK = p.sprint ? 1 : 0;
   Cam.kick = lerp(Cam.kick, 0, clamp(dt * 16, 0, 1)); Cam.kickRot = lerp(Cam.kickRot, 0, clamp(dt * 12, 0, 1));
   const RP = VM.rp[A.rk] || VM.rp.L;
-  const tx = lerp(hx, ax, adsE) + bobX + sprintK * 0.03 + RP.x * rw, ty = lerp(hy, ay, adsE) + bobY - eq * 0.25 - sprintK * 0.03 + RP.y * rw, tz = lerp(hz, az, adsE) + Cam.kick * (1 - adsE * 0.5) + RP.z * rw;
+  // 살펴보기: 총을 몸 앞으로 들어 한쪽 옆면 → 반대쪽 옆면·윗면을 차례로 보여 줌
+  const insU = p.inspectT > 0 ? 1 - p.inspectT / INSPECT_DUR : 0, insE = insU > 0 ? smoothstep01(clamp(insU / 0.16, 0, 1)) * smoothstep01(clamp((1 - insU) / 0.16, 0, 1)) : 0, insB = smoothstep01(clamp((insU - 0.42) / 0.18, 0, 1));
+  const tx = lerp(hx, ax, adsE) + bobX + sprintK * 0.03 + RP.x * rw - 0.05 * insE, ty = lerp(hy, ay, adsE) + bobY - eq * 0.25 - sprintK * 0.03 + RP.y * rw + 0.03 * insE, tz = lerp(hz, az, adsE) + Cam.kick * (1 - adsE * 0.5) + RP.z * rw;
   const k = clamp(dt * 22, 0, 1);
   VM.pivot.position.x = lerp(VM.pivot.position.x, tx, k); VM.pivot.position.y = lerp(VM.pivot.position.y, ty, k); VM.pivot.position.z = lerp(VM.pivot.position.z, tz, k);
   VM.pivot.rotation.set(0, Math.PI + sprintK * 0.5, sprintK * -0.25);
   VM.tilt.rotation.set(-(A.tiltX + Cam.kickRot * (1 - adsE * 0.6)) - eq * 0.6 + RP.rx * rw, RP.ry * rw, clamp(A.tiltZ * (1 + RP.rz * rw), -0.95, 0.95));
+  if (insE > 0) { VM.tilt.rotation.x += lerp(0.32, -0.1, insB) * insE; VM.tilt.rotation.y += lerp(0.3, -0.55, insB) * insE; VM.tilt.rotation.z += lerp(-0.42, 0.55, insB) * insE; }
   VM.shellL.visible = A.shellL; if (A.shellL) { VM.shellL.position.copy(A.left).add(_hw.set(-0.01, 0.025, 0.02)); VM.shellL.rotation.set(0, 0, 0); }
   // 오른손에 든 탄: 무기 탄약에 맞는 모델(7.62 소총탄 · .45 권총탄 …)
   const ck = CASE_KIND[ITEMS[w.id].ammo], rk = 'rnd' + (ck === 'hull' ? '762' : ck);
@@ -312,7 +316,7 @@ function renderViewModel() {
 // ---------- 플레이어 조작 ----------
 const _aimO = new THREE.Vector3(), _aimD = new THREE.Vector3(), _near = [];
 // 기절: 시점 돌리기 + 기어가기만 (사격·회복·줍기·탑승 불가). 부활받는 동안은 멈춘다
-const KNOCK_IGNORE = ['crouch', 'prone', 'reload', 'w1', 'w2', 'w3', 'weaponCycle', 'holster', 'throw', 'throwSwap', 'fireMode', 'jump', 'view', 'interact', 'heal', 'drink'];
+const KNOCK_IGNORE = ['inspect', 'crouch', 'prone', 'reload', 'w1', 'w2', 'w3', 'weaponCycle', 'holster', 'throw', 'throwSwap', 'fireMode', 'jump', 'view', 'interact', 'heal', 'drink'];
 function updateKnockedPlayer(dt, p) {
   const sens = 0.0023 * SETTINGS.lookSens;
   p.yaw -= Input.lookX * sens; p.pitch = clamp(p.pitch - Input.lookY * sens, -0.9, 0.9); Input.lookX = Input.lookY = 0;
@@ -364,6 +368,15 @@ function updatePlayer(dt) {
   }
   if (Input.consume('view')) { G.firstPerson = !G.firstPerson; SETTINGS.view = G.firstPerson ? 'fpp' : 'tpp'; saveSettings(); }
   if (Input.consume('ping')) pingInputs(p);
+  // 총 살펴보기 (N · 모바일은 무기 칸 누르기): 1인칭은 총을 들어 옆면을 보여 주고, 테스터 스킨은 전용 연출. 쏘기·조준·장전·교체·달리기면 멈춤
+  if (Input.consume('inspect') && p.weapon && !p.rl && !p.cycle && p.equipT <= 0 && !p.throwMode) {
+    p.inspectT = INSPECT_DUR;
+    for (const g of [VM.active && VM.gun, p.rig && p.rig.gunObj]) if (g) GunSkin.inspect(g, p);
+  }
+  if (p.inspectT > 0) {
+    p.inspectT -= dt;
+    if (p.inspectT <= 0 || p.aiming || p.fireHold || p.rl || p.equipT > 0 || !p.weapon || p.sprint || p.throwMode) { p.inspectT = 0; for (const g of [VM.gun, p.rig && p.rig.gunObj]) if (g) GunSkin.inspectStop(g); }
+  }
   // 이동 입력
   let mx = 0, mz = 0;
   if (Input.keys.KeyW || Input.keys.ArrowUp) mz += 1;
@@ -432,7 +445,7 @@ function updatePlayer(dt) {
   }
 }
 // ---------- 운전 ----------
-const DRIVE_IGNORE = ['prone', 'reload', 'w1', 'w2', 'w3', 'weaponCycle', 'holster', 'throw', 'throwSwap', 'fireMode', 'jump', 'view'];
+const DRIVE_IGNORE = ['inspect', 'prone', 'reload', 'w1', 'w2', 'w3', 'weaponCycle', 'holster', 'throw', 'throwSwap', 'fireMode', 'jump', 'view'];
 // 동승석: 자유 시점 + 조준·사격·장전·무기 교체 (이동은 운전자가)
 function updatePassenger(dt, p, v) {
   const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + (Cam.si.sens || Cam.si.key)] || 1) / Math.max(1, Cam.zoom) : 1, sens = 0.0023 * SETTINGS.lookSens * sensK;
