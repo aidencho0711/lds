@@ -941,8 +941,8 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     document.querySelectorAll('#lobby .pane').forEach((p) => { p.hidden = p.dataset.pane !== t; });
     $('segQueue').style.visibility = t === 'play' ? '' : 'hidden';
     const L = document.querySelector('.lb-left'); L.className = 'lb-left tab-' + t + ((SETTINGS.queue === 'ranked' || SETTINGS.queue === 'hardcore') && Rank.unlocked() ? ' ranked' : '');
-    document.body.classList.toggle('lobby-wide', t === 'shop' || t === 'mission');
-    if (prev !== t || t === 'shop' || t === 'mission') Shop.onTab(t);
+    document.body.classList.toggle('lobby-wide', t === 'shop' || t === 'mission' || t === 'pass');
+    if (prev !== t || t === 'shop' || t === 'mission' || t === 'pass') Shop.onTab(t);
     if (t === 'custom') { if (prev !== t) renderWarehouse(); showcase(); }   // 뽑기로 얻은 옷이 바로 보이게
   }
   const ringSet = (id, f) => { $(id).style.strokeDashoffset = (100.5 * (1 - clamp(f, 0, 1))).toFixed(1); };
@@ -1090,7 +1090,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     { tag: '신규', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
     { tag: '신규 모드', title: '팀 데스매치 · 웨폰 데스매치 — 4 대 4, 먼저 40킬', img: () => LOBBY_ART.arena, act: () => G.ui('mapPick') },
     { tag: '업데이트', title: '팀원과 함께 차량 탑승 — 동승석에서 사격', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
-    { tag: '신규 모드', title: '듀오·스쿼드 — 기절·부활, 핑(Q)으로 팀원 지휘', img: () => LOBBY_ART.kalden, act: () => G.ui('matchCfg') },
+    { tag: '신규 모드', title: '듀오·스쿼드 — 기절·부활, 핑(Y)으로 팀원 지휘', img: () => LOBBY_ART.kalden, act: () => G.ui('matchCfg') },
     { tag: '업데이트', title: '차량 5종 출격 — 말부터 오토바이까지', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
     { tag: '대형 맵', title: '8×8km 노르덴 — 봇 99명과 출격', img: () => LOBBY_ART.norden, act: () => G.ui('mapPick') },
     { tag: '랭크전', title: '배치고사 3판 · 아이언부터 이터널까지', img: () => rankBanner, act: () => G.ui('ranks') },
@@ -1173,6 +1173,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     if (G.hostGone) note = '방장의 연결이 끊겨 경기가 끝났습니다. ' + note;
     if (p.goldAmt) note = `${GOLD_NAME} +${p.goldAmt} 주움 · ` + note;
     if (Eco.claimable()) note += ' 미션 탭에서 받을 보상이 있습니다.';
+    { const B = Eco.bpLast; if (B && B.xp) note = `배틀패스 +${B.xp}` + (B.lv > B.lv0 ? ` (${B.lv}단계 달성 · 보상 지급)` : '') + ' · ' + note; }
     $('resNote').textContent = note;
     // 랭크 결과
     const R = G.rankResult, box = $('resRanked'); box.hidden = !R; box.classList.remove('promo');

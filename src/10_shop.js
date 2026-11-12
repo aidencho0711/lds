@@ -418,9 +418,10 @@ const Shop = (() => {
   function badge() { const d = $('misDot'); if (d) d.hidden = !Eco.claimable(); const ev = Eco.evClaimable(), s = $('shopDot'), e2 = $('evDot'); if (s) s.hidden = !ev; if (e2) e2.hidden = !ev; }
   // 탭이 바뀔 때 (HUD.setTab에서 호출): 로비 3D 진열
   function onTab(t) {
-    if ((t === 'shop' || t === 'mission') && Cloud.user) Cloud.pull();
+    if ((t === 'shop' || t === 'mission' || t === 'pass') && Cloud.user) Cloud.pull();
     if (t === 'shop') { render(); Lobby.show(tab === 'gacha' ? { kind: 'crate', box: selBox } : exSub === 'gun' ? { kind: 'gun', gun: GSKINS[selGun].gun, skin: selGun } : { kind: 'veh', type: VSKINS[selVeh].veh, skin: selVeh }); }
     else if (t === 'mission') { renderMissions(); Lobby.show(null); }
+    else if (t === 'pass') { Pass.render(true); Lobby.show(null); }
     else if (t !== 'custom') Lobby.show(null);
     badge();
   }

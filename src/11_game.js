@@ -481,7 +481,7 @@ function endMatch() {
   STATS.recent = STATS.recent.slice(0, 5);
   G.statsSaved = saveStats();
   // 미션: 배틀로얄 경기 기록 반영 (훈련장·데스매치는 여기로 오지 않음)
-  try { const evG = Eco.matchEnd({ quit: !!G.quit, win, place, kills: p.kills, heads: p.headshots || 0, dmg: p.damageDealt || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0, surv: p.alive || win && !p.deathTime ? G.time : p.deathTime || 0 }); if (evG) HUD.toast(`골드 이벤트 · 매치 보너스 +${evG} 골드 탄피`, 'ok'); } catch (e) { console.warn('미션 반영 실패', e); }
+  try { const evG = Eco.matchEnd({ quit: !!G.quit, win, place, kills: p.kills, heads: p.headshots || 0, dmg: p.damageDealt || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0, surv: p.alive || win && !p.deathTime ? G.time : p.deathTime || 0 }); if (evG) HUD.toast(`골드 이벤트 · 매치 보너스 +${evG} 골드 탄피`, 'ok'); const B = Eco.bpLast; if (B && B.xp) HUD.toast(`배틀패스 +${B.xp} 경험치` + (B.lv > B.lv0 ? ` · ${B.lv}단계 달성! 보상이 들어왔습니다` : ''), 'ok'); } catch (e) { console.warn('미션 반영 실패', e); }
   HUD.showResult(win, p, nT);
 }
 
@@ -570,6 +570,7 @@ G.update = function (dt) {
     if (c.mode === 'plane') continue;
     if (!c.net || c.net.mine) updateCharTimers(c, dt);
     else if (c.punch) updatePunch(c, dt);   // 다른 기기 캐릭터의 주먹: 동작·소리만
+    if (c.net && !c.net.mine && (c.lean || c.leanA)) { const lt = c.alive && !c.knocked && c.mode === 'ground' ? c.lean || 0 : 0; c.leanA += (lt - c.leanA) * Math.min(1, dt * 11); if (!lt && Math.abs(c.leanA) < 0.003) c.leanA = 0; }   // 다른 기기 캐릭터의 기울이기
     // 화면에 안 보이는 캐릭터는 관절 애니메이션 생략
     if (c.isPlayer || c.root.visible) animateChar(c, dt);
     footsteps(c, dt);
@@ -770,7 +771,7 @@ function boot() {
   Lobby.init();
   setupInput($('gl'));
   setupTouch($('touch'));
-  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Shop.setup(); Dev.setup(); Prof.setup(); Cloud.setup(); Cloud.init();
+  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Shop.setup(); Pass.setup(); Dev.setup(); Prof.setup(); Cloud.setup(); Cloud.init();
   $('rotateDismiss').addEventListener('click', () => { G.rotateDismissed = true; $('rotateHint').hidden = true; });
   G.onResize();
   document.addEventListener('pointerdown', () => { Audio.init(); if (G.state === 'lobby') Audio.music(true); }, { once: true });

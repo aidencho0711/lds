@@ -255,13 +255,14 @@ const Net = (() => {
   }
 
   // ---------- 상태 인코딩 ----------
-  const FL = { alive: 1, knocked: 2, aiming: 4, sprint: 8, ground: 16, water: 32, ready: 64, heal: 128, nade: 256, crouch: 512, prone: 1024, fall: 2048, chute: 4096, plane: 8192, pin: 16384, reload: 32768 };
+  const FL = { alive: 1, knocked: 2, aiming: 4, sprint: 8, ground: 16, water: 32, ready: 64, heal: 128, nade: 256, crouch: 512, prone: 1024, fall: 2048, chute: 4096, plane: 8192, pin: 16384, reload: 32768, leanL: 65536, leanR: 131072 };
   function encChar(c) {
     let f = 0;
     if (c.alive) f |= FL.alive; if (c.knocked) f |= FL.knocked; if (c.aiming) f |= FL.aiming; if (c.sprint) f |= FL.sprint; if (c.onGround) f |= FL.ground; if (c.inWater) f |= FL.water;
     if (c.combatFacing || c.fireHold || G.time - (c.lastShotT || -99) < 1.5) f |= FL.ready;
     if (c.heal) f |= FL.heal; if (c.throwMode || c.throwAnim > 0) f |= FL.nade; if (c.throwMode && c.throwMode.pin) f |= FL.pin; if (c.rl) f |= FL.reload;
     if (c.stance === 'crouch') f |= FL.crouch; else if (c.stance === 'prone') f |= FL.prone;
+    if (c.lean < 0) f |= FL.leanL; else if (c.lean > 0) f |= FL.leanR;   // 기울이기
     if (c.mode === 'fall') f |= FL.fall; else if (c.mode === 'chute') f |= FL.chute; else if (c.mode === 'plane') f |= FL.plane;
     const w = c.weapon, a = w && w.att;
     const wk = w && c.equipT <= 0.25 ? [w.id, a.scope || '', a.muzzle || '', a.mag || '', a.grip || ''].join('.') : '';
@@ -282,7 +283,7 @@ const Net = (() => {
     else if (!alive && c.alive && !n.deathSeen) { n.pendDead = t; }   // 사망 사건이 곧 온다 (못 받으면 아래에서 처리)
     c.knocked = !!(f & FL.knocked) && alive; c.aiming = !!(f & FL.aiming); c.sprint = !!(f & FL.sprint); c.onGround = !!(f & FL.ground); c.inWater = !!(f & FL.water);
     c.combatFacing = !!(f & FL.ready); if (f & FL.ready) c.lastShotT = Math.max(c.lastShotT || -99, G.time - 1.2);
-    c.stance = f & FL.prone ? 'prone' : f & FL.crouch ? 'crouch' : 'stand';
+    c.stance = f & FL.prone ? 'prone' : f & FL.crouch ? 'crouch' : 'stand'; c.lean = f & FL.leanL ? -1 : f & FL.leanR ? 1 : 0; c.leanCap = 1;
     const mode = f & FL.plane ? 'plane' : f & FL.chute ? 'chute' : f & FL.fall ? 'fall' : 'ground';
     if (c.mode !== mode) { c.mode = mode; if (mode !== 'plane') c.root.visible = true; }
     if (alive) c.hp = a[7];

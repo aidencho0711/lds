@@ -21,6 +21,9 @@ const TOUCH_BTNS = [
   { id: 'fire2', label: '사격', hold: 'fire', size: 54, cls: 'fire', def: { ax: 'l', ay: 't', x: 39, y: 253 } },
   { id: 'ping', label: '핑', tap: 'ping', size: 44, cls: 'ping', def: { ax: 'l', ay: 't', x: 39, y: 312 } },
   { id: 'seat', label: '좌석', tap: 'seat', size: 48, cls: 'seat', def: { ax: 'r', ay: 'b', x: 275, y: 143 } },
+  // 기울이기: 누르면 그쪽으로 기울고 다시 누르면 바로 섬 (반대쪽을 누르면 바꿔 기울임)
+  { id: 'leanL', label: '◀기울', hold: 'leanL', size: 46, cls: 'lean', def: { ax: 'l', ay: 'b', x: 62, y: 214 } },
+  { id: 'leanR', label: '기울▶', hold: 'leanR', size: 46, cls: 'lean', def: { ax: 'l', ay: 'b', x: 238, y: 214 } },
   { id: 'stick', label: '이동', kind: 'stick', size: 112, def: { ax: 'l', ay: 'b', x: 150, y: 120 } },
 ];
 // 모바일에서 위치·크기를 바꿀 수 있는 HUD 창·버튼 (사각형). 저장 방식은 원형 버튼과 같다(가까운 모서리 + 중심까지 거리)
@@ -170,6 +173,7 @@ const Touch = (() => {
       if (hold === 'fire') { Input.fire = true; fireLookId = e.pointerId; lookStart(e); }
       else if (hold === 'sprint') { Input.touchSprintBtn = !Input.touchSprintBtn; b.classList.toggle('active', Input.touchSprintBtn); }
       else if (hold === 'aim') { Input.aimToggle = !Input.aimToggle; b.classList.toggle('active', Input.aimToggle); }
+      else if (hold === 'leanL' || hold === 'leanR') { const s = hold === 'leanR' ? 1 : -1; Input.touchLean = Input.touchLean === s ? 0 : s; syncLean(); }
       if (tap) Input.press(tap);
       if (def.menu) HUD.quick(def.menu, b); // 회복·투척: 버튼 위에 아이템 선택 (진행 중이면 취소)
       if (def.id === 'ping') Input.pingDown = true; // 길게 누르기 = 모여
@@ -181,7 +185,8 @@ const Touch = (() => {
     const up = (e) => { b.classList.remove('down'); if (def.id === 'ping') Input.pingDown = false; if (hold === 'fire' && e.pointerId === fireLookId) { Input.fire = false; fireLookId = null; lookEnd(e); } };
     b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
   }
-  function resetToggles() { Input.aimToggle = false; Input.touchSprintBtn = false; document.querySelectorAll('#tbtns .tbtn').forEach((b) => b.classList.remove('active', 'down')); }
+  function syncLean() { for (const [id, s] of [['tb_leanL', -1], ['tb_leanR', 1]]) { const e = document.getElementById(id); if (e) e.classList.toggle('active', Input.touchLean === s); } }
+  function resetToggles() { Input.aimToggle = false; Input.touchSprintBtn = false; Input.touchLean = 0; document.querySelectorAll('#tbtns .tbtn').forEach((b) => b.classList.remove('active', 'down')); }
 
   // ---------- 배치 편집기 ----------
   let draft = null, sel = null, drag = null, prevPaused = false;

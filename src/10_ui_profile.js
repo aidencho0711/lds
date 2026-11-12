@@ -41,6 +41,9 @@ const Prof = (() => {
     // 하드코어 랭크 상위 3티어 (최고 도달 기준) · 베타 테스터
     ...[2, 3, 4].map((t) => ({ id: 'hc_' + HC_TIERS[t].id, name: HC_TIERS[t].name, kind: 'hc', t, desc: `하드코어 ${HC_TIERS[t].name} 도달` })),
     { id: 'beta', name: '베타 테스터', kind: 'title', title: 'beta', desc: '칭호 「베타 테스터」(개발자 부여)' },
+    // 배틀패스 플러스 전용 테두리 2종
+    { id: 'bp_plus', name: '패스 플러스', kind: 'title', title: 'bp_plus', desc: '칭호 「패스 플러스」(배틀패스 플러스 1단계)' },
+    { id: 'bp_s1', name: '시즌 1 정복자', kind: 'title', title: 'bp_s1', desc: '칭호 「시즌 1 정복자」(배틀패스 플러스 50단계)' },
   ];
   for (const f of FR) if (f.kind === 'tier') { f.name = RANK_TIERS[f.t].name; f.desc = `랭크 ${RANK_TIERS[f.t].name} 도달`; }
   // 장식(테두리 위·옆에 붙는 그림, viewBox -16..80) — 높은 티어일수록 많아짐
@@ -61,6 +64,9 @@ const Prof = (() => {
   ORN.hc_reaper = `<path d="M-4 18C2 -6 30 -14 52 -6c-14-2-30 2-40 14z" fill="#9aa8a2" stroke="#4dffa6" stroke-width="1.2"/><path d="M12 8L60 70" stroke="#2a2a2e" stroke-width="3.2" stroke-linecap="round"/><circle cx="66" cy="20" r="3.2" fill="#4dffa6"/><circle cx="-2" cy="46" r="2.4" fill="#4dffa6"/><circle cx="58" cy="60" r="2" fill="#4dffa6"/>`;
   ORN.hc_overlord = Array.from({ length: 7 }, (_, i) => { const a = -Math.PI / 2 + (i - 3) * 0.32, L = 14 - Math.abs(i - 3) * 2, x = 32 + Math.cos(a) * 30, y = 32 + Math.sin(a) * 30, x2 = 32 + Math.cos(a) * (30 + L), y2 = 32 + Math.sin(a) * (30 + L), px = -Math.sin(a) * 3.2, py = Math.cos(a) * 3.2; return `<path d="M${(x - px).toFixed(1)} ${(y - py).toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}L${(x + px).toFixed(1)} ${(y + py).toFixed(1)}z" fill="#2a0800" stroke="#ff9a2e" stroke-width="1"/>`; }).join('') + `<circle cx="32" cy="-6" r="3" fill="#ffb02e"/>`;
   ORN.beta = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => { const a = i / 8 * Math.PI * 2, x = 32 + Math.cos(a) * 34, y = 32 + Math.sin(a) * 34, x2 = 32 + Math.cos(a) * 40, y2 = 32 + Math.sin(a) * 40; return `<path d="M${x.toFixed(1)} ${y.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="#3ff5d6" stroke-width="1.6"/><rect x="${(x2 - 2.2).toFixed(1)}" y="${(y2 - 2.2).toFixed(1)}" width="4.4" height="4.4" fill="#e9fffb" stroke="#0f5560" stroke-width=".6"/>`; }).join('') + `<path d="M18 62h28l5 6-5 6H18l-5-6z" fill="#03151b" stroke="#3ff5d6" stroke-width="1.4"/><text x="32" y="71.5" font-size="9" font-weight="900" text-anchor="middle" fill="#3ff5d6" font-family="Arial,sans-serif">β TESTER</text>`;
+  // 배틀패스: 패스 플러스 = 위의 금빛 ＋ 명판과 양옆 화살 무늬 · 시즌 1 정복자 = 월계수와 별
+  ORN.bp_plus = `<path d="M22 -12h20l4 8-4 8H22l-4-8z" fill="#ffd36b" stroke="#6b4a08" stroke-width="1.2"/><path d="M32 -9v10M27 -4h10" stroke="#3a2504" stroke-width="2.4" stroke-linecap="round"/><path d="M-6 22l6 4-6 4zM-6 34l6 4-6 4zM70 22l-6 4 6 4zM70 34l-6 4 6 4z" fill="#ffb347"/>`;
+  ORN.bp_s1 = [-1, 1].map((s) => [0, 1, 2, 3, 4].map((i) => { const a = Math.PI / 2 + s * (0.5 + i * 0.36), x = 32 + Math.cos(a) * 36, y = 32 + Math.sin(a) * 36; return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="6" ry="2.6" transform="rotate(${(a * 180 / Math.PI + s * 55).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="#ffe08a" stroke="#8a5a08" stroke-width=".8"/>`; }).join('')).join('') + `<path d="M32 -14l3.4 7.4 8 .9-6 5.4 1.7 7.9-7.1-4.1-7.1 4.1 1.7-7.9-6-5.4 8-.9z" fill="#fff3c4" stroke="#b07a10" stroke-width="1.1"/>`;
   const ORN_FX = { eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
   function frameHTML(fr, av, size = 44, extra = '') {
     const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id];
@@ -84,6 +90,10 @@ const Prof = (() => {
     // 하드코어 랭크 상위 3티어 (최고 도달) — 칭호와 같은 이름의 테두리
     ...[2, 3, 4].map((t) => ({ id: 'hc_' + HC_TIERS[t].id, name: HC_TIERS[t].name, desc: `하드코어 랭크 ${HC_TIERS[t].name} 도달`, prog: () => hcPeakT() >= 0 ? `최고 ${HC_TIERS[hcPeakT()].name}` : Rank.hcOk() ? '하드코어 기록 없음' : '하드코어 잠김 (일반 랭크 다이아 4 필요)', ok: () => hcPeakT() >= t, fr: 'hc_' + HC_TIERS[t].id, hc: t })),
     { id: 'beta', name: '베타 테스터', desc: '개발자가 부여한 베타 테스터 (사진·테두리·테스터 등급 총 스킨 함께)', prog: () => '개발자에게 부여받아야 함', ok: () => Eco.isBeta(), fr: 'beta' },
+    // 배틀패스 (10_eco.js): 무료 줄 끝 = 선발대 · 플러스 1단계 = 패스 플러스(테두리) · 플러스 줄 끝 = 시즌 1 정복자(테두리)
+    { id: 'bp_run', name: BP_TITLES.bp_run, desc: '배틀패스 시즌 1 — 50단계 달성', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_run') },
+    { id: 'bp_plus', name: BP_TITLES.bp_plus, desc: '배틀패스 플러스 구매 (테두리 함께)', prog: () => '배틀패스 플러스 필요', ok: () => Eco.bpTitle('bp_plus'), fr: 'bp_plus' },
+    { id: 'bp_s1', name: BP_TITLES.bp_s1, desc: '배틀패스 플러스로 시즌 1 — 50단계 달성 (테두리 함께)', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_s1'), fr: 'bp_s1' },
   ];
   // 하드코어 최고 티어 번호 (한 판도 안 했으면 -1)
   function hcPeakT() { const H = Rank.hc; return (H.games || 0) > 0 ? Rank.hcTierOf(Math.max(H.peak || 0, H.rp || 0)).t : -1; }

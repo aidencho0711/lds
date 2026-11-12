@@ -344,6 +344,7 @@ const DM = (() => {
     STATS.xp += xp;
     const D = STATS.dm || (STATS.dm = Object.assign({}, DM_STATS0));
     D.matches++; D.kills += p.kills; D.deaths += S.myDeaths; if (win) D.wins++;
+    try { const B = Eco.bpDm(p.kills, win); if (B && B.xp) HUD.toast(`배틀패스 +${B.xp} 경험치` + (B.lv > B.lv0 ? ` · ${B.lv}단계 달성! 보상이 들어왔습니다` : ''), 'ok'); } catch (e) { console.warn('배틀패스 반영 실패', e); }   // 데스매치도 패스 경험치(적게)
     STATS.recent.unshift({ dm: S.type, us: S.score[my], them: S.score[en], win, draw, kills: p.kills, deaths: S.myDeaths, time: Math.round(G.time), map: 'arena', party: S.net ? 1 : 0 });
     STATS.recent = STATS.recent.slice(0, 5);
     G.statsSaved = saveStats();

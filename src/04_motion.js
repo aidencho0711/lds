@@ -382,6 +382,8 @@ function animateChar(c, dt) {
   const look = clamp(angleDiff(c.bodyYaw + blade, c.yaw), -1.1, 1.1) * (1 - a.prone * 0.6) * (c.alive ? 1 : 0);
   r.neck.rotation.set(-pitch * 0.3 * (1 - a.prone) - a.prone * 0.55, look * 0.45, 0);
   r.head.rotation.set(-pitch * 0.25 * (1 - a.prone) - a.prone * 0.55 + a.aim * 0.08, look * 0.55, -a.aim * 0.12 * armed);
+  // 기울이기: 발은 그대로 두고 허리·가슴을 옆으로 꺾는다(머리는 반대로 조금 세워 눈이 수평에 가깝게)
+  if (c.leanA) { const lk = c.leanA * (1 - a.prone); r.hips.rotation.z += lk * 0.06; r.spine.rotation.z += lk * 0.27; r.chest.rotation.z += lk * 0.2; r.head.rotation.z -= lk * 0.17; }
   // ----- 몸 전체 회전: 엎드림 / 자유낙하 / 사망 / 구르기 / 넘기 기울임 -----
   const fallP = a.fall * (Math.PI * 0.46 + 0.5 * clamp((-c.vel.y - 36) / 12, 0, 1));
   let bx = a.prone * Math.PI / 2 + fallP, by = a.prone * 0.12, bz = 0;

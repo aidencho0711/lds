@@ -91,7 +91,7 @@ const Cloud = (() => {
   }
   function afterMerge() {
     store.set('stats', STATS);
-    if (G.state === 'lobby') { try { HUD.renderLobby(); Shop.badge(); const sp = document.querySelector('[data-pane=shop]'), mp = document.querySelector('[data-pane=mission]'); if (sp && !sp.hidden) Shop.render(); if (mp && !mp.hidden) Shop.renderMissions(); } catch (e) { console.warn(e); } }
+    if (G.state === 'lobby') { try { HUD.renderLobby(); Shop.badge(); const sp = document.querySelector('[data-pane=shop]'), mp = document.querySelector('[data-pane=mission]'); if (sp && !sp.hidden) Shop.render(); if (mp && !mp.hidden) Shop.renderMissions(); const pp = document.querySelector('[data-pane=pass]'); if (pp && !pp.hidden) Pass.render(); } catch (e) { console.warn(e); } }
   }
   async function pushNow() {
     if (!sb || !user) return false;

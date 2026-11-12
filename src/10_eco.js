@@ -65,6 +65,29 @@ const GOLD_EV = {
   bounty: { per: 10, gold: 150, max: 5 },
 };
 
+// ---------- 배틀패스 (v20) ----------
+//  · 누구나 기본 패스(무료 보상 줄)를 가진다. '배틀패스 플러스'는 골드 탄피로 사면 같은 단계의 플러스 보상 줄이 함께 열린다
+//    (단계는 하나 — 무료·플러스가 같이 오른다. 플러스를 나중에 사도 이미 지난 단계의 플러스 보상이 한꺼번에 들어온다)
+//  · 단계는 패스 경험치로 오른다: 상자 뽑기 · 배틀로얄 한 판 완료 · 처치 · 10위 안 · 우승 · 판수 누적(5판마다) · 데스매치
+//  · 단계가 오르면 그 단계 보상이 바로 들어온다(받기 버튼 없음). 저장: STATS.eco.bp = { s 시즌, xp, m 판수, lv 무료 지급 단계, lp 플러스 지급 단계, plus }
+const BP = { season: 1, name: 'SEASON 1 · FIRST DROP', max: 50, per: 100, plusCost: 20000,
+  xp: { pull: 10, play: 20, kill: 5, killMax: 20, top10: 15, win: 60, every: 5, everyXp: 50, dm: 8, dmKill: 1, dmWin: 12 } };
+const BP_TITLES = { bp_run: '선발대', bp_plus: '패스 플러스', bp_s1: '시즌 1 정복자' };
+// 단계별 보상.  k: gold·coin·gcoin = 재화 · box = 그 상자를 무료로 n번 열기 · title = 함께 주는 프로필 칭호(플러스 칭호는 테두리도)
+function bpReward(lv, plus) {
+  const t = Math.floor(lv / 10);
+  if (!plus) {
+    if (lv === 50) return { k: 'gcoin', n: 50, title: 'bp_run' };
+    if (lv % 10 === 0) return lv === 10 ? { k: 'box', box: 'g1', n: 1 } : lv === 30 ? { k: 'box', box: 'g2', n: 1 } : { k: 'gcoin', n: lv === 20 ? 10 : 15 };
+    if (lv % 5 === 0) return lv % 10 === 5 && lv !== 15 && lv !== 35 ? { k: 'coin', n: 3 } : { k: 'gold', n: 200 };
+    return { k: 'gold', n: 40 + t * 10 };
+  }
+  if (lv === 1) return { k: 'gold', n: 500, title: 'bp_plus' };
+  if (lv === 50) return { k: 'gcoin', n: 400, title: 'bp_s1' };   // 엡실론 스킨 1종을 교환소에서 바꿀 수 있는 양
+  if (lv % 10 === 0) return lv === 20 ? { k: 'box', box: 'eps', n: 1 } : lv === 40 ? { k: 'box', box: 'eps', n: 2 } : { k: 'gcoin', n: lv === 10 ? 30 : 50 };
+  if (lv % 5 === 0) return lv === 5 ? { k: 'box', box: 'g1', n: 2 } : lv === 25 ? { k: 'box', box: 'g2', n: 2 } : lv === 45 ? { k: 'box', box: 'eps', n: 1 } : { k: 'gcoin', n: lv === 15 ? 15 : 20 };
+  return { k: 'gold', n: 200 + t * 20 };
+}
 const Eco = (() => {
   const DEV = (() => { let d = store.get('devId', null); if (!d) { d = Math.random().toString(36).slice(2, 10); store.set('devId', d); } return d; })();
   const listeners = [];
@@ -152,6 +175,7 @@ const Eco = (() => {
     const res = []; for (let i = 0; i < n; i++) res.push(give(draw(box)));
     e.pulls[box] = (e.pulls[box] || 0) + n;
     if (box !== 'veh') questAdd('pull', n, true);
+    bpAdd(BP.xp.pull * n, true);   // 배틀패스: 상자를 뽑을 때마다 경험치
     changed('pull');
     return { res, cost, best: res.reduce((m, x) => Math.max(m, x.rar), 0) };
   }
@@ -225,6 +249,10 @@ const Eco = (() => {
     for (const k in add) questAdd(k, add[k], true);
     questAdd('surv', Math.round(m.surv), true);
     const evGold = evMatch(m);   // 골드 이벤트: 매치 보너스(자동)·주간 누적
+    // 배틀패스 경험치: 처치(한 판 20명까지) · 완료 · 10위 안 · 우승 · 5판마다 누적 보너스 (중간에 나가면 처치만)
+    { const X = BP.xp, b = bpS(); let px = Math.min(X.killMax, m.kills || 0) * X.kill;
+      if (!m.quit) { px += X.play + (m.place <= 10 ? X.top10 : 0) + (m.win ? X.win : 0); b.m = (b.m || 0) + 1; if (b.m % X.every === 0) px += X.everyXp; }
+      bpLast = bpAdd(px, true); }
     changed('match');
     return evGold;
   }
@@ -317,11 +345,58 @@ const Eco = (() => {
         v.spinT = Math.max(lv.spinT || 0, sv.spinT || 0);
         e.ev = v;
       } else e.ev = lv || sv || undefined;
+      // 배틀패스: 경험치·판수는 바뀐 양만 더하고, 지급한 단계는 큰 쪽, 플러스는 한쪽이라도 샀으면 유지 (시즌이 다르면 새 시즌 쪽)
+      { const lb = le.bp, sb = se.bp, bb = Be.bp && lb && Be.bp.s === lb.s ? Be.bp : null;
+        if (lb && sb && lb.s === sb.s) e.bp = { s: lb.s, xp: Math.max(0, bb ? delta(bb.xp, lb.xp, sb.xp) : Math.max(lb.xp || 0, sb.xp || 0)), m: Math.max(0, bb ? delta(bb.m, lb.m, sb.m) : Math.max(lb.m || 0, sb.m || 0)), lv: Math.max(lb.lv || 0, sb.lv || 0), lp: Math.max(lb.lp || 0, sb.lp || 0), plus: lb.plus || sb.plus ? 1 : 0 };
+        else e.bp = lb && sb ? ((lb.s || 0) > (sb.s || 0) ? lb : sb) : lb || sb || undefined;
+        if (le.bpt || se.bpt) e.bpt = [...new Set([...(se.bpt || []), ...(le.bpt || [])])]; }
       e.welcome = 1; e.rev = Math.max(le.rev || 0, se.rev || 0) + 1; e.dev = DEV;
       out.eco = e;
     }
     return out;
   }
+  // ---------- 배틀패스 ----------
+  let bpNews = [], bpLast = null;   // bpNews: 방금 들어온 단계 보상(화면 알림용, 저장 안 함) · bpLast: 마지막 경기에서 얻은 패스 경험치
+  function bpS() { const e = E(); if (!e.bp || typeof e.bp !== 'object' || e.bp.s !== BP.season) e.bp = { s: BP.season, xp: 0, m: 0, lv: 0, lp: 0, plus: 0 }; if (!Array.isArray(e.bpt)) e.bpt = []; return e.bp; }
+  const bpLvOf = (xp) => Math.min(BP.max, Math.floor((xp || 0) / BP.per));
+  // 아직 안 들어온 단계 보상을 넣는다 → 넣은 보상 목록 [{ lv, plus, k, n, box, title, res(상자에서 나온 것) }]
+  function bpGrant() {
+    const b = bpS(), e = E(), lv = bpLvOf(b.xp), got = [];
+    const one = (L, plus) => {
+      const R = bpReward(L, plus), o = { lv: L, plus, k: R.k, n: R.n, box: R.box, title: R.title };
+      if (R.k === 'box') { o.res = []; for (let i = 0; i < R.n; i++) o.res.push(give(draw(R.box))); } else give(R);
+      if (R.title && !e.bpt.includes(R.title)) e.bpt.push(R.title);
+      got.push(o);
+    };
+    while (b.lv < lv) one(++b.lv, false);
+    if (b.plus) while (b.lp < lv) one(++b.lp, true);
+    if (got.length) bpNews.push(...got);
+    return got;
+  }
+  // 패스 경험치 더하기 → { xp, lv0, lv, got }.  silent: 저장·알림은 호출한 쪽에서(changed)
+  function bpAdd(xp, silent) {
+    const b = bpS(), lv0 = bpLvOf(b.xp); xp = Math.max(0, Math.round(xp || 0));
+    b.xp = Math.min(BP.max * BP.per, (b.xp || 0) + xp);
+    const got = bpGrant(), r = { xp, lv0, lv: bpLvOf(b.xp), got };
+    if (!silent) changed('bp');
+    return r;
+  }
+  function bpInfo() {
+    const b = bpS(); if (bpGrant().length) changed('bp');   // 다른 기기와 합쳐져 단계가 올랐으면 여기서 지급
+    const lv = bpLvOf(b.xp), X = BP.xp;
+    return { season: BP.season, name: BP.name, max: BP.max, per: BP.per, xp: b.xp, lv, cur: lv >= BP.max ? BP.per : b.xp - lv * BP.per, plus: !!b.plus, cost: BP.plusCost, m: b.m || 0, everyLeft: X.every - (b.m || 0) % X.every };
+  }
+  // 배틀패스 플러스 구매: 골드 탄피를 내고, 지금 단계까지의 플러스 보상을 한꺼번에 받는다
+  function bpBuy() {
+    const e = E(), b = bpS(); if (b.plus) return { err: '이미 배틀패스 플러스를 가지고 있습니다' };
+    if (e.gold < BP.plusCost) return { err: `${GOLD_NAME}이(가) 부족합니다 (필요 ${BP.plusCost.toLocaleString()} · 보유 ${e.gold.toLocaleString()})` };
+    e.gold -= BP.plusCost; b.plus = 1; const got = bpGrant(); changed('bp');
+    return { got };
+  }
+  function bpTake() { const n = bpNews; bpNews = []; return n; }
+  const bpTitle = (id) => (E().bpt || []).includes(id);
+  // 데스매치 한 판 끝 (10_dm.js)
+  function bpDm(kills, win) { const X = BP.xp; bpLast = bpAdd(X.dm + Math.min(X.killMax, kills || 0) * X.dmKill + (win ? X.dmWin : 0)); return bpLast; }
   // ---------- 개발자 계정 (10_dev.js) ----------
   // 모든 옷·차량·총기 스킨을 기록에 넣는다 (이미 있으면 그대로). 넣은 개수
   function devGrantAll() {
@@ -332,9 +407,9 @@ const Eco = (() => {
     if (n) changed('dev');
     return n;
   }
-  function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; changed('dev'); }
+  function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; else if (kind === 'bp') bpAdd(n, true); changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();

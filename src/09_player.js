@@ -9,7 +9,7 @@ const Input = {
   consume(a) { if (this.edge.has(a)) { this.edge.delete(a); return true; } return false; },
   reset() { this.pingQ.length = 0; this.pingDown = false; this.keys = {}; this.fire = false; this.aim = false; this.move.x = this.move.z = 0; this.edge.clear(); this.lookX = this.lookY = 0; this.touchSprint = false; },
 };
-const KEYMAP = { Space: 'jump', KeyC: 'crouch', KeyZ: 'prone', Tab: 'inventory', KeyI: 'inventory', KeyM: 'map', KeyF: 'interact', Escape: 'pause', KeyR: 'reload', Digit1: 'w1', Digit2: 'w2', Digit3: 'w3', KeyX: 'holster', KeyG: 'throw', KeyT: 'throwSwap', KeyH: 'heal', KeyJ: 'drink', KeyV: 'view', KeyP: 'pause', KeyB: 'fireMode', KeyQ: 'ping', KeyN: 'inspect' };
+const KEYMAP = { Space: 'jump', KeyC: 'crouch', KeyZ: 'prone', Tab: 'inventory', KeyI: 'inventory', KeyM: 'map', KeyF: 'interact', Escape: 'pause', KeyR: 'reload', Digit1: 'w1', Digit2: 'w2', Digit3: 'w3', KeyX: 'holster', KeyG: 'throw', KeyT: 'throwSwap', KeyH: 'heal', KeyJ: 'drink', KeyV: 'view', KeyP: 'pause', KeyB: 'fireMode', KeyY: 'ping', KeyN: 'inspect' };   // Q·E 는 기울이기(누르는 동안) — 핑은 Y
 const INSPECT_DUR = 2.4;   // 총 살펴보기 길이(초)
 
 function setupInput(canvas) {
@@ -226,8 +226,10 @@ function updateCamera(dt) {
     const aimK = 0;
     let up = p.mode === 'ground' ? 1.58 - p.anim.crouch * 0.45 - p.anim.prone * 1.0 : 1.2;
     const dist = p.mode === 'ground' ? 3.3 * (p.stance === 'prone' ? 1.1 : 1) : 7;
-    const side = p.mode === 'ground' ? 0.62 : 0;
+    let side = p.mode === 'ground' ? 0.62 : 0;
     const rx = -Math.cos(yaw), rz = Math.sin(yaw);
+    // 기울이기: 오른쪽이면 어깨 너머 카메라가 더 바깥으로, 왼쪽이면 왼쪽 어깨 너머로 넘어간다. 그 사이에 벽이 있으면 벽 앞에서 멈춤
+    if (p.leanA) { side += p.leanA * (p.leanA > 0 ? 0.6 : 1.5); up -= Math.abs(p.leanA) * 0.05; const sd = side < 0 ? -1 : 1, hs = rayBoxes(p.pos.x, p.pos.y + up, p.pos.z, rx * sd, 0, rz * sd, Math.abs(side) + 0.25, true); if (hs.t < Math.abs(side) + 0.25) side = sd * Math.max(0, hs.t - 0.25); }
     _cv.set(p.pos.x + rx * side, p.pos.y + up, p.pos.z + rz * side);
     if (p.anim.prone > 0.5) { _cv.x += Math.sin(p.bodyYaw) * 0.9; _cv.z += Math.cos(p.bodyYaw) * 0.9; }
     // 카메라 충돌: 벽/지형 안쪽으로 들어가지 않도록
@@ -243,7 +245,7 @@ function updateCamera(dt) {
     cam.position.lerpVectors(_tp, _cp, adsE);
   }
   p.root.visible = !(fppBase || adsE > 0.5) && !(Cam.dist < 0.6 && adsE < 0.2);
-  cam.rotation.order = 'YXZ'; cam.rotation.set(pitch, yaw + Math.PI, 0);
+  cam.rotation.order = 'YXZ'; cam.rotation.set(pitch, yaw + Math.PI, -(p.leanA || 0) * lerp(fppBase ? 0.13 : 0.045, 0.1, adsE));   // 기울이면 화면도 살짝 기운다(1인칭·조준 때 더)
   if (G.shake > 0) { G.shake = Math.max(0, G.shake - dt * 2.5); cam.position.x += rnd(-1, 1) * G.shake * 0.15; cam.position.y += rnd(-1, 1) * G.shake * 0.15; }
   cam.updateMatrixWorld();
   Cam.recoilP = lerp(Cam.recoilP, 0, clamp(dt * 9, 0, 1));
@@ -395,13 +397,21 @@ function updatePlayer(dt) {
   const sprintKey = Input.keys.ShiftLeft || Input.keys.ShiftRight || Input.touchSprint || Input.touchSprintBtn;
   // 사격 중에는 달리기를 끊는다 → 조이스틱을 끝까지 민 상태에서도 이동하며 쏠 수 있음
   const firing = Input.fire && !p.throwMode;   // 맨손이면 주먹 — 역시 달리기를 끊는다
-  p.sprint = !!sprintKey && mz > 0.3 && !wantAim && !p.heal && !p.inWater && !firing && !p.vault;
-  if (p.sprint && p.stance !== 'stand') p.stance = 'stand';
+  // 기울이기 (Q 왼쪽 · E 오른쪽 — 누르는 동안 / 모바일은 버튼으로 켜고 끔): 서거나 앉은 채 상체만 옆으로 내밀어 벽 옆으로 보고 쏜다
+  //  벽에 막히면 그만큼만 기울고(카메라가 벽 속으로 안 들어감), 엎드림·수영·넘기·회복 중에는 안 됨. 기울인 동안은 달리지 못하고 걸음이 느려짐
+  const leanIn = ((Input.keys.KeyE ? 1 : 0) - (Input.keys.KeyQ ? 1 : 0)) || Input.touchLean || 0;
+  p.lean = p.stance === 'prone' || p.inWater || p.vault || p.heal || p.revive || p.recall ? 0 : leanIn;
+  if (p.lean) { const lx = -Math.cos(p.yaw) * p.lean, lz = Math.sin(p.yaw) * p.lean, hb = rayBoxes(p.pos.x, p.pos.y + 1.64 - p.anim.crouch * 0.44, p.pos.z, lx, 0, lz, LEAN_EYE + 0.22, true); p.leanCap = hb.t < LEAN_EYE + 0.22 ? clamp((hb.t - 0.22) / LEAN_EYE, 0, 1) : 1; } else p.leanCap = 1;
+  // 앉기·엎드리기 상태에서는 달리기를 눌러도(모바일: 스틱을 끝까지 밀어도) 일어나지 않는다 — 앉으면 조금 빠른 앉은걸음, 엎드리면 조금 빠른 포복
+  //  일어나려면 앉기·엎드리기 버튼을 다시 누르거나 점프
+  const low = p.stance !== 'stand', hurry = low && !!sprintKey && mz > 0.3 && !wantAim && !p.heal && !firing;
+  p.sprint = !!sprintKey && mz > 0.3 && !wantAim && !p.heal && !p.inWater && !firing && !p.vault && !low && !p.lean;
   p.aiming = !!wantAim && !p.sprint && !p.throwMode;
   let speed = 4.6;
   if (p.sprint) speed = 6.3 + (p.boost > 60 ? 0.4 : 0);
   if (p.aiming) speed = 2.6;
-  if (p.stance === 'crouch') speed = Math.min(speed, 2.7); else if (p.stance === 'prone') speed = 1.1;
+  if (p.stance === 'crouch') speed = Math.min(speed, hurry ? 3.3 : 2.7); else if (p.stance === 'prone') speed = hurry ? 1.45 : 1.1;
+  if (p.lean) speed = Math.min(speed, 2.2);
   if (p.heal) speed = Math.min(speed, 1.9);
   if (p.inWater) speed = 2.3;
   // 부활 중: 움직이거나 쏘면 취소
@@ -494,7 +504,7 @@ function updateDriving(dt) {
   if (Input.consume('crouch') || Input.consume('seat')) Veh.switchSeat(p);
 }
 // ---------- 팀 지휘 (핑) ----------
-// Q / 핑 버튼: 조준점 근처에 보이는 적이 있으면 '공격', 아니면 그 지점으로 '이동'
+// Y / 핑 버튼: 조준점 근처에 보이는 적이 있으면 '공격', 아니면 그 지점으로 '이동'
 //  빠르게 두 번(0.4초 안) → '위험' 표시(빨간 경고: 팀원이 그쪽을 경계하며 엄폐), 길게 누르기(0.55초) → '모여'(따라오기)
 let _pingT = -9, _pingPrev = null, _pingHold0 = 0, _pingHoldDone = false;
 const rtNow = () => performance.now() / 1000; // 실제 시간 (프레임이 느려도 두 번 누르기 판정이 흔들리지 않게)
@@ -525,7 +535,7 @@ function setDanger(pt) {
 }
 // 길게 누르기 → 모여 (매 프레임 확인)
 function pingHoldCheck() {
-  const held = Input.keys.KeyQ || Input.pingDown;
+  const held = Input.keys.KeyY || Input.pingDown;
   if (!held) { _pingHold0 = 0; _pingHoldDone = false; return; }
   if (!_pingHold0) _pingHold0 = rtNow();
   else if (!_pingHoldDone && rtNow() - _pingHold0 > 0.55 && G.teamSize > 1 && G.player && G.player.alive) {
@@ -742,7 +752,9 @@ function doPickup(p, it) {
 // 공용: 재장전/회복/장착 타이머 (플레이어·봇)
 function updateCharTimers(c, dt) {
   if (c.punch) updatePunch(c, dt);
-  if (!c.alive) return;
+  if (!c.alive) { c.lean = c.leanA = 0; return; }
+  // 기울이기: 목표(방향 × 벽에 막힌 비율)를 부드럽게 따라간다 — 기절·차량·낙하·엎드림에서는 0 으로
+  { const lt = c.knocked || c.veh || c.mode !== 'ground' || c.stance === 'prone' ? 0 : (c.lean || 0) * (c.leanCap == null ? 1 : c.leanCap); c.leanA += (lt - c.leanA) * Math.min(1, dt * 11); if (!lt && Math.abs(c.leanA) < 0.003) c.leanA = 0; }
   if (c.pickT > 0) c.pickT = Math.max(0, c.pickT - dt);
   if (c.rollT > 0) c.rollT = Math.max(0, c.rollT - dt);
   if (c.throwAnim > 0) c.throwAnim = Math.max(0, c.throwAnim - dt);

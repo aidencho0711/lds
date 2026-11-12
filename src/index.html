@@ -20,6 +20,7 @@
           <button type="button" data-tab="custom">창고</button>
           <button type="button" data-tab="shop">상점<i class="tab-dot" id="shopDot" hidden></i></button>
           <button type="button" data-tab="mission">미션<i class="tab-dot" id="misDot" hidden></i></button>
+          <button type="button" data-tab="pass">패스</button>
         </div>
         <div class="lb-sub" id="segQueue"></div>
         <div class="lb-note" id="lbNote" hidden></div>
@@ -88,6 +89,13 @@
           <div class="mis-sec"><h4>일일 미션 <small id="misReset"></small></h4><div class="mis-list" id="misDaily"></div><div class="mis-bonus" id="misBonus"></div></div>
           <div class="mis-sec"><h4>주간 미션 <small>매주 월요일 초기화</small></h4><div class="mis-list" id="misWeekly"></div></div>
           <p class="micro">미션은 배틀로얄(일반·랭크·파티) 경기가 끝날 때 반영됩니다. 훈련장·데스매치는 제외. 골드 탄피는 경기 중 건물 안 '골드 탄피 주머니'와 보급품에서도 나옵니다.</p>
+        </div>
+        <div class="pane panel-pane pass-pane" data-pane="pass" hidden>
+          <div class="shop-top"><span class="eyebrow" id="bpSeason">배틀패스</span><div class="wallet" id="passWallet"></div></div>
+          <div class="bp-head" id="bpHead"></div>
+          <div class="bp-track" id="bpTrack"></div>
+          <div class="bp-how" id="bpHow"></div>
+          <p class="micro">배틀패스는 모두에게 기본으로 주어집니다. 배틀패스 플러스는 골드 탄피로 사며, 같은 단계의 플러스 보상이 함께 열립니다(이미 지난 단계 보상도 바로 받음). 상자 보상은 그 상자의 확률대로 나옵니다.</p>
         </div>
         <div class="lb-launch">
           <button class="news-card" id="newsCard" type="button"><span class="news-img" id="newsImg"></span><span class="news-tag" id="newsTag">업데이트</span><b id="newsTitle"></b><span class="news-dots" id="newsDots"></span></button>
@@ -380,12 +388,12 @@
           <tr><td><kbd>좌클릭</kbd> / <kbd>우클릭</kbd></td><td>사격 / 정조준(누르고 있기, 조준경으로 봄)</td></tr>
           <tr><td><kbd>Shift</kbd> (3·4·6배 조준 중)</td><td>숨 참기 — 조준경 흔들림 감소</td></tr>
           <tr><td><kbd>Shift</kbd></td><td>달리기</td></tr><tr><td><kbd>Space</kbd></td><td>점프 · 일어서기 · 창문·담 넘기 / 상자 오르기 (앞에 넘을 수 있는 턱이 있으면 자동)</td></tr>
-          <tr><td><kbd>C</kbd> / <kbd>Z</kbd></td><td>앉기 / 엎드리기</td></tr><tr><td><kbd>R</kbd></td><td>재장전</td></tr><tr><td><kbd>N</kbd></td><td>총 살펴보기 (모바일: 무기 칸 누르기)</td></tr><tr><td><kbd>B</kbd></td><td>사격 모드 (연사·단발·점사)</td></tr>
+          <tr><td><kbd>C</kbd> / <kbd>Z</kbd></td><td>앉기 / 엎드리기 — 그 자세로 천천히 이동 (달리기를 누르면 조금 빨라짐 · 다시 누르거나 점프하면 일어남)</td></tr><tr><td><kbd>Q</kbd> / <kbd>E</kbd></td><td>기울이기 — 누르는 동안 왼쪽 / 오른쪽으로 상체를 내밀어 벽 옆으로 보고 쏘기 (모바일: ◀기울 · 기울▶ 버튼)</td></tr><tr><td><kbd>R</kbd></td><td>재장전</td></tr><tr><td><kbd>N</kbd></td><td>총 살펴보기 (모바일: 무기 칸 누르기)</td></tr><tr><td><kbd>B</kbd></td><td>사격 모드 (연사·단발·점사)</td></tr>
           <tr><td><kbd>1 2 3</kbd> / <kbd>X</kbd></td><td>무기 선택 / 무기 집어넣기</td></tr>
           <tr><td><kbd>F</kbd></td><td>줍기 · 강하 · 낙하산 · 차량 탑승/하차 · 기절한 팀원 부활(10초, 움직이면 취소) · 리콜 타워 단말기에서 리콜 등록(8초)</td></tr>
           <tr><td>리콜 (듀오·스쿼드)</td><td>탈락한 팀원의 리콜 카드를 주워 지도의 리콜 타워(하늘색 삼각형) 단말기 앞에서 <kbd>F</kbd> — 8초 등록하면 팀원이 수송기로 돌아와 강하합니다 (권총·붕대 지급 · 한 사람당 한 번 · 자기장 절반 단계까지)</td></tr>
           <tr><td>운전 중 <kbd>W S</kbd> / <kbd>A D</kbd></td><td>가속·브레이크·후진 / 조향 (<kbd>Space</kbd> 핸드브레이크, 마우스로 둘러보기)</td></tr><tr><td><kbd>G</kbd> / <kbd>T</kbd></td><td>투척 준비(궤적 표시, 다시 누르면 취소) / 투척물 전환 — 준비 중 좌클릭을 누르면 핀 뽑기, 떼면 투척. 수류탄은 핀을 뽑고 7초, 연막탄은 3초 뒤 터짐</td></tr>
-          <tr><td><kbd>Q</kbd> (듀오·스쿼드)</td><td>핑 — 적을 조준하면 팀원 '공격', 땅·건물이면 '이동'. 빠르게 두 번 = '위험' 표시(팀원이 그쪽을 경계하며 엄폐), 길게 누르기 = '모여'</td></tr>
+          <tr><td><kbd>Y</kbd> (듀오·스쿼드)</td><td>핑 — 적을 조준하면 팀원 '공격', 땅·건물이면 '이동'. 빠르게 두 번 = '위험' 표시(팀원이 그쪽을 경계하며 엄폐), 길게 누르기 = '모여'</td></tr>
           <tr><td>차량에서 <kbd>C</kbd></td><td>다음 빈 좌석으로 이동 (운전석 ↔ 동승석). 동승석에서는 마우스로 조준·사격·장전 가능</td></tr>
           <tr><td><kbd>H</kbd> / <kbd>J</kbd></td><td>회복(상황에 맞는 아이템 자동) / 에너지 드링크 — 모바일은 회복·투척 버튼을 누르면 위에 아이템 선택이 뜹니다</td></tr>
           <tr><td><kbd>Tab</kbd> / <kbd>M</kbd></td><td>인벤토리 / 지도 (미니맵 클릭으로도 열림 · 휠로 확대, 끌어서 이동)</td></tr><tr><td><kbd>V</kbd></td><td>1인칭 ↔ 3인칭</td></tr><tr><td><kbd>Esc</kbd></td><td>메뉴</td></tr>

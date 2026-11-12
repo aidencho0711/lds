@@ -183,6 +183,7 @@ const REVIVE_T = 10;                 // 부활에 걸리는 시간(초)
 const REVIVE_HP = 15;                // 부활 직후 체력
 const BLEED_T = [40, 25, 15];        // 기절 후 출혈로 쓰러질 때까지(초): 첫 기절 / 두 번째 / 세 번째부터
 const CRAWL_SPEED = 0.95;
+const LEAN_EYE = 0.42;   // 기울이기: 눈·머리가 옆으로 옮겨 가는 거리(m)
 const DIFFICULTY_NAMES ={ easy: '쉬움', normal: '보통', hard: '어려움', extreme: '익스트림', mixed: '혼합' };
 // 내 외형: 장착 스킨(SETTINGS.look) + 몸(SETTINGS.body) — 파티·같이 하기에서 이 묶음을 주고받는다
 // veh: 장착한 차량 스킨(차종별) — 경기에서 운전석에 탈 때 그 차량을 내 스킨으로 바꾼다

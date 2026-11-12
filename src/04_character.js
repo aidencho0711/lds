@@ -73,6 +73,7 @@ class Character {
     this.yaw = 0; this.pitch = 0; this.bodyYaw = 0;
     this.hp = 100; this.boost = 0; this.alive = true;
     this.stance = 'stand'; this.mode = 'plane'; this.onGround = false; this.inWater = false;
+    this.lean = 0; this.leanA = 0;   // 기울이기: lean = -1 왼쪽 · 0 · +1 오른쪽(목표), leanA = 부드럽게 따라가는 값. 상체·눈·피격 판정이 그쪽으로 옮겨 감
     this.sprint = false; this.aiming = false; this.moving = false;
     this.inv = new Inventory(this);
     this.kills = 0; this.damageDealt = 0; this.deathTime = 0; this.place = 0;
@@ -100,12 +101,12 @@ class Character {
   eye(out) {
     const a = this.anim;
     if (a.prone > 0.5) out.set(this.pos.x + Math.sin(this.bodyYaw) * 1.45, this.pos.y + 0.42, this.pos.z + Math.cos(this.bodyYaw) * 1.45);
-    else out.set(this.pos.x, this.pos.y + 1.64 - a.crouch * 0.44, this.pos.z);
+    else { const lk = this.leanA || 0; out.set(this.pos.x - Math.cos(this.yaw) * lk * LEAN_EYE, this.pos.y + 1.64 - a.crouch * 0.44 - Math.abs(lk) * 0.06, this.pos.z + Math.sin(this.yaw) * lk * LEAN_EYE); }
     return out;
   }
   chest(out) {
     if (this.anim.prone > 0.5) return out.set(this.pos.x + Math.sin(this.bodyYaw) * 1.05, this.pos.y + 0.28, this.pos.z + Math.cos(this.bodyYaw) * 1.05);
-    return out.set(this.pos.x, this.pos.y + 1.25 - this.anim.crouch * 0.36, this.pos.z);
+    const lk = (this.leanA || 0) * LEAN_EYE * 0.6; return out.set(this.pos.x - Math.cos(this.yaw) * lk, this.pos.y + 1.25 - this.anim.crouch * 0.36, this.pos.z + Math.sin(this.yaw) * lk);
   }
   // 이 캐릭터가 이 총에 입힌 스킨 (사람: 장착 목록 glook, 봇: 없음)
   skinOf(id) { const s = this.glook && this.glook[id]; return s && typeof GSKINS !== 'undefined' && GSKINS[s] && GSKINS[s].gun === id ? s : null; }
@@ -156,10 +157,10 @@ function hitSpheres(c, out) {
     out.push({ x: x + fx * 0.75, y: y + 0.24, z: z + fz * 0.75, r: 0.25, part: 'body' });
     out.push({ x: x + fx * 0.3, y: y + 0.2, z: z + fz * 0.3, r: 0.22, part: 'legs' });
   } else {
-    const k = a.crouch;
-    out.push({ x, y: y + 1.66 - k * 0.45, z, r: 0.15, part: 'head' });
-    out.push({ x, y: y + 1.3 - k * 0.38, z, r: 0.27, part: 'body' });
-    out.push({ x, y: y + 0.95 - k * 0.36, z, r: 0.25, part: 'body' });
+    const k = a.crouch, lk = (c.leanA || 0) * LEAN_EYE, lx = -Math.cos(c.yaw) * lk, lz = Math.sin(c.yaw) * lk;   // 기울이면 머리·윗몸 판정도 옆으로
+    out.push({ x: x + lx, y: y + 1.66 - k * 0.45 - Math.abs(lk) * 0.12, z: z + lz, r: 0.15, part: 'head' });
+    out.push({ x: x + lx * 0.6, y: y + 1.3 - k * 0.38, z: z + lz * 0.6, r: 0.27, part: 'body' });
+    out.push({ x: x + lx * 0.2, y: y + 0.95 - k * 0.36, z: z + lz * 0.2, r: 0.25, part: 'body' });
     out.push({ x, y: y + 0.5 - k * 0.2, z, r: 0.22, part: 'legs' });
   }
   return out;
