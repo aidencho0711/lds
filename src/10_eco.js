@@ -27,9 +27,9 @@ const VEH_COINS = [[3, 55], [5, 25], [10, 10], [20, 2]];        // 차량 뽑기
 const VEH_SKIN_P = { 3: 5.5, 4: 2, 5: 0.5 };                    // 차량 뽑기 스킨 레어도별 합(%) — 같은 레어도 안에서 똑같이 나눔
 const GUN_COINS = [[3, 40], [5, 20], [10, 8], [20, 2]];         // 총기 상자 코인 [개수, %] (합 70%)
 const GBOX_TIER_P = { 1: 18, 3: 8, 4: 3.2, 5: 0.8 };            // 총기 상자 스킨 레어도별 합(%) (합 30%) — 같은 레어도 안에서 똑같이 나눔
-const GSKIN_PRICE = { 1: 10, 3: 25, 4: 50, 5: 120, 7: 400 };   // 7 = 엡실론
+const GSKIN_PRICE = { 1: 10, 3: 25, 4: 50, 5: 120, 7: 1000 };   // 교환소 가격(총기 교환 코인) · 7 = 엡실론(1,000). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
 const EPS_COINS = [[5, 40], [10, 20], [20, 8], [40, 2]];        // 엡실론 금고 코인 [개수, %] (합 70%)
-const EPS_TIER_P = { 3: 16, 4: 9, 5: 3.4, 7: 1.6 };              // 엡실론 금고 스킨 레어도별 합(%) — 엡실론 8종이 1.6% 를 똑같이 나눔(각 0.2%) · 나머지는 아스널·네온 상자 스킨            // 교환소 가격(총기 교환 코인). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
+const EPS_TIER_P = { 3: 16.8, 4: 9, 5: 3.4, 7: 0.8 };              // 엡실론 금고 스킨 레어도별 합(%) — 엡실론 8종이 0.8% 를 똑같이 나눔(각 0.1%) · 나머지는 아스널·네온 상자 스킨            // 교환소 가격(총기 교환 코인). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
 const ATTEND = [{ gold: 50 }, { gold: 50 }, { gold: 100 }, { gold: 50 }, { gold: 100 }, { coin: 3 }, { gold: 300 }];
 const WELCOME_GOLD = 1000;
 // 미션: key = 경기에서 세는 값. 일일 미션은 날마다 4개(겹치는 key 없이), 주간 미션은 4개 고정
@@ -83,7 +83,7 @@ function bpReward(lv, plus) {
     return { k: 'gold', n: 40 + t * 10 };
   }
   if (lv === 1) return { k: 'gold', n: 500, title: 'bp_plus' };
-  if (lv === 50) return { k: 'gcoin', n: 400, title: 'bp_s1' };   // 엡실론 스킨 1종을 교환소에서 바꿀 수 있는 양
+  if (lv === 50) return { k: 'gcoin', n: 400, title: 'bp_s1' };   // 엡실론 교환가(1,000)의 40%
   if (lv % 10 === 0) return lv === 20 ? { k: 'box', box: 'eps', n: 1 } : lv === 40 ? { k: 'box', box: 'eps', n: 2 } : { k: 'gcoin', n: lv === 10 ? 30 : 50 };
   if (lv % 5 === 0) return lv === 5 ? { k: 'box', box: 'g1', n: 2 } : lv === 25 ? { k: 'box', box: 'g2', n: 2 } : lv === 45 ? { k: 'box', box: 'eps', n: 1 } : { k: 'gcoin', n: lv === 15 ? 15 : 20 };
   return { k: 'gold', n: 200 + t * 20 };
@@ -128,7 +128,7 @@ const Eco = (() => {
       for (const [n, p] of VEH_COINS) out.push({ k: 'coin', n, rar: 2, p });
       for (const r of [3, 4, 5]) { const ids = Object.keys(VSKINS).filter((id) => VSKINS[id].rar === r); for (const id of ids) out.push({ k: 'vskin', id, rar: r, p: VEH_SKIN_P[r] / ids.length }); }
     } else if (box === 'eps') {
-      // 엡실론 금고: 총기 교환 코인 70% · 초희귀 16% · 슈퍼레어 9% · 울트라레어 3.4% · 엡실론 1.6%
+      // 엡실론 금고: 총기 교환 코인 70% · 초희귀 16.8% · 슈퍼레어 9% · 울트라레어 3.4% · 엡실론 0.8%
       for (const [n, p] of EPS_COINS) out.push({ k: 'gcoin', n, rar: 2, p });
       for (const r of [3, 4, 5, 7]) { const ids = Object.keys(GSKINS).filter((id) => GSKINS[id].rar === r && (r === 7 ? GSKINS[id].box === 'eps' : gunBox(GSKINS[id].box) && GSKINS[id].box !== 'eps')); for (const id of ids) out.push({ k: 'gskin', id, rar: r, p: EPS_TIER_P[r] / ids.length }); }
     } else if (gunBox(box)) {

@@ -216,7 +216,43 @@ const GunDeco = (() => {
     const m = g.userData.meta, mesh = new THREE.Mesh(PLANE, flat(crestTex(), { blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false, opacity: 0, depthTest: false }));
     mesh.position.set(0, (m.boreY || 0) + 0.12, 0.02); mesh.scale.setScalar(0.001); mesh.renderOrder = 9; mesh.name = 'gdeco-panel'; g.add(mesh); return mesh;
   }
-  return { attach, panel, crestHolo, emblemTex, textTex, epsTex };
+  // ---------- 엡실론 살펴보기 (v20): ε 문양 고리 · 이름 명판 ----------
+  // 문양 고리: 총을 감싸는 얇은 빛 고리(바깥 글자 · 안쪽 눈금 · 마름모 넷). col = 그 스킨의 빛깔(CSS)
+  function sigilTex(col) {
+    return ctex('sigil|' + col, 512, 512, (g) => {
+      g.translate(256, 256); g.strokeStyle = col; g.fillStyle = col; g.shadowColor = col; g.shadowBlur = 10;
+      g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 236, 0, TAU); g.stroke(); g.lineWidth = 1.5; g.beginPath(); g.arc(0, 0, 186, 0, TAU); g.stroke();
+      for (let i = 0; i < 72; i++) { const a = i / 72 * TAU, r0 = i % 6 ? 178 : 166; g.beginPath(); g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); g.lineTo(Math.cos(a) * 186, Math.sin(a) * 186); g.stroke(); }
+      const txt = 'EPSILON  ·  THE ABSOLUTE  ·  Ε  ·  ', N = txt.length * 2; g.font = FONT(800, 30); g.textAlign = 'center'; g.textBaseline = 'middle';
+      for (let i = 0; i < N; i++) { g.save(); g.rotate(i / N * TAU); g.translate(0, -211); g.fillText(txt[i % txt.length], 0, 0); g.restore(); }
+      for (let i = 0; i < 4; i++) { g.save(); g.rotate(i / 4 * TAU + 0.4); g.translate(0, -150); g.beginPath(); g.moveTo(0, -13); g.lineTo(9, 0); g.lineTo(0, 13); g.lineTo(-9, 0); g.closePath(); g.fill(); g.restore(); }
+    });
+  }
+  // 고리 둘: 하나는 총열과 직각으로 서서 개머리판에서 총구까지 훑고 지나가고, 하나는 비스듬히 누워 가운데에서 돈다 (GunSkin 이 움직임)
+  function sigil(g, col) {
+    const m = g.userData.meta, I = g.userData.skin, grp = new THREE.Group();
+    const mk = () => new THREE.Mesh(PLANE, flat(sigilTex(col), { blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false, opacity: 0, polygonOffset: false }));
+    const a = mk(), b = mk(); b.rotation.set(0.5, 0.95, 0); b.scale.setScalar(0.74); grp.add(a, b);
+    grp.position.set(0, (m.boreY || 0) - 0.012, I ? (I.z0 + I.z1) / 2 : 0.1); grp.scale.setScalar(0.001); grp.name = 'gdeco-panel'; grp.userData.noSkin = true; g.add(grp); return grp;
+  }
+  // 이름 명판: 총 위에 떠오르는 홀로그램 — EPSILON · Ε-번호 / 스킨 이름 / 소유 번호 (항상 카메라를 봄)
+  function plateTex(d, serial, col) {
+    return ctex(['plate', d.name, d.no, serial, col].join('|'), 640, 200, (g, W, H) => {
+      g.fillStyle = 'rgba(10,8,20,0.6)'; g.fillRect(0, 0, W, H);
+      const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, col); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, W, 4); g.fillRect(0, H - 4, W, 4);
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = col; g.shadowBlur = 12;
+      g.font = FONT(700, 30); g.fillStyle = col; g.fillText(`EPSILON  ·  Ε-${d.no}`, W / 2, 40);
+      let px = 62; g.font = FONT(900, px); const w = g.measureText(d.name).width; if (w > W - 48) { px *= (W - 48) / w; g.font = FONT(900, px); }
+      g.fillStyle = '#ffffff'; g.fillText(d.name, W / 2, 102);
+      g.font = FONT(700, 26); g.fillStyle = col; g.fillText(serial ? `THE ABSOLUTE  ·  OWNER #${serial}` : 'THE ABSOLUTE', W / 2, 164);
+    });
+  }
+  function plate(g, d, serial, col) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: plateTex(d, serial, col), transparent: true, depthWrite: false, depthTest: false, toneMapped: false, opacity: 0 }));
+    const m = g.userData.meta; s.position.set(0, (m.boreY || 0) + 0.17, 0.08); s.scale.set(0.001, 0.001, 1); s.renderOrder = 9; s.name = 'gdeco-panel'; g.add(s); return s;
+  }
+  return { attach, panel, crestHolo, sigil, plate, emblemTex, textTex, epsTex };
 })();
 // 특정 각도 글자의 일렁임 시간 (GunSkin.update 가 갱신)
 const GunDeco_T = { value: 0 };

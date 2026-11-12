@@ -974,6 +974,13 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
   }
   function epsInspStart(I, s, g, vm) {
     const kind = I.d.fx.kind;
+    // 공통(v20): ε 문양 고리가 총을 훑고 지나감 · 이름 명판(내 총이면 소유 번호까지) · 외형 키트가 벌어졌다 다시 맞물림
+    if (typeof GunDeco !== 'undefined' && GunDeco.sigil) {
+      const css = '#' + ((I.d.fx.c >>> 0) & 0xffffff).toString(16).padStart(6, '0');
+      s.sigil = GunDeco.sigil(g, css);
+      s.plate = GunDeco.plate(g, I.d, own(s.c) && typeof Eco !== 'undefined' ? Eco.serialOf(I.id) : '', css);
+    }
+    s.kit = !!I.parts; s.snap = false;
     if (kind === 'celestial') { I.spinBoost = 4; scan(I, s.dur * 0.8, 0xf2dcff, true); s.scan = true; }
     else if (kind === 'infernal') { scan(I, s.dur * 0.7, 0xff2a1a, true); s.scan = true; }
     else if (kind === 'omega') { scan(I, 0.45, 0xff2fd0); s.scan = true; }
@@ -983,6 +990,29 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
   }
   function epsInsp(I, s, g, u, dt, vm, k, P, m) {
     const kind = I.d.fx.kind, env = Math.sin(Math.min(1, u) * Math.PI);
+    // ----- 공통 -----
+    const inK = clamp(u / 0.14, 0, 1), outK = clamp((1 - u) / 0.14, 0, 1), vis = Math.min(inK, outK), L = I.z1 - I.z0;
+    if (s.sigil) {
+      const a = s.sigil.children[0], b = s.sigil.children[1], e = inK * (2 - inK);
+      s.sigil.scale.setScalar((vm ? 0.3 : 0.36) * (0.55 + 0.45 * e));
+      a.position.z = lerp(-0.42, 0.42, u * u * (3 - 2 * u)) * L / s.sigil.scale.x; a.rotation.z = s.t * 1.2; b.rotation.z = -s.t * 1.7;
+      a.material.opacity = vis * 0.9; b.material.opacity = vis * 0.55;
+    }
+    if (s.plate) { s.plate.scale.set(0.24 * (0.3 + 0.7 * inK), 0.075 * inK * outK + 0.0005, 1); s.plate.material.opacity = vis * (Math.random() < 0.04 ? 0.5 : 1); }
+    if (s.kit) {
+      // 키트 전개: 조각마다 제 자리에서 바깥으로 밀려 나가 떠 있다가(0.1~0.62) 빠르게 되돌아와 맞물리며 번쩍
+      const o = clamp((u - 0.1) / 0.2, 0, 1), c2 = clamp((u - 0.62) / 0.1, 0, 1), ex = o * o * (3 - 2 * o) * (1 - c2 * c2);
+      for (const p of I.parts) {
+        if (p.spin) continue;
+        if (!p.ex) { const bb = p.mesh.geometry.boundingBox; p.ex = p.ring ? new THREE.Vector3((bb.min.x + bb.max.x) / 2, (bb.min.y + bb.max.y) / 2, (bb.min.z + bb.max.z) * 0.18) : new THREE.Vector3(0, 1, 0); if (p.ex.lengthSq() < 1e-7) p.ex.set(0, 0, 1); p.ex.normalize(); }
+        const d = (p.ring ? 0.05 : 0.02) * ex * (1 + 0.12 * Math.sin(s.t * 5 + p.zn * 9));
+        p.inner.position.set(p.ex.x * d, p.ex.y * d, p.ex.z * d);
+      }
+      if (c2 >= 1 && !s.snap) {
+        s.snap = true; I.flash = Math.max(I.flash, 0.85); I.U.uFlash.value = I.flash;
+        for (let i = 0; i < 26; i++) { const a = Math.random() * TAU, z = lerp(I.z0, I.z1, Math.random()); _q.set(Math.cos(a) * 0.03, m.boreY + Math.sin(a) * 0.03, z); g.localToWorld(_q); _p.set(Math.cos(a) * 0.09, m.boreY + Math.sin(a) * 0.09, z); g.localToWorld(_p); _p.sub(_q).multiplyScalar(5 + Math.random() * 6); emit(P, _q, _p.x, _p.y, _p.z, Math.random() < 0.25 ? 0xffffff : pick(I.d.fx), (0.004 + Math.random() * 0.005) * k, 0.3 + Math.random() * 0.25, { drag: 4, sq: Math.random() < 0.4 }); }
+      }
+    }
     if (kind === 'divine') { const st = u < 0.1 ? 0 : u < 0.22 ? 0.25 : u < 0.34 ? 0.5 : u < 0.46 ? 0.75 : u < 0.85 ? 1 : (1 - u) / 0.15; if (st !== s.st && st > (s.st || 0) && u < 0.5) { corePos(I, g, _q); for (let i = 0; i < 8; i++) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(0.12); emit(P, _q, _r.x, _r.y, _r.z, pick(I.d.fx), 0.005 * k, 0.3, { sq: 1, drag: 3 }); } } s.st = st; I.U.uDeploy.value = st * 1.2; }
     else if (kind === 'apocalypse') { I.U.uDeploy.value = env * (0.7 + 0.5 * Math.sin(s.t * 26)); if (Math.random() < dt * 50 * env) { corePos(I, g, _q); _r.set(Math.random() - 0.5, Math.random() - 0.2, Math.random() - 0.5).normalize().multiplyScalar(0.3 + Math.random() * 0.4); emit(P, _q, _r.x, _r.y, _r.z, pick(I.d.fx), (0.004 + Math.random() * 0.005) * k, 0.35, { drag: 2, g: -1 }); } }
     else if (kind === 'omega') { I.U.uFlash.value = Math.max(I.U.uFlash.value, 0.4 * env * (Math.random() < 0.3 ? 1 : 0.3)); if (Math.random() < dt * 70 * env) { const a = Math.random() * TAU, z = lerp(I.z0, I.z1, Math.random()); _q.set(Math.cos(a) * 0.03, m.boreY + Math.sin(a) * 0.03, z); g.localToWorld(_q); _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(0.6); emit(P, _q, _r.x, _r.y, _r.z, Math.random() < 0.3 ? 0xffffff : pick(I.d.fx), 0.004 * k, 0.1, { drag: 8 }); } }
@@ -1028,6 +1058,9 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     if (I.insp.scan && I.scan) { I.scan = null; I.U.uScanOn.value = 0; }
     if (I.insp.crest) { I.g.remove(I.insp.crest); I.insp.crest.material.dispose(); }
     if (I.insp.warp) epsWarp(0);
+    if (I.insp.sigil) { I.g.remove(I.insp.sigil); for (const ch of I.insp.sigil.children) ch.material.dispose(); }
+    if (I.insp.plate) { I.g.remove(I.insp.plate); I.insp.plate.material.dispose(); }
+    if (I.insp.kit && I.parts) for (const p of I.parts) if (!p.spin) p.inner.position.set(0, 0, 0);
     I.spinBoost = 1; I.wingHold = 0;
     I.U.uDeploy.value = 0; I.U.uFlash.value = Math.max(0, I.flash || 0); I.insp = null;
   }
