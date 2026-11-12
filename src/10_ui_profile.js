@@ -72,7 +72,7 @@ const Prof = (() => {
     let n = 0;
     for (const id of STATS.skins || []) if (Body.SKINS[id] && Body.SKINS[id].rar === 5) n++;
     for (const id of STATS.vskins || []) if (typeof VSKINS !== 'undefined' && VSKINS[id] && VSKINS[id].rar === 5) n++;
-    for (const id of STATS.gskins || []) if (typeof GSKINS !== 'undefined' && GSKINS[id] && GSKINS[id].rar === 5) n++;
+    for (const id of STATS.gskins || []) if (typeof GSKINS !== 'undefined' && GSKINS[id] && (GSKINS[id].rar === 5 || GSKINS[id].rar === 7)) n++;   // 엡실론도 셈
     return n;
   };
   const peakT = () => Rank.tierOf(Math.max(Rank.state.peak || 0, Rank.state.rp || 0)).t;

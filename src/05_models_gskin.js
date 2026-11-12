@@ -84,6 +84,58 @@ const GSKINS = (() => {
         { kind: 'text', side: 'LR', z: 0.43, dy: -0.032, text: 'BETA-003', style: 'engrave', col: '#e2c27a', w: 0.05 }, { kind: 'text', side: 'L', z: 0.13, dy: -0.03, text: 'TEST LOG v0.0.1 · 2026', style: 'engrave', col: '#cfae64', w: 0.06 },
         { kind: 'rim', col: 0xe9cf8a }],
       desc: '아이보리·은 총몸 · 남색 개머리판의 금빛 문양과 별자리 · 살펴보면 별빛이 총몸을 따라 지나감 · 재장전 끝나면 금빛 · EXCLUSIVE — NEVER AVAILABLE AGAIN' },
+    // ---------- 엡실론 (v20): EPSILON — THE ABSOLUTE. 울트라레어 위 최상위 등급, 엡실론 금고(box 'eps')·교환소에서만 ----------
+    //  총마다 다른 주제(겹치는 디자인 없음) · 공통: ε 엠블럼 + 컬렉션 번호(Ε-01~08) · 공중에서 회전하며 손에 붙는 꺼내기 · 살펴보기 중간에 한 바퀴 도는 전용 동작
+    //  · 주제별 대기 효과 · 살펴보기 효과 · 처치 효과 · 획득 컷신(10_shop.js Cutscene) · 소유 번호(계정마다 다른 다섯 자리) · 성능은 일반 총과 같음
+    //  fx.shot/hit: 사격·맞힘 입자는 기존 효과 모양을 이 스킨 색으로 · fx.kind: 처치·대기·살펴보기 주제
+    e_awm_celestial: { gun: 'awm', box: 'eps', rar: 7, eps: 1, no: '01', name: 'CELESTIAL JUDGMENT', pat: 'nebula', pal: ['#04050b', '#3a1466', '#1c2a6e', '#e8c46a'], sc: 2.4, env: 1.0,
+      body: { p: 1, mr: [0.55, 0.3] }, furn: { p: 1, mr: [0.5, 0.32] }, steel: { c: 0x1a1426, mr: [1, 0.2] },
+      glow: { pat: 'nebula', c: 0xf2dcff, k: 2.2, anim: 7 }, glowMask: [1, 1, 0], fx: { kind: 'celestial', c: 0xe8c46a, c2: 0xc9a6ff, tr: 0xf2e2ff, pal: [0xfff0c0, 0xe8c46a, 0xc9a6ff, 0xffffff, 0x8a5cff], shot: 'frontier', hit: 'frontier' },
+      parts: 'celestial', en: 0xffe6a8, enK: 2.4, enAnim: 7,
+      deco: [{ kind: 'eps', no: '01', side: 'LR', z: 0.47, dy: -0.004, w: 0.04 }, { kind: 'text', side: 'L', z: 0.72, dy: -0.004, text: 'CELESTIAL JUDGMENT', style: 'engrave', col: '#e8c46a', w: 0.11 }, { kind: 'rim', col: 0xe8c46a, orn: 'stars' }],
+      desc: '미드나이트 블랙 총몸에 성운이 흐르고 별이 반짝임 · 몸통 둘레를 별 고리가 공전 · 조준경 테두리에 별자리 장식 · 처치하면 별빛이 퍼졌다 사라짐', lore: '하늘이 내린 최후의 심판. 첫 번째 엡실론.' },
+    e_m416_divine: { gun: 'm416', box: 'eps', rar: 7, eps: 1, no: '02', name: 'DIVINE OVERDRIVE', pat: 'pearl', pal: ['#eef2f6', '#d6dee7', '#8e9aa8', '#2f7bff'], sc: 2.6, env: 1.2,
+      body: { p: 1, mr: [0.45, 0.22] }, furn: { p: 1, mr: [0.4, 0.25] }, steel: { c: 0xc4ccd4, mr: [1, 0.14] },
+      glow: { pat: 'pearl', c: 0x3f8cff, k: 3.4, anim: 1 }, glowMask: [1, 1, 1], fx: { kind: 'divine', c: 0x3f8cff, c2: 0xbfe0ff, tr: 0x9fd0ff, pal: [0x3f8cff, 0x7fb6ff, 0xffffff, 0xbfe0ff], shot: 'zero', hit: 'zero' },
+      parts: 'divine', en: 0x4a9bff, enK: 3.2, enAnim: 1,
+      deco: [{ kind: 'eps', no: '02', side: 'LR', z: 0.32, dy: -0.004, w: 0.036 }, { kind: 'text', side: 'LR', z: 0.7, dy: -0.004, text: 'DIVINE OVERDRIVE', style: 'neon', col: '#4a9bff', w: 0.08 }],
+      desc: '펄 화이트·실버 총몸 · 가운데 푸른 에너지 코어 · 총열 둘레 발광 판 · 살펴보면 코어가 단계적으로 점등 · 처치하면 푸른 파동', lore: '한계를 넘어선 출력. 신의 엔진.' },
+    e_akm_infernal: { gun: 'akm', box: 'eps', rar: 7, eps: 1, no: '03', name: 'INFERNAL SOVEREIGN', pat: 'infernal', pal: ['#080809', '#1b0d10', '#d4141e', '#e9b23a'], sc: 3.0, env: 0.9,
+      body: { p: 1, mr: [0.7, 0.36] }, furn: { c: 0x120607, mr: [0.6, 0.3] }, steel: { p: 1, mr: [0.85, 0.3] },
+      glow: { pat: 'infernal', c: 0xff3a1a, k: 2.5, anim: 8 }, glowMask: [1, 0, 1], fx: { kind: 'infernal', c: 0xff2a1a, c2: 0xffb33a, tr: 0xff5a2a, pal: [0xff2a1a, 0xff6a1e, 0xffb33a, 0xd4141e], shot: 'flame', hit: 'chaos' },
+      parts: 'infernal', en: 0xff4a1e, enK: 2.8, enAnim: 8,
+      deco: [{ kind: 'eps', no: '03', side: 'LR', z: 0.5, dy: -0.004, w: 0.038 }, { kind: 'crown', on: 'mag', side: 'LR', w: 0.034, dy: -0.01, col: '#e9b23a' }, { kind: 'text', side: 'L', z: 0.38, dy: -0.024, text: 'INFERNAL SOVEREIGN', style: 'engrave', col: '#e9b23a', w: 0.08 }],
+      desc: '검은 총몸의 붉은 균열 사이로 붉은 에너지가 천천히 흐름 · 탄창에 왕관 · 총구를 문 왕관 가시 · 처치하면 붉은 불꽃이 피어남', lore: '불꽃으로 세운 왕국의 마지막 왕.' },
+    e_groza_void: { gun: 'groza', box: 'eps', rar: 7, eps: 1, no: '04', name: 'VOID REAPER', pat: 'rift', pal: ['#06040b', '#1c0d2c', '#a64bff', '#f0d8ff'], sc: 2.6, env: 0.8,
+      body: { p: 1, mr: [0.5, 0.32] }, furn: { p: 1, mr: [0.4, 0.36] }, steel: { c: 0x150d22, mr: [0.9, 0.24] },
+      glow: { pat: 'rift', c: 0xb45cff, k: 2.6, anim: 1 }, glowMask: [1, 1, 0], fx: { kind: 'voidr', c: 0xa64bff, c2: 0xe6c8ff, tr: 0xc48aff, pal: [0xa64bff, 0xc48aff, 0x5a1aa0, 0xe6c8ff], shot: 'void', hit: 'void' },
+      parts: 'void2', en: 0xb45cff, enK: 3.0, enAnim: 2,
+      deco: [{ kind: 'eps', no: '04', side: 'LR', z: 0.36, dy: -0.004, w: 0.036 }, { kind: 'text', side: 'R', z: 0.24, dy: -0.018, text: 'VOID REAPER', style: 'neon', col: '#c48aff', w: 0.06 }],
+      desc: '공간이 찢어진 틈으로 보랏빛 별밭이 보임 · 총열 둘레 보라 입자 · 살펴보면 둘레 공간이 일그러짐 · 처치하면 작은 차원 균열', lore: '차원의 틈에서 돌아온 사신.' },
+    e_aug_seraph: { gun: 'aug', box: 'eps', rar: 7, eps: 1, no: '05', name: 'PHANTOM SERAPH', pat: 'seraph', pal: ['#eaf2f4', '#c7d8dd', '#6f8790', '#35cfc4'], sc: 2.4, env: 1.2,
+      body: { p: 1, mr: [0.35, 0.24] }, furn: { p: 1, mr: [0.3, 0.26] }, steel: { c: 0x8ea3ad, mr: [1, 0.12] },
+      glow: { pat: 'seraph', c: 0x6ff5ea, k: 2.8, anim: 1 }, glowMask: [1, 1, 0], fx: { kind: 'seraph', c: 0x8ff5ec, c2: 0xffffff, tr: 0xcffaf6, pal: [0x8ff5ec, 0xcffaf6, 0xffffff, 0x6fe3da], shot: 'frost', hit: 'frost' },
+      parts: 'seraph', en: 0x9ff8f0, enK: 2.4, enAnim: 1,
+      deco: [{ kind: 'eps', no: '05', side: 'LR', z: 0.58, dy: -0.004, w: 0.034 }, { kind: 'crystal', on: 'mag', side: 'LR', w: 0.03, dy: -0.006 }, { kind: 'wings', z: 0.4, dy: 0.016, w: 0.17 }],
+      desc: '아이스 화이트 도자기에 은빛 깃털 · 몸통의 금속 날개 장식 · 탄창의 크리스털 · 가끔 투명한 빛의 날개가 펼쳐짐 · 처치하면 크리스털 파편', lore: '천상에서 만든 기계 천사.' },
+    e_amr_apocalypse: { gun: 'amr', box: 'eps', rar: 7, eps: 1, no: '06', name: 'APOCALYPSE ENGINE', pat: 'engine', pal: ['#121417', '#2a2d31', '#ff7a1a', '#d9b25a'], sc: 2.0, env: 1.0,
+      body: { p: 1, mr: [0.85, 0.32] }, furn: { p: 1, mr: [0.8, 0.34] }, steel: { c: 0xd9b25a, mr: [1, 0.2] },
+      glow: { pat: 'engine', c: 0xff7a1a, k: 2.6, anim: 9 }, glowMask: [1, 1, 0], fx: { kind: 'apocalypse', c: 0xff6a12, c2: 0xffc04a, tr: 0xff8a2a, pal: [0xff6a12, 0xff9a2a, 0xffc04a, 0xd9b25a], shot: 'ember', hit: 'ember' },
+      parts: 'apocalypse', en: 0xff7a1a, enK: 3.4, enAnim: 9,
+      deco: [{ kind: 'eps', no: '06', side: 'LR', z: 0.3, dy: -0.004, w: 0.04 }, { kind: 'text', side: 'LR', z: 0.62, dy: -0.006, text: 'APOCALYPSE ENGINE', style: 'warn', col: '#ff8a2a', w: 0.09 }],
+      desc: '티타늄 블랙 판과 주황 열 배출구 · 가운데 대형 에너지 코어가 일정한 간격으로 밝아졌다 어두워짐 · 총열의 기계식 금속 판 · 처치하면 주황 에너지 파동', lore: '세계를 끝내기 위해 만든 엔진.' },
+    e_kar98k_dynasty: { gun: 'kar98k', box: 'eps', rar: 7, eps: 1, no: '07', name: 'ETERNAL DYNASTY', pat: 'dynasty', pal: ['#efe6d2', '#d9cdb1', '#c9a24a', '#14204a'], sc: 2.2, env: 1.15,
+      body: { c: 0x0f1012, mr: [0.6, 0.22] }, furn: { p: 1, mr: [0.35, 0.3] }, steel: { c: 0xd8b25a, mr: [1, 0.18] },
+      glow: { pat: 'dynasty', c: 0xffe2a0, k: 1.3, anim: 7 }, glowMask: [0, 1, 0], flashK: 0.6, fx: { kind: 'dynasty', c: 0xe2c27a, c2: 0xffffff, tr: 0xffe7b0, pal: [0xe2c27a, 0xfff0c8, 0xc9a24a, 0xffffff], shot: 'frontier', hit: 'frontier' },
+      parts: 'dynasty', en: 0xe9c87a, enK: 1.2, enAnim: 7,
+      deco: [{ kind: 'eps', no: '07', side: 'LR', z: 0.5, dy: 0.0, w: 0.034 }, { kind: 'crest', side: 'LR', z: 0.17, dy: -0.034, w: 0.05 }, { kind: 'text', side: 'LR', z: 0.64, dy: -0.03, text: 'ETERNAL DYNASTY', style: 'engrave', col: '#e2c27a', w: 0.1 }, { kind: 'rim', col: 0xe2c27a, orn: 'gems' }],
+      desc: '흑칠 총몸과 아이보리 개머리판의 금빛 아라베스크 · 개머리판의 왕실 문장 · 조준경 보석 장식 · 살펴보면 왕실 문장이 빛나며 회전 · 처치하면 금색 문양이 공중에', lore: '잊혀진 왕조가 남긴 왕실의 유물.' },
+    e_dbs_omega: { gun: 'dbs', box: 'eps', rar: 7, eps: 1, no: '08', name: 'OMEGA BREAKER', pat: 'breaker', pal: ['#141619', '#262a2f', '#ff2fd0', '#b9c0c8'], sc: 2.4, env: 1.0,
+      body: { p: 1, mr: [0.8, 0.3] }, furn: { p: 1, mr: [0.7, 0.32] }, steel: { c: 0xb9c0c8, mr: [1, 0.15] },
+      glow: { pat: 'breaker', c: 0xff3fd8, k: 2.4, anim: 1 }, glowMask: [1, 1, 0], fx: { kind: 'omega', c: 0xff2fd0, c2: 0xffc8f4, tr: 0xff6ae0, pal: [0xff2fd0, 0xff8ae8, 0xffffff, 0xb9c0c8], shot: 'spark', hit: 'spark' },
+      parts: 'omega', en: 0xff3fd8, enK: 3.0, enAnim: 1,
+      deco: [{ kind: 'eps', no: '08', side: 'LR', z: 0.24, dy: -0.004, w: 0.036 }, { kind: 'text', side: 'LR', z: 0.52, dy: -0.034, text: 'Ω OMEGA BREAKER', style: 'neon', col: '#ff5ae0', w: 0.08 }],
+      desc: '건메탈 블랙 패널이 갈라진 틈의 마젠타 빛 · 두 총열 둘레 발광 코일 · 총열 주변에 전기 스파크 · 처치하면 짧은 마젠타 충격파', lore: '모든 것을 부수는 마지막 문자.' },
     // ---------- 옷 상자에 2개씩 ----------
     br_s686_hunter: { gun: 's686', box: 'br', rar: 1, name: '사냥꾼', body: { c: 0x3b3e33, mr: [0.45, 0.45] }, furn: { c: 0x7a4626, mr: [0, 0.5] } },
     br_mini14_wood: { gun: 'mini14', box: 'br', rar: 3, name: '산림 위장', pat: 'camo', pal: ['#4e5636', '#3b4129', '#6a6a44', '#2b2b22'], sc: 3.5, body: { p: 1, mr: [0.1, 0.7] }, furn: { p: 1, mr: [0, 0.72] } },
@@ -316,6 +368,140 @@ const GunSkin = (() => {
       }
       return { alb: a, glow: g };
     },
+    // ---------- 엡실론 무늬 (v20) — 총마다 다른 주제 ----------
+    // CELESTIAL JUDGMENT: 미드나이트 블랙에 보라·남색 성운 + 별 + 가는 금빛 기하 선. 빛 지도 = 별 + 옅은 성운
+    nebula(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256;
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      c.globalCompositeOperation = 'lighter'; gc.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 26; i++) {
+        const x = rng() * S, y = rng() * S, r = S * (0.06 + rng() * 0.16), col = rng() < 0.55 ? pal[1] : pal[2], al = 0.22 + rng() * 0.3;
+        W9(S, (dx, dy) => { const gr = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = al; c.fillStyle = gr; c.fillRect(x + dx - r, y + dy - r, r * 2, r * 2);
+          const g2 = gc.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); g2.addColorStop(0, 'rgba(255,255,255,0.18)'); g2.addColorStop(1, 'rgba(0,0,0,0)'); gc.globalAlpha = al; gc.fillStyle = g2; gc.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); });
+      }
+      c.globalAlpha = 1; gc.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; gc.globalCompositeOperation = 'source-over';
+      c.strokeStyle = pal[3]; c.lineWidth = 1.4 * lw;
+      for (const k of [-S, 0, S]) { c.beginPath(); c.moveTo(k, 0); c.lineTo(k + S, S); c.stroke(); c.beginPath(); c.moveTo(k + S * 0.5 + 5 * lw, 0); c.lineTo(k + S * 1.5 + 5 * lw, S); c.stroke(); }
+      for (let i = 0; i < 4; i++) { const x = (i + 0.5) * S / 4, y = ((i * 3) % 4 + 0.5) * S / 4, s = 6 * lw; W9(S, (dx, dy) => { c.beginPath(); c.moveTo(x + dx, y + dy - s); c.lineTo(x + dx + s * 0.7, y + dy); c.lineTo(x + dx, y + dy + s); c.lineTo(x + dx - s * 0.7, y + dy); c.closePath(); c.stroke(); }); }
+      for (let i = 0; i < 120; i++) {
+        const x = rng() * S, y = rng() * S, r = (0.5 + rng() * (rng() < 0.1 ? 2 : 0.9)) * lw, b = 0.3 + rng() * 0.7;
+        W9(S, (dx, dy) => { c.fillStyle = rng() < 0.2 ? pal[3] : '#ffffff'; c.globalAlpha = b; c.beginPath(); c.arc(x + dx, y + dy, r, 0, TAU); c.fill(); c.globalAlpha = 1;
+          const gr = gc.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r * 3.5); gr.addColorStop(0, `rgba(255,255,255,${b})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); gc.fillStyle = gr; gc.fillRect(x + dx - r * 4, y + dy - r * 4, r * 8, r * 8); });
+      }
+      return { alb: a, glow: g };
+    },
+    // DIVINE OVERDRIVE: 진주빛 흰 판(은은한 무지갯빛) + 은색 곡선 이음매 + 푸른 발광 선
+    pearl(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256;
+      const bg = c.createLinearGradient(0, 0, 0, S); bg.addColorStop(0, pal[0]); bg.addColorStop(0.5, pal[1]); bg.addColorStop(1, pal[0]); c.fillStyle = bg; c.fillRect(0, 0, S, S);
+      gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      for (let i = 0; i < 14; i++) { const x = rng() * S, y = rng() * S, r = S * (0.1 + rng() * 0.2), col = ['rgba(170,200,255,0.18)', 'rgba(255,200,235,0.14)', 'rgba(200,255,240,0.12)'][i % 3]; W9(S, (dx, dy) => { const gr = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; c.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); }); }
+      for (let k = 0; k < 4; k++) {
+        const y0 = (k + 0.5) * S / 4, amp = S * 0.05 * (rng() - 0.5), ph = rng() * TAU, lit = k % 2 === 0;
+        const path = (cx, dy) => { cx.beginPath(); for (let x = 0; x <= S; x += S / 32) { const y = y0 + dy + Math.sin(x / S * TAU + ph) * amp; x ? cx.lineTo(x, y) : cx.moveTo(x, y); } };
+        for (const dy of [-S, 0, S]) {
+          c.strokeStyle = 'rgba(60,70,85,0.75)'; c.lineWidth = 2.8 * lw; path(c, dy); c.stroke(); c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 1 * lw; path(c, dy + 1.8 * lw); c.stroke();
+          { gc.strokeStyle = lit ? '#fff' : 'rgba(255,255,255,0.55)'; gc.lineWidth = 2.6 * lw; path(gc, dy - 3.4 * lw); gc.stroke(); c.strokeStyle = pal[3]; c.lineWidth = 2.2 * lw; path(c, dy - 3.4 * lw); c.stroke(); }
+        }
+      }
+      for (let i = 0; i < 6; i++) { const x = rng() * S, y = rng() * S, s = 4 * lw; W9(S, (dx, dy) => { c.strokeStyle = pal[2]; c.lineWidth = 1.2 * lw; c.beginPath(); c.moveTo(x + dx - s, y + dy); c.lineTo(x + dx, y + dy - s); c.lineTo(x + dx + s, y + dy); c.stroke(); gc.strokeStyle = 'rgba(255,255,255,0.7)'; gc.beginPath(); gc.moveTo(x + dx - s, y + dy); gc.lineTo(x + dx, y + dy - s); gc.lineTo(x + dx + s, y + dy); gc.stroke(); }); }
+      return { alb: a, glow: g };
+    },
+    // INFERNAL SOVEREIGN: 검은 바탕의 진홍 균열(틈 가운데는 용암 금색) + 금빛 왕실 덩굴 무늬
+    infernal(S, pal, rng) {
+      const r = PAT2.fracture(S, [pal[0], pal[1], pal[2]], rng), c = r.alb.getContext('2d'), lw = S / 256;
+      c.lineCap = 'round';
+      for (let i = 0; i < 7; i++) {
+        const x = rng() * S, y = rng() * S, R = S * (0.05 + rng() * 0.04), dir = rng() < 0.5 ? 1 : -1, a0 = rng() * TAU, pts = [];
+        for (let k = 0; k <= 50; k++) { const t = k / 50, an = a0 + dir * t * 2.2 * TAU, rr = R * (1 - t * 0.85); pts.push([Math.cos(an) * rr, Math.sin(an) * rr]); }
+        W9(S, (dx, dy) => { for (const [col, w] of [['rgba(40,20,0,0.6)', 2.4], [pal[3], 1.3]]) { c.strokeStyle = col; c.lineWidth = w * lw; c.beginPath(); pts.forEach(([px, py], k) => (k ? c.lineTo(x + dx + px, y + dy + py) : c.moveTo(x + dx + px, y + dy + py))); c.stroke(); } });
+      }
+      return r;
+    },
+    // VOID REAPER: 검보라 바탕에 공간이 찢어진 틈(들쭉날쭉한 조각) — 틈 안은 보랏빛 별밭, 가장자리는 네온 보라
+    rift(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256, n1 = vnoise(rng, 8);
+      const img = c.createImageData(S, S), c0 = rgb(pal[0]), c1 = rgb(pal[1]);
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const k = n1(x / S * 8, y / S * 8), i4 = (y * S + x) * 4; for (let ch = 0; ch < 3; ch++) img.data[i4 + ch] = lerp(c0[ch], c1[ch], k); img.data[i4 + 3] = 255; }
+      c.putImageData(img, 0, 0); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      for (let i = 0; i < 6; i++) {
+        const x = rng() * S, y = rng() * S, L = S * (0.18 + rng() * 0.22), an = rng() * Math.PI, w = S * (0.012 + rng() * 0.02), top = [], bot = [];
+        for (let k = 0; k <= 10; k++) { const t = k / 10, j = (rng() - 0.5) * w * 0.8, ww = w * Math.sin(t * Math.PI) * (0.6 + rng() * 0.6); const px = Math.cos(an) * (t - 0.5) * L, py = Math.sin(an) * (t - 0.5) * L, nx = -Math.sin(an), ny = Math.cos(an); top.push([px + nx * (ww + j), py + ny * (ww + j)]); bot.push([px - nx * (ww - j), py - ny * (ww - j)]); }
+        const shape = (cx, dx, dy) => { cx.beginPath(); top.forEach(([px, py], k) => (k ? cx.lineTo(x + dx + px, y + dy + py) : cx.moveTo(x + dx + px, y + dy + py))); for (let k = bot.length - 1; k >= 0; k--) cx.lineTo(x + dx + bot[k][0], y + dy + bot[k][1]); cx.closePath(); };
+        W9(S, (dx, dy) => {
+          shape(c, dx, dy); const gr = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, L * 0.5); gr.addColorStop(0, pal[3]); gr.addColorStop(0.3, pal[2]); gr.addColorStop(1, '#1a0630'); c.fillStyle = gr; c.fill();
+          c.strokeStyle = pal[2]; c.lineWidth = 1.6 * lw; c.stroke();
+          shape(gc, dx, dy); gc.strokeStyle = '#fff'; gc.lineWidth = 2.2 * lw; gc.stroke(); gc.fillStyle = 'rgba(255,255,255,0.25)'; gc.fill();
+        });
+      }
+      for (let i = 0; i < 70; i++) { const x = rng() * S, y = rng() * S, r = (0.5 + rng()) * lw; W9(S, (dx, dy) => { c.fillStyle = 'rgba(230,200,255,0.8)'; c.beginPath(); c.arc(x + dx, y + dy, r, 0, TAU); c.fill(); }); }
+      return { alb: a, glow: g };
+    },
+    // PHANTOM SERAPH: 아이스 화이트 도자기 바탕 + 은빛 깃털(가운데 깃대 + 깃가지) 줄지어 겹침. 빛 지도 = 깃대(옅은 청록)
+    seraph(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256;
+      const bg = c.createLinearGradient(0, 0, S, S); bg.addColorStop(0, pal[0]); bg.addColorStop(1, pal[1]); c.fillStyle = bg; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      const rows = 4, per = 5;
+      for (let j = 0; j < rows; j++) for (let i = 0; i < per; i++) {
+        const x = (i + (j % 2) * 0.5) * S / per, y = (j + 0.5) * S / rows, L = S / per * 1.25, Wd = S / rows * 0.32, an = -0.35;
+        const feather = (cx) => { cx.beginPath(); cx.moveTo(-L / 2, 0); cx.quadraticCurveTo(0, -Wd, L / 2, -Wd * 0.1); cx.quadraticCurveTo(0, Wd * 0.7, -L / 2, 0); cx.closePath(); };
+        W9(S, (dx, dy) => {
+          for (const [cx, isG] of [[c, false], [gc, true]]) {
+            cx.save(); cx.translate(x + dx, y + dy); cx.rotate(an);
+            if (!isG) { feather(cx); const gr = cx.createLinearGradient(0, -Wd, 0, Wd); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, pal[1]); cx.fillStyle = gr; cx.fill(); cx.strokeStyle = pal[2]; cx.lineWidth = 1.1 * lw; cx.stroke();
+              cx.strokeStyle = 'rgba(110,135,148,0.75)'; cx.lineWidth = 0.9 * lw; for (let k = 1; k < 9; k++) { const t = k / 9 - 0.5; cx.beginPath(); cx.moveTo(t * L, 0); cx.lineTo(t * L + L * 0.08, -Wd * 0.55 * Math.sin((t + 0.5) * Math.PI)); cx.stroke(); } }
+            cx.strokeStyle = isG ? 'rgba(255,255,255,0.95)' : pal[3]; cx.lineWidth = (isG ? 2.2 : 1.6) * lw; cx.beginPath(); cx.moveTo(-L / 2, 0); cx.quadraticCurveTo(0, -Wd * 0.15, L / 2, -Wd * 0.1); cx.stroke();
+            cx.restore();
+          }
+        });
+      }
+      return { alb: a, glow: g };
+    },
+    // APOCALYPSE ENGINE: 티타늄 검은 판(육각 볼트) + 주황 열 배출구 슬릿 + 금속 금테. 빛 지도 = 배출구
+    engine(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256, gap = 3 * lw;
+      c.fillStyle = '#08090a'; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      const n = 4;
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+        const x0 = i * S / n + gap, y0 = j * S / n + gap, w = S / n - gap * 2, h = S / n - gap * 2, v = rng();
+        const gr = c.createLinearGradient(0, y0, 0, y0 + h); gr.addColorStop(0, v < 0.5 ? pal[1] : '#33373c'); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(x0, y0, w, h);
+        c.strokeStyle = 'rgba(255,255,255,0.08)'; c.lineWidth = lw; c.strokeRect(x0 + lw, y0 + lw, w - 2 * lw, h - 2 * lw);
+        for (const [bx, by] of [[x0 + 5 * lw, y0 + 5 * lw], [x0 + w - 5 * lw, y0 + 5 * lw], [x0 + 5 * lw, y0 + h - 5 * lw], [x0 + w - 5 * lw, y0 + h - 5 * lw]]) { c.fillStyle = '#5a5f66'; c.beginPath(); for (let k = 0; k < 6; k++) { const an = k * Math.PI / 3; k ? c.lineTo(bx + Math.cos(an) * 2.4 * lw, by + Math.sin(an) * 2.4 * lw) : c.moveTo(bx + Math.cos(an) * 2.4 * lw, by + Math.sin(an) * 2.4 * lw); } c.fill(); }
+        if (v < 0.45) { for (let k = 0; k < 4; k++) { const yy = y0 + h * (0.3 + k * 0.12); c.fillStyle = '#ff6a10'; c.fillRect(x0 + w * 0.18, yy, w * 0.64, 2.4 * lw); gc.fillStyle = '#fff'; gc.fillRect(x0 + w * 0.18, yy, w * 0.64, 2.4 * lw); } }
+        else if (v > 0.8) { c.strokeStyle = pal[3]; c.lineWidth = 1.6 * lw; c.strokeRect(x0 + 3 * lw, y0 + 3 * lw, w - 6 * lw, h - 6 * lw); }
+      }
+      return { alb: a, glow: g };
+    },
+    // ETERNAL DYNASTY: 아이보리 바탕 + 위아래 남색 띠(금 겹줄) + 금빛 아라베스크 덩굴 + 작은 금 마름모. 빛 지도 = 금 무늬(은은한 반짝임)
+    dynasty(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256;
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      for (const y of [0, S / 2]) { c.fillStyle = pal[3]; c.fillRect(0, y, S, S * 0.09); for (const dy of [S * 0.012, S * 0.078]) { c.fillStyle = pal[2]; c.fillRect(0, y + dy, S, 1.6 * lw); gc.fillStyle = 'rgba(255,255,255,0.5)'; gc.fillRect(0, y + dy, S, 1.6 * lw); } }
+      c.lineCap = 'round';
+      for (let i = 0; i < 9; i++) {
+        const x = rng() * S, y = S * 0.12 + rng() * S * 0.3 + (i % 2) * S / 2, R = S * (0.035 + rng() * 0.03), dir = rng() < 0.5 ? 1 : -1, a0 = rng() * TAU, pts = [], tail = [];
+        for (let k = 0; k <= 50; k++) { const t = k / 50, an = a0 + dir * t * 1.8 * TAU, rr = R * (1 - t * 0.8); pts.push([Math.cos(an) * rr, Math.sin(an) * rr]); }
+        for (let k = 0; k <= 16; k++) { const t = k / 16, an = a0 - dir * t * 1.5; tail.push([Math.cos(an) * R * (1 + t * 1.4), Math.sin(an) * R * (1 + t * 1.4)]); }
+        W9(S, (dx, dy) => { for (const P of [pts, tail]) { for (const [cx, col, w] of [[c, 'rgba(90,60,10,0.5)', 2.6], [c, pal[2], 1.4], [gc, 'rgba(255,255,255,0.6)', 1.4]]) { cx.strokeStyle = col; cx.lineWidth = w * lw; cx.beginPath(); P.forEach(([px, py], k) => (k ? cx.lineTo(x + dx + px, y + dy + py) : cx.moveTo(x + dx + px, y + dy + py))); cx.stroke(); } }
+          c.fillStyle = pal[2]; const tx = x + dx + tail[16][0], ty = y + dy + tail[16][1]; c.beginPath(); c.ellipse(tx, ty, 3 * lw, 1.6 * lw, a0, 0, TAU); c.fill(); });
+      }
+      for (let i = 0; i < 8; i++) { const x = rng() * S, y = rng() * S, s = 2.6 * lw; W9(S, (dx, dy) => { c.fillStyle = pal[2]; c.beginPath(); c.moveTo(x + dx, y + dy - s); c.lineTo(x + dx + s, y + dy); c.lineTo(x + dx, y + dy + s); c.lineTo(x + dx - s, y + dy); c.fill(); }); }
+      return { alb: a, glow: g };
+    },
+    // OMEGA BREAKER: 건메탈 판이 틈을 두고 갈라진 기계 패널 + 일부 틈 가장자리의 마젠타 띠 + 은 볼트 + 작은 마젠타 화살표
+    breaker(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256, gap = 3.2 * lw;
+      c.fillStyle = '#060607'; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      const split = (L, n) => { const w = []; let s = 0; for (let i = 0; i < n; i++) { const v = 0.6 + rng(); w.push(v); s += v; } let acc = 0; return w.map((v) => { const o = [acc, v / s * L]; acc += v / s * L; return o; }); };
+      for (const [y, h] of split(S, 4)) for (const [x, w] of split(S, 3)) {
+        const x0 = x + gap / 2, y0 = y + gap / 2, W = w - gap, H = h - gap, v = rng();
+        const gr = c.createLinearGradient(0, y0, 0, y0 + H); gr.addColorStop(0, v < 0.5 ? pal[1] : '#2e3237'); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(x0, y0, W, H);
+        c.fillStyle = pal[3]; for (const [bx, by] of [[x0 + 4 * lw, y0 + 4 * lw], [x0 + W - 4 * lw, y0 + H - 4 * lw]]) { c.beginPath(); c.arc(bx, by, 1.6 * lw, 0, TAU); c.fill(); }
+        if (v < 0.4) { c.fillStyle = pal[2]; c.fillRect(x0, y0 + H - 2.6 * lw, W, 2.6 * lw); gc.fillStyle = '#fff'; gc.fillRect(x0, y0 + H - 2.6 * lw, W, 2.6 * lw); }
+        if (v > 0.75) { c.strokeStyle = pal[2]; c.lineWidth = 1.6 * lw; const cx = x0 + W / 2, cy = y0 + H / 2; for (const o of [-5, 0, 5]) { c.beginPath(); c.moveTo(cx + (o - 3) * lw, cy - 4 * lw); c.lineTo(cx + o * lw, cy); c.lineTo(cx + (o - 3) * lw, cy + 4 * lw); c.stroke(); } }
+      }
+      return { alb: a, glow: g };
+    },
   };
   // 빛 지도만 (흰 선 = 빛남)
   const GLOW = {
@@ -362,7 +548,7 @@ const GunSkin = (() => {
   function texOf(id) {
     if (TEX[id]) return TEX[id];
     const d = GSKINS[id], S = d.rar >= 4 ? 512 : 256, seed = [...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 17), out = { pat: null, glow: null };
-    if (d.pat && PAT2[d.pat]) { const r = PAT2[d.pat](d.pat === 'lava' || d.pat === 'fracture' ? 256 : S, d.pal, mulberry32(seed)); out.pat = toTex(r.alb); if (d.glow && d.glow.pat === d.pat) out.glow = toTex(r.glow); }
+    if (d.pat && PAT2[d.pat]) { const r = PAT2[d.pat](d.pat === 'lava' || d.pat === 'fracture' || d.pat === 'infernal' || d.pat === 'rift' ? 256 : S, d.pal, mulberry32(seed)); out.pat = toTex(r.alb); if (d.glow && d.glow.pat === d.pat) out.glow = toTex(r.glow); }
     else if (d.pat && PAT[d.pat]) { const c = cv(S); PAT[d.pat](c.getContext('2d'), S, d.pal || [], mulberry32(seed)); out.pat = toTex(c); }
     if (d.glow && !out.glow) {
       const c = cv(S), gc = c.getContext('2d'); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
@@ -418,7 +604,9 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
 	if (uGlowAmt > 0.0 && gsGM > 0.0) {
 		float gsG = gsTri(uGlow, vOP, gsNrm).r;
 		float gsA = 1.0; vec3 gsGC = uGlowCol;
-		if (uGlowAnim > 6.5) { float gsH = gsHash(floor(vOP * 70.0)); gsA = 0.2 + 0.8 * pow(0.5 + 0.5 * sin(uTime * (0.9 + gsH * 1.8) + gsH * 6.283), 3.0); }	// 별 반짝임 (LAST FRONTIER)
+		if (uGlowAnim > 8.5) { float gsW = 0.5 + 0.5 * sin(uTime * 2.4); gsA = 0.2 + 0.8 * pow(gsW, 6.0); }	// 일정한 간격의 맥박 (APOCALYPSE ENGINE)
+		else if (uGlowAnim > 7.5) { float gsW = 0.5 + 0.5 * sin(uTime * 1.6 - vOP.z * 12.0); gsA = 0.25 + 0.75 * pow(gsW, 4.0); }	// 붉은 에너지가 천천히 흐름 (INFERNAL SOVEREIGN)
+		else if (uGlowAnim > 6.5) { float gsH = gsHash(floor(vOP * 70.0)); gsA = 0.2 + 0.8 * pow(0.5 + 0.5 * sin(uTime * (0.9 + gsH * 1.8) + gsH * 6.283), 3.0); }	// 별 반짝임 (LAST FRONTIER)
 		else if (uGlowAnim > 5.5) { float gsF = gsHash(vec3(floor(uTime * 9.0), 1.0, 0.0)), gsF2 = gsHash(vec3(floor(uTime * 2.3), 2.0, 0.0)); gsA = 0.3 + 0.7 * mix(gsF * gsF, 1.0, step(0.72, gsF2)); }	// 불규칙 점멸 (CHAOS CORE)
 		else if (uGlowAnim > 4.5) { float gsW = 0.5 + 0.5 * sin(uTime * 1.25 - vOP.z * 7.0 - vOP.y * 3.0); gsA = 0.16 + 0.84 * gsW * gsW * gsW; }	// 회로가 천천히 차례로 점등 (ZERO PROTOCOL)
 		else if (uGlowAnim > 3.5) { gsGC = mix(uGlowCol, gsHue(fract(uTime * 0.16 + vOP.z * 2.4 + vOP.y * 1.4)), 0.85); float gsW = 0.5 + 0.5 * sin(uTime * 3.2 - vOP.z * 24.0); gsA = 0.5 + 0.5 * gsW; }	// 테스터: 무지개가 총 길이를 따라 흐름
@@ -433,7 +621,9 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
 	// 부속품의 발광 부품(kd 7 = energy): 스킨 색으로 빛나고, 펼쳐질 때(uDeploy) 번쩍
 	if (gsR > 6.5) {
 		float gsE = 1.0; vec3 gsEC = uEnCol;
-		if (uEnAnim > 6.5) gsE = 0.85 + 0.15 * sin(uTime * 1.6);
+		if (uEnAnim > 8.5) { float gsW = 0.5 + 0.5 * sin(uTime * 2.4); gsE = 0.25 + 1.0 * pow(gsW, 6.0); }
+		else if (uEnAnim > 7.5) gsE = 0.5 + 0.5 * (0.5 + 0.5 * sin(uTime * 1.6 - vOP.z * 12.0));
+		else if (uEnAnim > 6.5) gsE = 0.85 + 0.15 * sin(uTime * 1.6);
 		else if (uEnAnim > 5.5) { float gsF = gsHash(vec3(floor(uTime * 11.0), 5.0, 0.0)); gsE = 0.3 + 0.9 * gsF * gsF; }
 		else if (uEnAnim > 4.5) gsE = 0.5 + 0.5 * (0.5 + 0.5 * sin(uTime * 1.25));
 		else if (uEnAnim > 3.5) { gsEC = mix(uEnCol, gsHue(fract(uTime * 0.22 + vOP.z * 6.0 + vOP.x * 4.0 + vOP.y * 3.0)), 0.8); gsE = 0.82 + 0.18 * sin(uTime * 5.0 - vOP.z * 40.0); }
@@ -471,7 +661,7 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
   function makeMat(base, U, d) {
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: base.roughness, metalness: base.metalness, envMap: base.envMap, envMapIntensity: d.env !== undefined ? Math.max(d.env, base.envMapIntensity) : base.envMapIntensity });
     m.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); sh.vertexShader = patchV(sh.vertexShader); sh.fragmentShader = patchF(sh.fragmentShader); };
-    m.customProgramCacheKey = () => 'gskin-v4';
+    m.customProgramCacheKey = () => 'gskin-v5';
     return m;
   }
   // 그리기 직전에 총 공간 행렬(빛 띠 위치 계산용) — 효과가 진행 중일 때만
@@ -504,7 +694,7 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
     }
     g.userData.skin = I;
     if (d.deco && typeof GunDeco !== 'undefined') I.deco = GunDeco.attach(g, d, I.z0, I.z1);   // 테스터: 엠블럼·각인·홀로그램 (05_models_gdeco.js)
-    if (d.tester) IDLE.add(I);
+    if (d.tester || d.eps) IDLE.add(I);
     return g;
   }
   // ---------- 부속품 전개: 빛 띠가 총구에 닿을 즈음부터 총 앞쪽 부속품부터 차례로 튀어나옴 ----------
@@ -679,7 +869,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     if (!vm && G.camera && _q.setFromMatrixPosition(g.matrixWorld).distanceTo(G.camera.position) > (fx.lite ? 40 : 70)) return;
     _p.set(0, m.boreY, m.muzzleZ + 0.015); g.localToWorld(_p); _d.set(0, m.boreY, m.muzzleZ + 1); g.localToWorld(_d); _d.sub(_p).normalize();
     if (fx.lite) { liteShot(pool(sc), k, fx); return; }
-    (SHOT[fx.kind] || SHOT.ember)(pool(sc), k, fx);
+    (SHOT[fx.shot || fx.kind] || SHOT.ember)(pool(sc), k, fx);
     if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('shot', fx.kind, c && !own(c) ? c.pos : null, own(c));
   }
   // ---------- 꺼내기·넣기 (빛 띠) ----------
@@ -690,7 +880,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     I.sweep = { t: 0, dur, out: false, c }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.z0 - 0.05; ACTIVE.add(I);
     if (I.parts) { setParts(I, 0); I.dep = { t: 0, dur }; }   // 부속품은 접어 두었다가 빛 띠를 따라 펼침
     if (I.deco) for (const e of I.deco) e.mesh.visible = false;   // 각인·엠블럼도 빛 띠를 따라 나타남
-    if (I.d.tester) spinStart(I, dur);
+    if (I.d.tester || I.d.eps) spinStart(I, dur);
     if (!quiet && typeof Audio !== 'undefined' && Audio.skinFx && shown(g)) Audio.skinFx('draw', I.d.fx.kind, c && !own(c) ? c.pos : null, own(c));
   }
   // ---------- 테스터 전용 꺼내기 동작 ----------
@@ -728,13 +918,15 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       const g = I.g, sc = sceneOf(g);
       if (!sc) { I.gone = (I.gone || 0) + dt; if (I.gone > 8) IDLE.delete(I); continue; }
       I.gone = 0; if (!shown(g)) continue;
-      if (I.parts) for (const p of I.parts) if (p.spin) p.inner.rotation.z += p.spin * dt;
+      if (I.parts) for (const p of I.parts) if (p.spin) p.inner.rotation.z += p.spin * dt * (I.spinBoost || 1);
+      if (I.d.eps) epsIdle(I, g, dt);   // 엡실론 대기 효과 (날개 등 — 거리와 무관하게 갱신)
       const vm = isVM(sc);
       if (!vm && G.camera && _q.setFromMatrixPosition(g.matrixWorld).distanceTo(G.camera.position) > 22) continue;
       I.moteT = (I.moteT || 0) - dt; if (I.moteT > 0) continue;
       // 주제별: ZERO = 시안 데이터 조각이 천천히 떠오름 · CHAOS = 코어 둘레에서 붉은 불티가 튐(불규칙) · FRONTIER = 개머리판 둘레 금빛 별 반짝임
       const kind = I.d.fx && I.d.fx.kind, m = g.userData.meta, k = vm ? 1 : 2.2, P = pool(sc), col = pick(I.d.fx);
-      if (kind === 'chaos') {
+      if (I.d.eps) { epsMote(I, g, vm, m, k, P, col, kind); }
+      else if (kind === 'chaos') {
         I.moteT = (vm ? 0.08 : 0.16) * (0.4 + Math.random() * 1.6);
         const core = I.parts && I.parts.find((p) => p.core); if (core) core.outer.getWorldPosition(_p); else { _p.set(0, m.boreY, lerp(I.z0, I.z1, 0.4)); g.localToWorld(_p); }
         emit(P, _p, (Math.random() - 0.5) * 0.25, 0.08 + Math.random() * 0.22, (Math.random() - 0.5) * 0.25, col, (0.004 + Math.random() * 0.004) * k, 0.35 + Math.random() * 0.3, { g: -0.4, drag: 1.5 });
@@ -749,6 +941,55 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       }
     }
   }
+  // ---------- 엡실론: 대기 · 살펴보기 (총마다 다른 주제) ----------
+  //  대기: CELESTIAL = 별 고리가 공전(부속품 spin) + 별 반짝임 · DIVINE = 코어에서 푸른 빛이 떠오름 · INFERNAL = 붉은 불티가 총구 쪽으로 흐름
+  //        VOID = 총열 둘레 보라 입자가 소용돌이 · SERAPH = 가끔 투명한 빛의 날개가 펼쳐짐 · APOCALYPSE = 코어 맥박(셰이더) + 주황 불꽃
+  //        DYNASTY = 금빛 가루 · OMEGA = 두 총열 둘레 전기 스파크
+  //  살펴보기: CELESTIAL = 고리가 빨라지고 별빛 띠 · DIVINE = 코어가 네 단계로 점등 · INFERNAL = 진홍 띠 + 불티 · VOID = 화면이 순간 일그러짐 + 입자가 빨려 듦
+  //           SERAPH = 날개를 끝까지 펼침 · APOCALYPSE = 코어 과부하 · DYNASTY = 왕실 문장이 위에서 빛나며 돎 · OMEGA = 전기 폭주 + 마젠타 띠
+  function corePos(I, g, out) { const core = I.parts && I.parts.find((p) => p.core); if (core) core.outer.getWorldPosition(out); else { out.set(0, g.userData.meta.boreY, lerp(I.z0, I.z1, 0.45)); g.localToWorld(out); } return out; }
+  function epsIdle(I, g, dt) {
+    if (I.d.fx.kind !== 'seraph' || !I.deco) return;
+    I.wingT = (I.wingT || Math.random() * 3) + dt; const cyc = 6, t = I.wingT % cyc;
+    const k = I.wingHold ? Math.min(1, (I.wingK || 0) + dt * 3) : t < 1.6 ? Math.sin(Math.min(1, t / 1.6) * Math.PI) : 0; I.wingK = k;
+    for (const e of I.deco) if (e.kind === 'wings') { e.mesh.scale.setScalar(Math.max(0.001, 0.2 + 0.8 * k)); e.mat.opacity = 0.75 * k; e.mesh.visible = k > 0.01 && (!I.sweep); }
+  }
+  function epsMote(I, g, vm, m, k, P, col, kind) {
+    const rnd2 = Math.random;
+    if (kind === 'celestial') { I.moteT = vm ? 0.1 : 0.2; const a = rnd2() * TAU, r = 0.05 + rnd2() * 0.05; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, lerp(I.z0, I.z1, 0.3 + rnd2() * 0.4)); g.localToWorld(_p); emit(P, _p, 0, 0.005, 0, col, (0.004 + rnd2() * 0.004) * k, 0.7, { grow: -0.5 }); }
+    else if (kind === 'divine') { I.moteT = vm ? 0.12 : 0.24; corePos(I, g, _p); emit(P, _p, (rnd2() - 0.5) * 0.03, 0.05 + rnd2() * 0.06, (rnd2() - 0.5) * 0.03, col, (0.004 + rnd2() * 0.003) * k, 0.6, { sq: rnd2() < 0.5 }); }
+    else if (kind === 'infernal') { I.moteT = vm ? 0.07 : 0.14; _p.set((rnd2() - 0.5) * 0.04, m.boreY + (rnd2() - 0.5) * 0.04, lerp(I.z0, I.z1, rnd2() * 0.6)); g.localToWorld(_p); _r.set(0, 0.02, 0.18); _r.transformDirection(g.matrixWorld).multiplyScalar(0.18); emit(P, _p, _r.x, _r.y + 0.04, _r.z, col, (0.004 + rnd2() * 0.004) * k, 0.5 + rnd2() * 0.3, { g: -0.3 }); }
+    else if (kind === 'voidr') { I.moteT = vm ? 0.05 : 0.1; const a = rnd2() * TAU, r = 0.04 + rnd2() * 0.03, z = lerp(I.z0, I.z1, 0.75 + rnd2() * 0.25); _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, z); g.localToWorld(_p); _q.set(0, m.boreY, z); g.localToWorld(_q); _q.sub(_p).multiplyScalar(1.6); emit(P, _p, _q.x, _q.y, _q.z, col, (0.004 + rnd2() * 0.004) * k, 0.5, { sq: rnd2() < 0.3 }); }
+    else if (kind === 'seraph') { I.moteT = vm ? 0.16 : 0.3; const a = rnd2() * TAU, r = 0.03 + rnd2() * 0.04; _p.set(Math.cos(a) * r, m.boreY + 0.02 + Math.sin(a) * r, lerp(I.z0, I.z1, rnd2())); g.localToWorld(_p); emit(P, _p, 0, -0.02, 0, col, (0.003 + rnd2() * 0.003) * k, 0.9, { sq: 1, grow: -0.3 }); }
+    else if (kind === 'apocalypse') { I.moteT = (vm ? 0.1 : 0.2) * (0.5 + rnd2()); corePos(I, g, _p); _r.set(rnd2() - 0.5, rnd2(), rnd2() - 0.5).normalize().multiplyScalar(0.15 + rnd2() * 0.2); emit(P, _p, _r.x, _r.y, _r.z, col, (0.004 + rnd2() * 0.004) * k, 0.4, { g: -0.8, drag: 1.5 }); }
+    else if (kind === 'dynasty') { I.moteT = vm ? 0.12 : 0.24; const a = rnd2() * TAU, r = 0.03 + rnd2() * 0.05; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, lerp(I.z0, I.z1, rnd2())); g.localToWorld(_p); emit(P, _p, 0, -0.01, 0, col, (0.003 + rnd2() * 0.003) * k, 0.9, { grow: -0.4 }); }
+    else if (kind === 'omega') { I.moteT = (vm ? 0.05 : 0.1) * (0.4 + rnd2() * 1.6); const a = rnd2() * TAU, r = 0.018 + rnd2() * 0.012, z = lerp(I.z0, I.z1, 0.7 + rnd2() * 0.3); _p.set(Math.cos(a) * r, m.boreY - 0.015 + Math.sin(a) * r * 1.6, z); g.localToWorld(_p); _r.set(rnd2() - 0.5, rnd2() - 0.5, rnd2() - 0.5).normalize().multiplyScalar(0.4 + rnd2() * 0.6); emit(P, _p, _r.x, _r.y, _r.z, rnd2() < 0.3 ? 0xffffff : col, (0.003 + rnd2() * 0.003) * k, 0.08 + rnd2() * 0.08, { drag: 8 }); }
+  }
+  // VOID REAPER 살펴보기: 화면(캔버스)을 SVG 변위 필터로 잠깐 일그러뜨림 (내 화면에서만)
+  let warpEl = null, warpT = 0;
+  function epsWarp(on) {
+    const cvEl = G.renderer && G.renderer.domElement; if (!cvEl) return;
+    if (!warpEl) { const d = document.createElement('div'); d.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden'; d.innerHTML = '<svg width="0" height="0"><filter id="epsWarp" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G"/></filter></svg>'; document.body.appendChild(d); warpEl = d.querySelector('feDisplacementMap'); }
+    if (on > 0.01) { warpEl.setAttribute('scale', (on * 60).toFixed(1)); cvEl.style.filter = 'url(#epsWarp) hue-rotate(' + Math.round(on * 25) + 'deg)'; } else cvEl.style.filter = '';
+  }
+  function epsInspStart(I, s, g, vm) {
+    const kind = I.d.fx.kind;
+    if (kind === 'celestial') { I.spinBoost = 4; scan(I, s.dur * 0.8, 0xf2dcff, true); s.scan = true; }
+    else if (kind === 'infernal') { scan(I, s.dur * 0.7, 0xff2a1a, true); s.scan = true; }
+    else if (kind === 'omega') { scan(I, 0.45, 0xff2fd0); s.scan = true; }
+    else if (kind === 'seraph') I.wingHold = 1;
+    else if (kind === 'dynasty') s.crest = GunDeco.crestHolo(g);
+    else if (kind === 'voidr' && vm) s.warp = true;
+  }
+  function epsInsp(I, s, g, u, dt, vm, k, P, m) {
+    const kind = I.d.fx.kind, env = Math.sin(Math.min(1, u) * Math.PI);
+    if (kind === 'divine') { const st = u < 0.1 ? 0 : u < 0.22 ? 0.25 : u < 0.34 ? 0.5 : u < 0.46 ? 0.75 : u < 0.85 ? 1 : (1 - u) / 0.15; if (st !== s.st && st > (s.st || 0) && u < 0.5) { corePos(I, g, _q); for (let i = 0; i < 8; i++) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(0.12); emit(P, _q, _r.x, _r.y, _r.z, pick(I.d.fx), 0.005 * k, 0.3, { sq: 1, drag: 3 }); } } s.st = st; I.U.uDeploy.value = st * 1.2; }
+    else if (kind === 'apocalypse') { I.U.uDeploy.value = env * (0.7 + 0.5 * Math.sin(s.t * 26)); if (Math.random() < dt * 50 * env) { corePos(I, g, _q); _r.set(Math.random() - 0.5, Math.random() - 0.2, Math.random() - 0.5).normalize().multiplyScalar(0.3 + Math.random() * 0.4); emit(P, _q, _r.x, _r.y, _r.z, pick(I.d.fx), (0.004 + Math.random() * 0.005) * k, 0.35, { drag: 2, g: -1 }); } }
+    else if (kind === 'omega') { I.U.uFlash.value = Math.max(I.U.uFlash.value, 0.4 * env * (Math.random() < 0.3 ? 1 : 0.3)); if (Math.random() < dt * 70 * env) { const a = Math.random() * TAU, z = lerp(I.z0, I.z1, Math.random()); _q.set(Math.cos(a) * 0.03, m.boreY + Math.sin(a) * 0.03, z); g.localToWorld(_q); _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(0.6); emit(P, _q, _r.x, _r.y, _r.z, Math.random() < 0.3 ? 0xffffff : pick(I.d.fx), 0.004 * k, 0.1, { drag: 8 }); } }
+    else if (kind === 'celestial' || kind === 'infernal') { if (I.scan && Math.random() < dt * 30) { const a = Math.random() * TAU, r = 0.025 + Math.random() * 0.03; _q.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, I.U.uScanZ.value); g.localToWorld(_q); emit(P, _q, 0, kind === 'infernal' ? 0.06 : 0.01, 0, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.6, { grow: -0.4, g: kind === 'infernal' ? -0.5 : 0 }); } }
+    else if (kind === 'voidr') { if (s.warp) epsWarp(u < 0.35 ? Math.sin(u / 0.35 * Math.PI) : 0); if (Math.random() < dt * 50 * env) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(); const R = 0.12 + Math.random() * 0.1; _q.set(0, m.boreY, lerp(I.z0, I.z1, 0.6)); g.localToWorld(_q); _p.copy(_q).addScaledVector(_r, R); emit(P, _p, -_r.x * R * 3, -_r.y * R * 3, -_r.z * R * 3, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.33, { sq: Math.random() < 0.4 }); } }
+    else if (kind === 'dynasty' && s.crest) { const inK = clamp(u / 0.15, 0, 1), outK = clamp((1 - u) / 0.15, 0, 1); s.crest.scale.setScalar(0.07 * Math.min(inK, outK) + 0.001); s.crest.rotation.y = s.t * 2.4; s.crest.material.opacity = Math.min(inK, outK); if (Math.random() < dt * 20) { s.crest.getWorldPosition(_q); emit(P, _q, (Math.random() - 0.5) * 0.1, -0.05, (Math.random() - 0.5) * 0.1, pick(I.d.fx), 0.004 * k, 0.6, { grow: -0.4 }); } }
+  }
   // ---------- 테스터: 재장전 · 살펴보기 ----------
   //  재장전(06_combat.js 가 부름): ZERO = 시작할 때 시안 스캔 띠 · CHAOS = 탄창 갈 때 코어 둘레 붉은 입자 · FRONTIER = 끝나면 금빛 한 번
   //  살펴보기(09_player.js · 진열장): ZERO = 옆에 SYSTEM ONLINE 홀로그램 · CHAOS = 코어가 강하게 빛나며 맥박 · FRONTIER = 별빛 띠가 총몸을 따라 천천히 지나감
@@ -756,7 +997,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     const out = [];
     if (c && c.isPlayer && typeof VM !== 'undefined' && VM.active && VM.gun) out.push(VM.gun);
     if (c && c.rig && c.rig.gunObj) out.push(c.rig.gunObj);
-    return out.filter((g) => g.userData.skin && g.userData.skin.d.tester);
+    return out.filter((g) => g.userData.skin && (g.userData.skin.d.tester || g.userData.skin.d.eps));
   }
   function scan(I, dur, col, slow) { I.scan = { t: 0, dur, slow }; I.U.uScanCol.value.setHex(col); I.U.uScanOn.value = 1; I.U.uScanZ.value = I.z0 - 0.05; I.g.updateWorldMatrix(true, false); I.U.uGunInv.value.copy(I.g.matrixWorld).invert(); ACTIVE.add(I); }
   function reload(c, phase) {
@@ -778,13 +1019,16 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
   }
   // delay: 진열장처럼 꺼내기 연출이 끝난 뒤에 시작 · loop: 진열장에서 몇 초마다 다시
   function inspect(g, c, delay = 0, loop = 0) {
-    const I = g && g.userData.skin; if (!I || !I.d.tester) return false;
+    const I = g && g.userData.skin; if (!I || !(I.d.tester || I.d.eps)) return false;
     inspectStop(g); I.insp = { t: -delay, dur: 2.3, c, on: false, loop }; ACTIVE.add(I); return true;
   }
   function inspectStop(g) {
     const I = g && g.userData.skin; if (!I || !I.insp) return;
     if (I.insp.panel) { I.g.remove(I.insp.panel); I.insp.panel.material.dispose(); }
     if (I.insp.scan && I.scan) { I.scan = null; I.U.uScanOn.value = 0; }
+    if (I.insp.crest) { I.g.remove(I.insp.crest); I.insp.crest.material.dispose(); }
+    if (I.insp.warp) epsWarp(0);
+    I.spinBoost = 1; I.wingHold = 0;
     I.U.uDeploy.value = 0; I.U.uFlash.value = Math.max(0, I.flash || 0); I.insp = null;
   }
   function inspUpdate(I, dt) {
@@ -794,6 +1038,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     if (!s.on) {
       s.on = true;
       if (kind === 'zero') s.panel = GunDeco.panel(g);
+      if (I.d.eps) epsInspStart(I, s, g, vm);
       if (kind === 'frontier') { scan(I, s.dur * 0.85, 0xfff0c0, true); s.scan = true; }
       if (typeof Audio !== 'undefined' && Audio.skinFx && shown(g)) Audio.skinFx('inspect', kind, s.c && !own(s.c) ? s.c.pos : null, own(s.c));
     }
@@ -805,7 +1050,8 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       const pulse = 0.5 + 0.5 * Math.sin(s.t * 18), env = Math.sin(Math.min(1, u) * Math.PI);
       I.U.uDeploy.value = env * (0.6 + 0.6 * pulse);
       if (Math.random() < dt * 40 * env) { const core = I.parts && I.parts.find((p) => p.core); if (core) core.outer.getWorldPosition(_q); else { _q.set(0, m.boreY, lerp(I.z0, I.z1, 0.4)); g.localToWorld(_q); } _r.set(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(0.2 + Math.random() * 0.35); emit(P, _q, _r.x, _r.y, _r.z, pick(I.d.fx), (0.004 + Math.random() * 0.005) * k, 0.3, { drag: 2 }); }
-    } else if (kind === 'frontier' && I.scan) {
+    } else if (I.d.eps) { epsInsp(I, s, g, u, dt, vm, k, P, m); }
+    else if (kind === 'frontier' && I.scan) {
       if (Math.random() < dt * 30) { const a = Math.random() * TAU, r = 0.02 + Math.random() * 0.03; _q.set(Math.cos(a) * r, m.boreY - 0.01 + Math.sin(a) * r, I.U.uScanZ.value); g.localToWorld(_q); emit(P, _q, 0, 0.02, 0, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.6, { grow: -0.4 }); }
     }
     if (u >= 1) { const loop = s.loop, c = s.c; inspectStop(g); if (loop) inspect(g, c, loop, loop); }

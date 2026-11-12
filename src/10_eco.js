@@ -17,6 +17,7 @@ const BOXES = {
   br: { name: '배틀로얄 상자', theme: '전장 테마 옷', cost: 100, accent: '#9db35e', hex: 0x6f8a3a },
   sp: { name: '스페셜 상자', theme: '스트리트 테마 옷', cost: 100, accent: '#ff6fb0', hex: 0xd0457f },
   sup: { name: '보급 상자', theme: '엘리트 테마 옷', cost: 100, accent: '#f0a43a', hex: 0xd07a1e },
+  eps: { name: '엡실론 금고', theme: 'EPSILON 총기 스킨 8종 · 울트라레어 이하 총기 스킨', cost: 600, accent: '#c084fc', hex: 0x7a3cff, gun: true, isNew: true, eps: true },
   veh: { name: '차량 뽑기', theme: '교환 코인 · 차량 스킨', cost: 200, accent: '#46c8ff', hex: 0x2a8ac0 },
 };
 const BOX_TIER_P = [45, 25, 18, 8, 3.2, 0.8];                 // 옷 상자의 레어도별 확률(%) — 2번(레어)은 골드 탄피
@@ -26,7 +27,9 @@ const VEH_COINS = [[3, 55], [5, 25], [10, 10], [20, 2]];        // 차량 뽑기
 const VEH_SKIN_P = { 3: 5.5, 4: 2, 5: 0.5 };                    // 차량 뽑기 스킨 레어도별 합(%) — 같은 레어도 안에서 똑같이 나눔
 const GUN_COINS = [[3, 40], [5, 20], [10, 8], [20, 2]];         // 총기 상자 코인 [개수, %] (합 70%)
 const GBOX_TIER_P = { 1: 18, 3: 8, 4: 3.2, 5: 0.8 };            // 총기 상자 스킨 레어도별 합(%) (합 30%) — 같은 레어도 안에서 똑같이 나눔
-const GSKIN_PRICE = { 1: 10, 3: 25, 4: 50, 5: 120 };            // 교환소 가격(총기 교환 코인). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
+const GSKIN_PRICE = { 1: 10, 3: 25, 4: 50, 5: 120, 7: 400 };   // 7 = 엡실론
+const EPS_COINS = [[5, 40], [10, 20], [20, 8], [40, 2]];        // 엡실론 금고 코인 [개수, %] (합 70%)
+const EPS_TIER_P = { 3: 16, 4: 9, 5: 3.4, 7: 1.6 };              // 엡실론 금고 스킨 레어도별 합(%) — 엡실론 8종이 1.6% 를 똑같이 나눔(각 0.2%) · 나머지는 아스널·네온 상자 스킨            // 교환소 가격(총기 교환 코인). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
 const ATTEND = [{ gold: 50 }, { gold: 50 }, { gold: 100 }, { gold: 50 }, { gold: 100 }, { coin: 3 }, { gold: 300 }];
 const WELCOME_GOLD = 1000;
 // 미션: key = 경기에서 세는 값. 일일 미션은 날마다 4개(겹치는 key 없이), 주간 미션은 4개 고정
@@ -86,8 +89,10 @@ const Eco = (() => {
   const ownsVeh = (id) => (STATS.vskins || []).includes(id);
   // 베타 테스터: 개발자가 부여(서버 함수 admin_beta → STATS.beta = { on, t }). 테스터 등급(rar 6) 총기 스킨은 베타 테스터인 동안만 가진다
   const isBeta = () => !!(STATS.beta && STATS.beta.on);
-  const ownsGun = (id) => !!GSKINS[id] && (GSKINS[id].rar >= 6 ? isBeta() : (STATS.gskins || []).includes(id));
-  const gskinsOwned = () => (STATS.gskins || []).filter((id) => GSKINS[id] && GSKINS[id].rar < 6).concat(isBeta() ? Object.keys(GSKINS).filter((id) => GSKINS[id].rar >= 6) : []);
+  const ownsGun = (id) => !!GSKINS[id] && (GSKINS[id].tester ? isBeta() : (STATS.gskins || []).includes(id));
+  const gskinsOwned = () => (STATS.gskins || []).filter((id) => GSKINS[id] && !GSKINS[id].tester).concat(isBeta() ? Object.keys(GSKINS).filter((id) => GSKINS[id].tester) : []);
+  // 엡실론 소유 번호: 계정과 스킨으로 정해지는 다섯 자리 (창고 카드·설명에 표시)
+  const serialOf = (id) => { let h = 2166136261; for (const ch of String((typeof Cloud !== 'undefined' && Cloud.uid) || 'guest') + '|' + id) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return String((h >>> 0) % 100000).padStart(5, '0'); };
   const gunBox = (box) => !!(BOXES[box] && BOXES[box].gun);
   const gskinsIn = (box, r) => Object.keys(GSKINS).filter((id) => GSKINS[id].box === box && GSKINS[id].rar === r);
   function ownedSkins() { const s = new Set(Object.keys(Body.SKINS).filter((k) => /_basic$/.test(k))); for (const k of (STATS.skins || [])) if (Body.SKINS[k]) s.add(k); return s; }
@@ -99,6 +104,10 @@ const Eco = (() => {
     if (box === 'veh') {
       for (const [n, p] of VEH_COINS) out.push({ k: 'coin', n, rar: 2, p });
       for (const r of [3, 4, 5]) { const ids = Object.keys(VSKINS).filter((id) => VSKINS[id].rar === r); for (const id of ids) out.push({ k: 'vskin', id, rar: r, p: VEH_SKIN_P[r] / ids.length }); }
+    } else if (box === 'eps') {
+      // 엡실론 금고: 총기 교환 코인 70% · 초희귀 16% · 슈퍼레어 9% · 울트라레어 3.4% · 엡실론 1.6%
+      for (const [n, p] of EPS_COINS) out.push({ k: 'gcoin', n, rar: 2, p });
+      for (const r of [3, 4, 5, 7]) { const ids = Object.keys(GSKINS).filter((id) => GSKINS[id].rar === r && (r === 7 ? GSKINS[id].box === 'eps' : gunBox(GSKINS[id].box) && GSKINS[id].box !== 'eps')); for (const id of ids) out.push({ k: 'gskin', id, rar: r, p: EPS_TIER_P[r] / ids.length }); }
     } else if (gunBox(box)) {
       // 총기 상자: 총기 교환 코인 70% + 총기 스킨 30%
       for (const [n, p] of GUN_COINS) out.push({ k: 'gcoin', n, rar: 2, p });
@@ -319,13 +328,13 @@ const Eco = (() => {
     E(); let n = 0;
     const add = (arr, ids) => { const s = new Set(arr); for (const id of ids) if (!s.has(id)) { arr.push(id); n++; } };
     add(STATS.skins, Object.keys(Body.SKINS).filter((k) => !/_basic$/.test(k)));
-    add(STATS.vskins, Object.keys(VSKINS)); add(STATS.gskins, Object.keys(GSKINS).filter((id) => GSKINS[id].rar < 6));   // 테스터 스킨은 베타 테스터 칭호로만
+    add(STATS.vskins, Object.keys(VSKINS)); add(STATS.gskins, Object.keys(GSKINS).filter((id) => !GSKINS[id].tester));   // 테스터 스킨은 베타 테스터 칭호로만 (엡실론은 개발자 계정에 지급)
     if (n) changed('dev');
     return n;
   }
   function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();

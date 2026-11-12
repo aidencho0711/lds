@@ -12,6 +12,7 @@ const RARITY = [
   { key: 'super', name: '슈퍼레어', color: '#ff5fb4', hex: 0xff5fb4 },
   { key: 'ultra', name: '울트라레어', color: '#ff3d3d', hex: 0xff3d3d },
   { key: 'tester', name: '테스터', color: '#3ff5d6', hex: 0x3ff5d6 },   // v20: 베타 테스터 전용 (개발자가 칭호를 부여한 계정만, 상자·교환소·봇에 없음)
+  { key: 'epsilon', name: '엡실론', color: '#c084fc', hex: 0xc084fc },   // v20: EPSILON — THE ABSOLUTE. 울트라레어 위 최상위 (엡실론 금고 · 교환소). 전용 디자인·꺼내기·살펴보기·처치 효과·획득 컷신
 ];
 (() => {
   const W = 0xffffff;

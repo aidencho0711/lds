@@ -68,6 +68,26 @@ const Shop = (() => {
         A(g, CY(0.08, 0.08, 0.02, 6, 'y'), ch, 0.38, 0.1, 0); A(g, CY(0.05, 0.05, 0.024, 6, 'y'), pk, 0.38, 0.102, 0);
       },
     },
+    // 엡실론 금고(총기): 흑요석 금고 케이스 + 금 모서리 + 보라 빛 줄 + 뚜껑 위 금빛 마름모 판과 ε 무늬(빛나는 막대 셋)
+    eps: {
+      dim: { lidY: 0.42, sw: 1.6, sd: 0.64 },
+      base(g, { A, BX, RB, M }) {
+        const ob = M('polymer', 0x0e0b14), gd = M('brass', 0xd9b45a), vi = new THREE.MeshBasicMaterial({ color: 0xa65cff }), wh = new THREE.MeshBasicMaterial({ color: 0xffe9b0 });
+        A(g, RB(1.54, 0.4, 0.6, 0.05), ob, 0, 0.21, 0);
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) A(g, BX(0.08, 0.42, 0.08), gd, sx * 0.74, 0.21, sz * 0.28);
+        for (const sz of [-1, 1]) { A(g, BX(1.34, 0.012, 0.006), vi, 0, 0.33, sz * 0.302); A(g, BX(1.34, 0.008, 0.006), wh, 0, 0.08, sz * 0.302); A(g, BX(0.16, 0.1, 0.02), gd, 0, 0.27, sz * 0.31); }
+        A(g, RB(1.56, 0.04, 0.62, 0.02), gd, 0, 0.02, 0);
+      },
+      lid(g, { A, BX, RB, CY, M }) {
+        const ob = M('polymer', 0x120e1a), gd = M('brass', 0xd9b45a), vi = new THREE.MeshBasicMaterial({ color: 0xc084fc });
+        A(g, RB(1.57, 0.1, 0.62, 0.05), ob, 0, 0.05, 0);
+        A(g, BX(0.36, 0.02, 0.36), gd, 0, 0.105, 0, 0, Math.PI / 4, 0);
+        A(g, BX(0.3, 0.024, 0.3), ob, 0, 0.108, 0, 0, Math.PI / 4, 0);
+        for (const z of [-0.06, 0, 0.06]) A(g, BX(z ? 0.11 : 0.08, 0.008, 0.016), vi, z ? 0.012 : 0.0, 0.122, z);
+        A(g, BX(0.016, 0.008, 0.13), vi, -0.045, 0.122, 0);
+        for (const sx of [-1, 1]) A(g, BX(0.5, 0.01, 0.012), vi, sx * 0.5, 0.102, 0);
+      },
+    },
     // 배틀로얄: 올리브 탄약 상자 + 철 띠 + 주황 줄 + 마름모 표식 + 걸쇠
     br: {
       base(g, { A, BX, RB, M }) {
@@ -218,9 +238,9 @@ const Shop = (() => {
       body.appendChild(subt);
     }
     if (tab !== 'gacha' && exSub === 'gun') {
-      for (const r of [5, 4, 3, 1]) {
+      for (const r of [7, 5, 4, 3, 1]) {
         const ids = Object.keys(GSKINS).filter((id) => GSKINS[id].rar === r && Eco.gunPrice(id)); if (!ids.length) continue;
-        const R = rarOf(r), sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', `${R.name}` + (r === 5 ? ' · 사격·교체 효과' : '')));
+        const R = rarOf(r), sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', `` + (r === 7 ? ' · 전용 디자인·꺼내기·살펴보기·처치 연출 · 획득 컷신' : r === 5 ? ' · 사격·교체 효과' : '')));
         const grid = h('div', 'ex-grid gun');
         for (const id of ids) {
           const S = GSKINS[id], own = Eco.ownsGun(id), price = Eco.gunPrice(id), key = 'exg:' + id;
@@ -455,7 +475,7 @@ const Cutscene = (() => {
     const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const pm = new THREE.PointsMaterial({ map: texDot(), color: 0x4d8fff, size: 0.09, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
     const pts = new THREE.Points(pg, pm); pts.frustumCulled = false; sc.add(pts);
-    S = { sc, cam, key, glow, ring, ringM, pillar, pillarM, rays, raysM, pts, pm, pos, vel, N, box: null, crate: null };
+    S = { sc, cam, key, glow, ring, ringM, pillar, pillarM, rays, raysM, pts, pm, pos, vel, N, box: null, crate: null, floor };
   }
   const colOf = (r) => rarOf(r).hex;
   function setCol(hex) { for (const m of [S.ringM, S.pillarM, S.raysM, S.pm]) m.color.setHex(hex); S.glow.color.setHex(hex); if (S.crate) S.crate.seamMat.color.setHex(hex); }
@@ -467,6 +487,77 @@ const Cutscene = (() => {
       S.vel[i * 3] = burst ? Math.cos(a) * sp * 0.5 : -Math.sin(a) * sp; S.vel[i * 3 + 1] = burst ? 2 + Math.random() * 5 : 0.4 + Math.random() * 0.8; S.vel[i * 3 + 2] = burst ? Math.sin(a) * sp * 0.5 : Math.cos(a) * sp;
     }
     S.pts.geometry.attributes.position.needsUpdate = true;
+  }
+  // ---------- 엡실론 획득 연출 (6.6초, 눌러서 건너뛰기) ----------
+  //  ① 공간 전환: 상자·바닥이 사라지고 어둠 속 가운데에 가는 빛의 균열이 생김
+  //  ② 무기 등장: 균열 앞 어둠 속에서 총이 천천히 돌며 나타남(빛 띠와 함께) · 균열이 넓어져 빛의 문이 됨
+  //  ③ 엡실론 각인: 총 옆에 ε 엠블럼이 떠오르고 EPSILON · 무기 이름 · 컬렉션 번호가 나타남
+  //  ④ 최종 공개: 번쩍임 · 빛기둥 · 스킨 색 입자 폭발 · 그 스킨의 살펴보기 효과
+  const EPS_D = 6.6, EPS = { crack: 0.2, show: 1.2, mark: 3.2, reveal: 4.5 };
+  const crackTex = () => { const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 64, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(32, 0); for (let y = 0; y <= 256; y += 12) g.lineTo(32 + (Math.random() - 0.5) * 10 + Math.sin(y / 256 * Math.PI) * 10, y); for (let y = 256; y >= 0; y -= 12) g.lineTo(32 + (Math.random() - 0.5) * 10 - Math.sin(y / 256 * Math.PI) * 10, y); g.closePath(); g.fill(); return new THREE.CanvasTexture(c); };
+  function epsSetup(top) {
+    const d = GSKINS[top.id], pal = (d.fx && d.fx.pal) || [0xc084fc];
+    if (!S.eps) {
+      const grp = new THREE.Group(), add = (map, color) => new THREE.MeshBasicMaterial({ map, color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+      const crack = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), add(crackTex(), 0xffffff)); crack.position.set(0, 1.25, -0.6); grp.add(crack);
+      const halo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), add(texDot(), 0xc084fc)); halo.position.set(0, 1.25, -0.65); grp.add(halo);
+      const emb = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false })); emb.position.set(-0.95, 1.55, 0.1); grp.add(emb);
+      S.sc.add(grp); S.eps = { grp, crack, halo, emb };
+    }
+    const E = S.eps; E.grp.visible = true; E.pal = pal; E.burst = false; E.drawn = false; E.marked = false;
+    E.emb.material.map = GunDeco.epsTex(d.no || '01'); E.emb.material.needsUpdate = true; E.emb.material.opacity = 0; E.emb.scale.setScalar(0.001);
+    E.crack.material.opacity = 0; E.halo.material.opacity = 0; E.halo.material.color.setHex(pal[0]);
+    S.crate.root.visible = false; S.floor.visible = false; S.ring.visible = false; S.key.intensity = 0; S.pm.color.setHex(pal[0]);
+    $('csLayer').classList.add('eps');
+    Audio.gacha && Audio.gacha('start', 5);
+  }
+  function epsMark() {
+    const E = S.eps, d = GSKINS[item.id]; E.marked = true;
+    $('csRar').textContent = 'EPSILON'; $('csRar').style.color = ''; $('csName').textContent = `${GunSkin.name(item.id)} · Ε-${d.no || '01'}`;
+    $('csText').className = 'cs-text on r7 eps';
+    if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('draw', d.fx.kind, null, true);
+  }
+  function epsReveal(silent) {
+    const E = S.eps; opened = true; E.burst = true;
+    if (!E.marked) epsMark();
+    if (S.gun && !S.gun.visible) { S.gun.visible = true; S.gun.position.set(0, 1.25, 0); }
+    resetParticles(true); for (let i = 0; i < S.N; i++) { S.pos[i * 3] = 0; S.pos[i * 3 + 1] = 1.25; S.pos[i * 3 + 2] = 0; }
+    S.pm.opacity = 1; $('csFlash').className = 'cs-flash on';
+    if (!silent) { Audio.gacha && Audio.gacha('open', 5); if (S.gun) GunSkin.inspect(S.gun.userData.gun, null, 0.2); }
+  }
+  function epsUpdate(dt) {
+    const E = S.eps, cam = S.cam, g = S.gun;
+    const dolly = smoothstep01(clamp((t - EPS.show) / 2.4, 0, 1)), back = smoothstep01(clamp((t - EPS.reveal) / 1.2, 0, 1));
+    cam.position.set(Math.sin(t * 0.25) * 0.15, 1.3, lerp(lerp(3.3, 2.5, dolly), 3.0, back)); cam.lookAt(0, 1.25, 0);
+    // ① 균열
+    const ck = clamp((t - EPS.crack) / 0.9, 0, 1), wide = smoothstep01(clamp((t - EPS.show) / 1.6, 0, 1));
+    E.crack.scale.set(0.04 + 0.12 * ck + 0.36 * wide + (Math.random() - 0.5) * 0.02, 0.1 + 2.2 * ck, 1); E.crack.material.opacity = Math.min(1, ck * 1.4) * (1 - wide * 0.45) * (1 - back * 0.6);
+    E.halo.scale.setScalar(0.4 + 2.2 * ck + 1.6 * wide); E.halo.material.opacity = 0.42 * ck * (1 - back * 0.5);
+    // ② 무기: 어둠 속에서 돌며 나타남 (빛이 천천히 들어옴)
+    if (g) {
+      if (t >= EPS.show && !E.drawn) { E.drawn = true; g.visible = true; GunSkin.draw(g.userData.gun, 1.1, null); }
+      g.position.set(0, 1.25 + Math.sin(t * 1.4) * 0.025, 0); g.rotation.set(0.08, 0.6 + t * 0.55, 0);
+    }
+    S.key.intensity = 1.8 * smoothstep01(clamp((t - EPS.show) / 1.8, 0, 1)); S.glow.intensity = 1.5 * wide + 2 * back; S.glow.color.setHex(E.pal[0]);
+    // ③ 각인: ε 엠블럼 + 이름
+    if (t >= EPS.mark && !E.marked) epsMark();
+    const mk = smoothstep01(clamp((t - EPS.mark) / 0.6, 0, 1)); E.emb.material.opacity = mk; E.emb.scale.set(0.5 * mk + 0.001, 0.66 * mk + 0.001, 1); E.emb.rotation.y = 0.35 + Math.sin(t * 1.2) * 0.12;
+    // ④ 최종 공개
+    if (t >= EPS.reveal && !opened) epsReveal(false);
+    if (opened) {
+      const u = t - EPS.reveal; S.pillar.position.y = 1.25; S.pillar.scale.y = Math.max(0.01, Math.min(1, u * 3)); S.pillarM.opacity = Math.min(0.22, u * 1.5) * (0.85 + 0.15 * Math.sin(u * 20)); S.pillarM.color.setHex(E.pal[0]);
+      if (u > 0.25 && $('csFlash').className === 'cs-flash on') $('csFlash').className = 'cs-flash';
+      S.pm.opacity = Math.max(0, 1 - u * 0.5);
+    } else S.pm.opacity = Math.min(0.7, t * 0.3);
+    // 입자: 공개 전에는 균열 쪽으로 천천히 떠오름, 공개 때 사방으로
+    const P = S.pos, V = S.vel;
+    for (let i = 0; i < S.N; i++) {
+      const j = i * 3;
+      if (opened) { V[j + 1] -= 1.2 * dt; P[j] += V[j] * dt * 0.8; P[j + 1] += V[j + 1] * dt * 0.5; P[j + 2] += V[j + 2] * dt * 0.8; }
+      else { P[j + 1] += V[j + 1] * dt * 0.6; if (P[j + 1] > 2.6) P[j + 1] = 0; }
+    }
+    S.pts.geometry.attributes.position.needsUpdate = true;
+    if (t >= D) finish();
   }
   function play(box, best, top, done) {
     if (!S) build();
@@ -480,11 +571,13 @@ const Cutscene = (() => {
       g.position.sub(bb.getCenter(new THREE.Vector3())); pv.add(g); pv.scale.setScalar(Math.min(2.6, 1.75 / Math.max(0.3, bb.max.z - bb.min.z)));
       pv.visible = false; pv.userData.gun = g; S.sc.add(pv); S.gun = pv;
     }
-    tier = clamp(best, 3, 5); D = DUR[tier]; t = 0; t0 = last = performance.now(); cb = done; opened = false; item = top;
+    S.epsMode = !!(top && top.k === 'gskin' && GSKINS[top.id] && GSKINS[top.id].rar === 7);   // 엡실론: 전용 획득 연출
+    tier = S.epsMode ? 7 : clamp(best, 3, 5); D = S.epsMode ? EPS_D : DUR[tier]; t = 0; t0 = last = performance.now(); cb = done; opened = false; item = top;
     // 빛 단계: 레어(파랑)부터 결과 등급까지
     steps = []; for (let r = 2; r <= tier; r++) steps.push(r); stepI = 0; setCol(colOf(2));
     S.ringM.opacity = 0; S.pillarM.opacity = 0; S.pillar.scale.y = 0.01; S.raysM.opacity = 0; S.pm.opacity = 0; S.glow.intensity = 0;
     resetParticles(false);
+    if (S.epsMode) epsSetup(top);   // 색 초기화(setCol) 뒤에 엡실론 색으로
     active = true;
     $('csLayer').hidden = false; $('csText').className = 'cs-text'; $('csFlash').className = 'cs-flash';
     $('csRar').textContent = ''; $('csName').textContent = '';
@@ -493,12 +586,14 @@ const Cutscene = (() => {
   }
   function finish() {
     if (!active) return; active = false;
-    $('csLayer').hidden = true; $('lobby').classList.remove('cs-hide');
+    $('csLayer').hidden = true; $('lobby').classList.remove('cs-hide'); $('csLayer').classList.remove('eps');
+    if (S.eps) { S.eps.grp.visible = false; S.floor.visible = true; S.ring.visible = true; if (S.crate) S.crate.root.visible = true; S.key.intensity = 1.6; }
     const f = cb; cb = null; if (f) f();
   }
   function skip() { if (!active) return; if (!opened) open(true); finish(); }
   function open(silent) {
     opened = true; setCol(colOf(tier));
+    if (S.epsMode) { epsReveal(silent); return; }
     if (S.gun) { S.gun.visible = true; S.gunT = 0; S.gun.position.set(0, S.crate.lidY - 0.1, 0); if (!silent) GunSkin.draw(S.gun.userData.gun, 0.9, null); }
     resetParticles(true); S.pm.opacity = 1;
     $('csFlash').className = 'cs-flash on';
@@ -510,6 +605,7 @@ const Cutscene = (() => {
     if (!active) return;
     // 프레임이 느려도 실제 시간대로 진행(장면 길이가 기기와 무관)
     const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now; t = (now - t0) / 1000;
+    if (S.epsMode) { epsUpdate(dt); return; }
     const C = S.crate, cam = S.cam, tOpen = D - 1.35;
     // 카메라: 멀리 위에서 → 상자 앞으로
     const k = smoothstep01(clamp(t / 1.1, 0, 1)), sh = !opened ? clamp((t - 0.5) / Math.max(0.1, tOpen - 0.5), 0, 1) : 0;

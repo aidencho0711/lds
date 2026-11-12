@@ -175,7 +175,7 @@ function fireWeapon(c, origin, dir) {
     if (d.cls === 'PISTOL') c.slideKick = 0.09;
   }
   Audio.gunshot(origin, wi.id, c.isPlayer, isIndoor(c.pos.x, c.pos.z, c.pos.y));
-  G.noises.push({ x: origin.x, y: origin.y, z: origin.z, t: G.time, r: d.cls === 'SMG' || d.cls === 'PISTOL' ? 160 : d.ammo === 'a300' ? 360 : 260, by: c, kind: 'shot' });
+  G.noises.push({ x: origin.x, y: origin.y, z: origin.z, t: G.time, r: d.cls === 'SMG' || d.cls === 'PISTOL' ? 160 : d.ammo === 'a300' || d.ammo === 'a50' ? 380 : 260, by: c, kind: 'shot' });
   if (G.net) Net.sendShot(c, tStart, _shotEnd, wi.id, _shotEnd[3]); // 같이 하기: 다른 기기에 총성·탄도 표시
   return true;
 }
@@ -896,7 +896,7 @@ const FX = (() => {
   const _fv = new THREE.Vector3();
   function flash(c, gun, meta, pos, dir, d) {
     if (!scene) return;
-    const k = ({ PISTOL: 0.6, SMG: 0.7, AR: 0.9, LMG: 1.0, DMR: 1.0, SR: 1.15, SG: 1.2 }[d.cls] || 1) * (d.ammo === 'a300' ? 1.25 : 1) * (c.weapon && c.weapon.att.muzzle ? 0.6 : 1);
+    const k = ({ PISTOL: 0.6, SMG: 0.7, AR: 0.9, LMG: 1.0, DMR: 1.0, SR: 1.15, SG: 1.2 }[d.cls] || 1) * (d.ammo === 'a50' ? 1.4 : d.ammo === 'a300' ? 1.25 : 1) * (c.weapon && c.weapon.att.muzzle ? 0.6 : 1);
     if (gun && gun === VM.gun && VM.scene) {
       if (!vmFlash) { vmFlash = { o: flashObj(), life: 0 }; VM.scene.add(vmFlash.o); }
       const o = vmFlash.o; _fv.set(0, meta.boreY, meta.muzzleZ + 0.012); gun.localToWorld(_fv); o.position.copy(_fv);

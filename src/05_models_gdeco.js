@@ -93,6 +93,7 @@ const GunDeco = (() => {
     for (const e of d.deco || []) {
       if (e.kind === 'rim') { rims(g, e, out); continue; }
       if (e.kind === 'holo') { holo(g, e, out); continue; }
+      if (e.kind === 'wings') { wings(g, e, out); continue; }
       for (const side of e.side === 'LR' ? ['L', 'R'] : [e.side || 'L']) {
         let host = g, p = null;
         if (e.on === 'mag') {
@@ -104,7 +105,7 @@ const GunDeco = (() => {
         if (!p) continue;
         const s = side === 'L' ? 1 : -1, mesh = new THREE.Mesh(PLANE, matOf(e));
         mesh.position.set(p[0] + s * 0.0007, p[1], p[2]); mesh.rotation.y = s * Math.PI / 2;
-        mesh.scale.set(e.w, e.h || e.w * (e.kind === 'emblem' ? 330 / 256 : 96 / 512), 1);
+        mesh.scale.set(e.w, e.h || e.w * (e.kind === 'emblem' ? 330 / 256 : e.kind === 'eps' ? 340 / 256 : e.kind === 'crown' || e.kind === 'crest' || e.kind === 'crystal' ? 1 : 96 / 512), 1);
         mesh.renderOrder = 3; mesh.name = 'gdeco'; mesh.userData.noSkin = true; host.add(mesh);
         out.push({ mesh, kind: e.kind, zg: host === g ? p[2] : p[2] + host.position.z });
       }
@@ -113,6 +114,10 @@ const GunDeco = (() => {
   }
   function matOf(e) {
     if (e.kind === 'emblem') return flat(emblemTex(e.no));
+    if (e.kind === 'eps') return flat(epsTex(e.no), { toneMapped: false });
+    if (e.kind === 'crown') return flat(crownTex(e.col || '#e9c46a'));
+    if (e.kind === 'crest') return flat(crestTex());
+    if (e.kind === 'crystal') return flat(crystalTex(e.col || '#9ff5ee'), { toneMapped: false });
     if (e.kind === 'pips') return flat(pipsTex(e.col));
     if (e.kind === 'hidden') return hiddenMat(textTex(e.text, 'plain', '#ffffff'), e.col);
     return flat(textTex(e.text, e.style || 'neon', e.col, 512, e.style === 'warn' ? 96 : 96), e.style === 'neon' ? { toneMapped: false } : {});
@@ -133,9 +138,12 @@ const GunDeco = (() => {
     g.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(sc); if (bb.isEmpty()) return;
     const m = g.userData.meta, r = Math.min(0.03, (bb.max.x - bb.min.x) / 2 + 0.0016), y = m.sightY !== undefined ? m.sightY : (bb.min.y + bb.max.y) / 2;
     const mat = new THREE.MeshStandardMaterial({ color: e.col || 0xe9cf8a, metalness: 1, roughness: 0.22, emissive: e.col || 0xe9cf8a, emissiveIntensity: 0.25 });
+    const orn = e.orn === 'gems' ? [0xe0203a, 0x2a6cff, 0x1fbf6a, 0xe0203a] : e.orn === 'stars' ? [0xfff0c0, 0xc9a6ff, 0xfff0c0, 0xc9a6ff] : null;
     for (const z of [bb.max.z - 0.004, bb.min.z + 0.004]) {
       const mesh = new THREE.Mesh(new THREE.TorusGeometry(r, 0.0018, 6, 28), mat); mesh.geometry.userData.own = true;
       mesh.position.set(0, y, z); mesh.name = 'gdeco'; mesh.userData.noSkin = true; g.add(mesh); out.push({ mesh, kind: 'rim', zg: z });
+      // 테 장식: 보석(왕실) · 작은 별(천체) — 테 둘레 네 곳
+      if (orn) orn.forEach((col, i) => { const a = Math.PI / 4 + i * Math.PI / 2, gm = new THREE.Mesh(new THREE.OctahedronGeometry(0.0034, 0), new THREE.MeshStandardMaterial({ color: col, metalness: 0.3, roughness: 0.15, emissive: col, emissiveIntensity: e.orn === 'stars' ? 1.2 : 0.45 })); gm.geometry.userData.own = true; gm.position.set(Math.cos(a) * (r + 0.0016), y + Math.sin(a) * (r + 0.0016), z); gm.name = 'gdeco'; gm.userData.noSkin = true; g.add(gm); out.push({ mesh: gm, kind: 'rim', zg: z }); });
     }
   }
   // 살펴보기 홀로그램 창 (ZERO PROTOCOL): 총 옆에 떠오르는 SYSTEM ONLINE — 항상 카메라를 봄
@@ -143,7 +151,72 @@ const GunDeco = (() => {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: panelTex(), transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, toneMapped: false }));
     const m = g.userData.meta; s.position.set(0.03, (m.boreY || 0) + 0.115, 0.04); s.scale.set(0.001, 0.001, 1); s.renderOrder = 9; s.name = 'gdeco-panel'; g.add(s); return s;
   }
-  return { attach, panel, emblemTex, textTex };
+  // ---------- 엡실론 ----------
+  //  ε 엠블럼: 금테 마름모 + 보랏빛 안쪽 + 가운데 ε + EPSILON 글자 + 아래 컬렉션 번호판(Ε-01~08)
+  function epsTex(no) {
+    return ctex('eps' + no, 256, 340, (g) => {
+      const cx = 128, cy = 126, R = 112;
+      const dia = (r) => { g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r * 0.82, cy); g.lineTo(cx, cy + r); g.lineTo(cx - r * 0.82, cy); g.closePath(); };
+      g.save(); g.shadowColor = '#c084fc'; g.shadowBlur = 22; dia(R); const gd = g.createLinearGradient(0, cy - R, 0, cy + R); gd.addColorStop(0, '#fff3c4'); gd.addColorStop(0.5, '#d9a93e'); gd.addColorStop(1, '#7a520e'); g.fillStyle = gd; g.fill(); g.restore();
+      dia(R - 12); const vi = g.createRadialGradient(cx, cy - 14, 6, cx, cy, R); vi.addColorStop(0, '#5a2a9a'); vi.addColorStop(1, '#0d0618'); g.fillStyle = vi; g.fill();
+      dia(R - 22); g.lineWidth = 2; g.strokeStyle = 'rgba(255,230,170,0.7)'; g.stroke();
+      g.save(); g.shadowColor = '#e6c8ff'; g.shadowBlur = 16; g.font = FONT(900, 120); g.textAlign = 'center'; g.textBaseline = 'middle'; const tg = g.createLinearGradient(0, cy - 50, 0, cy + 50); tg.addColorStop(0, '#ffffff'); tg.addColorStop(1, '#e6c8ff'); g.fillStyle = tg; g.fillText('ε', cx, cy + 4); g.restore();
+      g.font = FONT(800, 22); g.textAlign = 'center'; g.fillStyle = '#ffe9b0'; g.fillText('EPSILON', cx, cy + 62);
+      const py = 284; g.beginPath(); g.moveTo(cx - 76, py - 24); g.lineTo(cx + 76, py - 24); g.lineTo(cx + 90, py); g.lineTo(cx + 76, py + 24); g.lineTo(cx - 76, py + 24); g.lineTo(cx - 90, py); g.closePath();
+      g.fillStyle = '#0d0618'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#d9a93e'; g.stroke();
+      g.font = FONT(800, 30); g.textBaseline = 'middle'; g.fillStyle = '#f3dcff'; g.fillText('Ε-' + no, cx, py + 1);
+    });
+  }
+  // 왕관 (INFERNAL SOVEREIGN 탄창): 금 왕관 + 붉은 보석
+  const crownTex = (col) => ctex('crown' + col, 256, 256, (g) => {
+    g.save(); g.shadowColor = '#ff3a1a'; g.shadowBlur = 14;
+    g.beginPath(); g.moveTo(40, 190); g.lineTo(28, 80); g.lineTo(84, 130); g.lineTo(128, 52); g.lineTo(172, 130); g.lineTo(228, 80); g.lineTo(216, 190); g.closePath();
+    const gr = g.createLinearGradient(0, 52, 0, 190); gr.addColorStop(0, '#fff2c0'); gr.addColorStop(0.5, col); gr.addColorStop(1, '#7a4a08'); g.fillStyle = gr; g.fill(); g.restore();
+    g.lineWidth = 4; g.strokeStyle = '#4a2a04'; g.stroke(); g.fillStyle = col; g.fillRect(40, 196, 176, 22); g.strokeRect(40, 196, 176, 22);
+    for (const [x, y, r] of [[128, 150, 15], [76, 160, 9], [180, 160, 9], [128, 207, 6], [28, 80, 7], [128, 52, 8], [228, 80, 7]]) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fillStyle = '#d4141e'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#fff2c0'; g.stroke(); }
+  });
+  // 왕실 문장 (ETERNAL DYNASTY 개머리판·살펴보기): 남색 방패 + 금 테 + 가운데 왕관과 별 + 양옆 월계수
+  const crestTex = () => ctex('crest', 256, 256, (g) => {
+    const cx = 128;
+    g.lineCap = 'round';
+    for (const s of [-1, 1]) for (let i = 0; i < 7; i++) { const t = i / 6, x = cx + s * (70 + Math.sin(t * Math.PI) * 18), y = 210 - t * 140; g.save(); g.translate(x, y); g.rotate(s * (0.6 - t * 0.9)); g.beginPath(); g.ellipse(0, 0, 6, 14, 0, 0, TAU); g.fillStyle = '#d9b45a'; g.fill(); g.restore(); }
+    g.beginPath(); g.moveTo(cx - 62, 56); g.lineTo(cx + 62, 56); g.lineTo(cx + 62, 140); g.quadraticCurveTo(cx + 58, 204, cx, 224); g.quadraticCurveTo(cx - 58, 204, cx - 62, 140); g.closePath();
+    const gr = g.createLinearGradient(0, 56, 0, 224); gr.addColorStop(0, '#22356e'); gr.addColorStop(1, '#0b1330'); g.fillStyle = gr; g.fill(); g.lineWidth = 7; g.strokeStyle = '#e2c27a'; g.stroke(); g.lineWidth = 2; g.strokeStyle = '#fff3cf'; g.stroke();
+    g.fillStyle = '#e2c27a'; g.beginPath(); g.moveTo(cx - 34, 120); g.lineTo(cx - 40, 86); g.lineTo(cx - 17, 104); g.lineTo(cx, 78); g.lineTo(cx + 17, 104); g.lineTo(cx + 40, 86); g.lineTo(cx + 34, 120); g.closePath(); g.fill();
+    g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 9 : 22; i ? g.lineTo(cx + Math.cos(a) * r, 160 + Math.sin(a) * r) : g.moveTo(cx + Math.cos(a) * r, 160 + Math.sin(a) * r); } g.closePath(); g.fill();
+    g.fillStyle = '#d4141e'; g.beginPath(); g.arc(cx, 108, 5, 0, TAU); g.fill();
+  });
+  // 크리스털 무늬 (PHANTOM SERAPH 탄창): 겹친 육면 결정 + 빛
+  const crystalTex = (col) => ctex('crys' + col, 256, 256, (g) => {
+    const R = mulberry32(77);
+    for (let i = 0; i < 9; i++) {
+      const x = 40 + R() * 176, y = 40 + R() * 176, h = 40 + R() * 70, w = h * 0.38, a = (R() - 0.5) * 0.8;
+      g.save(); g.translate(x, y); g.rotate(a); g.beginPath(); g.moveTo(0, -h / 2); g.lineTo(w / 2, -h * 0.2); g.lineTo(w / 2, h * 0.3); g.lineTo(0, h / 2); g.lineTo(-w / 2, h * 0.3); g.lineTo(-w / 2, -h * 0.2); g.closePath();
+      const gr = g.createLinearGradient(-w / 2, 0, w / 2, 0); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.5, col); gr.addColorStop(1, 'rgba(60,140,150,0.8)'); g.fillStyle = gr; g.globalAlpha = 0.85; g.fill(); g.globalAlpha = 1;
+      g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.stroke(); g.beginPath(); g.moveTo(0, -h / 2); g.lineTo(0, h / 2); g.strokeStyle = 'rgba(255,255,255,0.5)'; g.stroke(); g.restore();
+    }
+  });
+  // 빛의 날개 (PHANTOM SERAPH): 깃털 다섯 겹 반투명 날개 — 평소엔 숨겨 두고 GunSkin 이 펼침
+  const wingTex = (col) => ctex('wing' + col, 256, 256, (g) => {
+    g.translate(18, 230);
+    for (let i = 0; i < 6; i++) { const a = -0.25 - i * 0.22, L = 230 - i * 22; g.save(); g.rotate(a - Math.PI / 2 + 0.2); g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(L * 0.5, -26, L, -4); g.quadraticCurveTo(L * 0.5, 22, 0, 0); const gr = g.createLinearGradient(0, 0, L, 0); gr.addColorStop(0, 'rgba(255,255,255,0.15)'); gr.addColorStop(0.6, col); gr.addColorStop(1, 'rgba(255,255,255,0.95)'); g.fillStyle = gr; g.globalAlpha = 0.75; g.fill(); g.globalAlpha = 1; g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 2; g.stroke(); g.restore(); }
+  });
+  function wings(g, e, out) {
+    const p0 = GunParts.probe(g, 'L', e.z, e.dy || 0.01, ...zRange(g)); if (!p0) return;
+    for (const s of [1, -1]) {
+      const p = GunParts.probe(g, s > 0 ? 'L' : 'R', e.z, e.dy || 0.01, ...zRange(g)) || p0, pv = new THREE.Group(), mesh = new THREE.Mesh(PLANE, flat(wingTex(e.col || 'rgba(160,240,235,0.85)'), { blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false, opacity: 0 }));
+      mesh.scale.set(e.w || 0.16, e.w || 0.16, 1); mesh.position.set(0, (e.w || 0.16) * 0.42, -(e.w || 0.16) * 0.42);
+      pv.position.set(p[0] + s * 0.004, p[1], p[2]); pv.rotation.y = s * Math.PI / 2; pv.rotation.x = 0; pv.add(mesh); pv.scale.setScalar(0.001);
+      pv.name = 'gdeco'; mesh.userData.noSkin = true; mesh.renderOrder = 7; g.add(pv); out.push({ mesh: pv, mat: mesh.material, kind: 'wings', zg: p[2] });
+    }
+  }
+  function zRange(g) { const I = g.userData.skin; return I ? [I.z0, I.z1] : [-0.4, 0.6]; }
+  // 살펴보기: 왕실 문장 홀로그램(총 위에서 빛나며 돎) — ETERNAL DYNASTY
+  function crestHolo(g) {
+    const m = g.userData.meta, mesh = new THREE.Mesh(PLANE, flat(crestTex(), { blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false, opacity: 0, depthTest: false }));
+    mesh.position.set(0, (m.boreY || 0) + 0.12, 0.02); mesh.scale.setScalar(0.001); mesh.renderOrder = 9; mesh.name = 'gdeco-panel'; g.add(mesh); return mesh;
+  }
+  return { attach, panel, crestHolo, emblemTex, textTex, epsTex };
 })();
 // 특정 각도 글자의 일렁임 시간 (GunSkin.update 가 갱신)
 const GunDeco_T = { value: 0 };

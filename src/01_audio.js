@@ -154,6 +154,9 @@ const Audio = (() => {
     s1897: { crack: 0.55, hp: 2000, cl: 1.65, boom: 1.3, lp: 1650, bd: 0.38, th: 1.35, tf: 68, te: 29, tl: 1.65, lo: 178, body: 540, bq: 1.0, bdc: 0.12, er: 1.3, tail: 1.35, drv: 1.15, gain: 1.18, own: 1.04, range: 720, mech: null },
     dp28: { crack: 1.15, hp: 2500, cl: 1.05, boom: 1.15, lp: 2300, bd: 0.2, th: 1.05, tf: 90, te: 37, tl: 1.0, lo: 192, body: 800, bq: 1.3, bdc: 0.08, er: 1.05, tail: 1.2, drv: 1.07, gain: 1.07, own: 0.98, range: 900, mech: 'mech_lmg' },
     deagle: { crack: 0.85, hp: 2900, cl: 1.1, boom: 1.1, lp: 2700, bd: 0.17, th: 1.0, tf: 110, te: 45, tl: 1.05, lo: 240, body: 1150, bq: 1.6, bdc: 0.07, er: 1.0, tail: 0.95, drv: 1.0, gain: 0.95, own: 0.9, range: 600, mech: 'mech_pistol', sec: 1.3 },
+    groza: { crack: 1.08, hp: 2700, cl: 1.15, boom: 1.1, lp: 2300, bd: 0.24, th: 1.1, tf: 88, te: 36, tl: 1.15, lo: 190, body: 760, bq: 1.25, bdc: 0.09, er: 1.12, tail: 1.2, drv: 1.08, gain: 1.07, own: 1.0, range: 850, mech: 'mech_ak' },
+    amr: { crack: 1.8, hp: 1900, cl: 1.5, boom: 1.7, lp: 1600, bd: 0.42, th: 1.45, tf: 70, te: 26, tl: 1.6, lo: 165, body: 600, bq: 1.0, bdc: 0.13, er: 1.6, tail: 2.4, drv: 1.15, gain: 1.45, own: 1.12, range: 1300, mech: null, sec: 2.4 },
+    dbs: { crack: 0.55, hp: 2000, cl: 1.65, boom: 1.35, lp: 1650, bd: 0.38, th: 1.35, tf: 68, te: 29, tl: 1.65, lo: 178, body: 540, bq: 1.0, bdc: 0.12, er: 1.3, tail: 1.35, drv: 1.15, gain: 1.18, own: 1.04, range: 720, mech: null },
   };
   // 총성 합성 (실제 녹음의 구조를 흉내):
   //  ① 초음속 크랙(아주 짧은 고역) ② 폭압: 광대역 잡음 + 150~350Hz 저중역 덩어리 ③ 피치가 빠르게 떨어지는 저역 킥
@@ -452,7 +455,7 @@ const Audio = (() => {
     mech(name, pos, weapon, isOwn) {
       if (!ctx || !bank[name]) return;
       const rate = { m416: 1, aug: 1.05, akm: 0.88, asm: 0.95, vk9: 1.1, mini14: 1.02, slr: 0.9, m24: 1, awm: 0.92, s686: 1, s12k: 0.9, m249: 0.95, mg3: 0.88, p19: 1.14,
-        beryl: 0.9, m16a4: 1.0, vector: 1.12, bizon: 1.04, tommy: 0.86, kar98k: 0.97, win94: 1.0, s1897: 0.95, dp28: 0.84, deagle: 0.8 }[weapon] || 1;
+        beryl: 0.9, m16a4: 1.0, vector: 1.12, bizon: 1.04, tommy: 0.86, kar98k: 0.97, win94: 1.0, s1897: 0.95, dp28: 0.84, deagle: 0.8, groza: 0.92, amr: 0.8, dbs: 0.9 }[weapon] || 1;
       playBuf(name, isOwn ? null : pos, isOwn ? 0.72 : 0.7, { own: isOwn, rate, range: 26, ref: 4, send: isOwn ? 0.1 : 0.2, room: listener.indoor > 0.5, jitter: 0.04 });
     },
     brass(pos, kind) {
@@ -556,6 +559,12 @@ const Audio = (() => {
       let out = own ? sfxBus : spatial(pos, ph === 'kill' && !lite ? 1.1 : 0.9, ph === 'kill' && !lite ? 140 : 60); if (!out) return;
       if (lite) { const gn = ctx.createGain(); gn.gain.value = 0.5; gn.connect(out); out = gn; if (ph === 'kill') ph = 'hit'; }
       const t = ctx.currentTime;
+      // 엡실론: 주제마다 가까운 기존 소리를 쓰고, 꺼내기·처치·살펴보기에는 엡실론 고유의 맑은 화음을 얹음
+      const EPS_SND = { celestial: 'frontier', divine: 'zero', infernal: 'ember', voidr: 'void', seraph: 'frost', apocalypse: 'chaos', dynasty: 'frontier', omega: 'spark' };
+      if (EPS_SND[kind]) {
+        if ((ph === 'kill' || ph === 'draw' || ph === 'inspect') && throttle('epsch' + ph, 0.3)) [784, 1175, 1568, 2349].forEach((f, i) => tone(out, t + i * 0.045, ph === 'kill' ? 1.4 : 0.8, 'sine', f, f * 1.002, ph === 'kill' ? 0.05 : 0.035));
+        kind = EPS_SND[kind];
+      }
       // 테스터 스킨 재장전·살펴보기: ZERO = 디지털 스캔음 · CHAOS = 지직거리는 낮은 웅웅 · FRONTIER = 맑은 종소리
       if (ph === 'reload' || ph === 'inspect') {
         if (!throttle('skin' + ph, 0.2) || !voice(0.4)) return;

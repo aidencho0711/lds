@@ -32,6 +32,10 @@ const ITEMS = {
   s1897: { type: 'weapon', name: 'S1897 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 17, pellets: 9, rpm: 70, modes: ['single'], mag: 5, rKind: 'shell', rOpen: 0.35, rShell: 0.5, rClose: 0.3, rCloseEmpty: 0.45, cycle: 'pump', spread: 2.2, recoil: 2.6, range: 42, zoom: 1.1, tier: 1, noExt: true, color: 0x6a3e1f },
   dp28: { type: 'weapon', name: 'DP-28 경기관총', cls: 'LMG', slot: 'primary', ammo: 'a762', dmg: 38, rpm: 550, modes: ['auto'], mag: 47, rTL: 'pan', reload: 4.4, reloadEmpty: 5.0, spread: 1.15, recoil: 1.25, range: 300, zoom: 1.15, moveMul: 0.92, adsMul: 1.35, tier: 2, color: 0x3a3f33 },
   deagle: { type: 'weapon', name: 'Deagle 권총', cls: 'PISTOL', slot: 'secondary', ammo: 'a45', dmg: 42, rpm: 230, modes: ['single'], mag: 7, reload: 1.7, reloadEmpty: 2.15, rTL: 'deagle', spread: 1.0, recoil: 2.3, range: 90, zoom: 1.12, tier: 2, color: 0x9da2a7 },
+  // v20 새 총기: Groza(7.62 불펍 돌격소총 · 보급상자·최상급 지역) · AMR(.50 대물저격소총 · 보급상자 전용) · DBS(2연장 펌프 산탄총 · 14발)
+  groza: { type: 'weapon', name: 'Groza 돌격소총', cls: 'AR', slot: 'primary', ammo: 'a762', dmg: 40, rpm: 750, modes: ['auto', 'single'], mag: 30, reload: 2.5, reloadEmpty: 3.1, rStyle: 'bullpup', spread: 0.85, recoil: 1.2, range: 290, zoom: 1.2, tier: 4, color: 0x262824 },
+  amr: { type: 'weapon', name: 'AMR 대물저격소총', cls: 'SR', slot: 'primary', ammo: 'a50', dmg: 150, rpm: 36, modes: ['single'], mag: 5, rKind: 'boltmag', reload: 3.6, reloadEmpty: 4.5, cycle: 'bolt', cycleT: 1.35, spread: 0.025, recoil: 5.8, range: 1000, zoom: 1.25, tier: 4, supply: true, color: 0x2a2c2e },
+  dbs: { type: 'weapon', name: 'DBS 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 18, pellets: 9, rpm: 100, modes: ['single'], mag: 14, rKind: 'shell', rOpen: 0.3, rShell: 0.42, rClose: 0.28, rCloseEmpty: 0.4, cycle: 'pump', spread: 2.1, recoil: 2.7, range: 46, zoom: 1.1, tier: 3, noExt: true, color: 0x232527 },
   // ----- 탄약 -----
   a556: { type: 'ammo', name: '5.56mm 탄', w: 0.4, stack: 40, color: 0xb0a040 },
   a762: { type: 'ammo', name: '7.62mm 탄', w: 0.5, stack: 30, color: 0xb07a30 },
@@ -39,6 +43,7 @@ const ITEMS = {
   a12:  { type: 'ammo', name: '12게이지 탄', w: 1.0, stack: 15, color: 0xb03030 },
   a300: { type: 'ammo', name: '.300 매그넘 탄', w: 1.2, stack: 10, color: 0xc89040 },
   a45:  { type: 'ammo', name: '.45 ACP 탄', w: 0.4, stack: 30, color: 0x9a8a50 },
+  a50:  { type: 'ammo', name: '.50 BMG 탄', w: 1.6, stack: 10, color: 0xb89a50 },
   // ----- 회복 -----
   bandage: { type: 'heal', name: '붕대', heal: 10, cap: 75, time: 3, w: 2, color: 0xe0d8c8 },
   firstaid: { type: 'heal', name: '구급상자', heal: 75, cap: 75, time: 6, w: 10, color: 0xd04040 },
@@ -72,9 +77,9 @@ const ITEMS = {
   // ----- 리콜 카드 (08_recall.js): 탈락한 팀원이 떨어뜨림 · 그 팀만 주울 수 있음 · 가방 무게 없음 (inst = {who, team, t}) -----
   rcard: { type: 'card', name: '리콜 카드', w: 0, color: 0x2ec4d6 },
 };
-const AMMO_NAMES = { a556: '5.56', a762: '7.62', a9: '9mm', a12: '12G', a300: '.300', a45: '.45' };
+const AMMO_NAMES = { a556: '5.56', a762: '7.62', a9: '9mm', a12: '12G', a300: '.300', a45: '.45', a50: '.50' };
 // 탄피 모델 종류 (배출·손에 든 탄)
-const CASE_KIND = { a556: '556', a762: '762', a9: '9', a12: 'hull', a300: '300', a45: '45' };
+const CASE_KIND = { a556: '556', a762: '762', a9: '9', a12: 'hull', a300: '300', a45: '45', a50: '50' };
 for (const id in ITEMS) { const d = ITEMS[id]; if (d.type === 'weapon') d.auto = d.modes.includes('auto') || d.modes.includes('slow'); }
 // 사격 모드
 const MODE_NAMES = { auto: '연사', single: '단발', burst: '3점사', slow: '저속 연사' };
@@ -188,9 +193,9 @@ const LOOT = { // 무기 비중: 무기마다 탄약 2묶음이 같이 생기므
 const LVL_TABLE = { low: [[1, 70], [2, 26], [3, 4]], mid: [[1, 50], [2, 40], [3, 10]], high: [[1, 35], [2, 48], [3, 17]], top: [[1, 20], [2, 50], [3, 30]] };
 const WEAPON_TABLE = { // 지역 등급별 무기 비중 (v16: 10종 추가 — 흔한 총은 낮은 등급, 강한 총은 높은 등급에 많이)
   low: [['p19', 22], ['vk9', 18], ['s686', 12], ['s12k', 8], ['s1897', 10], ['m416', 8], ['akm', 7], ['m16a4', 6], ['mini14', 4], ['asm', 2], ['tommy', 8], ['bizon', 7], ['vector', 4], ['win94', 6], ['deagle', 6], ['kar98k', 2], ['beryl', 1.5], ['dp28', 1]],
-  mid: [['p19', 10], ['vk9', 14], ['s686', 8], ['s12k', 8], ['s1897', 7], ['m416', 15], ['akm', 12], ['m16a4', 9], ['asm', 6], ['aug', 3], ['mini14', 6], ['m24', 1.5], ['m249', 1], ['tommy', 6], ['bizon', 7], ['vector', 6], ['win94', 4], ['deagle', 4], ['kar98k', 4], ['beryl', 4], ['dp28', 3]],
-  high: [['p19', 5], ['vk9', 11], ['s686', 6], ['s12k', 7], ['s1897', 5], ['m416', 17], ['akm', 13], ['m16a4', 9], ['asm', 8], ['aug', 6], ['mini14', 8], ['m24', 3], ['m249', 2], ['tommy', 4], ['bizon', 6], ['vector', 7], ['win94', 3], ['deagle', 4], ['kar98k', 5], ['beryl', 7], ['dp28', 4]],
-  top: [['vk9', 8], ['s12k', 5], ['m416', 19], ['akm', 14], ['m16a4', 8], ['asm', 9], ['aug', 9], ['mini14', 11], ['m24', 4], ['m249', 3], ['vector', 7], ['bizon', 4], ['kar98k', 5], ['beryl', 9], ['dp28', 4], ['deagle', 2]],
+  mid: [['p19', 10], ['vk9', 14], ['s686', 8], ['s12k', 8], ['s1897', 7], ['m416', 15], ['akm', 12], ['m16a4', 9], ['asm', 6], ['aug', 3], ['mini14', 6], ['m24', 1.5], ['m249', 1], ['dbs', 2], ['tommy', 6], ['bizon', 7], ['vector', 6], ['win94', 4], ['deagle', 4], ['kar98k', 4], ['beryl', 4], ['dp28', 3]],
+  high: [['p19', 5], ['vk9', 11], ['s686', 6], ['s12k', 7], ['s1897', 5], ['dbs', 4], ['groza', 0.8], ['m416', 17], ['akm', 13], ['m16a4', 9], ['asm', 8], ['aug', 6], ['mini14', 8], ['m24', 3], ['m249', 2], ['tommy', 4], ['bizon', 6], ['vector', 7], ['win94', 3], ['deagle', 4], ['kar98k', 5], ['beryl', 7], ['dp28', 4]],
+  top: [['vk9', 8], ['s12k', 5], ['dbs', 5], ['groza', 2], ['m416', 19], ['akm', 14], ['m16a4', 8], ['asm', 9], ['aug', 9], ['mini14', 11], ['m24', 4], ['m249', 3], ['vector', 7], ['bizon', 4], ['kar98k', 5], ['beryl', 9], ['dp28', 4], ['deagle', 2]],
 };
 function populateLoot(scene) {
   GROUND = []; itemGrid = new Array(IGN * IGN).fill(EMPTY_LIST);

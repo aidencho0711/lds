@@ -687,7 +687,7 @@ async function generateWorld(mapId, scene, progress) {
       const rows = [
         { lz: -5.6, ids: guns(['AR', 'SMG', 'PISTOL']), title: '총기 ① 돌격·기관단총·권총', sub: '탄창 가득 · 가져가면 잠시 뒤 다시 놓임', wide: true },
         { lz: -1.8, ids: guns(['DMR', 'SR', 'SG', 'LMG']), title: '총기 ② 저격·산탄·기관총', sub: '지정사수·저격·산탄·경기관총 · 볼트·레버·펌프식은 한 발씩', wide: true },
-        { lz: 2.0, ids: ['reddot', 'holo', 'x2', 'x3', 'x4', 'x6', 'comp', 'extmag', 'grip', 'a556', 'a762', 'a9', 'a12', 'a300', 'a45'], title: '부착물 · 탄약', sub: '훈련장에서는 쏜 만큼 탄약이 자동으로 채워짐' },
+        { lz: 2.0, ids: ['reddot', 'holo', 'x2', 'x3', 'x4', 'x6', 'comp', 'extmag', 'grip', 'a556', 'a762', 'a9', 'a12', 'a300', 'a45', 'a50'], title: '부착물 · 탄약', sub: '훈련장에서는 쏜 만큼 탄약이 자동으로 채워짐' },
         { lz: 5.8, ids: ['bandage', 'firstaid', 'medkit', 'drink', 'frag', 'smoke', 'helm1', 'helm2', 'helm3', 'vest1', 'vest2', 'vest3', 'bag1', 'bag2', 'bag3'], title: '회복 · 투척 · 방어구', sub: '수류탄은 북쪽 벽 너머 더미에게 연습' },
       ];
       for (const R0 of rows) {

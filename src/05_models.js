@@ -95,6 +95,8 @@ const Models = (() => {
     a9: (c, w, h) => { c.fillStyle = '#ebe7dc'; c.fillRect(0, 0, w, h); c.fillStyle = '#244a7a'; c.fillRect(0, h * 0.7, w, h * 0.3); txt(c, '9 × 19', w / 2, h * 0.3, 80, '#1d2a3a', 800); txt(c, 'mm LUGER · FMJ', w / 2, h * 0.53, 26, '#1d2a3a'); txt(c, '45 ROUNDS', w / 2, h * 0.85, 30, '#f0f0f0'); },
     a12: (c, w, h) => { c.fillStyle = '#9c1f18'; c.fillRect(0, 0, w, h); c.strokeStyle = '#f0e2c8'; c.lineWidth = 5; c.strokeRect(10, 10, w - 20, h - 20); txt(c, '12', w * 0.35, h * 0.38, 110, '#f0e2c8', 800); txt(c, 'GA', w * 0.7, h * 0.44, 50, '#f0e2c8', 800); txt(c, '00 BUCK · 9 PELLETS', w / 2, h * 0.68, 24, '#f0e2c8'); txt(c, '15 SHELLS', w / 2, h * 0.82, 26, '#f0e2c8'); },
     a300: (c, w, h) => { c.fillStyle = '#272b29'; c.fillRect(0, 0, w, h); c.fillStyle = '#c99a3c'; c.fillRect(0, h * 0.08, w, h * 0.05); c.fillRect(0, h * 0.87, w, h * 0.05); txt(c, '.300', w / 2, h * 0.3, 96, '#e7d9b4', 800); txt(c, 'MAGNUM', w / 2, h * 0.5, 50, '#c99a3c', 800); txt(c, '10 ROUNDS · MATCH', w / 2, h * 0.67, 24, '#bdb39a'); barcode(c, w * 0.25, h * 0.74, w * 0.5, h * 0.09); },
+    // .50 BMG: 검정 금속 탄약통 색 + 노란 띠 (자체 디자인)
+    a50: (c, w, h) => { c.fillStyle = '#1f2220'; c.fillRect(0, 0, w, h); c.fillStyle = '#e0b21e'; c.fillRect(0, h * 0.1, w, h * 0.06); c.fillRect(0, h * 0.84, w, h * 0.06); txt(c, '.50', w / 2, h * 0.32, 110, '#efe6c8', 800); txt(c, 'BMG', w / 2, h * 0.52, 56, '#e0b21e', 800); txt(c, '10 ROUNDS · AP', w / 2, h * 0.7, 30, '#cfc6a8'); },
     a762: (c, w, h) => { c.clearRect(0, 0, w, h); txt(c, '7.62 MM', w / 2, h * 0.3, 78, '#e2c23a', 800); txt(c, '30 CARTRIDGES · BALL', w / 2, h * 0.62, 30, '#e2c23a'); txt(c, 'LOT 26-114', w / 2, h * 0.84, 24, '#e2c23a', 500); },
     // .45 ACP: 올리브색 종이 상자 + 굵은 숫자 (자체 디자인)
     a45: (c, w, h) => { c.fillStyle = '#6f6a45'; c.fillRect(0, 0, w, h); c.fillStyle = '#e9e1c4'; c.fillRect(w * 0.08, h * 0.08, w * 0.84, h * 0.5); txt(c, '.45', w / 2, h * 0.27, 110, '#3b3a26', 800); txt(c, 'ACP · 230 GR', w / 2, h * 0.48, 30, '#3b3a26'); txt(c, '30 ROUNDS', w / 2, h * 0.7, 34, '#f1ead2', 800); txt(c, 'FULL METAL JACKET', w / 2, h * 0.8, 22, '#d9d0b0', 500); barcode(c, w * 0.3, h * 0.85, w * 0.4, h * 0.08); },
@@ -406,7 +408,7 @@ const Models = (() => {
   }
 
   // ---------- 아이템 ----------
-  const CAL = { 556: [0.045, 0.0048, 0.0037, 0.019, 0.0029], 762: [0.051, 0.006, 0.0045, 0.024, 0.0039], 9: [0.019, 0.005, 0.0049, 0.011, 0.0045], 300: [0.067, 0.0068, 0.0047, 0.03, 0.0039], 45: [0.023, 0.006, 0.006, 0.012, 0.0057] };
+  const CAL = { 50: [0.1, 0.0102, 0.0072, 0.04, 0.0065], 556: [0.045, 0.0048, 0.0037, 0.019, 0.0029], 762: [0.051, 0.006, 0.0045, 0.024, 0.0039], 9: [0.019, 0.005, 0.0049, 0.011, 0.0045], 300: [0.067, 0.0068, 0.0047, 0.03, 0.0039], 45: [0.023, 0.006, 0.006, 0.012, 0.0057] };
   function cart(g, cal, x, z, ry) {
     const ax = Math.sin(ry), az = Math.cos(ry);
     const P = (geo, m, off, r) => A(g, geo, m, x + ax * off, r, z + az * off, 0, ry, 0);
@@ -427,6 +429,13 @@ const Models = (() => {
       A(g, BX(0.03, 0.04, 0.012), st, 0, 0.085, 0.1);
       A(g, PL(0.16, 0.08), label('a762', 384, 192), 0.0506, 0.05, 0, 0, Math.PI / 2);
       cart(g, 762, 0.085, -0.02, 0.4); cart(g, 762, 0.09, 0.03, 0.15);
+    },
+    a50(g) {
+      const bk = M('anod', 0x2a2d2a), dk = M('anod', 0x1a1c1a), yl = M('polymer', 0xe0b21e);
+      A(g, RB(0.15, 0.07, 0.21, 0.006), bk, 0, 0.035, 0); A(g, RB(0.154, 0.014, 0.214, 0.004), dk, 0, 0.074, 0); A(g, BX(0.03, 0.012, 0.09), dk, 0, 0.086, 0);
+      A(g, BX(0.155, 0.012, 0.004), yl, 0, 0.05, 0.105);
+      A(g, PL(0.13, 0.19), label('a50'), 0, 0.0815, 0, -Math.PI / 2);
+      cart(g, 50, 0.11, -0.03, 0.3); cart(g, 50, 0.12, 0.04, 0.05);
     },
     a300(g) {
       const od = M('polymer', 0x2f3330), dk = M('polymer', 0x1e2120), lt = M('metal', 0xa8aaa6);
@@ -601,7 +610,7 @@ const Models = (() => {
       else if (kind.startsWith('mag:')) { const [, id, ext] = kind.split(':'); GUNS[id].mag(g, ext === '1' ? 1 : 0); }
       else if (kind === 'clip' && GUNS.kar98k && GUNS.kar98k.clip) GUNS.kar98k.clip(g);
       else if (kind.startsWith('rnd')) { const cal = +kind.slice(3), [L, r, rn, bl, br] = CAL[cal]; A(g, CY(r, r, L * 0.82, 10), M('brass', 0xc9a24a), 0, 0, -L * 0.09); A(g, CY(rn, r, L * 0.12, 10), M('brass', 0xc9a24a), 0, 0, L * 0.38); A(g, CY(0.0004, br, bl, 10), M('brass', 0xb8703a), 0, 0, L * 0.44 + bl / 2); }
-      else { const r = kind === '9' ? 0.0048 : kind === '762' ? 0.006 : kind === '300' ? 0.0068 : kind === '45' ? 0.006 : 0.0048, L = kind === '9' ? 0.019 : kind === '762' ? 0.051 : kind === '300' ? 0.067 : kind === '45' ? 0.023 : 0.045; A(g, CY(r, r, L, 8), M('brass', 0xd0a84e), 0, 0, 0); A(g, CY(r * 0.75, r, L * 0.15, 8), M('brass', 0xd0a84e), 0, 0, L * 0.55); }
+      else { const r = kind === '9' ? 0.0048 : kind === '762' ? 0.006 : kind === '300' ? 0.0068 : kind === '50' ? 0.0102 : kind === '45' ? 0.006 : 0.0048, L = kind === '9' ? 0.019 : kind === '762' ? 0.051 : kind === '300' ? 0.067 : kind === '50' ? 0.099 : kind === '45' ? 0.023 : 0.045; A(g, CY(r, r, L, 8), M('brass', 0xd0a84e), 0, 0, 0); A(g, CY(r * 0.75, r, L * 0.15, 8), M('brass', 0xd0a84e), 0, 0, L * 0.55); }
     });
   }
   // ---------- 보급상자 ----------

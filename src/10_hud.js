@@ -324,9 +324,10 @@ const HUD = (() => {
     if (wp.dataset.k !== wkey) {
       wp.dataset.k = wkey; wp.innerHTML = '';
       inv.weapons.forEach((w, i) => {
-        if (!w) return; const d = ITEMS[w.id], sk = p.skinOf(w.id), tst = !!sk && GSKINS[sk].rar >= 6, e = h('div', 'wslot' + (i === inv.cur ? ' cur' : '') + (tst ? ' tester' : ''));
+        if (!w) return; const d = ITEMS[w.id], sk = p.skinOf(w.id), tst = !!sk && !!GSKINS[sk].tester, eps = !!sk && GSKINS[sk].rar === 7, e = h('div', 'wslot' + (i === inv.cur ? ' cur' : '') + (tst ? ' tester' : '') + (eps ? ' epsilon' : ''));
         if (i === inv.cur) { e.title = '눌러서 총 살펴보기 (N)'; e.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); Input.press('inspect'); }); }   // 모바일: 지금 무기 칸을 누르면 살펴보기
         if (tst) e.appendChild(h('i', 'beta-badge', 'β' + (GSKINS[sk].no || '')));   // 베타 테스터 한정 컬렉션 표시
+        if (eps) e.appendChild(h('i', 'eps-badge', 'ε' + (GSKINS[sk].no || '')));   // 엡실론 컬렉션 표시
         e.appendChild(ico(w.id, w.att, 'ico wide wi'));
         e.appendChild(h('span', 'wn', `${i + 1}  ${d.name}`));
         if (d.modes.length > 1 || i === inv.cur) e.appendChild(h('span', 'wm', modeName(w.id, fireMode(w))));
@@ -881,10 +882,13 @@ const HUD = (() => {
       const guns = [...new Set(owned.map((id) => GSKINS[id].gun))].sort((a, b) => order.indexOf(a) - order.indexOf(b));
       const gcard = (gun, id) => {
         const S = id ? GSKINS[id] : null, on = (gl[gun] || null) === (id || null), R = S ? rarOf(S.rar) : null;
-        const b = h('button', 'wh-item gun' + (on ? ' on' : '') + (S ? ' rar' : '') + (S && S.rar >= 6 ? ' tester' : '') + (whGun === gun && on ? ' sel' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
+        const b = h('button', 'wh-item gun' + (on ? ' on' : '') + (S ? ' rar' : '') + (S && S.tester ? ' tester' : '') + (S && S.rar === 7 ? ' epsilon' : '') + (whGun === gun && on ? ' sel' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
         const ico = h('i', 'wh-ico'); ico.appendChild(Shop.gunImgEl(gun, id));
         b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : '기본')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + (S && S.fx ? '효과 · ' : '') + (on ? '장착 중' : '장착하기')));
-        if (S && S.rar >= 6) { b.appendChild(h('i', 'beta-badge', 'β' + (S.no || ''))); b.appendChild(h('em', 'excl', 'EXCLUSIVE — NEVER AVAILABLE AGAIN')); }   // 베타 테스터 한정 컬렉션
+        if (S && S.tester) { b.appendChild(h('i', 'beta-badge', 'β' + (S.no || ''))); b.appendChild(h('em', 'excl', 'EXCLUSIVE — NEVER AVAILABLE AGAIN')); }   // 베타 테스터 한정 컬렉션
+        if (S && S.rar === 7) { b.appendChild(h('i', 'eps-badge', 'ε' + (S.no || ''))); b.appendChild(h('em', 'excl eps', `EPSILON · Ε-${S.no} · 소유 #${Eco.serialOf(id)}`)); b.title = `${GunSkin.name(id)} — EPSILON Ε-${S.no} · 소유 번호 #${Eco.serialOf(id)}
+${S.lore || ''}
+${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소유 번호
         b.title = S ? GunSkin.name(id) + (S.desc ? ' — ' + S.desc : '') : GunSkin.short(gun) + ' 기본';
         b.addEventListener('click', () => { whGun = gun; if (!on) Eco.equipGun(gun, id); else { SETTINGS.gshow = gun; saveSettings(); Lobby.setGun(false); } renderWarehouse(); showcase(); Audio.init(); Audio.ui(); });
         return b;

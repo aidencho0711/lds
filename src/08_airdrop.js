@@ -62,12 +62,12 @@ const Airdrop = (() => {
     if (d.remote) { addSmoke(d); return; }
     const top = d.gy + 0.845, spots = [[-0.35, -0.2], [0.05, -0.22], [0.38, -0.2], [-0.35, 0.2], [0.05, 0.22], [0.38, 0.2], [-0.1, 0.0], [0.25, 0.0]];
     let k = 0; const put = (id, n, inst) => { const [ox, oz] = spots[k++ % spots.length]; const it = spawnItem(scene, id, n, d.x + ox, top, d.z + oz, inst); it.drop = 1; d.items.push(it); };
-    const gun = weightedPick([['awm', 30], ['mg3', 30], ['slr', 40]]);
+    const gun = weightedPick([['awm', 22], ['amr', 14], ['groza', 22], ['mg3', 20], ['slr', 22]]);   // v20: AMR · Groza 추가
     put(gun, 1, newWeapon(gun, ITEMS[gun].mag));
     const am = ITEMS[gun].ammo; for (let i = 0; i < (gun === 'mg3' ? 3 : 2); i++) put(am, ITEMS[am].stack);
     if (Math.random() < 0.5) put('helm3', 1, { id: 'helm3', dur: ITEMS.helm3.dur });
     if (Math.random() < 0.5) put('vest3', 1, { id: 'vest3', dur: ITEMS.vest3.dur });
-    if (Math.random() < 0.7) put(gun === 'awm' ? weightedPick([['x6', 60], ['x4', 40]]) : weightedPick([['x4', 40], ['x3', 35], ['x6', 25]]), 1);
+    if (Math.random() < 0.7) put(gun === 'awm' || gun === 'amr' ? weightedPick([['x6', 60], ['x4', 40]]) : weightedPick([['x4', 40], ['x3', 35], ['x6', 25]]), 1);
     put(Math.random() < 0.55 ? 'medkit' : 'firstaid', 1);
     if (gun === 'slr' && Math.random() < 0.5) put('extmag', 1);
     if (Math.random() < 0.5 && !G.training) put('gold', Math.round(rnd(40, 80)));

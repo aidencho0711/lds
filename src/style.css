@@ -1260,3 +1260,20 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 #skinKill.k-chaos::after { border-style: dashed; box-shadow: 0 0 18px #ff4a12, inset 0 0 14px #ff6a1e; animation: skKillRing 1.5s ease-out forwards, pfPulse 0.25s steps(2) infinite; }
 #skinKill.k-frontier::after { border-color: #f2d590; box-shadow: 0 0 14px #f2d590, 0 0 0 5px rgba(242, 213, 144, 0.25), inset 0 0 10px #fff0c0; }
 #skinKill.k-frontier b { color: #fff6dc; text-shadow: 0 0 10px #f2d590, 0 1px 2px #000; }
+/* v20 엡실론 (EPSILON — THE ABSOLUTE): 금빛·보라 무지갯결 테두리 · ε 배지 · 획득 컷신 글자 */
+@keyframes epsEdge { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+@keyframes epsGlow { 0%, 100% { box-shadow: 0 0 10px rgba(192, 132, 252, 0.35), 0 0 0 1px rgba(255, 215, 120, 0.5) inset; } 50% { box-shadow: 0 0 22px rgba(192, 132, 252, 0.7), 0 0 0 1px rgba(255, 230, 160, 0.9) inset; } }
+.wh-item.gun.epsilon { position: relative; border: 2px solid transparent; background: linear-gradient(135deg, rgba(26, 12, 44, 0.95), rgba(10, 8, 16, 0.95)) padding-box, linear-gradient(90deg, #ffd76a, #c084fc, #7de3ff, #c084fc, #ffd76a) border-box; background-size: 100% 100%, 200% 100%; animation: epsEdge 3s linear infinite, epsGlow 2.4s ease-in-out infinite; }
+.wh-item.gun.epsilon b { background: linear-gradient(90deg, #fff1c4, #e9c2ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.wh-item.gun.epsilon span { color: #d9b8ff; }
+.wh-item.gun.epsilon .excl.eps { display: block; margin-top: 2px; font-style: normal; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.05em; color: #ffd76a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eps-badge { position: absolute; top: 5px; right: 6px; width: 30px; height: 28px; display: grid; place-items: center; font-style: normal; font-size: 0.62rem; font-weight: 900; color: #fff3cf; background: radial-gradient(#3a1a66, #0d0618);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); box-shadow: 0 0 0 2px #e2b84a inset; text-shadow: 0 0 6px #c084fc; }
+#weaponPanel .wslot.epsilon { position: relative; border: 1px solid transparent; background: linear-gradient(var(--panel), var(--panel)) padding-box, linear-gradient(90deg, #ffd76a, #c084fc, #7de3ff, #c084fc, #ffd76a) border-box; background-size: 100% 100%, 200% 100%; animation: epsEdge 3s linear infinite; box-shadow: 0 0 12px rgba(192, 132, 252, 0.35); }
+#weaponPanel .wslot.epsilon .eps-badge { top: -10px; right: -6px; width: 26px; height: 24px; font-size: 0.5rem; }
+.gr-card.r7 { border: 2px solid transparent; background: linear-gradient(160deg, rgba(36, 14, 64, 0.96), rgba(8, 6, 14, 0.96)) padding-box, linear-gradient(90deg, #ffd76a, #c084fc, #7de3ff, #c084fc, #ffd76a) border-box; background-size: 100% 100%, 200% 100%; animation: grIn 0.42s cubic-bezier(.2, 1.4, .4, 1) both, epsEdge 2.4s linear infinite, epsGlow 1.6s ease-in-out infinite; }
+.gr-card.r7 .gr-rar { background: linear-gradient(90deg, #ffd76a, #e9c2ff, #7de3ff); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: 0.16em; }
+.cs-layer.eps::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(120, 60, 200, 0) 30%, rgba(30, 10, 50, 0.55) 75%, rgba(0, 0, 0, 0.85)); }
+.cs-text.eps span { letter-spacing: 0.32em; background: linear-gradient(90deg, #ffd76a, #f3dcff 35%, #c084fc 60%, #7de3ff 85%, #ffd76a); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 0 14px rgba(192, 132, 252, 0.8)); animation: epsEdge 2.6s linear infinite; }
+.cs-text.eps b { color: #fff3cf; letter-spacing: 0.08em; text-shadow: 0 0 12px rgba(192, 132, 252, 0.9), 0 2px 6px #000; }
+.gc-card[data-box="eps"] { border-color: rgba(192, 132, 252, 0.7); box-shadow: 0 0 16px rgba(192, 132, 252, 0.25); }
