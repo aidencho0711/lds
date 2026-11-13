@@ -18414,7 +18414,7 @@ function bpReward(lv, plus) {
     return { k: 'gold', n: 40 + t * 10 };
   }
   if (lv === 1) return { k: 'gold', n: 500, title: 'bp_plus' };
-  if (lv === 50) return { k: 'gcoin', n: 400, title: 'bp_s1' };   // 엡실론 교환가(1,000)의 40%
+  if (lv === 50) return { k: 'gcoin', n: 1000, title: 'bp_s1' };   // 엡실론 스킨 1종을 교환소에서 바꿀 수 있는 양 (교환가 1,000)
   if (lv % 10 === 0) return lv === 20 ? { k: 'box', box: 'eps', n: 1 } : lv === 40 ? { k: 'box', box: 'eps', n: 2 } : { k: 'gcoin', n: lv === 10 ? 30 : 50 };
   if (lv % 5 === 0) return lv === 5 ? { k: 'box', box: 'g1', n: 2 } : lv === 25 ? { k: 'box', box: 'g2', n: 2 } : lv === 45 ? { k: 'box', box: 'eps', n: 1 } : { k: 'gcoin', n: lv === 15 ? 15 : 20 };
   return { k: 'gold', n: 200 + t * 20 };
