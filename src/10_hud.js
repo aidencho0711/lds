@@ -31,19 +31,41 @@ const HUD = (() => {
   function hitmarker(head, kill) { const e = $('hitmark'); e.className = kill ? 'kill' : head ? 'head' : ''; e.style.opacity = 1; hmT = kill ? 0.45 : 0.18; }
   // kind: '' 처치 / 'knock' 기절 / 'wipe' 팀 전멸로 탈락. mate: 피해자가 내 팀원
   // 울트라레어 총기 스킨으로 처치했을 때 조준점 아래 휘장 (fx: 스킨 효과 색·종류, name: 'M416 · 마그마 코어')
-  function skinKill(fx, name) {
+  // 엡실론 문양 (총마다 외형 키트의 모양): 별 창날 · 에너지 코어 · 불꽃 왕관 · 낫 · 날개 · 터빈 · 왕관 · Ω — 처치 휘장과 킬 로그에 씀
+  const EPS_ICO = {
+    celestial: '<path d="M12 1l2.2 8.8L23 12l-8.8 2.2L12 23l-2.2-8.8L1 12l8.8-2.2z"/>',
+    divine: '<path d="M12 2l8.7 5v10L12 22l-8.7-5V7z" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="3.6"/>',
+    infernal: '<path d="M3 20h18l1.5-12-5.5 5L12 3 7 13 1.5 8z"/>',
+    voidr: '<path d="M22 3C11 2 3 8 2 20c4-7 10-10 20-10z"/>',
+    seraph: '<path d="M2 20c2-9 8-15 20-17-2 3-4 4-6 5 2 0 3 0 5-.5-2 3-5 4.5-8 5 2 .5 3 .5 5 .2-3 3-7 4.5-11 4.5z"/>',
+    apocalypse: '<circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5M4.2 4.2l3.5 3.5M16.3 16.3l3.5 3.5M19.8 4.2l-3.5 3.5M7.7 16.3l-3.5 3.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
+    dynasty: '<path d="M3 19h18v2H3zM3 17L1.5 7l5.5 4.5L12 4l5 7.5L22.5 7 21 17z"/>',
+    omega: '<path d="M5 20h5v-2.4C7.6 16.3 6 14 6 11.3 6 7.8 8.7 5 12 5s6 2.8 6 6.3c0 2.7-1.6 5-4 6.3V20h5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/>',
+  };
+  const epsIco = (kind) => `<svg class="eps-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${EPS_ICO[kind] || EPS_ICO.celestial}</svg>`;
+  const hex6 = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
+  // eps: 엡실론 스킨이면 그 스킨 정보(GSKINS 항목) → 더 큰 휘장(도는 빛 테 · 총마다 다른 문양 · EPSILON 번호)
+  function skinKill(fx, name, eps) {
     const e = $('skinKill'); if (!e || !fx) return;
-    const hex = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
-    e.style.setProperty('--sk1', hex(fx.c)); e.style.setProperty('--sk2', hex(fx.c2));
-    e.className = 'k-' + fx.kind; e.innerHTML = ''; e.appendChild(h('b', '', '처치')); e.appendChild(h('small', '', name || ''));
+    e.style.setProperty('--sk1', hex6(fx.c)); e.style.setProperty('--sk2', hex6(fx.c2));
+    e.className = 'k-' + fx.kind + (eps ? ' eps' : ''); e.innerHTML = '';
+    if (eps) { e.appendChild(h('i', 'sk-ring')); const ic = h('i', 'sk-ico'); ic.innerHTML = epsIco(fx.kind); e.appendChild(ic); }
+    e.appendChild(h('b', '', '처치')); e.appendChild(h('small', '', name || ''));
+    if (eps) e.appendChild(h('u', '', `EPSILON · Ε-${eps.no}`));
     void e.offsetWidth; e.classList.add('on');
   }
-  function killfeed(killer, victim, weapon, byPlayer, playerDied, kind, mate) {
-    const box = $('killfeed'), e = h('div', 'kf' + (byPlayer ? ' mine' : '') + (playerDied || mate ? ' dead' : '') + (kind === 'knock' ? ' knock' : ''));
-    if (killer) { e.append(killer); e.appendChild(h('em', '', (weapon || '▸') + (kind === 'knock' ? ' · 기절' : kind === 'wipe' ? '' : ''))); e.append(victim); }
+  // sk: 처치한 총에 장착한 스킨 id (엡실론이면 킬 로그 줄이 그 스킨의 색·문양·이름으로 꾸며지고 더 오래 남는다)
+  function killfeed(killer, victim, weapon, byPlayer, playerDied, kind, mate, sk) {
+    const sd = sk && typeof GSKINS !== 'undefined' ? GSKINS[sk] : null, eps = killer && sd && sd.eps && sd.fx ? sd : null;
+    const box = $('killfeed'), e = h('div', 'kf' + (byPlayer ? ' mine' : '') + (playerDied || mate ? ' dead' : '') + (kind === 'knock' ? ' knock' : '') + (eps ? ' eps k-' + eps.fx.kind : ''));
+    if (eps) {
+      e.style.setProperty('--sk1', hex6(eps.fx.c)); e.style.setProperty('--sk2', hex6(eps.fx.c2));
+      const w = h('em', 'kf-eps'); w.innerHTML = epsIco(eps.fx.kind); w.appendChild(h('b', '', `${weapon || ''} · ${eps.name}` + (kind === 'knock' ? ' · 기절' : '')));
+      e.append(h('i', 'kf-tag', 'Ε'), h('span', 'kf-n', killer), w, h('span', 'kf-n', victim));
+    } else if (killer) { e.append(killer); e.appendChild(h('em', '', (weapon || '▸') + (kind === 'knock' ? ' · 기절' : kind === 'wipe' ? '' : ''))); e.append(victim); }
     else { e.append(victim); e.appendChild(h('em', '', kind === 'knock' ? (weapon ? weapon + '(으)로 기절' : '기절') : weapon ? weapon + '(으)로 탈락' : '탈락')); }
     box.prepend(e); while (box.children.length > 5) box.lastChild.remove();
-    setTimeout(() => e.remove(), 7000);
+    setTimeout(() => e.remove(), eps ? 9500 : 7000);
     if (byPlayer) toast(kind === 'knock' ? `${victim} 기절` : `${victim} 처치`, 'ok');
   }
   function setLoot(list) {

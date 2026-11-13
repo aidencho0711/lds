@@ -698,7 +698,7 @@ function knockChar(t, attacker, cause) {
   t.stance = 'prone'; t.setVisibleGear();
   if (by) by.knocks++;
   if (G.knockLog) G.knockLog.push({ t: Math.round(G.time), cause, by: by ? (by.isPlayer ? 'player' : 'bot') : 'env' });
-  HUD.killfeed(by ? by.name : null, t.name, causeName(cause), by && by.isPlayer, t.isPlayer, 'knock', G.player && sameTeam(G.player, t));
+  HUD.killfeed(by ? by.name : null, t.name, causeName(cause), by && by.isPlayer, t.isPlayer, 'knock', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(cause) : null);
   if (t.isPlayer) { HUD.toast('기절했습니다! 팀원이 부활시켜 줄 때까지 기어서 버티세요', 'warn'); HUD.setLoot([]); Audio.hurt(); }
   else if (G.player && sameTeam(G.player, t)) HUD.toast(`팀원 ${t.name} 기절!`, 'warn');
   if (t.brain) t.brain.onKnocked();
@@ -763,7 +763,7 @@ function killChar(t, attacker, cause) {
   }
   t.inv.weapons = [null, null, null]; t.inv.items = {}; t.inv.cur = -1; t.inv.gear = { helmet: null, vest: null, bag: null };
   t.setVisibleGear();
-  HUD.killfeed(attacker && attacker !== t ? attacker.name : null, t.name, causeName(cause), attacker && attacker.isPlayer, t.isPlayer, cause === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t));
+  HUD.killfeed(attacker && attacker !== t ? attacker.name : null, t.name, causeName(cause), attacker && attacker.isPlayer, t.isPlayer, cause === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t), attacker && attacker !== t && attacker.skinOf ? attacker.skinOf(cause) : null);
   Audio.death(t.pos);
   SkinFx.kill(t, attacker, cause);   // 울트라레어 스킨 총으로 처치하면 그 자리에 큰 효과
   // 팀: 서 있는 팀원이 없으면 기절한 팀원도 모두 탈락 (기절시킨 적에게 처치 인정)

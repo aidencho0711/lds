@@ -388,7 +388,7 @@ const Net = (() => {
     if (t.veh) Veh.exit(t, true, true);
     t.setVisibleGear();
     if (by && !mine(by)) by.knocks = (by.knocks || 0) + 1; else if (by && mine(by)) by.knocks++;
-    HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, t.isPlayer, 'knock', G.player && sameTeam(G.player, t));
+    HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, t.isPlayer, 'knock', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(e.c) : null);
     if (G.player && sameTeam(G.player, t)) HUD.toast(`팀원 ${t.name} 기절!`, 'warn');
   }
   function netDeath(e) {
@@ -401,7 +401,7 @@ const Net = (() => {
     if (t.veh) Veh.exit(t, true, true);
     if (by) by.kills++;
     if (G.killLog) G.killLog.push({ t: Math.round(G.time), cause: e.c, kn: wasKnocked, by: by ? (by.isPlayer ? 'player' : 'bot') : 'env' });
-    if (!e.lost) HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, false, e.c === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t));
+    if (!e.lost) HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, false, e.c === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(e.c) : null);
     Audio.death(t.pos);
     if (!e.lost) SkinFx.kill(t, by, e.c);
     if (G.teams) { const T = G.teams[t.team]; if (T && !T.place && !teamAlive(T)) T.place = aliveTeamCount() + 1; }

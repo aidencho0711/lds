@@ -1361,3 +1361,46 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
   .bp-how-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .lb-tabs { gap: 9px; } .lb-tabs button { font-size: 0.92rem; }
 }
+
+/* ---------- v20 엡실론 처치: 킬 로그 줄 · 처치 휘장 (스킨 색 --sk1 / --sk2 · 총마다 다른 문양과 움직임) ---------- */
+.eps-ico { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex: 0 0 auto; }
+.kf.eps { position: relative; overflow: hidden; display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px; font-size: 0.82rem; border-left: 3px solid var(--sk1); border-radius: 3px 9px 9px 3px;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--sk1) 46%, #07060c) 0%, rgba(8, 7, 14, 0.92) 46%, color-mix(in srgb, var(--sk2) 22%, #07060c) 100%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sk1) 55%, transparent), 0 0 14px color-mix(in srgb, var(--sk1) 45%, transparent); animation: kfEpsIn 0.45s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.kf.eps::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.55) 48%, transparent 62%); transform: translateX(-120%); animation: kfSheen 2.4s ease-in-out 0.2s 3; pointer-events: none; }
+.kf-tag { flex: 0 0 auto; width: 18px; height: 18px; display: grid; place-items: center; font: 800 0.74rem/1 var(--f-display); font-style: normal; color: #0b0812; background: linear-gradient(135deg, #fff, var(--sk2) 40%, var(--sk1)); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.kf.eps .kf-n { font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; }
+.kf.eps .kf-eps { display: inline-flex; align-items: center; gap: 4px; margin: 0 2px; color: var(--sk2); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-shadow: 0 0 8px var(--sk1); }
+.kf.eps .kf-eps b { font-family: var(--f-display); font-weight: 800; display: inline-block; }
+.kf.eps .eps-ico { color: var(--sk1); filter: drop-shadow(0 0 4px var(--sk1)); animation: kfIco 1.6s ease-in-out infinite; }
+.kf.eps.mine { box-shadow: 0 0 0 1px var(--sk2), 0 0 18px color-mix(in srgb, var(--sk1) 70%, transparent); }
+.kf.eps.knock .kf-eps { color: var(--sk2); }
+@keyframes kfEpsIn { from { opacity: 0; transform: translateX(-26px) scaleX(0.7); } }
+@keyframes kfSheen { 0% { transform: translateX(-120%); } 55%, 100% { transform: translateX(120%); } }
+@keyframes kfIco { 50% { transform: scale(1.25) rotate(12deg); } }
+/* 총마다 다른 움직임: 별 반짝임 · 코어 회전 · 불씨 맥박 · 글자 어긋남 · 날갯짓 · 터빈 회전 · 금빛 흐름 · 전기 떨림 */
+.kf.eps.k-celestial .eps-ico { animation: kfTwinkle 1.1s ease-in-out infinite; }
+.kf.eps.k-divine .eps-ico { animation: pfSpin 2.4s linear infinite; }
+.kf.eps.k-infernal { animation: kfEpsIn 0.45s cubic-bezier(0.2, 1.4, 0.4, 1), kfEmber 0.9s ease-in-out 0.45s infinite alternate; }
+.kf.eps.k-voidr .kf-eps b { animation: kfGlitch 1.8s steps(1) infinite; }
+.kf.eps.k-seraph .eps-ico { animation: kfFlap 0.9s ease-in-out infinite; transform-origin: 10% 90%; }
+.kf.eps.k-apocalypse .eps-ico { animation: pfSpin 0.9s linear infinite; }
+.kf.eps.k-dynasty .kf-eps b { background: linear-gradient(90deg, var(--sk1), #fff, var(--sk1)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: kfGold 2s linear infinite; text-shadow: none; }
+.kf.eps.k-omega .eps-ico, .kf.eps.k-omega .kf-eps b { animation: kfZap 0.5s steps(2) infinite; }
+@keyframes kfTwinkle { 50% { transform: scale(1.5) rotate(45deg); filter: drop-shadow(0 0 7px #fff); } }
+@keyframes kfEmber { to { box-shadow: 0 0 0 1px var(--sk2), 0 0 20px var(--sk1); } }
+@keyframes kfGlitch { 0%, 100% { transform: none; text-shadow: 0 0 8px var(--sk1); } 8% { transform: translateX(2px) skewX(-12deg); text-shadow: -2px 0 #fff, 2px 0 var(--sk1); } 12% { transform: translateX(-2px); } 16% { transform: none; } }
+@keyframes kfFlap { 50% { transform: rotate(-16deg) scale(1.15); } }
+@keyframes kfGold { to { background-position: -200% 0; } }
+@keyframes kfZap { 50% { opacity: 0.55; transform: translate(0.5px, -0.5px); } }
+body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
+/* 처치 휘장(조준점 아래) — 엡실론: 더 크고, 도는 빛 테 · 문양 · EPSILON 번호 */
+#skinKill.eps { width: 156px; height: 156px; margin-left: -78px; top: 58%; }
+#skinKill.eps::after { inset: 24px; border-width: 2px; box-shadow: 0 0 18px var(--sk1), inset 0 0 14px var(--sk1), 0 0 0 5px color-mix(in srgb, var(--sk2) 22%, transparent); }
+#skinKill.eps .sk-ring { position: absolute; inset: 4px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 8%, var(--sk1) 16%, transparent 26% 40%, var(--sk2) 50%, transparent 60% 74%, var(--sk1) 84%, transparent 94%); -webkit-mask: radial-gradient(circle, transparent 61%, #000 63%, #000 68%, transparent 70%); mask: radial-gradient(circle, transparent 61%, #000 63%, #000 68%, transparent 70%); animation: pfSpin 1.5s linear infinite; }
+#skinKill.eps .sk-ico { position: relative; display: block; color: var(--sk2); font-size: 26px; line-height: 1; font-style: normal; filter: drop-shadow(0 0 8px var(--sk1)); animation: skIco 1.5s ease-out forwards; }
+#skinKill.eps b { font-size: 1.45rem; }
+#skinKill.eps u { position: relative; text-decoration: none; font: 700 0.56rem/1 var(--f-display); letter-spacing: 0.2em; color: #fff; opacity: 0.85; text-shadow: 0 0 6px var(--sk1); }
+@keyframes skIco { 0% { transform: scale(2.4) rotate(-40deg); opacity: 0; } 22% { transform: scale(1) rotate(0); opacity: 1; } }
+@media (max-height: 500px) { #skinKill.eps { width: 118px; height: 118px; margin-left: -59px; } #skinKill.eps::after { inset: 18px; } #skinKill.eps .sk-ico { font-size: 19px; } #skinKill.eps b { font-size: 1.1rem; } #skinKill.eps u { font-size: 0.5rem; } }
+@media (prefers-reduced-motion: reduce) { .kf.eps, .kf.eps::after, .kf.eps .eps-ico, .kf.eps .kf-eps b { animation: none; } }
