@@ -161,8 +161,8 @@ const Shop = (() => {
     return THUMB[key];
   }
   const crateThumb = (box) => thumb('crate:' + box, () => crate(box).root, 200, 160, [0.9, 0.75, 1.3]);
-  const vehThumb = (id) => { const V = VSKINS[id]; return thumb('veh:' + id, () => VehModels.instance(V.veh, id).root, 240, 140, V.veh === 'sedan' || V.veh === 'uaz' ? [1.2, 0.55, 1.0] : [1.3, 0.45, 0.6]); };
-  const vehBaseThumb = (type) => thumb('vehb:' + type, () => VehModels.instance(type).root, 240, 140, type === 'sedan' || type === 'uaz' ? [1.2, 0.55, 1.0] : [1.3, 0.45, 0.6]);
+  const vehThumb = (id) => { const V = VSKINS[id]; return thumb('veh:' + id, () => VehModels.instance(V.veh, id).root, 240, 140, V.veh === 'sedan' || V.veh === 'uaz' || V.veh === 'pickup' ? [1.2, 0.55, 1.0] : [1.3, 0.45, 0.6]); };
+  const vehBaseThumb = (type) => thumb('vehb:' + type, () => VehModels.instance(type).root, 240, 140, type === 'sedan' || type === 'uaz' || type === 'pickup' ? [1.2, 0.55, 1.0] : [1.3, 0.45, 0.6]);
   // 총기 스킨 썸네일 (id 없으면 기본 총). 목록은 한꺼번에 렌더하면 휴대폰에서 끊기므로
   //  아직 없는 그림은 빈 칸으로 두고 로비 프레임마다 하나씩 그려 넣는다(<img data-th>)
   const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', TQ = [];
@@ -259,7 +259,7 @@ const Shop = (() => {
       $('shopFoot').textContent = `${GCOIN_NAME}은 아스널·네온 상자에서 70% 확률로 나옵니다. 교환한 스킨은 창고 → 총기에서 장착하면 경기·훈련장에서 그 총을 들 때 적용됩니다.`;
     } else if (tab !== 'gacha') {
       for (const t of Object.keys(VEH_SKIN_TYPES)) {
-        const sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', VEH_SKIN_TYPES[t] + (t === 'sedan' ? ' (세단에 적용)' : t === 'uaz' ? ' (UAZ에 적용) · EPSILON VEHICLE COLLECTION' : '')));
+        const sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', VEH_SKIN_TYPES[t] + (t === 'sedan' ? ' (세단에 적용)' : t === 'uaz' ? ' (UAZ에 적용)' : t === 'pickup' ? ' (픽업트럭에 적용)' : '')));
         const grid = h('div', 'ex-grid');
         for (const [id, V] of Object.entries(VSKINS).filter(([, v]) => v.veh === t)) {
           const own = Eco.ownsVeh(id), R = rarOf(V.rar), key = 'ex:' + id;
@@ -275,7 +275,7 @@ const Shop = (() => {
         }
         sec.appendChild(grid); body.appendChild(sec);
       }
-      $('shopFoot').textContent = `${COIN_NAME}은 차량 뽑기(높은 확률)와 출석 6일째 보상으로 얻습니다. 엡실론 차량 IMPERIAL X-01 은 엡실론 금고에서도 0.1% 확률로 나옵니다. 교환한 차량은 창고 → 차량에서 장착하면, 경기 중 그 차종의 운전석에 탈 때 내 스킨으로 바뀝니다.`;
+      $('shopFoot').textContent = `${COIN_NAME}은 차량 뽑기(높은 확률)와 출석 6일째 보상으로 얻습니다. 엡실론 차량 4종(IMPERIAL X-01 · AURELION GT · TITAN VANGUARD · SOVEREIGN ECLIPSE)은 엡실론 금고에서도 각 0.1% 확률로 나옵니다. 교환한 차량은 창고 → 차량에서 장착하면, 경기 중 그 차종의 운전석에 탈 때 내 스킨으로 바뀝니다.`;
     }
   }
   const click = () => { Audio.init(); Audio.ui(); };
@@ -566,22 +566,24 @@ const Cutscene = (() => {
   const VEPS_D = 8.8, VE = { form: 1.0, reveal: 3.3, lights: 3.45, eps: 4.6, name: 7.0 };
   const VCAM = [[0, [0, 7.4, 9.6], [0, 0.4, 0]], [3.0, [6.6, 3.3, 6.6], [0, 0.7, 0]], [3.9, [0.9, 1.05, 6.7], [0, 0.85, 1.4]], [5.2, [7.0, 1.35, 0.4], [0, 0.85, 0]],
     [6.5, [-1.4, 1.6, -7.0], [0, 0.9, -0.6]], [7.1, [-5.8, 1.7, -4.4], [0, 0.9, -0.2]], [7.9, [-5.3, 1.9, 5.7], [0, 0.95, 0.2]], [8.8, [-5.9, 2.1, 6.3], [0, 1.0, 0.2]]];   // 뒤 → 왼쪽 옆을 돌아 → 비스듬한 앞 (차를 뚫고 지나가지 않게)
-  function circleTex() {
+  const CIRC = {};
+  function circleTex(V) {
+    if (CIRC[V.name]) return CIRC[V.name];
     const c = document.createElement('canvas'); c.width = c.height = 1024; const g = c.getContext('2d'); g.translate(512, 512); g.strokeStyle = '#fff'; g.fillStyle = '#fff';
     const ring = (r, w, a = 1) => { g.globalAlpha = a; g.lineWidth = w; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke(); g.globalAlpha = 1; };
     ring(500, 6); ring(482, 2, 0.7); ring(382, 4); ring(300, 2, 0.6); ring(150, 3);
     for (let i = 0; i < 120; i++) { const a = i / 120 * TAU, r0 = i % 10 ? 470 : 452; g.lineWidth = i % 10 ? 2 : 4; g.beginPath(); g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); g.lineTo(Math.cos(a) * 482, Math.sin(a) * 482); g.stroke(); }
-    const txt = 'EPSILON VEHICLE COLLECTION  ·  IMPERIAL X-01  ·  EP-V001  ·  ', n = txt.length; g.font = '800 36px "Saira Condensed","Arial Narrow",Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const txt = `EPSILON VEHICLE COLLECTION  ·  ${V.name}  ·  EP-${V.no}  ·  `, n = txt.length; g.font = '800 36px "Saira Condensed","Arial Narrow",Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     for (let i = 0; i < n; i++) { g.save(); g.rotate(i / n * TAU); g.translate(0, -428); g.fillText(txt[i], 0, 0); g.restore(); }
     for (const rot of [0, Math.PI / 4]) { g.save(); g.rotate(rot); g.lineWidth = 3; g.strokeRect(-268, -268, 536, 536); g.restore(); }
     g.globalAlpha = 0.5; g.lineWidth = 2; for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; g.beginPath(); g.moveTo(Math.cos(a) * 160, Math.sin(a) * 160); g.lineTo(Math.cos(a) * 292, Math.sin(a) * 292); g.stroke(); } g.globalAlpha = 1;
     g.lineWidth = 6; g.beginPath(); g.moveTo(0, -132); g.lineTo(102, 0); g.lineTo(0, 132); g.lineTo(-102, 0); g.closePath(); g.stroke();
-    return new THREE.CanvasTexture(c);
+    return (CIRC[V.name] = new THREE.CanvasTexture(c));
   }
   function vepsSetup(top) {
     const V = VSKINS[top.id];
     if (!S.veps) {
-      const grp = new THREE.Group(), tex = circleTex();
+      const grp = new THREE.Group(), tex = circleTex(V);
       const addM = (map, color) => new THREE.MeshBasicMaterial({ map, color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
       const circ = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), addM(tex, 0xffcf6e)); circ.rotation.x = -Math.PI / 2; circ.position.y = 0.03; grp.add(circ);
       const circ2 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), addM(tex, 0xfff1c8)); circ2.rotation.x = -Math.PI / 2; circ2.position.y = 0.035; grp.add(circ2);
@@ -594,10 +596,11 @@ const Cutscene = (() => {
       const frag = new THREE.Points(pg, pm); frag.frustumCulled = false; grp.add(frag);
       S.sc.add(grp); S.veps = { grp, circ, circ2, rim, fill, emb, frag, pm, pos, col, N, from: new Float32Array(N * 3), to: new Float32Array(N * 3), delay: new Float32Array(N), L: VehFx.mkL() };
     }
-    const E = S.veps; E.grp.visible = true; E.marked = E.named = E.lit = false; E.V = V;
+    const E = S.veps; E.grp.visible = true; E.marked = E.named = E.lit = false; E.V = V; E.circ.material.map = E.circ2.material.map = circleTex(V); E.circ.material.needsUpdate = E.circ2.material.needsUpdate = true;
     if (S.car) S.sc.remove(S.car.root);
     const P = S.car = VehModels.instance(V.veh, top.id); VehFx.attach(P); P.root.visible = false; S.sc.add(P.root); P.root.updateMatrixWorld(true);
-    VehFx.setSerial(P, Eco.serialOf(top.id)); Object.assign(E.L, VehFx.mkL()); VehFx.apply(P, E.L);
+    { const bb = new THREE.Box3(); for (const m of P.meshes) if (!m.userData.fx && m.geometry) bb.expandByObject(m); E.camK = clamp((bb.max.z - bb.min.z) / 4.7, 1, 1.35); }   // 긴 차(픽업)는 카메라를 그만큼 멀리 (빛줄기 같은 효과는 빼고 잼)
+    VehFx.setSerial(P, Eco.serialOf(top.id)); VehFx.apply(P, VehFx.mkL());
     // 파편이 모일 자리: 차체 표면의 점들 (정점 수에 비례해 고름)
     const src = P.meshes.filter((m) => m.geometry && m.geometry.attributes.position && !m.userData.fx && m.parent === P.body && m.geometry.attributes.position.count > 60);
     const tot = src.reduce((a, m) => a + m.geometry.attributes.position.count, 0), _v = new THREE.Vector3(), C = new THREE.Color();
@@ -626,7 +629,7 @@ const Cutscene = (() => {
     // 카메라: 위에서 넓게 → 둘레를 돌며 → 앞 → 옆 → 뒤 → 비스듬한 앞
     let i = 0; while (i < VCAM.length - 2 && t > VCAM[i + 1][0]) i++;
     const a = VCAM[i], b = VCAM[i + 1], u = smoothstep01(clamp((t - a[0]) / (b[0] - a[0]), 0, 1));
-    cam.position.set(lerp(a[1][0], b[1][0], u), lerp(a[1][1], b[1][1], u), lerp(a[1][2], b[1][2], u)); cam.lookAt(lerp(a[2][0], b[2][0], u), lerp(a[2][1], b[2][1], u), lerp(a[2][2], b[2][2], u));
+    const cmk = E.camK || 1; cam.position.set(lerp(a[1][0], b[1][0], u) * cmk, lerp(a[1][1], b[1][1], u) * (0.6 + 0.4 * cmk), lerp(a[1][2], b[1][2], u) * cmk); cam.lookAt(lerp(a[2][0], b[2][0], u), lerp(a[2][1], b[2][1], u), lerp(a[2][2], b[2][2], u));
     // ① 금색 원형 문양
     const ck = smoothstep01(clamp(t / 1.2, 0, 1));
     E.circ.scale.setScalar(9.4 * (0.55 + 0.45 * ck)); E.circ.rotation.z = t * 0.12; E.circ.material.opacity = 0.9 * ck * (opened ? 0.75 : 1);
@@ -644,11 +647,8 @@ const Cutscene = (() => {
     if (t >= VE.reveal && !opened) vepsReveal(false);
     if (opened) {
       const lt = t - VE.lights;
-      if (lt >= 0 && !E.lit) { E.lit = true; Audio.vehStart && Audio.vehStart('imperial', null, true); }
-      for (let h = 0; h < 5; h++) L.hl[h] = clamp((lt - 0.15 - h * 0.13) / 0.08, 0, 1);
-      L.emb = Math.max(lt > 0.72 ? 0.5 : 0, lt > 0.72 && lt < 1.45 ? Math.sin((lt - 0.72) / 0.73 * Math.PI) : 0); L.tail = clamp((lt - 0.3) / 0.25, 0, 1) * 0.6;
-      L.amb = clamp((lt - 0.8) / 0.6, 0, 1); L.dash = clamp((lt - 0.95) / 0.35, 0, 1); L.under = 0.85 * clamp(lt / 0.8, 0, 1); L.beam = clamp((lt - 0.55) / 0.35, 0, 1); L.brake = 0;
-      VehFx.apply(P, L);
+      if (lt >= 0 && !E.lit) { E.lit = true; Audio.vehStart && Audio.vehStart(P.efx ? P.efx.kind : 'imperial', null, true); }
+      VehFx.preview(P, Math.max(0, lt), { night: true, still: Math.min(1.1, Math.max(0, lt - 0.5)), wing: P.mov && P.mov.wing ? smoothstep01(clamp((t - 5.2) / 0.8, 0, 1)) : undefined });   // 차량 고유의 시동 연출 (AURELION 은 옆 장면에서 윙이 솟음)
       const lk = smoothstep01(clamp((t - VE.reveal) / 0.8, 0, 1)); E.rim.intensity = 1.2 * lk; E.fill.intensity = 0.55 * lk; S.key.intensity = 1.3 * lk;
       if (t - VE.reveal > 0.25 && $('csFlash').className === 'cs-flash on') $('csFlash').className = 'cs-flash';
     }

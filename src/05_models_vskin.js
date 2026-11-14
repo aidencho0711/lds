@@ -20,9 +20,15 @@ const VSKINS = {
   // EPSILON VEHICLE COLLECTION (v20) — 엡실론 금고(0.1%) · 교환소(차량 교환 코인 400). 기본 SUV(UAZ)에 적용, 성능은 그대로
   uaz_imperial: { veh: 'uaz', cls: 'imperial', name: 'IMPERIAL X-01', rar: 7, eps: 1, no: 'V001', box: 'eps', price: 400, eng: 'imperial', paint: 0x0b0c0f, ti: 0xa9adb3, gold: 0xc9a24a, navy: 0x141c33,
     desc: '미래의 최상위 VIP를 위해 만든 초고급 전천후 퍼포먼스 SUV. 옵시디언 블랙 · 티타늄 실버 · 임페리얼 골드 · 미드나이트 네이비' },
+  sedan_aurelion: { veh: 'sedan', cls: 'aurelion', name: 'AURELION GT', rar: 7, eps: 1, no: 'V002', box: 'eps', price: 400, eng: 'aurelion', paint: 0xc9cdd3, gold: 0xd8c08a,
+    desc: '낮고 날렵한 하이퍼 GT. 리퀴드 실버와 샴페인 골드, 고속에서 솟아오르는 액티브 리어 윙' },
+  pickup_titan: { veh: 'pickup', cls: 'titan', name: 'TITAN VANGUARD', rar: 7, eps: 1, no: 'V003', box: 'eps', price: 400, eng: 'titan', paint: 0x464a50, ti: 0xa9adb3, accent: 0xc46a2a,
+    desc: '묵직하고 웅장한 럭셔리 오프로드. 티타늄과 건메탈, 지붕 LED 바와 비드록 휠' },
+  sedan_sovereign: { veh: 'sedan', cls: 'sovereign', name: 'SOVEREIGN ECLIPSE', rar: 7, eps: 1, no: 'V004', box: 'eps', price: 400, eng: 'sovereign', paint: 0x17141d, silver: 0xb9bec6,
+    desc: '길고 우아한 초호화 의전 세단. 블랙 펄과 실버 투톤, 솟아오르는 보닛 장식과 이클립스 원형 등' },
 };
-const VEH_SKIN_TYPES = { sedan: '승용차', uaz: 'SUV', moto: '오토바이', horse: '말' };
-const VCLS_NAME = { imperial: '럭셔리 퍼포먼스 SUV', sport: '스포츠카', lux: '럭셔리카', hyper: '하이퍼카', racer: '오토바이', cruiser: '오토바이', white: '말', black: '말' };
+const VEH_SKIN_TYPES = { sedan: '승용차', uaz: 'SUV', pickup: '픽업트럭', moto: '오토바이', horse: '말' };
+const VCLS_NAME = { imperial: '럭셔리 퍼포먼스 SUV', aurelion: '하이퍼카', titan: '럭셔리 오프로드', sovereign: '초호화 세단', sport: '스포츠카', lux: '럭셔리카', hyper: '하이퍼카', racer: '오토바이', cruiser: '오토바이', white: '말', black: '말' };
 (() => {
   const K = VehModels.kit, { VB, mtx, arch, side, tube, ball, wheelGeo, SEAT_C, TRIM } = K;
   // 크롬 휠 살(바퀴와 함께 돈다): 테 + 바퀴살 + 허브
@@ -573,11 +579,247 @@ const VCLS_NAME = { imperial: '럭셔리 퍼포먼스 SUV', sport: '스포츠카
       efx: { kind: 'imperial', screens: [{ id: 'cluster', p: [0.42, 1.255, 0.735], w: 0.3, h: 0.11, rx: -0.42 }, { id: 'center', p: [0, 1.255, 0.75], w: 0.36, h: 0.15, rx: -0.38 }],
         under: { w: 2.1, l: 4.6 }, beams: [[0.5, 0.92, 2.29], [-0.5, 0.92, 2.29]], trail: { y: 1.0, z0: -1.9, z1: 1.9, x: 1.0 } } };
   }
+  // ---------- 엡실론 AURELION GT (EP-V002): 낮고 날렵한 하이퍼 GT — 세단 자리(좌석·물리)에 겉모습만 ----------
+  //  리퀴드 실버 차체 · 샴페인 골드 선(창틀 · 옆 빛 선 · 휠 테 · 캘리퍼) · 검은 유리 캐노피 지붕 · 부메랑 LED · 옆 흡입구 · 4구 배기
+  //  움직이는 부품: 액티브 리어 윙(mov.wing — 고속에서 솟아오르고 브레이크 때 세워져 에어브레이크) · fx: hl0(바깥)~hl4(안쪽) · line0~5 옆 빛 선(앞→뒤) · emb · tail · brake · amb
+  function buildAurelion(sk) {
+    const SV = sk.paint, CH = sk.gold, CB = 0x141517, DK = 0x0a0a0b;
+    const gloss = new VB(), matte = new VB(), sglass = new VB(), chrome = new VB();
+    const fx = { hl0: new VB(), hl1: new VB(), hl2: new VB(), hl3: new VB(), hl4: new VB(), emb: new VB(), tail: new VB(), brake: new VB(), amb: new VB() };
+    for (let i = 0; i < 6; i++) fx['line' + i] = new VB();
+    const HLC = 0xf2f6ff, EMB = 0xffe2a8, RED = 0xff2030, LN = 0xffdca0;
+    const WR = 0.37, WW = 0.32, WX = 0.86, ZF = 1.42, ZR = -1.36, wheels = [[WX, WR, ZF, 1], [-WX, WR, ZF, 1], [WX, WR, ZR, 0], [-WX, WR, ZR, 0]];
+    const B = makeBody({ z0: -2.36, z1: 2.42,
+      hw: [[-2.36, 0.84], [-2.15, 0.95], [-1.8, 1.0], [-1.36, 1.02], [-0.8, 0.96], [0.2, 0.93], [0.9, 0.96], [1.42, 0.99], [1.95, 0.95], [2.25, 0.86], [2.42, 0.74]],
+      y0: [[-2.36, 0.3], [-2.1, 0.2], [-1.8, 0.18], [1.9, 0.18], [2.42, 0.24]],
+      y1: [[-2.36, 0.84], [-2.1, 0.9], [-1.75, 0.94], [-1.36, 0.95], [-0.8, 0.86], [-0.2, 0.8], [0.6, 0.79], [1.05, 0.82], [1.42, 0.86], [1.95, 0.8], [2.25, 0.7], [2.42, 0.6]],
+      valley: [[-2.36, 0.02], [-1.4, 0.06], [-0.6, 0.02], [0.6, 0.04], [1.1, 0.1], [1.5, 0.12], [2.0, 0.1], [2.42, 0.05]],
+      n: [[-2.36, 4.2], [-1.9, 3.5], [0, 3.4], [1.9, 3.3], [2.42, 3.2]], tb: 0.26, mid: 0.36,
+      dents: [{ z: -0.82, y: 0.52, rz: 0.4, ry: 0.11, a: 0.42, d: 0.085 }],
+      wheels: [archW(ZF, WR, WR, WX, WW), archW(ZR, WR, WR, WX, WW)] });
+    const col = (x, y, z) => { if (y < 0.24) return CB; if (z > 1.25 && z < 1.85 && Math.abs(x) > 0.16 && Math.abs(x) < 0.42 && y > B.topY(z, x) - 0.025) return DK; return SV; };
+    loftBody(B, gloss, col); dentHoles(B, matte);
+    const Cb = makeCabin(B, { z0: -1.95, z1: 0.75, n: 2.8, tb: 0.1,
+      wc: [[-1.95, 0.52], [-1.5, 0.66], [-0.6, 0.74], [0.2, 0.72], [0.75, 0.6]],
+      roof: [[-1.95, 0.92], [-1.6, 1.1], [-1.2, 1.27], [-0.6, 1.36], [-0.1, 1.36], [0.3, 1.22], [0.6, 1.0], [0.75, 0.84]] });
+    loftCabin(Cb, cabinKey({ vS: 0.2, vP: 0.06, trimH: 0.025, zC: -1.4, zB: -0.62, bw: 0.05, trim: [chrome, CH], pillar: [gloss, CB], bpil: [gloss, CB], glass: [sglass, 0x5d6878], roof: [sglass, 0x161b26], zRF: 0.2, zRR: -1.45, rear: [sglass, 0x5d6878] }));
+    const side = (z, y, d = 0.004) => B.sideX(z, y) + d;
+    for (const s of [1, -1]) {
+      // 부메랑 헤드램프: hl0 = 바깥 아래로 꺾인 다리, hl1~hl4 = 코 위 모서리를 따라 안쪽으로
+      curve(fx.hl0, [[s * side(2.02, 0.62, 0.006), 0.62, 2.02], [s * side(2.1, 0.5, 0.006), 0.5, 2.1], [s * side(2.17, 0.4, 0.006), 0.4, 2.17]], 0.011, HLC);
+      for (let i = 0; i < 4; i++) { const z0 = 2.0 + i * 0.075, x0 = 0.78 - i * 0.1, z1 = z0 + 0.07, x1 = x0 - 0.09; curve(fx['hl' + (i + 1)], [[s * x0, B.topY(z0, x0) + 0.006, z0], [s * x1, B.topY(z1, x1) + 0.006, z1]], 0.012, HLC); }
+      // 옆 빛 선(샴페인): 앞바퀴 뒤 → 뒷바퀴 앞, 여섯 칸
+      const zs = [0.95, 0.6, 0.25, -0.1, -0.45, -0.8, -1.05];
+      for (let j = 0; j < 6; j++) curve(fx['line' + j], [zs[j], (zs[j] + zs[j + 1]) / 2, zs[j + 1]].map((z) => [s * side(z, 0.46, 0.006), 0.46, z]), 0.006, LN);
+      // 샴페인 캐릭터 선 · 스커트 날 · 미러 · 보닛 배출구 테
+      curve(chrome, [1.95, 1.4, 0.8, 0.1, -0.6, -1.3, -1.9].map((z) => { const y = 0.7 + Math.max(0, -z - 0.5) * 0.06; return [s * side(z, y), y, z]; }), 0.005, CH);
+      matte.box(s * side(0, 0.24, -0.02), 0.17, -0.95, s * side(0, 0.24, 0.05), 0.2, 0.95, CB);
+      mirror(gloss, s, Cb.wc(0.55) - 0.02, Cb.base(0.55) + 0.08, 0.55, SV);
+      // 뒤: 얇은 테일 선 양 끝의 C 모양
+      fx.tail.box(s * 0.7, 0.66, -2.372, s * 0.74, 0.8, -2.362, RED);
+    }
+    fx.tail.box(-0.74, 0.77, -2.374, 0.74, 0.786, -2.364, RED);
+    fx.brake.box(-0.5, 0.735, -2.376, -0.2, 0.75, -2.366, RED); fx.brake.box(0.2, 0.735, -2.376, 0.5, 0.75, -2.366, RED);
+    chrome.box(-0.05, 0.61, -2.39, 0.05, 0.71, -2.365, CH, 0, 0, Math.PI / 4); fx.emb.box(-0.028, 0.632, -2.396, 0.028, 0.688, -2.385, EMB, 0, 0, Math.PI / 4);
+    chrome.box(-0.04, 0.4, 2.43, 0.04, 0.48, 2.455, CH, 0, 0, Math.PI / 4); fx.emb.box(-0.022, 0.418, 2.452, 0.022, 0.462, 2.462, EMB, 0, 0, Math.PI / 4);
+    // 앞: 카본 스플리터 · 낮은 흡입구 / 뒤: 디퓨저 · 4구 배기
+    matte.box(-0.76, 0.16, 2.18, 0.76, 0.19, 2.43, CB); matte.box(-0.6, 0.22, 2.36, 0.6, 0.36, 2.42, DK);
+    for (let i = -3; i <= 3; i++) matte.box(i * 0.12 - 0.008, 0.18, -2.38, i * 0.12 + 0.008, 0.36, -2.0, CB);
+    for (const x of [-0.42, -0.3, 0.3, 0.42]) { const ex = new THREE.CylinderGeometry(0.042, 0.042, 0.1, 14); ex.rotateX(Math.PI / 2); chrome.add(ex, mtx(x, 0.32, -2.36), 0xc8ccd2); }
+    // 실내: 블랙 가죽 + 샴페인 선 앰비언트
+    interior(matte, 0x17181b, true, 1.1, { dashW: 0.55, dashY: 0.84, rearW: 0.5, rearH: 0.9 });
+    chrome.box(-0.52, 0.8, 0.548, 0.52, 0.806, 0.552, CH); fx.amb.box(-0.52, 0.776, 0.546, 0.52, 0.782, 0.55, LN);
+    for (const s of [1, -1]) curve(fx.amb, [-1.3, -0.6, 0.1, 0.45].map((z) => [s * (Cb.wc(z) - 0.05), Cb.base(z) + 0.03, z]), 0.005, LN);
+    calipers(matte, wheels, WW, CH);
+    // 액티브 리어 윙: 평소엔 트렁크 위에 낮게 붙어 있다가 솟아오름 (pivot = 트렁크 윗면)
+    const wingZ = -2.08, wy = B.topY(wingZ, 0) + 0.006, wing = { pivot: [0, wy, wingZ], gloss: new VB(), matte: new VB(), fx: { brake2: new VB() } };
+    wing.gloss.box(-0.84, 0.012, -0.15, 0.84, 0.04, 0.13, SV, -0.06);
+    for (const s of [1, -1]) { wing.matte.box(s * 0.82, -0.02, -0.17, s * 0.86, 0.08, 0.14, CB); wing.matte.box(s * 0.26, -0.24, -0.04, s * 0.3, 0.02, 0.06, CB); }
+    wing.fx.brake2.box(-0.6, 0.02, -0.162, 0.6, 0.032, -0.152, RED);
+    return { gloss, matte, sglass, chrome, fx, mov: { wing }, wheel: tireGeo(WR, WW), rim: rimGeo2(WR, WW, { n: 10, twin: true, c: 0xd6dadf, lip: CH, wd: 0.02 }), wheels, wr: WR,
+      efx: { kind: 'aurelion', screens: [{ id: 'cluster', p: [0.4, 0.93, 0.62], w: 0.28, h: 0.1, rx: -0.5 }, { id: 'center', p: [0, 0.9, 0.62], w: 0.3, h: 0.12, rx: -0.45 }],
+        under: { w: 1.9, l: 4.4 }, beams: [[0.6, 0.66, 2.3], [-0.6, 0.66, 2.3]], trail: { y: 0.55, z0: -2.0, z1: 1.8, x: 1.0 } } };
+  }
+
+  // ---------- 엡실론 TITAN VANGUARD (EP-V003): 묵직하고 웅장한 럭셔리 오프로드 — 픽업트럭 자리(좌석 · 적재함 좌석 · 물리)에 겉모습만 ----------
+  //  건메탈 차체 · 티타늄 장식(그릴 살 · 스키드 플레이트 · 스포츠 바 · 레일) · 구리색 포인트 · 큰 오프로드 타이어와 비드록 휠 · 각진 펜더
+  //  fx: hl0~4 C자 헤드램프 · bar0~5 지붕 LED 바(왼→오) · amber 지붕 앞 마커등 · emb · tail 세로 테일 · brake · amb
+  function tireKnob(r, w) {   // 오프로드 타이어: 둥근 타이어 + 바깥 테 블록 무늬
+    const vb = new VB(), ri = r * 0.68;
+    const prof = [[ri, -w * 0.5], [r * 0.9, -w * 0.5], [r * 0.97, -w * 0.45], [r, -w * 0.32], [r, w * 0.32], [r * 0.97, w * 0.45], [r * 0.9, w * 0.5], [ri, w * 0.5]];
+    const g = new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)), 28); g.rotateZ(Math.PI / 2); vb.add(g, null, 0x19191a);
+    for (let i = 0; i < 26; i++) for (const sd of [1, -1]) { const k = new THREE.BoxGeometry(w * 0.3, 0.035, 0.07); k.translate(sd * w * 0.3, r + 0.005, 0); k.rotateX(i / 26 * TAU + (sd > 0 ? 0 : TAU / 52)); vb.add(k, null, 0x141415); }
+    return vb.build();
+  }
+  function rimTitan(r, w) {
+    const vb = new VB(), ri = r * 0.68, GM = 0x3a3d42, TIc = 0xaab0b6;
+    for (const sd of [1, -1]) {
+      const x0 = sd * w * 0.42;
+      const lip = new THREE.TorusGeometry(ri * 0.97, 0.022, 6, 26); lip.rotateY(Math.PI / 2); vb.add(lip, mtx(x0, 0, 0), TIc);   // 비드록 링
+      for (let i = 0; i < 16; i++) { const a = i / 16 * TAU, b = new THREE.CylinderGeometry(0.009, 0.009, 0.02, 6); b.rotateZ(Math.PI / 2); vb.add(b, mtx(x0 + sd * 0.016, Math.cos(a) * ri * 0.97, Math.sin(a) * ri * 0.97), 0xd6dadf); }
+      const back = new THREE.CircleGeometry(ri * 0.95, 24); back.rotateY(sd * Math.PI / 2); vb.add(back, mtx(sd * w * 0.18, 0, 0), 0x0b0b0c);
+      const hub = new THREE.CylinderGeometry(r * 0.2, r * 0.22, 0.05, 8); hub.rotateZ(Math.PI / 2); vb.add(hub, mtx(x0, 0, 0), GM);
+      const cap = new THREE.CylinderGeometry(r * 0.1, r * 0.1, 0.02, 4); cap.rotateZ(Math.PI / 2); vb.add(cap, mtx(x0 + sd * 0.03, 0, 0), 0xc46a2a);
+      for (let i = 0; i < 6; i++) { const g = new THREE.BoxGeometry(0.03, ri - r * 0.2, 0.07); g.translate(x0 - sd * 0.008, (ri + r * 0.2) / 2, 0); g.rotateX(i / 6 * TAU); vb.add(g, null, GM); }
+    }
+    return vb.build();
+  }
+  function buildTitan(sk) {
+    const GM = sk.paint, TI = sk.ti, CU = sk.accent, CB = 0x1a1b1e, DK = 0x0b0b0c, SEAT = 0x1d1e21;
+    const gloss = new VB(), matte = new VB(), sglass = new VB(), chrome = new VB();
+    const fx = { hl0: new VB(), hl1: new VB(), hl2: new VB(), hl3: new VB(), hl4: new VB(), amber: new VB(), emb: new VB(), tail: new VB(), brake: new VB(), amb: new VB() };
+    for (let i = 0; i < 6; i++) fx['bar' + i] = new VB();
+    const HLC = 0xf0f6ff, EMB = 0xffc890, RED = 0xff2030, AMB = 0xffb050, AMBER = 0xffa020;
+    const WR = 0.47, WW = 0.36, WX = 0.9, ZF = 1.62, ZR = -1.6, wheels = [[WX, WR, ZF, 1], [-WX, WR, ZF, 1], [WX, WR, ZR, 0], [-WX, WR, ZR, 0]];
+    const arF = archW(ZF, WR, WR, WX, WW); arF.flare = 0.05; arF.R = WR + 0.09;
+    // 앞 차체 + 캐빈 아래 (뒤 끝 z −0.5 의 마개가 캐빈 뒷벽 아래)
+    const B = makeBody({ z0: -0.5, z1: 2.8,
+      hw: [[-0.5, 0.99], [0.5, 1.0], [1.62, 1.03], [2.4, 1.0], [2.8, 0.96]],
+      y0: [[-0.5, 0.62], [2.5, 0.6], [2.8, 0.64]],
+      y1: [[-0.5, 1.3], [0.6, 1.3], [1.1, 1.3], [1.4, 1.29], [2.3, 1.26], [2.62, 1.2], [2.8, 1.12]],
+      valley: [[1.2, 0], [1.6, -0.018], [2.3, -0.018], [2.8, 0]], n: 5.6, tb: 0.05, mid: 0.45, wheels: [arF] });
+    loftBody(B, gloss, (x, y, z) => (y < 0.7 ? CB : GM));
+    const sx = (z, y, d = 0.004) => B.sideX(z, y) + d;
+    // 캐빈: 각진 그린하우스 + 뒷벽(뒷유리)
+    const Cb = makeCabin(B, { z0: -0.5, z1: 1.3, n: 5, tb: 0.08, wc: [[-0.5, 0.93], [0.6, 0.94], [1.3, 0.9]], roof: [[-0.5, 1.86], [-0.3, 1.88], [0.5, 1.88], [0.85, 1.8], [1.15, 1.5], [1.3, 1.32]] });
+    loftCabin(Cb, cabinKey({ vS: 0.22, vP: 0.05, trimH: 0.03, zC: -0.42, zB: 0.32, bw: 0.06, trim: [chrome, TI], pillar: [gloss, GM], bpil: [gloss, CB], glass: [sglass, 0x4a5360], roof: [gloss, GM], zRF: 0.62, zRR: -0.6, rear: [sglass, 0x4a5360] }));
+    gloss.box(-0.92, 1.28, -0.53, 0.92, 1.87, -0.49, GM); sglass.box(-0.6, 1.4, -0.535, 0.6, 1.76, -0.525, 0x4a5360);
+    // 적재함: 바닥 · 옆벽(뒷바퀴 아치를 판 옆모습) · 레일 · 테일게이트 · 바퀴 우물
+    matte.box(-0.9, 0.9, -2.66, 0.9, 0.94, -0.53, 0x26282c);
+    const wall = [[-2.72, 0.6], ...arch(ZR, 0.6, 0.62), [-0.55, 0.6], [-0.55, 1.32], [-2.72, 1.32]];
+    for (const s of [1, -1]) {
+      gloss.add(side(wall, 0.09, s * 0.955), null, GM); matte.add(side([[-2.72, 0.6], ...arch(ZR, 0.6, 0.62), [-0.55, 0.6], [-0.55, 0.72], [-2.72, 0.72]], 0.1, s * 0.96), null, CB);
+      chrome.box(s * 0.9, 1.32, -2.72, s * 1.0, 1.36, -0.55, TI);
+      matte.box(s * 0.62, 0.94, -2.2, s * 0.91, 1.2, -1.0, 0x202226);
+      curve(matte, arch(ZR, 0.6, 0.7, 12).map(([z, y]) => [s * 1.02, y, z]), 0.05, CB);            // 뒤 펜더 플레어
+      curve(matte, arch(ZF, 0.5, 0.66, 12).map(([z, y]) => [s * sx(z, Math.min(1.2, y), 0.03), y, z]), 0.05, CB);   // 앞 펜더 플레어
+      // 스포츠 바(티타늄) · 사이드 스텝 · 손잡이 · 큰 미러
+      tube(chrome, [s * 0.88, 1.32, -0.8], [s * 0.76, 2.0, -0.74], 0.04, TI, 8); tube(chrome, [s * 0.88, 1.32, -1.5], [s * 0.82, 1.92, -0.78], 0.032, TI, 8);
+      matte.box(s * 0.98, 0.52, -0.4, s * 1.1, 0.56, 1.1, CB); chrome.box(s * 0.98, 0.56, -0.4, s * 1.1, 0.57, 1.1, TI);
+      for (const z of [0.6, -0.15]) chrome.box(s * sx(z, 1.12, 0), 1.1, z - 0.1, s * sx(z, 1.12, 0.016), 1.13, z + 0.1, TI);
+      gloss.box(s * 1.0, 1.32, 1.02, s * 1.16, 1.5, 1.14, GM); matte.box(s * 1.155, 1.34, 1.03, s * 1.165, 1.48, 1.13, 0x30343a);
+      // 세로 테일등 · 적재함 끝 고리
+      fx.tail.box(s * 0.89, 0.78, -2.744, s * 0.99, 1.26, -2.73, RED); matte.box(s * 0.88, 0.76, -2.74, s * 1.0, 1.28, -2.722, DK);
+    }
+    tube(chrome, [-0.76, 2.0, -0.74], [0.76, 2.0, -0.74], 0.04, TI, 8);
+    gloss.box(-0.955, 0.6, -2.74, 0.955, 1.32, -2.66, GM); chrome.box(-0.5, 1.12, -2.75, 0.5, 1.15, -2.74, TI);
+    fx.brake.box(-0.25, 1.9, -0.55, 0.25, 1.94, -0.53, RED); fx.brake.box(-0.86, 0.95, -2.75, -0.62, 0.98, -2.744, RED); fx.brake.box(0.62, 0.95, -2.75, 0.86, 0.98, -2.744, RED);
+    chrome.box(-0.06, 0.92, -2.762, 0.06, 1.04, -2.744, CU, 0, 0, Math.PI / 4); fx.emb.box(-0.034, 0.946, -2.77, 0.034, 1.014, -2.76, EMB, 0, 0, Math.PI / 4);
+    matte.box(-0.96, 0.5, -2.86, 0.96, 0.66, -2.72, CB); chrome.box(-0.3, 0.5, -2.88, 0.3, 0.58, -2.84, TI);   // 뒤 범퍼 + 견인 고리 판
+    // 앞: 큰 그릴(티타늄 가로 살 셋) · 가운데 엠블럼 · C자 헤드램프 · 티타늄 스키드 플레이트 · 견인 고리(구리색)
+    const ZF0 = 2.822;
+    matte.box(-0.62, 0.7, ZF0 - 0.02, 0.62, 1.08, ZF0, DK);
+    for (const y of [0.76, 0.88, 1.0]) chrome.box(-0.6, y, ZF0, 0.6, y + 0.045, ZF0 + 0.022, TI);
+    chrome.box(-0.08, 0.83, ZF0 + 0.016, 0.08, 0.99, ZF0 + 0.036, CU, 0, 0, Math.PI / 4); fx.emb.box(-0.05, 0.86, ZF0 + 0.03, 0.05, 0.96, ZF0 + 0.042, EMB, 0, 0, Math.PI / 4);
+    for (const s of [1, -1]) {
+      matte.box(s * 0.66, 0.74, ZF0 - 0.014, s * 0.9, 1.08, ZF0 + 0.002, 0x101114);
+      const cx = s * 0.78, cy = 0.91;
+      fx.hl0.box(cx - 0.012, cy - 0.11, ZF0, cx + 0.012, cy + 0.11, ZF0 + 0.012, HLC);                                   // 세로 기둥
+      fx.hl1.box(cx - 0.0, cy + 0.1, ZF0, cx + s * 0.1, cy + 0.124, ZF0 + 0.012, HLC);                                  // 위 가로
+      fx.hl2.box(cx - 0.0, cy - 0.124, ZF0, cx + s * 0.1, cy - 0.1, ZF0 + 0.012, HLC);                                  // 아래 가로
+      const pj = new THREE.CylinderGeometry(0.045, 0.045, 0.012, 16); pj.rotateX(Math.PI / 2); fx.hl3.add(pj, mtx(cx + s * 0.055, cy, ZF0 + 0.006), HLC);   // 프로젝터
+      fx.hl4.box(s * 0.36, 0.55, ZF0 + 0.07, s * 0.62, 0.575, ZF0 + 0.082, HLC);                                       // 범퍼 안 안개등 띠
+      chrome.box(s * 0.5, 0.48, ZF0 + 0.06, s * 0.58, 0.56, ZF0 + 0.12, CU);                                            // 견인 고리
+    }
+    matte.box(-0.98, 0.46, 2.7, 0.98, 0.66, 2.92, CB); chrome.box(-0.72, 0.4, 2.62, 0.72, 0.47, 2.95, TI, -0.25);     // 범퍼 · 스키드 플레이트
+    topStrip(chrome, B, 0.34, 0.355, 1.4, 2.6, TI); topStrip(chrome, B, -0.355, -0.34, 1.4, 2.6, TI);
+    // 지붕: 앞쪽 LED 바(여섯 칸) · 그 앞 마커등 · 루프 레일
+    const ry = Cb.roof(0.6);
+    matte.box(-0.86, ry, 0.5, 0.86, ry + 0.07, 0.64, 0x16171a);
+    for (let j = 0; j < 6; j++) { const x0 = -0.82 + j * 0.275; fx['bar' + j].box(x0, ry + 0.012, 0.642, x0 + 0.26, ry + 0.058, 0.652, HLC); }
+    for (let i = -2; i <= 2; i++) fx.amber.box(i * 0.16 - 0.03, ry - 0.03, 0.78, i * 0.16 + 0.03, ry - 0.005, 0.83, AMBER);
+    for (const s of [1, -1]) { const rail = [-0.35, 0.1, 0.45].map((z) => { const [x, y] = Cb.pt(z, s > 0 ? 0.28 : 0.72); return [x, y + 0.03, z]; }); curve(chrome, rail, 0.014, TI); }
+    // 실내: 차콜 가죽 + 구리색 바느질 · 티타늄 대시 선 · 앰버 앰비언트 (픽업과 같은 좌석·핸들 자리)
+    for (const s of [1, -1]) {
+      matte.box(s * 0.12, 0.75, -0.05, s * 0.75, 1.0, 0.45, SEAT); matte.box(s * 0.12, 0.98, -0.2, s * 0.75, 1.6, -0.08, SEAT, -0.12);
+      for (let k = 0; k < 4; k++) matte.box(s * 0.16, 1.08 + k * 0.12, -0.075 - k * 0.012, s * 0.71, 1.088 + k * 0.12, -0.07 - k * 0.012, CU, -0.12);
+    }
+    matte.box(-0.88, 1.0, 0.8, 0.88, 1.18, 1.2, 0x202226); chrome.box(-0.86, 1.12, 0.795, 0.86, 1.13, 0.8, TI); fx.amb.box(-0.86, 1.09, 0.792, 0.86, 1.098, 0.797, AMB);
+    for (const s of [1, -1]) curve(fx.amb, [-0.4, 0.2, 0.8].map((z) => [s * (Cb.wc(z) - 0.05), Cb.base(z) + 0.035, z]), 0.006, AMB);
+    matte.add(new THREE.TorusGeometry(0.18, 0.028, 6, 16), mtx(0.42, 1.24, 0.72, -0.5, 0, 0), 0x121315);
+    { const g = new THREE.CylinderGeometry(0.05, 0.05, 0.024, 4); g.rotateX(Math.PI / 2); g.rotateZ(Math.PI / 4); g.rotateX(-0.5); chrome.add(g, mtx(0.42, 1.24, 0.72), CU); }
+    calipers(chrome, wheels, WW, CU);
+    return { gloss, matte, sglass, chrome, fx, wheel: tireKnob(WR, WW), rim: rimTitan(WR, WW), wheels, wr: WR,
+      efx: { kind: 'titan', screens: [{ id: 'cluster', p: [0.42, 1.235, 0.93], w: 0.3, h: 0.11, rx: -0.4 }, { id: 'center', p: [0, 1.235, 0.95], w: 0.36, h: 0.15, rx: -0.36 }],
+        under: { w: 2.5, l: 3.4, z: 0.4 }, beams: [[0.78, 0.91, 2.84], [-0.78, 0.91, 2.84]], trail: null } };
+  }
+
+  // ---------- 엡실론 SOVEREIGN ECLIPSE (EP-V004): 길고 우아한 초호화 의전 세단 — 세단 자리(좌석·물리)에 겉모습만 ----------
+  //  위는 블랙 펄 · 아래는 실버 투톤(경계에 크롬 코치 라인) · 곧게 선 크롬 그릴(빛이 아래에서 위로 차오름) · 두꺼운 C 필러와 짙은 프라이버시 유리
+  //  움직이는 부품: 보닛 장식(mov.orn — 시동 때 솟아오르고 내리면 들어감) · 뒤 '이클립스' 원형 등 · 실내 스타라이트 천장 · 문 옆 바닥에 엠블럼 조명(웰컴 라이트)
+  //  fx: hl0~4 · grille0~4(아래→위) · ring 원형 테일 · emb · brake(원 안을 채움) · amb(스타라이트 · 앰비언트)
+  function buildSovereign(sk) {
+    const BKP = sk.paint, SL = sk.silver, CB = 0x121214, DK = 0x08080a, IV = 0xd8cfc0;
+    const gloss = new VB(), matte = new VB(), sglass = new VB(), chrome = new VB();
+    const fx = { hl0: new VB(), hl1: new VB(), hl2: new VB(), hl3: new VB(), hl4: new VB(), ring: new VB(), emb: new VB(), brake: new VB(), amb: new VB() };
+    for (let i = 0; i < 5; i++) fx['grille' + i] = new VB();
+    const HLC = 0xf4f8ff, EMB = 0xe8eeff, RED = 0xff2a36, AMB = 0xe8f0ff;
+    const WR = 0.36, WW = 0.26, WX = 0.82, ZF = 1.55, ZR = -1.42, wheels = [[WX, WR, ZF, 1], [-WX, WR, ZF, 1], [WX, WR, ZR, 0], [-WX, WR, ZR, 0]];
+    const B = makeBody({ z0: -2.48, z1: 2.52,
+      hw: [[-2.48, 0.86], [-2.2, 0.93], [-1.4, 0.95], [0, 0.95], [1.55, 0.95], [2.2, 0.93], [2.52, 0.88]],
+      y0: [[-2.48, 0.36], [-2.2, 0.28], [2.2, 0.28], [2.52, 0.34]],
+      y1: [[-2.48, 0.92], [-2.2, 0.98], [-1.6, 1.0], [-1.0, 0.98], [0.8, 0.97], [1.6, 0.95], [2.2, 0.93], [2.52, 0.9]],
+      n: 4.4, tb: 0.14, mid: 0.42, wheels: [archW(ZF, WR, WR, WX, WW), archW(ZR, WR, WR, WX, WW)] });
+    loftBody(B, gloss, (x, y, z) => (y < 0.3 ? CB : y < 0.66 ? SL : BKP));
+    const side = (z, y, d = 0.004) => B.sideX(z, y) + d;
+    const Cb = makeCabin(B, { z0: -1.62, z1: 0.85, n: 3.8, tb: 0.1,
+      wc: [[-1.62, 0.7], [-1.3, 0.8], [-0.4, 0.83], [0.4, 0.82], [0.85, 0.72]],
+      roof: [[-1.62, 1.0], [-1.45, 1.3], [-1.2, 1.43], [-0.4, 1.47], [0.25, 1.46], [0.55, 1.3], [0.85, 1.0]] });
+    loftCabin(Cb, cabinKey({ vS: 0.2, vP: 0.05, trimH: 0.03, zC: -0.95, zB: -0.32, bw: 0.06, trim: [chrome, SL], pillar: [gloss, BKP], bpil: [gloss, BKP], glass: [sglass, 0x2a2f3c], roof: [gloss, BKP], zRF: 0.4, zRR: -1.25, rear: [sglass, 0x2a2f3c] }));
+    for (const s of [1, -1]) {
+      curve(chrome, [2.3, 1.6, 0.8, 0, -0.8, -1.6, -2.3].map((z) => [s * side(z, 0.66), 0.66, z]), 0.006, SL);   // 코치 라인 (투톤 경계)
+      curve(chrome, [2.2, 1.0, -0.2, -1.4, -2.2].map((z) => [s * side(z, 0.33), 0.33, z]), 0.005, SL);
+      for (const z of [0.35, -0.7]) chrome.box(s * side(z, 0.86, 0), 0.85, z - 0.09, s * side(z, 0.86, 0.014), 0.87, z + 0.09, SL);
+      mirror(gloss, s, Cb.wc(0.62) - 0.02, Cb.base(0.62) + 0.09, 0.62, BKP);
+      // 헤드램프: 그릴 옆으로 가늘게 펼쳐지는 다섯 칸 + 아래 눈썹
+      matte.box(s * 0.36, 0.72, 2.505, s * 0.86, 0.84, 2.52, 0x101114);
+      for (let i = 0; i < 5; i++) { const x = 0.4 + i * 0.09; fx['hl' + i].box(s * x, 0.77, 2.52, s * (x + 0.08), 0.8, 2.53, HLC); }
+      fx.hl4.box(s * 0.4, 0.735, 2.522, s * 0.84, 0.745, 2.53, HLC);
+      // 뒤: 이클립스 원형 등 (빛나는 고리 + 브레이크 때 채워지는 원)
+      const rg = new THREE.TorusGeometry(0.1, 0.014, 6, 28); fx.ring.add(rg, mtx(s * 0.62, 0.8, -2.49), RED);
+      const dg = new THREE.CircleGeometry(0.084, 24); dg.rotateY(Math.PI); fx.brake.add(dg, mtx(s * 0.62, 0.8, -2.492), RED);
+      matte.add(new THREE.CircleGeometry(0.12, 24).rotateY(Math.PI), mtx(s * 0.62, 0.8, -2.486), DK);
+      chrome.add(new THREE.TorusGeometry(0.124, 0.006, 4, 28), mtx(s * 0.62, 0.8, -2.488), SL);
+    }
+    // 그릴: 곧게 선 크롬 테 + 세로 살 + 빛나는 가로 줄(아래→위로 차오름)
+    const ZF0 = 2.528;
+    matte.box(-0.31, 0.42, ZF0 - 0.012, 0.31, 0.9, ZF0, DK);
+    for (let i = 0; i < 5; i++) { const y = 0.47 + i * 0.09; fx['grille' + i].box(-0.28, y, ZF0, 0.28, y + 0.012, ZF0 + 0.006, AMB); }
+    for (let i = -6; i <= 6; i++) chrome.box(i * 0.044 - 0.006, 0.43, ZF0 + 0.006, i * 0.044 + 0.006, 0.89, ZF0 + 0.02, SL);
+    chrome.box(-0.34, 0.89, ZF0 - 0.006, 0.34, 0.93, ZF0 + 0.03, SL); chrome.box(-0.34, 0.39, ZF0 - 0.006, 0.34, 0.43, ZF0 + 0.03, SL);
+    for (const s of [1, -1]) chrome.box(s * 0.31, 0.39, ZF0 - 0.006, s * 0.345, 0.93, ZF0 + 0.03, SL);
+    fx.emb.box(-0.03, 0.64, ZF0 + 0.02, 0.03, 0.7, ZF0 + 0.032, EMB, 0, 0, Math.PI / 4);
+    chrome.box(-0.86, 0.3, 2.5, 0.86, 0.36, 2.58, SL); matte.box(-0.6, 0.31, 2.55, 0.6, 0.37, 2.58, DK);
+    // 뒤: 엠블럼 · 크롬 띠 · 타원 배기 테
+    chrome.box(-0.05, 0.76, -2.505, 0.05, 0.86, -2.488, SL, 0, 0, Math.PI / 4); fx.emb.box(-0.028, 0.782, -2.512, 0.028, 0.838, -2.502, EMB, 0, 0, Math.PI / 4);
+    chrome.box(-0.42, 0.66, -2.5, 0.42, 0.672, -2.486, SL);
+    for (const s of [1, -1]) { const e = new THREE.CylinderGeometry(0.05, 0.05, 0.06, 16); e.rotateX(Math.PI / 2); e.scale(1.6, 1, 1); chrome.add(e, mtx(s * 0.5, 0.36, -2.48), SL); }
+    // 실내: 아이보리 가죽(검은 테두리) · 뒷좌석 독립 시트 · 스타라이트 천장 · 은빛 앰비언트
+    for (const s of [1, -1]) { matte.box(s * 0.18, 0.4, -0.48, s * 0.62, 0.62, -0.05, IV); matte.box(s * 0.18, 0.6, -0.56, s * 0.62, 1.2, -0.44, IV, -0.18); matte.box(s * 0.17, 0.6, -0.565, s * 0.19, 1.2, -0.44, CB, -0.18); }
+    for (const s of [1, -1]) { matte.box(s * 0.16, 0.4, -1.4, s * 0.6, 0.6, -0.95, IV); matte.box(s * 0.18, 0.58, -1.44, s * 0.58, 1.1, -1.34, IV, -0.12); }
+    matte.box(-0.12, 0.4, -1.42, 0.12, 0.72, -0.95, CB);
+    matte.box(-0.7, 0.72, 0.5, 0.7, 0.9, 0.9, CB); chrome.box(-0.68, 0.84, 0.494, 0.68, 0.85, 0.5, SL); fx.amb.box(-0.68, 0.81, 0.492, 0.68, 0.818, 0.497, AMB);
+    steering(matte);
+    { let seed = 7; const rnd2 = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); for (let i = 0; i < 70; i++) { const z = -1.3 + rnd2() * 1.6, x = (rnd2() - 0.5) * 1.1, y = Cb.roof(z) - 0.05 - Math.abs(x) * 0.08; fx.amb.box(x - 0.005, y - 0.005, z - 0.005, x + 0.005, y + 0.002, z + 0.005, 0xffffff); } }
+    calipers(matte, wheels, WW, SL);
+    // 보닛 장식: 은빛 네 갈래 별 (pivot = 보닛 앞 윗면, 시동 때 솟아오름)
+    const oz = 2.38, orn = { pivot: [0, B.topY(oz, 0) - 0.005, oz], chrome: new VB(), fx: { emb2: new VB() } };
+    tube(orn.chrome, [0, -0.1, 0], [0, 0.05, 0], 0.01, SL, 8);
+    orn.chrome.box(-0.006, 0.03, -0.004, 0.006, 0.15, 0.004, SL); orn.chrome.box(-0.05, 0.084, -0.004, 0.05, 0.096, 0.004, SL);
+    orn.chrome.box(-0.03, 0.06, -0.004, 0.03, 0.12, 0.004, SL, 0, 0, Math.PI / 4);
+    orn.fx.emb2.box(-0.012, 0.078, 0.005, 0.012, 0.102, 0.011, EMB, 0, 0, Math.PI / 4);
+    return { gloss, matte, sglass, chrome, fx, mov: { orn }, wheel: tireGeo(WR, WW), rim: rimGeo2(WR, WW, { n: 7, twin: true, c: 0xd6dadf, lip: 0xeef0f2, wd: 0.022 }), wheels, wr: WR,
+      efx: { kind: 'sovereign', screens: [{ id: 'cluster', p: [0.4, 0.93, 0.56], w: 0.28, h: 0.1, rx: -0.5 }, { id: 'center', p: [0, 0.94, 0.58], w: 0.32, h: 0.13, rx: -0.45 }],
+        under: null, puddle: [[1.25, -0.55], [-1.25, -0.55]], beams: [[0.6, 0.78, 2.54], [-0.6, 0.78, 2.54]], trail: { y: 0.7, z0: -2.2, z1: 2.0, x: 0.97 } } };
+  }
   for (const [id, sk] of Object.entries(VSKINS)) {
     if (sk.cls === 'sport') VehModels.register(id, () => buildSport(sk));
     else if (sk.cls === 'lux') VehModels.register(id, () => buildLux(sk));
     else if (sk.cls === 'hyper') VehModels.register(id, () => buildHyper(sk));
     else if (sk.cls === 'imperial') VehModels.register(id, () => buildImperial(sk));
+    else if (sk.cls === 'aurelion') VehModels.register(id, () => buildAurelion(sk));
+    else if (sk.cls === 'titan') VehModels.register(id, () => buildTitan(sk));
+    else if (sk.cls === 'sovereign') VehModels.register(id, () => buildSovereign(sk));
     else if (sk.cls === 'racer' || sk.cls === 'cruiser') VehModels.register(id, () => buildMotoSkin(sk, sk.cls));
     else if (sk.veh === 'horse') VehModels.register(id, () => K.buildHorse(HORSE[sk.cls]));
   }

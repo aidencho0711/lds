@@ -275,6 +275,8 @@ const VehModels = (() => {
     for (const k of KEYS) if (B[k]) o[k] = B[k].build();
     if (B.steer) { o.steer = { pivot: B.steer.pivot }; for (const k of KEYS) if (B.steer[k]) o.steer[k] = B.steer[k].build(); }
     if (B.fx) { o.fx = {}; for (const k in B.fx) { const g = B.fx[k].build(); if (g) o.fx[k] = g; } }   // 엡실론: 차량마다 따로 빛나는 부분
+    // 엡실론: 움직이는 부품(액티브 윙 · 보닛 장식 등) — pivot 기준 좌표로 지은 VB 묶음
+    if (B.mov) { o.mov = {}; for (const id in B.mov) { const M0 = B.mov[id], m = { pivot: M0.pivot }; for (const k of KEYS) if (M0[k]) m[k] = M0[k].build(); if (M0.fx) { m.fx = {}; for (const f in M0.fx) { const g = M0.fx[f].build(); if (g) m.fx[f] = g; } } o.mov[id] = m; } }
     if (B.neckVB) { o.neck = B.neckVB.build(); o.tailG = B.tailVB.build(); if (B.neckTack) o.neckTack = B.neckTack.build(); }
     return (GEO[key] = o);
   }
@@ -292,6 +294,15 @@ const VehModels = (() => {
     for (const k of KEYS) add(body, G[k], matOf(k), !!SHADOW_K[k]);
     // 엡실론 차량: 빛나는 부분은 재질을 한 대마다 따로 (08_vehicle_eps.js 가 시동·주행·정차에 따라 밝기를 바꿈). 처음은 진열용으로 켜 둔 상태
     if (G.fx) { parts.fx = {}; for (const k in G.fx) { const m = new THREE.Mesh(G.fx[k], new THREE.MeshBasicMaterial({ vertexColors: true })); m.userData.fx = true; if (k === 'brake') m.visible = false; if (k === 'tail') m.material.color.setScalar(0.55); body.add(m); parts.fx[k] = m; parts.meshes.push(m); } parts.efx = B.efx || null; }
+    if (G.mov) {
+      parts.mov = {}; parts.fx = parts.fx || {};
+      for (const id in G.mov) {
+        const M0 = G.mov[id], grp = new THREE.Group(); grp.position.fromArray(M0.pivot); grp.userData.p0 = M0.pivot.slice(); body.add(grp);
+        for (const k of KEYS) add(grp, M0[k], matOf(k), !!SHADOW_K[k]);
+        if (M0.fx) for (const f in M0.fx) { const m = new THREE.Mesh(M0.fx[f], new THREE.MeshBasicMaterial({ vertexColors: true })); m.userData.fx = true; if (f.startsWith('brake')) m.visible = false; grp.add(m); parts.fx[f] = m; parts.meshes.push(m); }
+        parts.mov[id] = grp;
+      }
+    }
     const wheelM = B.wheelMat ? M[B.wheelMat] : M.matte;
     if (B.wheels) for (const [x, y, z, front] of B.wheels) {
       if (front && G.steer) continue; // 오토바이 앞바퀴는 핸들 뭉치에

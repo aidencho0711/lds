@@ -428,6 +428,9 @@ const Audio = (() => {
     pickup: { f0: 28, f1: 78, lp: 820, g: 0.24, w2: 'square' },
     uaz: { f0: 24, f1: 66, lp: 700, g: 0.27, w2: 'sawtooth' },
     imperial: { f0: 30, f1: 98, lp: 1250, g: 0.22, w2: 'triangle' },   // 엡실론 IMPERIAL X-01: 더 높고 매끄러운 다기통 소리
+    aurelion: { f0: 44, f1: 170, lp: 2400, g: 0.2, w2: 'square' },     // AURELION GT: 높이 도는 하이퍼카
+    titan: { f0: 21, f1: 58, lp: 640, g: 0.29, w2: 'sawtooth' },        // TITAN VANGUARD: 낮고 굵은 터보 디젤
+    sovereign: { f0: 27, f1: 74, lp: 860, g: 0.15, w2: 'sine' },        // SOVEREIGN ECLIPSE: 아주 조용하고 부드러운 대배기량
     moto: { f0: 50, f1: 165, lp: 1800, g: 0.19, w2: 'square' },
   };
   const engines = new Map();
@@ -709,8 +712,23 @@ const Audio = (() => {
       const t = ctx.currentTime; tone(out, t, 0.09, 'sine', 110, 55, 0.7); noise(out, t, 0.06, 'lowpass', 900, 0.8, 0.6);
     },
     // 엡실론 차량 시동 (IMPERIAL X-01): 디지털 차임 두 음 → 시동 모터 → 점화 → 낮게 깔리며 올라가는 엔진 + 터빈 같은 높은 소리
+    //  AURELION = 짧은 전자음 → 날카로운 회전 블립 두 번 · TITAN = 무거운 쿵 → 디젤 덜컥임 → 터보 휘파람 · SOVEREIGN = 우아한 세 음 차임 → 거의 들리지 않는 부드러운 시동
     vehStart(kind, pos, own) {
       if (!ctx) return; const out = spatial(own ? null : pos, own ? 0.55 : 0.75, 90); if (!out) return; const t = ctx.currentTime;
+      if (kind === 'aurelion') {
+        tone(out, t, 0.12, 'square', 2200, 2900, 0.05); noise(out, t + 0.1, 0.25, 'highpass', 3000, 0.7, 0.08);
+        for (const d of [0.35, 0.75]) { tone(out, t + d, 0.32, 'sawtooth', 110, 760, 0.16); tone(out, t + d, 0.32, 'square', 55, 380, 0.08); noise(out, t + d + 0.25, 0.08, 'bandpass', 1800, 3, 0.25); }
+        tone(out, t + 1.1, 1.0, 'sawtooth', 160, 230, 0.07); return;
+      }
+      if (kind === 'titan') {
+        tone(out, t, 0.2, 'sine', 60, 32, 0.6); noise(out, t, 0.25, 'lowpass', 300, 0.8, 0.5);
+        for (let i = 0; i < 6; i++) noise(out, t + 0.3 + i * 0.08, 0.06, 'bandpass', 420, 2, 0.25);
+        tone(out, t + 0.35, 1.5, 'sawtooth', 26, 58, 0.18); tone(out, t + 0.6, 1.2, 'sine', 1200, 3400, 0.03); return;
+      }
+      if (kind === 'sovereign') {
+        tone(out, t, 0.5, 'sine', 784, 784, 0.07); tone(out, t + 0.18, 0.55, 'sine', 988, 988, 0.06); tone(out, t + 0.36, 0.8, 'sine', 1175, 1175, 0.06);
+        tone(out, t + 0.9, 1.6, 'sine', 40, 70, 0.12); noise(out, t + 0.9, 1.2, 'lowpass', 260, 0.7, 0.06); return;
+      }
       tone(out, t, 0.22, 'sine', 1318, 1318, 0.11); tone(out, t + 0.15, 0.36, 'sine', 1976, 1976, 0.09);
       tone(out, t + 0.32, 0.42, 'sawtooth', 150, 250, 0.06); noise(out, t + 0.32, 0.42, 'bandpass', 900, 2, 0.1);
       tone(out, t + 0.74, 0.14, 'sine', 72, 38, 0.55); noise(out, t + 0.74, 0.2, 'lowpass', 520, 0.8, 0.35);
