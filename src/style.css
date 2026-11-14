@@ -1359,7 +1359,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
   .bp-ico .ico-cur { width: 20px; height: 20px; } .bp-box { width: 22px; height: 19px; }
   .bp-cell b { font-size: 0.66rem; } .bp-buy { padding: 5px 8px; } .bp-buy-txt { font-size: 0.76rem; }
   .bp-how-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .lb-tabs { gap: 9px; } .lb-tabs button { font-size: 0.92rem; }
+  .lb-tabs { gap: 13px; } .lb-tabs button { font-size: 0.92rem; }
 }
 
 /* ---------- v20 엡실론 처치: 킬 로그 줄 · 처치 휘장 (스킨 색 --sk1 / --sk2 · 총마다 다른 문양과 움직임) ---------- */
@@ -1404,3 +1404,82 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 @keyframes skIco { 0% { transform: scale(2.4) rotate(-40deg); opacity: 0; } 22% { transform: scale(1) rotate(0); opacity: 1; } }
 @media (max-height: 500px) { #skinKill.eps { width: 118px; height: 118px; margin-left: -59px; } #skinKill.eps::after { inset: 18px; } #skinKill.eps .sk-ico { font-size: 19px; } #skinKill.eps b { font-size: 1.1rem; } #skinKill.eps u { font-size: 0.5rem; } }
 @media (prefers-reduced-motion: reduce) { .kf.eps, .kf.eps::after, .kf.eps .eps-ico, .kf.eps .kf-eps b { animation: none; } }
+
+/* ---------- v20 랭킹 (로비 '랭킹' 탭 · 10_ranking.js) ---------- */
+.lb-left.tab-ladder { width: min(620px, 56vw); }
+.lb-left.tab-ladder .lb-launch { display: none; }
+.lb-left.tab-ladder .panel-pane { flex: 1 1 auto; }
+.lad-pane { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.lad-pane[hidden] { display: none; }
+.lad-tabs { display: flex; gap: 6px; }
+.lad-tabs button { flex: 1 1 0; appearance: none; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); color: var(--dim); font: 700 0.86rem/1 var(--f-display); letter-spacing: 0.05em; padding: 7px 6px; border-radius: 4px; cursor: pointer; }
+.lad-tabs button.on { color: var(--amber-ink); background: var(--amber); border-color: var(--amber); }
+.lad-champ { display: flex; flex-direction: column; gap: 6px; }
+.lad-c { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 6px; border: 1px solid rgba(255, 211, 107, 0.7); overflow: hidden;
+  background: radial-gradient(120% 140% at 0% 50%, rgba(255, 211, 107, 0.28), rgba(255, 211, 107, 0.04) 60%), rgba(10, 9, 14, 0.6); box-shadow: inset 0 0 22px rgba(255, 211, 107, 0.18); }
+.lad-c::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.22) 50%, transparent 64%); transform: translateX(-120%); animation: kfSheen 3.6s ease-in-out infinite; pointer-events: none; }
+.lad-c.me { border-color: #fff3c4; box-shadow: inset 0 0 26px rgba(255, 211, 107, 0.3), 0 0 14px rgba(255, 211, 107, 0.4); }
+.lad-crown { position: absolute; left: 4px; top: 4px; width: 22px; height: 22px; display: grid; place-items: center; font: 900 0.9rem/1 var(--f-display); color: #3a2402; background: linear-gradient(135deg, #fff3c4, #ffd36b 50%, #c98a14); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); z-index: 2; }
+.lad-cn { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.lad-cn small { font-size: 0.66rem; color: #ffd36b; letter-spacing: 0.08em; }
+.lad-cn b { font-size: 1.15rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.lad-name b i, .lad-cn b i { font-style: normal; font-size: 0.62rem; padding: 1px 5px; margin-left: 4px; border-radius: 3px; background: var(--amber); color: var(--amber-ink); vertical-align: 2px; }
+.lad-rw { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border: 1px dashed rgba(255, 211, 107, 0.45); border-radius: 4px; align-self: flex-start; }
+.lad-rw small { font-size: 0.64rem; color: var(--dim); }
+.lad-empty { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255, 255, 255, 0.02); }
+.lad-empty b { font-size: 0.9rem; } .lad-empty small { font-size: 0.7rem; color: var(--dim); }
+.lad-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.lad-row { display: grid; grid-template-columns: 30px auto 1fr auto; align-items: center; gap: 9px; padding: 4px 10px 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: rgba(255, 255, 255, 0.025); }
+.lad-row.me { border-color: var(--amber); background: rgba(240, 164, 58, 0.14); }
+.lad-pos { text-align: center; font: 800 1rem/1 var(--f-display); color: var(--dim); }
+.lad-row.p1 { border-color: rgba(255, 211, 107, 0.75); background: linear-gradient(90deg, rgba(255, 211, 107, 0.2), rgba(255, 255, 255, 0.02) 60%); }
+.lad-row.p2 { border-color: rgba(214, 222, 230, 0.6); background: linear-gradient(90deg, rgba(214, 222, 230, 0.14), rgba(255, 255, 255, 0.02) 60%); }
+.lad-row.p3 { border-color: rgba(214, 140, 80, 0.6); background: linear-gradient(90deg, rgba(214, 140, 80, 0.16), rgba(255, 255, 255, 0.02) 60%); }
+.lad-row.p1 .lad-pos { color: #ffd36b; font-size: 1.2rem; text-shadow: 0 0 8px rgba(255, 211, 107, 0.7); }
+.lad-row.p2 .lad-pos { color: #e4ebf2; font-size: 1.1rem; }
+.lad-row.p3 .lad-pos { color: #e09a5c; font-size: 1.1rem; }
+.lad-name { min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lad-name b { font-size: 0.86rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.lad-name .ttl { font-size: 0.62rem; padding: 1px 10px; }
+.lad-lv, .lad-tier span { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.lad-lv b, .lad-tier b { font: 800 0.92rem/1 var(--f-display); letter-spacing: 0.03em; white-space: nowrap; }
+.lad-lv small, .lad-tier small { font-size: 0.62rem; color: var(--dim); white-space: nowrap; }
+.lad-tier { display: flex; align-items: center; gap: 6px; }
+.lad-tier img { width: 32px; height: 32px; object-fit: contain; }
+.lad-c .lad-tier img { width: 46px; height: 46px; } .lad-c .lad-lv b, .lad-c .lad-tier b { font-size: 1.1rem; }
+.lad-sep { font: 700 0.7rem/1 var(--f-display); letter-spacing: 0.12em; color: var(--dim); margin: 4px 0 3px; }
+/* 랭킹 1위 테두리 · 칭호 */
+.fr-champ_lv { --rg: conic-gradient(#fff3c4, #6fd36a 50deg, #1d5a1a 130deg, #ffd36b 200deg, #6fd36a 280deg, #fff3c4); --w: calc(var(--s) * 0.12); --gl: rgba(160, 230, 120, 0.8); }
+.fr-champ_lv .pf-ring { animation: pfSpin 3.2s linear infinite; }
+.fr-champ_lv::after, .fr-champ_tier::after, .fr-champ_hc::after { animation: pfPulse 2s ease-in-out infinite; }
+.fr-champ_lv .pf-orn { animation: pfFloat 2.4s ease-in-out infinite; }
+.pf-rays.lv { background: repeating-conic-gradient(rgba(170, 240, 130, 0.55) 0 5deg, transparent 5deg 15deg); }
+.fr-champ_tier { --rg: conic-gradient(#ffffff, #ffd36b 40deg, #5a2aa8 120deg, #7ad7ff 200deg, #ffd36b 280deg, #ffffff); --w: calc(var(--s) * 0.13); --gl: rgba(150, 190, 255, 0.95); }
+.fr-champ_tier .pf-ring { animation: pfSpin 2.2s linear infinite; }
+.fr-champ_tier .pf-orn { animation: pfFloat 2s ease-in-out infinite; }
+.fr-champ_hc { --rg: conic-gradient(#ffb02e, #c4203a 60deg, #1a0505 150deg, #ff3352 220deg, #c4203a 290deg, #ffb02e); --w: calc(var(--s) * 0.13); --gl: rgba(255, 50, 60, 0.9); }
+.fr-champ_hc .pf-ring { animation: pfSpin 1.8s linear infinite; box-shadow: 0 0 0 calc(var(--s) * 0.03) #120202; }
+.ttl-champ_lv { background: linear-gradient(90deg, rgba(20, 70, 20, 0), #1d5a1a 12%, #6fd36a 40%, #ffd36b 60%, #1d5a1a 88%, rgba(20, 70, 20, 0)); border-color: rgba(255, 230, 150, 0.9); }
+.ttl-champ_lv::before { content: '1'; color: #fff3c4; font-weight: 900; }
+.ttl-champ_tier { background: linear-gradient(90deg, rgba(60, 20, 120, 0), #5a2aa8 12%, #3a8ad8 40%, #ffd36b 62%, #5a2aa8 88%, rgba(60, 20, 120, 0)); border-color: rgba(200, 225, 255, 0.95); background-size: 200% 100%; animation: ttlFlow 4s linear infinite; }
+.ttl-champ_tier::before { content: '♛'; color: #fff3c4; }
+.ttl-champ_hc { background: linear-gradient(90deg, rgba(40, 0, 0, 0), #2a0505 10%, #c4203a 40%, #ff7a18 60%, #2a0505 90%, rgba(40, 0, 0, 0)); border-color: rgba(255, 120, 80, 0.95); }
+.ttl-champ_hc::before { content: '1'; color: #ffb02e; font-weight: 900; }
+@keyframes ttlFlow { to { background-position: -200% 0; } }
+@media (max-height: 520px), (max-width: 860px) {
+  .lb-left.tab-ladder { width: min(560px, 62vw); }
+  .lad-pane { gap: 5px; }
+  .lad-tabs button { padding: 5px 4px; font-size: 0.76rem; }
+  .lad-c { padding: 6px 8px 6px 14px; gap: 8px; } .lad-cn b { font-size: 0.95rem; }
+  .lad-row { padding: 2px 8px 2px 4px; gap: 6px; grid-template-columns: 24px auto 1fr auto; }
+  .lad-name b { font-size: 0.76rem; } .lad-tier img { width: 26px; height: 26px; }
+}
+@media (prefers-reduced-motion: reduce) { .lad-c::after, .ttl-champ_tier { animation: none; } }
+/* 로비 탭이 7개(랭킹 추가) — 넓은 화면에서도 탭이 왼쪽 위 계정·레벨과 겹치지 않게 화면 폭에 맞춰 글자·간격을 줄임 */
+@media (min-width: 861px) and (min-height: 521px) {
+  .lb-tabs { gap: clamp(12px, 1.6vw, 26px); }
+  .lb-tabs button { font-size: clamp(1.05rem, 1.35vw + 0.3rem, 1.7rem); }
+}
+/* 랭킹 목록: 테두리 장식(날개·월계수)이 이름·순위에 닿지 않게 */
+.lad-row .pf { margin: 0 5px; }
+.lad-c .pf { margin: 0 10px 0 8px; }

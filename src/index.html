@@ -17,6 +17,7 @@
         <div class="lb-tabs" id="lbTabs">
           <button type="button" data-tab="play" class="on">플레이</button>
           <button type="button" data-tab="record">전적</button>
+          <button type="button" data-tab="ladder">랭킹</button>
           <button type="button" data-tab="custom">창고</button>
           <button type="button" data-tab="shop">상점<i class="tab-dot" id="shopDot" hidden></i></button>
           <button type="button" data-tab="mission">미션<i class="tab-dot" id="misDot" hidden></i></button>
@@ -68,6 +69,15 @@
           <div class="eyebrow mt">최근 경기</div>
           <ol class="recent" id="recent"></ol>
           <button class="btn mt" type="button" data-ui="ranks">랭크 티어표</button>
+        </div>
+        <!-- 랭킹: 레벨 · 랭크 티어 · 하드코어 1~15위 (10_ranking.js) -->
+        <div class="pane panel-pane lad-pane" data-pane="ladder" hidden>
+          <div class="shop-top"><span class="eyebrow">랭킹 · TOP 15</span><button class="btn sm" type="button" id="ladRefresh">새로고침</button></div>
+          <div class="lad-tabs" id="ladTabs"><button type="button" data-k="lv" class="on">레벨</button><button type="button" data-k="tier">랭크 티어</button><button type="button" data-k="hc">하드코어</button></div>
+          <div class="lad-champ" id="ladChamp"></div>
+          <ol class="lad-list" id="ladList"></ol>
+          <div id="ladMe"></div>
+          <p class="micro" id="ladNote"></p>
         </div>
         <!-- 창고: 슬롯별 스킨 -->
         <div class="pane panel-pane" data-pane="custom" hidden>

@@ -963,8 +963,9 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     document.querySelectorAll('#lobby .pane').forEach((p) => { p.hidden = p.dataset.pane !== t; });
     $('segQueue').style.visibility = t === 'play' ? '' : 'hidden';
     const L = document.querySelector('.lb-left'); L.className = 'lb-left tab-' + t + ((SETTINGS.queue === 'ranked' || SETTINGS.queue === 'hardcore') && Rank.unlocked() ? ' ranked' : '');
-    document.body.classList.toggle('lobby-wide', t === 'shop' || t === 'mission' || t === 'pass');
+    document.body.classList.toggle('lobby-wide', t === 'shop' || t === 'mission' || t === 'pass' || t === 'ladder');
     if (prev !== t || t === 'shop' || t === 'mission' || t === 'pass') Shop.onTab(t);
+    if (t === 'ladder') Ladder.open();   // 랭킹 (10_ranking.js)
     if (t === 'custom') { if (prev !== t) renderWarehouse(); showcase(); }   // 뽑기로 얻은 옷이 바로 보이게
   }
   const ringSet = (id, f) => { $(id).style.strokeDashoffset = (100.5 * (1 - clamp(f, 0, 1))).toFixed(1); };

@@ -44,6 +44,10 @@ const Prof = (() => {
     // 배틀패스 플러스 전용 테두리 2종
     { id: 'bp_plus', name: '패스 플러스', kind: 'title', title: 'bp_plus', desc: '칭호 「패스 플러스」(배틀패스 플러스 1단계)' },
     { id: 'bp_s1', name: '시즌 1 정복자', kind: 'title', title: 'bp_s1', desc: '칭호 「시즌 1 정복자」(배틀패스 플러스 50단계)' },
+    // 랭킹 1위 (10_ranking.js) — 1위를 빼앗기면 회수
+    { id: 'champ_lv', name: '정점의 베테랑', kind: 'title', title: 'champ_lv', desc: '레벨 랭킹 1위 (빼앗기면 회수)' },
+    { id: 'champ_tier', name: '랭크 챔피언', kind: 'title', title: 'champ_tier', desc: '랭크 티어 랭킹 1위 (빼앗기면 회수)' },
+    { id: 'champ_hc', name: '하드코어 패왕', kind: 'title', title: 'champ_hc', desc: '하드코어 랭킹 1위 (빼앗기면 회수)' },
   ];
   for (const f of FR) if (f.kind === 'tier') { f.name = RANK_TIERS[f.t].name; f.desc = `랭크 ${RANK_TIERS[f.t].name} 도달`; }
   // 장식(테두리 위·옆에 붙는 그림, viewBox -16..80) — 높은 티어일수록 많아짐
@@ -67,7 +71,17 @@ const Prof = (() => {
   // 배틀패스: 패스 플러스 = 위의 금빛 ＋ 명판과 양옆 화살 무늬 · 시즌 1 정복자 = 월계수와 별
   ORN.bp_plus = `<path d="M22 -12h20l4 8-4 8H22l-4-8z" fill="#ffd36b" stroke="#6b4a08" stroke-width="1.2"/><path d="M32 -9v10M27 -4h10" stroke="#3a2504" stroke-width="2.4" stroke-linecap="round"/><path d="M-6 22l6 4-6 4zM-6 34l6 4-6 4zM70 22l-6 4 6 4zM70 34l-6 4 6 4z" fill="#ffb347"/>`;
   ORN.bp_s1 = [-1, 1].map((s) => [0, 1, 2, 3, 4].map((i) => { const a = Math.PI / 2 + s * (0.5 + i * 0.36), x = 32 + Math.cos(a) * 36, y = 32 + Math.sin(a) * 36; return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="6" ry="2.6" transform="rotate(${(a * 180 / Math.PI + s * 55).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="#ffe08a" stroke="#8a5a08" stroke-width=".8"/>`; }).join('')).join('') + `<path d="M32 -14l3.4 7.4 8 .9-6 5.4 1.7 7.9-7.1-4.1-7.1 4.1 1.7-7.9-6-5.4 8-.9z" fill="#fff3c4" stroke="#b07a10" stroke-width="1.1"/>`;
-  const ORN_FX = { eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
+  // 랭킹 1위: 정점의 베테랑 = 위의 '1' 메달 + 양옆 월계수(초록·금) · 랭크 챔피언 = 보석 박힌 왕관 + 양옆 날개 + 아래 '1ST' 띠 · 하드코어 패왕 = 휘어 오른 두 뿔 + 붉은 '1' 보석 + 아래 가시
+  const laurel = (col, edge) => [-1, 1].map((s) => [0, 1, 2, 3, 4, 5].map((i) => { const a = Math.PI / 2 + s * (0.42 + i * 0.3), x = 32 + Math.cos(a) * 37, y = 32 + Math.sin(a) * 37; return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="6.4" ry="2.8" transform="rotate(${(a * 180 / Math.PI + s * 62).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="${col}" stroke="${edge}" stroke-width=".8"/>`; }).join('')).join('');
+  const medal1 = (cy, fill, edge, txt) => `<circle cx="32" cy="${cy}" r="9.5" fill="${fill}" stroke="${edge}" stroke-width="1.6"/><circle cx="32" cy="${cy}" r="7" fill="none" stroke="#fff" stroke-width=".7" opacity=".7"/><text x="32" y="${cy + 4.2}" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="12" fill="${txt}">1</text>`;
+  ORN.champ_lv = laurel('#6fd36a', '#1d5a1a') + `<path d="M24 -6l-6 -9h8l6 7zM40 -6l6 -9h-8l-6 7z" fill="#2fa84a" stroke="#0e3a14" stroke-width=".8"/>` + medal1(-3, '#ffd36b', '#7a4e05', '#3a2402');
+  ORN.champ_tier = [-1, 1].map((s) => `<path d="M${32 + s * 30} 22c${s * 10}-8 ${s * 19}-7 ${s * 22}-1-${s * 6}-1-${s * 9} 1-${s * 11} 4 ${s * 6}-1 ${s * 10} 0 ${s * 12} 3-${s * 7} 0-${s * 12} 2-${s * 15} 6z" fill="#7ad7ff" stroke="#fff" stroke-width=".9"/>`).join('')
+    + `<path d="M16 6l-2-15 9 7 9-12 9 12 9-7-2 15z" fill="#ffd36b" stroke="#7a4e05" stroke-width="1.2"/><circle cx="32" cy="-14" r="2.6" fill="#fff"/><path d="M32 -2l3.6 4-3.6 4-3.6-4z" fill="#c084fc" stroke="#fff" stroke-width=".7"/><circle cx="21" cy="1" r="1.8" fill="#7ad7ff"/><circle cx="43" cy="1" r="1.8" fill="#7ad7ff"/>`
+    + `<path d="M14 62h36l-4 6 4 6H14l4-6z" fill="#5a2aa8" stroke="#ffd36b" stroke-width="1.1"/><text x="32" y="71.5" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="8.5" fill="#fff3c4" letter-spacing=".6">1ST</text>`;
+  ORN.champ_hc = [-1, 1].map((s) => `<path d="M${32 + s * 20} 6C${32 + s * 30} -2 ${32 + s * 34} -10 ${32 + s * 30} -16C${32 + s * 40} -8 ${32 + s * 40} 6 ${32 + s * 28} 14z" fill="#2a1414" stroke="#ff3352" stroke-width="1.3"/><path d="M${32 + s * 27} -4l${s * 3} -2" stroke="#ff8a3c" stroke-width="1.2"/>`).join('')
+    + [-2, -1, 0, 1, 2].map((i) => { const x = 32 + i * 9, h = 9 - Math.abs(i) * 2; return `<path d="M${x - 3.2} 63l3.2 ${h}l3.2-${h}z" fill="#1a0a0a" stroke="#ff3352" stroke-width=".9"/>`; }).join('')
+    + `<path d="M32 -12l9 9-9 10-9-10z" fill="#c4203a" stroke="#ffb02e" stroke-width="1.3"/><text x="32" y="-0.6" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="10" fill="#fff">1</text>`;
+  const ORN_FX = { champ_lv: '<i class="pf-rays lv"></i>', champ_tier: '<i class="pf-rays"></i><i class="pf-orb"></i><i class="pf-orb b"></i>', champ_hc: '<i class="pf-rays hc"></i>', eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
   function frameHTML(fr, av, size = 44, extra = '') {
     const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id];
     return `<span class="pf fr-${f.id}${extra ? ' ' + extra : ''}" style="--s:${size}px">${ORN_FX[f.id] || ''}<span class="pf-av">${avatarSVG(av)}</span><span class="pf-ring"></span>${f.id === 'grandmaster' ? '<span class="pf-spk"><svg viewBox="-16 -16 96 96">' + o + '</svg></span>' : o ? `<span class="pf-orn"><svg viewBox="-16 -16 96 96">${o}</svg></span>` : ''}</span>`;
@@ -94,6 +108,10 @@ const Prof = (() => {
     { id: 'bp_run', name: BP_TITLES.bp_run, desc: '배틀패스 시즌 1 — 50단계 달성', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_run') },
     { id: 'bp_plus', name: BP_TITLES.bp_plus, desc: '배틀패스 플러스 구매 (테두리 함께)', prog: () => '배틀패스 플러스 필요', ok: () => Eco.bpTitle('bp_plus'), fr: 'bp_plus' },
     { id: 'bp_s1', name: BP_TITLES.bp_s1, desc: '배틀패스 플러스로 시즌 1 — 50단계 달성 (테두리 함께)', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_s1'), fr: 'bp_s1' },
+    // 랭킹 1위 (10_ranking.js): 1위인 동안만 — 다른 계정이 1위가 되면 칭호·테두리가 회수된다
+    { id: 'champ_lv', name: '정점의 베테랑', desc: '레벨 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('lv'), ok: () => Ladder.champ('lv'), fr: 'champ_lv' },
+    { id: 'champ_tier', name: '랭크 챔피언', desc: '랭크 티어 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('tier'), ok: () => Ladder.champ('tier'), fr: 'champ_tier' },
+    { id: 'champ_hc', name: '하드코어 패왕', desc: '하드코어 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('hc'), ok: () => Ladder.champ('hc'), fr: 'champ_hc' },
   ];
   // 하드코어 최고 티어 번호 (한 판도 안 했으면 -1)
   function hcPeakT() { const H = Rank.hc; return (H.games || 0) > 0 ? Rank.hcTierOf(Math.max(H.peak || 0, H.rp || 0)).t : -1; }
@@ -210,7 +228,7 @@ const Prof = (() => {
     if (show) {
       const m = Cloud.user ? my() : null;
       if (m && m.ti) items.push({ obj: L.rig.root, html: titleHTML(m.ti) });
-      (L.mates || []).forEach((r, i) => { const inf = (L.mateInfo || [])[i]; if (!inf || !r.root.visible) return; const pf = inf.pf || {}; items.push({ obj: r.root, html: `<span class="lbtag-name">${esc(inf.name || '')}</span>${pf.ti ? titleHTML(pf.ti) : ''}` }); });
+      (L.mates || []).forEach((r, i) => { const inf = (L.mateInfo || [])[i]; if (!inf || !r.root.visible) return; const pf = inf.pf || {}, ti = pf.ti && Ladder.allowed(pf.ti, inf.name) ? pf.ti : null; items.push({ obj: r.root, html: `<span class="lbtag-name">${esc(inf.name || '')}</span>${ti ? titleHTML(ti) : ''}` }); });
     }
     while (tagEls.length < items.length) { const d = document.createElement('div'); d.className = 'lbtag'; box.appendChild(d); tagEls.push(d); }
     const W = window.innerWidth, H = window.innerHeight, placed = [];
@@ -241,5 +259,5 @@ const Prof = (() => {
     $('profPanel').addEventListener('click', (e) => { if (e.target === $('profPanel')) close(); });
     renderChip();
   }
-  return { AV, FR, TI, my, set, open, close, render, renderChip, setup, lobbyTags, frameHTML, avatarSVG, titleHTML, titleName, ultraOwned, earned: () => TI.filter((t) => t.ok()).map((t) => t.id) };
+  return { AV, FR, TI, my, set, refresh: changed, open, close, render, renderChip, setup, lobbyTags, frameHTML, avatarSVG, titleHTML, titleName, ultraOwned, earned: () => TI.filter((t) => t.ok()).map((t) => t.id) };
 })();
