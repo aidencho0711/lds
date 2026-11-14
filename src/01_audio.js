@@ -427,6 +427,7 @@ const Audio = (() => {
     sedan: { f0: 34, f1: 92, lp: 950, g: 0.2, w2: 'square' },
     pickup: { f0: 28, f1: 78, lp: 820, g: 0.24, w2: 'square' },
     uaz: { f0: 24, f1: 66, lp: 700, g: 0.27, w2: 'sawtooth' },
+    imperial: { f0: 30, f1: 98, lp: 1250, g: 0.22, w2: 'triangle' },   // 엡실론 IMPERIAL X-01: 더 높고 매끄러운 다기통 소리
     moto: { f0: 50, f1: 165, lp: 1800, g: 0.19, w2: 'square' },
   };
   const engines = new Map();
@@ -706,6 +707,14 @@ const Audio = (() => {
       if (!ctx || !voice(0.12)) return;
       const out = spatial(own ? null : pos, (own ? 0.22 : 0.4) * (0.7 + gal * 0.5), 60); if (!out) return;
       const t = ctx.currentTime; tone(out, t, 0.09, 'sine', 110, 55, 0.7); noise(out, t, 0.06, 'lowpass', 900, 0.8, 0.6);
+    },
+    // 엡실론 차량 시동 (IMPERIAL X-01): 디지털 차임 두 음 → 시동 모터 → 점화 → 낮게 깔리며 올라가는 엔진 + 터빈 같은 높은 소리
+    vehStart(kind, pos, own) {
+      if (!ctx) return; const out = spatial(own ? null : pos, own ? 0.55 : 0.75, 90); if (!out) return; const t = ctx.currentTime;
+      tone(out, t, 0.22, 'sine', 1318, 1318, 0.11); tone(out, t + 0.15, 0.36, 'sine', 1976, 1976, 0.09);
+      tone(out, t + 0.32, 0.42, 'sawtooth', 150, 250, 0.06); noise(out, t + 0.32, 0.42, 'bandpass', 900, 2, 0.1);
+      tone(out, t + 0.74, 0.14, 'sine', 72, 38, 0.55); noise(out, t + 0.74, 0.2, 'lowpass', 520, 0.8, 0.35);
+      tone(out, t + 0.8, 1.4, 'sawtooth', 52, 132, 0.15); tone(out, t + 0.8, 1.4, 'square', 26, 66, 0.08); tone(out, t + 0.86, 1.1, 'sine', 900, 2600, 0.025);
     },
     vehDoor(animal) {
       if (!ctx) return; const t = ctx.currentTime;

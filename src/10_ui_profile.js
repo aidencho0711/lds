@@ -91,7 +91,7 @@ const Prof = (() => {
   const ultraOwned = () => {
     let n = 0;
     for (const id of STATS.skins || []) if (Body.SKINS[id] && Body.SKINS[id].rar === 5) n++;
-    for (const id of STATS.vskins || []) if (typeof VSKINS !== 'undefined' && VSKINS[id] && VSKINS[id].rar === 5) n++;
+    for (const id of STATS.vskins || []) if (typeof VSKINS !== 'undefined' && VSKINS[id] && (VSKINS[id].rar === 5 || VSKINS[id].rar === 7)) n++;
     for (const id of STATS.gskins || []) if (typeof GSKINS !== 'undefined' && GSKINS[id] && (GSKINS[id].rar === 5 || GSKINS[id].rar === 7)) n++;   // 엡실론도 셈
     return n;
   };

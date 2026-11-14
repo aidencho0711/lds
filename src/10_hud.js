@@ -928,9 +928,10 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       grid.appendChild(tabs);
       const vcard = (id) => {
         const V = id ? VSKINS[id] : null, on = (vl[whVeh] || null) === (id || null), R = V ? rarOf(V.rar) : null;
-        const b = h('button', 'wh-item veh' + (on ? ' on' : '') + (V ? ' rar' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
+        const b = h('button', 'wh-item veh' + (on ? ' on' : '') + (V ? ' rar' : '') + (V && V.rar === 7 ? ' epsilon' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
         const ico = h('i', 'wh-ico'), src = V ? Shop.vehThumb(id) : Shop.vehBaseThumb(whVeh); if (src) { const im = h('img'); im.src = src; im.alt = ''; ico.appendChild(im); }
         b.appendChild(ico); b.appendChild(h('b', '', V ? V.name : `기본 ${VEH_SKIN_TYPES[whVeh]}`)); b.appendChild(h('span', '', (R ? R.name + ' · ' + VCLS_NAME[V.cls] + ' · ' : '') + (on ? '장착 중' : '장착하기')));
+        if (V && V.rar === 7) { b.appendChild(h('i', 'eps-badge', 'ε' + V.no)); b.appendChild(h('em', 'excl eps', `EPSILON · EP-${V.no} · 소유 #${Eco.serialOf(id)}`)); b.title = `${V.name} — ${V.desc || ''}`; }   // 엡실론 차량
         b.addEventListener('click', () => { if (!on) { Eco.equipVeh(whVeh, id); renderWarehouse(); showcase(); Audio.init(); Audio.ui(); } });
         return b;
       };

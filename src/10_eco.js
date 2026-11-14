@@ -17,7 +17,7 @@ const BOXES = {
   br: { name: '배틀로얄 상자', theme: '전장 테마 옷', cost: 100, accent: '#9db35e', hex: 0x6f8a3a },
   sp: { name: '스페셜 상자', theme: '스트리트 테마 옷', cost: 100, accent: '#ff6fb0', hex: 0xd0457f },
   sup: { name: '보급 상자', theme: '엘리트 테마 옷', cost: 100, accent: '#f0a43a', hex: 0xd07a1e },
-  eps: { name: '엡실론 금고', theme: 'EPSILON 총기 스킨 8종 · 울트라레어 이하 총기 스킨', cost: 600, accent: '#c084fc', hex: 0x7a3cff, gun: true, isNew: true, eps: true },
+  eps: { name: '엡실론 금고', theme: 'EPSILON 총기 스킨 8종 · 엡실론 차량 IMPERIAL X-01 · 울트라레어 이하 총기 스킨', cost: 600, accent: '#c084fc', hex: 0x7a3cff, gun: true, isNew: true, eps: true },
   veh: { name: '차량 뽑기', theme: '교환 코인 · 차량 스킨', cost: 200, accent: '#46c8ff', hex: 0x2a8ac0 },
 };
 const BOX_TIER_P = [45, 25, 18, 8, 3.2, 0.8];                 // 옷 상자의 레어도별 확률(%) — 2번(레어)은 골드 탄피
@@ -29,7 +29,8 @@ const GUN_COINS = [[3, 40], [5, 20], [10, 8], [20, 2]];         // 총기 상자
 const GBOX_TIER_P = { 1: 18, 3: 8, 4: 3.2, 5: 0.8 };            // 총기 상자 스킨 레어도별 합(%) (합 30%) — 같은 레어도 안에서 똑같이 나눔
 const GSKIN_PRICE = { 1: 10, 3: 25, 4: 50, 5: 120, 7: 1000 };   // 교환소 가격(총기 교환 코인) · 7 = 엡실론(1,000). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
 const EPS_COINS = [[5, 40], [10, 20], [20, 8], [40, 2]];        // 엡실론 금고 코인 [개수, %] (합 70%)
-const EPS_TIER_P = { 3: 16.8, 4: 9, 5: 3.4, 7: 0.8 };              // 엡실론 금고 스킨 레어도별 합(%) — 엡실론 8종이 0.8% 를 똑같이 나눔(각 0.1%) · 나머지는 아스널·네온 상자 스킨            // 교환소 가격(총기 교환 코인). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
+const EPS_VEH_P = 0.1;                                          // 엡실론 금고: 엡실론 차량 한 종의 확률(%) — IMPERIAL X-01
+const EPS_TIER_P = { 3: 16.7, 4: 9, 5: 3.4, 7: 0.8 };              // 엡실론 금고 스킨 레어도별 합(%) — 엡실론 8종이 0.8% 를 똑같이 나눔(각 0.1%) · 나머지는 아스널·네온 상자 스킨            // 교환소 가격(총기 교환 코인). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
 const ATTEND = [{ gold: 50 }, { gold: 50 }, { gold: 100 }, { gold: 50 }, { gold: 100 }, { coin: 3 }, { gold: 300 }];
 const WELCOME_GOLD = 1000;
 // 미션: key = 경기에서 세는 값. 일일 미션은 날마다 4개(겹치는 key 없이), 주간 미션은 4개 고정
@@ -128,9 +129,10 @@ const Eco = (() => {
       for (const [n, p] of VEH_COINS) out.push({ k: 'coin', n, rar: 2, p });
       for (const r of [3, 4, 5]) { const ids = Object.keys(VSKINS).filter((id) => VSKINS[id].rar === r); for (const id of ids) out.push({ k: 'vskin', id, rar: r, p: VEH_SKIN_P[r] / ids.length }); }
     } else if (box === 'eps') {
-      // 엡실론 금고: 총기 교환 코인 70% · 초희귀 16.8% · 슈퍼레어 9% · 울트라레어 3.4% · 엡실론 0.8%
+      // 엡실론 금고: 총기 교환 코인 70% · 초희귀 16.7% · 슈퍼레어 9% · 울트라레어 3.4% · 엡실론 총기 0.8% · 엡실론 차량 0.1%
       for (const [n, p] of EPS_COINS) out.push({ k: 'gcoin', n, rar: 2, p });
       for (const r of [3, 4, 5, 7]) { const ids = Object.keys(GSKINS).filter((id) => GSKINS[id].rar === r && (r === 7 ? GSKINS[id].box === 'eps' : gunBox(GSKINS[id].box) && GSKINS[id].box !== 'eps')); for (const id of ids) out.push({ k: 'gskin', id, rar: r, p: EPS_TIER_P[r] / ids.length }); }
+      for (const id of Object.keys(VSKINS).filter((x) => VSKINS[x].rar === 7 && VSKINS[x].box === 'eps')) out.push({ k: 'vskin', id, rar: 7, p: EPS_VEH_P });
     } else if (gunBox(box)) {
       // 총기 상자: 총기 교환 코인 70% + 총기 스킨 30%
       for (const [n, p] of GUN_COINS) out.push({ k: 'gcoin', n, rar: 2, p });

@@ -601,6 +601,7 @@ const Veh = (() => {
     for (const v of list) {
       for (let i = 0; i < v.seats.length; i++) { const s0 = v.seats[i]; if (s0 && (!s0.alive || s0.veh !== v)) v.seats[i] = null; }
       v.driver = v.seats[0];
+      if (v.P.fx) VehFx.update(v, dt);   // 엡실론 차량: 시동·주행·정차 연출 (08_vehicle_eps.js)
       if (G.net && Net.vehRemote(v)) { // 다른 기기가 움직이는 차량: 받은 상태 보간
         Net.vehInterp(v, dt);
         if (v.T.animal && (v.P.root.visible || v.driver)) animateHorse(v, dt);
@@ -646,7 +647,7 @@ const Veh = (() => {
       const v = _eng[i][1], T = v.T, ratio = clamp(Math.abs(v.f) / T.vmax, 0, 1.1);
       const gears = v.type === 'moto' ? 5 : 4, gf = ratio * gears, g = Math.min(gears - 1, Math.floor(gf));
       const rpm = Math.abs(v.f) < 0.5 ? 0.12 : clamp(0.3 + (gf - g) * 0.62 + g * 0.03, 0.2, 1);
-      Audio.engine(v.id, v.pos, v.type, rpm, Math.abs(v.ctrl.throttle), v.driver.isPlayer, clamp((v.slip - 2.5) / 6, 0, 1) * (v.onGround ? 1 : 0));
+      Audio.engine(v.id, v.pos, (v.skin && VSKINS[v.skin] && VSKINS[v.skin].eng) || v.type, rpm, Math.abs(v.ctrl.throttle), v.driver.isPlayer, clamp((v.slip - 2.5) / 6, 0, 1) * (v.onGround ? 1 : 0));
       keep.add(v.id);
     }
     Audio.engineSweep(keep);

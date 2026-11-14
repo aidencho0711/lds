@@ -1483,3 +1483,11 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 /* 랭킹 목록: 테두리 장식(날개·월계수)이 이름·순위에 닿지 않게 */
 .lad-row .pf { margin: 0 5px; }
 .lad-c .pf { margin: 0 10px 0 8px; }
+/* ---------- v20 엡실론 차량 (IMPERIAL X-01): 창고 카드 · 교환소 카드 — 엡실론 총기와 같은 금·보라·하늘 테두리 ---------- */
+.wh-item.veh.epsilon, .ex-card.epsilon { position: relative; border: 2px solid transparent; background: linear-gradient(135deg, rgba(26, 12, 44, 0.95), rgba(10, 8, 16, 0.95)) padding-box, linear-gradient(90deg, #ffd76a, #c084fc, #7de3ff, #c084fc, #ffd76a) border-box; background-size: 100% 100%, 300% 100%; animation: vepsBorder 6s linear infinite; box-shadow: 0 0 14px rgba(192, 132, 252, 0.35); }
+.wh-item.veh.epsilon b, .ex-card.epsilon b { background: linear-gradient(90deg, #fff1c4, #e9c2ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.wh-item.veh.epsilon span, .ex-card.epsilon .ex-rar { color: #d9b8ff; }
+.wh-item.veh.epsilon .excl.eps { display: block; margin-top: 2px; font-style: normal; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.05em; color: #ffd76a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes vepsBorder { to { background-position: 0 0, 300% 0; } }
+@media (prefers-reduced-motion: reduce) { .wh-item.veh.epsilon, .ex-card.epsilon { animation: none; } }
+.wh-item.veh.epsilon .eps-badge { display: none; }   /* 좁은 차량 카드: 아래 EPSILON 줄로 충분 (이름과 겹침 방지) */

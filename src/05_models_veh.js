@@ -274,6 +274,7 @@ const VehModels = (() => {
     const B = key === type ? BUILD[type]() : SKIN_BUILD[skin](), o = { raw: B };
     for (const k of KEYS) if (B[k]) o[k] = B[k].build();
     if (B.steer) { o.steer = { pivot: B.steer.pivot }; for (const k of KEYS) if (B.steer[k]) o.steer[k] = B.steer[k].build(); }
+    if (B.fx) { o.fx = {}; for (const k in B.fx) { const g = B.fx[k].build(); if (g) o.fx[k] = g; } }   // 엡실론: 차량마다 따로 빛나는 부분
     if (B.neckVB) { o.neck = B.neckVB.build(); o.tailG = B.tailVB.build(); if (B.neckTack) o.neckTack = B.neckTack.build(); }
     return (GEO[key] = o);
   }
@@ -289,6 +290,8 @@ const VehModels = (() => {
     const parts = { root, body, wheels: [], steerPivots: [], meshes: [], skin: skin && SKIN_BUILD[skin] ? skin : null };
     const add = (parent, g, m, shadow) => { const x = mesh(g, m, shadow); if (x) { parent.add(x); parts.meshes.push(x); } return x; };
     for (const k of KEYS) add(body, G[k], matOf(k), !!SHADOW_K[k]);
+    // 엡실론 차량: 빛나는 부분은 재질을 한 대마다 따로 (08_vehicle_eps.js 가 시동·주행·정차에 따라 밝기를 바꿈). 처음은 진열용으로 켜 둔 상태
+    if (G.fx) { parts.fx = {}; for (const k in G.fx) { const m = new THREE.Mesh(G.fx[k], new THREE.MeshBasicMaterial({ vertexColors: true })); m.userData.fx = true; if (k === 'brake') m.visible = false; if (k === 'tail') m.material.color.setScalar(0.55); body.add(m); parts.fx[k] = m; parts.meshes.push(m); } parts.efx = B.efx || null; }
     const wheelM = B.wheelMat ? M[B.wheelMat] : M.matte;
     if (B.wheels) for (const [x, y, z, front] of B.wheels) {
       if (front && G.steer) continue; // 오토바이 앞바퀴는 핸들 뭉치에
@@ -321,11 +324,11 @@ const VehModels = (() => {
   function wreck(parts) {
     const M = mats();
     for (const m of parts.meshes) {
-      if (m.material === M.glass || m.material === M.sglass || m.material === M.lamp || m.material === M.tail || m.material === GLOWM) m.visible = false;
+      if (m.material === M.glass || m.material === M.sglass || m.material === M.lamp || m.material === M.tail || m.material === GLOWM || m.userData.fx) m.visible = false;
       else if (m.material === M.paint || m.material === M.coat || m.material === M.chrome || m.material === M.gloss) m.material = M.wreck;
     }
   }
-  function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) if (m.material !== mats().glass && m.material !== mats().sglass && m.material !== GLOWM) m.castShadow = on; }
+  function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) if (m.material !== mats().glass && m.material !== mats().sglass && m.material !== GLOWM && !m.userData.fx) m.castShadow = on; }
   return { instance, wreck, setShadows, mats, register, has: (id) => !!SKIN_BUILD[id],
     kit: { VB, mtx, arch, side, tube, ball, wheelGeo, SEAT_C, TRIM, CHROME, buildHorse } };
 })();
