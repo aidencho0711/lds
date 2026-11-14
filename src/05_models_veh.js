@@ -27,6 +27,8 @@ const VehModels = (() => {
       gloss: S({ vertexColors: true, roughness: 0.2, metalness: 0.55, envMapIntensity: 1.0 }),
       // 스킨 차량 유리: 기본 유리보다 옅게(안이 보이게 — 너무 어두우면 안에 탄 사람이 안 보여 유리해짐), 정점 색으로 살짝 물들임
       sglass: S({ vertexColors: true, roughness: 0.04, metalness: 0.25, transparent: true, opacity: 0.36, depthWrite: false, envMapIntensity: 1.7 }),
+      // 메탈릭 도장(AURELION GT 리퀴드 실버): 광택 플라스틱처럼 번들거리지 않게 금속성은 높고 거칠기는 중간
+      metal: S({ vertexColors: true, roughness: 0.3, metalness: 0.88, envMapIntensity: 1.15 }),
     };
     return MAT;
   }
@@ -267,7 +269,7 @@ const VehModels = (() => {
   const BUILD = { sedan: buildSedan, pickup: buildPickup, uaz: buildUaz, moto: buildMoto, horse: buildHorse };
   const SKIN_BUILD = {};
   function register(id, fn) { SKIN_BUILD[id] = fn; }
-  const KEYS = ['paint', 'matte', 'glass', 'sglass', 'lamp', 'tail', 'coat', 'chrome', 'gloss', 'glow'];
+  const KEYS = ['paint', 'matte', 'glass', 'sglass', 'lamp', 'tail', 'coat', 'chrome', 'gloss', 'glow', 'metal'];
   function geos(type, skin) {
     const key = skin && SKIN_BUILD[skin] ? skin : type;
     if (GEO[key]) return GEO[key];
@@ -284,7 +286,7 @@ const VehModels = (() => {
   let GLOWM = null;
   const glowMat = () => GLOWM || (GLOWM = new THREE.MeshBasicMaterial({ vertexColors: true }));
   const matOf = (k) => { const M = mats(); return k === 'glow' ? glowMat() : M[k]; };
-  const SHADOW_K = { paint: 1, matte: 1, coat: 1, chrome: 1, gloss: 1 };
+  const SHADOW_K = { paint: 1, matte: 1, coat: 1, chrome: 1, gloss: 1, metal: 1 };
 
   // 차량 1대 인스턴스 (지오메트리 공유). skin: 스킨 id(없으면 기본 모양)
   function instance(type, skin) {
@@ -336,7 +338,7 @@ const VehModels = (() => {
     const M = mats();
     for (const m of parts.meshes) {
       if (m.material === M.glass || m.material === M.sglass || m.material === M.lamp || m.material === M.tail || m.material === GLOWM || m.userData.fx) m.visible = false;
-      else if (m.material === M.paint || m.material === M.coat || m.material === M.chrome || m.material === M.gloss) m.material = M.wreck;
+      else if (m.material === M.paint || m.material === M.coat || m.material === M.chrome || m.material === M.gloss || m.material === M.metal) m.material = M.wreck;
     }
   }
   function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) if (m.material !== mats().glass && m.material !== mats().sglass && m.material !== GLOWM && !m.userData.fx) m.castShadow = on; }
