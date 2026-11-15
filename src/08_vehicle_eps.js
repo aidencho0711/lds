@@ -27,9 +27,9 @@ const VehFx = (() => {
     g.font = FONT(800, 17); const s = name + '  ·  EPSILON  ·  '; for (let i = 0; i < s.length; i++) { g.save(); g.rotate(i / s.length * TAU); g.translate(0, -84); g.fillText(s[i], 0, 0); g.restore(); }
   });
   const hash5 = (s) => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return String((h >>> 0) % 100000).padStart(5, '0'); };
-  const mkL = () => ({ hl: [0, 0, 0, 0, 0], line: [0, 0, 0, 0, 0, 0], bar: [0, 0, 0, 0, 0, 0], grille: [0, 0, 0, 0, 0], emb: 0, tail: 0, brake: 0, amb: 0, dash: 0, under: 0, beam: 0, amber: 0, ring: 0, puddle: 0, wing: 0, wtilt: 0, orn: 0 });
+  const mkL = () => ({ hl: [0, 0, 0, 0, 0], line: [0, 0, 0, 0, 0, 0], bar: [0, 0, 0, 0, 0, 0], grille: [0, 0, 0, 0, 0], emb: 0, tail: 0, brake: 0, amb: 0, dash: 0, under: 0, beam: 0, amber: 0, ring: 0, puddle: 0, wing: 0, wtilt: 0, orn: 0, gal: 0, gph: 0 });   // gal·gph: 루돌프 달리기 세기·위상
   const skinOf = (P) => (P && P.skin && typeof VSKINS !== 'undefined' ? VSKINS[P.skin] : null);
-  const ACC = { imperial: '#d8b45a', aurelion: '#e6cf9a', titan: '#c47a3a', sovereign: '#dfe5ee' };
+  const ACC = { sleigh: '#ffd65a', imperial: '#d8b45a', aurelion: '#e6cf9a', titan: '#c47a3a', sovereign: '#dfe5ee' };
 
   // ---------- 화면 그리기 (색은 차량마다) ----------
   function drawCluster(cv, kmh, gear, kind, label) {
@@ -114,6 +114,8 @@ const VehFx = (() => {
     if (M) {
       if (M.wing) { const p0 = M.wing.userData.p0; M.wing.position.y = p0[1] + 0.2 * L.wing; M.wing.position.z = p0[2] - 0.04 * L.wing; M.wing.rotation.x = -0.55 * L.wtilt; }
       if (M.orn) { const p0 = M.orn.userData.p0; M.orn.position.y = p0[1] - 0.13 * (1 - L.orn); M.orn.visible = L.orn > 0.02; }
+      // 루돌프(썰매): 대각선 두 다리씩 앞뒤로 · 머리는 두 배 빠르게 끄덕임
+      if (M.legFL) { const a = L.gal || 0, ph = L.gph || 0, s1 = Math.sin(ph) * 0.72 * a, s2 = Math.sin(ph + Math.PI) * 0.72 * a; M.legFL.rotation.x = s1; M.legBR.rotation.x = s1; M.legFR.rotation.x = s2; M.legBL.rotation.x = s2; if (M.head) M.head.rotation.x = Math.sin(ph * 2) * 0.1 * a; }
     }
     const A = P.efxA; if (!A) return;
     for (const s of A.screens) { s.material.opacity = L.dash; s.visible = L.dash > 0.01; }
@@ -196,9 +198,25 @@ const VehFx = (() => {
       L.emb = Math.max(t > 1.45 ? 0.5 : 0, flash, !c.moving && c.stillT > 1.2 ? pulseOf(c.stillT, 3.2) : 0);
       L.amb = clamp((t - 0.6) / 1.0, 0, 1); L.dash = clamp((t - 1.2) / 0.35, 0, 1);
     },
+    // RUDOLPH EXPRESS(크리스마스 EXCLUSIVE 썰매): 루돌프 코가 두 번 깜빡이고 켜짐 → 랜턴 → 요정 전구가 번갈아 반짝 · 금빛 바닥 빛
+    //  달리면 속도만큼 루돌프 다리가 빨라지고 날에서 금빛 가루 · 방울 소리(update) / 내리면 코만 은은하게
+    sleigh(c) {
+      const { st, L, k, dt } = c;
+      if (!c.drv) { parked(c, { under: 0.3 }); st.gal = (st.gal || 0) * Math.max(0, 1 - dt * 4); L.gal = st.gal; L.gph = st.gph || 0; L.hl[0] = Math.max(L.hl[0], 0.3 + 0.15 * Math.sin((st.parkT || 0) * 2)); return; }
+      const { t } = c; common(c, {});
+      L.hl[0] = (t < 0.6 ? (Math.sin(t * TAU * 2.5) > 0 ? 1 : 0.15) : 1) * (0.85 + 0.15 * Math.sin(t * 6));
+      L.hl[1] = L.hl[2] = clamp((t - 0.5) / 0.3, 0, 1) * Math.max(0.6, st.hl);
+      L.hl[3] = clamp((t - 0.8) / 0.3, 0, 1) * (0.55 + 0.45 * Math.sin(t * 5)); L.hl[4] = clamp((t - 0.9) / 0.3, 0, 1) * (0.55 + 0.45 * Math.sin(t * 5 + 2.1));
+      L.emb = Math.max(t > 1.1 ? 0.55 : 0, !c.moving && c.stillT > 1.2 ? pulseOf(c.stillT, 2.4) : 0);
+      L.amb = clamp((t - 1.0) / 0.5, 0, 1);
+      st.under += ((c.moving ? 0.55 : 0.35) - st.under) * k(2); L.under = st.under;
+      const want = c.moving ? clamp(c.ratio * 2.2 + 0.25, 0, 1) : 0; st.gal = (st.gal || 0) + (want - (st.gal || 0)) * k(4);
+      st.gph = (st.gph || 0) + dt * TAU * (1.1 + 2.4 * clamp(c.ratio, 0, 1)) * (st.gal > 0.02 ? 1 : 0);
+      L.gal = st.gal; L.gph = st.gph;
+    },
   };
-  // 빠른 주행 빛 잔상 (차량마다 색·문턱) — TITAN 은 없음
-  const TRAIL = { imperial: { th: 0.55, rate: [22, 48], cols: [0xffe6b0, 0xffffff, 0x9fb4ff] }, aurelion: { th: 0.5, rate: [30, 60], cols: [0xf2dcae, 0xffffff, 0xffe9c4] }, sovereign: { th: 0.6, rate: [16, 30], cols: [0xe8eeff, 0xffffff, 0xc9d2e0] } };
+  // 빠른 주행 빛 잔상 (차량마다 색·문턱) — TITAN 은 없음 · 썰매는 천천히 달려도 날에서 금빛 가루
+  const TRAIL = { sleigh: { th: 0.12, rate: [18, 40], cols: [0xffe08a, 0xffffff, 0xff7a7a] }, imperial: { th: 0.55, rate: [22, 48], cols: [0xffe6b0, 0xffffff, 0x9fb4ff] }, aurelion: { th: 0.5, rate: [30, 60], cols: [0xf2dcae, 0xffffff, 0xffe9c4] }, sovereign: { th: 0.6, rate: [16, 30], cols: [0xe8eeff, 0xffffff, 0xc9d2e0] } };
 
   // ---------- 경기 중 (Veh.update 가 매 프레임) ----------
   function update(v, dt) {
@@ -222,6 +240,8 @@ const VehFx = (() => {
     const brk = drv && dec > 2.2 && sp > 0.8 ? 1 : 0; st.brake += (brk - st.brake) * k(brk ? 20 : 5);
     (SCRIPT[kind] || SCRIPT.imperial)({ st, L, k, dt, t: st.t, drv, moving, stillT: st.stillT, sp, ratio: sp / v.T.vmax, night: SETTINGS.time === 'dusk' });
     apply(P, L);
+    // 썰매: 달리는 동안 방울 소리 (빠를수록 촘촘히)
+    if (kind === 'sleigh' && drv && moving && near && typeof Audio !== 'undefined' && Audio.jingle && (st.bellT = (st.bellT || 0) - dt) <= 0) { const r = clamp(sp / v.T.vmax, 0, 1); st.bellT = 0.34 - 0.16 * r; Audio.jingle(v.pos, !!drv.isPlayer, r); }
     if (drv && drv.isPlayer && P.efxA && P.efxA.cluster && (st.dashT -= dt) <= 0) { st.dashT = 0.25; drawCluster(P.efxA.cluster.userData.cv, sp * 3.6, moving ? 'D' : 'P', kind, labelOf(skinOf(P))); P.efxA.cluster.material.map.needsUpdate = true; }
     // 빠른 주행: 차체 옆선을 따라 빛 잔상
     const TR = TRAIL[kind], E = P.efx.trail;

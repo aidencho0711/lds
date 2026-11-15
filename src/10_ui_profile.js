@@ -24,6 +24,8 @@ const Prof = (() => {
     { id: 'nova', name: '초신성', lv: 30, bg: ['#1a1440', '#05030f'], svg: '<path d="M32 6l4 20 20 6-20 6-4 20-4-20-20-6 20-6z" fill="#fff"/><path d="M32 18l2 12 12 2-12 2-2 12-2-12-12-2 12-2z" fill="#ffd36b"/><circle cx="14" cy="14" r="1.6"/><circle cx="52" cy="50" r="1.4"/><circle cx="50" cy="14" r="1"/>' },
     // 베타 테스터 전용 (개발자가 칭호를 부여한 계정): 실험 플라스크 속 β
     { id: 'beta', name: '베타 테스터', lv: 1, beta: true, bg: ['#0f5560', '#03151b'], svg: '<path d="M23 8h18v4h-3v13l12 21c2 4-1 9-5 9H19c-4 0-7-5-5-9l12-21V12h-3z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><path d="M17 45l8-13h14l8 13c1 3-1 5-3 5H20c-2 0-4-2-3-5z" fill="#3ff5d6"/><circle cx="28" cy="38" r="1.6" fill="#fff"/><circle cx="37" cy="42" r="1.2" fill="#fff"/><text x="32" y="49" font-size="13" font-weight="900" text-anchor="middle" fill="#03151b" font-family="Arial,sans-serif">β</text><path d="M50 10l1.5 3.5L55 15l-3.5 1.5L50 20l-1.5-3.5L45 15l3.5-1.5z"/>' },
+    // THE BACKROOMS 탈출 이벤트 보상 (10_event.js): 어둠 속에서 빛나는 눈과 이빨 가득한 웃음 — 엔티티 '스마일러'
+    { id: 'smiler', name: '스마일러', lv: 1, ev: 'brx', bg: ['#1a1608', '#000000'], svg: '<defs><filter id="smGl" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#smGl)"><path d="M14 24c3-5 9-6 13-2-4 3-9 4-13 2z"/><path d="M50 24c-3-5-9-6-13-2 4 3 9 4 13 2z"/><circle cx="20" cy="22.6" r="1.6" fill="#000"/><circle cx="44" cy="22.6" r="1.6" fill="#000"/><path d="M8 33c7 13 41 13 48 0-2 9-11 17-24 17S10 42 8 33z"/><path d="M11 35.5l2.6 5 2.6-4 2.6 6 2.6-5 2.6 6.4 2.6-5.6 2.6 6.6 2.6-5.6 2.6 6.4 2.6-5 2.6 6 2.6-4 2.6 5 2.6-6" fill="none" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/><path d="M15 43l3-3 3 4 3-4 3 4 3-4 3 4 3-4 3 4 3-4 3 4 3-3" fill="none" stroke="#000" stroke-width="1.3" stroke-linejoin="round"/></g>' },
   ];
   const avOf = (id) => AV.find((a) => a.id === id) || AV[0];
   function avatarSVG(id) {
@@ -48,6 +50,8 @@ const Prof = (() => {
     { id: 'champ_lv', name: '정점의 베테랑', kind: 'title', title: 'champ_lv', desc: '레벨 랭킹 1위 (빼앗기면 회수)' },
     { id: 'champ_tier', name: '랭크 챔피언', kind: 'title', title: 'champ_tier', desc: '랭크 티어 랭킹 1위 (빼앗기면 회수)' },
     { id: 'champ_hc', name: '하드코어 패왕', kind: 'title', title: 'champ_hc', desc: '하드코어 랭킹 1위 (빼앗기면 회수)' },
+    // 콜라보 이벤트 (10_event.js): THE BACKROOMS 탈출 — 노란 벽지 고리 + 위의 형광등 + 아래 스마일러 웃음
+    { id: 'br_escape', name: '백룸 탈출자', kind: 'title', title: 'br_escape', desc: '칭호 「백룸 탈출자」(THE BACKROOMS 탈출 이벤트)' },
   ];
   for (const f of FR) if (f.kind === 'tier') { f.name = RANK_TIERS[f.t].name; f.desc = `랭크 ${RANK_TIERS[f.t].name} 도달`; }
   // 장식(테두리 위·옆에 붙는 그림, viewBox -16..80) — 높은 티어일수록 많아짐
@@ -81,7 +85,10 @@ const Prof = (() => {
   ORN.champ_hc = [-1, 1].map((s) => `<path d="M${32 + s * 20} 6C${32 + s * 30} -2 ${32 + s * 34} -10 ${32 + s * 30} -16C${32 + s * 40} -8 ${32 + s * 40} 6 ${32 + s * 28} 14z" fill="#2a1414" stroke="#ff3352" stroke-width="1.3"/><path d="M${32 + s * 27} -4l${s * 3} -2" stroke="#ff8a3c" stroke-width="1.2"/>`).join('')
     + [-2, -1, 0, 1, 2].map((i) => { const x = 32 + i * 9, h = 9 - Math.abs(i) * 2; return `<path d="M${x - 3.2} 63l3.2 ${h}l3.2-${h}z" fill="#1a0a0a" stroke="#ff3352" stroke-width=".9"/>`; }).join('')
     + `<path d="M32 -12l9 9-9 10-9-10z" fill="#c4203a" stroke="#ffb02e" stroke-width="1.3"/><text x="32" y="-0.6" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="10" fill="#fff">1</text>`;
-  const ORN_FX = { champ_lv: '<i class="pf-rays lv"></i>', champ_tier: '<i class="pf-rays"></i><i class="pf-orb"></i><i class="pf-orb b"></i>', champ_hc: '<i class="pf-rays hc"></i>', eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
+  ORN.br_escape = `<rect x="12" y="-12" width="40" height="7" rx="3.5" fill="#fffbe0" stroke="#8a7a2a" stroke-width="1.1"/><rect x="15" y="-10.4" width="34" height="3.8" rx="1.9" fill="#ffffff"/><path d="M20 -5l-4 7M44 -5l4 7" stroke="#6a5a1a" stroke-width="1.1"/>`
+    + `<path d="M18 63c4 7 24 7 28 0-2 5-8 9-14 9s-12-4-14-9z" fill="#0b0904" stroke="#fffbe0" stroke-width="1.1"/><path d="M20 64.5l2 2.6 2-2.2 2 2.8 2-2.4 2 3 2-2.6 2 3 2-2.4 2 2.8 2-2.2 2 2.6 2-2.2" fill="none" stroke="#fffbe0" stroke-width="1" stroke-linejoin="round"/>`
+    + `<path d="M-4 30c3-2 6-2 8 0-3 1-6 1-8 0zM60 30c2-2 5-2 8 0-2 1-5 1-8 0z" fill="#fffbe0"/>`;
+  const ORN_FX = { br_escape: '<i class="pf-scan"></i>', champ_lv: '<i class="pf-rays lv"></i>', champ_tier: '<i class="pf-rays"></i><i class="pf-orb"></i><i class="pf-orb b"></i>', champ_hc: '<i class="pf-rays hc"></i>', eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
   function frameHTML(fr, av, size = 44, extra = '') {
     const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id];
     return `<span class="pf fr-${f.id}${extra ? ' ' + extra : ''}" style="--s:${size}px">${ORN_FX[f.id] || ''}<span class="pf-av">${avatarSVG(av)}</span><span class="pf-ring"></span>${f.id === 'grandmaster' ? '<span class="pf-spk"><svg viewBox="-16 -16 96 96">' + o + '</svg></span>' : o ? `<span class="pf-orn"><svg viewBox="-16 -16 96 96">${o}</svg></span>` : ''}</span>`;
@@ -123,7 +130,7 @@ const Prof = (() => {
   const P0 = { av: 'helmet', fr: 'none', ti: null };
   const st = () => (STATS.prof && typeof STATS.prof === 'object' ? STATS.prof : (STATS.prof = Object.assign({}, P0)));
   const lv = () => levelFromXp(STATS.xp || 0).lv;
-  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (a.beta ? Eco.isBeta() : lv() >= a.lv); };
+  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (a.ev === 'brx' ? !!(STATS.eco && STATS.eco.brx) : a.beta ? Eco.isBeta() : lv() >= a.lv); };
   const frOk = (id) => { const f = FR.find((x) => x.id === id); if (!f) return false; if (f.kind === 'base') return true; if (f.kind === 'tier') return placedOk() && peakT() >= f.t; if (f.kind === 'hc') return hcPeakT() >= f.t; const t = tiOf(f.title); return !!t && t.ok(); };
   const tiOk = (id) => { const t = tiOf(id); return !!t && t.ok(); };
   // 지금 보여 줄 값 (조건이 사라진 것은 기본으로)
@@ -173,8 +180,8 @@ const Prof = (() => {
       const g = document.createElement('div'); g.className = 'prof-grid';
       for (const a of AV) {
         const ok = avOk(a.id), b = document.createElement('button'); b.type = 'button'; b.className = 'prof-it' + (m.av === a.id ? ' on' : '') + (ok ? '' : ' lock') + (a.beta ? ' beta' : '');
-        b.innerHTML = frameHTML('none', a.id, 58) + `<b>${a.name}</b><small>${ok ? (m.av === a.id ? '사용 중' : '선택') : a.beta ? '베타 테스터 전용' : `Lv ${a.lv} 해금`}</small>`;
-        b.onclick = () => { if (!ok) { msg(a.beta ? '베타 테스터 칭호를 받은 계정만 쓸 수 있습니다' : `레벨 ${a.lv}에 해금됩니다 (지금 Lv ${lv()})`); return; } set('av', a.id); Audio.ui(); };
+        b.innerHTML = frameHTML('none', a.id, 58) + `<b>${a.name}</b><small>${ok ? (m.av === a.id ? '사용 중' : '선택') : a.ev ? '백룸 탈출 이벤트' : a.beta ? '베타 테스터 전용' : `Lv ${a.lv} 해금`}</small>`;
+        b.onclick = () => { if (!ok) { msg(a.ev ? 'THE BACKROOMS 탈출 이벤트 보상입니다 (로비 위 이벤트)' : a.beta ? '베타 테스터 칭호를 받은 계정만 쓸 수 있습니다' : `레벨 ${a.lv}에 해금됩니다 (지금 Lv ${lv()})`); return; } set('av', a.id); Audio.ui(); };
         g.appendChild(b);
       }
       B.appendChild(g);

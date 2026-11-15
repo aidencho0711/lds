@@ -13,6 +13,7 @@ const RARITY = [
   { key: 'ultra', name: '울트라레어', color: '#ff3d3d', hex: 0xff3d3d },
   { key: 'tester', name: '테스터', color: '#3ff5d6', hex: 0x3ff5d6 },   // v20: 베타 테스터 전용 (개발자가 칭호를 부여한 계정만, 상자·교환소·봇에 없음)
   { key: 'epsilon', name: '엡실론', color: '#c084fc', hex: 0xc084fc },   // v20: EPSILON — THE ABSOLUTE. 울트라레어 위 최상위 (엡실론 금고 · 교환소). 전용 디자인·꺼내기·살펴보기·처치 효과·획득 컷신
+  { key: 'exclusive', name: 'EXCLUSIVE', color: '#ffcf3f', hex: 0xffcf3f },   // v20 크리스마스: 크리스마스 상자 한정 — 총(대기·살펴보기·사격·처치 효과·킬 로그) · 옷(몸 둘레 효과) · 루돌프 썰매
 ];
 (() => {
   const W = 0xffffff;
@@ -65,6 +66,29 @@ const RARITY = [
     chute_gold: { slot: 'chute', box: 'sup', rar: 4, name: '황금 낙하산', desc: '금빛 광택 낙하산', kind: 'ramair', colors: [0xd9a93a, 0x1a1a1a], metal: 1, edge: 0x2a2010 },
     top_jk_chrome: { slot: 'top', box: 'sup', rar: 5, name: '크롬 강화 슈트', desc: '육각 판에 주황 빛이 흐르는 상의', kind: 'jacket', color: W, cell: 'glowO', collar: 0x1d2024, cuff: 0x1d2024, zip: 0xff8a1e, ico: 'pt-glowO' },
     bottom_chrome: { slot: 'bottom', box: 'sup', rar: 5, name: '크롬 강화 하의', desc: '육각 판 강화 바지', kind: 'cargo', color: W, cell: 'glowO', knee: 1, kneeCol: 0x1d2024, kneeCell: 'leather', belt: 0x111214, buckle: 0xff8a1e, ico: 'pt-glowO' },
+    // ---------- 크리스마스 상자 (v20): 겨울 테마 · fx = 입으면 몸 둘레 효과 (EXCLUSIVE, 05_outfitfx.js) ----------
+    hat_beanie_xred: { slot: 'hat', box: 'xmas', rar: 0, name: '빨간 방울 비니', desc: '흰 방울이 달린 니트 모자', kind: 'beanie', color: 0xb3202c, pom: 0xf2f2ee },
+    top_ls_xgreen: { slot: 'top', box: 'xmas', rar: 0, name: '초록 니트 긴팔', desc: '따뜻한 초록 니트', kind: 'longsleeve', color: 0x245a34, cell: 'knit', trim: 0x163a22 },
+    gloves_mitten_red: { slot: 'gloves', box: 'xmas', rar: 0, name: '빨간 벙어리장갑', desc: '도톰한 니트 장갑', kind: 'full', color: 0xb3202c, cell: 'knit' },
+    shoes_boots_fur: { slot: 'shoes', box: 'xmas', rar: 0, name: '털 부츠', desc: '양털 안감 겨울 부츠', kind: 'boots', color: 0x7a5232, sole: 0x2a2018 },
+    top_xsweater: { slot: 'top', box: 'xmas', rar: 1, name: '눈꽃 스웨터', desc: '흰 눈꽃 띠 빨간 스웨터', kind: 'longsleeve', color: W, cell: 'xknit', trim: 0x7a1018, ico: 'pt-xknit' },
+    bottom_xtrack: { slot: 'bottom', box: 'xmas', rar: 1, name: '겨울 트레이닝 바지', desc: '빨간 옆줄 흰 운동복 바지', kind: 'track', color: 0xe6e8ea, stripe: 0xc8202e },
+    hat_beanie_xgreen: { slot: 'hat', box: 'xmas', rar: 1, name: '초록 방울 비니', desc: '금빛 방울 초록 니트 모자', kind: 'beanie', color: 0x245a34, pom: 0xe8c45a },
+    chute_xmas: { slot: 'chute', box: 'xmas', rar: 1, name: '크리스마스 낙하산', desc: '빨강·흰·초록 칸', kind: 'ramair', colors: [0xc8202e, 0xf2f2ee, 0x2a7a3a, 0xf2f2ee] },
+    top_hood_rudolph: { slot: 'top', box: 'xmas', rar: 3, name: '루돌프 후드', desc: '갈색 털 후드티', kind: 'hoodie', color: 0x7a5232, color2: 0xd8c4a8, cord: 0xc8202e },
+    hat_antlers: { slot: 'hat', box: 'xmas', rar: 3, name: '루돌프 머리띠', desc: '뿔 달린 머리띠', kind: 'antlers', color: 0x8a5e38, band: 0x1d1d20 },
+    bottom_xcandy: { slot: 'bottom', box: 'xmas', rar: 3, name: '캔디 케인 바지', desc: '빨강·흰 사선 줄무늬', kind: 'jeans', color: W, cell: 'xcandy', belt: 0x1b1b1b, buckle: 0xe8c45a, ico: 'pt-xcandy' },
+    top_jk_xwhite: { slot: 'top', box: 'xmas', rar: 4, name: '스노우 파카', desc: '털 깃 흰 방한 파카', kind: 'jacket', color: 0xe8ecef, collar: 0xf4f2ee, collarCell: 'fleece', cuff: 0xd8dde2 },
+    hat_santa: { slot: 'hat', box: 'xmas', rar: 4, name: '산타 모자', desc: '흰 털 테두리와 방울', kind: 'santa', color: 0xc41a24 },
+    shoes_xelf: { slot: 'shoes', box: 'xmas', rar: 4, name: '엘프 부츠', desc: '초록 가죽 부츠', kind: 'boots', color: 0x245a34, sole: 0x1a1410 },
+    top_jk_xlights: { slot: 'top', box: 'xmas', rar: 5, name: '트리 라이트 재킷', desc: '색색 전구가 빛나는 재킷', kind: 'jacket', color: W, cell: 'xlights', collar: 0x0e1a12, cuff: 0x0e1a12, zip: 0xffd65a, ico: 'pt-xlights' },
+    bottom_xlights: { slot: 'bottom', box: 'xmas', rar: 5, name: '트리 라이트 바지', desc: '색색 전구가 빛나는 바지', kind: 'cargo', color: W, cell: 'xlights', belt: 0x0e1a12, buckle: 0xffd65a, ico: 'pt-xlights' },
+    // EXCLUSIVE: 산타 클로스(금빛 반짝임 + 눈송이) · 겨울 여왕(빛나는 서리 결정 + 찬 기운)
+    top_x_santa: { slot: 'top', box: 'xmas', rar: 8, name: 'SANTA CLAUS 코트', desc: '흰 털 깃 붉은 벨벳 코트 · 입으면 금빛 반짝임과 눈송이가 몸 둘레를 돎', kind: 'jacket', color: 0xb8141e, collar: 0xf6f4ee, collarCell: 'fleece', cuff: 0xf6f4ee, zip: 0x1a1a1a, fx: 'santa' },
+    bottom_x_santa: { slot: 'bottom', box: 'xmas', rar: 8, name: 'SANTA CLAUS 바지', desc: '금 버클 검정 벨트 붉은 바지 · 금빛 반짝임', kind: 'cargo', color: 0xb8141e, belt: 0x141414, buckle: 0xf2c84a, fx: 'santa' },
+    hat_x_santa: { slot: 'hat', box: 'xmas', rar: 8, name: 'SANTA CLAUS 모자', desc: '금빛 방울 산타 모자 · 금빛 반짝임', kind: 'santa', color: 0xb8141e, pom: 0xf2c84a, fx: 'santa' },
+    top_x_frost: { slot: 'top', box: 'xmas', rar: 8, name: 'FROST QUEEN 코트', desc: '서리 결정이 빛나는 코트 · 입으면 빛나는 얼음 결정과 찬 기운이 몸 둘레에 맴돎', kind: 'jacket', color: W, cell: 'xfrost', collar: 0xf4f8fb, collarCell: 'fleece', cuff: 0x9fd8f0, zip: 0x9fe8ff, ico: 'pt-xfrost', fx: 'frost' },
+    bottom_x_frost: { slot: 'bottom', box: 'xmas', rar: 8, name: 'FROST QUEEN 바지', desc: '서리 결정이 빛나는 바지 · 얼음 결정', kind: 'jeans', color: W, cell: 'xfrost', belt: 0x1a2a3a, buckle: 0x9fe8ff, ico: 'pt-xfrost', fx: 'frost' },
   };
   // 기본 옷도 레어도(기본)를 갖는다
   for (const k of ['top_basic', 'bottom_basic', 'shoes_basic', 'chute_basic']) Body.SKINS[k].rar = 0;

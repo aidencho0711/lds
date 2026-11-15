@@ -737,6 +737,68 @@ const SkinFx = (() => {
     decal(gp, boltMarkTex(), 3.8, 2.2, 0xffffff, 0x6a0a5a);
     body(t, fx, 1.6, true);
   };
+  // ---------- EXCLUSIVE 처치 (v20 크리스마스) ----------
+  // 다섯 갈래 별 · 눈꽃 결정 · 리본 맨 선물 상자
+  const star5Tex = () => ctex('star5', 256, 256, (g) => {
+    halo(g, 124, [[0, 'rgba(255,255,255,0.7)'], [0.3, 'rgba(255,255,255,0.18)'], [1, 'rgba(255,255,255,0)']]);
+    g.translate(128, 128); g.fillStyle = 'rgba(255,255,255,0.97)'; g.shadowColor = '#fff'; g.shadowBlur = 16; g.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 36 : 92; i ? g.lineTo(Math.cos(a) * r, Math.sin(a) * r) : g.moveTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); g.fill();
+  });
+  const flakeTex = () => ctex('flake', 256, 256, (g) => {
+    halo(g, 120, [[0, 'rgba(255,255,255,0.5)'], [0.4, 'rgba(255,255,255,0.1)'], [1, 'rgba(255,255,255,0)']]);
+    g.translate(128, 128); g.strokeStyle = 'rgba(255,255,255,0.97)'; g.lineCap = 'round'; g.shadowColor = '#fff'; g.shadowBlur = 8;
+    for (let i = 0; i < 6; i++) { g.save(); g.rotate(i / 6 * TAU); g.lineWidth = 9; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -112); g.stroke(); g.lineWidth = 6;
+      for (const [y, L] of [[-44, 30], [-74, 24], [-98, 14]]) { g.beginPath(); g.moveTo(0, y); g.lineTo(-L, y - L * 0.8); g.moveTo(0, y); g.lineTo(L, y - L * 0.8); g.stroke(); } g.restore(); }
+    g.lineWidth = 5; g.beginPath(); for (let i = 0; i <= 6; i++) { const a = i / 6 * TAU; g.lineTo(Math.cos(a) * 22, Math.sin(a) * 22); } g.stroke();
+  });
+  const giftTex = () => ctex('gift', 256, 256, (g) => {
+    g.fillStyle = 'rgba(255,255,255,0.9)'; g.fillRect(40, 96, 176, 140); g.fillRect(28, 72, 200, 34);
+    g.globalCompositeOperation = 'destination-out'; g.fillRect(116, 72, 24, 164); g.globalCompositeOperation = 'source-over';
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(116, 72, 24, 164);
+    g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 14; for (const s of [-1, 1]) { g.beginPath(); g.ellipse(128 + s * 36, 52, 34, 20, s * 0.5, 0, TAU); g.stroke(); }
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(128, 62, 13, 0, TAU); g.fill();
+  });
+  // NORTH STAR(M416): 하늘에서 큰 금빛 별이 빛줄기를 끌며 내려와 꽂힘 → 별 섬광 · 금·청록 고리 · 바닥 별자리 · 사방에서 별똥별이 쏟아지고 오로라 가루가 떠오름
+  KILL.xstar = function (t, fx, gp, cp, k) {
+    const P = pool(), g0 = v3(gp), top = new THREE.Vector3(cp.x, cp.y + 18, cp.z);
+    beam(top, g0, fx.c, 1.2, 0.6); beam(top, g0, 0xffffff, 0.3, 0.45);
+    card(cp, star5Tex(), 0xffe6a0, 1.7, (m, u) => { const d = u < 0.22 ? 1 - Math.pow(u / 0.22, 2) : 0; m.position.set(cp.x, cp.y + 0.9 + d * 14, cp.z); m.rotateZ(u * 2.4); m.scale.setScalar(u < 0.22 ? 1.6 : 1.6 + (u - 0.22) * 1.2); m.material.opacity = u < 0.06 ? u / 0.06 : u > 0.65 ? (1 - u) / 0.35 : 1; });
+    delayed(0.36, () => {
+      card(cp, star4Tex(), 0xfff4d8, 0.7, (m, u) => { m.scale.setScalar(7 * (0.2 + 0.8 * Math.sqrt(u))); m.material.opacity = (1 - u) * (1 - u); });
+      glow(cp, 0xfff2c4, 5.5, 0.45); light(cp, fx.c, 9, 1.0); ring(gp, fx.c, 5, 0.9); ring(gp, fx.c2, 3.4, 0.7, null, 0.12); ring(gp, 0xffffff, 6.6, 1.0, null, 0.28);
+      decal(gp, starTex(), 5.4, 3.0, 0xfff0d0, 0x0a1430);
+      for (let i = 0; i < 60; i++) { _v.set(rnd(-1, 1), rnd(0, 1.2), rnd(-1, 1)).normalize().multiplyScalar(rnd(1.5, 5)); E(P, cp, _v.x, _v.y, _v.z, pick(fx), rnd(0.05, 0.1) * k, rnd(0.8, 1.5), { drag: 1.4, grow: -0.4, so: 0.6 }); }
+    });
+    for (let i = 0; i < 6; i++) { const an = rnd(0, TAU), a = new THREE.Vector3(cp.x + Math.cos(an) * rnd(8, 14), cp.y + rnd(10, 16), cp.z + Math.sin(an) * rnd(8, 14)), b = new THREE.Vector3(cp.x + Math.cos(an) * rnd(0.6, 2), cp.y + rnd(-0.6, 0.8), cp.z + Math.sin(an) * rnd(0.6, 2)); beam(a, b, i % 2 ? 0xffffff : fx.c, 0.22, 0.4, 0.45 + i * 0.12); }
+    add(null, 1.8, (e) => { if (Math.random() < 0.5) { _a.set(cp.x + rnd(-1.4, 1.4), gp.y + 0.1, cp.z + rnd(-1.4, 1.4)); E(P, _a, rnd(-0.2, 0.2), rnd(0.8, 1.6), rnd(-0.2, 0.2), Math.random() < 0.5 ? fx.c2 : 0x6fffb0, rnd(0.05, 0.09) * k, rnd(1.0, 1.6), { drag: 0.6, grow: -0.3, so: 0.6 }); } });
+    body(t, fx, 2.2, true);
+  };
+  // WINTER WONDER(AWM): 바닥에 거대한 눈꽃 문양이 돌며 퍼지고 · 둘레에 얼음 가시가 차례로 솟음 · 가슴에서 눈꽃이 커지며 반짝 · 1초 넘게 몸 둘레를 휘도는 눈보라
+  KILL.xsnow = function (t, fx, gp, cp, k) {
+    const P = pool();
+    spinDecal(gp, flakeTex(), 5.4, 3.0, 0xcff4ff, 0.7, 0.18); decal(gp, iceTex(), 4.6, 2.8, 0xffffff, 0x1a3a52);
+    card(cp, flakeTex(), 0xffffff, 1.2, (m, u) => { m.rotateZ(u * 1.6); m.scale.setScalar(0.6 + 2.6 * Math.sqrt(u)); m.material.opacity = u < 0.1 ? u / 0.1 : (1 - u) * 0.95; });
+    glow(cp, 0xeafcff, 4.8, 0.4); light(cp, fx.c, 8, 1.0); dome(cp, fx.c, 3.2, 0.6); ring(gp, fx.c, 5, 0.8); ring(gp, 0xffffff, 6.4, 1.0, null, 0.2);
+    for (let i = 0; i < 9; i++) { const an = i / 9 * TAU, r = 1.2 + (i % 2) * 0.5, g2 = { x: gp.x + Math.cos(an) * r, y: gp.y, z: gp.z + Math.sin(an) * r, n: gp.n }; delayed(0.05 + i * 0.04, () => pillar(g2, i % 3 ? 0xcff4ff : 0xffffff, 0.16, i % 2 ? 1.6 : 2.6, 0.9)); }
+    add(null, 1.5, (e, u) => { for (let j = 0; j < 3; j++) { const an = e.t * 5 + j * 2.1 + rnd(-0.3, 0.3), R = 1.0 + u * 1.6; _a.set(cp.x + Math.cos(an) * R, cp.y + rnd(-0.9, 1.0), cp.z + Math.sin(an) * R); E(P, _a, -Math.sin(an) * 3.2, rnd(-0.3, 0.3), Math.cos(an) * 3.2, Math.random() < 0.7 ? 0xffffff : pick(fx), rnd(0.04, 0.08) * k, rnd(0.4, 0.8), { sq: Math.random() < 0.4, drag: 0.8, so: 0.7 }); } });
+    for (let i = 0; i < 50; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1.1), rnd(-1, 1)).normalize().multiplyScalar(rnd(2, 6)); E(P, cp, _v.x, _v.y, _v.z, Math.random() < 0.4 ? 0xffffff : pick(fx), rnd(0.05, 0.1) * k, rnd(0.6, 1.2), { sq: 1, g: -3, drag: 1.4, so: 0.75 }); }
+    body(t, fx, 2.0, true);
+  };
+  // CANDY STRIKER(AKM): 거대한 선물 상자가 튀어 올라 흔들리다 터짐 → 빨강·흰 사탕 빛기둥 · 금 고리 · 리본 고리 둘 · 빨강·금·초록 색종이가 쏟아져 천천히 내려앉음
+  KILL.xgift = function (t, fx, gp, cp, k) {
+    const P = pool();
+    card(cp, giftTex(), fx.c, 0.42, (m, u) => { const s = u < 0.5 ? 2.2 * (1 - Math.pow(1 - u / 0.5, 3)) : 2.2 + (u - 0.5) * 2; m.position.y = cp.y + 0.3 + u * 0.3; m.rotateZ(Math.sin(u * 30) * 0.15 * (1 - u)); m.scale.setScalar(s); m.material.opacity = u > 0.8 ? (1 - u) / 0.2 : 1; });
+    delayed(0.36, () => {
+      glow(cp, 0xffffff, 5.4, 0.35); light(cp, 0xffb070, 9, 0.9); dome(cp, fx.c2, 3, 0.45);
+      pillar(gp, fx.c, 0.55, 6.5, 0.9, stripeTex(), 3); pillar(gp, 0xffffff, 0.2, 7.5, 0.6);
+      ring(gp, fx.c2, 5.2, 0.8); ring(gp, fx.c, 3.6, 0.7, null, 0.1); ring(gp, 0x3aff7a, 6.8, 1.0, null, 0.24);
+      for (const s of [1, -1]) halo3(cp, s > 0 ? fx.c : fx.c2, 0.4, 1.8, 0.3, 0.9, 1.1, s > 0 ? 0 : 0.15);
+      decal(gp, starTex(), 4.6, 2.8, 0xffe2a0, 0x5a0a10);
+      for (let i = 0; i < 110; i++) { _v.set(rnd(-1, 1), rnd(0.3, 1.6), rnd(-1, 1)).normalize().multiplyScalar(rnd(2.5, 7)); E(P, cp, _v.x, _v.y, _v.z, pick(fx), rnd(0.06, 0.12) * k, rnd(1.2, 2.2), { sq: 1, g: -2.2, drag: 1.6, so: 0.8 }); }
+    });
+    add(null, 2.2, (e, u) => { if (u > 0.2 && Math.random() < 0.6) { _a.set(cp.x + rnd(-2, 2), cp.y + rnd(1.5, 3), cp.z + rnd(-2, 2)); E(P, _a, rnd(-0.3, 0.3), rnd(-0.4, -0.1), rnd(-0.3, 0.3), pick(fx), rnd(0.06, 0.1) * k, rnd(1.0, 1.6), { sq: 1, drag: 1.5, so: 0.7 }); } });
+    body(t, fx, 2.0, true);
+  };
   // 카메라를 보게 세우는 판 (앞면 +z, 같은 지오메트리를 돌려 씀)
   let VP = null; const vplane = () => VP || (VP = new THREE.PlaneGeometry(1, 1));
   // 엡실론 처치 자국·판: 찢어진 틈 · 금빛 아라베스크
@@ -796,7 +858,7 @@ const SkinFx = (() => {
   function kill(t, by, cause) {
     if (!scene || !t || !by || by === t || !by.skinOf) return;
     const sk = by.skinOf(cause), d = sk && GSKINS[sk], fx = d && (d.fx || d.lite); if (!fx) return;
-    if (by.isPlayer && !fx.lite && typeof HUD !== 'undefined' && HUD.skinKill) HUD.skinKill(fx, GunSkin.name(sk), d.eps ? d : null);   // 휘장은 울트라레어만
+    if (by.isPlayer && !fx.lite && typeof HUD !== 'undefined' && HUD.skinKill) HUD.skinKill(fx, GunSkin.name(sk), d.eps || d.xm ? d : null);   // 휘장은 울트라레어만
     if (!G.camera) return;
     const cp = new THREE.Vector3(); t.chest(cp);
     if (cp.distanceTo(G.camera.position) > (fx.lite ? 160 : 320)) return;

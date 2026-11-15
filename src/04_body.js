@@ -55,10 +55,13 @@ const Body = (() => {
     camoW: [0, 768, 256, 256], camoD: [256, 768, 256, 256], camoU: [512, 768, 256, 256], gloss: [768, 768, 128, 256], matte: [896, 768, 128, 256],
     camoS: [1024, 0, 256, 256], camoDig: [1280, 0, 256, 256], camoTiger: [1536, 0, 256, 256], plaid: [1792, 0, 256, 256],
     denim: [1024, 256, 256, 256], stripe: [1280, 256, 256, 256], gold: [1536, 256, 256, 256], sneak: [1792, 256, 256, 256],
-    glowC: [1024, 512, 256, 256], glowO: [1280, 512, 256, 256], glowP: [1536, 512, 256, 256], fleece: [1792, 512, 256, 256] };
+    glowC: [1024, 512, 256, 256], glowO: [1280, 512, 256, 256], glowP: [1536, 512, 256, 256], fleece: [1792, 512, 256, 256],
+    // v20 크리스마스: 눈꽃 니트 · 캔디케인 줄 · 트리 전구(빛남) · 서리 결정(빛남)
+    xknit: [1024, 768, 256, 256], xcandy: [1280, 768, 256, 256], xlights: [1536, 768, 256, 256], xfrost: [1792, 768, 256, 256] };
   // 셀별 거칠기 (16×8 격자, 한 칸 = 128px)
   const ROUGH = { face: 0.62, knit: 0.93, twill: 0.9, leather: 0.55, skin: 0.6, hair: 0.58, sole: 0.92, canvas: 0.9, glove: 0.75, camoW: 0.9, camoD: 0.9, camoU: 0.9, gloss: 0.12, matte: 0.85,
-    camoS: 0.9, camoDig: 0.9, camoTiger: 0.9, plaid: 0.92, denim: 0.92, stripe: 0.93, gold: 0.3, sneak: 0.85, glowC: 0.45, glowO: 0.38, glowP: 0.45, fleece: 0.96 };
+    camoS: 0.9, camoDig: 0.9, camoTiger: 0.9, plaid: 0.92, denim: 0.92, stripe: 0.93, gold: 0.3, sneak: 0.85, glowC: 0.45, glowO: 0.38, glowP: 0.45, fleece: 0.96,
+    xknit: 0.94, xcandy: 0.55, xlights: 0.5, xfrost: 0.35 };
   const _uv = [0, 0];
   function cellUV(name, u, v) {
     const c = CELL[name] || CELL.matte;
@@ -283,6 +286,46 @@ const Body = (() => {
     glowDo('glowC', '#16191d', '#3a434b', '#46f2ff', circuit);
     glowDo('glowO', '#2a2e33', '#4a5158', '#ff8a1e', hexes);
     glowDo('glowP', '#1b151a', '#43343f', '#ff4fd0', waves);
+    // ---------- v20 크리스마스 셀 ----------
+    // 눈꽃 니트: 빨강 바탕 · 니트 결 · 흰 띠와 지그재그 · 초록 띠 · 눈꽃 줄
+    cellDo('xknit', (W, H) => {
+      g.fillStyle = '#b3202c'; g.fillRect(0, 0, W, H);
+      for (let y = 0; y < H; y += 8) for (let x = 0; x < W; x += 8) { g.fillStyle = 'rgba(0,0,0,0.09)'; g.fillRect(x + 3, y, 2, 8); }
+      const band = (y0) => { g.fillStyle = '#f2efe6'; for (let x = 0; x < W; x += 16) { g.beginPath(); g.moveTo(x, y0); g.lineTo(x + 8, y0 - 8); g.lineTo(x + 16, y0); g.lineTo(x + 8, y0 + 8); g.closePath(); g.fill(); } };
+      g.fillStyle = '#f2efe6'; g.fillRect(0, 40, W, 6); g.fillRect(0, 74, W, 6); band(60);
+      g.fillStyle = '#2a7a3a'; g.fillRect(0, 128, W, 8);
+      g.strokeStyle = '#f2efe6'; g.lineWidth = 3; for (let x = 24; x < W; x += 52) for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; g.beginPath(); g.moveTo(x - Math.cos(a) * 13, 176 - Math.sin(a) * 13); g.lineTo(x + Math.cos(a) * 13, 176 + Math.sin(a) * 13); g.stroke(); }
+      g.fillStyle = '#f2efe6'; g.fillRect(0, 214, W, 6); band(234);
+    });
+    // 캔디케인: 흰 바탕에 빨강 사선 줄 + 광택
+    cellDo('xcandy', (W, H) => {
+      g.fillStyle = '#f4f0e8'; g.fillRect(0, 0, W, H);
+      const sl = (x, w) => { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + w, 0); g.lineTo(x + w - H, H); g.lineTo(x - H, H); g.closePath(); g.fill(); };
+      g.fillStyle = '#c8141e'; for (let k = -8; k < 16; k++) sl(k * 32, 16);
+      g.fillStyle = 'rgba(255,255,255,0.2)'; for (let k = -8; k < 16; k++) sl(k * 32 + 3, 4);
+    });
+    // 트리 전구: 짙은 초록 바탕에 물결 전선 + 색색 전구 (발광 지도에는 전구가 제 색으로 빛남)
+    const bulbsDo = (x, W, H, glow) => {
+      const cols = ['#ff3a3a', '#ffc93a', '#3aff7a', '#3aa8ff', '#fff2d8', '#ff5ad8'];
+      for (let row = 0; row < 4; row++) {
+        const y0 = 28 + row * 64, wy = (k) => y0 + Math.sin(k / W * TAU * 2 + row) * 10;
+        if (!glow) { x.strokeStyle = '#050805'; x.lineWidth = 2; x.beginPath(); for (let k = 0; k <= W; k += 4) x.lineTo(k, wy(k)); x.stroke(); }
+        for (let i = 0; i < 8; i++) {
+          const bx = i * 32 + 16 + (row % 2) * 8, by = wy(bx) + 6, c = cols[(i + row * 3) % cols.length];
+          if (glow) { const gr = x.createRadialGradient(bx, by, 0, bx, by, 13); gr.addColorStop(0, c); gr.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gr; x.fillRect(bx - 13, by - 13, 26, 26); }
+          x.fillStyle = c; x.beginPath(); x.ellipse(bx, by, 4, 6, 0, 0, TAU); x.fill();
+        }
+      }
+    };
+    cellDo('xlights', (W, H) => { g.fillStyle = '#13281a'; g.fillRect(0, 0, W, H); speck(W, H, 300, 1, 2, true); bulbsDo(g, W, H, false); });
+    { const c = CELL.xlights; eg.save(); eg.beginPath(); eg.rect(c[0] / 2, c[1] / 2, c[2] / 2, c[3] / 2); eg.clip(); eg.translate(c[0] / 2, c[1] / 2); eg.scale(0.5, 0.5); bulbsDo(eg, c[2], c[3], true); eg.restore(); }
+    // 서리 결정: 짙은 얼음 바탕 + 눈꽃 결정과 금 (빛남)
+    const crystals = (x, W, H, col, lw, rr) => {
+      x.strokeStyle = col; x.lineWidth = lw; x.lineCap = 'round';
+      for (let i = 0; i < 9; i++) { const cx = rr() * W, cy = rr() * H, r = 10 + rr() * 16; for (let k = 0; k < 6; k++) { const a = k / 6 * TAU; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); x.stroke(); const bx = cx + Math.cos(a) * r * 0.55, by = cy + Math.sin(a) * r * 0.55; for (const s of [-1, 1]) { x.beginPath(); x.moveTo(bx, by); x.lineTo(bx + Math.cos(a + s * 0.8) * r * 0.3, by + Math.sin(a + s * 0.8) * r * 0.3); x.stroke(); } } }
+      for (let i = 0; i < 6; i++) { let px = rr() * W, py = rr() * H, a = rr() * TAU; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 8; k++) { px += Math.cos(a) * 9; py += Math.sin(a) * 9; a += (rr() - 0.5) * 1.2; x.lineTo(px, py); } x.stroke(); }
+    };
+    glowDo('xfrost', '#1e3d58', '#7fb8d8', '#9fe8ff', crystals);
     const t = new THREE.CanvasTexture(cv); t.anisotropy = 4;
     EMI = new THREE.CanvasTexture(ec);
     return t;
@@ -917,6 +960,27 @@ const Body = (() => {
       const a = 0.42, uy = 0.56, cb = Math.sqrt(1 - uy * uy); headPoint(Math.sin(a) * cb, uy, Math.cos(a) * cb, _w);
       const nx = _w.x - HC[0], ny = _w.y - HC[1], nz = _w.z - HC[2], nl = Math.hypot(nx, ny, nz);
       ellipsoid(B, { c: [_w.x + nx / nl * 0.029, _w.y + ny / nl * 0.029, _w.z + nz / nl * 0.029], r: [0.009, 0.011, 0.003], ry: a, ws: 10, hs: 6, cell: 'gold', W: [[BI.head, 1]], col: col(it.badge !== undefined ? it.badge : 0xffffff) });
+    },
+    // 산타 모자(v20 크리스마스): 붉은 니트 몸통 + 두툼한 흰 털 테 + 뒤로 처진 꼬리 + 방울
+    santa(B, it) {
+      const c = col(it.color), fur = col(it.fur !== undefined ? it.fur : 0xf4f2ee), cell = it.cell || 'knit';
+      headShell(B, { line: HAT_LINES.beanie, cell, col: c, off: (t) => 0.024 + 0.016 * Math.sin(Math.PI * Math.min(1, t * 1.25)), shape: (v, t) => { v.y -= 0.01 * Math.max(0, 1 - t / 0.35); } });
+      headShell(B, { line: (a) => HAT_LINES.beanie(a) - 0.015, cell: 'fleece', col: fur, off: () => 0.046, t0: 0.78, RN: 3 });
+      const P = [[0, 0.232, -0.02, 0.062], [0.012, 0.256, -0.06, 0.052], [0.03, 0.264, -0.1, 0.043], [0.05, 0.252, -0.138, 0.035], [0.066, 0.226, -0.166, 0.028], [0.078, 0.194, -0.182, 0.022]];
+      for (const [x, y, z, r] of P) ellipsoid(B, { c: [x, y, z], r: [r, r, r], ws: 10, hs: 8, cell, W: [[BI.head, 1]], col: c });
+      ellipsoid(B, { c: [0.084, 0.166, -0.19], r: [0.032, 0.032, 0.032], ws: 10, hs: 8, cell: 'fleece', W: [[BI.head, 1]], col: it.pom !== undefined ? col(it.pom) : fur });
+    },
+    // 루돌프 머리띠(v20 크리스마스): 머리 위를 넘는 가는 띠 + 양쪽 갈래 뿔
+    antlers(B, it) {
+      const bc = col(it.band !== undefined ? it.band : 0x1d1d20), ac = col(it.color);
+      for (let i = 0; i <= 14; i++) { const th = lerp(-1.25, 1.25, i / 14); ellipsoid(B, { c: [Math.sin(th) * 0.088, 0.072 + Math.cos(th) * 0.144, 0.01], r: [0.011, 0.011, 0.016], ws: 6, hs: 4, cell: 'leather', W: [[BI.head, 1]], col: bc }); }
+      for (const s of [1, -1]) {
+        const bx = s * 0.05, by = 0.2, bz = 0.01, beam = [[0, 0, 0, 0.015], [0.012, 0.03, -0.004, 0.0135], [0.026, 0.058, -0.012, 0.012], [0.04, 0.084, -0.022, 0.0105], [0.05, 0.108, -0.034, 0.009], [0.056, 0.128, -0.046, 0.008]];
+        // 촘촘히 겹친 공으로 매끈한 가지 (사이마다 4개씩 보간)
+        const chain = (P) => { for (let i = 0; i < P.length - 1; i++) for (let j = 0; j < 4; j++) { const u = j / 4, [x0, y0, z0, r0] = P[i], [x1, y1, z1, r1] = P[i + 1], r = lerp(r0, r1, u); ellipsoid(B, { c: [bx + s * lerp(x0, x1, u), by + lerp(y0, y1, u), bz + lerp(z0, z1, u)], r: [r, r, r], ws: 7, hs: 5, cell: 'leather', W: [[BI.head, 1]], col: ac }); } const [x, y, z, r] = P[P.length - 1]; ellipsoid(B, { c: [bx + s * x, by + y, bz + z], r: [r, r, r], ws: 7, hs: 5, cell: 'leather', W: [[BI.head, 1]], col: ac }); };
+        chain(beam);
+        for (const [k, dx, dy, dz] of [[1, 0.012, 0.06, 0.07], [3, 0.018, 0.066, 0.06]]) { const [x, y, z, r] = beam[k]; chain([[x, y, z, r * 0.8], [x + dx, y + dy, z + dz, 0.006]]); }
+      }
     },
     // 두건: 머리를 감싸 뒤에서 묶음 + 매듭 꼬리 두 가닥
     bandana(B, it) {

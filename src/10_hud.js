@@ -41,6 +41,10 @@ const HUD = (() => {
     apocalypse: '<circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5M4.2 4.2l3.5 3.5M16.3 16.3l3.5 3.5M19.8 4.2l-3.5 3.5M7.7 16.3l-3.5 3.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
     dynasty: '<path d="M3 19h18v2H3zM3 17L1.5 7l5.5 4.5L12 4l5 7.5L22.5 7 21 17z"/>',
     omega: '<path d="M5 20h5v-2.4C7.6 16.3 6 14 6 11.3 6 7.8 8.7 5 12 5s6 2.8 6 6.3c0 2.7-1.6 5-4 6.3V20h5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/>',
+    // EXCLUSIVE(크리스마스): 다섯 갈래 별 · 눈꽃 · 리본 맨 선물 상자
+    xstar: '<path d="M12 1.5l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.6l-6.4 3.5 1.4-7.1-5.3-5 7.2-.9z"/>',
+    xsnow: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M12 2l-2.4 2.6M12 2l2.4 2.6M12 22l-2.4-2.6M12 22l2.4-2.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+    xgift: '<path d="M3 10h18v3H3zM4.5 13h15v8h-15z"/><path d="M12 10v11" stroke="#000" stroke-opacity=".35" stroke-width="2"/><path d="M12 10C9 5 5 6 6.5 8.5 7.6 10 12 10 12 10zm0 0c3-5 7-4 5.5-1.5C16.4 10 12 10 12 10z"/>',
   };
   const epsIco = (kind) => `<svg class="eps-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${EPS_ICO[kind] || EPS_ICO.celestial}</svg>`;
   const hex6 = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
@@ -51,17 +55,18 @@ const HUD = (() => {
     e.className = 'k-' + fx.kind + (eps ? ' eps' : ''); e.innerHTML = '';
     if (eps) { e.appendChild(h('i', 'sk-ring')); const ic = h('i', 'sk-ico'); ic.innerHTML = epsIco(fx.kind); e.appendChild(ic); }
     e.appendChild(h('b', '', '처치')); e.appendChild(h('small', '', name || ''));
-    if (eps) e.appendChild(h('u', '', `EPSILON · Ε-${eps.no}`));
+    if (eps) e.appendChild(h('u', '', eps.xm ? `EXCLUSIVE · ✦${eps.no}` : `EPSILON · Ε-${eps.no}`));
+    if (eps && eps.xm) e.classList.add('xm');
     void e.offsetWidth; e.classList.add('on');
   }
   // sk: 처치한 총에 장착한 스킨 id (엡실론이면 킬 로그 줄이 그 스킨의 색·문양·이름으로 꾸며지고 더 오래 남는다)
   function killfeed(killer, victim, weapon, byPlayer, playerDied, kind, mate, sk) {
-    const sd = sk && typeof GSKINS !== 'undefined' ? GSKINS[sk] : null, eps = killer && sd && sd.eps && sd.fx ? sd : null;
-    const box = $('killfeed'), e = h('div', 'kf' + (byPlayer ? ' mine' : '') + (playerDied || mate ? ' dead' : '') + (kind === 'knock' ? ' knock' : '') + (eps ? ' eps k-' + eps.fx.kind : ''));
+    const sd = sk && typeof GSKINS !== 'undefined' ? GSKINS[sk] : null, eps = killer && sd && (sd.eps || sd.xm) && sd.fx ? sd : null;   // 엡실론·EXCLUSIVE: 그 스킨의 색·문양·이름으로 꾸민 킬 로그
+    const box = $('killfeed'), e = h('div', 'kf' + (byPlayer ? ' mine' : '') + (playerDied || mate ? ' dead' : '') + (kind === 'knock' ? ' knock' : '') + (eps ? ' eps k-' + eps.fx.kind + (eps.xm ? ' xm' : '') : ''));
     if (eps) {
       e.style.setProperty('--sk1', hex6(eps.fx.c)); e.style.setProperty('--sk2', hex6(eps.fx.c2));
       const w = h('em', 'kf-eps'); w.innerHTML = epsIco(eps.fx.kind); w.appendChild(h('b', '', `${weapon || ''} · ${eps.name}` + (kind === 'knock' ? ' · 기절' : '')));
-      e.append(h('i', 'kf-tag', 'Ε'), h('span', 'kf-n', killer), w, h('span', 'kf-n', victim));
+      e.append(h('i', 'kf-tag', eps.xm ? '✦' : 'Ε'), h('span', 'kf-n', killer), w, h('span', 'kf-n', victim));
     } else if (killer) { e.append(killer); e.appendChild(h('em', '', (weapon || '▸') + (kind === 'knock' ? ' · 기절' : kind === 'wipe' ? '' : ''))); e.append(victim); }
     else { e.append(victim); e.appendChild(h('em', '', kind === 'knock' ? (weapon ? weapon + '(으)로 기절' : '기절') : weapon ? weapon + '(으)로 탈락' : '탈락')); }
     box.prepend(e); while (box.children.length > 5) box.lastChild.remove();
@@ -346,7 +351,7 @@ const HUD = (() => {
     if (wp.dataset.k !== wkey) {
       wp.dataset.k = wkey; wp.innerHTML = '';
       inv.weapons.forEach((w, i) => {
-        if (!w) return; const d = ITEMS[w.id], sk = p.skinOf(w.id), tst = !!sk && !!GSKINS[sk].tester, eps = !!sk && GSKINS[sk].rar === 7, e = h('div', 'wslot' + (i === inv.cur ? ' cur' : '') + (tst ? ' tester' : '') + (eps ? ' epsilon' : ''));
+        if (!w) return; const d = ITEMS[w.id], sk = p.skinOf(w.id), tst = !!sk && !!GSKINS[sk].tester, eps = !!sk && GSKINS[sk].rar === 7, xmS = !!sk && GSKINS[sk].rar === 8, e = h('div', 'wslot' + (i === inv.cur ? ' cur' : '') + (tst ? ' tester' : '') + (eps ? ' epsilon' : '') + (xmS ? ' exclusive' : ''));
         if (i === inv.cur) { e.title = '눌러서 총 살펴보기 (N)'; e.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); Input.press('inspect'); }); }   // 모바일: 지금 무기 칸을 누르면 살펴보기
         if (tst) e.appendChild(h('i', 'beta-badge', 'β' + (GSKINS[sk].no || '')));   // 베타 테스터 한정 컬렉션 표시
         if (eps) e.appendChild(h('i', 'eps-badge', 'ε' + (GSKINS[sk].no || '')));   // 엡실론 컬렉션 표시
@@ -904,10 +909,11 @@ const HUD = (() => {
       const guns = [...new Set(owned.map((id) => GSKINS[id].gun))].sort((a, b) => order.indexOf(a) - order.indexOf(b));
       const gcard = (gun, id) => {
         const S = id ? GSKINS[id] : null, on = (gl[gun] || null) === (id || null), R = S ? rarOf(S.rar) : null;
-        const b = h('button', 'wh-item gun' + (on ? ' on' : '') + (S ? ' rar' : '') + (S && S.tester ? ' tester' : '') + (S && S.rar === 7 ? ' epsilon' : '') + (whGun === gun && on ? ' sel' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
+        const b = h('button', 'wh-item gun' + (on ? ' on' : '') + (S ? ' rar' : '') + (S && S.tester ? ' tester' : '') + (S && S.rar === 7 ? ' epsilon' : '') + (S && S.rar === 8 ? ' exclusive' : '') + (whGun === gun && on ? ' sel' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
         const ico = h('i', 'wh-ico'); ico.appendChild(Shop.gunImgEl(gun, id));
         b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : '기본')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + (S && S.fx ? '효과 · ' : '') + (on ? '장착 중' : '장착하기')));
         if (S && S.tester) { b.appendChild(h('i', 'beta-badge', 'β' + (S.no || ''))); b.appendChild(h('em', 'excl', 'EXCLUSIVE — NEVER AVAILABLE AGAIN')); }   // 베타 테스터 한정 컬렉션
+        if (S && S.rar === 8) { b.appendChild(h('i', 'xm-badge', '✦' + (S.no || ''))); b.appendChild(h('em', 'excl xm', `EXCLUSIVE · 크리스마스 · 소유 #${Eco.serialOf(id)}`)); }   // 크리스마스 EXCLUSIVE
         if (S && S.rar === 7) { b.appendChild(h('i', 'eps-badge', 'ε' + (S.no || ''))); b.appendChild(h('em', 'excl eps', `EPSILON · Ε-${S.no} · 소유 #${Eco.serialOf(id)}`)); b.title = `${GunSkin.name(id)} — EPSILON Ε-${S.no} · 소유 번호 #${Eco.serialOf(id)}
 ${S.lore || ''}
 ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소유 번호
@@ -928,9 +934,10 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       grid.appendChild(tabs);
       const vcard = (id) => {
         const V = id ? VSKINS[id] : null, on = (vl[whVeh] || null) === (id || null), R = V ? rarOf(V.rar) : null;
-        const b = h('button', 'wh-item veh' + (on ? ' on' : '') + (V ? ' rar' : '') + (V && V.rar === 7 ? ' epsilon' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
+        const b = h('button', 'wh-item veh' + (on ? ' on' : '') + (V ? ' rar' : '') + (V && V.rar === 7 ? ' epsilon' : '') + (V && V.rar === 8 ? ' exclusive' : '')); b.type = 'button'; if (R) b.style.setProperty('--rc', R.color);
         const ico = h('i', 'wh-ico'), src = V ? Shop.vehThumb(id) : Shop.vehBaseThumb(whVeh); if (src) { const im = h('img'); im.src = src; im.alt = ''; ico.appendChild(im); }
         b.appendChild(ico); b.appendChild(h('b', '', V ? V.name : `기본 ${VEH_SKIN_TYPES[whVeh]}`)); b.appendChild(h('span', '', (R ? R.name + ' · ' + VCLS_NAME[V.cls] + ' · ' : '') + (on ? '장착 중' : '장착하기')));
+        if (V && V.rar === 8) { b.appendChild(h('i', 'xm-badge', '✦')); b.appendChild(h('em', 'excl xm', `EXCLUSIVE · 크리스마스 · 소유 #${Eco.serialOf(id)}`)); b.title = `${V.name} — ${V.desc || ''}`; }
         if (V && V.rar === 7) { b.appendChild(h('i', 'eps-badge', 'ε' + V.no)); b.appendChild(h('em', 'excl eps', `EPSILON · EP-${V.no} · 소유 #${Eco.serialOf(id)}`)); b.title = `${V.name} — ${V.desc || ''}`; }   // 엡실론 차량
         b.addEventListener('click', () => { if (!on) { Eco.equipVeh(whVeh, id); renderWarehouse(); showcase(); Audio.init(); Audio.ui(); } });
         return b;
@@ -1110,6 +1117,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: '크리스마스', title: '크리스마스 상자 — 겨울 옷·총기·차량 스킨 · 새 등급 EXCLUSIVE (루돌프 썰매 · 전용 처치 효과 총 · 빛나는 옷)', img: () => { try { return Shop.crateThumb('xmas'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=gacha]'); if (b) b.click(); } },
     { tag: '콜라보 이벤트', title: `THE BACKROOMS 탈출 이벤트 — 백룸에서 탈출하면 골드 탄피 ${BR_EVENT.gold.toLocaleString()} + 칭호 ‘${BR_EVENT.title}’`, img: () => EvBR.banner(), act: () => EvBR.open() },
     { tag: '이벤트', title: '골드 탄피 이벤트 — 골드 러시 · 행운의 골드 상자 · 매치 보너스 · 주간 챌린지 · 현상금', img: () => LOBBY_ART.vehicles, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=event]'); if (b) b.click(); } },
     { tag: '신규', title: '상점 오픈 — 상자 3종 · 차량 뽑기 · 교환소, 미션·출석 보상', img: () => LOBBY_ART.vehicles, act: () => setTab('shop') },
@@ -1143,6 +1151,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     document.querySelectorAll('[data-tab-go]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); Audio.init(); Audio.ui(); setTab(b.dataset.tabGo); }));
     $('newsCard').addEventListener('click', () => { Audio.init(); Audio.ui(); NEWS[newsI % NEWS.length].act(); });
     EvBR.init();   // 상단 '이벤트' (10_event.js)
+    ChangeLog.init();   // 메뉴 → 업데이트 로그 (10_changelog.js)
     if (!store.set('probe', 1)) $('storeNote').textContent = '이 브라우저에서는 기록을 저장할 수 없어 이번 세션에만 유지됩니다.';
     showNews(); clearInterval(newsT); newsT = setInterval(() => { if (G.state === 'lobby' && !$('lobby').hidden) { newsI++; showNews(); } }, 6000);
     try { makeRankBanner(); } catch (e) { /* 엠블럼 없이도 동작 */ }

@@ -45,6 +45,7 @@ function buildRig(look) {
   const chute = Gear.canopy(L.chute); chute.visible = false; root.add(chute);
   const rig = { root, body, hips: B.hips, spine: B.spine, chest: B.chest, neck: B.neck, head: B.head, armL: arm('L'), armR: arm('R'), legL: leg('L'), legR: leg('R'),
     gunMount, backGuns, backKey: ['', ''], chute, helmet, vest, pack, hat, mesh: I.hi, meshLo: I.lo, skel: I.skel, bones: I.list, look: L, gunId: null, gunObj: null, gearKey: '', lod: 0, shadow: true,
+    ofx: typeof OutfitFx !== 'undefined' ? OutfitFx.kindsOf(L) : [],   // EXCLUSIVE 옷 효과 종류 (08_outfitfx.js)
     // 장비 단계(0 = 없음): 바뀔 때만 메시 교체
     setGear(h, v, p) {
       const key = h + '|' + v + '|' + p; if (this.gearKey === key) return; this.gearKey = key;

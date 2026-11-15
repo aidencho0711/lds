@@ -24,11 +24,17 @@ const VSKINS = {
     desc: '낮고 날렵한 하이퍼 GT. 리퀴드 실버와 샴페인 골드, 고속에서 솟아오르는 액티브 리어 윙' },
   pickup_titan: { veh: 'pickup', cls: 'titan', name: 'TITAN VANGUARD', rar: 7, eps: 1, no: 'V003', box: 'eps', price: 400, eng: 'titan', paint: 0x464a50, ti: 0xa9adb3, accent: 0xc46a2a,
     desc: '묵직하고 웅장한 럭셔리 오프로드. 티타늄과 건메탈, 지붕 LED 바와 비드록 휠' },
+  // 크리스마스 상자 (v20, box 'xmas'): 교환소에는 없음
+  moto_cruiser_xmas: { veh: 'moto', cls: 'cruiser', name: '크루저 · 캔디 레드', rar: 3, price: 15, box: 'xmas', paint: 0xc8141e, paint2: 0xf4f0e8 },
+  sedan_gt_xmas: { veh: 'sedan', cls: 'sport', name: '스트라이커 GT · 홀리 그린', rar: 4, price: 30, box: 'xmas', paint: 0x1d5a33, accent: 0xc8202e },
+  sedan_hyper_xmas: { veh: 'sedan', cls: 'hyper', name: '펄스 X9 · 프로스트', rar: 5, price: 50, box: 'xmas', paint: 0xe8f2f8, glow: 0x9fe8ff, carbon: 0x1a2a3a },
+  uaz_sleigh: { veh: 'uaz', cls: 'sleigh', name: 'RUDOLPH EXPRESS', rar: 8, no: 'X4', box: 'xmas', price: 400, eng: 'sleigh',
+    desc: '루돌프가 끄는 산타 썰매 — 달리면 루돌프가 다리를 움직이고 코가 빛나며, 썰매 날에서 금빛 가루와 방울 소리' },
   sedan_sovereign: { veh: 'sedan', cls: 'sovereign', name: 'SOVEREIGN ECLIPSE', rar: 7, eps: 1, no: 'V004', box: 'eps', price: 400, eng: 'sovereign', paint: 0x17141d, silver: 0xb9bec6,
     desc: '길고 우아한 초호화 의전 세단. 블랙 펄과 실버 투톤, 솟아오르는 보닛 장식과 이클립스 원형 등' },
 };
 const VEH_SKIN_TYPES = { sedan: '승용차', uaz: 'SUV', pickup: '픽업트럭', moto: '오토바이', horse: '말' };
-const VCLS_NAME = { imperial: '럭셔리 퍼포먼스 SUV', aurelion: '하이퍼카', titan: '럭셔리 오프로드', sovereign: '초호화 세단', sport: '스포츠카', lux: '럭셔리카', hyper: '하이퍼카', racer: '오토바이', cruiser: '오토바이', white: '말', black: '말' };
+const VCLS_NAME = { sleigh: '산타 썰매', imperial: '럭셔리 퍼포먼스 SUV', aurelion: '하이퍼카', titan: '럭셔리 오프로드', sovereign: '초호화 세단', sport: '스포츠카', lux: '럭셔리카', hyper: '하이퍼카', racer: '오토바이', cruiser: '오토바이', white: '말', black: '말' };
 (() => {
   const K = VehModels.kit, { VB, mtx, arch, side, tube, ball, wheelGeo, SEAT_C, TRIM } = K;
   // 크롬 휠 살(바퀴와 함께 돈다): 테 + 바퀴살 + 허브
@@ -1058,7 +1064,74 @@ const VCLS_NAME = { imperial: '럭셔리 퍼포먼스 SUV', aurelion: '하이퍼
       efx: { kind: 'sovereign', screens: [{ id: 'cluster', p: [0.4, 0.93, 0.56], w: 0.28, h: 0.1, rx: -0.5 }, { id: 'center', p: [0, 0.94, 0.58], w: 0.32, h: 0.13, rx: -0.45 }],
         under: null, puddle: [[1.25, -0.55], [-1.25, -0.55]], beams: [[0.6, 0.78, 2.54], [-0.6, 0.78, 2.54]], trail: { y: 0.7, z0: -2.2, z1: 2.0, x: 0.97 } } };
   }
+  // ---------- 크리스마스 EXCLUSIVE: RUDOLPH EXPRESS (UAZ 자리 — 좌석·물리·충돌은 UAZ 그대로) ----------
+  //  붉은 옻칠 썰매(금 테 · 앞으로 말린 금 날 · 벨벳 의자 둘 · 뒤 선물 자루 · 앞 랜턴 둘 · 둘레 요정 전구 · 뒤 금별) + 앞에서 끄는 루돌프
+  //  움직이는 부품(mov): 루돌프 다리 넷(어깨·엉덩이 축) · 머리(목 축, 빛나는 코 fx 포함) → 08_vehicle_eps.js 'sleigh' 가 달리기에 맞춰 흔듦
+  //  fx: hl0 루돌프 코 · hl1·hl2 랜턴 · hl3·hl4 요정 전구 · emb 뒤 금별 · amb 의자 둘레 빛 / 바퀴는 날 사이에 숨긴 작은 바퀴(보이지 않음)
+  function buildSleigh(sk) {
+    const RD = 0x9e0f1a, RD2 = 0x6a0a14, GD = 0xe2bd58, FUR = 0x7a5232, FUR2 = 0xb08a5a, DK = 0x1a1210, VEL = 0x5a0a14, CR = 0xf4f2ee;
+    const gloss = new VB(), matte = new VB(), chrome = new VB();
+    const fx = { hl0: new VB(), hl1: new VB(), hl2: new VB(), hl3: new VB(), hl4: new VB(), emb: new VB(), amb: new VB() };
+    const WR = 0.03, WW = 0.03, wheels = [[0.5, 0.44, 0.6, 1], [-0.5, 0.44, 0.6, 1], [0.5, 0.44, -1.2, 0], [-0.5, 0.44, -1.2, 0]];   // 바닥판 속에 숨김
+    // ----- 금 날(앞이 위로 말림) + 받침대 -----
+    const RUN = [[-2.05, 0.34], [-2.12, 0.2], [-1.98, 0.07], [-1.0, 0.06], [0.4, 0.06], [0.95, 0.1], [1.2, 0.26], [1.3, 0.5], [1.22, 0.68], [1.07, 0.7], [1.02, 0.58]];
+    for (const s of [1, -1]) {
+      curve(chrome, RUN.map(([z, y]) => [s * 0.74, y, z]), 0.04, GD, 8);
+      for (const z of [-1.6, -0.6, 0.3]) tube(chrome, [s * 0.74, 0.08, z], [s * 0.7, 0.44, z], 0.028, GD, 6);
+    }
+    // ----- 썰매 몸통: 바닥 · 옆판(윤곽을 돌출) · 앞판 · 등판 -----
+    gloss.box(-0.72, 0.4, -1.95, 0.72, 0.48, 0.92, RD2);
+    const SIDE = [[0.95, 0.42], [-1.95, 0.42], [-2.05, 0.6], [-2.08, 0.95], [-2.0, 1.3], [-1.86, 1.5], [-1.7, 1.52], [-1.62, 1.38], [-1.4, 1.12], [-0.9, 1.0], [0.1, 0.98], [0.5, 0.92], [0.75, 0.98], [0.92, 1.12], [1.02, 1.08], [1.04, 0.9], [1.0, 0.6]];
+    for (const s of [1, -1]) gloss.add(aurShape(SIDE, 0.05, 'zy', 0.01), mtx(s > 0 ? 0.71 : -0.76, 0, 0), RD);
+    const TOP = [[-1.7, 1.53], [-1.62, 1.39], [-1.4, 1.13], [-0.9, 1.01], [0.1, 0.99], [0.5, 0.93], [0.75, 0.99], [0.92, 1.13], [1.02, 1.09]];
+    for (const s of [1, -1]) { curve(chrome, TOP.map(([z, y]) => [s * 0.77, y, z]), 0.018, GD, 6); curve(chrome, [[-1.95, 0.5], [0.95, 0.5]].map(([z, y]) => [s * 0.775, y, z]), 0.012, GD, 6); }
+    gloss.box(-0.71, 0.48, 0.86, 0.71, 0.96, 0.94, RD); curve(chrome, [[-0.7, 0.97, 0.9], [0, 1.0, 0.92], [0.7, 0.97, 0.9]], 0.016, GD, 6);
+    gloss.box(-0.71, 0.48, -2.0, 0.71, 1.42, -1.92, RD);
+    // 앞 소용돌이 장식 · 뒤 금별(빛남)
+    for (const s of [1, -1]) chrome.add(new THREE.TorusGeometry(0.07, 0.016, 6, 16), mtx(s * 0.78, 1.0, 1.0, 0, Math.PI / 2, 0), GD);
+    { const st = new THREE.Shape(); for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.07 : 0.17; i ? st.lineTo(Math.cos(a) * r, Math.sin(a) * r) : st.moveTo(Math.cos(a) * r, Math.sin(a) * r); } st.closePath();
+      const sg = new THREE.ExtrudeGeometry(st, { depth: 0.02, bevelEnabled: false }); chrome.add(sg, mtx(0, 1.1, -2.03, 0, Math.PI, 0), GD);
+      const sg2 = new THREE.ShapeGeometry(st); sg2.scale(0.6, 0.6, 1); fx.emb.add(sg2, mtx(0, 1.1, -2.035, 0, Math.PI, 0), 0xfff0c0); }
+    // ----- 벨벳 의자 둘(UAZ 좌석 높이) · 금 테두리 · 뒤 선물 자루 -----
+    for (const [z0, z1, bz] of [[-0.35, 0.3, -0.38], [-1.3, -0.72, -1.36]]) {
+      matte.box(-0.68, 0.48, z0, 0.68, 0.86, z1, VEL); matte.box(-0.68, 0.86, bz - 0.06, 0.68, 1.32, bz + 0.04, VEL, -0.12);
+      curve(chrome, [[-0.68, 0.87, z1], [0.68, 0.87, z1]], 0.012, GD, 5); curve(chrome, [[-0.68, 1.33, bz], [0.68, 1.33, bz]], 0.014, GD, 5);
+      for (let i = -2; i <= 2; i++) ball(matte, i * 0.26, 1.08, bz + 0.05, 0.02, 0.02, 0.01, 0x3a0610, 6);
+      for (const x of [-0.5, 0.5]) fx.amb.box(x - 0.12, 0.47, z1 - 0.02, x + 0.12, 0.49, z1 + 0.005, 0xffe0a0);
+    }
+    ball(matte, 0, 1.0, -1.68, 0.52, 0.46, 0.2, 0x7a5a32, 12); ball(matte, 0, 1.42, -1.68, 0.16, 0.08, 0.12, 0x6a4a28, 10);
+    for (const [x, y, s, c] of [[-0.25, 1.4, 0.16, 0x2a7a3a], [0.2, 1.45, 0.14, 0x2a5ac8], [0.02, 1.52, 0.12, 0xe8c45a]]) { matte.box(x - s / 2, y - s / 2, -1.76, x + s / 2, y + s / 2, -1.76 + s, c, 0.2, x * 2, 0); chrome.box(x - 0.012, y - s / 2, -1.77, x + 0.012, y + s / 2 + 0.005, -1.76 + s + 0.01, GD, 0.2, x * 2, 0); }
+    // ----- 앞 랜턴 둘 (금 기둥 · 빛나는 등) + 고삐 손잡이(운전석 핸들 자리) -----
+    for (const s of [1, -1]) {
+      tube(chrome, [s * 0.72, 0.96, 0.9], [s * 0.72, 1.26, 0.9], 0.015, GD, 6);
+      chrome.box(s * 0.72 - 0.07, 1.26, 0.83, s * 0.72 + 0.07, 1.28, 0.97, GD); chrome.box(s * 0.72 - 0.06, 1.44, 0.84, s * 0.72 + 0.06, 1.46, 0.96, GD);
+      for (const dx of [-0.055, 0.055]) for (const dz of [-0.055, 0.055]) tube(chrome, [s * 0.72 + dx, 1.28, 0.9 + dz], [s * 0.72 + dx, 1.44, 0.9 + dz], 0.006, GD, 4);
+      fx[s > 0 ? 'hl1' : 'hl2'].box(s * 0.72 - 0.045, 1.29, 0.855, s * 0.72 + 0.045, 1.43, 0.945, 0xffd890);
+    }
+    chrome.add(new THREE.TorusGeometry(0.1, 0.014, 6, 16), mtx(0.42, 1.25, 0.5, -0.6, 0, 0), GD);
+    // 요정 전구: 옆판 위 금 테를 따라 (hl3·hl4 번갈아)
+    for (const s of [1, -1]) TOP.forEach(([z, y], i) => { if (i % 1 === 0) ball(fx[(i + (s > 0 ? 0 : 1)) % 2 ? 'hl3' : 'hl4'], s * 0.78, y + 0.03, z, 0.026, 0.026, 0.026, i % 3 === 0 ? 0xff5a5a : i % 3 === 1 ? 0x7aff9a : 0xffe08a, 6); });
+    // ----- 루돌프 (z 1.35 ~ 3.0): 몸통 · 목 · 고정 부분 / 다리 넷과 머리는 움직이는 부품 -----
+    ball(matte, 0, 1.02, 1.95, 0.26, 0.3, 0.6, FUR, 16); ball(matte, 0, 0.9, 1.95, 0.22, 0.2, 0.5, FUR2, 12); ball(matte, 0, 1.08, 2.38, 0.24, 0.28, 0.24, FUR, 12);
+    tube(matte, [0, 1.18, 2.42], [0, 1.52, 2.6], 0.12, FUR, 10, 0.09); ball(matte, 0, 1.12, 1.36, 0.06, 0.07, 0.06, CR, 8);
+    { const col = new THREE.TorusGeometry(0.16, 0.03, 8, 20); col.rotateX(-0.55); chrome.add(col, mtx(0, 1.3, 2.47), 0xc8202e); }
+    for (let i = 0; i < 5; i++) { const a = -0.9 + i * 0.45; ball(chrome, Math.sin(a) * 0.17, 1.22 + Math.cos(a) * 0.02, 2.55 + Math.cos(a) * 0.06, 0.03, 0.03, 0.03, GD, 8); }
+    { const hb = new THREE.TorusGeometry(0.29, 0.024, 6, 24); chrome.add(hb, mtx(0, 1.02, 2.15), 0xc8202e); }
+    for (const s of [1, -1]) { tube(chrome, [s * 0.42, 0.72, 0.95], [s * 0.3, 1.0, 1.8], 0.022, GD, 6); tube(matte, [0.42, 1.24, 0.52], [s * 0.13, 1.3, 2.47], 0.008, 0xc8202e, 4); }
+    const leg = (x, y, z) => { const L = { pivot: [x, y, z], matte: new VB() }; tube(L.matte, [0, 0, 0], [0, -0.42, 0.03], 0.06, FUR, 8, 0.045); tube(L.matte, [0, -0.42, 0.03], [0, -0.82, 0], 0.036, FUR, 6, 0.03); L.matte.add(new THREE.CylinderGeometry(0.04, 0.046, 0.07, 8), mtx(0, -0.85, 0.005), DK); return L; };
+    const head = { pivot: [0, 1.45, 2.56], matte: new VB(), chrome: new VB(), fx: { hl0: new VB() } };
+    { const H = head, P0 = H.pivot, at = (x, y, z) => [x - P0[0], y - P0[1], z - P0[2]];
+      ball(H.matte, ...at(0, 1.66, 2.72), 0.12, 0.12, 0.18, FUR, 14); ball(H.matte, ...at(0, 1.6, 2.86), 0.08, 0.075, 0.1, FUR2, 10);
+      for (const s of [1, -1]) { ball(H.matte, ...at(s * 0.075, 1.71, 2.8), 0.02, 0.02, 0.016, 0x0a0a0c, 6); ball(H.matte, ...at(s * 0.13, 1.76, 2.66), 0.06, 0.022, 0.035, FUR2, 8);
+        const A = [[s * 0.06, 1.77, 2.68], [s * 0.14, 1.98, 2.6], [s * 0.2, 2.12, 2.5]].map((p) => at(...p)); curve(H.matte, A, 0.016, 0x4a2e1a, 6);
+        tube(H.matte, at(s * 0.14, 1.98, 2.6), at(s * 0.08, 2.1, 2.7), 0.011, 0x4a2e1a, 5); tube(H.matte, at(s * 0.18, 2.06, 2.55), at(s * 0.29, 2.14, 2.6), 0.011, 0x4a2e1a, 5); }
+      ball(H.fx.hl0, ...at(0, 1.61, 2.97), 0.052, 0.05, 0.05, 0xff2a2a, 12); }
+    const mov = { head, legFL: leg(0.14, 0.92, 2.3), legFR: leg(-0.14, 0.92, 2.3), legBL: leg(0.14, 0.92, 1.55), legBR: leg(-0.14, 0.92, 1.55) };
+    return { gloss, matte, chrome, fx, mov, wheel: tireGeo(WR, WW), rim: rimGeo(WR, WW, 3, true), wheels, wr: WR,
+      efx: { kind: 'sleigh', screens: [], under: { w: 1.7, l: 3.4, z: -0.5 }, beams: [], trail: { y: 0.12, z0: -1.9, z1: 0.9, x: 0.74 } } };
+  }
   for (const [id, sk] of Object.entries(VSKINS)) {
+    if (sk.cls === 'sleigh') { VehModels.register(id, () => buildSleigh(sk)); continue; }
     if (sk.cls === 'sport') VehModels.register(id, () => buildSport(sk));
     else if (sk.cls === 'lux') VehModels.register(id, () => buildLux(sk));
     else if (sk.cls === 'hyper') VehModels.register(id, () => buildHyper(sk));

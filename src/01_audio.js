@@ -432,6 +432,7 @@ const Audio = (() => {
     titan: { f0: 21, f1: 58, lp: 640, g: 0.29, w2: 'sawtooth' },        // TITAN VANGUARD: 낮고 굵은 터보 디젤
     sovereign: { f0: 27, f1: 74, lp: 860, g: 0.15, w2: 'sine' },        // SOVEREIGN ECLIPSE: 아주 조용하고 부드러운 대배기량
     moto: { f0: 50, f1: 165, lp: 1800, g: 0.19, w2: 'square' },
+    sleigh: { f0: 70, f1: 40, lp: 520, g: 0.05, w2: 'sine' },              // RUDOLPH EXPRESS: 엔진 대신 낮은 마법 울림 (방울 소리는 jingle)
   };
   const engines = new Map();
   function stopEng(id, e) { engines.delete(id); if (!ctx) return; e.out.gain.setTargetAtTime(0, ctx.currentTime, 0.08); setTimeout(() => e.nodes.forEach((n) => { try { n.stop(); } catch (_) {} }), 600); }
@@ -713,8 +714,20 @@ const Audio = (() => {
     },
     // 엡실론 차량 시동 (IMPERIAL X-01): 디지털 차임 두 음 → 시동 모터 → 점화 → 낮게 깔리며 올라가는 엔진 + 터빈 같은 높은 소리
     //  AURELION = 짧은 전자음 → 날카로운 회전 블립 두 번 · TITAN = 무거운 쿵 → 디젤 덜컥임 → 터보 휘파람 · SOVEREIGN = 우아한 세 음 차임 → 거의 들리지 않는 부드러운 시동
+    // 썰매 방울 (달리는 동안 VehFx 가 부름): 높은 금속 방울 두세 개 + 쉬익 (k = 속도 비율)
+    jingle(pos, own, k = 0.5) {
+      if (!ctx || !voice(0.1)) return; const out = spatial(own ? null : pos, (own ? 0.16 : 0.28) * (0.7 + k * 0.5), 70); if (!out) return; const t = ctx.currentTime;
+      const n = 2 + (Math.random() < 0.5 ? 1 : 0);
+      for (let i = 0; i < n; i++) { const f = [2093, 2349, 2637, 3136][(Math.random() * 4) | 0], d = i * 0.035 + Math.random() * 0.02; tone(out, t + d, 0.22, 'sine', f, f * 1.003, 0.05); tone(out, t + d, 0.12, 'sine', f * 2.76, f * 2.76, 0.018); }
+      noise(out, t, 0.08, 'highpass', 6500, 0.7, 0.03);
+    },
     vehStart(kind, pos, own) {
       if (!ctx) return; const out = spatial(own ? null : pos, own ? 0.55 : 0.75, 90); if (!out) return; const t = ctx.currentTime;
+      if (kind === 'sleigh') {   // 방울이 차르르 쏟아지고 → 반짝이는 높은 음 셋 → 낮은 울림
+        for (let i = 0; i < 9; i++) { const f = [2093, 2349, 2637, 3136, 2637, 2349, 2093, 2637, 3136][i]; tone(out, t + i * 0.06, 0.3, 'sine', f, f, 0.05); tone(out, t + i * 0.06, 0.16, 'sine', f * 2.76, f * 2.76, 0.016); }
+        for (const [d, f] of [[0.7, 1568], [0.85, 2093], [1.0, 3136]]) tone(out, t + d, 0.6, 'triangle', f, f, 0.05);
+        noise(out, t + 0.6, 0.9, 'highpass', 5000, 0.6, 0.04); tone(out, t + 0.9, 1.4, 'sine', 70, 110, 0.1); return;
+      }
       if (kind === 'aurelion') {
         tone(out, t, 0.12, 'square', 2200, 2900, 0.05); noise(out, t + 0.1, 0.25, 'highpass', 3000, 0.7, 0.08);
         for (const d of [0.35, 0.75]) { tone(out, t + d, 0.32, 'sawtooth', 110, 760, 0.16); tone(out, t + d, 0.32, 'square', 55, 380, 0.08); noise(out, t + d + 0.25, 0.08, 'bandpass', 1800, 3, 0.25); }

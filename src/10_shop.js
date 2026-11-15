@@ -137,6 +137,25 @@ const Shop = (() => {
         for (const x of [-0.18, 0.18]) A(g, BX(0.04, 0.18, 0.45), sp, x, 0.15, 0);
       },
     },
+    // 크리스마스(v20): 빨간 선물 상자 + 금 리본 십자 + 초록 테 + 뚜껑 위 큰 금 리본 매듭과 꼬리 · 흰 눈 테
+    xmas: {
+      base(g, { A, BX, RB, M }) {
+        const rd = M('polymer', 0xb8141e), gd = M('brass', 0xe2bd58), gr = M('cloth', 0x1d5a33), sn = M('cloth', 0xf4f6f8);
+        A(g, RB(1.0, 0.6, 0.7, 0.03), rd, 0, 0.31, 0);
+        for (const sz of [-1, 1]) A(g, BX(0.14, 0.6, 0.012), gd, 0, 0.31, sz * 0.352);
+        for (const sx of [-1, 1]) A(g, BX(0.012, 0.6, 0.14), gd, sx * 0.502, 0.31, 0);
+        A(g, BX(1.02, 0.04, 0.72), gr, 0, 0.03, 0);
+        for (const sz of [-1, 1]) for (const x of [-0.32, 0.32]) A(g, BX(0.05, 0.05, 0.01), sn, x, 0.45, sz * 0.354, 0, 0, Math.PI / 4);   // 눈꽃 점
+      },
+      lid(g, { A, BX, RB, CY, TOR, M }) {
+        const rd = M('polymer', 0xc41a24), gd = M('brass', 0xe2bd58), sn = M('cloth', 0xf4f6f8);
+        A(g, RB(1.05, 0.1, 0.75, 0.03), rd, 0, 0.05, 0);
+        A(g, BX(1.06, 0.105, 0.14), gd, 0, 0.05, 0); A(g, BX(0.14, 0.105, 0.76), gd, 0, 0.05, 0);
+        A(g, RB(1.07, 0.025, 0.77, 0.012), sn, 0, 0.1, 0);   // 뚜껑 위 쌓인 눈
+        for (const s of [-1, 1]) { const loop = TOR(0.11, 0.032, 8, 16); A(g, loop, gd, s * 0.11, 0.2, 0, Math.PI / 2, s * 0.5, 0); A(g, BX(0.06, 0.02, 0.24), gd, s * 0.08, 0.13, 0.16, 0.3, s * 0.4, 0); }
+        A(g, CY(0.05, 0.05, 0.06, 10, 'y'), gd, 0, 0.16, 0);
+      },
+    },
     // 차량: 탄소 케이스 + 금 테 + 뚜껑 위 금 핸들 엠블럼 + 하늘색 빛 줄
     veh: {
       base(g, { A, BX, RB, M }) {
@@ -199,9 +218,9 @@ const Shop = (() => {
   }
   function itemSub(o) {
     if (o.k === 'gold' || o.k === 'coin' || o.k === 'gcoin') return '재화';
-    if (o.k === 'gskin') { const S = GSKINS[o.id], cls = ITEMS[S.gun].name.replace(GunSkin.short(S.gun), '').trim(); return `총기 스킨 · ${cls}` + (S.fx ? ' · 사격·교체 효과' + (S.parts ? ' · 부속품' : '') : S.lite ? ' · 약한 사격·맞힘 효과' : ''); }
-    if (o.k === 'vskin') { const V = VSKINS[o.id]; return `${VEH_SKIN_TYPES[V.veh]} 스킨 · ${VCLS_NAME[V.cls]}`; }
-    return SLOT_NAME[Body.SKINS[o.id].slot] || '';
+    if (o.k === 'gskin') { const S = GSKINS[o.id], cls = ITEMS[S.gun].name.replace(GunSkin.short(S.gun), '').trim(); return `총기 스킨 · ${cls}` + (S.xm ? ' · 대기·살펴보기·사격·처치 효과·킬 로그' : S.fx ? ' · 사격·교체 효과' + (S.parts ? ' · 부속품' : '') : S.lite ? ' · 약한 사격·맞힘 효과' : ''); }
+    if (o.k === 'vskin') { const V = VSKINS[o.id]; return `${VEH_SKIN_TYPES[V.veh]} 스킨 · ${VCLS_NAME[V.cls]}` + (V.rar === 8 ? ' · 움직이는 썰매·빛나는 코' : ''); }
+    const SK = Body.SKINS[o.id]; return (SLOT_NAME[SK.slot] || '') + (SK.fx ? ' · 입으면 몸 둘레 효과' : '');
   }
 
   // ---------- 상점 화면 ----------
@@ -214,9 +233,10 @@ const Shop = (() => {
     if (tab === 'gacha') {
       const grid = h('div', 'gc-grid');
       for (const [k, B] of Object.entries(BOXES)) {
-        const card = h('div', 'gc-card' + (k === selBox ? ' on' : '') + (k === 'veh' ? ' veh' : '') + (B.gun ? ' gun' : '')); card.style.setProperty('--acc', B.accent); card.tabIndex = 0; card.dataset.box = k;
+        const card = h('div', 'gc-card' + (k === selBox ? ' on' : '') + (k === 'veh' ? ' veh' : '') + (B.gun ? ' gun' : '') + (B.xmas ? ' xmas' : '')); card.style.setProperty('--acc', B.accent); card.tabIndex = 0; card.dataset.box = k;
         const P = Eco.pool(k), n = k === 'veh' ? Object.keys(VSKINS).length : P.filter((x) => x.k === (B.gun ? 'gskin' : 'skin')).length, gn = B.gun ? 0 : P.filter((x) => x.k === 'gskin').length;
-        const sub = k === 'veh' ? `차량 교환 코인(높은 확률) · 차량 스킨 ${n}종` : B.gun ? `총기 교환 코인 70% · ${B.theme} ${n}종` : `${B.theme} ${n}종 · 총기 스킨 ${gn}종 · ${GOLD_NAME}`;
+        const xn = B.xmas ? P.filter((x) => x.rar === 8).length : 0;
+        const sub = k === 'veh' ? `차량 교환 코인(높은 확률) · 차량 스킨 ${n}종` : B.gun ? `총기 교환 코인 70% · ${B.theme} ${n}종` : B.xmas ? `옷 ${n}종 · 총기 ${gn}종 · 차량 ${P.filter((x) => x.k === 'vskin').length}종 · EXCLUSIVE ${xn}종(2%) · ${GOLD_NAME}` : `${B.theme} ${n}종 · 총기 스킨 ${gn}종 · ${GOLD_NAME}`;
         card.innerHTML = `<span class="gc-img"><img src="${crateThumb(k)}" alt=""></span><span class="gc-txt"><b>${B.name}${B.isNew && !(Eco.E().pulls[k] > 0) ? '<em class="gc-new">NEW</em>' : ''}</b><span>${sub}</span></span>`;
         const odds = h('button', 'gc-odds', '확률'); odds.type = 'button'; odds.addEventListener('click', (e) => { e.stopPropagation(); click(); openOdds(k); }); card.appendChild(odds);
         const btns = h('span', 'gc-btns');
@@ -230,7 +250,7 @@ const Shop = (() => {
         grid.appendChild(card);
       }
       body.appendChild(grid);
-      $('shopFoot').textContent = `총기 상자·차량 뽑기는 1회 200, 옷 상자는 1회 100 ${GOLD_NAME}. 총기 상자는 70% 확률로 총기 교환 코인, 나머지는 총기 스킨이 나오고 울트라레어 스킨은 쏠 때와 총을 바꿀 때 효과가 있습니다. 이미 가진 것이 나오면 일부를 돌려받습니다.`;
+      $('shopFoot').textContent = `크리스마스 상자는 1회 300(EXCLUSIVE 2%), 총기 상자·차량 뽑기는 1회 200, 옷 상자는 1회 100 ${GOLD_NAME}. 총기 상자는 70% 확률로 총기 교환 코인, 나머지는 총기 스킨이 나오고 울트라레어 스킨은 쏠 때와 총을 바꿀 때 효과가 있습니다. 이미 가진 것이 나오면 일부를 돌려받습니다.`;
     } else {
       // 교환소: 총기 / 차량
       const subt = h('div', 'ex-subtabs');
@@ -261,7 +281,7 @@ const Shop = (() => {
       for (const t of Object.keys(VEH_SKIN_TYPES)) {
         const sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', VEH_SKIN_TYPES[t] + (t === 'sedan' ? ' (세단에 적용)' : t === 'uaz' ? ' (UAZ에 적용)' : t === 'pickup' ? ' (픽업트럭에 적용)' : '')));
         const grid = h('div', 'ex-grid');
-        for (const [id, V] of Object.entries(VSKINS).filter(([, v]) => v.veh === t)) {
+        for (const [id, V] of Object.entries(VSKINS).filter(([, v]) => v.veh === t && v.box !== 'xmas')) {   // 크리스마스 차량은 상자에서만
           const own = Eco.ownsVeh(id), R = rarOf(V.rar), key = 'ex:' + id;
           const card = h('div', 'ex-card' + (id === selVeh ? ' on' : '') + (own ? ' own' : '') + (V.rar === 7 ? ' epsilon' : '')); card.style.setProperty('--rc', R.color);
           card.innerHTML = `<span class="ex-img"><img src="${vehThumb(id)}" alt=""></span><span class="ex-rar">${R.name} · ${VCLS_NAME[V.cls]}</span><b>${esc(V.name)}</b>` + (V.rar === 7 ? `<i class="eps-badge">ε${V.no}</i>` : '');
@@ -453,7 +473,7 @@ const Shop = (() => {
 // ============================================================
 const Cutscene = (() => {
   let S = null, active = false, t = 0, t0 = 0, last = 0, D = 3, tier = 3, cb = null, steps = [], stepI = 0, opened = false, item = null;
-  const DUR = { 3: 3.0, 4: 3.8, 5: 4.9 };
+  const DUR = { 3: 3.0, 4: 3.8, 5: 4.9, 8: 5.6 };
   function texDot() { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.6)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); }
   function texBeam() { const c = document.createElement('canvas'); c.width = 8; c.height = 128; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 128, 0, 0); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 8, 128); return new THREE.CanvasTexture(c); }
   function texFloor() { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128); gr.addColorStop(0, '#2a2f33'); gr.addColorStop(0.6, '#121517'); gr.addColorStop(1, '#07090b'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); g.strokeStyle = 'rgba(255,255,255,0.05)'; for (let r = 20; r < 128; r += 18) { g.beginPath(); g.arc(128, 128, r, 0, TAU); g.stroke(); } return new THREE.CanvasTexture(c); }
@@ -673,9 +693,9 @@ const Cutscene = (() => {
     }
     S.epsMode = !!(top && top.k === 'gskin' && GSKINS[top.id] && GSKINS[top.id].rar === 7);   // 엡실론: 전용 획득 연출
     S.vepsMode = !!(top && top.k === 'vskin' && VSKINS[top.id] && VSKINS[top.id].rar === 7);   // 엡실론 차량: 차량 전용 획득 연출
-    tier = S.epsMode || S.vepsMode ? 7 : clamp(best, 3, 5); D = S.vepsMode ? VEPS_D : S.epsMode ? EPS_D : DUR[tier]; t = 0; t0 = last = performance.now(); cb = done; opened = false; item = top;
-    // 빛 단계: 레어(파랑)부터 결과 등급까지
-    steps = []; for (let r = 2; r <= tier; r++) steps.push(r); stepI = 0; setCol(colOf(2));
+    tier = S.epsMode || S.vepsMode ? 7 : best === 8 ? 8 : clamp(best, 3, 5); D = S.vepsMode ? VEPS_D : S.epsMode ? EPS_D : DUR[tier]; t = 0; t0 = last = performance.now(); cb = done; opened = false; item = top;
+    // 빛 단계: 레어(파랑)부터 결과 등급까지 (EXCLUSIVE 는 울트라레어 다음 금빛 — 테스터·엡실론 색은 건너뜀)
+    steps = []; for (let r = 2; r <= tier; r++) if (tier !== 8 || r <= 5 || r === 8) steps.push(r); stepI = 0; setCol(colOf(2));
     S.ringM.opacity = 0; S.pillarM.opacity = 0; S.pillar.scale.y = 0.01; S.raysM.opacity = 0; S.pm.opacity = 0; S.glow.intensity = 0;
     resetParticles(false);
     if (S.epsMode) epsSetup(top);   // 색 초기화(setCol) 뒤에 엡실론 색으로

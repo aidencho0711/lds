@@ -91,8 +91,10 @@ const Lobby = {
       this.motoProp = () => { if (this.moto) sc.remove(this.moto.root); const m = this.moto = VehModels.instance('moto', Eco.vlook().moto); m.root.position.set(3.0, 0, -3.0); m.root.rotation.y = -0.75; m.root.rotation.z = 0.12; sc.add(m.root); };
       this.motoProp(); Eco.on((w) => { if (w === 'vequip') this.motoProp(); if (w === 'gequip') this.setGun(true); });
     } catch (e) { console.warn('로비 차량 생략', e); }
-    for (let i = 0; i < 11; i++) add(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), 0x777777, -15 + i * 3, 1.2, -11);
-    const tg = new THREE.ConeGeometry(1.6, 5, 7); for (let i = 0; i < 22; i++) { const a = -Math.PI * 0.95 + i / 21 * Math.PI * 0.9, r = 24 + Math.random() * 12; add(tg, 0x2e4a2a, Math.cos(a) * r, 2.5, Math.sin(a) * r); }
+    const posts = []; for (let i = 0; i < 11; i++) { add(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), 0x777777, -15 + i * 3, 1.2, -11); posts.push([-15 + i * 3, 2.38, -11]); }
+    const tg = new THREE.ConeGeometry(1.6, 5, 7), trees = []; for (let i = 0; i < 22; i++) { const a = -Math.PI * 0.95 + i / 21 * Math.PI * 0.9, r = 24 + Math.random() * 12; add(tg, 0x2e4a2a, Math.cos(a) * r, 2.5, Math.sin(a) * r); trees.push([Math.cos(a) * r, Math.sin(a) * r]); }
+    // 겨울(11/15~2/15): 눈 덮인 기지 · 내리는 눈 · 장식 트리 · 눈사람 · 전구 줄 (10_winter.js)
+    try { this.winter = WINTER.on() ? WinterLobby.build(sc, { ground, trees, posts }) : null; } catch (e) { console.warn('겨울 로비 생략', e); this.winter = null; }
     this.setLook(SETTINGS.look);
     this.mates = []; this.setTeam(1);
   },
@@ -126,6 +128,7 @@ const Lobby = {
     if (this.sky) sc.remove(this.sky);
     this.sky = skyDome(t, 300); sc.add(this.sky);
     sc.fog = new THREE.Fog(t.fog, 26, 120);
+    if (WINTER.on()) sc.fog.color.lerp(new THREE.Color(WINTER.fog), 0.45);   // 겨울: 차갑고 뿌연 공기
     this.lights = addLights(sc, t, SHADOW_SIZE[SETTINGS.shadows] ? 1024 : 0);
     this.lights.sun.shadow.camera.left = this.lights.sun.shadow.camera.bottom = -12; this.lights.sun.shadow.camera.right = this.lights.sun.shadow.camera.top = 12;
   },
@@ -168,6 +171,7 @@ const Lobby = {
   },
   update(dt) {
     this.t += dt; const r = this.rig, t = this.t;
+    if (this.winter) this.winter.update(dt, t);   // 눈 · 전구 · 별
     // 진열 중: 캐릭터·팀원 숨기고 진열품을 화면 오른쪽에 크게 (왼쪽은 상점 창)
     const sc = this.sc; r.root.visible = !sc; if (this.moto) this.moto.root.visible = !sc;
     if (typeof Prof !== 'undefined') Prof.lobbyTags(this);   // 캐릭터 아래 칭호 (지난 프레임 카메라 기준 — 카메라는 천천히 움직임)
@@ -186,8 +190,8 @@ const Lobby = {
     // 창고 탭: 카메라를 캐릭터 가까이(오른쪽에 크게), 캐릭터는 천천히 돌며 옷을 보여 줌
     this.fk = lerp(this.fk || 0, this.focus ? 1 : 0, clamp(dt * 4, 0, 1));
     const yaw = lerp(0.35 + Math.sin(t * 0.25) * 0.15, 0.25 + Math.sin(t * 0.32) * 0.65, this.fk);
-    this.pose(r, t, yaw);
-    for (const m of this.mates) { m.root.visible = this.fk < 0.5; if (m.root.visible) this.pose(m, t + m.ph, m.baseYaw + Math.sin((t + m.ph) * 0.21) * 0.12); }
+    this.pose(r, t, yaw); OutfitFx.update(r, dt);   // EXCLUSIVE 옷 효과 (08_outfitfx.js)
+    for (const m of this.mates) { m.root.visible = this.fk < 0.5; if (m.root.visible) { this.pose(m, t + m.ph, m.baseYaw + Math.sin((t + m.ph) * 0.21) * 0.12); OutfitFx.update(m, dt); } }
     // 캐릭터를 화면 가운데에 (왼쪽 패널은 배경 위에 겹친다)
     const a = t * 0.08, f = smoothstep01(this.fk);
     this.cam.position.set(lerp(Math.sin(a) * 0.5 + 0.2, -0.55, f), lerp(1.45 + Math.sin(t * 0.3) * 0.05, 1.32, f), lerp(4.9 + Math.cos(a) * 0.2, 3.05, f));
@@ -575,6 +579,7 @@ G.update = function (dt) {
     if (c.net && !c.net.mine && (c.lean || c.leanA)) { const lt = c.alive && !c.knocked && c.mode === 'ground' ? c.lean || 0 : 0; c.leanA += (lt - c.leanA) * Math.min(1, dt * 11); if (!lt && Math.abs(c.leanA) < 0.003) c.leanA = 0; }   // 다른 기기 캐릭터의 기울이기
     // 화면에 안 보이는 캐릭터는 관절 애니메이션 생략
     if (c.isPlayer || c.root.visible) animateChar(c, dt);
+    if (c.rig.ofx.length && c.alive && c.root.visible && !(c.isPlayer && VM.active)) { const d = G.camera.position.distanceTo(c.pos); if (d < 40) OutfitFx.update(c.rig, dt, d < 15 ? 1 : 0.5); }   // EXCLUSIVE 옷 효과
     footsteps(c, dt);
   }
   separateChars();

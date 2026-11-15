@@ -4,7 +4,18 @@
 //  · 위치는 '가까운 화면 모서리 + 거리(px)'로 저장 → 화면 비율이 달라도 모서리 기준으로 유지
 //  · 버튼별 크기(50~200%), 전체 크기, 조이스틱 고정/유동 설정
 //  · 화면 밖으로 나가지 않도록 항상 안전 영역 안으로 잘라 넣음
+//  · 전체 화면: 휴대폰·태블릿에서 화면을 누르면(버튼이든 빈 곳이든) 전체 화면으로 — 브라우저는 누르는 동작 안에서만 허락하므로
+//    누를 때마다 '전체 화면이 아니면' 다시 요청한다 (iPhone Safari 처럼 지원하지 않는 곳은 그대로)
 // ============================================================
+(() => {
+  if (!IS_TOUCH || typeof document === 'undefined') return;
+  const go = () => {
+    const d = document, el = d.documentElement; if (d.fullscreenElement || d.webkitFullscreenElement) return;
+    const rq = el.requestFullscreen || el.webkitRequestFullscreen; if (!rq) return;
+    try { const p = rq.call(el, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => { /* 거절되면 다음 터치에서 다시 */ }); } catch (e) { /* 지원 안 함 */ }
+  };
+  for (const ev of ['pointerup', 'touchend', 'click']) document.addEventListener(ev, go, { capture: true, passive: true });
+})();
 const TOUCH_BTNS = [
   { id: 'fire', label: '사격', hold: 'fire', size: 84, cls: 'fire', def: { ax: 'r', ay: 'b', x: 66, y: 122 } },
   { id: 'aim', label: '조준', hold: 'aim', size: 54, def: { ax: 'r', ay: 'b', x: 147, y: 169 } },

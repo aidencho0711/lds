@@ -1538,3 +1538,40 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 /* 칭호: 백룸 탈출자 (노란 벽지 · 형광등) */
 .ttl-br_escape { background: linear-gradient(90deg, rgba(120, 100, 20, 0), #7a6a1c 12%, #c8b560 40%, #f4e7a0 50%, #c8b560 60%, #7a6a1c 88%, rgba(120, 100, 20, 0)); border-color: rgba(255, 245, 190, 0.85); color: #1c1606; text-shadow: 0 1px 0 rgba(255, 250, 220, 0.5); }
 .ttl-br_escape::before { content: '▮'; color: #fffbe0; text-shadow: 0 0 6px #fff7c0; }@media (max-height: 520px) { .evb-art { aspect-ratio: auto; height: 96px; background-position: center 88%; } .evb-steps li span { display: none; } .evb-txt { gap: 8px; padding: 10px 14px 12px; } .evb-desc { font-size: 0.8rem; line-height: 1.45; } .evb-title { font-size: 1.2rem; } }
+/* 백룸 탈출 이벤트 테두리: 노란 벽지 고리 + 형광등 깜빡임 */
+.fr-br_escape { --rg: repeating-conic-gradient(#d8c36a 0 8deg, #b3a04a 8deg 16deg); --w: calc(var(--s) * 0.1); --gl: rgba(255, 248, 200, 0.6); }
+.fr-br_escape .pf-ring { animation: pfSpin 9s linear infinite; }
+.fr-br_escape::after { animation: brFlicker 3.2s steps(1) infinite; }
+@keyframes brFlicker { 0%, 100% { opacity: 1; } 46% { opacity: 1; } 47% { opacity: 0.25; } 48% { opacity: 1; } 52% { opacity: 0.4; } 53% { opacity: 1; } }
+.evb-chip .pf { vertical-align: middle; }/* 업데이트 로그 (10_changelog.js) */
+.more-btn { position: relative; }
+.more-btn .tab-dot, #clBtn .tab-dot { top: -3px; right: -3px; }
+.cl-menu { position: relative; width: min(620px, 100%); }
+.cl-body { display: flex; flex-direction: column; gap: 6px; }
+.cl-ent { border: 1px solid var(--line); border-radius: 6px; background: rgba(255, 255, 255, 0.03); }
+.cl-ent[open] { border-color: var(--line-2); }
+.cl-ent summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 9px; padding: 9px 12px; }
+.cl-ent summary::-webkit-details-marker { display: none; }
+.cl-ent summary b { flex: 1; font-size: 0.92rem; color: var(--sand); }
+.cl-v { flex: none; font: 800 0.78rem/1 var(--f-display); letter-spacing: 0.06em; padding: 3px 7px; border-radius: 3px; background: rgba(240, 164, 58, 0.16); color: var(--amber); }
+.cl-d { flex: none; font-size: 0.72rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+.cl-ent ul { margin: 0; padding: 0 14px 11px 30px; display: flex; flex-direction: column; gap: 4px; }
+.cl-ent li { font-size: 0.82rem; line-height: 1.5; color: var(--sand); }
+.cl-ent li::marker { color: var(--amber); }/* ---------- v20 크리스마스: EXCLUSIVE 등급 (금 · 빨강 · 초록 흐르는 테두리) ---------- */
+@keyframes xmEdge { to { background-position: 0 0, 300% 0; } }
+@keyframes xmGlow { 0%, 100% { box-shadow: 0 0 10px rgba(255, 207, 63, 0.35); } 50% { box-shadow: 0 0 20px rgba(255, 90, 90, 0.45); } }
+.gr-card.r8 { border: 2px solid transparent; background: linear-gradient(160deg, rgba(60, 10, 14, 0.96), rgba(10, 24, 14, 0.96)) padding-box, linear-gradient(90deg, #ffcf3f, #ff4a5a, #3aff7a, #ff4a5a, #ffcf3f) border-box; background-size: 100% 100%, 300% 100%; animation: grIn 0.42s cubic-bezier(.2, 1.4, .4, 1) both, xmEdge 3s linear infinite, xmGlow 1.6s ease-in-out infinite; }
+.gr-card.r8 .gr-rar { background: linear-gradient(90deg, #fff3c4, #ffcf3f, #ff8a8a); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: 0.16em; }
+.wh-item.gun.exclusive, .wh-item.veh.exclusive { position: relative; border: 2px solid transparent; background: linear-gradient(135deg, rgba(56, 10, 14, 0.95), rgba(10, 22, 14, 0.95)) padding-box, linear-gradient(90deg, #ffcf3f, #ff4a5a, #3aff7a, #ff4a5a, #ffcf3f) border-box; background-size: 100% 100%, 300% 100%; animation: xmEdge 5s linear infinite; }
+.wh-item.exclusive b { background: linear-gradient(90deg, #fff3c4, #ffcf3f); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.wh-item.exclusive span { color: #ffb8b8; }
+.xm-badge { position: absolute; top: 4px; right: 5px; font-style: normal; font: 800 0.6rem/1 var(--f-display); color: #2a1004; background: linear-gradient(135deg, #fff3c4, #ffcf3f); padding: 2px 4px; border-radius: 3px; }
+.wh-item.veh.exclusive .xm-badge { display: none; }
+.excl.xm { display: block; margin-top: 2px; font-style: normal; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.05em; color: #ffcf3f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#weaponPanel .wslot.exclusive { position: relative; border: 1px solid transparent; background: linear-gradient(var(--panel), var(--panel)) padding-box, linear-gradient(90deg, #ffcf3f, #ff4a5a, #3aff7a, #ff4a5a, #ffcf3f) border-box; background-size: 100% 100%, 300% 100%; animation: xmEdge 4s linear infinite; box-shadow: 0 0 12px rgba(255, 207, 63, 0.3); }
+.kf.eps.xm .kf-tag { background: linear-gradient(135deg, #fff3c4, #ffcf3f 50%, #ff4a5a); color: #2a0a04; }
+#skinKill.eps.xm u { color: #ffe08a; }
+/* 상점: 크리스마스 상자 카드 — 눈 내린 빨강·초록 */
+.gc-card.xmas { background: linear-gradient(150deg, rgba(120, 14, 22, 0.55), rgba(16, 50, 28, 0.55)), var(--panel); border-color: rgba(255, 207, 63, 0.6); position: relative; overflow: hidden; }
+.gc-card.xmas::before { content: '❄ ❅ ❆'; position: absolute; right: 8px; top: 6px; font-size: 0.8rem; letter-spacing: 0.3em; color: rgba(255, 255, 255, 0.55); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .gr-card.r8, .wh-item.exclusive, #weaponPanel .wslot.exclusive { animation: none; } }

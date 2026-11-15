@@ -12,6 +12,8 @@
 const GOLD_NAME = '골드 탄피', COIN_NAME = '차량 교환 코인', GCOIN_NAME = '총기 교환 코인';
 // 상점 진열 순서 = 이 순서 (총기 상자 → 옷 상자 → 차량)
 const BOXES = {
+  // v20 크리스마스: 겨울 테마 옷·총기·차량 스킨 + EXCLUSIVE (확률은 XMAS_P)
+  xmas: { name: '크리스마스 상자', theme: '겨울 테마 옷·총기·차량 스킨', cost: 300, accent: '#e8384a', hex: 0xc8202e, isNew: true, xmas: true },
   g1: { name: '아스널 상자', theme: '전술 테마 총기 스킨', cost: 200, accent: '#d9a441', hex: 0x8a6a2a, gun: true, isNew: true },
   g2: { name: '네온 상자', theme: '사이버 테마 총기 스킨', cost: 200, accent: '#ff3d9a', hex: 0xd0307a, gun: true, isNew: true },
   br: { name: '배틀로얄 상자', theme: '전장 테마 옷', cost: 100, accent: '#9db35e', hex: 0x6f8a3a },
@@ -22,7 +24,9 @@ const BOXES = {
 };
 const BOX_TIER_P = [45, 25, 18, 8, 3.2, 0.8];                 // 옷 상자의 레어도별 확률(%) — 2번(레어)은 골드 탄피
 const BOX_GOLD = [[30, 9], [60, 6], [150, 2.5], [500, 0.5]];   // 상자 속 골드 탄피 [양, %] (합 18%)
-const DUP_GOLD = [10, 20, 0, 60, 150, 400];                     // 이미 가진 옷이 나오면 레어도별 골드 탄피 환급
+const DUP_GOLD = [10, 20, 0, 60, 150, 400, 0, 0, 3000];         // 이미 가진 옷이 나오면 레어도별 골드 탄피 환급 (8 = EXCLUSIVE)
+// 크리스마스 상자: 골드 탄피 [양, %] + 레어도별 합(%) — 같은 레어도 안에서 옷·총기·차량이 똑같이 나눔 (합 100%)
+const XMAS_P = { gold: [[300, 9], [1000, 4], [3000, 1.5]], 0: 27, 1: 24, 3: 17, 4: 10.5, 5: 5, 8: 2 };
 const VEH_COINS = [[3, 55], [5, 25], [10, 10], [20, 2]];        // 차량 뽑기 코인 [개수, %] (합 92%)
 const VEH_SKIN_P = { 3: 5.5, 4: 2, 5: 0.5 };                    // 차량 뽑기 스킨 레어도별 합(%) — 같은 레어도 안에서 똑같이 나눔
 const GUN_COINS = [[3, 40], [5, 20], [10, 8], [20, 2]];         // 총기 상자 코인 [개수, %] (합 70%)
@@ -127,12 +131,22 @@ const Eco = (() => {
     const out = [];
     if (box === 'veh') {
       for (const [n, p] of VEH_COINS) out.push({ k: 'coin', n, rar: 2, p });
-      for (const r of [3, 4, 5]) { const ids = Object.keys(VSKINS).filter((id) => VSKINS[id].rar === r); for (const id of ids) out.push({ k: 'vskin', id, rar: r, p: VEH_SKIN_P[r] / ids.length }); }
+      for (const r of [3, 4, 5]) { const ids = Object.keys(VSKINS).filter((id) => VSKINS[id].rar === r && !VSKINS[id].box); for (const id of ids) out.push({ k: 'vskin', id, rar: r, p: VEH_SKIN_P[r] / ids.length }); }   // 크리스마스 차량은 크리스마스 상자에서만
     } else if (box === 'eps') {
       // 엡실론 금고: 총기 교환 코인 70% · 초희귀 16.4% · 슈퍼레어 9% · 울트라레어 3.4% · 엡실론 총기 0.8%(각 0.1%) · 엡실론 차량 0.4%(각 0.1%)
       for (const [n, p] of EPS_COINS) out.push({ k: 'gcoin', n, rar: 2, p });
       for (const r of [3, 4, 5, 7]) { const ids = Object.keys(GSKINS).filter((id) => GSKINS[id].rar === r && (r === 7 ? GSKINS[id].box === 'eps' : gunBox(GSKINS[id].box) && GSKINS[id].box !== 'eps')); for (const id of ids) out.push({ k: 'gskin', id, rar: r, p: EPS_TIER_P[r] / ids.length }); }
       for (const id of Object.keys(VSKINS).filter((x) => VSKINS[x].rar === 7 && VSKINS[x].box === 'eps')) out.push({ k: 'vskin', id, rar: 7, p: EPS_VEH_P });
+    } else if (box === 'xmas') {
+      // 크리스마스 상자: 골드 탄피 14.5% · 기본 27 · 희귀 24 · 초희귀 17 · 슈퍼레어 10.5 · 울트라레어 5 · EXCLUSIVE 2 (등급 안에서 옷·총기·차량이 똑같이)
+      for (const [n, p] of XMAS_P.gold) out.push({ k: 'gold', n, rar: 2, p });
+      for (const r of [0, 1, 3, 4, 5, 8]) {
+        const sk = Object.keys(Body.SKINS).filter((id) => Body.SKINS[id].box === 'xmas' && Body.SKINS[id].rar === r), gk = gskinsIn('xmas', r), vk = Object.keys(VSKINS).filter((id) => VSKINS[id].box === 'xmas' && VSKINS[id].rar === r), all = sk.length + gk.length + vk.length;
+        if (!all) continue;
+        for (const id of sk) out.push({ k: 'skin', id, rar: r, p: XMAS_P[r] / all });
+        for (const id of gk) out.push({ k: 'gskin', id, rar: r, p: XMAS_P[r] / all });
+        for (const id of vk) out.push({ k: 'vskin', id, rar: r, p: XMAS_P[r] / all });
+      }
     } else if (gunBox(box)) {
       // 총기 상자: 총기 교환 코인 70% + 총기 스킨 30%
       for (const [n, p] of GUN_COINS) out.push({ k: 'gcoin', n, rar: 2, p });
@@ -183,6 +197,7 @@ const Eco = (() => {
   }
   function exchange(id) {
     const V = VSKINS[id], e = E(); if (!V) return { err: '없는 차량입니다' };
+    if (V.box === 'xmas') return { err: '크리스마스 상자에서만 나오는 차량입니다' };
     if (ownsVeh(id)) return { err: '이미 가지고 있습니다' };
     if (e.coin < V.price) return { err: `${COIN_NAME}이 부족합니다 (필요 ${V.price} · 보유 ${e.coin})` };
     e.coin -= V.price; const o = give({ k: 'vskin', id, rar: V.rar }); changed('exchange');

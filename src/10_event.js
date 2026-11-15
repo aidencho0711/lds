@@ -7,7 +7,7 @@
 //  · 받은 기록은 이 기기(localStorage)에 — 기기마다 1번. 칭호는 계정(STATS.eco.brx)에 남는다
 //  · 서명은 두 게임이 같은 식(FNV-1a)으로 만든다 — 실제 돈이 오가지 않는 홍보 보상이라 가볍게 막는 정도
 // ============================================================
-const BR_EVENT = { url: 'https://backrooms-theta.vercel.app/', origin: 'https://backrooms-theta.vercel.app', gold: 1000, salt: 'ldr-backrooms-escape-v1', title: '백룸 탈출자' };
+const BR_EVENT = { url: 'https://backrooms-theta.vercel.app/', origin: 'https://backrooms-theta.vercel.app', gold: 30000, salt: 'ldr-backrooms-escape-v1', title: '백룸 탈출자' };
 const EvBR = (() => {
   const K = 'evBR', el = (id) => document.getElementById(id);
   const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
@@ -68,9 +68,16 @@ const EvBR = (() => {
     open(); flash('백룸 탈출 확인! 보상을 받으세요'); try { Audio.init(); Audio.ui(); } catch (e) { /* 소리 없이도 */ }
     return true;
   }
+  // 보상이 늘었을 때(1,000 → 30,000): 이미 받은 기기에는 차액을 한 번 더 (s.gold = 이 기기에서 받은 양)
+  function topUp() {
+    const s = get(); if (s.st !== 'done') return;
+    const had = s.gold || 1000; if (had >= BR_EVENT.gold) return;
+    s.gold = BR_EVENT.gold; put(s); Eco.brClaim(BR_EVENT.gold - had);
+    flash(`백룸 탈출 이벤트 보상이 늘었습니다 — 차액 골드 탄피 ${(BR_EVENT.gold - had).toLocaleString()}개를 더 드렸고, 사진 ‘스마일러’와 테두리 ‘백룸 탈출자’도 열렸습니다`); open();
+  }
   function claim() {
     const s = get(); if (s.st !== 'esc') return;
-    s.st = 'done'; s.doneT = Date.now(); put(s);
+    s.st = 'done'; s.doneT = Date.now(); s.gold = BR_EVENT.gold; put(s);
     Eco.brClaim(BR_EVENT.gold);
     const m = el('evMsg'); if (m) m.hidden = true;
     render(true); dots();
@@ -96,13 +103,15 @@ const EvBR = (() => {
     const rw = h('div', 'evb-rw'); rw.appendChild(h('span', 'evb-rw-k', '보상'));
     rw.appendChild(h('span', 'evb-chip', `${GOLD_SVG}<b>${BR_EVENT.gold.toLocaleString()}</b> 골드 탄피`));
     rw.appendChild(h('span', 'evb-chip', `<span class="ttl sm ttl-br_escape">${BR_EVENT.title}</span> 칭호`));
+    rw.appendChild(h('span', 'evb-chip', `${Prof.frameHTML('none', 'smiler', 26)} 사진 ‘스마일러’`));
+    rw.appendChild(h('span', 'evb-chip', `${Prof.frameHTML('br_escape', 'helmet', 26)} 테두리 ‘백룸 탈출자’`));
     txt.appendChild(rw);
     const act = h('div', 'evb-act');
     const st = h('span', 'evb-st');
     if (s.st === 'new') { st.textContent = '아직 참여하지 않았습니다'; act.appendChild(btn('백룸 들어가기 ↗', 'amber', go)); }
     else if (s.st === 'go') { st.innerHTML = '<i class="evb-wait"></i>백룸에서 탈출을 기다리는 중…'; act.appendChild(btn('백룸 다시 열기 ↗', '', go)); }
     else if (s.st === 'esc') { st.textContent = '탈출 확인 완료!'; act.appendChild(btn('보상 받기', 'amber pulse', claim)); }
-    else { st.textContent = justClaimed ? `받았습니다 — 골드 탄피 ${BR_EVENT.gold.toLocaleString()} · 칭호 ‘${BR_EVENT.title}’ (프로필에서 달 수 있음)` : '이 기기에서 받은 이벤트입니다'; const b = btn('받음 ✓', '', null); b.disabled = true; act.appendChild(b); act.appendChild(btn('백룸 또 하러 가기 ↗', 'ghost', () => window.open(BR_EVENT.url, '_blank'))); }
+    else { st.textContent = justClaimed ? `받았습니다 — 골드 탄피 ${BR_EVENT.gold.toLocaleString()} · 칭호·사진·테두리 ‘${BR_EVENT.title}’ (프로필에서 바꿀 수 있음)` : '이 기기에서 받은 이벤트입니다 (사진·테두리·칭호는 프로필에서)'; const b = btn('받음 ✓', '', null); b.disabled = true; act.appendChild(b); act.appendChild(btn('백룸 또 하러 가기 ↗', 'ghost', () => window.open(BR_EVENT.url, '_blank'))); }
     act.prepend(st); txt.appendChild(act);
     if (justClaimed) { const p = h('div', 'evb-pop', `+${BR_EVENT.gold.toLocaleString()}`); card.appendChild(p); setTimeout(() => p.remove(), 1600); }
     card.appendChild(txt); box.appendChild(card);
@@ -127,6 +136,6 @@ const EvBR = (() => {
   }
   let pendingCode = null;
   // 로비에 들어올 때마다: 경기 중에 온 탈출 알림 · 돌아오기 링크로 온 코드를 처리
-  function lobby() { dots(); if (pendingCode) { const c = pendingCode; pendingCode = null; accept(c); } }
+  function lobby() { dots(); if (pendingCode) { const c = pendingCode; pendingCode = null; accept(c); } else topUp(); }
   return { init, lobby, open, banner, state: () => get().st, _sign: sign, _accept: accept };
 })();
