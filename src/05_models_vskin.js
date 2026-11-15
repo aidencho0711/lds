@@ -583,7 +583,8 @@ const VCLS_NAME = { imperial: '럭셔리 퍼포먼스 SUV', aurelion: '하이퍼
   //  비율: 낮고 넓은 차체 · 길고 날카로운 노즈 · 앞뒤 바퀴 위로 솟은 펜더와 그 사이 낮은 보닛 · 앞바퀴 뒤에 앉은 캐빈 · 넓은 뒤 헌치 사이로 흘러내리는 엔진 덮개
   //  캐빈: 보닛에서 이어지는 경사 앞유리 → 낮고 긴 파노라마 캐노피(스모크 유리 지붕 + 실버 지붕 테 + 샴페인 창틀) → 엔진 덮개로 이어지는 패스트백 · 옆 유리는 B 필러로 나뉨
   //  디테일은 상자 대신 윤곽을 돌출(둥근 모서리)하거나 차체 표면을 따라 깐다:
-  //   부메랑 LED(어두운 하우징은 차체 색) · 깊은 앞 흡입구와 날 · 노즈 곡선을 따르는 카본 스플리터와 윙렛·카나드 · 문 뒤 깊은 사이드 흡입구와 샴페인 날
+  //   (3차 전면) 화살촉 헤드램프(다크 스모크 하우징 · 프로젝터 3개 · Y자 주간등) · 보닛 능선/채널/펜더 능선(실제 표면 높이) · 육각 가운데·사각 좌우 흡입구(깊은 안판·핀·실버 테)
+  //   · 노즈 곡선을 따르는 카본 스플리터와 윙렛·카나드 · 문 뒤 깊은 사이드 흡입구와 샴페인 날 · 바퀴 아치 테
   //   엔진 덮개 속에서 올라오는 스완넥 지지대의 액티브 윙(익형 단면 블레이드 · 곡선 엔드플레이트) · 뒤를 감싸는 얇은 테일 LED · 곡선 핀의 깊은 디퓨저와 베젤 속 4구 배기 · 터빈형 단조 휠
   //  재질: 리퀴드 실버 = 메탈릭 도장(metal) · 샴페인 골드 = 크롬 장식 · 카본 블랙 · 다크 스모크 유리
   //  좌석·핸들·바퀴 축(세단과 같은 자리) · 액티브 윙 피벗(mov.wing) · fx 이름(hl0~4 · line0~5 · emb · tail · brake · brake2 · amb) · efx 는 그대로
@@ -631,119 +632,259 @@ const VCLS_NAME = { imperial: '럭셔리 퍼포먼스 SUV', aurelion: '하이퍼
     }
     return vb.build();
   }
+  // ----- AURELION 전면 조형 도구: 해석적 차체 표면에 부품을 투영해 붙임 (정점 색으로 칠하면 격자 때문에 경계가 얼룩, 상자를 얹으면 떠 보임) -----
+  //  aurSurf(B, sc): ① B.ring 을 둘레 길이로 고르게 다시 매개 (초타원 각도 매개는 윗면 가운데 점이 성겨 보닛 굴곡이 뭉개짐)
+  //                  ② 윗면 높이 조각 sc(z, x) 를 ring · topY 에 똑같이 더함 (보닛 능선·채널·펜더 능선·배출구 오목) ③ B.inside(x, y, z) 안팎 판정
+  function aurSurf(B, sc) {
+    const ring0 = B.ring, top0 = B.topY, T = [], S = [], N = 160; let zc = null;
+    const w = (z, y) => { const q = B.sec(z), u = clamp((y - q.yc) / q.hu, 0, 1); return u * u; };
+    B.ring = (z, t) => {
+      // 둘레 길이에 높이 가중: 윗면(보닛 굴곡)은 촘촘히 · 아랫면은 성기게
+      if (zc !== z) { zc = z; T.length = S.length = 0; const s0 = B.sec(z), wt = (y) => y > s0.yc ? 1 + 1.3 * ((y - s0.yc) / s0.hu) ** 2 : 0.55 + 0.45 * clamp(1 - (s0.yc - y) / s0.hl, 0, 1); let p = ring0(z, -Math.PI / 2); for (let i = 0; i <= N; i++) { const tt = -Math.PI / 2 + i / N * TAU, q = ring0(z, tt); T.push(tt); S.push(i ? S[i - 1] + Math.hypot(q[0] - p[0], q[1] - p[1]) * wt((q[1] + p[1]) / 2) : 0); p = q; } }
+      const L = ((((t + Math.PI / 2) / TAU) % 1) + 1) % 1 * S[N]; let a = 0, b = N;
+      while (b - a > 1) { const m = (a + b) >> 1; if (S[m] < L) a = m; else b = m; }
+      const p = ring0(z, T[a] + (T[b] - T[a]) * (L - S[a]) / ((S[b] - S[a]) || 1)); p[1] += sc(z, p[0]) * w(z, p[1]); return p;
+    };
+    B.topY = (z, x) => { const y = top0(z, x); return y + sc(z, x) * w(z, y); };
+    // 윗면 높이 (이분법 — topY 의 반복식은 텀블홈이 큰 옆 가까이에서 수렴하지 않음): x(u) = hw·(1 − uⁿ)^(1/n)·(1 − tb·u) 를 풀어 단면 식 그대로
+    B.topR = (z, x) => {
+      const q = B.sec(z), ax = Math.abs(x); if (ax >= q.hw) return q.yc; let lo = 0, hi = 1;
+      for (let i = 0; i < 12; i++) { const u = (lo + hi) / 2; if (q.hw * Math.pow(1 - Math.pow(u, q.n), 1 / q.n) * (1 - q.tb * u) > ax) lo = u; else hi = u; }
+      const u = (lo + hi) / 2, t = ax / q.hw, k = Math.max(0, 1 - t * t), y = q.yc + q.hu * u - q.v * k * k * u * u; return y + sc(z, x) * w(z, y);
+    };
+    B.inside = (x, y, z) => { if (z <= B.z0 || z >= B.z1 || y <= B.y0(z)) return false; const q = B.sec(z); if (Math.abs(x) >= q.hw || y > q.yc + q.hu + 0.06) return false; return y >= q.yc ? y < B.topR(z, x) : Math.abs(x) < B.sideX(z, y); };
+    return B;
+  }
+  //  aurProj: 투영면 (X = x, Y = ey 방향 거리) 에서 d 방향으로 쏴 처음 만나는 차체 표면 점 (d·ey 의 x 성분 0 · |x| 로만 판정 → 좌우 정확히 대칭) · f.ax = 보는 쪽
+  function aurProj(B, d, ey, c, back, len) {
+    const at = (X, Y, s) => [X, c[1] + Y * ey[1] + (s - back) * d[1], c[2] + Y * ey[2] + (s - back) * d[2]], memo = new Map(); let last = 0;
+    // 기억: 테·벽·핀이 같은 점을 다시 묻고, 왼쪽(X < 0)은 오른쪽 결과를 x 만 뒤집어 씀 (차체가 좌우 대칭 → 계산도 절반 · 대칭도 정확)
+    const f = (X, Y) => {
+      const ax = Math.abs(X), key = Math.round(ax * 1e6) + ',' + Math.round(Y * 1e6); let r = memo.get(key);
+      if (r === undefined) {
+        let a = 0, b = -1, s0 = 0; r = null;
+        if (last > 0.14) { const p = at(ax, Y, last - 0.14); if (!B.inside(p[0], p[1], p[2])) s0 = last - 0.14; }   // 이웃 점은 거의 같은 깊이 → 바로 앞에서 시작
+        for (let s = s0; s <= len; s += 0.04) { const p = at(ax, Y, s); if (B.inside(p[0], p[1], p[2])) { b = s; break; } a = s; }
+        if (b > 0) { for (let i = 0; i < 10; i++) { const m = (a + b) / 2, p = at(ax, Y, m); if (B.inside(p[0], p[1], p[2])) b = m; else a = m; } r = at(ax, Y, (a + b) / 2); last = b; }
+        memo.set(key, r);
+      }
+      return r && X < 0 ? [-r[0], r[1], r[2]] : r;
+    };
+    f.ax = [-d[0], -d[1], -d[2]]; f.ey = ey; return f;
+  }
+  //  투영 표면 법선 (유한 차분 · 보는 쪽으로)
+  function aurN(f, X, Y, e = 0.005) {
+    const a = f(X + e, Y), b = f(X - e, Y), c = f(X, Y + e), d = f(X, Y - e), u = [a[0] - b[0], a[1] - b[1], a[2] - b[2]], v = [c[0] - d[0], c[1] - d[1], c[2] - d[2]];
+    const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]], L = Math.hypot(n[0], n[1], n[2]) || 1, sg = n[0] * f.ax[0] + n[1] * f.ax[1] + n[2] * f.ax[2] < 0 ? -1 : 1;
+    return n.map((k) => k / L * sg);
+  }
+  //  조각 격자: uv(u, v) → [X, Y] 를 표면에 붙이고 보는 쪽으로 off(수 또는 점 → 수) 만큼 띄움
+  function aurPatch(vb, f, uv, nu, nv, off, color) {
+    const P = [];
+    for (let i = 0; i <= nu; i++) { const row = []; for (let j = 0; j <= nv; j++) { const [X, Y] = uv(i / nu, j / nv), p = f(X, Y); if (!p) return; const o = typeof off === 'function' ? off(p) : off; row.push([p[0] + f.ax[0] * o, p[1] + f.ax[1] * o, p[2] + f.ax[2] * o]); } P.push(row); }
+    grid(P, P.map((r) => r.map(() => color)), false, () => vb, () => f.ax);
+  }
+  //  닫힌 윤곽 poly(투영면 좌표)를 따라 단면 prof [[바깥쪽 거리, 높이], ...] 를 쓸어 입체 테 (꼭짓점은 마이터) · out: 면 방향 기준 (기본 = 보는 쪽)
+  function aurRim(vb, f, poly, prof, color, out, per = 0.02) {
+    const n = poly.length; let A = 0;
+    for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n]; A += a[0] * b[1] - b[0] * a[1]; }
+    const sg = A > 0 ? 1 : -1, en = (i) => { const a = poly[i], b = poly[(i + 1) % n], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [sg * dy / l, -sg * dx / l]; }, S = [];
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n], e0 = en((i + n - 1) % n), e1 = en(i), mx = e0[0] + e1[0], my = e0[1] + e1[1], ml = Math.hypot(mx, my) || 1, k = Math.min(2.2, 1 / Math.max(0.3, (mx * e1[0] + my * e1[1]) / ml));
+      S.push([a[0], a[1], mx / ml * k, my / ml * k]);
+      const m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / per)); for (let t = 1; t < m; t++) S.push([lerp(a[0], b[0], t / m), lerp(a[1], b[1], t / m), e1[0], e1[1]]);
+    }
+    // 단면 점마다 투영하지 않고 바깥쪽 0 · 1.5 · 3cm 세 점만 투영해 2차 보간 (같은 윤곽의 벽·테가 같은 점을 공유)
+    const H = 0.015, Q = S.map(([X, Y, bx, by]) => { const p0 = f(X, Y), p1 = f(X + bx * H, Y + by * H) || p0, p2 = f(X + bx * 2 * H, Y + by * 2 * H) || [2 * p1[0] - p0[0], 2 * p1[1] - p0[1], 2 * p1[2] - p0[2]]; return [p0, p1, p2]; });
+    const P = prof.map(([o, h]) => { const l0 = (o - H) * (o - 2 * H) / (2 * H * H), l1 = -o * (o - 2 * H) / (H * H), l2 = o * (o - H) / (2 * H * H);
+      return Q.map(([a, b, c]) => [0, 1, 2].map((k) => a[k] * l0 + b[k] * l1 + c[k] * l2 + f.ax[k] * h)); });
+    grid(P, P.map((r) => r.map(() => color)), true, () => vb, out || (() => f.ax));
+  }
+  //  흡입구·배출구 날: 투영면 선분 a→b 를 따라 표면에서 보는 쪽으로 dep 만큼 선 얇은 판 (두께 th)
+  function aurFin(vb, f, a, b, dep, th, color, m = 10) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, tx = -dy / l * th / 2, ty = dx / l * th / 2, ax = f.ax;
+    const at = (k, sd, h) => { const X = lerp(a[0], b[0], k / m), Y = lerp(a[1], b[1], k / m), p = f(X + sd * tx, Y + sd * ty) || f(X, Y); return [p[0] + ax[0] * h, p[1] + ax[1] * h, p[2] + ax[2] * h]; };
+    const P = []; for (let k = 0; k <= m; k++) P.push([at(k, 1, -0.004), at(k, 1, dep), at(k, -1, dep), at(k, -1, -0.004)]);
+    const tw = [tx, ty * f.ey[1], ty * f.ey[2]], tl = Math.hypot(tw[0], tw[1], tw[2]) || 1;
+    grid(P, P.map((r) => r.map(() => color)), false, () => vb, () => [ax[0] - tw[0] / tl, ax[1] - tw[1] / tl, ax[2] - tw[2] / tl]);
+  }
+  //  빛 띠: 투영면 경로 pts 를 따라 폭 w 의 얇은 띠 (표면에서 off)
+  function aurStrip(vb, f, pts, w, off, color, m = 16) {
+    const L = [0]; for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const T = L[L.length - 1], at = (s) => { s = clamp(s, 0, T); let i = 1; while (i < L.length - 1 && L[i] < s) i++; const t = (s - L[i - 1]) / ((L[i] - L[i - 1]) || 1); return [lerp(pts[i - 1][0], pts[i][0], t), lerp(pts[i - 1][1], pts[i][1], t)]; };
+    aurPatch(vb, f, (u, v) => { const p = at(u * T), q = at(u * T + 0.004), r = at(u * T - 0.004), dx = q[0] - r[0], dy = q[1] - r[1], l = Math.hypot(dx, dy) || 1; return [p[0] - dy / l * (v - 0.5) * w, p[1] + dx / l * (v - 0.5) * w]; }, m, 1, off, color);
+  }
+  //  프로젝터: 표면점 p · 축 a — 어두운 통(하우징에 묻힘) + 빛 렌즈(fx) + 렌즈 칸막이 고리 + 크롬 테 (테가 렌즈보다 높아 깊이감)
+  function aurLens(can, lens, rim, p, a, r, h, lc) {
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(a[0], a[1], a[2]).normalize()), P = new THREE.Vector3(p[0], p[1], p[2]);
+    const M = (dz) => new THREE.Matrix4().compose(P.clone().add(new THREE.Vector3(0, 0, dz).applyQuaternion(q)), q, new THREE.Vector3(1, 1, 1)), top = h - 0.006;
+    const c = new THREE.CylinderGeometry(r * 1.06, r * 1.12, h, 24); c.rotateX(Math.PI / 2); can.add(c, M(h / 2 - 0.006), 0x0c0d10);
+    lens.add(new THREE.CircleGeometry(r * 0.8, 24), M(top + 0.0008), lc);
+    can.add(new THREE.TorusGeometry(r * 0.46, 0.0024, 5, 20), M(top + 0.0016), 0x15171a);
+    rim.add(new THREE.TorusGeometry(r, 0.0042, 6, 26), M(top + 0.0006), 0xb9bfc7);
+  }
   function buildAurelion(sk) {
-    const SV = sk.paint, CH = sk.gold, CB = 0x141517, DK = 0x0a0b0d, SM = 0x15181d, GL = 0x2c3442, RF = 0x1a2029;
-    const metal = new VB(), gloss = new VB(), matte = new VB(), sglass = new VB(), chrome = new VB();
+    // 2차 수정: 장식보다 차체 형상 — 앞뒤 끝에서 폭·높이가 충분히 수렴해 cap() 의 평평한 면이 거의 남지 않게(뒤 끝의 작은 마개는 배기 베젤 안)
+    //  · 끝부분 보간 지점을 촘촘히 · 링 수를 늘림(120) · 뒤 헌치(뒷바퀴 펜더)가 꼬리까지 감싸고 그 사이 엔진 덮개는 낮게 · 아래면이 뒤로 올라가며 그대로 디퓨저가 됨
+    //  · 실버는 조금 어두운 값 + 반사를 줄인 메탈릭(metal) · 캐노피는 기존 'glass'(다크 스모크) 재질 · 카본은 무광(matte) · 샴페인은 창틀·흡입구 날·휠 테·캘리퍼·엠블럼만
+    const SV = mixHex(sk.paint, 0x8a9098, 0.38), CH = sk.gold, CB = 0x16171a, DK = 0x0a0b0d, SM = 0x15181d;
+    const metal = new VB(), gloss = new VB(), matte = new VB(), sglass = new VB(), glass = new VB(), chrome = new VB();
     const fx = { hl0: new VB(), hl1: new VB(), hl2: new VB(), hl3: new VB(), hl4: new VB(), emb: new VB(), tail: new VB(), brake: new VB(), amb: new VB() };
     for (let i = 0; i < 6; i++) fx['line' + i] = new VB();
     const HLC = 0xf2f6ff, EMB = 0xffe2a8, RED = 0xff2030, LN = 0xffdca0;
     const WR = 0.37, WW = 0.33, WX = 0.87, ZF = 1.42, ZR = -1.36, wheels = [[WX, WR, ZF, 1], [-WX, WR, ZF, 1], [WX, WR, ZR, 0], [-WX, WR, ZR, 0]];
-    const arF = archW(ZF, WR, WR, WX, WW), arR = archW(ZR, WR, WR, WX, WW); arF.flare = 0.022; arR.flare = 0.028;
-    const INT = { z: -0.58, y: 0.55, rz: 0.36, ry: 0.13, a: 0.34, d: 0.1 };   // 문 뒤 깊은 사이드 흡입구
-    const B = makeBody({ z0: -2.38, z1: 2.46,
-      hw: [[-2.38, 0.64], [-2.24, 0.86], [-1.9, 1.0], [-1.36, 1.04], [-0.9, 1.0], [-0.3, 0.95], [0.4, 0.94], [0.95, 0.97], [1.42, 1.0], [1.9, 0.95], [2.2, 0.84], [2.46, 0.6]],
-      y0: [[-2.38, 0.38], [-2.18, 0.25], [-1.85, 0.2], [1.95, 0.2], [2.3, 0.22], [2.46, 0.3]],
-      y1: [[-2.38, 0.76], [-2.18, 0.89], [-1.8, 0.96], [-1.36, 0.98], [-0.95, 0.92], [-0.4, 0.84], [0.3, 0.8], [0.95, 0.8], [1.42, 0.83], [1.9, 0.76], [2.2, 0.64], [2.46, 0.5]],
-      valley: [[-2.38, 0.03], [-1.9, 0.08], [-1.36, 0.1], [-0.9, 0.05], [0, 0.02], [0.9, 0.06], [1.2, 0.11], [1.5, 0.14], [1.9, 0.12], [2.2, 0.08], [2.46, 0.04]],
-      n: [[-2.38, 3.0], [-2.1, 3.3], [-1.9, 3.4], [0, 3.3], [1.9, 3.2], [2.46, 2.8]], tb: 0.28, mid: 0.38, dents: [INT], wheels: [arF, arR] });
+    const arF = archW(ZF, WR, WR, WX, WW), arR = archW(ZR, WR, WR, WX, WW); arF.flare = 0.024; arR.flare = 0.03; arF.lip = arR.lip = 0.17;   // 펜더 테두리를 넓고 완만하게(급한 볼록은 메탈릭에서 하얀 얼룩)
+    const INT = { z: -0.55, y: 0.55, rz: 0.36, ry: 0.15, a: 0.3, d: 0.15 };                 // 문 뒤 깊은 사이드 흡입구 (뒷바퀴 아치 앞에서 끝남)
+    const B = makeBody({ z0: -2.4, z1: 2.5,
+      // 폭: 뒤 헌치가 꼬리 직전까지 넓게 유지되다 둥글게 수렴 · 앞은 펜더에서 노즈 끝까지 날렵하게 수렴
+      // 앞은 펜더 폭을 노즈 가까이까지 유지하다 빠르게 수렴 (낮고 넓은 하이퍼카 앞모습)
+      hw: [[-2.4, 0.42], [-2.385, 0.6], [-2.36, 0.72], [-2.32, 0.82], [-2.26, 0.9], [-2.16, 0.97], [-2.0, 1.02], [-1.7, 1.05], [-1.36, 1.06], [-0.95, 1.0], [-0.3, 0.95], [0.4, 0.94], [0.95, 0.97], [1.42, 1.0],
+        [1.8, 0.99], [2.05, 0.95], [2.2, 0.89], [2.3, 0.81], [2.38, 0.7], [2.44, 0.57], [2.48, 0.43], [2.5, 0.3]],
+      y0: [[-2.4, 0.36], [-2.3, 0.33], [-2.15, 0.27], [-1.95, 0.22], [-1.7, 0.19], [2.3, 0.19], [2.45, 0.2], [2.5, 0.21]],   // 앞 아랫면은 스플리터와 맞닿게 낮게
+      // 높이: 엔진 덮개가 꼬리로 흘러내려 배기 높이에서 끝남 · 앞은 헤드램프 자리(모서리)가 높고 가운데로 갈수록 낮아짐
+      y1: [[-2.4, 0.52], [-2.385, 0.6], [-2.36, 0.67], [-2.32, 0.74], [-2.26, 0.8], [-2.16, 0.86], [-2.0, 0.91], [-1.7, 0.95], [-1.36, 0.97], [-0.95, 0.91], [-0.4, 0.84], [0.3, 0.8], [0.95, 0.79],
+        [1.42, 0.81], [1.8, 0.75], [2.05, 0.68], [2.22, 0.6], [2.34, 0.53], [2.42, 0.46], [2.47, 0.4], [2.5, 0.34]],
+      // 가운데를 낮춰 양쪽 펜더가 솟게: 앞 = 보닛 골짜기(노즈 끝까지 깊게) · 뒤 = 헌치 사이 엔진 덮개
+      valley: [[-2.4, 0.0], [-2.28, 0.0], [-2.12, 0.05], [-1.9, 0.09], [-1.5, 0.11], [-1.1, 0.06], [-0.5, 0.02], [0.6, 0.03], [1.0, 0.1], [1.4, 0.15], [1.8, 0.15], [2.1, 0.13], [2.3, 0.1], [2.42, 0.06], [2.5, 0.02]],
+      n: [[-2.4, 2.4], [-2.33, 3.0], [-2.2, 3.4], [-1.9, 3.5], [0, 3.4], [1.9, 3.3], [2.3, 3.0], [2.5, 2.4]], tb: 0.27, mid: 0.38,
+      dents: [INT], wheels: [arF, arR] });
+    // 앞 윗면 조각 (실제 표면 높이): 보닛 가운데 길고 낮은 능선 · 능선과 펜더 사이 음각 채널(앞유리 쪽으로 흐르는 캐릭터 라인) · 근육질 앞 펜더 능선 · 배출구 자리 오목
+    const gs = (v, s) => Math.exp(-(v * v) / (s * s)), zw = (z, a, b, c, d) => sstep(a, b, z) * (1 - sstep(c, d, z)), VT = { x: 0.555, z: 1.435, rx: 0.115, rz: 0.15 };
+    aurSurf(B, (z, x) => { const ax = Math.abs(x), ev = ((ax - VT.x) / VT.rx) ** 2 + ((z - VT.z) / VT.rz) ** 2;
+      return (0.026 + 0.012 * sstep(1.9, 2.3, z)) * gs(ax, 0.055) * zw(z, 1.05, 1.3, 2.36, 2.48) - 0.04 * gs(ax - 0.31, 0.06) * zw(z, 1.05, 1.35, 2.28, 2.46) + 0.05 * gs(ax - 0.7, 0.11) * zw(z, 1.0, 1.25, 2.02, 2.28) - 0.013 * sstep(1.15, 0.7, ev); });
     const side = (z, y, d = 0.004) => B.sideX(z, y) + d;
-    // 부메랑 헤드램프 자리 — 위 팔(보닛 앞 모서리, [x, z]) · 아래 팔(옆 앞 모서리, [z, y])
-    const HU = [[0.88, 1.99], [0.42, 2.33]], HD = [[2.0, 0.66], [2.2, 0.4]];
-    const segD = (px, py, ax, ay, bx, by) => { const vx = bx - ax, vy = by - ay, t = clamp(((px - ax) * vx + (py - ay) * vy) / (vx * vx + vy * vy), 0, 1); return Math.hypot(px - ax - vx * t, py - ay - vy * t); };
-    const CWK = [[-1.85, 0.5], [-1.5, 0.66], [-1.0, 0.75], [-0.3, 0.77], [0.4, 0.75], [0.98, 0.6]], CWC = mono(CWK);   // 캐빈 밑변 반폭 (아래 makeCabin 과 같은 값)
+    const CWK = [[-1.85, 0.52], [-1.5, 0.68], [-1.0, 0.77], [-0.3, 0.79], [0.4, 0.77], [1.0, 0.6]], CWC = mono(CWK);   // 캐빈 밑변 반폭
     const col = (x, y, z) => {
-      const ax = Math.abs(x);
-      if (y < 0.255) return CB;
-      if (z > -1.8 && z < 0.93 && ax < CWC(z) - 0.05 && y > 0.6) return 0x1b1c1f;                                                 // 캐빈 안 바닥(실내 통)                                                                                                   // 카본 스커트·바닥
-      if (z > 2.08 && y < 0.38 && ax > 0.14 && ax < B.hw(z) * 0.86) return DK;                                                    // 깊은 앞 흡입구
-      if (z > 1.32 && z < 1.82 && ax > 0.16 && ax < 0.42 && y > B.topY(z, ax) - 0.025) return DK;                                 // 보닛 열 배출구
+      const ax = Math.abs(x), k = sstep(1.85, 2.25, z);
+      if (y < B.y0(z) + lerp(0.035, 0.012, k) || y < lerp(0.25, 0, k)) return CB;                                  // 카본 아래면·스커트 (뒤로 올라가며 디퓨저가 됨 · 앞은 아랫면만 — 범퍼 부품이 경계를 맡음)
+      if (z > -1.8 && z < 0.95 && ax < CWC(z) - 0.05 && y > 0.6) return 0x1b1c1f;                                 // 캐빈 안 바닥
       return SV;
     };
-    loftBody(B, metal, col, 96, 64); dentHoles(B, matte);
-    // ----- 캐빈: 경사 앞유리 → 낮고 긴 파노라마 캐노피 → 패스트백 -----
-    const Cb = makeCabin(B, { z0: -1.85, z1: 0.98, n: 4.0, tb: 0.22,
-      wc: CWK,
-      roof: [[-1.85, 0.97], [-1.6, 1.1], [-1.25, 1.26], [-0.85, 1.32], [-0.35, 1.34], [0.05, 1.325], [0.4, 1.2], [0.7, 1.03], [0.98, 0.83]] });
-    const ckey = cabinKey({ vS: 0.22, vP: 0.06, trimH: 0.022, zC: -1.42, zB: -0.42, bw: 0.04, trim: [chrome, CH], pillar: [metal, SV], bpil: [gloss, CB], glass: [sglass, GL], roof: [metal, SV], zRF: 0.36, zRR: -1.5, rear: [sglass, GL] });
-    loftCabin(Cb, (z, vv, dy) => (vv > 0.355 && z > -1.32 && z < 0.26 ? [sglass, RF] : ckey(z, vv, dy)), 48, 32);   // 지붕: 실버 테 안의 스모크 유리 띠 (앞·뒤 유리와 이어짐)
-    // ----- 앞: 부메랑 LED · 흡입구 날 · 보닛 배출구 살 · 카본 스플리터 · 윙렛 · 카나드 · 엠블럼 -----
+    loftBody(B, metal, col, 150, 104); dentHoles(B, matte);
+    // ----- 캐빈: 길게 누운 앞유리 → 낮은 파노라마 캐노피(다크 스모크) → 엔진 덮개로 흐르는 패스트백 -----
+    const Cb = makeCabin(B, { z0: -1.85, z1: 1.0, n: 4.2, tb: 0.24, wc: CWK,
+      roof: [[-1.85, 0.93], [-1.6, 1.05], [-1.25, 1.2], [-0.85, 1.27], [-0.35, 1.3], [0.05, 1.29], [0.4, 1.17], [0.72, 0.98], [1.0, 0.8]] });
+    loftCabin(Cb, cabinKey({ vS: 0.22, vP: 0.055, trimH: 0.022, zC: -1.42, zB: -0.42, bw: 0.04, trim: [chrome, CH], pillar: [metal, SV], bpil: [gloss, CB], glass: [glass, 0xffffff], roof: [glass, 0xffffff], zRF: 0.36, zRR: -1.5, rear: [glass, 0xffffff] }), 48, 32);
+    // ----- 앞 (3차 전면 재설계): 해석적 차체 표면에 투영해 붙인 부품 — 정면 FR(X = x, Y = y) · 헤드램프 HL(앞 위 45°) · 윗면 TP(X = x, Y = z) -----
+    //  화살촉 헤드램프(다크 스모크 하우징 · 실버 테 · 프로젝터 3개 · Y자 주간등: hl0 바깥 가지 → hl1 줄기·안쪽 가지 → hl2~4 프로젝터 순서로 켜짐)
+    //  · 육각 가운데 흡입구(깊은 카본 안판 · 가로/사선 핀 · 실버 테) · 사각 좌우 흡입구(세로 카본 핀 · 헤드램프 아래) · 오목한 보닛 배출구와 날
+    //  · 노즈 곡선을 따르는 카본 스플리터와 윙렛 · 카나드 · 엠블럼 / 좌우는 |x| 로만 계산해 정확히 대칭
+    const FR = aurProj(B, [0, 0, -1], [0, 1, 0], [0, 0, 2.5], 0.45, 1.1);
+    const HL = aurProj(B, [0, -0.6222, -0.7828], [0, 0.7828, -0.6222], [0, 0.5, 2.25], 0.5, 1.15);
+    const TP = (X, Y) => [X, B.topR(Y, X), Y]; TP.ax = [0, 1, 0]; TP.ey = [0, 0, 1];
+    const pl = (P) => { const L = [0]; for (let i = 1; i < P.length; i++) L.push(L[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1])); return (u) => { const s = u * L[L.length - 1]; let i = 1; while (i < L.length - 1 && L[i] < s) i++; const t = (s - L[i - 1]) / ((L[i] - L[i - 1]) || 1); return [lerp(P[i - 1][0], P[i][0], t), lerp(P[i - 1][1], P[i][1], t)]; }; };
+    // 헤드램프 윤곽 (HL 좌표, 오른쪽): 안쪽 가장자리 · 바깥 가장자리 — 앞 모서리에서 넓게 시작해 보닛 옆으로 날카롭게 뻗어 끝이 뾰족
+    const HI = [[0.58, -0.11], [0.5, -0.06], [0.465, 0.06], [0.45, 0.2], [0.44, 0.34]], HO = [[0.78, -0.03], [0.73, 0.04], [0.63, 0.12], [0.53, 0.23], [0.446, 0.343]];
+    const HIe = pl(HI), HOe = pl(HO), HU = (u, v) => { const a = HIe(u), b = HOe(u); return [lerp(a[0], b[0], v), lerp(a[1], b[1], v)]; };
+    // 프로젝터 [u, v, 반지름] (안쪽 줄) · Y자 주간등: 줄기(끝 → 갈림) + 바깥 가지(앞 바깥 모서리) + 안쪽 가지(앞 안쪽 모서리)
+    const LENS = [[0.28, 0.24, 0.028], [0.44, 0.3, 0.024], [0.6, 0.36, 0.02]], DRLa = [[0.4, 0.78], [0.2, 0.86], [0.03, 0.93]], DRLb = [[0.95, 0.55], [0.62, 0.7], [0.4, 0.78], [0.2, 0.5], [0.03, 0.12]];
+    // 흡입구 윤곽 (FR 좌표): 가운데 = 넓고 낮은 육각 · 좌우 = 헤드램프 아래 사각 (A 위안 · B 위밖 · D 밖 · C 아래)
+    const CI = [[0.3, 0.335], [0.46, 0.285], [0.42, 0.225], [-0.42, 0.225], [-0.46, 0.285], [-0.3, 0.335]], SQ = [[0.5, 0.33], [0.75, 0.405], [0.79, 0.33], [0.6, 0.225]];
+    const VQ = [[0.46, 1.57], [0.63, 1.53], [0.66, 1.3], [0.49, 1.33]];   // 보닛 배출구 (TP 좌표)
+    const RIM = [[-0.002, 0.0], [0.005, 0.005], [0.013, 0.001], [0.021, -0.018], [0.026, -0.034], [0.03, -0.052]];   // 흡입구 실버 테 단면 (높이는 벽 깊이에 더함)
+    const beam = [];
     for (const s of [1, -1]) {
-      curve(matte, [0, 0.25, 0.5, 0.75, 1].map((u) => { const x = lerp(HU[0][0], HU[1][0], u), z = lerp(HU[0][1], HU[1][1], u); return [s * x, B.topY(z, x) - 0.002, z]; }), 0.017, SM);   // 어두운 하우징(위 팔)
-      curve(fx.hl0, [0, 0.33, 0.66, 1].map((u) => { const z = lerp(HD[0][0], HD[1][0], u), y = lerp(HD[0][1], HD[1][1], u); return [s * side(z, y, 0.006), y, z]; }), 0.01, HLC);
-      for (let i = 0; i < 4; i++) {
-        const u0 = i / 4, u1 = (i + 1) / 4 - 0.025, a = [lerp(HU[0][0], HU[1][0], u0), lerp(HU[0][1], HU[1][1], u0)], b = [lerp(HU[0][0], HU[1][0], u1), lerp(HU[0][1], HU[1][1], u1)];
-        curve(fx['hl' + (i + 1)], [a, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], b].map(([x, z]) => [s * x, B.topY(z, x) + 0.007, z]), 0.011, HLC);
-      }
-      // 앞 흡입구 날 (세로 카본 날 둘)
-      for (const x of [0.32, 0.54]) {
-        let zf = B.z1; while (zf > 2.0 && B.sideX(zf, 0.3) < x) zf -= 0.01;
-        matte.add(aurShape([[2.06, 0.235], [zf + 0.01, 0.235], [zf + 0.012, 0.36], [2.06, 0.37]], 0.008, 'zy', 0.003), mtx(s * x - 0.004, 0, 0), CB);
-      }
-      // 보닛 배출구 살 (가는 실버 날)
-      for (let k = 0; k < 5; k++) { const z = 1.38 + k * 0.1; metal.box(s * 0.17, B.topY(z, 0.29) - 0.01, z - 0.008, s * 0.41, B.topY(z, 0.29) + 0.004, z + 0.008, SV, -0.4); }
-      // 카나드: 범퍼 모서리에서 옆으로 뻗은 얇은 날 두 장
-      for (const [y, L] of [[0.33, 0.075], [0.28, 0.06]]) {
-        const sx = side(2.2, y, -0.01), g = aurShape([[0, 2.08], [s * L, 2.17], [s * (L + 0.004), 2.2], [0, 2.24]], 0.008, 'xz', 0.003);
-        matte.add(g, mtx(s * sx, y, 0), CB);
-      }
+      const Hs = (u, v) => { const [X, Y] = HU(u, v); return [s * X, Y]; }, M = (P) => P.map(([X, Y]) => [s * X, Y]);
+      // 헤드램프: 하우징(차체 표면에 묻힌 다크 스모크) → 실버 테(경계) → 프로젝터 3개 → Y자 주간등
+      aurPatch(gloss, HL, Hs, 26, 8, 0.002, 0x0b0d10);
+      aurRim(metal, HL, M([...HO, ...HI.slice().reverse()]), [[-0.004, -0.004], [-0.004, 0.006], [0.002, 0.0095], [0.009, 0.008], [0.016, 0.002], [0.021, -0.004]], SV);
+      LENS.forEach(([u, v, r], i) => { const [X, Y] = Hs(u, v), p = HL(X, Y), n = aurN(HL, X, Y); aurLens(matte, fx['hl' + (2 + i)], chrome, p, [n[0], n[1], n[2] + 0.7], r, 0.016, HLC); if (i === 1) beam.push([p[0], p[1], p[2] + 0.02]); });
+      aurStrip(fx.hl0, HL, DRLa.map(([u, v]) => Hs(u, v)), s * 0.011, 0.0045, HLC);        // 폭에 s: 왼쪽 띠도 같은 순서의 거울상 (삼각형 대각선까지 대칭)
+      aurStrip(fx.hl1, HL, DRLb.map(([u, v]) => Hs(u, v)), s * 0.011, 0.0045, HLC, 24);
+      // 좌우 흡입구: 깊은 카본 안판 · 카본 안벽 · 실버 테 · 세로 카본 핀
+      const Q = M(SQ), [A, Bq, D, C] = Q, cx = s * 0.66, dep = 0.034;
+      aurPatch(matte, FR, (u, v) => { const t = [lerp(A[0], Bq[0], u), lerp(A[1], Bq[1], u)], b = [lerp(C[0], D[0], u), lerp(C[1], D[1], u)]; return [lerp(t[0], b[0], v), lerp(t[1], b[1], v)]; }, 12, 6, 0.003, 0x111215);
+      aurRim(matte, FR, Q, [[-0.002, -0.006], [-0.002, dep]], CB, (p) => [cx - p[0], 0.32 - p[1], 0]);
+      aurRim(metal, FR, Q, RIM.map(([o, h]) => [o, dep + h]), SV);
+      for (const u of [0.25, 0.5, 0.75]) aurFin(matte, FR, [lerp(A[0], Bq[0], u), lerp(A[1], Bq[1], u) - 0.003], [lerp(C[0], D[0], u), lerp(C[1], D[1], u) + 0.003], dep - 0.006, 0.0055, CB, 8);
+      // 보닛 배출구: 오목한 자리에 어두운 바닥 · 실버 날 4장 · 실버 테
+      const V = M(VQ), [va, vb2, vd, vc] = V;
+      aurPatch(matte, TP, (u, v) => { const t = [lerp(va[0], vb2[0], u), lerp(va[1], vb2[1], u)], b = [lerp(vc[0], vd[0], u), lerp(vc[1], vd[1], u)]; return [lerp(t[0], b[0], v), lerp(t[1], b[1], v)]; }, 8, 6, 0.0015, 0x0c0d0f);
+      aurRim(metal, TP, V, [[-0.003, -0.004], [-0.003, 0.007], [0.003, 0.01], [0.01, 0.007], [0.016, 0.0], [0.02, -0.005]], SV);
+      for (const v of [0.2, 0.4, 0.6, 0.8]) aurFin(metal, TP, [lerp(va[0], vc[0], v) + s * 0.004, lerp(va[1], vc[1], v)], [lerp(vb2[0], vd[0], v) - s * 0.004, lerp(vb2[1], vd[1], v)], 0.01, 0.007, SV, 6);
+      // 카나드: 범퍼 옆 모서리 (뿌리는 차체에 묻힘)
+      for (const [y, L] of [[0.31, 0.065], [0.26, 0.05]]) { const sx = side(2.08, y, -0.012); matte.add(aurShape([[0, 1.99], [s * L, 2.07], [s * (L + 0.005), 2.1], [0, 2.17]], 0.007, 'xz', 0.003), mtx(s * sx, y, 0), CB); }
       mirror(metal, s, Cb.wc(0.6) - 0.02, Cb.base(0.6) + 0.08, 0.6, SV);
     }
-    // 카본 스플리터: 노즈 곡선을 따라 깔린 한 장 (앞으로 4cm 만 나옴, 둥근 모서리) + 양 끝 윙렛
-    { const R = []; for (let i = 0; i <= 12; i++) { const z = 1.9 + (B.z1 - 1.9) * i / 12; R.push([B.hw(z) * 0.97 + 0.015, z]); }
-      const xe = R[R.length - 1][0], F = []; for (let i = 1; i < 12; i++) { const x = xe - 2 * xe * i / 12; F.push([x, B.z1 + 0.04 - 0.028 * (x / xe) ** 2]); }
-      matte.add(aurShape([...R, ...F, ...R.slice().reverse().map(([x, z]) => [-x, z])], 0.016, 'xz', 0.008), mtx(0, 0.166, 0), CB);
-      for (const s of [1, -1]) { const x = B.hw(2.15) * 0.97 + 0.012; matte.add(aurShape([[1.98, 0.17], [2.32, 0.17], [2.3, 0.235], [2.04, 0.215]], 0.01, 'zy', 0.004), mtx(s > 0 ? x : -x - 0.01, 0, 0), CB); } }
-    chrome.box(-0.035, 0.405, 2.442, 0.035, 0.475, 2.462, CH, 0, 0, Math.PI / 4); fx.emb.box(-0.02, 0.42, 2.458, 0.02, 0.46, 2.468, EMB, 0, 0, Math.PI / 4);
-    // ----- 옆: 흡입구 윗날(샴페인) · 캐릭터 선(앞 펜더 → 흡입구) · 빛 선 · 도어 경계 · 손잡이 · 스커트 날 -----
+    // 가운데 흡입구: 깊은 카본 안판(노즈 끝 마개보다 앞) · 카본 안벽 · 실버 테 · 가로 핀 2장(광택) · 사선 핀 6장(카본)
+    { const yt = (x) => { const a = Math.abs(x); return a <= 0.3 ? 0.335 : lerp(0.335, 0.285, (a - 0.3) / 0.16); }, yb = (x) => { const a = Math.abs(x); return a <= 0.42 ? 0.225 : lerp(0.225, 0.285, (a - 0.42) / 0.04); }, dep = 0.044;
+      aurPatch(matte, FR, (u, v) => { const x = (u * 2 - 1) * 0.457; return [x, lerp(yb(x) + 0.001, yt(x) - 0.001, v)]; }, 36, 6, (p) => 0.003 + 0.013 * sstep(2.47, 2.5, p[2]), 0x111215);
+      aurRim(matte, FR, CI, [[-0.002, -0.006], [-0.002, dep]], CB, (p) => [-p[0], 0.28 - p[1], 0]);
+      aurRim(metal, FR, CI, RIM.map(([o, h]) => [o, dep + h]), SV);
+      for (const y of [0.258, 0.298]) { const xe = (y < 0.285 ? lerp(0.42, 0.46, (y - 0.225) / 0.06) : lerp(0.46, 0.3, (y - 0.285) / 0.05)) - 0.004; aurFin(gloss, FR, [-xe, y], [xe, y], dep - 0.008, 0.006, 0x1c1e22, 18); }
+      for (const x0 of [0.08, 0.19, 0.3]) for (const s of [1, -1]) { const x1 = x0 * 1.1; aurFin(matte, FR, [s * x0, yb(x0) + 0.002], [s * x1, yt(x1) - 0.002], dep - 0.014, 0.005, CB, 6); } }
+    // 스플리터: 노즈 곡선을 따라 아랫면과 맞닿음 (가운데 낮고 넓게 · 앞으로 3cm) + 양 끝 위로 휜 윙렛
+    { const R = []; for (let i = 0; i <= 14; i++) { const z = 1.9 + (B.z1 - 1.9) * i / 14; R.push([B.hw(z) * 0.97 + 0.012, z]); }
+      const xe = R[R.length - 1][0], F = []; for (let i = 1; i < 10; i++) { const x = xe - 2 * xe * i / 10; F.push([x, B.z1 + 0.03 - 0.02 * (x / xe) ** 2]); }
+      matte.add(aurShape([...R, ...F, ...R.slice().reverse().map(([x, z]) => [-x, z])], 0.014, 'xz', 0.007), mtx(0, 0.176, 0), CB);
+      for (const s of [1, -1]) { const x = B.hw(2.14) * 0.97 + 0.01; matte.add(aurShape([[1.94, 0.18], [2.34, 0.18], [2.33, 0.206], [2.22, 0.236], [2.0, 0.218]], 0.01, 'zy', 0.004), mtx(s > 0 ? x : -x - 0.01, 0, 0), CB); } }
+    // 엠블럼: 노즈 윗면 가운데(가운데 흡입구 위) 작은 날개 달린 셰브론 — 샴페인 + 빛나는 다이아(fx.emb)
+    { let Y = -0.42, p = null; for (; Y < 0; Y += 0.004) { p = HL(0, Y); if (p && p[1] > 0.385) break; }
+      const n = aurN(HL, 0, Y), nz = new THREE.Vector3(n[0], n[1], n[2]), ex = new THREE.Vector3(1, 0, 0), ey = new THREE.Vector3().crossVectors(nz, ex);
+      const Me = new THREE.Matrix4().makeBasis(ex, ey, nz).setPosition(p[0] + n[0] * 0.0015, p[1] + n[1] * 0.0015, p[2] + n[2] * 0.0015);
+      const W = [[0, 0.032], [0.015, 0.008], [0.056, 0.0], [0.04, -0.008], [0.012, -0.003], [0, 0.013]];
+      chrome.add(aurShape([...W, ...W.slice(1, -1).reverse().map(([x, y]) => [-x, y])], 0.003, 'xy', 0.0012), Me, CH);
+      fx.emb.add(aurShape([[0, 0.025], [0.0075, 0.0145], [0, 0.018], [-0.0075, 0.0145]], 0.002, 'xy', 0), Me.clone().multiply(new THREE.Matrix4().makeTranslation(0, 0, 0.0048)), EMB); }
+    // ----- 옆: 깊은 흡입구(파인 덕트 · 샴페인 윗날 · 카본 아랫날 · 안쪽 가로 날개) · 빛 선 · 패널 경계 · 카본 사이드 스커트 -----
     for (const s of [1, -1]) {
-      const ca = Math.cos(INT.a), sa = Math.sin(INT.a), edge = [];
-      for (let k = 0; k <= 10; k++) { const ph = Math.PI * (0.06 + k / 10 * 0.88), dz = INT.rz * Math.cos(ph) * ca - INT.ry * Math.sin(ph) * sa, dy = INT.rz * Math.cos(ph) * sa + INT.ry * Math.sin(ph) * ca; edge.push([s * side(INT.z + dz, INT.y + dy, 0.006), INT.y + dy, INT.z + dz]); }
-      curve(chrome, edge, 0.007, CH);
-      const tipZ = INT.z + INT.rz * ca, tipY = INT.y + INT.rz * sa;
-      curve(chrome, [1.95, 1.3, 0.7, 0.1, tipZ + 0.06].map((z) => { const y = lerp(0.66, tipY, (1.95 - z) / (1.95 - tipZ - 0.06)); return [s * side(z, y, 0.004), y, z]; }), 0.004, CH);
+      const ca = Math.cos(INT.a), sa = Math.sin(INT.a), at = (ph) => { const dz = INT.rz * Math.cos(ph) * ca - INT.ry * Math.sin(ph) * sa, dy = INT.rz * Math.cos(ph) * sa + INT.ry * Math.sin(ph) * ca; return [INT.z + dz, INT.y + dy]; };
+      curve(chrome, Array.from({ length: 11 }, (_, k) => { const [z, y] = at(Math.PI * (0.06 + k / 10 * 0.88)); return [s * side(z, y, 0.006), y, z]; }), 0.007, CH);
+      curve(matte, Array.from({ length: 9 }, (_, k) => { const [z, y] = at(-Math.PI * (0.1 + k / 8 * 0.8)); return [s * side(z, y, 0.008), y, z]; }), 0.009, CB);
+      for (const dy of [-0.045, 0, 0.045]) {   // 덕트 안쪽 가로 날개: 파인 바닥 가까이
+        const y = INT.y + dy, z0d = INT.z + INT.rz * 0.55, z1d = INT.z - INT.rz * 0.55, xi = (z) => side(z, y, -INT.d * 0.75);
+        curve(matte, [z0d, INT.z, z1d].map((z) => [s * xi(z), y + (z - INT.z) * Math.tan(INT.a) * 0.5, z]), 0.006, 0x101113);
+      }
       const zs = [0.95, 0.6, 0.25, -0.1, -0.45, -0.8, -1.05];
       for (let j = 0; j < 6; j++) curve(fx['line' + j], [zs[j], (zs[j] + zs[j + 1]) / 2, zs[j + 1]].map((z) => [s * side(z, 0.33, 0.006), 0.33, z]), 0.006, LN);
-      for (const z of [0.9, -0.2]) curve(matte, [0.3, 0.45, 0.6, 0.74].map((y) => [s * side(z, y, 0.002), y, z]), 0.0035, DK);
-      curve(chrome, [0.06, 0.13, 0.2].map((z) => [s * side(z, 0.7, 0.004), 0.7, z]), 0.006, CH);
-      curve(matte, [1.0, 0.5, 0, -0.5, -0.95].map((z) => [s * side(z, 0.27, 0.012), 0.255, z]), 0.014, CB);
-      matte.add(new THREE.CircleGeometry(1, 16).scale(0.03, 0.08, 1).rotateX(-Math.PI / 2), mtx(s * 0.32, B.topY(-2.0, 0.32) + 0.003, -2.0), DK);   // 윙 지지대가 나오는 틈
+      // 패널 경계: 앞 범퍼 · 도어 앞뒤 · 뒤 범퍼 (옆면) / 보닛 · 엔진 덮개 (윗면)
+      for (const [z, y0, y1] of [[2.04, 0.27, 0.56], [0.9, 0.3, 0.74], [-0.12, 0.3, 0.76], [-2.1, 0.32, 0.8]]) curve(matte, Array.from({ length: 5 }, (_, k) => lerp(y0, y1, k / 4)).map((y) => [s * side(z, y, 0.002), y, z]), 0.0035, DK);
+      curve(matte, [-1.86, -2.0, -2.14, -2.24].map((z) => { const x = lerp(0.44, 0.36, (-1.86 - z) / 0.38); return [s * x, B.topY(z, x) + 0.002, z]; }), 0.0035, DK);
+      // 카본 사이드 스커트: 앞바퀴 뒤 → 뒷바퀴 앞, 차체 아래 곡면을 따라 바깥으로 살짝 나온 날
+      curve(matte, [1.02, 0.6, 0.1, -0.4, -0.8, -0.98].map((z) => [s * side(z, 0.24, 0.016), 0.22, z]), 0.02, CB);
+      curve(matte, [1.02, 0.6, 0.1, -0.4, -0.8, -0.98].map((z) => [s * side(z, 0.24, 0.03), 0.205, z]), 0.006, 0x2a2b2e);
     }
-    // ----- 뒤: 차체를 감싸는 얇은 테일 LED · 브레이크 선 · 엠블럼 · 디퓨저(곡선 핀) · 베젤 속 4구 배기 -----
-    const z0 = B.z0, TY = 0.74, capX = B.sideX(z0, TY) - 0.02;
-    for (const s of [1, -1]) {
-      const pts = []; for (let i = 0; i <= 6; i++) { const x = capX * i / 6; pts.push([s * x, TY, z0 - 0.012 * (1 - x / capX) - 0.007]); }
-      for (const z of [z0 + 0.06, z0 + 0.13, z0 + 0.21]) pts.push([s * side(z, TY, 0.006), TY, z]);
-      curve(fx.tail, pts, 0.009, RED);
-    }
-    curve(fx.brake, [-0.34, 0, 0.34].map((x) => [x, TY - 0.035, z0 - 0.012 * (1 - Math.abs(x) / capX) - 0.007]), 0.008, RED);
-    chrome.box(-0.04, 0.565, z0 - 0.026, 0.04, 0.645, z0 - 0.008, CH, 0, 0, Math.PI / 4); fx.emb.box(-0.022, 0.583, z0 - 0.032, 0.022, 0.627, z0 - 0.022, EMB, 0, 0, Math.PI / 4);
-    matte.add(aurShape([[-1.85, 0.17], [-2.42, 0.33], [-2.42, 0.352], [-1.85, 0.192]], 1.3, 'zy', 0.006), mtx(-0.65, 0, 0), CB);
-    for (const x of [-0.62, -0.4, -0.13, 0.13, 0.4, 0.62]) matte.add(aurShape([[-1.86, 0.19], [-2.42, 0.345], [-2.44, 0.46], [-2.33, 0.47], [-2.08, 0.31], [-1.92, 0.23]], 0.012, 'zy', 0.004), mtx(x - 0.006, 0, 0), CB);
-    { const bez = []; for (let i = 0; i < 24; i++) { const a = i / 24 * TAU, cx = Math.cos(a), cy = Math.sin(a); bez.push([Math.sign(cx) * Math.pow(Math.abs(cx), 0.3) * 0.46, 0.43 + Math.sign(cy) * Math.pow(Math.abs(cy), 0.3) * 0.055]); } matte.add(aurShape(bez, 0.03, 'xy', 0.006), mtx(0, 0, z0 - 0.03), DK); }
-    for (const s of [1, -1]) {
-      const bz = z0 - 0.03;
-      for (const x of [0.22, 0.3]) {
-        const ring = new THREE.TorusGeometry(0.031, 0.007, 6, 18); chrome.add(ring, mtx(s * x, 0.43, bz - 0.01), 0xc8ccd2);
-        const inner = new THREE.CircleGeometry(0.026, 16); inner.rotateY(Math.PI); matte.add(inner, mtx(s * x, 0.43, bz - 0.004), 0x050506);
+    curve(matte, [-0.36, 0, 0.36].map((x) => [x, B.topY(-2.24, Math.abs(x)) + 0.002, -2.24]), 0.0035, DK);
+    // ----- 뒤: 차체 표면을 따라 감싸는 테일 LED · 브레이크 선 · 꼬리 끝(작은 마개 자리)의 깊은 배기 베젤과 4구 배기 · 아래면을 따르는 디퓨저 핀 -----
+    const z0 = B.z0, TY = 0.71;
+    const wrap = (y, n0, n1) => { const P = []; for (let i = n0; i <= n1; i++) { const z = z0 + 0.012 + i * 0.02; if (y > B.y1(z) - 0.006 || y < B.y0(z) + 0.01) continue; P.push([B.sideX(z, y) + 0.006, y, z]); } return P; };
+    { const R = wrap(TY, 0, 18), Lp = R.slice().reverse().map(([x, y, z]) => [-x, y, z]); if (R.length > 1) curve(fx.tail, [...Lp, ...R], 0.009, RED);
+      const R2 = wrap(TY - 0.04, 0, 6); if (R2.length > 1) curve(fx.brake, [...R2.slice().reverse().map(([x, y, z]) => [-x, y, z]), ...R2], 0.008, RED); }
+    { const ez = (y) => { let z = z0; while (z < z0 + 0.3 && y > B.topY(z, 0) - 0.01) z += 0.004; return z; }, z = ez(0.6);
+      chrome.box(-0.035, 0.565, z - 0.016, 0.035, 0.635, z - 0.002, CH, 0.55, 0, Math.PI / 4); fx.emb.box(-0.02, 0.58, z - 0.022, 0.02, 0.62, z - 0.012, EMB, 0.55, 0, Math.PI / 4); }
+    { const bez = []; for (let i = 0; i < 28; i++) { const a = i / 28 * TAU, cx = Math.cos(a), cy = Math.sin(a); bez.push([Math.sign(cx) * Math.pow(Math.abs(cx), 0.32) * 0.46, 0.44 + Math.sign(cy) * Math.pow(Math.abs(cy), 0.32) * 0.088]); }
+      matte.add(aurShape(bez, 0.06, 'xy', 0.008), mtx(0, 0, z0 - 0.03), DK);
+      for (const x of [-0.29, -0.17, 0.17, 0.29]) {
+        chrome.add(new THREE.TorusGeometry(0.035, 0.007, 6, 20), mtx(x, 0.44, z0 - 0.047), 0xc8ccd2);
+        const inner = new THREE.CircleGeometry(0.03, 18); inner.rotateY(Math.PI); matte.add(inner, mtx(x, 0.44, z0 - 0.043), 0x050506);
       }
+      for (const x of [-0.04, 0.04]) matte.box(x - 0.006, 0.36, z0 - 0.045, x + 0.006, 0.52, z0 - 0.025, 0x1c1d20); }   // 가운데 세로 받침(구조)
+    for (const x of [-0.4, -0.25, -0.1, 0.1, 0.25, 0.4]) {
+      const zEnd = Math.abs(x) > 0.3 ? z0 + 0.08 : z0 - 0.04, top = []; for (let i = 0; i <= 10; i++) { const z = lerp(-1.75, zEnd, i / 10); top.push([z, B.y0(z) - 0.002]); }
+      matte.add(aurShape([...top, [zEnd - 0.02, 0.23], [-1.75, 0.172]], 0.012, 'zy', 0.004), mtx(x - 0.006, 0, 0), CB);
     }
-    // ----- 실내: 블랙 가죽 · 샴페인 대시 선 · 앰비언트 -----
+    // ----- 실내 -----
     interior(matte, 0x17181b, true, 1.06, { dashW: 0.52, dashY: 0.82, rearW: 0.46, rearH: 0.86 });
     chrome.box(-0.5, 0.79, 0.548, 0.5, 0.796, 0.552, CH); fx.amb.box(-0.5, 0.768, 0.546, 0.5, 0.774, 0.55, LN);
     for (const s of [1, -1]) curve(fx.amb, [-1.3, -0.6, 0.1, 0.5].map((z) => [s * (Cb.wc(z) - 0.05), Cb.base(z) + 0.03, z]), 0.005, LN);
     calipers(matte, wheels, WW, CH);
-    // ----- 액티브 리어 윙 (pivot = 엔진 덮개 윗면, 고속에서 0.2m 솟음): 익형 블레이드 · 스완넥 지지대(덮개 속 0.27m 까지 · 솟아도 떠 보이지 않음) · 곡선 엔드플레이트 -----
-    const wingZ = -2.06, wy = B.topY(wingZ, 0) + 0.004, wing = { pivot: [0, wy, wingZ], metal: new VB(), matte: new VB(), chrome: new VB(), fx: { brake2: new VB() } };
-    wing.metal.add(aurShape(aurAirfoil(0.34, 0.11, 0.05).map(([z, y]) => [z, y + 0.05]), 1.7, 'zy', 0.004), mtx(-0.85, 0, 0), SV);
-    curve(wing.chrome, [[-0.84, 0.052, -0.168], [0.84, 0.052, -0.168]], 0.004, CH);
-    const neck = aurBand([[0.05, -0.27], [0.056, -0.1], [0.052, 0.02], [0.03, 0.085], [-0.02, 0.112], [-0.065, 0.108], [-0.095, 0.088], [-0.1, 0.068]], 0.032);
-    for (const x of [-0.32, 0.32]) wing.matte.add(aurShape(neck, 0.02, 'zy', 0.007), mtx(x - 0.01, 0, 0), CB);
-    const EP = [[0.17, 0.0], [0.175, 0.055], [0.13, 0.095], [-0.12, 0.11], [-0.18, 0.08], [-0.185, 0.005], [-0.1, -0.028], [0.1, -0.028]];
-    for (const s of [1, -1]) wing.metal.add(aurShape(EP, 0.01, 'zy', 0.004), mtx(s > 0 ? 0.852 : -0.862, 0, 0), SV);
-    wing.fx.brake2.box(-0.55, 0.054, -0.165, 0.55, 0.062, -0.152, RED);
-    return { gloss, matte, sglass, chrome, metal, fx, mov: { wing }, wheel: tireGeo(WR, WW), rim: rimTurbine(WR, WW, CH), wheels, wr: WR,
+    // 바퀴 아치 테: 아치를 파낸 경계(격자 톱니 · 메탈릭에서 하얀 얼룩)를 따라 차체색 말린 테 — 옆면 위 = 옆 표면, 아치 꼭대기 = 펜더 윗면의 파인 자리
+    for (const W of [arF, arR]) for (const s of [1, -1]) {
+      const P = []; for (let k = 0; k <= 18; k++) { const a = lerp(-0.22, Math.PI + 0.22, k / 18), z = W.z + Math.cos(a) * (W.R + 0.004), y = W.y + Math.sin(a) * (W.R + 0.004); if (y < B.y0(z) + 0.02) continue; const x = Math.max(B.sideX(z, y), W.inX - 0.012); P.push([s * (x + 0.003), Math.min(y, B.topR(z, x) - 0.004), z]); }
+      if (P.length > 1) curve(metal, P, 0.012, SV, 7);
+    }
+    // ----- 액티브 리어 윙 (pivot·움직임 그대로): 길고 얇은 익형 블레이드 · 차체색 스완넥 지지대가 엔진 덮개 위 유선형 받침에서 올라옴 · 실버 엔드플레이트 -----
+    const wingZ = -2.04, wy = B.topY(wingZ, 0) + 0.004, wing = { pivot: [0, wy, wingZ], metal: new VB(), matte: new VB(), chrome: new VB(), fx: { brake2: new VB() } };
+    wing.metal.add(aurShape(aurAirfoil(0.3, 0.09, 0.05).map(([z, y]) => [z, y + 0.05]), 1.8, 'zy', 0.004), mtx(-0.9, 0, 0), SV);
+    curve(wing.chrome, [[-0.89, 0.051, -0.148], [0.89, 0.051, -0.148]], 0.0035, CH);
+    const neck = aurBand([[0.045, -0.27], [0.05, -0.08], [0.046, 0.015], [0.026, 0.07], [-0.012, 0.094], [-0.052, 0.09], [-0.078, 0.074], [-0.082, 0.058]], 0.026);
+    for (const x of [-0.3, 0.3]) wing.metal.add(aurShape(neck, 0.018, 'zy', 0.006), mtx(x - 0.009, 0, 0), SV);
+    const EP = [[0.15, 0.0], [0.155, 0.05], [0.115, 0.085], [-0.1, 0.098], [-0.16, 0.072], [-0.165, 0.005], [-0.09, -0.024], [0.09, -0.024]];
+    for (const s of [1, -1]) wing.metal.add(aurShape(EP, 0.01, 'zy', 0.004), mtx(s > 0 ? 0.902 : -0.912, 0, 0), SV);
+    wing.fx.brake2.box(-0.55, 0.053, -0.146, 0.55, 0.06, -0.134, RED);
+    for (const s of [1, -1]) { const x = s * 0.3, z = wingZ + 0.045; ball(metal, x, B.topY(z, 0.3) + 0.004, z, 0.028, 0.02, 0.085, SV); }   // 지지대 받침 (엔진 덮개 위 유선형)
+    return { gloss, matte, sglass, glass, chrome, metal, fx, mov: { wing }, wheel: tireGeo(WR, WW), rim: rimTurbine(WR, WW, CH), wheels, wr: WR,
       efx: { kind: 'aurelion', screens: [{ id: 'cluster', p: [0.4, 0.93, 0.62], w: 0.28, h: 0.1, rx: -0.5 }, { id: 'center', p: [0, 0.9, 0.62], w: 0.3, h: 0.12, rx: -0.45 }],
-        under: { w: 1.9, l: 4.4 }, beams: [[0.64, B.topY(2.18, 0.64) - 0.03, 2.2], [-0.64, B.topY(2.18, 0.64) - 0.03, 2.2]], trail: { y: 0.55, z0: -2.0, z1: 1.8, x: 1.0 } } };
+        under: { w: 1.9, l: 4.4 }, beams: beam, trail: { y: 0.55, z0: -2.0, z1: 1.8, x: 1.0 } } };
   }
 
   // ---------- 엡실론 TITAN VANGUARD (EP-V003): 묵직하고 웅장한 럭셔리 오프로드 — 픽업트럭 자리(좌석 · 적재함 좌석 · 물리)에 겉모습만 ----------

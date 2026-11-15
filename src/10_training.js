@@ -48,6 +48,7 @@ const Training = (() => {
     G.teamSize = 1; G.teams = [{ id: 0, members: [], place: 0 }, { id: 1, members: [], place: 0 }];
     const p = new Character({ id: 0, name: playerName(), isPlayer: true, look: Body.makeLook(SETTINGS.look, SETTINGS.body), team: 0 });
     p.vlook = Eco.vlook(); p.glook = Eco.glook();   // 훈련장에서도 내 차량 스킨으로 시험 운전
+    for (const t in p.vlook) { const id = p.vlook[t]; if (id && VehModels.has(id)) try { VehModels.instance(t, id); } catch (e) { console.warn(e); } }   // 스킨 모델 미리 만들기 (타는 순간 멈춤 방지)
     G.teams[0].members.push(p); CHARS.push(p); G.player = p; sc.add(p.root);
     setup(sc);
     respawnPlayer(p, true);

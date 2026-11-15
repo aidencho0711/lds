@@ -373,6 +373,8 @@ async function startMatch(cfg) {
     if (net) c.net = Net.charNet(hm.uid);
     CHARS.push(c); joinTeam(c); if (me) player = c;
   });
+  // 사람이 장착한 차량 스킨 모델은 로딩 중에 미리 만들어 둠 (운전석에 앉는 순간 처음 만들면 큰 모델은 한 박자 멈춤 · 모델은 종류마다 한 번 만들어 공유)
+  for (const c of CHARS) if (c.vlook) for (const t in c.vlook) { const id = c.vlook[t]; if (id && VehModels.has(id)) try { VehModels.instance(t, id); } catch (e) { console.warn(e); } }
   G.player = player;
   const srand = net ? mulberry32(cfg.seed ^ 0x2545f491) : Math.random;        // 봇 이름·얼굴: 모든 기기에서 같게
   const names = BOT_NAMES.slice(); for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(srand() * (i + 1)); const t0 = names[i]; names[i] = names[j]; names[j] = t0; }

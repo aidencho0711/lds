@@ -28,7 +28,7 @@ const VehModels = (() => {
       // 스킨 차량 유리: 기본 유리보다 옅게(안이 보이게 — 너무 어두우면 안에 탄 사람이 안 보여 유리해짐), 정점 색으로 살짝 물들임
       sglass: S({ vertexColors: true, roughness: 0.04, metalness: 0.25, transparent: true, opacity: 0.36, depthWrite: false, envMapIntensity: 1.7 }),
       // 메탈릭 도장(AURELION GT 리퀴드 실버): 광택 플라스틱처럼 번들거리지 않게 금속성은 높고 거칠기는 중간
-      metal: S({ vertexColors: true, roughness: 0.3, metalness: 0.88, envMapIntensity: 1.15 }),
+      metal: S({ vertexColors: true, roughness: 0.4, metalness: 0.72, envMapIntensity: 0.85 }),
     };
     return MAT;
   }
