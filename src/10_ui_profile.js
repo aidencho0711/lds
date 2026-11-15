@@ -108,6 +108,8 @@ const Prof = (() => {
     { id: 'bp_run', name: BP_TITLES.bp_run, desc: '배틀패스 시즌 1 — 50단계 달성', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_run') },
     { id: 'bp_plus', name: BP_TITLES.bp_plus, desc: '배틀패스 플러스 구매 (테두리 함께)', prog: () => '배틀패스 플러스 필요', ok: () => Eco.bpTitle('bp_plus'), fr: 'bp_plus' },
     { id: 'bp_s1', name: BP_TITLES.bp_s1, desc: '배틀패스 플러스로 시즌 1 — 50단계 달성 (테두리 함께)', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_s1'), fr: 'bp_s1' },
+    // 콜라보 이벤트 (10_event.js): THE BACKROOMS 에서 탈출 1회 → 이벤트 창에서 받기
+    { id: 'br_escape', name: BR_EVENT.title, desc: 'THE BACKROOMS 탈출 이벤트 — 백룸에서 엘리베이터로 탈출 (로비 상단 이벤트)', prog: () => ({ new: '이벤트 미참여', go: '백룸에서 탈출하기', esc: '이벤트 창에서 보상 받기', done: '받음' })[EvBR.state()] || '', ok: () => !!(STATS.eco && STATS.eco.brx) },
     // 랭킹 1위 (10_ranking.js): 1위인 동안만 — 다른 계정이 1위가 되면 칭호·테두리가 회수된다
     { id: 'champ_lv', name: '정점의 베테랑', desc: '레벨 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('lv'), ok: () => Ladder.champ('lv'), fr: 'champ_lv' },
     { id: 'champ_tier', name: '랭크 챔피언', desc: '랭크 티어 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('tier'), ok: () => Ladder.champ('tier'), fr: 'champ_tier' },

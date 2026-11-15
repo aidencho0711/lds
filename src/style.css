@@ -1491,3 +1491,50 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 @keyframes vepsBorder { to { background-position: 0 0, 300% 0; } }
 @media (prefers-reduced-motion: reduce) { .wh-item.veh.epsilon, .ex-card.epsilon { animation: none; } }
 .wh-item.veh.epsilon .eps-badge { display: none; }   /* 좁은 차량 카드: 아래 EPSILON 줄로 충분 (이름과 겹침 방지) */
+
+/* ---------- v20 로비 상단 '이벤트' (10_event.js): THE BACKROOMS 탈출 이벤트 ---------- */
+.icon-btn.ev-top { border-color: rgba(232, 212, 96, 0.75); background: linear-gradient(180deg, rgba(232, 212, 96, 0.2), rgba(13, 17, 19, 0.6)); }
+.icon-btn.ev-top span { display: inline; color: #f4e7a0; }
+.icon-btn.ev-top svg { stroke: #f4e08a; }
+.icon-btn.ev-top .tab-dot { top: -3px; right: -3px; }
+.icon-btn.ev-top.ready { animation: evTopGlow 1.4s ease-in-out infinite; }
+@keyframes evTopGlow { 0%, 100% { box-shadow: 0 0 0 rgba(255, 220, 90, 0); } 50% { box-shadow: 0 0 14px rgba(255, 220, 90, 0.7); } }
+@media (max-width: 600px) { .icon-btn.ev-top span { display: none; } }
+.ev-menu { position: relative; width: min(640px, 100%); }
+.ev-msg { padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255, 211, 107, 0.6); background: rgba(255, 190, 70, 0.12); color: #ffe3a0; font-size: 0.84rem; font-weight: 600; }
+.evb { position: relative; border: 1px solid rgba(232, 212, 96, 0.35); border-radius: 10px; overflow: hidden; background: linear-gradient(180deg, rgba(60, 52, 18, 0.35), rgba(13, 17, 19, 0.7)); }
+.evb.ready { border-color: rgba(255, 220, 90, 0.9); box-shadow: 0 0 0 1px rgba(255, 220, 90, 0.3), 0 0 22px rgba(255, 200, 60, 0.22); }
+.evb.done { border-color: rgba(140, 200, 120, 0.55); }
+.evb-art { position: relative; aspect-ratio: 3 / 1; background: #c8b560 center / cover no-repeat; }
+.evb-tag { position: absolute; left: 10px; top: 10px; padding: 3px 9px; border-radius: 3px; background: rgba(20, 16, 4, 0.72); color: #f4e7a0; font: 700 0.72rem/1.2 var(--f-display); letter-spacing: 0.12em; }
+.evb-txt { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 16px; }
+.evb-title { font-family: var(--f-display); font-size: 1.45rem; letter-spacing: 0.03em; color: #f7f0cf; line-height: 1.05; }
+.evb-desc { margin: 0; font-size: 0.86rem; line-height: 1.55; color: var(--sand); }
+.evb-desc b { color: #f4e08a; }
+.evb-steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; counter-reset: evs; }
+.evb-steps li { counter-increment: evs; display: flex; flex-direction: column; gap: 3px; padding: 8px 9px; border-radius: 6px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); min-width: 0; }
+.evb-steps li b { font-size: 0.8rem; color: var(--sand); }
+.evb-steps li b::before { content: counter(evs); display: inline-grid; place-items: center; width: 17px; height: 17px; margin-right: 5px; border-radius: 50%; background: rgba(233, 226, 207, 0.15); font: 800 0.7rem/1 var(--f-display); }
+.evb-steps li span { font-size: 0.68rem; line-height: 1.4; color: var(--dim); }
+.evb-steps li.on { border-color: rgba(140, 210, 120, 0.55); background: rgba(110, 190, 90, 0.1); }
+.evb-steps li.on b::before { content: '✓'; background: #6fbf5a; color: #0d1a08; }
+.evb-rw { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.evb-rw-k { font: 700 0.74rem/1 var(--f-display); letter-spacing: 0.14em; color: var(--amber); }
+.evb-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line-2); background: rgba(0, 0, 0, 0.25); font-size: 0.8rem; }
+.evb-chip b { font-family: var(--f-display); font-size: 1.05rem; color: #ffd66b; }
+.evb-cur { width: 18px; height: 18px; }
+.evb-act { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.evb-st { margin-right: auto; font-size: 0.8rem; color: var(--dim); display: inline-flex; align-items: center; gap: 7px; }
+.evb.ready .evb-st { color: #ffe08a; font-weight: 700; }
+.evb.done .evb-st { color: #a8e092; }
+.evb-wait { width: 9px; height: 9px; border-radius: 50%; background: #f4e08a; animation: evWait 1.1s ease-in-out infinite; }
+@keyframes evWait { 0%, 100% { opacity: 0.25; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1); } }
+.evb-act .btn.pulse { animation: evTopGlow 1.2s ease-in-out infinite; font-size: 1rem; padding: 0.7rem 1.4rem; }
+.evb-pop { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); font: 800 3rem/1 var(--f-display); color: #ffd66b; text-shadow: 0 0 18px rgba(255, 190, 60, 0.9), 0 2px 0 #3a2402; pointer-events: none; animation: evPop 1.6s ease-out forwards; z-index: 2; }
+@keyframes evPop { 0% { opacity: 0; transform: translate(-50%, -20%) scale(0.6); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -120%) scale(1); } }
+.evb-foot { margin: 8px 2px 0; }
+@media (max-width: 560px) { .evb-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .evb-title { font-size: 1.25rem; } }
+@media (prefers-reduced-motion: reduce) { .icon-btn.ev-top.ready, .evb-act .btn.pulse, .evb-wait, .evb-pop { animation: none; } }
+/* 칭호: 백룸 탈출자 (노란 벽지 · 형광등) */
+.ttl-br_escape { background: linear-gradient(90deg, rgba(120, 100, 20, 0), #7a6a1c 12%, #c8b560 40%, #f4e7a0 50%, #c8b560 60%, #7a6a1c 88%, rgba(120, 100, 20, 0)); border-color: rgba(255, 245, 190, 0.85); color: #1c1606; text-shadow: 0 1px 0 rgba(255, 250, 220, 0.5); }
+.ttl-br_escape::before { content: '▮'; color: #fffbe0; text-shadow: 0 0 6px #fff7c0; }@media (max-height: 520px) { .evb-art { aspect-ratio: auto; height: 96px; background-position: center 88%; } .evb-steps li span { display: none; } .evb-txt { gap: 8px; padding: 10px 14px 12px; } .evb-desc { font-size: 0.8rem; line-height: 1.45; } .evb-title { font-size: 1.2rem; } }

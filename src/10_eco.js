@@ -260,6 +260,8 @@ const Eco = (() => {
   }
   // 경기 중 골드 탄피 주머니 (바로 지급)
   function found(n) { E().gold += n; changed('found'); }
+  // 홍보 이벤트 보상 (10_event.js 가 기기마다 1번만 부름): 골드 탄피 + 칭호 '백룸 탈출자'(STATS.eco.brx)
+  function brClaim(gold) { const e = E(); e.gold += gold; e.brx = 1; changed('brx'); return gold; }
   // ---------- 골드 탄피 이벤트 ----------
   function evS() {
     const e = E(), d = today(), w = weekKey();
@@ -352,6 +354,7 @@ const Eco = (() => {
         if (lb && sb && lb.s === sb.s) e.bp = { s: lb.s, xp: Math.max(0, bb ? delta(bb.xp, lb.xp, sb.xp) : Math.max(lb.xp || 0, sb.xp || 0)), m: Math.max(0, bb ? delta(bb.m, lb.m, sb.m) : Math.max(lb.m || 0, sb.m || 0)), lv: Math.max(lb.lv || 0, sb.lv || 0), lp: Math.max(lb.lp || 0, sb.lp || 0), plus: lb.plus || sb.plus ? 1 : 0 };
         else e.bp = lb && sb ? ((lb.s || 0) > (sb.s || 0) ? lb : sb) : lb || sb || undefined;
         if (le.bpt || se.bpt) e.bpt = [...new Set([...(se.bpt || []), ...(le.bpt || [])])]; }
+      if (le.brx || se.brx) e.brx = 1;   // 백룸 탈출 이벤트 칭호: 한 기기에서라도 받았으면 계정에 유지 (받기 자체는 기기마다 — 10_event.js)
       e.welcome = 1; e.rev = Math.max(le.rev || 0, se.rev || 0) + 1; e.dev = DEV;
       out.eco = e;
     }
@@ -412,6 +415,6 @@ const Eco = (() => {
   function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; else if (kind === 'bp') bpAdd(n, true); changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, brClaim, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();

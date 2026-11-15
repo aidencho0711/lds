@@ -1494,6 +1494,53 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 @keyframes vepsBorder { to { background-position: 0 0, 300% 0; } }
 @media (prefers-reduced-motion: reduce) { .wh-item.veh.epsilon, .ex-card.epsilon { animation: none; } }
 .wh-item.veh.epsilon .eps-badge { display: none; }   /* 좁은 차량 카드: 아래 EPSILON 줄로 충분 (이름과 겹침 방지) */
+
+/* ---------- v20 로비 상단 '이벤트' (10_event.js): THE BACKROOMS 탈출 이벤트 ---------- */
+.icon-btn.ev-top { border-color: rgba(232, 212, 96, 0.75); background: linear-gradient(180deg, rgba(232, 212, 96, 0.2), rgba(13, 17, 19, 0.6)); }
+.icon-btn.ev-top span { display: inline; color: #f4e7a0; }
+.icon-btn.ev-top svg { stroke: #f4e08a; }
+.icon-btn.ev-top .tab-dot { top: -3px; right: -3px; }
+.icon-btn.ev-top.ready { animation: evTopGlow 1.4s ease-in-out infinite; }
+@keyframes evTopGlow { 0%, 100% { box-shadow: 0 0 0 rgba(255, 220, 90, 0); } 50% { box-shadow: 0 0 14px rgba(255, 220, 90, 0.7); } }
+@media (max-width: 600px) { .icon-btn.ev-top span { display: none; } }
+.ev-menu { position: relative; width: min(640px, 100%); }
+.ev-msg { padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255, 211, 107, 0.6); background: rgba(255, 190, 70, 0.12); color: #ffe3a0; font-size: 0.84rem; font-weight: 600; }
+.evb { position: relative; border: 1px solid rgba(232, 212, 96, 0.35); border-radius: 10px; overflow: hidden; background: linear-gradient(180deg, rgba(60, 52, 18, 0.35), rgba(13, 17, 19, 0.7)); }
+.evb.ready { border-color: rgba(255, 220, 90, 0.9); box-shadow: 0 0 0 1px rgba(255, 220, 90, 0.3), 0 0 22px rgba(255, 200, 60, 0.22); }
+.evb.done { border-color: rgba(140, 200, 120, 0.55); }
+.evb-art { position: relative; aspect-ratio: 3 / 1; background: #c8b560 center / cover no-repeat; }
+.evb-tag { position: absolute; left: 10px; top: 10px; padding: 3px 9px; border-radius: 3px; background: rgba(20, 16, 4, 0.72); color: #f4e7a0; font: 700 0.72rem/1.2 var(--f-display); letter-spacing: 0.12em; }
+.evb-txt { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 16px; }
+.evb-title { font-family: var(--f-display); font-size: 1.45rem; letter-spacing: 0.03em; color: #f7f0cf; line-height: 1.05; }
+.evb-desc { margin: 0; font-size: 0.86rem; line-height: 1.55; color: var(--sand); }
+.evb-desc b { color: #f4e08a; }
+.evb-steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; counter-reset: evs; }
+.evb-steps li { counter-increment: evs; display: flex; flex-direction: column; gap: 3px; padding: 8px 9px; border-radius: 6px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); min-width: 0; }
+.evb-steps li b { font-size: 0.8rem; color: var(--sand); }
+.evb-steps li b::before { content: counter(evs); display: inline-grid; place-items: center; width: 17px; height: 17px; margin-right: 5px; border-radius: 50%; background: rgba(233, 226, 207, 0.15); font: 800 0.7rem/1 var(--f-display); }
+.evb-steps li span { font-size: 0.68rem; line-height: 1.4; color: var(--dim); }
+.evb-steps li.on { border-color: rgba(140, 210, 120, 0.55); background: rgba(110, 190, 90, 0.1); }
+.evb-steps li.on b::before { content: '✓'; background: #6fbf5a; color: #0d1a08; }
+.evb-rw { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.evb-rw-k { font: 700 0.74rem/1 var(--f-display); letter-spacing: 0.14em; color: var(--amber); }
+.evb-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line-2); background: rgba(0, 0, 0, 0.25); font-size: 0.8rem; }
+.evb-chip b { font-family: var(--f-display); font-size: 1.05rem; color: #ffd66b; }
+.evb-cur { width: 18px; height: 18px; }
+.evb-act { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.evb-st { margin-right: auto; font-size: 0.8rem; color: var(--dim); display: inline-flex; align-items: center; gap: 7px; }
+.evb.ready .evb-st { color: #ffe08a; font-weight: 700; }
+.evb.done .evb-st { color: #a8e092; }
+.evb-wait { width: 9px; height: 9px; border-radius: 50%; background: #f4e08a; animation: evWait 1.1s ease-in-out infinite; }
+@keyframes evWait { 0%, 100% { opacity: 0.25; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1); } }
+.evb-act .btn.pulse { animation: evTopGlow 1.2s ease-in-out infinite; font-size: 1rem; padding: 0.7rem 1.4rem; }
+.evb-pop { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); font: 800 3rem/1 var(--f-display); color: #ffd66b; text-shadow: 0 0 18px rgba(255, 190, 60, 0.9), 0 2px 0 #3a2402; pointer-events: none; animation: evPop 1.6s ease-out forwards; z-index: 2; }
+@keyframes evPop { 0% { opacity: 0; transform: translate(-50%, -20%) scale(0.6); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -120%) scale(1); } }
+.evb-foot { margin: 8px 2px 0; }
+@media (max-width: 560px) { .evb-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .evb-title { font-size: 1.25rem; } }
+@media (prefers-reduced-motion: reduce) { .icon-btn.ev-top.ready, .evb-act .btn.pulse, .evb-wait, .evb-pop { animation: none; } }
+/* 칭호: 백룸 탈출자 (노란 벽지 · 형광등) */
+.ttl-br_escape { background: linear-gradient(90deg, rgba(120, 100, 20, 0), #7a6a1c 12%, #c8b560 40%, #f4e7a0 50%, #c8b560 60%, #7a6a1c 88%, rgba(120, 100, 20, 0)); border-color: rgba(255, 245, 190, 0.85); color: #1c1606; text-shadow: 0 1px 0 rgba(255, 250, 220, 0.5); }
+.ttl-br_escape::before { content: '▮'; color: #fffbe0; text-shadow: 0 0 6px #fff7c0; }@media (max-height: 520px) { .evb-art { aspect-ratio: auto; height: 96px; background-position: center 88%; } .evb-steps li span { display: none; } .evb-txt { gap: 8px; padding: 10px 14px 12px; } .evb-desc { font-size: 0.8rem; line-height: 1.45; } .evb-title { font-size: 1.2rem; } }
 </style>
 <div id="app">
   <canvas id="gl"></canvas>
@@ -1520,6 +1567,8 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
         <div class="lb-note" id="lbNote" hidden></div>
       </nav>
       <div class="lb-right">
+        <!-- 이벤트 (10_event.js): 다른 게임 홍보 — THE BACKROOMS 탈출 이벤트 -->
+        <button class="icon-btn ev-top" id="evTopBtn" type="button" title="이벤트"><svg viewBox="0 0 24 24"><path d="M4.5 10h15v10h-15z"/><path d="M3.5 7h17v3h-17z"/><path d="M12 7v13"/><path d="M12 7c-1.2-2.8-4.8-3.4-4.8-1.2 0 1.3 2.3 1.2 4.8 1.2zm0 0c1.2-2.8 4.8-3.4 4.8-1.2 0 1.3-2.3 1.2-4.8 1.2z"/></svg><span>이벤트</span><i class="tab-dot" id="evTopDot" hidden></i></button>
         <button class="icon-btn friend-btn" id="friendBtn" type="button" hidden title="친구 · 파티"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.9-3.1 3.2-4.7 6-4.7s5.1 1.6 6 4.7"/><circle cx="16.8" cy="9.6" r="2.5"/><path d="M15.7 14.9c2.4-.3 4.3 1.1 5.1 3.9"/></svg><span>친구</span><b class="badge" id="friendBadge" hidden>0</b></button>
         <button class="icon-btn dev-btn" id="devBtn" type="button" hidden title="개발자 도구"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5.2 5.2L4 16l4 4 5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>DEV</span></button>
         <!-- 오른쪽 위 화살표: 누르면 경기 설정 · 조작법 · 설정이 차례로 펼쳐짐 -->
@@ -1793,6 +1842,14 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
     </div>
   </section>
 
+  <!-- 이벤트 (10_event.js) -->
+  <section id="evPanel" class="overlay" hidden>
+    <div class="menu wide ev-menu">
+      <div class="acct-head"><div class="eyebrow">이벤트</div><button class="map-x acct-x" type="button" id="evClose" aria-label="닫기">✕</button></div>
+      <div class="ev-msg" id="evMsg" hidden></div>
+      <div id="evBody"></div>
+    </div>
+  </section>
   <!-- 상점: 확률 공개 -->
   <section id="oddsPanel" class="overlay" hidden>
     <div class="menu wide odds-menu">
@@ -19789,6 +19846,8 @@ const Eco = (() => {
   }
   // 경기 중 골드 탄피 주머니 (바로 지급)
   function found(n) { E().gold += n; changed('found'); }
+  // 홍보 이벤트 보상 (10_event.js 가 기기마다 1번만 부름): 골드 탄피 + 칭호 '백룸 탈출자'(STATS.eco.brx)
+  function brClaim(gold) { const e = E(); e.gold += gold; e.brx = 1; changed('brx'); return gold; }
   // ---------- 골드 탄피 이벤트 ----------
   function evS() {
     const e = E(), d = today(), w = weekKey();
@@ -19881,6 +19940,7 @@ const Eco = (() => {
         if (lb && sb && lb.s === sb.s) e.bp = { s: lb.s, xp: Math.max(0, bb ? delta(bb.xp, lb.xp, sb.xp) : Math.max(lb.xp || 0, sb.xp || 0)), m: Math.max(0, bb ? delta(bb.m, lb.m, sb.m) : Math.max(lb.m || 0, sb.m || 0)), lv: Math.max(lb.lv || 0, sb.lv || 0), lp: Math.max(lb.lp || 0, sb.lp || 0), plus: lb.plus || sb.plus ? 1 : 0 };
         else e.bp = lb && sb ? ((lb.s || 0) > (sb.s || 0) ? lb : sb) : lb || sb || undefined;
         if (le.bpt || se.bpt) e.bpt = [...new Set([...(se.bpt || []), ...(le.bpt || [])])]; }
+      if (le.brx || se.brx) e.brx = 1;   // 백룸 탈출 이벤트 칭호: 한 기기에서라도 받았으면 계정에 유지 (받기 자체는 기기마다 — 10_event.js)
       e.welcome = 1; e.rev = Math.max(le.rev || 0, se.rev || 0) + 1; e.dev = DEV;
       out.eco = e;
     }
@@ -19941,8 +20001,142 @@ const Eco = (() => {
   function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; else if (kind === 'bp') bpAdd(n, true); changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, brClaim, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
+})();
+
+// ---------- 10_event.js ----------
+// ============================================================
+// 10_event.js — 로비 상단 '이벤트': 다른 게임 홍보 · THE BACKROOMS 탈출 이벤트 (기기마다 1번)
+//  · '백룸 들어가기' → 이 기기의 참가 코드 n 을 만들어 기억하고 새 탭으로 backrooms-theta.vercel.app/?from=ldr&n=..&r=(돌아올 주소)
+//  · 백룸에서 엘리베이터로 탈출하면 그쪽(js/ldr.js)이 n 에 서명한 탈출 코드를 돌려준다:
+//      이 창이 열려 있으면 postMessage 로 바로 · 아니면 탈출 화면의 '보상 받기' 링크로 ?brx=코드 를 달고 돌아옴
+//  · 코드가 이 기기의 n 과 서명이 맞아야 인정(링크를 남에게 나눠 줘도 다른 기기에서는 안 됨) → '보상 받기' 로 골드 탄피 + 칭호 '백룸 탈출자'
+//  · 받은 기록은 이 기기(localStorage)에 — 기기마다 1번. 칭호는 계정(STATS.eco.brx)에 남는다
+//  · 서명은 두 게임이 같은 식(FNV-1a)으로 만든다 — 실제 돈이 오가지 않는 홍보 보상이라 가볍게 막는 정도
+// ============================================================
+const BR_EVENT = { url: 'https://backrooms-theta.vercel.app/', origin: 'https://backrooms-theta.vercel.app', gold: 1000, salt: 'ldr-backrooms-escape-v1', title: '백룸 탈출자' };
+const EvBR = (() => {
+  const K = 'evBR', el = (id) => document.getElementById(id);
+  const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
+  // 상태: st = new(아직) · go(백룸으로 감 · 탈출 기다림) · esc(탈출 확인 · 받기 전) · done(받음) / n = 이 기기의 참가 코드 / seen = 이벤트 창을 연 적 있음
+  const get = () => { const s = store.get(K, null); return s && typeof s === 'object' && s.st ? s : { st: 'new', n: null, seen: 0 }; };
+  const put = (s) => store.set(K, s);
+  const fnv = (s) => { let x = 2166136261; for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); } return (x >>> 0).toString(36); };
+  const sign = (n) => n + '.' + fnv(n + '|escaped|' + BR_EVENT.salt) + fnv(BR_EVENT.salt + '|' + n);
+  const local = () => /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  const okOrigin = (o) => o === BR_EVENT.origin || (local() && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o));   // 로컬 개발 때는 로컬 백룸도
+  let art = null, msgT = null;
+
+  // ---------- 백룸 배너 그림 (외부 이미지 없이 캔버스로: 노란 벽지 · 형광등 · 끝없는 복도) ----------
+  function banner() {
+    if (art) return art;
+    const W = 720, H = 240, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+    const vx = W * 0.62, vy = H * 0.47;   // 소실점
+    g.fillStyle = '#c8b560'; g.fillRect(0, 0, W, H);
+    // 벽지: 세로 줄 + 작은 V 무늬
+    for (let x = 0; x < W; x += 14) { g.fillStyle = x % 28 ? 'rgba(120,100,30,0.10)' : 'rgba(255,245,180,0.10)'; g.fillRect(x, 0, 7, H); }
+    g.strokeStyle = 'rgba(110,90,25,0.18)'; g.lineWidth = 1;
+    for (let y = 8; y < H; y += 18) for (let x = (y / 18 % 2) * 7; x < W; x += 14) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + 3.5, y + 4); g.lineTo(x + 7, y); g.stroke(); }
+    // 천장(위) · 카펫(아래) 쐐기
+    g.fillStyle = '#ddd2a0'; g.beginPath(); g.moveTo(0, 0); g.lineTo(W, 0); g.lineTo(vx + 46, vy - 26); g.lineTo(vx - 46, vy - 26); g.closePath(); g.fill();
+    g.fillStyle = '#8a7a42'; g.beginPath(); g.moveTo(0, H); g.lineTo(W, H); g.lineTo(vx + 46, vy + 26); g.lineTo(vx - 46, vy + 26); g.closePath(); g.fill();
+    // 형광등: 소실점으로 갈수록 작아짐
+    for (let i = 0; i < 7; i++) { const k = Math.pow(0.62, i), y = vy - 26 - (vy - 26) * k * 0.82, w = 120 * k, cx = vx + (W * 0.5 - vx) * k;
+      g.fillStyle = `rgba(255,255,236,${0.95 - i * 0.08})`; g.fillRect(cx - w / 2, y, w, Math.max(2, 10 * k)); g.fillStyle = `rgba(255,252,210,${0.18 - i * 0.02})`; g.fillRect(cx - w, y - 4 * k, w * 2, 22 * k); }
+    // 복도 끝 문 (어두움)
+    g.fillStyle = '#2b2510'; g.fillRect(vx - 16, vy - 22, 32, 48); g.fillStyle = 'rgba(255,240,170,0.25)'; g.fillRect(vx - 16, vy - 22, 32, 3);
+    // 가장자리 어둡게
+    const vg = g.createRadialGradient(vx, vy, 30, vx, vy, W * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(20,16,4,0.62)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    // 제목 (살짝 어긋난 잔상)
+    g.font = '800 54px "Saira Condensed", "Arial Narrow", sans-serif'; g.textBaseline = 'alphabetic';
+    g.fillStyle = 'rgba(255,40,40,0.45)'; g.fillText('THE BACKROOMS', 31, 196); g.fillStyle = 'rgba(40,220,255,0.4)'; g.fillText('THE BACKROOMS', 25, 194);
+    g.fillStyle = '#f7f0cf'; g.fillText('THE BACKROOMS', 28, 195);
+    g.font = '600 17px "IBM Plex Sans KR", sans-serif'; g.fillStyle = 'rgba(247,240,207,0.9)'; g.fillText('엘리베이터를 찾아 탈출하라', 30, 222);
+    return (art = c.toDataURL('image/jpeg', 0.86));
+  }
+
+  // ---------- 흐름 ----------
+  // 백룸 열기: 참가 코드를 만들고 새 탭으로 (돌아올 주소 = 지금 이 게임 주소)
+  function go() {
+    const s = get(); if (s.st === 'done') return;
+    if (!s.n) s.n = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
+    if (s.st === 'new') s.st = 'go'; s.goT = Date.now(); put(s);
+    const u = new URL(BR_EVENT.url); u.searchParams.set('from', 'ldr'); u.searchParams.set('n', s.n); u.searchParams.set('r', location.origin + location.pathname);
+    const w = window.open(u.toString(), '_blank');   // opener 를 남겨 둠 → 탈출하면 백룸 탭이 이 창에 바로 알림
+    if (!w) location.href = u.toString();             // 팝업이 막혔으면 이 탭에서 이동 (돌아오기 링크로 확인)
+    render(); dots();
+  }
+  // 탈출 코드 받음 (postMessage 또는 ?brx=)
+  function accept(code) {
+    const s = get();
+    if (s.st === 'done') { flash('이 기기에서는 이미 백룸 탈출 보상을 받았습니다'); open(); return false; }
+    if (!s.n || typeof code !== 'string' || code !== sign(s.n)) { flash('이 기기에서 시작한 이벤트 기록과 맞지 않습니다 — 이벤트 창에서 ‘백룸 들어가기’를 눌러 시작한 뒤 탈출해 주세요'); open(); return false; }
+    if (s.st !== 'esc') { s.st = 'esc'; s.escT = Date.now(); put(s); }
+    open(); flash('백룸 탈출 확인! 보상을 받으세요'); try { Audio.init(); Audio.ui(); } catch (e) { /* 소리 없이도 */ }
+    return true;
+  }
+  function claim() {
+    const s = get(); if (s.st !== 'esc') return;
+    s.st = 'done'; s.doneT = Date.now(); put(s);
+    Eco.brClaim(BR_EVENT.gold);
+    const m = el('evMsg'); if (m) m.hidden = true;
+    render(true); dots();
+  }
+
+  // ---------- 화면 ----------
+  function flash(msg) { const m = el('evMsg'); if (!m) return; m.textContent = msg; m.hidden = false; clearTimeout(msgT); msgT = setTimeout(() => { m.hidden = true; }, 6000); }
+  const GOLD_SVG = '<svg viewBox="0 0 24 24" class="evb-cur"><circle cx="12" cy="12" r="9" fill="url(#g-gold)" stroke="#5a3a08" stroke-width="1.2"/><path d="M9 8h6M9 12h6M9 16h6" stroke="#5a3a08" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  function render(justClaimed) {
+    const box = el('evBody'); if (!box) return;
+    const s = get(); box.innerHTML = '';
+    const card = h('div', 'evb' + (s.st === 'esc' ? ' ready' : s.st === 'done' ? ' done' : ''));
+    const top = h('div', 'evb-art'); top.style.backgroundImage = `url(${banner()})`;
+    top.appendChild(h('span', 'evb-tag', '콜라보 이벤트 · 다른 게임'));
+    card.appendChild(top);
+    const txt = h('div', 'evb-txt');
+    txt.appendChild(h('b', 'evb-title', 'THE BACKROOMS 탈출 이벤트'));
+    txt.appendChild(h('p', 'evb-desc', '끝없는 노란 방, <b>THE BACKROOMS</b> 에서 Level 3 어딘가의 엘리베이터를 🗝️ 열쇠로 열고 <b>탈출 1회</b>에 성공하면 이 게임에서 보상을 드립니다.'));
+    const steps = h('ol', 'evb-steps');
+    [['백룸 들어가기', '아래 버튼으로 새 탭에서 THE BACKROOMS 열기'], ['탈출 1회', '열쇠를 찾아 엘리베이터로 탈출'], ['탈출 확인', '이 창이 열려 있으면 자동 확인 · 아니면 탈출 화면의 ‘Last Drop Royale 보상 받기’'], ['보상 받기', '여기서 받기 — 기기마다 한 번']]
+      .forEach(([a, b], i) => { const li = h('li', i < ({ new: 0, go: 1, esc: 3, done: 4 })[s.st] ? 'on' : '', `<b>${a}</b><span>${b}</span>`); steps.appendChild(li); });
+    txt.appendChild(steps);
+    const rw = h('div', 'evb-rw'); rw.appendChild(h('span', 'evb-rw-k', '보상'));
+    rw.appendChild(h('span', 'evb-chip', `${GOLD_SVG}<b>${BR_EVENT.gold.toLocaleString()}</b> 골드 탄피`));
+    rw.appendChild(h('span', 'evb-chip', `<span class="ttl sm ttl-br_escape">${BR_EVENT.title}</span> 칭호`));
+    txt.appendChild(rw);
+    const act = h('div', 'evb-act');
+    const st = h('span', 'evb-st');
+    if (s.st === 'new') { st.textContent = '아직 참여하지 않았습니다'; act.appendChild(btn('백룸 들어가기 ↗', 'amber', go)); }
+    else if (s.st === 'go') { st.innerHTML = '<i class="evb-wait"></i>백룸에서 탈출을 기다리는 중…'; act.appendChild(btn('백룸 다시 열기 ↗', '', go)); }
+    else if (s.st === 'esc') { st.textContent = '탈출 확인 완료!'; act.appendChild(btn('보상 받기', 'amber pulse', claim)); }
+    else { st.textContent = justClaimed ? `받았습니다 — 골드 탄피 ${BR_EVENT.gold.toLocaleString()} · 칭호 ‘${BR_EVENT.title}’ (프로필에서 달 수 있음)` : '이 기기에서 받은 이벤트입니다'; const b = btn('받음 ✓', '', null); b.disabled = true; act.appendChild(b); act.appendChild(btn('백룸 또 하러 가기 ↗', 'ghost', () => window.open(BR_EVENT.url, '_blank'))); }
+    act.prepend(st); txt.appendChild(act);
+    if (justClaimed) { const p = h('div', 'evb-pop', `+${BR_EVENT.gold.toLocaleString()}`); card.appendChild(p); setTimeout(() => p.remove(), 1600); }
+    card.appendChild(txt); box.appendChild(card);
+    box.appendChild(h('p', 'micro evb-foot', '보상은 기기마다 한 번 받을 수 있습니다. 이 기기에서 ‘백룸 들어가기’로 시작한 탈출만 인정됩니다. 칭호는 로그인하면 계정에 저장됩니다.'));
+  }
+  function btn(label, cls, fn) { const b = h('button', 'btn ' + cls, label); b.type = 'button'; if (fn) b.addEventListener('click', () => { try { Audio.init(); Audio.ui(); } catch (e) { /* 소리 없이도 */ } fn(); }); return b; }
+  // 상단 버튼의 빨간 점: 아직 열어 보지 않았거나, 받을 보상이 있을 때
+  function dots() { const s = get(), d = el('evTopDot'); if (d) d.hidden = !(s.st === 'esc' || (!s.seen && s.st !== 'done')); const b = el('evTopBtn'); if (b) b.classList.toggle('ready', s.st === 'esc'); }
+  function open() { const s = get(); if (!s.seen) { s.seen = 1; put(s); } render(); el('evPanel').hidden = false; dots(); }
+  function close() { el('evPanel').hidden = true; }
+
+  // ---------- 시작 (로비 준비 때 한 번) ----------
+  function init() {
+    el('evTopBtn').addEventListener('click', () => { try { Audio.init(); Audio.ui(); } catch (e) { /* 소리 없이도 */ } open(); });
+    el('evClose').addEventListener('click', close);
+    el('evPanel').addEventListener('click', (e) => { if (e.target === el('evPanel')) close(); });
+    // 백룸 탭이 이 창에 바로 알림 (window.opener.postMessage)
+    window.addEventListener('message', (e) => { const d = e.data; if (!okOrigin(e.origin) || !d || d.type !== 'ldr-br-escape') return; if (G.state === 'lobby') accept(String(d.code || '')); else pendingCode = String(d.code || ''); });
+    // 탈출 화면의 링크로 돌아옴: ?brx=코드 → 확인하고 주소에서 지움
+    try { const q = new URLSearchParams(location.search), code = q.get('brx'); if (code) { pendingCode = code; q.delete('brx'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); } } catch (e) { /* 주소 못 읽으면 건너뜀 */ }
+    dots();
+  }
+  let pendingCode = null;
+  // 로비에 들어올 때마다: 경기 중에 온 탈출 알림 · 돌아오기 링크로 온 코드를 처리
+  function lobby() { dots(); if (pendingCode) { const c = pendingCode; pendingCode = null; accept(c); } }
+  return { init, lobby, open, banner, state: () => get().st, _sign: sign, _accept: accept };
 })();
 
 // ---------- 10_hud.js ----------
@@ -21052,11 +21246,13 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     $('playSub').textContent = dm ? `${GT.name} · ${MAPS.arena.name}` : ranked ? `${MAPS[SETTINGS.map].name} · ${rs.label}` : `${sqName} · ${MAPS[SETTINGS.map].name} · ${DIFFICULTY_NAMES[SETTINGS.difficulty]}`;
     if (lock) Party.decoratePlay();
     setTab(lobbyTab);
+    EvBR.lobby();   // 이벤트: 돌아오기 링크·경기 중 받은 탈출 알림 처리 + 빨간 점
   }
   const TIMES_KO = { day: '낮', dusk: '저녁' };
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: '콜라보 이벤트', title: `THE BACKROOMS 탈출 이벤트 — 백룸에서 탈출하면 골드 탄피 ${BR_EVENT.gold.toLocaleString()} + 칭호 ‘${BR_EVENT.title}’`, img: () => EvBR.banner(), act: () => EvBR.open() },
     { tag: '이벤트', title: '골드 탄피 이벤트 — 골드 러시 · 행운의 골드 상자 · 매치 보너스 · 주간 챌린지 · 현상금', img: () => LOBBY_ART.vehicles, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=event]'); if (b) b.click(); } },
     { tag: '신규', title: '상점 오픈 — 상자 3종 · 차량 뽑기 · 교환소, 미션·출석 보상', img: () => LOBBY_ART.vehicles, act: () => setTab('shop') },
     { tag: '신규', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
@@ -21088,6 +21284,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     document.querySelectorAll('#lbTabs button').forEach((b) => b.addEventListener('click', () => { Audio.init(); Audio.ui(); setTab(b.dataset.tab); }));
     document.querySelectorAll('[data-tab-go]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); Audio.init(); Audio.ui(); setTab(b.dataset.tabGo); }));
     $('newsCard').addEventListener('click', () => { Audio.init(); Audio.ui(); NEWS[newsI % NEWS.length].act(); });
+    EvBR.init();   // 상단 '이벤트' (10_event.js)
     if (!store.set('probe', 1)) $('storeNote').textContent = '이 브라우저에서는 기록을 저장할 수 없어 이번 세션에만 유지됩니다.';
     showNews(); clearInterval(newsT); newsT = setInterval(() => { if (G.state === 'lobby' && !$('lobby').hidden) { newsI++; showNews(); } }, 6000);
     try { makeRankBanner(); } catch (e) { /* 엠블럼 없이도 동작 */ }
@@ -24236,6 +24433,8 @@ const Prof = (() => {
     { id: 'bp_run', name: BP_TITLES.bp_run, desc: '배틀패스 시즌 1 — 50단계 달성', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_run') },
     { id: 'bp_plus', name: BP_TITLES.bp_plus, desc: '배틀패스 플러스 구매 (테두리 함께)', prog: () => '배틀패스 플러스 필요', ok: () => Eco.bpTitle('bp_plus'), fr: 'bp_plus' },
     { id: 'bp_s1', name: BP_TITLES.bp_s1, desc: '배틀패스 플러스로 시즌 1 — 50단계 달성 (테두리 함께)', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_s1'), fr: 'bp_s1' },
+    // 콜라보 이벤트 (10_event.js): THE BACKROOMS 에서 탈출 1회 → 이벤트 창에서 받기
+    { id: 'br_escape', name: BR_EVENT.title, desc: 'THE BACKROOMS 탈출 이벤트 — 백룸에서 엘리베이터로 탈출 (로비 상단 이벤트)', prog: () => ({ new: '이벤트 미참여', go: '백룸에서 탈출하기', esc: '이벤트 창에서 보상 받기', done: '받음' })[EvBR.state()] || '', ok: () => !!(STATS.eco && STATS.eco.brx) },
     // 랭킹 1위 (10_ranking.js): 1위인 동안만 — 다른 계정이 1위가 되면 칭호·테두리가 회수된다
     { id: 'champ_lv', name: '정점의 베테랑', desc: '레벨 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('lv'), ok: () => Ladder.champ('lv'), fr: 'champ_lv' },
     { id: 'champ_tier', name: '랭크 챔피언', desc: '랭크 티어 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('tier'), ok: () => Ladder.champ('tier'), fr: 'champ_tier' },
@@ -25175,7 +25374,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Body, Gear, buildRig, Lobby, Eco, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

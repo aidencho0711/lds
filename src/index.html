@@ -27,6 +27,8 @@
         <div class="lb-note" id="lbNote" hidden></div>
       </nav>
       <div class="lb-right">
+        <!-- 이벤트 (10_event.js): 다른 게임 홍보 — THE BACKROOMS 탈출 이벤트 -->
+        <button class="icon-btn ev-top" id="evTopBtn" type="button" title="이벤트"><svg viewBox="0 0 24 24"><path d="M4.5 10h15v10h-15z"/><path d="M3.5 7h17v3h-17z"/><path d="M12 7v13"/><path d="M12 7c-1.2-2.8-4.8-3.4-4.8-1.2 0 1.3 2.3 1.2 4.8 1.2zm0 0c1.2-2.8 4.8-3.4 4.8-1.2 0 1.3-2.3 1.2-4.8 1.2z"/></svg><span>이벤트</span><i class="tab-dot" id="evTopDot" hidden></i></button>
         <button class="icon-btn friend-btn" id="friendBtn" type="button" hidden title="친구 · 파티"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.9-3.1 3.2-4.7 6-4.7s5.1 1.6 6 4.7"/><circle cx="16.8" cy="9.6" r="2.5"/><path d="M15.7 14.9c2.4-.3 4.3 1.1 5.1 3.9"/></svg><span>친구</span><b class="badge" id="friendBadge" hidden>0</b></button>
         <button class="icon-btn dev-btn" id="devBtn" type="button" hidden title="개발자 도구"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5.2 5.2L4 16l4 4 5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>DEV</span></button>
         <!-- 오른쪽 위 화살표: 누르면 경기 설정 · 조작법 · 설정이 차례로 펼쳐짐 -->
@@ -300,6 +302,14 @@
     </div>
   </section>
 
+  <!-- 이벤트 (10_event.js) -->
+  <section id="evPanel" class="overlay" hidden>
+    <div class="menu wide ev-menu">
+      <div class="acct-head"><div class="eyebrow">이벤트</div><button class="map-x acct-x" type="button" id="evClose" aria-label="닫기">✕</button></div>
+      <div class="ev-msg" id="evMsg" hidden></div>
+      <div id="evBody"></div>
+    </div>
+  </section>
   <!-- 상점: 확률 공개 -->
   <section id="oddsPanel" class="overlay" hidden>
     <div class="menu wide odds-menu">
