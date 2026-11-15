@@ -532,6 +532,21 @@ const Audio = (() => {
       const out = chain(1.3 / (1 + r.d / 30), r.pan, clamp(9000 / (1 + r.d / 60), 300, 9000), clamp(0.4 + r.d / 200, 0.4, 1.2), false);
       const t = ctx.currentTime + delay; noise(out, t, 1.1, 'lowpass', 500, 0.6, 1.2); tone(out, t, 0.6, 'sine', 90, 30, 1.2);
     },
+    // 판처파우스트(v21): launch = 낮은 '쿵' + 뒤로 뿜는 화염의 쉭 소리 · fly = 날아가는 로켓의 짧은 바람 소리 · boom = 수류탄보다 크고 길고 낮은 폭발
+    rocket(kind, pos, own) {
+      if (!ctx || !voice(kind === 'boom' ? 2 : 1.2)) return;
+      const r = own || !pos ? { d: 0, pan: 0 } : geom(pos), delay = own ? 0 : Math.min(r.d / 343, 1.8), t = ctx.currentTime + delay;
+      if (kind === 'launch') {
+        const out = chain(1.15 / (1 + r.d / 40), r.pan, clamp(9000 / (1 + r.d / 80), 400, 9000), clamp(0.3 + r.d / 220, 0.3, 1.1), false);
+        tone(out, t, 0.4, 'sine', 130, 42, 1.1); noise(out, t, 0.22, 'lowpass', 1100, 0.7, 1.0); noise(out, t + 0.015, 1.0, 'bandpass', 2400, 0.55, 0.42); noise(out, t + 0.05, 0.6, 'highpass', 5200, 0.7, 0.12);
+      } else if (kind === 'fly') {
+        if (r.d > 70) return; const out = chain(0.45 / (1 + r.d / 12), r.pan, 4200, 0.1, false);
+        noise(out, ctx.currentTime, 0.5, 'bandpass', 1500, 1.4, 0.5);
+      } else {
+        const out = chain(1.7 / (1 + r.d / 35), r.pan, clamp(8000 / (1 + r.d / 60), 260, 8000), clamp(0.5 + r.d / 180, 0.5, 1.4), false);
+        noise(out, t, 1.8, 'lowpass', 420, 0.6, 1.5); tone(out, t, 1.0, 'sine', 78, 22, 1.5); noise(out, t, 0.28, 'highpass', 2400, 0.8, 0.5); noise(out, t + 0.12, 1.4, 'bandpass', 700, 0.5, 0.35);
+      }
+    },
     pin(pos, own = true) { if (!ctx) return; if (!playBuf('pin', own ? null : pos, own ? 0.6 : 0.5, { own, range: 20, ref: 3 })) { const t = ctx.currentTime; tone(sfxBus, t, 0.04, 'square', 2400, 2400, 0.06); } },
     spoon(pos, own = true) { if (!ctx) return; playBuf('spoon', own ? null : pos, own ? 0.55 : 0.5, { own, range: 25, ref: 3 }); },
     nadeBounce(pos) { if (!ctx || !throttle('nb', 0.06)) return; playBuf('nadeBounce', pos, 0.6, { range: 40, ref: 5, send: 0.1 }); },

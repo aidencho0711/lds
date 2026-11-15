@@ -352,7 +352,7 @@ async function startMatch(cfg) {
   Veh.init(sc);
   if (net) Net.seeded(cfg.seed + 2, () => Veh.spawnAll()); else Veh.spawnAll();
   if (net) { Net.indexVehicles(); Net.baseline(); }
-  FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; PathQ.clear(); G.myNade = null;
+  FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
   Zone.init(sc, MODES[SETTINGS.mode].zoneScale, SETTINGS.map);
   Airdrop.init(sc); Recall.init(sc);
   setupPlane(sc, net ? cfg.plane : null);

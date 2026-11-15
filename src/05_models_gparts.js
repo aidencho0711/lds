@@ -47,6 +47,7 @@ const GunParts = (() => {
   const IC = (r, det = 0) => new THREE.IcosahedronGeometry(r, det);
   const TE = (r) => new THREE.TetrahedronGeometry(r, 0);
   const TO = (R, r, rs = 6, ts = 18) => new THREE.TorusGeometry(R, r, rs, ts);
+  const SPH_ = (r) => new THREE.SphereGeometry(r, 10, 6, 0, TAU, 0, Math.PI / 2);   // 반구 (방울 윗부분)
   const HP = Math.PI / 2;
   // 고리 둘레에 n개 (a: 각도) — 원뿔의 +y가 바깥을 보게 z축으로 돌림
   const around = (n, a0, fn) => { for (let i = 0; i < n; i++) { const a = a0 + (i / n) * TAU; fn(a, Math.cos(a), Math.sin(a), a - HP); } };
@@ -250,6 +251,36 @@ const GunParts = (() => {
       { at: 'ring', mz: -0.08, build(B, r) { B.add(TO(r + 0.0024, 0.0016, 6, 22), 7, 0, 0, 0.04); B.add(BX(0.0016, 0.001, 0.09), 7, 0, r + 0.0004, 0); for (const s of [1, -1]) B.add(BX(0.001, 0.001, 0.07), 7, s * (r + 0.0003), 0, 0); } },
       { at: 'top', z: 0.6, build(B) { B.add(BX(0.0016, 0.0012, 0.18), 7, 0, 0.0006, 0); for (const z of [-0.08, 0, 0.08]) B.add(OC(0.0026), 7, 0, 0.0015, z, 0, 0, 0, 1, 0.6, 1.4); } },
     ],
+    // ---------- 크리스마스 EXCLUSIVE (v21) ----------
+    // TREETOP STAR(M416): 총몸 위 금빛 트리 별(가운데 빛) · 총열에 감긴 금 반짝이 줄 두 줄과 작은 전구 · 몸통 양옆 둥근 금 장식(볼)
+    xtree: [
+      { at: 'top', z: 0.6, build(B) {
+        B.add(CY(0.0028, 0.0042, 0.016, 6), 3, 0, 0.008, 0);
+        for (let i = 0; i < 5; i++) { const t = i / 5 * TAU; B.add(CO(0.0052, 0.016, 4), 3, 0, 0.026 + Math.cos(t) * 0.008, Math.sin(t) * 0.008, t); }
+        B.add(IC(0.0058, 1), 7, 0, 0.026, 0, 0, 0, 0, 0.7, 1, 1);
+      } },
+      ...[[-0.05, 0], [-0.13, 0.25]].map(([mz, tl]) => ({ at: 'ring', mz, build(B, r) { B.add(TO(r + 0.006, 0.0021, 6, 22), 3, 0, 0, 0, tl, 0, 0); around(6, 0.3 + tl, (a, c, s, rz) => B.add(OC(0.0042), 7, c * (r + 0.0095), s * (r + 0.0095) * Math.cos(tl), s * (r + 0.0095) * Math.sin(tl), 0, 0, rz, 0.8, 1.5, 0.8)); } })),
+      { at: 'LR', z: 0.42, build(B) { B.add(CY(0.0028, 0.0028, 0.004, 8), 3, 0, 0.002, 0); B.add(IC(0.0085, 1), 3, 0, 0.012, 0); B.add(OC(0.0026), 7, 0.004, 0.0165, 0.003); } },
+    ],
+    // CANDY CANE(AKM): 총구의 굵은 줄무늬 사탕 고리 · 몸통 양옆 작은 지팡이 사탕(무늬 그대로) · 위에 빛나는 빨간 나비 리본과 꼬리
+    xcandy: [
+      { at: 'ring', mz: -0.035, build(B, r) { B.add(TO(r + 0.009, 0.0058, 8, 22), 0, 0, 0, 0); B.add(TO(r + 0.009, 0.0016, 4, 22), 7, 0, 0, -0.0066); } },
+      { at: 'LR', z: 0.62, build(B) { B.add(CY(0.0036, 0.0036, 0.05, 10), 0, 0, 0.005, -0.005, HP); B.add(new THREE.TorusGeometry(0.0085, 0.0036, 8, 12, Math.PI), 0, 0, 0.0135, 0.02, 0, HP, HP); } },   // 지팡이 손잡이: 막대 앞끝에서 위로 굽음
+      { at: 'top', z: 0.48, build(B) {
+        for (const s of [1, -1]) { B.add(TO(0.0085, 0.0026, 6, 14), 7, s * 0.008, 0.009, 0, 0, 0, s * 0.25, 1, 0.75, 1); B.add(BX(0.002, 0.0028, 0.02), 7, s * 0.004, 0.003, -0.012, 0.3, s * 0.35, 0); }
+        B.add(IC(0.0042, 1), 7, 0, 0.009, 0);
+      } },
+    ],
+    // WHITE CHRISTMAS(AWM): 총구의 금 고리와 얼음빛 눈꽃 왕관 · 총열 아래 매달린 금방울 둘 · 몸통 양옆 빛나는 눈꽃 문장 · 개머리판 위 작은 별
+    xwhite: [
+      { at: 'ring', mz: -0.03, build(B, r) { B.add(TO(r + 0.006, 0.0028, 6, 22), 3, 0, 0, 0); around(6, HP, (a, c, s, rz) => { B.add(BX(0.0018, 0.02, 0.0018), 7, c * (r + 0.016), s * (r + 0.016), -0.004, 0, 0, rz); B.add(OC(0.0032), 7, c * (r + 0.027), s * (r + 0.027), -0.004); }); } },
+      { at: 'ring', mz: -0.26, build(B, r) {
+        B.add(TO(r + 0.003, 0.0016, 4, 18), 3, 0, 0, 0);
+        for (const s of [1, -1]) { const x = s * 0.009, y = -(r + 0.016); B.add(CY(0.0045, 0.009, 0.012, 12), 3, x, y, 0); B.add(SPH_(0.0047), 3, x, y + 0.006, 0); B.add(IC(0.0022, 0), 3, x, y - 0.0075, 0); B.add(BX(0.0012, 0.008, 0.0012), 3, x, y + 0.012, 0); }
+      } },
+      { at: 'LR', z: 0.47, build(B) { for (let i = 0; i < 6; i++) { const t = i / 6 * TAU; B.add(BX(0.0016, 0.0012, 0.02), 7, Math.sin(t) * 0.006, 0.0018, Math.cos(t) * 0.006, 0, t, 0); } B.add(OC(0.0036), 3, 0, 0.003, 0, 0, 0, 0, 1, 0.7, 1); } },
+      { at: 'top', z: 0.08, build(B) { for (let i = 0; i < 5; i++) { const t = i / 5 * TAU; B.add(CO(0.0028, 0.008, 4), 7, 0, 0.011 + Math.cos(t) * 0.004, Math.sin(t) * 0.004, t); } B.add(CY(0.0016, 0.0024, 0.008, 6), 3, 0, 0.004, 0); } },
+    ],
     // OMEGA BREAKER(DBS): 총구 쪽 마젠타 전기 코일 두 줄(은 칼라) · 몸통 양옆 갈라진 패널 사이 마젠타 띠 · 위쪽 Ω 방출구
     omega: [
       ...[-0.025, -0.11].map((mz) => ({ at: 'ring', mz, build(B, r) { B.add(TO(r + 0.006, 0.0028, 6, 20), 3, 0, 0, 0); B.add(TO(r + 0.0095, 0.0012, 4, 24), 7, 0, 0, 0.004); B.add(TO(r + 0.0095, 0.0012, 4, 24), 7, 0, 0, -0.004); } })),
@@ -452,7 +483,7 @@ const GunParts = (() => {
     return (ANCH[key] = out);
   }
   // 옆·위 부속품 배율 (세트마다)
-  const SIZE = { magma: 2.1, dragon: 2.0, plasma: 1.8, glitch: 2.0, frost: 2.3, void: 2.1, proto: 2.0, zero: 1.6, chaos: 1.9, frontier: 1.7, celestial: 1.0, divine: 1.7, infernal: 1.8, void2: 1.8, seraph: 2.0, apocalypse: 1.9, dynasty: 1.7, omega: 1.7 };
+  const SIZE = { xtree: 1.8, xcandy: 1.8, xwhite: 1.9, magma: 2.1, dragon: 2.0, plasma: 1.8, glitch: 2.0, frost: 2.3, void: 2.1, proto: 2.0, zero: 1.6, chaos: 1.9, frontier: 1.7, celestial: 1.0, divine: 1.7, infernal: 1.8, void2: 1.8, seraph: 2.0, apocalypse: 1.9, dynasty: 1.7, omega: 1.7 };
   // 지오메트리는 (세트 · 부속품 · 반지름)마다 한 번
   const GEO = {};
   function geoOf(set, a) {

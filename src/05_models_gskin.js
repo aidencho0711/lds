@@ -149,27 +149,31 @@ const GSKINS = (() => {
     x_aug_aurora: { gun: 'aug', box: 'xmas', rar: 5, name: '오로라 서리', pat: 'snowflake', pal: ['#bcd6e6', '#7fa8c4', '#ffffff'], sc: 3.2, env: 1.0, body: { p: 1, mr: [0.5, 0.3] }, furn: { p: 1, mr: [0.35, 0.34] }, steel: { c: 0xc8ecff, mr: [1, 0.16] },
       glow: { pat: 'wave', c: 0x5fffc8, k: 2.0, anim: 2 }, fx: { kind: 'frost', c: 0x7fffd0, c2: 0xeafcff, tr: 0x9bffe0 },
       parts: 'frost', en: 0x7fffd0, enK: 2.4, enAnim: 1, desc: '눈꽃 결정 위로 오로라 빛이 흐름 · 꺼내면 얼음 결정이 돋음 · 쏠 때 얼음 파편' },
-    // EXCLUSIVE — NORTH STAR(M416): 오로라가 흐르는 밤하늘 총몸에 금빛 별이 반짝 · 처치하면 하늘에서 큰 별이 내려와 꽂히고 별똥별이 쏟아짐
-    xm_m416_northstar: { gun: 'm416', box: 'xmas', rar: 8, xm: 1, no: 'X1', name: 'NORTH STAR', pat: 'northstar', pal: ['#0a1430', '#1f6a6a', '#2a8a4a', '#f2cf6a'], sc: 2.4, env: 1.0,
-      body: { p: 1, mr: [0.55, 0.3] }, furn: { p: 1, mr: [0.5, 0.32] }, steel: { c: 0xd8b04a, mr: [1, 0.2] },
-      glow: { pat: 'northstar', c: 0xffe6a0, k: 2.4, anim: 7 }, glowMask: [1, 1, 0], fx: { kind: 'xstar', c: 0xf2cf6a, c2: 0x9ff0d8, tr: 0xffe9b0, pal: [0xf2cf6a, 0xfff2c4, 0x9ff0d8, 0xffffff], shot: 'frontier', hit: 'frontier' },
-      parts: 'celestial', en: 0xffe6a0, enK: 2.4, enAnim: 7,
-      deco: [{ kind: 'text', side: 'LR', z: 0.7, dy: -0.004, text: 'NORTH STAR', style: 'engrave', col: '#f2cf6a', w: 0.08 }, { kind: 'rim', col: 0xf2cf6a, orn: 'stars' }],
-      desc: '오로라가 흐르는 밤하늘 총몸에 금빛 별이 반짝임 · 둘레를 별 고리가 공전 · 살펴보면 별빛 띠가 지나감 · 처치하면 큰 별이 내려와 꽂히고 별똥별이 쏟아짐', lore: '길 잃은 썰매를 집으로 이끄는 단 하나의 별.' },
-    // EXCLUSIVE — CANDY STRIKER(AKM): 빨강·흰 사선 줄과 빛나는 금 띠 · 처치하면 거대한 선물 상자가 터지며 리본·색종이·사탕 빛줄기
-    xm_akm_candy: { gun: 'akm', box: 'xmas', rar: 8, xm: 1, no: 'X2', name: 'CANDY STRIKER', pat: 'candy', pal: ['#f6f2ea', '#c8141e', '#e8b84a'], sc: 2.6, env: 1.1,
-      body: { p: 1, mr: [0.35, 0.22] }, furn: { p: 1, mr: [0.3, 0.25] }, steel: { c: 0xe8c45a, mr: [1, 0.2] },
-      glow: { pat: 'candy', c: 0xffd65a, k: 2.2, anim: 1 }, glowMask: [1, 1, 0], fx: { kind: 'xgift', c: 0xff3a4a, c2: 0xffd65a, tr: 0xff7a7a, pal: [0xff3a4a, 0xffd65a, 0x3aff7a, 0xffffff], shot: 'spark', hit: 'spark' },
-      parts: 'frontier', en: 0xffd65a, enK: 1.4, enAnim: 1,
-      deco: [{ kind: 'text', side: 'LR', z: 0.66, dy: -0.004, text: 'CANDY STRIKER', style: 'neon', col: '#ff4a5a', w: 0.08 }, { kind: 'rim', col: 0xe8c45a, orn: 'gems' }],
-      desc: '빨강·흰 사선 줄 사이로 금빛 띠가 숨 쉬듯 빛남 · 둘레에 색종이 반짝임 · 처치하면 거대한 선물 상자가 터지며 리본과 색종이가 쏟아짐', lore: '착한 아이 명단에 오르지 못한 자들을 위한 선물.' },
-    // EXCLUSIVE — WINTER WONDER(AWM): 눈꽃 결정이 빛나는 얼음 총몸 · 처치하면 거대한 눈꽃 문양이 돌고 얼음 가시가 솟으며 눈보라
-    xm_awm_winter: { gun: 'awm', box: 'xmas', rar: 8, xm: 1, no: 'X3', name: 'WINTER WONDER', pat: 'snowflake', pal: ['#d6ebf6', '#8fbad8', '#ffffff'], sc: 2.6, env: 1.15,
-      body: { p: 1, mr: [0.5, 0.24] }, furn: { p: 1, mr: [0.4, 0.28] }, steel: { c: 0xd8f0ff, mr: [1, 0.12] },
-      glow: { pat: 'snowflake', c: 0x9fe8ff, k: 2.6, anim: 7 }, glowMask: [1, 1, 0], fx: { kind: 'xsnow', c: 0x9fe8ff, c2: 0xffffff, tr: 0xcff4ff, pal: [0x9fe8ff, 0xcff4ff, 0xffffff, 0x6fc8f0], shot: 'frost', hit: 'frost' },
-      parts: 'frost', en: 0x9fe8ff, enK: 2.6, enAnim: 1,
-      deco: [{ kind: 'crystal', on: 'mag', side: 'LR', w: 0.03, dy: -0.006 }, { kind: 'text', side: 'LR', z: 0.72, dy: -0.004, text: 'WINTER WONDER', style: 'engrave', col: '#bfe6ff', w: 0.1 }],
-      desc: '눈꽃 결정이 빛나는 얼음 총몸 · 총 둘레로 눈송이가 내림 · 살펴보면 서리 띠가 지나감 · 처치하면 거대한 눈꽃 문양이 돌고 얼음 가시가 솟으며 눈보라', lore: '한겨울 밤, 숲을 통째로 얼린 여왕의 활.' },
+    // EXCLUSIVE (v21 개편 — 더 크리스마스답게, id·번호·처치 효과 종류는 그대로라 이미 가진 사람도 새 모습으로)
+    // TREETOP STAR(M416): 크리스마스트리를 입은 총 — 바늘잎 초록 · 금 반짝이 줄 · 둥근 장식 · 색색 전구가 저마다 깜빡(모드 10) · 위에 금빛 트리 별
+    //  처치하면 하늘에서 큰 별이 내려와 꽂히고 별똥별이 쏟아짐
+    xm_m416_northstar: { gun: 'm416', box: 'xmas', rar: 8, xm: 1, no: 'X1', name: 'TREETOP STAR', pat: 'xtree', pal: ['#0d3420', '#1d5a34', '#e0b850', '#c8141e', '#dfe4ea', '#2a6ad0'], sc: 2.2, env: 1.0,
+      body: { p: 1, mr: [0.2, 0.5] }, furn: { p: 1, mr: [0.15, 0.55] }, steel: { c: 0xe0b850, mr: [1, 0.2] },
+      glow: { pat: 'xtree', c: 0xffffff, k: 2.8, anim: 10 }, glowMask: [1, 1, 0], fx: { kind: 'xstar', c: 0xf2cf6a, c2: 0xff3a3a, tr: 0xffe9b0, pal: [0xf2cf6a, 0xff3a3a, 0x3aff6a, 0xffffff], shot: 'frontier', hit: 'frontier' },
+      parts: 'xtree', en: 0xffd65a, enK: 2.2, enAnim: 7,
+      deco: [{ kind: 'text', side: 'LR', z: 0.7, dy: -0.004, text: 'TREETOP STAR', style: 'engrave', col: '#f2cf6a', w: 0.08 }, { kind: 'rim', col: 0xe0b850, orn: 'stars' }],
+      desc: '크리스마스트리를 입은 총 — 바늘잎 초록에 금 반짝이 줄과 둥근 장식, 색색 전구가 저마다 깜빡임 · 위에 금빛 트리 별 · 살펴보면 선물 포장이 풀리고 별이 떠오름 · 처치하면 큰 별이 내려와 꽂히고 별똥별이 쏟아짐', lore: '트리 꼭대기에서 가장 밝게 빛나는 별.' },
+    // CANDY CANE(AKM): 빨강·흰·초록 캔디케인 줄 · 페퍼민트 사탕 · 빛나는 호랑가시 열매 · 총구에 줄무늬 사탕 고리, 옆에 작은 지팡이 사탕, 위에 빨간 나비 리본
+    //  처치하면 거대한 선물 상자가 터지며 리본과 색종이가 쏟아짐
+    xm_akm_candy: { gun: 'akm', box: 'xmas', rar: 8, xm: 1, no: 'X2', name: 'CANDY CANE', pat: 'xcandy', pal: ['#f6f2ea', '#c8141e', '#1f7a3a', '#e8b84a'], sc: 2.4, env: 1.1,
+      body: { p: 1, mr: [0.3, 0.22] }, furn: { p: 1, mr: [0.25, 0.28] }, steel: { c: 0xe8c45a, mr: [1, 0.2] },
+      glow: { pat: 'xcandy', c: 0xffffff, k: 2.4, anim: 10 }, glowMask: [1, 1, 0], fx: { kind: 'xgift', c: 0xff3a4a, c2: 0xffd65a, tr: 0xff7a7a, pal: [0xff3a4a, 0xffd65a, 0x3aff7a, 0xffffff], shot: 'spark', hit: 'spark' },
+      parts: 'xcandy', en: 0xff3a4a, enK: 1.8, enAnim: 1,
+      deco: [{ kind: 'text', side: 'LR', z: 0.66, dy: -0.004, text: 'CANDY CANE', style: 'neon', col: '#ff4a5a', w: 0.08 }, { kind: 'rim', col: 0xe8c45a, orn: 'gems' }],
+      desc: '빨강·흰·초록 캔디케인 줄에 페퍼민트 사탕과 빛나는 호랑가시 열매 · 총구의 줄무늬 사탕 고리와 빨간 나비 리본 · 살펴보면 선물 포장이 풀리고 사탕이 총 둘레를 돎 · 처치하면 거대한 선물 상자가 터짐', lore: '착한 아이 명단에 오르지 못한 자들을 위한 선물.' },
+    // WHITE CHRISTMAS(AWM): 눈 덮인 흰 총몸 · 금 테 두른 빨간 벨벳 리본 띠 · 호랑가시 · 얼음빛으로 빛나는 눈꽃 · 총구 눈꽃 왕관, 총열 아래 금방울 둘
+    //  처치하면 거대한 눈꽃 문양이 돌고 얼음 가시가 솟으며 눈보라
+    xm_awm_winter: { gun: 'awm', box: 'xmas', rar: 8, xm: 1, no: 'X3', name: 'WHITE CHRISTMAS', pat: 'xwhite', pal: ['#eef3f8', '#b4c6d8', '#b3121c', '#e0b850', '#9fe8ff'], sc: 2.4, env: 0.9,
+      body: { p: 1, mr: [0.05, 0.62] }, furn: { c: 0x8e1018, mr: [0.0, 0.72] }, steel: { c: 0xe0b850, mr: [1, 0.18] },
+      glow: { pat: 'xwhite', c: 0xffffff, k: 2.4, anim: 10 }, glowMask: [1, 0, 0], fx: { kind: 'xsnow', c: 0x9fe8ff, c2: 0xffffff, tr: 0xcff4ff, pal: [0x9fe8ff, 0xcff4ff, 0xffffff, 0xff3a4a], shot: 'frost', hit: 'frost' },
+      parts: 'xwhite', en: 0x9fe8ff, enK: 2.4, enAnim: 1,
+      deco: [{ kind: 'text', side: 'LR', z: 0.72, dy: -0.004, text: 'WHITE CHRISTMAS', style: 'engrave', col: '#e0b850', w: 0.1 }],
+      desc: '눈 덮인 흰 총몸에 금 테 두른 빨간 벨벳 리본·개머리와 호랑가시 · 얼음빛 눈꽃이 깜빡임 · 총구의 눈꽃 왕관과 총열 아래 금방울 · 살펴보면 선물 포장이 풀리고 스노글로브 속 눈보라 · 처치하면 거대한 눈꽃 문양과 얼음 가시', lore: '눈 내리는 밤, 모든 창에 불이 켜지는 날.' },
     // ---------- 옷 상자에 2개씩 ----------
     br_s686_hunter: { gun: 's686', box: 'br', rar: 1, name: '사냥꾼', body: { c: 0x3b3e33, mr: [0.45, 0.45] }, furn: { c: 0x7a4626, mr: [0, 0.5] } },
     br_mini14_wood: { gun: 'mini14', box: 'br', rar: 3, name: '산림 위장', pat: 'camo', pal: ['#4e5636', '#3b4129', '#6a6a44', '#2b2b22'], sc: 3.5, body: { p: 1, mr: [0.1, 0.7] }, furn: { p: 1, mr: [0, 0.72] } },
@@ -584,6 +588,62 @@ const GunSkin = (() => {
       for (let i = 0; i < 9; i++) { const x = rng() * S, y = rng() * S, r = S * (0.018 + rng() * 0.03); tile(S, (dx, dy) => { star(c, x + dx, y + dy, r, pal[3]); star(gc, x + dx, y + dy, r * 0.9, '#fff'); }); }
       return { alb: a, glow: g };
     },
+    // ---------- v21 크리스마스 EXCLUSIVE 개편: 빛 지도에 색을 넣어(셰이더 모드 10) 전구마다 제 색으로 깜빡 ----------
+    // TREETOP STAR — pal: [짙은 전나무, 밝은 전나무, 금 반짝이, 빨강 볼, 은 볼, 파랑 볼]: 바늘잎 결 · 늘어진 금 반짝이 줄 · 둥근 장식 · 색색 전구
+    xtree(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      const gr = c.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(0, 0, S, S);
+      c.lineCap = 'round'; c.lineWidth = Math.max(1, S / 380);
+      for (let i = 0; i < 2600; i++) { const x = rng() * S, y = rng() * S, L = S * (0.012 + rng() * 0.016), an = Math.PI / 2 + (rng() < 0.5 ? -1 : 1) * (0.45 + rng() * 0.5); c.strokeStyle = rng() < 0.5 ? 'rgba(12,58,30,0.8)' : 'rgba(70,132,80,0.5)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(an) * L, y + Math.sin(an) * L); c.stroke(); }
+      for (let k = 0; k < 3; k++) {
+        const y0 = (k + 0.25) * S / 3, amp = S * 0.07, ph = rng() * TAU, yAt = (x) => y0 + Math.abs(Math.sin(x / S * TAU * 1.5 + ph)) * amp;
+        c.strokeStyle = pal[2]; c.lineWidth = S * 0.011; for (const dy of [-S, 0, S]) { c.beginPath(); for (let x = 0; x <= S; x += 3) { const y = yAt(x) + dy; x ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); }
+        for (let i = 0; i < 46; i++) { const x = rng() * S, y = yAt(x) + (rng() - 0.5) * S * 0.014; c.fillStyle = '#fff6c8'; c.fillRect(x, y, S / 200, S / 200); gc.fillStyle = '#ffe9a0'; gc.fillRect(x, y, S / 260, S / 260); }
+      }
+      const bauble = (ctx, x, y, r, col) => { const rg = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r); rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.28, col); rg.addColorStop(1, '#14080a'); ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.fillStyle = pal[2]; ctx.fillRect(x - r * 0.26, y - r * 1.16, r * 0.52, r * 0.26); };
+      const BC = [pal[3], pal[2], pal[4], pal[5]];
+      for (let i = 0; i < 12; i++) { const x = rng() * S, y = rng() * S, r = S * (0.02 + rng() * 0.02), col = BC[i % 4]; tile(S, (dx, dy) => bauble(c, x + dx, y + dy, r, col)); }
+      const LC = ['#ff3a3a', '#3aff6a', '#ffd040', '#4aa8ff', '#ff7ad8'];
+      for (let i = 0; i < 52; i++) {
+        const x = rng() * S, y = rng() * S, r = S * (0.0055 + rng() * 0.004), col = LC[i % LC.length];
+        tile(S, (dx, dy) => { c.fillStyle = col; c.beginPath(); c.ellipse(x + dx, y + dy, r, r * 1.45, 0.3, 0, TAU); c.fill(); const rg = gc.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r * 2.3); rg.addColorStop(0, col); rg.addColorStop(0.45, col); rg.addColorStop(1, 'rgba(0,0,0,0)'); gc.fillStyle = rg; gc.beginPath(); gc.arc(x + dx, y + dy, r * 2.3, 0, TAU); gc.fill(); });
+      }
+      return { alb: a, glow: g };
+    },
+    // CANDY CANE — pal: [흰 바탕, 빨강 굵은 줄, 초록 가는 줄, 금 띠(빛남)]: 캔디케인 사선 줄 · 페퍼민트 사탕 · 호랑가시 잎과 빨간 열매(빛남)
+    xcandy(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      const w = S / 8, band = (ctx, x, ww) => { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + ww, 0); ctx.lineTo(x + ww - S, S); ctx.lineTo(x - S, S); ctx.closePath(); ctx.fill(); };
+      for (let k = -4; k < 12; k++) { const x = k * w * 2; c.fillStyle = pal[1]; band(c, x, w * 0.92); c.fillStyle = pal[2]; band(c, x + w * 1.18, w * 0.2); c.fillStyle = pal[3]; band(c, x + w * 1.52, w * 0.09); gc.fillStyle = '#ffcf50'; band(gc, x + w * 1.52, w * 0.09); }
+      c.globalAlpha = 0.18; c.fillStyle = '#fff'; for (let k = -4; k < 12; k++) band(c, k * w * 2 + w * 0.14, w * 0.2); c.globalAlpha = 1;
+      const mint = (x, y, r) => { c.fillStyle = '#fbf8f2'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.fillStyle = pal[1]; for (let i = 0; i < 7; i++) { c.save(); c.translate(x, y); c.rotate(i / 7 * TAU); c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(r * 0.55, -r * 0.15, r * 0.93, -r * 0.43); c.quadraticCurveTo(r * 0.8, r * 0.04, 0, 0); c.fill(); c.restore(); } c.strokeStyle = 'rgba(90,0,10,0.35)'; c.lineWidth = Math.max(1, S / 300); c.beginPath(); c.arc(x, y, r, 0, TAU); c.stroke(); };
+      const holly = (x, y, s, rot) => {
+        c.save(); c.translate(x, y); c.rotate(rot);
+        for (const sd of [-1, 1]) { c.save(); c.rotate(sd * 0.75); c.beginPath(); c.moveTo(0, 0); for (let i = 0; i <= 6; i++) { const t = i / 6, ww = Math.sin(t * Math.PI) * s * 0.24 * (i % 2 ? 1.2 : 0.8); c.lineTo(ww, -t * s); } for (let i = 6; i >= 0; i--) { const t = i / 6, ww = Math.sin(t * Math.PI) * s * 0.24 * (i % 2 ? 1.2 : 0.8); c.lineTo(-ww, -t * s); } c.closePath(); c.fillStyle = '#1f7a3a'; c.fill(); c.strokeStyle = '#0e3a1c'; c.lineWidth = Math.max(1, S / 420); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -s); c.stroke(); c.restore(); }
+        c.restore();
+        for (const [bx, by] of [[0, 0], [s * 0.17, s * 0.12], [-s * 0.15, s * 0.13]]) { const px = x + bx, py = y + by; c.fillStyle = '#d0141e'; c.beginPath(); c.arc(px, py, s * 0.13, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,0.65)'; c.fillRect(px - s * 0.06, py - s * 0.07, s * 0.04, s * 0.04); gc.fillStyle = '#ff2a3a'; gc.beginPath(); gc.arc(px, py, s * 0.12, 0, TAU); gc.fill(); }
+      };
+      for (let i = 0; i < 6; i++) { const x = rng() * S, y = rng() * S, r = S * (0.035 + rng() * 0.02); tile(S, (dx, dy) => mint(x + dx, y + dy, r)); }
+      for (let i = 0; i < 7; i++) { const x = rng() * S, y = rng() * S, s = S * (0.07 + rng() * 0.03), rot = rng() * TAU; tile(S, (dx, dy) => holly(x + dx, y + dy, s, rot)); }
+      return { alb: a, glow: g };
+    },
+    // WHITE CHRISTMAS — pal: [눈, 푸른 그늘, 빨간 리본, 금 테, 얼음빛]: 눈 덮인 흰 바탕 · 빨간 벨벳 리본 띠(금 테) · 호랑가시 · 빛나는 눈꽃
+    xwhite(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      const gr = c.createLinearGradient(0, 0, S, S); gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 26; i++) { const x = rng() * S, y = rng() * S, rx = S * (0.05 + rng() * 0.08); tile(S, (dx, dy) => { const rg = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rx); rg.addColorStop(0, 'rgba(255,255,255,0.55)'); rg.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = rg; c.fillRect(x + dx - rx, y + dy - rx, rx * 2, rx * 2); }); }
+      for (let i = 0; i < 900; i++) { c.fillStyle = `rgba(255,255,255,${0.2 + rng() * 0.5})`; c.fillRect(rng() * S, rng() * S, 1 + rng() * 2, 1 + rng() * 2); }
+      c.lineWidth = Math.max(1, S / 420); for (let i = 0; i < 700; i++) { const x = rng() * S, y = rng() * S, L = S * (0.006 + rng() * 0.012), an = rng() * TAU; c.strokeStyle = `rgba(90,130,170,${0.12 + rng() * 0.18})`; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(an) * L, y + Math.sin(an) * L); c.stroke(); }   // 눈 결정 결
+      for (const yf of [0.16, 0.5, 0.84]) { const y = S * yf, hh = S * 0.075; const rg = c.createLinearGradient(0, y - hh / 2, 0, y + hh / 2); rg.addColorStop(0, '#5a0408'); rg.addColorStop(0.5, pal[2]); rg.addColorStop(1, '#5a0408'); c.fillStyle = rg; c.fillRect(0, y - hh / 2, S, hh); c.fillStyle = pal[3]; c.fillRect(0, y - hh / 2 - S * 0.006, S, S * 0.006); c.fillRect(0, y + hh / 2, S, S * 0.006); gc.fillStyle = '#ffcf6a'; gc.fillRect(0, y - hh / 2 - S * 0.005, S, S * 0.004); gc.fillRect(0, y + hh / 2 + S * 0.001, S, S * 0.004); }
+      const flake = (ctx, x, y, r, col, lw) => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; for (let i = 0; i < 6; i++) { const an = i / 6 * TAU + Math.PI / 6; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(an) * r, y + Math.sin(an) * r); ctx.stroke(); for (const f of [0.45, 0.7]) { const bx = x + Math.cos(an) * r * f, by = y + Math.sin(an) * r * f, L = r * 0.28 * (1.15 - f); for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + Math.cos(an + s * 0.85) * L, by + Math.sin(an + s * 0.85) * L); ctx.stroke(); } } } };
+      for (let i = 0; i < 15; i++) { const x = rng() * S, y = rng() * S, r = S * (0.03 + rng() * 0.045), lw = Math.max(1, S / 256 * (1.1 + r / S * 22)); tile(S, (dx, dy) => { flake(c, x + dx, y + dy, r, '#4f8fbf', lw * 1.4); flake(gc, x + dx, y + dy, r, pal[4], lw); }); }
+      for (let i = 0; i < 6; i++) {
+        const x = rng() * S, y = S * [0.16, 0.5, 0.84][i % 3], s = S * 0.06;
+        tile(S, (dx, dy) => { for (const sd of [-1, 1]) { c.save(); c.translate(x + dx, y + dy); c.rotate(sd * 0.9 - 0.2); c.fillStyle = '#1f7a3a'; c.beginPath(); c.ellipse(0, -s * 0.5, s * 0.2, s * 0.5, 0, 0, TAU); c.fill(); c.restore(); } for (const [bx, by] of [[0, 0], [s * 0.15, s * 0.1], [-s * 0.14, s * 0.11]]) { c.fillStyle = '#e01a26'; c.beginPath(); c.arc(x + dx + bx, y + dy + by, s * 0.12, 0, TAU); c.fill(); gc.fillStyle = '#ff2a3a'; gc.beginPath(); gc.arc(x + dx + bx, y + dy + by, s * 0.11, 0, TAU); gc.fill(); } });
+      }
+      return { alb: a, glow: g };
+    },
   });
   // 빛 지도만 (흰 선 = 빛남)
   const GLOW = {
@@ -684,9 +744,10 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
   const F_EMIT = `
 	float gsGM = gsRole < 0.5 ? uGlowMask.x : gsRole < 1.5 ? uGlowMask.y : gsRole < 2.5 ? uGlowMask.z : 0.0;
 	if (uGlowAmt > 0.0 && gsGM > 0.0) {
-		float gsG = gsTri(uGlow, vOP, gsNrm).r;
+		vec3 gsG3 = gsTri(uGlow, vOP, gsNrm); float gsG = gsG3.r;
 		float gsA = 1.0; vec3 gsGC = uGlowCol;
-		if (uGlowAnim > 8.5) { float gsW = 0.5 + 0.5 * sin(uTime * 2.4); gsA = 0.2 + 0.8 * pow(gsW, 6.0); }	// 일정한 간격의 맥박 (APOCALYPSE ENGINE)
+		if (uGlowAnim > 9.5) { gsG = max(gsG3.r, max(gsG3.g, gsG3.b)); gsGC = uGlowCol * gsG3 / max(gsG, 0.001); float gsH = gsHash(floor(vOP * 55.0)), gsP = fract(uTime * 0.55 + gsH); gsA = 0.3 + 0.7 * smoothstep(0.0, 0.06, gsP) * smoothstep(0.66, 0.52, gsP); }	// 크리스마스 전구: 빛 지도의 색 그대로, 전구마다 다른 박자로 깜빡 (EXCLUSIVE)
+		else if (uGlowAnim > 8.5) { float gsW = 0.5 + 0.5 * sin(uTime * 2.4); gsA = 0.2 + 0.8 * pow(gsW, 6.0); }	// 일정한 간격의 맥박 (APOCALYPSE ENGINE)
 		else if (uGlowAnim > 7.5) { float gsW = 0.5 + 0.5 * sin(uTime * 1.6 - vOP.z * 12.0); gsA = 0.25 + 0.75 * pow(gsW, 4.0); }	// 붉은 에너지가 천천히 흐름 (INFERNAL SOVEREIGN)
 		else if (uGlowAnim > 6.5) { float gsH = gsHash(floor(vOP * 70.0)); gsA = 0.2 + 0.8 * pow(0.5 + 0.5 * sin(uTime * (0.9 + gsH * 1.8) + gsH * 6.283), 3.0); }	// 별 반짝임 (LAST FRONTIER)
 		else if (uGlowAnim > 5.5) { float gsF = gsHash(vec3(floor(uTime * 9.0), 1.0, 0.0)), gsF2 = gsHash(vec3(floor(uTime * 2.3), 2.0, 0.0)); gsA = 0.3 + 0.7 * mix(gsF * gsF, 1.0, step(0.72, gsF2)); }	// 불규칙 점멸 (CHAOS CORE)
@@ -1110,6 +1171,56 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     else if (kind === 'voidr') { if (s.warp) epsWarp(u < 0.35 ? Math.sin(u / 0.35 * Math.PI) : 0); if (Math.random() < dt * 50 * env) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(); const R = 0.12 + Math.random() * 0.1; _q.set(0, m.boreY, lerp(I.z0, I.z1, 0.6)); g.localToWorld(_q); _p.copy(_q).addScaledVector(_r, R); emit(P, _p, -_r.x * R * 3, -_r.y * R * 3, -_r.z * R * 3, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.33, { sq: Math.random() < 0.4 }); } }
     else if (kind === 'dynasty' && s.crest) { const inK = clamp(u / 0.15, 0, 1), outK = clamp((1 - u) / 0.15, 0, 1); s.crest.scale.setScalar(0.07 * Math.min(inK, outK) + 0.001); s.crest.rotation.y = s.t * 2.4; s.crest.material.opacity = Math.min(inK, outK); if (Math.random() < dt * 20) { s.crest.getWorldPosition(_q); emit(P, _q, (Math.random() - 0.5) * 0.1, -0.05, (Math.random() - 0.5) * 0.1, pick(I.d.fx), 0.004 * k, 0.6, { grow: -0.4 }); } }
   }
+  // ---------- 크리스마스 EXCLUSIVE 살펴보기 (v21) — 엡실론(ε 고리·홀로 명판·키트 전개·총열 축 회전)과 다른 '선물 풀기' ----------
+  //  0~0.2 리본 띠 두 줄과 나비 리본으로 포장된 채 나타남 → 0.2 나비 리본이 톡 터지며(방울 소리·색종이) 리본이 총구 쪽으로 미끄러져 풀림
+  //  → 총 위로 호랑가시 화환이 떠올라 돌고 가운데에 눈 덮인 나무 명판(MERRY CHRISTMAS · 이름 · 소유 번호) · 둘레로 눈이 내림
+  //  · 1인칭은 종을 흔들듯 세 번 살랑(09_player.js) — 흔들 때마다 방울 소리
+  //  총마다: TREETOP STAR = 총 앞쪽 위로 금빛 별이 떠올라 반짝이고 전구가 빠르게 깜빡 · CANDY CANE = 페퍼민트 사탕 넷이 총 둘레를 돎
+  //          WHITE CHRISTMAS = 스노글로브가 총을 감싸고 안에서 눈보라 + 서리 띠
+  const XM_CONF = [0xff3a4a, 0x3aff7a, 0xffd65a, 0xffffff, 0x4aa8ff];
+  function xmInspStart(I, s, g, vm) {
+    const kind = I.d.fx.kind;
+    if (typeof GunDeco !== 'undefined' && GunDeco.xmas) s.xm = GunDeco.xmas(g, I.d, own(s.c) && typeof Eco !== 'undefined' ? Eco.serialOf(I.id) : '', kind);
+    s.popped = false; s.bells = 0;
+    if (kind === 'xsnow') { scan(I, s.dur * 0.75, 0xcff4ff, true); s.scan = true; }
+  }
+  function xmInsp(I, s, g, u, dt, vm, k, P, m) {
+    const kind = I.d.fx.kind, X = s.xm, L = I.z1 - I.z0, zc = (I.z0 + I.z1) / 2;
+    const inK = clamp(u / 0.12, 0, 1), outK = clamp((1 - u) / 0.14, 0, 1), vis = Math.min(inK, outK);
+    if (X) {
+      // 포장 → 풀림: 띠가 부풀며 총구 쪽으로 미끄러져 사라지고, 나비 리본은 커지며 위로 날아가 사라짐
+      const pop = clamp((u - 0.2) / 0.16, 0, 1);
+      for (const b of X.bands) { const R = 0.052 * (1 + pop * 0.7); b.scale.set(R, R, 0.016 * (1 - pop * 0.5)); b.position.z = lerp(I.z0, I.z1, b.userData.f) + pop * pop * L * 0.7; b.material.opacity = inK * (1 - pop); b.visible = pop < 1; }
+      const bs = (vm ? 0.07 : 0.085) * (u < 0.2 ? inK : 1 + (u - 0.2) * 4); X.bow.scale.set(bs, bs, 1); X.bow.material.opacity = u < 0.2 ? inK : Math.max(0, 1 - (u - 0.2) / 0.08); X.bow.position.y = m.boreY + 0.075 + Math.max(0, u - 0.2) * 0.3;
+      if (!s.popped && u >= 0.2) {
+        s.popped = true; I.flash = Math.max(I.flash || 0, 0.8); ACTIVE.add(I);
+        _q.set(0, m.boreY + 0.06, zc); g.localToWorld(_q);
+        for (let i = 0; i < 36; i++) { _r.set(Math.random() - 0.5, Math.random() * 0.8 + 0.1, Math.random() - 0.5).normalize().multiplyScalar(0.4 + Math.random() * 0.6); emit(P, _q, _r.x, _r.y, _r.z, XM_CONF[i % XM_CONF.length], (0.004 + Math.random() * 0.004) * k, 0.6 + Math.random() * 0.4, { sq: 1, g: -1.2, drag: 2.5 }); }
+        if (typeof Audio !== 'undefined' && Audio.jingle && shown(g)) Audio.jingle(s.c && !own(s.c) ? s.c.pos : null, own(s.c), 0.9);
+      }
+      // 화환 (천천히 돎) · 가운데 명판
+      const wr = clamp((u - 0.22) / 0.2, 0, 1) * outK, ws = (vm ? 0.17 : 0.22) * (0.6 + 0.4 * wr);
+      X.wreath.scale.set(ws, ws, 1); X.wreath.material.opacity = 0.95 * wr; X.wreath.material.rotation = s.t * 0.35;
+      const pk = clamp((u - 0.28) / 0.12, 0, 1) * outK, pw = vm ? 0.2 : 0.24; X.plate.scale.set(pw * (0.4 + 0.6 * pk), pw * 0.344 * pk + 0.0005, 1); X.plate.material.opacity = pk;
+      // 총마다
+      if (X.star) {
+        const sk = clamp((u - 0.3) / 0.15, 0, 1) * outK, tw = 1 + 0.12 * Math.sin(s.t * 9);
+        X.star.scale.set(0.1 * sk * tw, 0.1 * sk * tw, 1); X.star.position.y = m.boreY + 0.05 + sk * 0.05; X.star.material.opacity = sk; X.star.material.rotation = Math.sin(s.t * 1.3) * 0.2;
+        I.U.uFlash.value = Math.max(I.U.uFlash.value, 0.35 * sk * (0.5 + 0.5 * Math.sin(s.t * 14)));
+        if (sk > 0.5 && Math.random() < dt * 24) { X.star.getWorldPosition(_q); _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(0.12); emit(P, _q, _r.x, _r.y - 0.05, _r.z, Math.random() < 0.5 ? 0xffffff : 0xffd65a, 0.004 * k, 0.6, { grow: -0.4 }); }
+      }
+      for (const mt of X.extra) { const mk = clamp((u - 0.25) / 0.15, 0, 1) * outK, a = mt.userData.a + s.t * 2.2, R = 0.085; mt.position.set(Math.cos(a) * R, m.boreY + Math.sin(a) * R, zc + Math.sin(a * 0.5) * L * 0.25); const sc = 0.034 * mk; mt.scale.set(sc, sc, 1); mt.material.rotation = -s.t * 5; mt.material.opacity = mk; }
+      if (X.globe) {
+        const gk = clamp((u - 0.22) / 0.15, 0, 1) * outK, gs = (vm ? 0.34 : L * 0.72 + 0.1) * (0.85 + 0.15 * gk); X.globe.scale.set(gs, gs, 1); X.globe.material.opacity = 0.9 * gk; if (vm) X.globe.position.z = zc + L * 0.18;
+        if (gk > 0.3 && Math.random() < dt * 60) { const a = Math.random() * TAU, R = Math.random() * gs * 0.4; _q.set(Math.cos(a) * R * 0.5, m.boreY + Math.sin(a) * R * 0.5, zc + (Math.random() - 0.5) * gs * 0.7); g.localToWorld(_q); emit(P, _q, (Math.random() - 0.5) * 0.14, (Math.random() - 0.4) * 0.1, (Math.random() - 0.5) * 0.14, Math.random() < 0.7 ? 0xffffff : 0xcff4ff, (0.003 + Math.random() * 0.003) * k, 0.8, { sq: Math.random() < 0.3 }); }
+      }
+    }
+    // 눈 (모두): 총 위에서 천천히 내림
+    if (Math.random() < dt * 40 * vis) { const a = Math.random() * TAU, r = 0.04 + Math.random() * 0.1; _q.set(Math.cos(a) * r, m.boreY + 0.09 + Math.random() * 0.05, lerp(I.z0, I.z1, Math.random())); g.localToWorld(_q); emit(P, _q, (Math.random() - 0.5) * 0.02, -0.05, (Math.random() - 0.5) * 0.02, 0xffffff, (0.0028 + Math.random() * 0.0025) * k, 1.1, { grow: -0.3 }); }
+    // 1인칭: 종을 흔드는 세 번(09_player.js 의 살랑 동작 꼭짓점과 같은 박자)마다 방울 소리
+    if (vm && s.bells < 3 && u >= 0.483 + s.bells * 0.0867) { s.bells++; if (typeof Audio !== 'undefined' && Audio.jingle) Audio.jingle(null, true, 0.45 + s.bells * 0.1); }
+    if (kind === 'xsnow' && I.scan && Math.random() < dt * 30) { const a = Math.random() * TAU, r = 0.025 + Math.random() * 0.035; _q.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, I.U.uScanZ.value); g.localToWorld(_q); emit(P, _q, 0, -0.04, 0, Math.random() < 0.4 ? 0xffffff : pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.7, { grow: -0.4, sq: Math.random() < 0.5 }); }
+  }
   // ---------- 테스터: 재장전 · 살펴보기 ----------
   //  재장전(06_combat.js 가 부름): ZERO = 시작할 때 시안 스캔 띠 · CHAOS = 탄창 갈 때 코어 둘레 붉은 입자 · FRONTIER = 끝나면 금빛 한 번
   //  살펴보기(09_player.js · 진열장): ZERO = 옆에 SYSTEM ONLINE 홀로그램 · CHAOS = 코어가 강하게 빛나며 맥박 · FRONTIER = 별빛 띠가 총몸을 따라 천천히 지나감
@@ -1151,6 +1262,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     if (I.insp.sigil) { I.g.remove(I.insp.sigil); for (const ch of I.insp.sigil.children) ch.material.dispose(); }
     if (I.insp.plate) { I.g.remove(I.insp.plate); I.insp.plate.material.dispose(); }
     if (I.insp.kit && I.parts) for (const p of I.parts) if (!p.spin) p.inner.position.set(0, 0, 0);
+    if (I.insp.xm && typeof GunDeco !== 'undefined') GunDeco.xmasDispose(I.insp.xm);
     I.spinBoost = 1; I.wingHold = 0;
     I.U.uDeploy.value = 0; I.U.uFlash.value = Math.max(0, I.flash || 0); I.insp = null;
   }
@@ -1161,7 +1273,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     if (!s.on) {
       s.on = true;
       if (kind === 'zero') s.panel = GunDeco.panel(g);
-      if (I.d.eps || I.d.xm) epsInspStart(I, s, g, vm);
+      if (I.d.xm) xmInspStart(I, s, g, vm); else if (I.d.eps) epsInspStart(I, s, g, vm);
       if (kind === 'frontier') { scan(I, s.dur * 0.85, 0xfff0c0, true); s.scan = true; }
       if (typeof Audio !== 'undefined' && Audio.skinFx && shown(g)) Audio.skinFx('inspect', kind, s.c && !own(s.c) ? s.c.pos : null, own(s.c));
     }
@@ -1173,7 +1285,8 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       const pulse = 0.5 + 0.5 * Math.sin(s.t * 18), env = Math.sin(Math.min(1, u) * Math.PI);
       I.U.uDeploy.value = env * (0.6 + 0.6 * pulse);
       if (Math.random() < dt * 40 * env) { const core = I.parts && I.parts.find((p) => p.core); if (core) core.outer.getWorldPosition(_q); else { _q.set(0, m.boreY, lerp(I.z0, I.z1, 0.4)); g.localToWorld(_q); } _r.set(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(0.2 + Math.random() * 0.35); emit(P, _q, _r.x, _r.y, _r.z, pick(I.d.fx), (0.004 + Math.random() * 0.005) * k, 0.3, { drag: 2 }); }
-    } else if (I.d.eps || I.d.xm) { epsInsp(I, s, g, u, dt, vm, k, P, m); }
+    } else if (I.d.xm) { xmInsp(I, s, g, u, dt, vm, k, P, m); }
+    else if (I.d.eps) { epsInsp(I, s, g, u, dt, vm, k, P, m); }
     else if (kind === 'frontier' && I.scan) {
       if (Math.random() < dt * 30) { const a = Math.random() * TAU, r = 0.02 + Math.random() * 0.03; _q.set(Math.cos(a) * r, m.boreY - 0.01 + Math.sin(a) * r, I.U.uScanZ.value); g.localToWorld(_q); emit(P, _q, 0, 0.02, 0, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.6, { grow: -0.4 }); }
     }

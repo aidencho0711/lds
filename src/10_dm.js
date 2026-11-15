@@ -13,7 +13,7 @@
 // ============================================================
 const DM = (() => {
   let S = null;
-  const ALL_GUNS = Object.keys(ITEMS).filter((k) => ITEMS[k].type === 'weapon');
+  const ALL_GUNS = Object.keys(ITEMS).filter((k) => ITEMS[k].type === 'weapon' && !ITEMS[k].rocket);   // 판처파우스트(1회용 로켓)는 대결·데스매치 총에서 제외
   const TDM_GUNS = ALL_GUNS.filter((k) => ITEMS[k].cls !== 'PISTOL');          // 전원 권총만 드는 판은 제외
   const SCOPES = ['reddot', 'holo', 'x2', 'x3', 'x4', 'x6'];
   const TEAM_NAMES = ['블루', '레드'];
@@ -59,7 +59,7 @@ const DM = (() => {
     try { await generateWorld('arena', sc, prog); }
     catch (e) { console.error(e); fatal('맵 생성 중 오류: ' + e.message); return; }
     prog(0.98, '부대 배치');
-    Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; PathQ.clear(); G.myNade = null;
+    Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
     Zone.cur = Zone.next = null; Zone.state = 'wait'; Airdrop.init(sc); G.plane = null;
     GROUND = []; itemGrid = new Array(IGN * IGN).fill(EMPTY_LIST);
     CHARS = []; G.noises = []; G.time = 0; G.stats = { shots: 0, hits: 0 }; G.killLog = []; G.knockLog = []; G.marker = null; G.updateMarker(); G.spec = null;

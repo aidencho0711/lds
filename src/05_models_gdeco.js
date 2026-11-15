@@ -252,7 +252,65 @@ const GunDeco = (() => {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: plateTex(d, serial, col), transparent: true, depthWrite: false, depthTest: false, toneMapped: false, opacity: 0 }));
     const m = g.userData.meta; s.position.set(0, (m.boreY || 0) + 0.17, 0.08); s.scale.set(0.001, 0.001, 1); s.renderOrder = 9; s.name = 'gdeco-panel'; g.add(s); return s;
   }
-  return { attach, panel, crestHolo, sigil, plate, emblemTex, textTex, epsTex };
+  // ---------- 크리스마스 EXCLUSIVE 살펴보기 (v21): 엡실론(ε 고리·홀로 명판)과 다른 '선물 풀기' 연출용 장식 ----------
+  //  화환(호랑가시 잎·빨간 열매·금 리본) · 리본 띠와 나비 리본(선물 포장 → 풀림) · 크리스마스 명판(눈 덮인 나무 판) · 트리 별 · 페퍼민트 사탕 · 스노글로브
+  const leaf = (g, x, y, L, W, rot, col) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); g.moveTo(0, 0); for (let i = 0; i <= 6; i++) { const t = i / 6, w = Math.sin(t * Math.PI) * W * (i % 2 ? 1.18 : 0.82); g.lineTo(t * L, -w); } for (let i = 6; i >= 0; i--) { const t = i / 6, w = Math.sin(t * Math.PI) * W * (i % 2 ? 1.18 : 0.82); g.lineTo(t * L, w); } g.closePath(); g.fillStyle = col; g.fill(); g.strokeStyle = 'rgba(10,40,20,0.7)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(0, 0); g.lineTo(L, 0); g.stroke(); g.restore(); };
+  const berry = (g, x, y, r) => { const rg = g.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r); rg.addColorStop(0, '#ff8a8a'); rg.addColorStop(0.4, '#e01a26'); rg.addColorStop(1, '#6a0408'); g.fillStyle = rg; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); };
+  const bowShape = (g, cx, cy, s, col, col2) => {
+    for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(cx, cy); g.bezierCurveTo(cx + sd * s * 0.9, cy - s * 0.9, cx + sd * s * 1.3, cy + s * 0.15, cx, cy); const gr = g.createLinearGradient(cx, cy - s, cx, cy + s * 0.4); gr.addColorStop(0, col2); gr.addColorStop(1, col); g.fillStyle = gr; g.fill(); g.strokeStyle = 'rgba(80,0,8,0.6)'; g.lineWidth = 2; g.stroke(); }
+    for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + sd * s * 0.55, cy + s * 1.05); g.lineTo(cx + sd * s * 0.3, cy + s * 0.95); g.lineTo(cx + sd * s * 0.38, cy + s * 1.18); g.lineTo(cx + sd * s * 0.12, cy + s * 0.2); g.closePath(); g.fillStyle = col; g.fill(); }
+    g.beginPath(); g.arc(cx, cy, s * 0.17, 0, TAU); g.fillStyle = col2; g.fill();
+  };
+  const wreathTex = () => ctex('xwreath', 512, 512, (g) => {
+    g.translate(256, 256); const R = mulberry32(25);
+    g.strokeStyle = '#0f3a1e'; g.lineWidth = 46; g.beginPath(); g.arc(0, 0, 176, 0, TAU); g.stroke();
+    for (let i = 0; i < 44; i++) { const a = i / 44 * TAU + R() * 0.1, rr = 150 + R() * 52; leaf(g, Math.cos(a) * rr, Math.sin(a) * rr, 54 + R() * 18, 13, a + Math.PI / 2 + (R() - 0.5) * 1.6, R() < 0.5 ? '#1f7a3a' : '#2c9a4a'); }
+    for (let i = 0; i < 18; i++) { const a = i / 18 * TAU + R() * 0.2, rr = 160 + R() * 30; berry(g, Math.cos(a) * rr, Math.sin(a) * rr, 9 + R() * 4); berry(g, Math.cos(a + 0.05) * (rr + 12), Math.sin(a + 0.05) * (rr + 12), 7 + R() * 3); }
+    g.fillStyle = '#ffe9a0'; for (let i = 0; i < 40; i++) { const a = R() * TAU, rr = 140 + R() * 80; g.fillRect(Math.cos(a) * rr, Math.sin(a) * rr, 3, 3); }
+    bowShape(g, 0, 196, 58, '#b3121c', '#ff5a5a');
+  });
+  const bowTex = () => ctex('xbow', 256, 256, (g) => { g.save(); g.shadowColor = 'rgba(255,200,120,0.8)'; g.shadowBlur = 14; bowShape(g, 128, 104, 92, '#c8141e', '#ff6a6a'); g.restore(); g.strokeStyle = '#ffd65a'; g.lineWidth = 3; g.beginPath(); g.arc(128, 104, 15, 0, TAU); g.stroke(); });
+  const ribbonTex = () => ctex('xribbon', 256, 64, (g, W, H) => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#7a0810'); gr.addColorStop(0.45, '#e8303a'); gr.addColorStop(0.55, '#ff6a70'); gr.addColorStop(1, '#7a0810'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#ffd65a'; g.fillRect(0, 4, W, 5); g.fillRect(0, H - 9, W, 5); });
+  const starTex = () => ctex('xstarflare', 256, 256, (g) => {
+    g.translate(128, 128); const rg = g.createRadialGradient(0, 0, 0, 0, 0, 128); rg.addColorStop(0, 'rgba(255,240,190,0.9)'); rg.addColorStop(0.3, 'rgba(255,200,90,0.35)'); rg.addColorStop(1, 'rgba(255,180,60,0)'); g.fillStyle = rg; g.fillRect(-128, -128, 256, 256);
+    g.save(); g.shadowColor = '#ffd65a'; g.shadowBlur = 18; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 26 : 66; i ? g.lineTo(Math.cos(a) * r, Math.sin(a) * r) : g.moveTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); const sg = g.createLinearGradient(0, -66, 0, 60); sg.addColorStop(0, '#fffbe6'); sg.addColorStop(0.5, '#ffd65a'); sg.addColorStop(1, '#c8861a'); g.fillStyle = sg; g.fill(); g.restore();
+    g.strokeStyle = 'rgba(255,250,220,0.7)'; g.lineWidth = 2; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(Math.cos(a) * 80, Math.sin(a) * 80); g.lineTo(-Math.cos(a) * 80, -Math.sin(a) * 80); g.stroke(); }
+  });
+  const mintTex = () => ctex('xmint', 128, 128, (g) => { g.translate(64, 64); g.fillStyle = '#fbf8f2'; g.beginPath(); g.arc(0, 0, 56, 0, TAU); g.fill(); g.fillStyle = '#d0141e'; for (let i = 0; i < 7; i++) { g.save(); g.rotate(i / 7 * TAU); g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(30, -8, 52, -24); g.quadraticCurveTo(44, 2, 0, 0); g.fill(); g.restore(); } g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 4; g.beginPath(); g.arc(-14, -18, 22, Math.PI * 1.1, Math.PI * 1.6); g.stroke(); });
+  const globeTex = () => ctex('xglobe', 256, 256, (g) => { g.translate(128, 128); const rg = g.createRadialGradient(0, 0, 90, 0, 0, 126); rg.addColorStop(0, 'rgba(200,235,255,0)'); rg.addColorStop(0.8, 'rgba(200,235,255,0.25)'); rg.addColorStop(0.97, 'rgba(240,250,255,0.85)'); rg.addColorStop(1, 'rgba(240,250,255,0)'); g.fillStyle = rg; g.beginPath(); g.arc(0, 0, 127, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 6; g.beginPath(); g.arc(-20, -26, 84, Math.PI * 1.08, Math.PI * 1.42); g.stroke(); });
+  function xplateTex(d, serial) {
+    return ctex(['xplate', d.name, d.no, serial].join('|'), 640, 220, (g, W, H) => {
+      // 나무 판 + 눈 덮인 윗면 + 양 끝 호랑가시
+      const wood = g.createLinearGradient(0, 30, 0, H); wood.addColorStop(0, '#5a2a18'); wood.addColorStop(1, '#2a1208'); g.fillStyle = wood; g.beginPath(); g.roundRect ? g.roundRect(20, 34, W - 40, H - 44, 18) : g.rect(20, 34, W - 40, H - 44); g.fill();
+      g.strokeStyle = '#e0b850'; g.lineWidth = 5; g.stroke();
+      g.fillStyle = '#f6fbff'; g.beginPath(); g.moveTo(14, 46); for (let x = 14; x <= W - 14; x += 22) g.quadraticCurveTo(x + 11, 18 + (x * 7 % 13), x + 22, 42); g.lineTo(W - 14, 56); g.lineTo(14, 56); g.closePath(); g.fill();
+      for (const [x, s] of [[56, 1], [W - 56, -1]]) { leaf(g, x, H - 40, 46, 11, s > 0 ? -2.4 : -0.7, '#2c9a4a'); leaf(g, x, H - 40, 46, 11, s > 0 ? -0.9 : -2.25, '#1f7a3a'); berry(g, x, H - 40, 8); berry(g, x + 10 * s, H - 32, 7); }
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = FONT(800, 28); g.fillStyle = '#ffd65a'; g.fillText(`MERRY CHRISTMAS  ·  ${d.no}`, W / 2, 76);
+      let px = 62; g.font = FONT(900, px); const w = g.measureText(d.name).width; if (w > W - 150) { px *= (W - 150) / w; g.font = FONT(900, px); }
+      g.save(); g.shadowColor = '#ff4a5a'; g.shadowBlur = 10; g.fillStyle = '#ffffff'; g.fillText(d.name, W / 2, 128); g.restore();
+      g.font = FONT(700, 24); g.fillStyle = '#9fe8ff'; g.fillText(serial ? `EXCLUSIVE  ·  OWNER #${serial}` : 'EXCLUSIVE  ·  WINTER 2026', W / 2, 180);
+    });
+  }
+  const spr = (map, o = {}) => { const s = new THREE.Sprite(new THREE.SpriteMaterial(Object.assign({ map, transparent: true, depthWrite: false, toneMapped: false, opacity: 0 }, o))); s.scale.set(0.001, 0.001, 1); s.renderOrder = 9; s.name = 'gdeco-panel'; return s; };
+  // 총 둘레 장식 묶음 (GunSkin.xmInsp 가 움직이고 끝나면 지움)
+  function xmas(g, d, serial, kind) {
+    const m = g.userData.meta, I = g.userData.skin, by = m.boreY || 0, zc = I ? (I.z0 + I.z1) / 2 : 0.1, L = I ? I.z1 - I.z0 : 0.8, root = new THREE.Group(); root.name = 'gdeco-panel'; root.userData.noSkin = true;
+    // 화환: 총 위에 떠올라 천천히 돎 + 가운데를 가로지르는 명판 (문에 거는 화환과 이름표처럼 · 항상 카메라 쪽 → 스프라이트)
+    const wreath = spr(wreathTex(), { depthTest: false }); wreath.position.set(0, by + 0.17, zc - L * 0.05); root.add(wreath);
+    // 선물 포장: 총몸을 감싼 리본 띠 두 줄(세로 고리) + 위에 나비 리본
+    const bands = [];
+    for (const f of [0.38, 0.62]) { const band = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 28, 1, true), new THREE.MeshBasicMaterial({ map: ribbonTex(), side: THREE.DoubleSide, transparent: true, opacity: 0, depthWrite: false, toneMapped: false })); band.geometry.rotateX(Math.PI / 2); band.position.set(0, by, I ? lerp(I.z0, I.z1, f) : zc); band.scale.set(0.001, 0.001, 0.016); band.userData.f = f; root.add(band); bands.push(band); }
+    const bow = spr(bowTex(), { depthTest: false }); bow.position.set(0, by + 0.075, zc); root.add(bow);
+    const plate = spr(xplateTex(d, serial), { depthTest: false }); plate.position.set(0, by + 0.17, zc - L * 0.05); plate.renderOrder = 10; root.add(plate);
+    const out = { root, wreath, bands, bow, plate, extra: [] };
+    if (kind === 'xstar') { const st = spr(starTex(), { depthTest: false, blending: THREE.AdditiveBlending }); st.position.set(0, by + 0.06, zc + L * 0.28); root.add(st); out.star = st; }
+    else if (kind === 'xgift') for (let i = 0; i < 4; i++) { const mt = spr(mintTex(), { depthTest: true }); mt.userData.a = i / 4 * TAU; root.add(mt); out.extra.push(mt); }
+    else if (kind === 'xsnow') { const gl = spr(globeTex(), { depthTest: false }); gl.position.set(0, by, zc); root.add(gl); out.globe = gl; }
+    g.add(root); return out;
+  }
+  function xmasDispose(o) { if (!o) return; o.root.traverse((x) => { if (x.material) x.material.dispose(); if (x.geometry && x.geometry !== PLANE && !x.isSprite) x.geometry.dispose(); }); if (o.root.parent) o.root.parent.remove(o.root); }
+  return { attach, panel, crestHolo, sigil, plate, emblemTex, textTex, epsTex, xmas, xmasDispose };
 })();
 // 특정 각도 글자의 일렁임 시간 (GunSkin.update 가 갱신)
 const GunDeco_T = { value: 0 };

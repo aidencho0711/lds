@@ -191,6 +191,7 @@ const Net = (() => {
       case 'rev': netRevive(e); break;
       case 'shot': remoteShot(e); break;
       case 'throw': remoteThrow(e); break;
+      case 'rkt': { const c = charById(e.c); if (c && !mine(c) && G.scene) { const p = new THREE.Vector3(e.p[0], e.p[1], e.p[2]), D = new THREE.Vector3(e.v[0], e.v[1], e.v[2]); spawnRocket(c, p, D, p, ITEMS.pzf, true); backblast(p.clone().addScaledVector(D, -1.1), D); Audio.rocket('launch', p, false); c.lastShotT = G.time; } break; }   // 판처파우스트: 보이기·소리만
       case 'pu': remotePunch(e); break;
       case 'rc': Recall.onNet(e, from); break;   // 리콜: 등록 요청(→방장)·승인(방장→모두)·단말기 작동·거절
       case 'gadd': { if (N.items.has(e.u)) break; N.applying++; spawnItem(G.scene, e.i, e.n, e.x, e.y, e.z, e.in || null, e.u); N.applying--; break; }
@@ -557,7 +558,7 @@ const Net = (() => {
     c.botized = true; c.net = { owner: N.cfg.host, mine: true, buf: [], life: c.net ? c.net.life : 0 };
     ev({ k: 'own', c: c.id, o: N.cfg.host });
     if (c.alive) {
-      const wi = c.weapon; if (wi) { const a = ITEMS[wi.id].ammo; c.inv.items[a] = (c.inv.items[a] || 0) + ITEMS[wi.id].mag * 3; }
+      const wi = c.weapon; if (wi && ITEMS[wi.id].ammo) { const a = ITEMS[wi.id].ammo; c.inv.items[a] = (c.inv.items[a] || 0) + ITEMS[wi.id].mag * 3; }
       if (!c.inv.items.bandage) c.inv.items.bandage = 3;
       const b = new Brain(c, 'normal'); b.state = c.mode === 'ground' ? 'EXPLORE' : 'LANDING'; b.landT = G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0;
     }

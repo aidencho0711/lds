@@ -46,7 +46,7 @@ const Dev = (() => {
     if (d.slot === 'secondary') slot = 2;
     else slot = !inv.weapons[0] ? 0 : !inv.weapons[1] ? 1 : inv.cur === 1 ? 1 : 0;
     inv.weapons[slot] = w; inv.cur = slot;
-    inv.items[d.ammo] = (inv.items[d.ammo] || 0) + w.mag * 5;
+    if (d.ammo) inv.items[d.ammo] = (inv.items[d.ammo] || 0) + w.mag * 5;   // 판처파우스트는 탄약 없음
     p.rl = null; p.cycle = null; p.equipT = 0.3; p.setVisibleGear(); HUD.refreshInventory();
     return `${d.name} 지급 (${[w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].filter(Boolean).map((a) => ITEMS[a].name).join(' · ') || '부착물 없음'})`;
   }
@@ -55,7 +55,7 @@ const Dev = (() => {
     const inv = p.inv;
     inv.gear = { helmet: { id: 'helm3', dur: ITEMS.helm3.dur }, vest: { id: 'vest3', dur: ITEMS.vest3.dur }, bag: { id: 'bag3' } };
     for (const [id, n] of [['medkit', 2], ['firstaid', 5], ['bandage', 10], ['drink', 5], ['frag', 3], ['smoke', 2]]) inv.items[id] = Math.max(inv.items[id] || 0, n);
-    for (const w of inv.weapons) if (w) inv.items[ITEMS[w.id].ammo] = Math.max(inv.items[ITEMS[w.id].ammo] || 0, inv.magSize(w) * 5);
+    for (const w of inv.weapons) if (w && ITEMS[w.id].ammo) inv.items[ITEMS[w.id].ammo] = Math.max(inv.items[ITEMS[w.id].ammo] || 0, inv.magSize(w) * 5);
     p.hp = 100; p.boost = 100; p.setVisibleGear(); HUD.refreshInventory();
     return '헬멧·조끼·가방 3레벨 + 회복 아이템·수류탄 · 체력·부스트 가득';
   }
@@ -288,7 +288,7 @@ const Dev = (() => {
     const r2 = h('div', 'dev-row'); r.parentNode.appendChild(r2);
     const gsel = h('select', 'dev-sel'); const byCls = {};
     for (const id in ITEMS) { const d = ITEMS[id]; if (d.type === 'weapon') (byCls[d.cls] = byCls[d.cls] || []).push(id); }
-    for (const cls of ['AR', 'SMG', 'SG', 'DMR', 'SR', 'LMG', 'PISTOL']) { if (!byCls[cls]) continue; const og = document.createElement('optgroup'); og.label = cls; for (const id of byCls[cls]) { const o = document.createElement('option'); o.value = id; o.textContent = ITEMS[id].name; og.appendChild(o); } gsel.appendChild(og); }
+    for (const cls of ['AR', 'SMG', 'SG', 'DMR', 'SR', 'LMG', 'PISTOL', 'RL']) { if (!byCls[cls]) continue; const og = document.createElement('optgroup'); og.label = cls; for (const id of byCls[cls]) { const o = document.createElement('option'); o.value = id; o.textContent = ITEMS[id].name; og.appendChild(o); } gsel.appendChild(og); }
     gsel.value = F.gun && ITEMS[F.gun] ? F.gun : 'm416'; gsel.disabled = off; gsel.addEventListener('change', () => { F.gun = gsel.value; save(); });
     r2.appendChild(gsel); btn(r2, '총 지급', () => giveGun(gsel.value), { dis: off });
     const r3 = h('div', 'dev-row'); r.parentNode.appendChild(r3);

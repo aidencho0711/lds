@@ -367,6 +367,7 @@ const Veh = (() => {
     if (v.hp <= 0) {
       v.hp = 0;
       if (v.T.animal) { kill(v); return; }
+      if (cause === 'pzf') { explode(v); return; }   // 판처파우스트 직격: 불붙는 시간 없이 바로 폭발
       if (v.burnT <= 0) { v.burnT = 3.6; if (G.player && G.player.veh === v) HUD.toast('차량에 불이 붙었습니다! 곧 폭발합니다 — 내리세요 (F)', 'warn'); }
     }
   }

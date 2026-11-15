@@ -126,6 +126,7 @@ function fireWeapon(c, origin, dir) {
   if (!(c.isPlayer && Dev.cheat('ammo'))) wi.mag--;   // 개발자 도구: 무한 탄약
   c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); G.stats.shots++;
   if (c.spawnProt) c.spawnProt = 0; // 데스매치: 쏘면 부활 보호 해제
+  if (d.rocket) return fireRocket(c, wi, d, origin, dir);   // 판처파우스트: 히트스캔 대신 날아가는 로켓
   const spread = weaponSpread(c) * DEG;
   const pellets = d.pellets || 1;
   const g = gunObj(c), meta = g && g.userData.meta;
@@ -180,6 +181,108 @@ function fireWeapon(c, origin, dir) {
   return true;
 }
 const _shotEnd = [0, 0, 0, 0];
+// ---------- 판처파우스트 (v21): 날아가는 로켓 ----------
+//  눈(origin)에서 조준 방향으로 rv m/s + 약한 중력(rg). 1/60초마다 벽·지형·차량·사람·물을 확인해 닿으면 폭발, 2.8초 지나면 공중에서 터짐
+//  모양은 총구(탄두 자리)에서 출발해 0.18초 동안 실제 궤적(눈높이)으로 합쳐진다 → 화면에서도 총에서 나가고, 조준한 곳에 정확히 맞음
+//  직격: 사람은 기절 없이 처치, 차량은 탄 사람까지 그 자리에서 폭발 · 반경 blastR 안은 거리·엄폐에 따라 큰 피해(차량 포함)
+//  쏜 뒤 0.7초 지나면 빈 발사관을 버리고 다른 무기로 (discardSpent) · 같이 하기: 다른 기기는 보이기만(remote), 피해는 쏜 기기가 판정
+let ROCKETS = [];
+const _rk = new THREE.Vector3(), _rk2 = new THREE.Vector3();
+function fireRocket(c, wi, d, origin, dir) {
+  const s = weaponSpread(c) * DEG * 0.5, a = Math.random() * TAU, r = Math.sqrt(Math.random()) * Math.tan(s);
+  const up = Math.abs(dir.y) > 0.95 ? _v2.set(1, 0, 0) : _v2.set(0, 1, 0);
+  const ax = _rk.crossVectors(dir, up).normalize(), bx = _rk2.crossVectors(ax, dir).normalize();
+  const D = new THREE.Vector3().copy(dir).addScaledVector(ax, Math.cos(a) * r).addScaledVector(bx, Math.sin(a) * r).normalize();
+  const g = gunObj(c), meta = g && g.userData.meta;
+  const tip = meta ? gunWorldPoint(c, 0, meta.boreY, meta.headPos ? meta.headPos[2] + 0.12 : meta.muzzleZ, new THREE.Vector3()) : null;
+  const start = origin.clone().addScaledVector(D, 0.5);
+  const vis = tip && tip.distanceTo(origin) < 3 ? tip : start;
+  const rk = spawnRocket(c, start, D, vis, d, false);
+  if (G.net) Net.ev({ k: 'rkt', c: c.id, p: [+start.x.toFixed(2), +start.y.toFixed(2), +start.z.toFixed(2)], v: [+D.x.toFixed(4), +D.y.toFixed(4), +D.z.toFixed(4)] });
+  // 뒤 화염(백블라스트): 발사관 뒤로 불꽃·연기
+  const back = meta && meta.backZ !== undefined ? gunWorldPoint(c, 0, meta.boreY, meta.backZ, new THREE.Vector3()) : null;
+  backblast(back && back.distanceTo(origin) < 3 ? back : origin.clone().addScaledVector(D, -0.5), D, c.isPlayer);
+  c.bloom = Math.min(c.bloom + d.recoil * 0.22, 4);
+  c.spentT = 0.7; c.spentSlot = c.inv.cur; c.inspectT = 0;
+  Audio.rocket('launch', origin, c.isPlayer);
+  G.noises.push({ x: origin.x, y: origin.y, z: origin.z, t: G.time, r: 300, by: c, kind: 'shot' });
+  if (G.player && c !== G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 12) G.shake = Math.max(G.shake || 0, 0.25);
+  return !!rk;
+}
+// 뒤 화염: 내 캐릭터면 작고 짧게(3인칭 카메라가 바로 뒤에 있어 화면을 덮지 않게), 남이 쏘면 크게
+function backblast(p, D, own) {
+  const s = own ? 0.45 : 1;
+  FX.puff(p.x - D.x * 0.3, p.y - D.y * 0.3, p.z - D.z * 0.3, 0xffd090, 0.9 * s, 0.1, 1.4, 0);
+  for (let i = 0; i < (own ? 3 : 5); i++) { const k = 0.5 + i * 0.4; FX.puff(p.x - D.x * k + rnd(-0.2, 0.2) * s, p.y - D.y * k - 0.15 + rnd(-0.1, 0.2) * s, p.z - D.z * k + rnd(-0.2, 0.2) * s, i < 1 ? 0xff9a40 : 0xb8b0a4, (0.6 + i * 0.22) * s, (own ? 0.35 : 0.7) + i * 0.15, own ? 1.6 : 2.4, 0.5); }
+}
+function spawnRocket(c, start, D, vis, d, remote) {
+  if (!G.scene) return null;
+  const mesh = Models.cluster('gh:pzf', Models.GUNS.pzf.head), fl = FX.flame(); fl.position.set(0, 0, -0.26); fl.scale.setScalar(0.42); mesh.add(fl);
+  G.scene.add(mesh);
+  const v = d.rv || 80, r = { owner: c, x: start.x, y: start.y, z: start.z, vx: D.x * v, vy: D.y * v, vz: D.z * v, g: d.rg || 2.2, t: 0, mesh, fl, remote, trailT: 0, flyT: 0,
+    ox: vis.x - start.x, oy: vis.y - start.y, oz: vis.z - start.z };
+  ROCKETS.push(r); placeRocket(r);
+  return r;
+}
+function placeRocket(r) {
+  const k = Math.max(0, 1 - r.t / 0.18), m = r.mesh;
+  m.position.set(r.x + r.ox * k, r.y + r.oy * k, r.z + r.oz * k);
+  _rk.set(m.position.x + r.vx, m.position.y + r.vy, m.position.z + r.vz); m.lookAt(_rk);
+  r.fl.scale.setScalar(0.32 + Math.random() * 0.2); r.fl.material.opacity = 0.75 + Math.random() * 0.25;
+}
+function stepRockets(dt) {
+  for (let i = ROCKETS.length - 1; i >= 0; i--) {
+    const r = ROCKETS[i]; r.t += dt; r.vy -= r.g * dt;
+    const sp = Math.hypot(r.vx, r.vy, r.vz), L = sp * dt, dx = r.vx / sp, dy = r.vy / sp, dz = r.vz / sp;
+    const h = raycastAll(r.x, r.y, r.z, dx, dy, dz, L + 0.06, r.owner), wet = r.y + dy * L < WATER_Y && heightAt(r.x, r.z) < WATER_Y;
+    if (h.t <= L + 0.06 || wet || r.t > 2.8) {
+      const t = h.t <= L + 0.06 ? Math.max(0, h.t - 0.06) : wet ? clamp((WATER_Y - r.y) / (dy || -1), 0, L) : 0;
+      G.scene.remove(r.mesh); r.fl.material.dispose(); ROCKETS.splice(i, 1);
+      rocketBoom(r, r.x + dx * t, r.y + dy * t, r.z + dz * t, h.t <= L + 0.06 ? h : null);
+      continue;
+    }
+    r.x += r.vx * dt; r.y += r.vy * dt; r.z += r.vz * dt;
+    placeRocket(r);
+    r.trailT -= dt; if (r.trailT <= 0) { r.trailT = 0.014; const p = r.mesh.position; FX.puff(p.x - dx * 0.35, p.y - dy * 0.35, p.z - dz * 0.35, 0xd2ccc2, 0.24, 0.9, 2.8, 0.2); }
+    r.flyT -= dt; if (r.flyT <= 0 && G.player) { r.flyT = 0.45; Audio.rocket('fly', r.mesh.position, false); }
+  }
+}
+// 직격: 기절 없이 처치 (같은 팀·부활 보호는 그대로 막힘). 다른 기기 캐릭터는 주인 기기에 처치 요청까지
+function rocketLethal(t, own) {
+  if (!t.alive || sameTeam(own, t) || (G.dm && t.spawnProt > G.time)) return;
+  applyDamage(t, 999, 'impact', own, 'pzf');
+  if (G.net && !Net.mine(t)) { if (t.alive) Net.killReq(t, own, 'pzf'); return; }
+  if (t.alive && t.knocked) applyDamage(t, 999, 'impact', own, 'pzf');
+}
+function rocketBoom(r, x, y, z, hit) {
+  FX.blast(x, y, z); Audio.rocket('boom', { x, y, z }, false);
+  G.noises.push({ x, y, z, t: G.time, r: 320, by: r.owner, kind: 'blast' });
+  if (G.player && G.player.alive) { const dd = Math.hypot(G.player.pos.x - x, G.player.pos.z - z); if (dd < 70) G.shake = Math.max(G.shake || 0, (1 - dd / 70) * 1.8); }
+  if (r.remote) return;
+  const own = r.owner, R = ITEMS.pzf.blastR, direct = hit && hit.type === 'char' ? hit.char : null, dveh = hit && hit.type === 'veh' ? hit.veh : null;
+  if (direct) rocketLethal(direct, own);
+  if (dveh) { for (const d of Veh.riders(dveh)) rocketLethal(d, own); Veh.damage(dveh, 1e6, own, 'pzf'); }
+  for (const ch of CHARS) {
+    if (!ch.alive || ch === direct || ch.mode !== 'ground') continue;
+    ch.chest(_v1); const dd = _v1.distanceTo(_v2.set(x, y + 0.2, z)); if (dd > R) continue;
+    const cover = losClear(x, y + 0.3, z, _v1.x, _v1.y, _v1.z, dveh) ? 1 : 0.2;
+    applyDamage(ch, 240 * Math.pow(1 - dd / R, 1.1) * cover, 'blast', own, 'pzf');
+  }
+  Veh.blast(x, y, z, R, 1400, own, dveh);
+}
+// 쏜 뒤 빈 발사관 버리기 → 다른 무기를 든다 (주무기 → 보조무기 순)
+function discardSpent(c) {
+  const i = c.spentSlot, wi = i >= 0 ? c.inv.weapons[i] : null; c.spentSlot = -1;
+  if (!wi || !ITEMS[wi.id].rocket || wi.mag > 0) return;
+  c.inv.weapons[i] = null;
+  if (c.inv.cur === i) {
+    const nx = [0, 1, 2].find((k) => c.inv.weapons[k]);
+    c.inv.cur = nx === undefined ? -1 : nx; c.rl = null; c.cycle = null; c.reloadT = 0; c.inspectT = 0; c.aiming = false;
+    if (nx !== undefined) { c.equipT = 0.6; if (c.isPlayer) Audio.mech('equip', null, c.inv.weapons[nx].id, true); }
+  }
+  c.setVisibleGear();
+  if (c.isPlayer) { HUD.toast('빈 발사관을 버렸습니다', 'info'); if (HUD.refreshInventory) HUD.refreshInventory(); }
+}
 // ---------- 맨손 근접 공격 (무기·탄약이 없을 때) ----------
 //  가드(주먹을 턱 높이) → 지르기(out) → 잠깐 뻗은 채(hold) → 복귀(back). 맞힘 판정은 주먹이 거의 다 뻗은 순간(hitAt)
 //  누르고 있으면 cycle 간격으로 좌우 번갈아 연타, combo 안에 다시 치면 반대손. 마지막 주먹 뒤 guardT 동안 가드 유지
@@ -517,7 +620,7 @@ const ss = (t, a, b) => smoothstep01(clamp((t - a) / (b - a), 0, 1));
 function weaponAnim(c, meta) {
   const A = AN, rl = c.rl, cy = c.cycle, wi = c.weapon;
   A.magOff.set(0, 0, 0); A.magVis = true; A.magRot = 0; A.tiltX = A.tiltZ = A.rw = 0; A.rk = 'L'; A.charge = A.fold = A.pump = A.boltUp = A.boltBack = A.slide = A.cover = A.breakOpen = A.lever = 0; A.shellL = A.shellR = false;
-  A.mag2Off.set(0, 0, 0); A.mag2Vis = false; A.mag2Rot = 0; A.clipOff.set(0, 0, 0); A.clipVis = false; A.clipPush = 0;
+  A.mag2Off.set(0, 0, 0); A.mag2Vis = false; A.mag2Rot = 0; A.clipOff.set(0, 0, 0); A.clipVis = false; A.clipPush = 0; A.headVis = !(wi && wi.mag <= 0);
   anchorPos(meta, 'fore', A.left); anchorPos(meta, 'grip', A.right);
   A.li.a = A.li.b = 'fore'; A.li.k = 0; A.ri.a = A.ri.b = 'grip'; A.ri.k = 0;
   if (rl && (rl.kind === 'mag' || rl.kind === 'belt')) {
@@ -626,6 +729,7 @@ function applyParts(gun, A) {
   if (P.cover) P.cover.rotation.x = (m.coverAngle || 1.2) * A.cover;
   if (P.barrel) P.barrel.rotation.x = (m.breakAngle || 0.4) * A.breakOpen;
   if (P.lever) P.lever.rotation.x = -(m.leverAngle || 0.9) * A.lever;
+  if (P.head) P.head.visible = A.headVis;
   if (P.clip) {
     P.clip.visible = A.clipVis;
     if (A.clipVis) { P.clip.position.copy(P.clip.userData.home).add(A.clipOff); const r = P.clip.userData.rounds; r.visible = A.clipPush < 0.98; r.position.y = -0.06 * smoothstep01(A.clipPush); }
@@ -757,7 +861,7 @@ function killChar(t, attacker, cause) {
   // 사망 시 소지품을 주변에 떨어뜨림 (루팅 가능)
   const sc = G.scene, drop = (id, n, inst) => { const a = Math.random() * TAU, r = 0.4 + Math.random() * 0.9; spawnItem(sc, id, n, t.pos.x + Math.cos(a) * r, groundAt(t.pos.x + Math.cos(a) * r, t.pos.z + Math.sin(a) * r, t.pos.y + 0.5), t.pos.z + Math.sin(a) * r, inst); };
   if (!G.dm) { // 데스매치는 떨어뜨리지 않는다 (부활하면 새로 지급)
-    for (const wi of t.inv.weapons) if (wi) drop(wi.id, 1, wi);
+    for (const wi of t.inv.weapons) if (wi && !(ITEMS[wi.id].rocket && wi.mag <= 0)) drop(wi.id, 1, wi);   // 쏘고 아직 안 버린 빈 발사관은 떨어뜨리지 않음
     for (const k in t.inv.gear) if (t.inv.gear[k]) drop(t.inv.gear[k].id, 1, t.inv.gear[k]);
     for (const id in t.inv.items) drop(id, t.inv.items[id]);
   }
@@ -789,7 +893,7 @@ function throwItem(c, type, origin, dir, power, fuse) {
 // 투척물은 1/60초 단위로 나눠 계산 → 프레임률과 상관없이 궤적 미리보기와 같은 곳에 떨어진다
 function updateProjectiles(dt) {
   const n = Math.max(1, Math.ceil(dt * 60 - 1e-6));
-  for (let k = 0; k < n; k++) stepProjectiles(dt / n);
+  for (let k = 0; k < n; k++) { stepProjectiles(dt / n); if (ROCKETS.length) stepRockets(dt / n); }
   for (let i = SMOKES.length - 1; i >= 0; i--) { const s = SMOKES[i]; if (!FX.updateSmoke(s, dt)) SMOKES.splice(i, 1); }
 }
 function stepProjectiles(dt) {
@@ -861,7 +965,7 @@ const FX = (() => {
       const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0.8 }));
       l.visible = false; l.frustumCulled = false; scene.add(l); tracers.push({ l, life: 0 });
     }
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 120; i++) {   // v21: 로켓 연기 꼬리 때문에 70 → 120
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, transparent: true, depthWrite: false }));
       s.visible = false; scene.add(s); dots.push({ s, life: 0, max: 1, grow: 1, vy: 0 });
     }
@@ -959,6 +1063,15 @@ const FX = (() => {
     puff(x, y + 0.6, z, 0xffb050, 3.5, 0.25, 2.5, 0); puff(x, y + 1, z, 0xff7020, 2.2, 0.35, 2, 1);
     for (let i = 0; i < 6; i++) puff(x + rnd(-1.5, 1.5), y + rnd(0.3, 1.5), z + rnd(-1.5, 1.5), 0x4a4440, 2, 1.6, 2.2, 1.2);
   }
+  // 판처파우스트(v21): 로켓 꼬리 불꽃(가산 혼합 스프라이트) · 폭발 = 흰 섬광 → 주황 불덩이 → 검은 연기 + 흙 튐 (수류탄보다 크게)
+  function flame() { return new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, color: 0xffb35a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); }
+  function blast(x, y, z) {
+    if (!scene) return;
+    puff(x, y + 0.5, z, 0xfff2c8, 5.5, 0.16, 1.8, 0); puff(x, y + 0.8, z, 0xffb050, 4.4, 0.34, 2.2, 0.6); puff(x, y + 1.3, z, 0xff6a1a, 3.2, 0.55, 2.0, 1.8);
+    for (let i = 0; i < 9; i++) puff(x + rnd(-2, 2), y + rnd(0.4, 2.2), z + rnd(-2, 2), i % 3 ? 0x3a3532 : 0x5a524a, rnd(2, 3), rnd(1.8, 2.8), 2.4, rnd(1.2, 2.4));
+    for (let i = 0; i < 5; i++) puff(x + rnd(-1.4, 1.4), y + 0.3, z + rnd(-1.4, 1.4), 0x7a6a50, 1.4, 0.9, 2, 3.5);
+    if (G.muzzleLight) { G.muzzleLight.position.set(x, y + 1.5, z); G.muzzleLight.intensity = 9; }
+  }
   function grenadeMesh(type) { const m = Models.display(type); scene.add(m); return m; }
   function smoke(x, y, z) {
     const g = new THREE.Group(), parts = [];
@@ -990,5 +1103,5 @@ const FX = (() => {
     if (VM.flashLight) VM.flashLight.intensity = Math.max(0, VM.flashLight.intensity - dt * 50);
     updateCases(dt);
   }
-  return { init, tracer, impact, flash, casing, explosion, grenadeMesh, smoke, updateSmoke, update, puff };
+  return { init, tracer, impact, flash, casing, explosion, grenadeMesh, smoke, updateSmoke, update, puff, flame, blast };
 })();

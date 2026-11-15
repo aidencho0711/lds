@@ -23,7 +23,7 @@ const TOUCH_BTNS = [
   { id: 'crouch', label: '앉기', tap: 'crouch', size: 54, def: { ax: 'r', ay: 'b', x: 107, y: 43 } },
   { id: 'prone', label: '엎드', tap: 'prone', size: 54, def: { ax: 'r', ay: 'b', x: 171, y: 43 } },
   { id: 'reload', label: '장전', tap: 'reload', size: 54, def: { ax: 'r', ay: 'b', x: 147, y: 107 } },
-  { id: 'swap', label: '무기', tap: 'weaponCycle', size: 54, def: { ax: 'r', ay: 'b', x: 63, y: 196 } },
+  // (v21) '무기' 교체 버튼은 없앰 — HP 바 위 무기 실루엣을 눌러 바꾼다 (10_hud.js touchWeapons)
   { id: 'interact', label: '줍기', tap: 'interact', size: 54, cls: 'interact', def: { ax: 'r', ay: 'b', x: 213, y: 143 } },
   { id: 'mode', label: '모드', tap: 'fireMode', size: 44, def: { ax: 'r', ay: 'b', x: 213, y: 205 } },
   { id: 'sprint', label: '달리기', hold: 'sprint', size: 54, def: { ax: 'l', ay: 't', x: 39, y: 73 } },

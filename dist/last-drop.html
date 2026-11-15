@@ -386,6 +386,34 @@ body.touch #lootList { left: calc(86px + var(--sal)); right: auto; top: 30%; tra
 body.touch #killfeed { top: calc(40px + var(--sat)); left: calc(86px + var(--sal)); }
 body.touch #toasts { top: 26%; }
 body.touch #bottom { bottom: calc(6px + var(--sab)); width: min(300px, 40vw); }
+/* 모바일 무기 실루엣 (v21): HP 바 위 주무기 2칸 · 그 위 오른쪽 보조무기 · 왼쪽 위 장비. 누르면 그 무기로 (지금 든 무기는 살펴보기) */
+#wsPri, #wsSec { display: none; }
+body.touch #bottom { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "gear sec" "pri pri" "hp hp"; align-items: end; gap: 4px 6px; z-index: 5; }
+body.touch #gearRow { grid-area: gear; justify-self: start; flex-wrap: wrap; align-self: end; }
+body.touch #wsSec { grid-area: sec; display: flex; justify-content: flex-end; }
+body.touch #wsPri { grid-area: pri; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+body.touch #hpWrap { grid-area: hp; }
+body.touch #weaponPanel { display: none; }
+.ws-slot { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; height: 42px; min-width: 0; border: 1px solid rgba(233, 226, 207, 0.22); border-radius: 4px; background: linear-gradient(180deg, rgba(13, 17, 19, 0.3), rgba(13, 17, 19, 0.62)); padding: 3px 8px 9px; display: grid; place-items: center; overflow: hidden; color: var(--sand); cursor: pointer; transition: transform 0.08s, border-color 0.15s; }
+#wsSec .ws-slot { width: 108px; height: 34px; padding-bottom: 7px; }
+.ws-sil { width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(0.9); opacity: 0.45; pointer-events: none; }
+.ws-slot.cur { border-color: var(--amber); background: linear-gradient(180deg, rgba(240, 164, 58, 0.18), rgba(13, 17, 19, 0.62)); box-shadow: 0 0 0 1px rgba(240, 164, 58, 0.3) inset; }
+.ws-slot.cur .ws-sil { opacity: 1; filter: brightness(0) invert(1) drop-shadow(0 0 3px rgba(240, 164, 58, 0.75)); }
+.ws-slot.down { transform: scale(0.95); }
+.ws-slot.empty { border-style: dashed; opacity: 0.45; cursor: default; }
+.ws-slot.epsilon:not(.cur) { border-color: rgba(192, 132, 252, 0.7); }
+.ws-slot.exclusive:not(.cur) { border-color: rgba(255, 207, 63, 0.7); }
+.ws-slot.epsilon.cur .ws-sil { filter: brightness(0) invert(1) drop-shadow(0 0 4px rgba(192, 132, 252, 0.9)); }
+.ws-slot.exclusive.cur .ws-sil { filter: brightness(0) invert(1) drop-shadow(0 0 4px rgba(255, 207, 63, 0.9)); }
+.ws-slot.rocket .ws-a { color: #ff9a6a; }
+.ws-n { position: absolute; left: 5px; top: 2px; font-family: var(--f-display); font-size: 0.58rem; color: var(--dim); line-height: 1; }
+.ws-a { position: absolute; right: 6px; bottom: 1px; font-family: var(--f-display); font-size: 0.74rem; line-height: 1.1; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000; }
+.ws-slot.cur .ws-a { font-size: 0.95rem; color: #fff; }
+.ws-a small { font-size: 0.72em; color: var(--dim); }
+.ws-m { position: absolute; right: 5px; top: 2px; font-family: var(--f-display); font-size: 0.55rem; line-height: 1; color: var(--amber); }
+.ws-e { font-size: 0.62rem; color: var(--dim); padding-top: 6px; }
+body.knocked #wsPri, body.knocked #wsSec { display: none; }
+body.driving .ws-slot { pointer-events: none; opacity: 0.4; }
 body.touch #crosshair .dot { width: 4px; height: 4px; }
 @media (prefers-reduced-motion: reduce) { .kf, .toast { animation: none; } .btn.play:hover { transform: none; } }
 #lootList, #hudButtons, #dropPanel, #weaponPanel { z-index: 5; }
@@ -1837,6 +1865,8 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
     <div id="zoneVignette"></div>
     <div id="progress" hidden><div class="prog-ring"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" class="bg"/><circle cx="20" cy="20" r="17" class="fg" id="progArc"/></svg></div><span id="progLabel">재장전</span></div>
     <div id="bottom">
+      <div id="wsSec" class="ws-row"></div>
+      <div id="wsPri" class="ws-row"></div>
       <div id="gearRow"></div>
       <div id="hpWrap"><div id="boostBar"></div><div id="hpBar"><i id="hpFill"></i><i id="hpLag"></i></div></div>
     </div>
@@ -2810,6 +2840,21 @@ const Audio = (() => {
       const out = chain(1.3 / (1 + r.d / 30), r.pan, clamp(9000 / (1 + r.d / 60), 300, 9000), clamp(0.4 + r.d / 200, 0.4, 1.2), false);
       const t = ctx.currentTime + delay; noise(out, t, 1.1, 'lowpass', 500, 0.6, 1.2); tone(out, t, 0.6, 'sine', 90, 30, 1.2);
     },
+    // 판처파우스트(v21): launch = 낮은 '쿵' + 뒤로 뿜는 화염의 쉭 소리 · fly = 날아가는 로켓의 짧은 바람 소리 · boom = 수류탄보다 크고 길고 낮은 폭발
+    rocket(kind, pos, own) {
+      if (!ctx || !voice(kind === 'boom' ? 2 : 1.2)) return;
+      const r = own || !pos ? { d: 0, pan: 0 } : geom(pos), delay = own ? 0 : Math.min(r.d / 343, 1.8), t = ctx.currentTime + delay;
+      if (kind === 'launch') {
+        const out = chain(1.15 / (1 + r.d / 40), r.pan, clamp(9000 / (1 + r.d / 80), 400, 9000), clamp(0.3 + r.d / 220, 0.3, 1.1), false);
+        tone(out, t, 0.4, 'sine', 130, 42, 1.1); noise(out, t, 0.22, 'lowpass', 1100, 0.7, 1.0); noise(out, t + 0.015, 1.0, 'bandpass', 2400, 0.55, 0.42); noise(out, t + 0.05, 0.6, 'highpass', 5200, 0.7, 0.12);
+      } else if (kind === 'fly') {
+        if (r.d > 70) return; const out = chain(0.45 / (1 + r.d / 12), r.pan, 4200, 0.1, false);
+        noise(out, ctx.currentTime, 0.5, 'bandpass', 1500, 1.4, 0.5);
+      } else {
+        const out = chain(1.7 / (1 + r.d / 35), r.pan, clamp(8000 / (1 + r.d / 60), 260, 8000), clamp(0.5 + r.d / 180, 0.5, 1.4), false);
+        noise(out, t, 1.8, 'lowpass', 420, 0.6, 1.5); tone(out, t, 1.0, 'sine', 78, 22, 1.5); noise(out, t, 0.28, 'highpass', 2400, 0.8, 0.5); noise(out, t + 0.12, 1.4, 'bandpass', 700, 0.5, 0.35);
+      }
+    },
     pin(pos, own = true) { if (!ctx) return; if (!playBuf('pin', own ? null : pos, own ? 0.6 : 0.5, { own, range: 20, ref: 3 })) { const t = ctx.currentTime; tone(sfxBus, t, 0.04, 'square', 2400, 2400, 0.06); } },
     spoon(pos, own = true) { if (!ctx) return; playBuf('spoon', own ? null : pos, own ? 0.55 : 0.5, { own, range: 25, ref: 3 }); },
     nadeBounce(pos) { if (!ctx || !throttle('nb', 0.06)) return; playBuf('nadeBounce', pos, 0.6, { range: 40, ref: 5, send: 0.1 }); },
@@ -3776,7 +3821,7 @@ async function generateWorld(mapId, scene, progress) {
       const guns = (classes) => classes.flatMap((cl) => Object.keys(ITEMS).filter((k) => ITEMS[k].type === 'weapon' && ITEMS[k].cls === cl));
       const rows = [
         { lz: -5.6, ids: guns(['AR', 'SMG', 'PISTOL']), title: '총기 ① 돌격·기관단총·권총', sub: '탄창 가득 · 가져가면 잠시 뒤 다시 놓임', wide: true },
-        { lz: -1.8, ids: guns(['DMR', 'SR', 'SG', 'LMG']), title: '총기 ② 저격·산탄·기관총', sub: '지정사수·저격·산탄·경기관총 · 볼트·레버·펌프식은 한 발씩', wide: true },
+        { lz: -1.8, ids: guns(['DMR', 'SR', 'SG', 'LMG', 'RL']), title: '총기 ② 저격·산탄·기관총·로켓', sub: '지정사수·저격·산탄·경기관총·판처파우스트 · 볼트·레버·펌프식은 한 발씩', wide: true },
         { lz: 2.0, ids: ['reddot', 'holo', 'x2', 'x3', 'x4', 'x6', 'comp', 'extmag', 'grip', 'a556', 'a762', 'a9', 'a12', 'a300', 'a45', 'a50'], title: '부착물 · 탄약', sub: '훈련장에서는 쏜 만큼 탄약이 자동으로 채워짐' },
         { lz: 5.8, ids: ['bandage', 'firstaid', 'medkit', 'drink', 'frag', 'smoke', 'helm1', 'helm2', 'helm3', 'vest1', 'vest2', 'vest3', 'bag1', 'bag2', 'bag3'], title: '회복 · 투척 · 방어구', sub: '수류탄은 북쪽 벽 너머 더미에게 연습' },
       ];
@@ -7820,6 +7865,9 @@ const ITEMS = {
   groza: { type: 'weapon', name: 'Groza 돌격소총', cls: 'AR', slot: 'primary', ammo: 'a762', dmg: 40, rpm: 750, modes: ['auto', 'single'], mag: 30, reload: 2.5, reloadEmpty: 3.1, rStyle: 'bullpup', spread: 0.85, recoil: 1.2, range: 290, zoom: 1.2, tier: 4, color: 0x262824 },
   amr: { type: 'weapon', name: 'AMR 대물저격소총', cls: 'SR', slot: 'primary', ammo: 'a50', dmg: 150, rpm: 36, modes: ['single'], mag: 5, rKind: 'boltmag', reload: 3.6, reloadEmpty: 4.5, cycle: 'bolt', cycleT: 1.35, spread: 0.025, recoil: 5.8, range: 1000, zoom: 1.25, tier: 4, supply: true, color: 0x2a2c2e },
   dbs: { type: 'weapon', name: 'DBS 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 18, pellets: 9, rpm: 100, modes: ['single'], mag: 14, rKind: 'shell', rOpen: 0.3, rShell: 0.42, rClose: 0.28, rCloseEmpty: 0.4, cycle: 'pump', spread: 2.1, recoil: 2.7, range: 46, zoom: 1.1, tier: 3, noExt: true, color: 0x232527 },
+  // v21 판처파우스트: 보급상자 전용 · 1발 쓰고 버리는 대전차 로켓 (탄약 없음, 장전 불가). 맞힌 사람·차량은 한 번에 파괴, 주변(반경 10m)도 큰 피해
+  //  rocket: 06_combat.js 가 히트스캔 대신 날아가는 로켓을 쏜다 (속도 rv m/s, 중력 rg) · 쏘고 나면 빈 발사관을 버리고 다른 무기로
+  pzf: { type: 'weapon', name: '판처파우스트', cls: 'RL', slot: 'primary', ammo: null, dmg: 999, rpm: 30, modes: ['single'], mag: 1, rocket: true, rv: 90, rg: 1.6, blastR: 10, spread: 0.35, recoil: 5.2, range: 180, zoom: 1.12, tier: 5, supply: true, noExt: true, noScope: true, noMuzzle: true, moveMul: 0.9, adsMul: 1.35, color: 0x4a5230 },
   // ----- 탄약 -----
   a556: { type: 'ammo', name: '5.56mm 탄', w: 0.4, stack: 40, color: 0xb0a040 },
   a762: { type: 'ammo', name: '7.62mm 탄', w: 0.5, stack: 30, color: 0xb07a30 },
@@ -7902,7 +7950,7 @@ class Inventory {
   healCount() { return this.count('bandage') + this.count('firstaid') * 3 + this.count('medkit') * 4; }
 }
 function newWeapon(id, loaded = 0) { const d = ITEMS[id]; return { id, mag: loaded, fm: 0, att: { scope: d.defScope || null, muzzle: null, mag: null, grip: null } }; }
-function weaponScore(wi) { if (!wi) return 0; const d = ITEMS[wi.id]; return { AR: 60, LMG: 63, DMR: 55, SR: 50, SMG: 45, SG: 40, PISTOL: 15 }[d.cls] + (d.supply ? 12 : 0) + Object.values(wi.att).filter(Boolean).length * 4; }
+function weaponScore(wi) { if (!wi) return 0; const d = ITEMS[wi.id]; return { AR: 60, LMG: 63, DMR: 55, SR: 50, SMG: 45, SG: 40, PISTOL: 15, RL: 30 }[d.cls] + (d.supply ? 12 : 0) + Object.values(wi.att).filter(Boolean).length * 4; }
 function attFits(attId, wid) {
   const a = ITEMS[attId], d = ITEMS[wid];
   if (wid === 's686') return false; // 중절식 2연발: 부착 불가
@@ -8054,7 +8102,7 @@ function pickupItemRaw(c, it, scene, opts = {}) {
     else slot = (inv.cur === 0 || inv.cur === 1) ? inv.cur : 0;
     const old = inv.weapons[slot];
     if (old) { // 교체: 기존 무기 장전 탄은 회수 후 버림
-      const rec = inv.add(ITEMS[old.id].ammo, old.mag); old.mag -= rec;
+      const oa = ITEMS[old.id].ammo, rec = oa ? inv.add(oa, old.mag) : 0; old.mag -= rec;   // 판처파우스트(탄약 없음)는 장전된 채 그대로 버림
       // 부착물 이전
       for (const k in old.att) if (old.att[k] && !inst.att[k] && attFits(old.att[k], inst.id)) { inst.att[k] = old.att[k]; old.att[k] = null; }
       dropAt(old.id, 1, old);
@@ -8514,6 +8562,7 @@ const Models = (() => {
     if (D.cover) mk('cover', 'coverPos', 'gcv:' + id, D.cover);
     if (D.barrel) mk('barrel', 'barrelPos', 'gbr:' + id, D.barrel);
     if (D.lever) mk('lever', 'leverPos', 'glv:' + id, D.lever);
+    if (D.head) mk('head', 'headPos', 'gh:' + id, D.head);   // 판처파우스트 탄두 (쏘면 빈 발사관만 남음)
     // 클립(삽탄자): 클립 띠 + 탄 5발(눌러 내리면 탄창으로 들어감). 장전할 때만 보임
     if (D.clip) { const c = mk('clip', 'clipPos', 'gcl:' + id, D.clip); const r = cluster('gclr:' + id, D.clipRounds); r.name = 'rounds'; c.add(r); c.userData.rounds = r; c.visible = false; }
     const host = meta.scopeOnCover && parts.cover ? parts.cover : (!meta.scopeFixed && parts.slide) || g, hp = host === g ? [0, 0, 0] : host.position.toArray();
@@ -8527,7 +8576,7 @@ const Models = (() => {
       const S = SC[meta.fixedScope], s = cluster('sc:' + meta.fixedScope, S.build); s.userData.noSkin = true; s.name = 'scope';
       s.position.set(0, meta.railY, meta.scopeZ); g.add(s);
       meta.sightY = meta.railY + S.eyeY; meta.sightRearZ = meta.scopeZ - S.len / 2; meta.relief = S.relief;
-    } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.pistol ? 0.4 : 0.3; }
+    } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.ironRelief || (meta.pistol ? 0.4 : 0.3); }
     if (D.front) g.add(att.scope && D.frontFolded ? cluster('gff:' + id, D.frontFolded) : cluster('gf:' + id, D.front));
     if (att.muzzle) { const m = cluster('at:comp', ATT.comp); m.userData.noSkin = true; m.position.set(0, meta.boreY, meta.muzzleZ); g.add(m); meta.muzzleZ += 0.05; }
     if (att.grip && meta.vgripPos) { const m = cluster('at:grip', ATT.grip); m.userData.noSkin = true; m.position.fromArray(meta.vgripPos); g.add(m); meta.forePos = meta.vgripHand; meta.vfore = true; }
@@ -9027,7 +9076,65 @@ const GunDeco = (() => {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: plateTex(d, serial, col), transparent: true, depthWrite: false, depthTest: false, toneMapped: false, opacity: 0 }));
     const m = g.userData.meta; s.position.set(0, (m.boreY || 0) + 0.17, 0.08); s.scale.set(0.001, 0.001, 1); s.renderOrder = 9; s.name = 'gdeco-panel'; g.add(s); return s;
   }
-  return { attach, panel, crestHolo, sigil, plate, emblemTex, textTex, epsTex };
+  // ---------- 크리스마스 EXCLUSIVE 살펴보기 (v21): 엡실론(ε 고리·홀로 명판)과 다른 '선물 풀기' 연출용 장식 ----------
+  //  화환(호랑가시 잎·빨간 열매·금 리본) · 리본 띠와 나비 리본(선물 포장 → 풀림) · 크리스마스 명판(눈 덮인 나무 판) · 트리 별 · 페퍼민트 사탕 · 스노글로브
+  const leaf = (g, x, y, L, W, rot, col) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); g.moveTo(0, 0); for (let i = 0; i <= 6; i++) { const t = i / 6, w = Math.sin(t * Math.PI) * W * (i % 2 ? 1.18 : 0.82); g.lineTo(t * L, -w); } for (let i = 6; i >= 0; i--) { const t = i / 6, w = Math.sin(t * Math.PI) * W * (i % 2 ? 1.18 : 0.82); g.lineTo(t * L, w); } g.closePath(); g.fillStyle = col; g.fill(); g.strokeStyle = 'rgba(10,40,20,0.7)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(0, 0); g.lineTo(L, 0); g.stroke(); g.restore(); };
+  const berry = (g, x, y, r) => { const rg = g.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r); rg.addColorStop(0, '#ff8a8a'); rg.addColorStop(0.4, '#e01a26'); rg.addColorStop(1, '#6a0408'); g.fillStyle = rg; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); };
+  const bowShape = (g, cx, cy, s, col, col2) => {
+    for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(cx, cy); g.bezierCurveTo(cx + sd * s * 0.9, cy - s * 0.9, cx + sd * s * 1.3, cy + s * 0.15, cx, cy); const gr = g.createLinearGradient(cx, cy - s, cx, cy + s * 0.4); gr.addColorStop(0, col2); gr.addColorStop(1, col); g.fillStyle = gr; g.fill(); g.strokeStyle = 'rgba(80,0,8,0.6)'; g.lineWidth = 2; g.stroke(); }
+    for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + sd * s * 0.55, cy + s * 1.05); g.lineTo(cx + sd * s * 0.3, cy + s * 0.95); g.lineTo(cx + sd * s * 0.38, cy + s * 1.18); g.lineTo(cx + sd * s * 0.12, cy + s * 0.2); g.closePath(); g.fillStyle = col; g.fill(); }
+    g.beginPath(); g.arc(cx, cy, s * 0.17, 0, TAU); g.fillStyle = col2; g.fill();
+  };
+  const wreathTex = () => ctex('xwreath', 512, 512, (g) => {
+    g.translate(256, 256); const R = mulberry32(25);
+    g.strokeStyle = '#0f3a1e'; g.lineWidth = 46; g.beginPath(); g.arc(0, 0, 176, 0, TAU); g.stroke();
+    for (let i = 0; i < 44; i++) { const a = i / 44 * TAU + R() * 0.1, rr = 150 + R() * 52; leaf(g, Math.cos(a) * rr, Math.sin(a) * rr, 54 + R() * 18, 13, a + Math.PI / 2 + (R() - 0.5) * 1.6, R() < 0.5 ? '#1f7a3a' : '#2c9a4a'); }
+    for (let i = 0; i < 18; i++) { const a = i / 18 * TAU + R() * 0.2, rr = 160 + R() * 30; berry(g, Math.cos(a) * rr, Math.sin(a) * rr, 9 + R() * 4); berry(g, Math.cos(a + 0.05) * (rr + 12), Math.sin(a + 0.05) * (rr + 12), 7 + R() * 3); }
+    g.fillStyle = '#ffe9a0'; for (let i = 0; i < 40; i++) { const a = R() * TAU, rr = 140 + R() * 80; g.fillRect(Math.cos(a) * rr, Math.sin(a) * rr, 3, 3); }
+    bowShape(g, 0, 196, 58, '#b3121c', '#ff5a5a');
+  });
+  const bowTex = () => ctex('xbow', 256, 256, (g) => { g.save(); g.shadowColor = 'rgba(255,200,120,0.8)'; g.shadowBlur = 14; bowShape(g, 128, 104, 92, '#c8141e', '#ff6a6a'); g.restore(); g.strokeStyle = '#ffd65a'; g.lineWidth = 3; g.beginPath(); g.arc(128, 104, 15, 0, TAU); g.stroke(); });
+  const ribbonTex = () => ctex('xribbon', 256, 64, (g, W, H) => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#7a0810'); gr.addColorStop(0.45, '#e8303a'); gr.addColorStop(0.55, '#ff6a70'); gr.addColorStop(1, '#7a0810'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#ffd65a'; g.fillRect(0, 4, W, 5); g.fillRect(0, H - 9, W, 5); });
+  const starTex = () => ctex('xstarflare', 256, 256, (g) => {
+    g.translate(128, 128); const rg = g.createRadialGradient(0, 0, 0, 0, 0, 128); rg.addColorStop(0, 'rgba(255,240,190,0.9)'); rg.addColorStop(0.3, 'rgba(255,200,90,0.35)'); rg.addColorStop(1, 'rgba(255,180,60,0)'); g.fillStyle = rg; g.fillRect(-128, -128, 256, 256);
+    g.save(); g.shadowColor = '#ffd65a'; g.shadowBlur = 18; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 26 : 66; i ? g.lineTo(Math.cos(a) * r, Math.sin(a) * r) : g.moveTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); const sg = g.createLinearGradient(0, -66, 0, 60); sg.addColorStop(0, '#fffbe6'); sg.addColorStop(0.5, '#ffd65a'); sg.addColorStop(1, '#c8861a'); g.fillStyle = sg; g.fill(); g.restore();
+    g.strokeStyle = 'rgba(255,250,220,0.7)'; g.lineWidth = 2; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(Math.cos(a) * 80, Math.sin(a) * 80); g.lineTo(-Math.cos(a) * 80, -Math.sin(a) * 80); g.stroke(); }
+  });
+  const mintTex = () => ctex('xmint', 128, 128, (g) => { g.translate(64, 64); g.fillStyle = '#fbf8f2'; g.beginPath(); g.arc(0, 0, 56, 0, TAU); g.fill(); g.fillStyle = '#d0141e'; for (let i = 0; i < 7; i++) { g.save(); g.rotate(i / 7 * TAU); g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(30, -8, 52, -24); g.quadraticCurveTo(44, 2, 0, 0); g.fill(); g.restore(); } g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 4; g.beginPath(); g.arc(-14, -18, 22, Math.PI * 1.1, Math.PI * 1.6); g.stroke(); });
+  const globeTex = () => ctex('xglobe', 256, 256, (g) => { g.translate(128, 128); const rg = g.createRadialGradient(0, 0, 90, 0, 0, 126); rg.addColorStop(0, 'rgba(200,235,255,0)'); rg.addColorStop(0.8, 'rgba(200,235,255,0.25)'); rg.addColorStop(0.97, 'rgba(240,250,255,0.85)'); rg.addColorStop(1, 'rgba(240,250,255,0)'); g.fillStyle = rg; g.beginPath(); g.arc(0, 0, 127, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 6; g.beginPath(); g.arc(-20, -26, 84, Math.PI * 1.08, Math.PI * 1.42); g.stroke(); });
+  function xplateTex(d, serial) {
+    return ctex(['xplate', d.name, d.no, serial].join('|'), 640, 220, (g, W, H) => {
+      // 나무 판 + 눈 덮인 윗면 + 양 끝 호랑가시
+      const wood = g.createLinearGradient(0, 30, 0, H); wood.addColorStop(0, '#5a2a18'); wood.addColorStop(1, '#2a1208'); g.fillStyle = wood; g.beginPath(); g.roundRect ? g.roundRect(20, 34, W - 40, H - 44, 18) : g.rect(20, 34, W - 40, H - 44); g.fill();
+      g.strokeStyle = '#e0b850'; g.lineWidth = 5; g.stroke();
+      g.fillStyle = '#f6fbff'; g.beginPath(); g.moveTo(14, 46); for (let x = 14; x <= W - 14; x += 22) g.quadraticCurveTo(x + 11, 18 + (x * 7 % 13), x + 22, 42); g.lineTo(W - 14, 56); g.lineTo(14, 56); g.closePath(); g.fill();
+      for (const [x, s] of [[56, 1], [W - 56, -1]]) { leaf(g, x, H - 40, 46, 11, s > 0 ? -2.4 : -0.7, '#2c9a4a'); leaf(g, x, H - 40, 46, 11, s > 0 ? -0.9 : -2.25, '#1f7a3a'); berry(g, x, H - 40, 8); berry(g, x + 10 * s, H - 32, 7); }
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = FONT(800, 28); g.fillStyle = '#ffd65a'; g.fillText(`MERRY CHRISTMAS  ·  ${d.no}`, W / 2, 76);
+      let px = 62; g.font = FONT(900, px); const w = g.measureText(d.name).width; if (w > W - 150) { px *= (W - 150) / w; g.font = FONT(900, px); }
+      g.save(); g.shadowColor = '#ff4a5a'; g.shadowBlur = 10; g.fillStyle = '#ffffff'; g.fillText(d.name, W / 2, 128); g.restore();
+      g.font = FONT(700, 24); g.fillStyle = '#9fe8ff'; g.fillText(serial ? `EXCLUSIVE  ·  OWNER #${serial}` : 'EXCLUSIVE  ·  WINTER 2026', W / 2, 180);
+    });
+  }
+  const spr = (map, o = {}) => { const s = new THREE.Sprite(new THREE.SpriteMaterial(Object.assign({ map, transparent: true, depthWrite: false, toneMapped: false, opacity: 0 }, o))); s.scale.set(0.001, 0.001, 1); s.renderOrder = 9; s.name = 'gdeco-panel'; return s; };
+  // 총 둘레 장식 묶음 (GunSkin.xmInsp 가 움직이고 끝나면 지움)
+  function xmas(g, d, serial, kind) {
+    const m = g.userData.meta, I = g.userData.skin, by = m.boreY || 0, zc = I ? (I.z0 + I.z1) / 2 : 0.1, L = I ? I.z1 - I.z0 : 0.8, root = new THREE.Group(); root.name = 'gdeco-panel'; root.userData.noSkin = true;
+    // 화환: 총 위에 떠올라 천천히 돎 + 가운데를 가로지르는 명판 (문에 거는 화환과 이름표처럼 · 항상 카메라 쪽 → 스프라이트)
+    const wreath = spr(wreathTex(), { depthTest: false }); wreath.position.set(0, by + 0.17, zc - L * 0.05); root.add(wreath);
+    // 선물 포장: 총몸을 감싼 리본 띠 두 줄(세로 고리) + 위에 나비 리본
+    const bands = [];
+    for (const f of [0.38, 0.62]) { const band = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 28, 1, true), new THREE.MeshBasicMaterial({ map: ribbonTex(), side: THREE.DoubleSide, transparent: true, opacity: 0, depthWrite: false, toneMapped: false })); band.geometry.rotateX(Math.PI / 2); band.position.set(0, by, I ? lerp(I.z0, I.z1, f) : zc); band.scale.set(0.001, 0.001, 0.016); band.userData.f = f; root.add(band); bands.push(band); }
+    const bow = spr(bowTex(), { depthTest: false }); bow.position.set(0, by + 0.075, zc); root.add(bow);
+    const plate = spr(xplateTex(d, serial), { depthTest: false }); plate.position.set(0, by + 0.17, zc - L * 0.05); plate.renderOrder = 10; root.add(plate);
+    const out = { root, wreath, bands, bow, plate, extra: [] };
+    if (kind === 'xstar') { const st = spr(starTex(), { depthTest: false, blending: THREE.AdditiveBlending }); st.position.set(0, by + 0.06, zc + L * 0.28); root.add(st); out.star = st; }
+    else if (kind === 'xgift') for (let i = 0; i < 4; i++) { const mt = spr(mintTex(), { depthTest: true }); mt.userData.a = i / 4 * TAU; root.add(mt); out.extra.push(mt); }
+    else if (kind === 'xsnow') { const gl = spr(globeTex(), { depthTest: false }); gl.position.set(0, by, zc); root.add(gl); out.globe = gl; }
+    g.add(root); return out;
+  }
+  function xmasDispose(o) { if (!o) return; o.root.traverse((x) => { if (x.material) x.material.dispose(); if (x.geometry && x.geometry !== PLANE && !x.isSprite) x.geometry.dispose(); }); if (o.root.parent) o.root.parent.remove(o.root); }
+  return { attach, panel, crestHolo, sigil, plate, emblemTex, textTex, epsTex, xmas, xmasDispose };
 })();
 // 특정 각도 글자의 일렁임 시간 (GunSkin.update 가 갱신)
 const GunDeco_T = { value: 0 };
@@ -9253,6 +9360,7 @@ const GunParts = (() => {
   const IC = (r, det = 0) => new THREE.IcosahedronGeometry(r, det);
   const TE = (r) => new THREE.TetrahedronGeometry(r, 0);
   const TO = (R, r, rs = 6, ts = 18) => new THREE.TorusGeometry(R, r, rs, ts);
+  const SPH_ = (r) => new THREE.SphereGeometry(r, 10, 6, 0, TAU, 0, Math.PI / 2);   // 반구 (방울 윗부분)
   const HP = Math.PI / 2;
   // 고리 둘레에 n개 (a: 각도) — 원뿔의 +y가 바깥을 보게 z축으로 돌림
   const around = (n, a0, fn) => { for (let i = 0; i < n; i++) { const a = a0 + (i / n) * TAU; fn(a, Math.cos(a), Math.sin(a), a - HP); } };
@@ -9456,6 +9564,36 @@ const GunParts = (() => {
       { at: 'ring', mz: -0.08, build(B, r) { B.add(TO(r + 0.0024, 0.0016, 6, 22), 7, 0, 0, 0.04); B.add(BX(0.0016, 0.001, 0.09), 7, 0, r + 0.0004, 0); for (const s of [1, -1]) B.add(BX(0.001, 0.001, 0.07), 7, s * (r + 0.0003), 0, 0); } },
       { at: 'top', z: 0.6, build(B) { B.add(BX(0.0016, 0.0012, 0.18), 7, 0, 0.0006, 0); for (const z of [-0.08, 0, 0.08]) B.add(OC(0.0026), 7, 0, 0.0015, z, 0, 0, 0, 1, 0.6, 1.4); } },
     ],
+    // ---------- 크리스마스 EXCLUSIVE (v21) ----------
+    // TREETOP STAR(M416): 총몸 위 금빛 트리 별(가운데 빛) · 총열에 감긴 금 반짝이 줄 두 줄과 작은 전구 · 몸통 양옆 둥근 금 장식(볼)
+    xtree: [
+      { at: 'top', z: 0.6, build(B) {
+        B.add(CY(0.0028, 0.0042, 0.016, 6), 3, 0, 0.008, 0);
+        for (let i = 0; i < 5; i++) { const t = i / 5 * TAU; B.add(CO(0.0052, 0.016, 4), 3, 0, 0.026 + Math.cos(t) * 0.008, Math.sin(t) * 0.008, t); }
+        B.add(IC(0.0058, 1), 7, 0, 0.026, 0, 0, 0, 0, 0.7, 1, 1);
+      } },
+      ...[[-0.05, 0], [-0.13, 0.25]].map(([mz, tl]) => ({ at: 'ring', mz, build(B, r) { B.add(TO(r + 0.006, 0.0021, 6, 22), 3, 0, 0, 0, tl, 0, 0); around(6, 0.3 + tl, (a, c, s, rz) => B.add(OC(0.0042), 7, c * (r + 0.0095), s * (r + 0.0095) * Math.cos(tl), s * (r + 0.0095) * Math.sin(tl), 0, 0, rz, 0.8, 1.5, 0.8)); } })),
+      { at: 'LR', z: 0.42, build(B) { B.add(CY(0.0028, 0.0028, 0.004, 8), 3, 0, 0.002, 0); B.add(IC(0.0085, 1), 3, 0, 0.012, 0); B.add(OC(0.0026), 7, 0.004, 0.0165, 0.003); } },
+    ],
+    // CANDY CANE(AKM): 총구의 굵은 줄무늬 사탕 고리 · 몸통 양옆 작은 지팡이 사탕(무늬 그대로) · 위에 빛나는 빨간 나비 리본과 꼬리
+    xcandy: [
+      { at: 'ring', mz: -0.035, build(B, r) { B.add(TO(r + 0.009, 0.0058, 8, 22), 0, 0, 0, 0); B.add(TO(r + 0.009, 0.0016, 4, 22), 7, 0, 0, -0.0066); } },
+      { at: 'LR', z: 0.62, build(B) { B.add(CY(0.0036, 0.0036, 0.05, 10), 0, 0, 0.005, -0.005, HP); B.add(new THREE.TorusGeometry(0.0085, 0.0036, 8, 12, Math.PI), 0, 0, 0.0135, 0.02, 0, HP, HP); } },   // 지팡이 손잡이: 막대 앞끝에서 위로 굽음
+      { at: 'top', z: 0.48, build(B) {
+        for (const s of [1, -1]) { B.add(TO(0.0085, 0.0026, 6, 14), 7, s * 0.008, 0.009, 0, 0, 0, s * 0.25, 1, 0.75, 1); B.add(BX(0.002, 0.0028, 0.02), 7, s * 0.004, 0.003, -0.012, 0.3, s * 0.35, 0); }
+        B.add(IC(0.0042, 1), 7, 0, 0.009, 0);
+      } },
+    ],
+    // WHITE CHRISTMAS(AWM): 총구의 금 고리와 얼음빛 눈꽃 왕관 · 총열 아래 매달린 금방울 둘 · 몸통 양옆 빛나는 눈꽃 문장 · 개머리판 위 작은 별
+    xwhite: [
+      { at: 'ring', mz: -0.03, build(B, r) { B.add(TO(r + 0.006, 0.0028, 6, 22), 3, 0, 0, 0); around(6, HP, (a, c, s, rz) => { B.add(BX(0.0018, 0.02, 0.0018), 7, c * (r + 0.016), s * (r + 0.016), -0.004, 0, 0, rz); B.add(OC(0.0032), 7, c * (r + 0.027), s * (r + 0.027), -0.004); }); } },
+      { at: 'ring', mz: -0.26, build(B, r) {
+        B.add(TO(r + 0.003, 0.0016, 4, 18), 3, 0, 0, 0);
+        for (const s of [1, -1]) { const x = s * 0.009, y = -(r + 0.016); B.add(CY(0.0045, 0.009, 0.012, 12), 3, x, y, 0); B.add(SPH_(0.0047), 3, x, y + 0.006, 0); B.add(IC(0.0022, 0), 3, x, y - 0.0075, 0); B.add(BX(0.0012, 0.008, 0.0012), 3, x, y + 0.012, 0); }
+      } },
+      { at: 'LR', z: 0.47, build(B) { for (let i = 0; i < 6; i++) { const t = i / 6 * TAU; B.add(BX(0.0016, 0.0012, 0.02), 7, Math.sin(t) * 0.006, 0.0018, Math.cos(t) * 0.006, 0, t, 0); } B.add(OC(0.0036), 3, 0, 0.003, 0, 0, 0, 0, 1, 0.7, 1); } },
+      { at: 'top', z: 0.08, build(B) { for (let i = 0; i < 5; i++) { const t = i / 5 * TAU; B.add(CO(0.0028, 0.008, 4), 7, 0, 0.011 + Math.cos(t) * 0.004, Math.sin(t) * 0.004, t); } B.add(CY(0.0016, 0.0024, 0.008, 6), 3, 0, 0.004, 0); } },
+    ],
     // OMEGA BREAKER(DBS): 총구 쪽 마젠타 전기 코일 두 줄(은 칼라) · 몸통 양옆 갈라진 패널 사이 마젠타 띠 · 위쪽 Ω 방출구
     omega: [
       ...[-0.025, -0.11].map((mz) => ({ at: 'ring', mz, build(B, r) { B.add(TO(r + 0.006, 0.0028, 6, 20), 3, 0, 0, 0); B.add(TO(r + 0.0095, 0.0012, 4, 24), 7, 0, 0, 0.004); B.add(TO(r + 0.0095, 0.0012, 4, 24), 7, 0, 0, -0.004); } })),
@@ -9658,7 +9796,7 @@ const GunParts = (() => {
     return (ANCH[key] = out);
   }
   // 옆·위 부속품 배율 (세트마다)
-  const SIZE = { magma: 2.1, dragon: 2.0, plasma: 1.8, glitch: 2.0, frost: 2.3, void: 2.1, proto: 2.0, zero: 1.6, chaos: 1.9, frontier: 1.7, celestial: 1.0, divine: 1.7, infernal: 1.8, void2: 1.8, seraph: 2.0, apocalypse: 1.9, dynasty: 1.7, omega: 1.7 };
+  const SIZE = { xtree: 1.8, xcandy: 1.8, xwhite: 1.9, magma: 2.1, dragon: 2.0, plasma: 1.8, glitch: 2.0, frost: 2.3, void: 2.1, proto: 2.0, zero: 1.6, chaos: 1.9, frontier: 1.7, celestial: 1.0, divine: 1.7, infernal: 1.8, void2: 1.8, seraph: 2.0, apocalypse: 1.9, dynasty: 1.7, omega: 1.7 };
   // 지오메트리는 (세트 · 부속품 · 반지름)마다 한 번
   const GEO = {};
   function geoOf(set, a) {
@@ -9846,27 +9984,31 @@ const GSKINS = (() => {
     x_aug_aurora: { gun: 'aug', box: 'xmas', rar: 5, name: '오로라 서리', pat: 'snowflake', pal: ['#bcd6e6', '#7fa8c4', '#ffffff'], sc: 3.2, env: 1.0, body: { p: 1, mr: [0.5, 0.3] }, furn: { p: 1, mr: [0.35, 0.34] }, steel: { c: 0xc8ecff, mr: [1, 0.16] },
       glow: { pat: 'wave', c: 0x5fffc8, k: 2.0, anim: 2 }, fx: { kind: 'frost', c: 0x7fffd0, c2: 0xeafcff, tr: 0x9bffe0 },
       parts: 'frost', en: 0x7fffd0, enK: 2.4, enAnim: 1, desc: '눈꽃 결정 위로 오로라 빛이 흐름 · 꺼내면 얼음 결정이 돋음 · 쏠 때 얼음 파편' },
-    // EXCLUSIVE — NORTH STAR(M416): 오로라가 흐르는 밤하늘 총몸에 금빛 별이 반짝 · 처치하면 하늘에서 큰 별이 내려와 꽂히고 별똥별이 쏟아짐
-    xm_m416_northstar: { gun: 'm416', box: 'xmas', rar: 8, xm: 1, no: 'X1', name: 'NORTH STAR', pat: 'northstar', pal: ['#0a1430', '#1f6a6a', '#2a8a4a', '#f2cf6a'], sc: 2.4, env: 1.0,
-      body: { p: 1, mr: [0.55, 0.3] }, furn: { p: 1, mr: [0.5, 0.32] }, steel: { c: 0xd8b04a, mr: [1, 0.2] },
-      glow: { pat: 'northstar', c: 0xffe6a0, k: 2.4, anim: 7 }, glowMask: [1, 1, 0], fx: { kind: 'xstar', c: 0xf2cf6a, c2: 0x9ff0d8, tr: 0xffe9b0, pal: [0xf2cf6a, 0xfff2c4, 0x9ff0d8, 0xffffff], shot: 'frontier', hit: 'frontier' },
-      parts: 'celestial', en: 0xffe6a0, enK: 2.4, enAnim: 7,
-      deco: [{ kind: 'text', side: 'LR', z: 0.7, dy: -0.004, text: 'NORTH STAR', style: 'engrave', col: '#f2cf6a', w: 0.08 }, { kind: 'rim', col: 0xf2cf6a, orn: 'stars' }],
-      desc: '오로라가 흐르는 밤하늘 총몸에 금빛 별이 반짝임 · 둘레를 별 고리가 공전 · 살펴보면 별빛 띠가 지나감 · 처치하면 큰 별이 내려와 꽂히고 별똥별이 쏟아짐', lore: '길 잃은 썰매를 집으로 이끄는 단 하나의 별.' },
-    // EXCLUSIVE — CANDY STRIKER(AKM): 빨강·흰 사선 줄과 빛나는 금 띠 · 처치하면 거대한 선물 상자가 터지며 리본·색종이·사탕 빛줄기
-    xm_akm_candy: { gun: 'akm', box: 'xmas', rar: 8, xm: 1, no: 'X2', name: 'CANDY STRIKER', pat: 'candy', pal: ['#f6f2ea', '#c8141e', '#e8b84a'], sc: 2.6, env: 1.1,
-      body: { p: 1, mr: [0.35, 0.22] }, furn: { p: 1, mr: [0.3, 0.25] }, steel: { c: 0xe8c45a, mr: [1, 0.2] },
-      glow: { pat: 'candy', c: 0xffd65a, k: 2.2, anim: 1 }, glowMask: [1, 1, 0], fx: { kind: 'xgift', c: 0xff3a4a, c2: 0xffd65a, tr: 0xff7a7a, pal: [0xff3a4a, 0xffd65a, 0x3aff7a, 0xffffff], shot: 'spark', hit: 'spark' },
-      parts: 'frontier', en: 0xffd65a, enK: 1.4, enAnim: 1,
-      deco: [{ kind: 'text', side: 'LR', z: 0.66, dy: -0.004, text: 'CANDY STRIKER', style: 'neon', col: '#ff4a5a', w: 0.08 }, { kind: 'rim', col: 0xe8c45a, orn: 'gems' }],
-      desc: '빨강·흰 사선 줄 사이로 금빛 띠가 숨 쉬듯 빛남 · 둘레에 색종이 반짝임 · 처치하면 거대한 선물 상자가 터지며 리본과 색종이가 쏟아짐', lore: '착한 아이 명단에 오르지 못한 자들을 위한 선물.' },
-    // EXCLUSIVE — WINTER WONDER(AWM): 눈꽃 결정이 빛나는 얼음 총몸 · 처치하면 거대한 눈꽃 문양이 돌고 얼음 가시가 솟으며 눈보라
-    xm_awm_winter: { gun: 'awm', box: 'xmas', rar: 8, xm: 1, no: 'X3', name: 'WINTER WONDER', pat: 'snowflake', pal: ['#d6ebf6', '#8fbad8', '#ffffff'], sc: 2.6, env: 1.15,
-      body: { p: 1, mr: [0.5, 0.24] }, furn: { p: 1, mr: [0.4, 0.28] }, steel: { c: 0xd8f0ff, mr: [1, 0.12] },
-      glow: { pat: 'snowflake', c: 0x9fe8ff, k: 2.6, anim: 7 }, glowMask: [1, 1, 0], fx: { kind: 'xsnow', c: 0x9fe8ff, c2: 0xffffff, tr: 0xcff4ff, pal: [0x9fe8ff, 0xcff4ff, 0xffffff, 0x6fc8f0], shot: 'frost', hit: 'frost' },
-      parts: 'frost', en: 0x9fe8ff, enK: 2.6, enAnim: 1,
-      deco: [{ kind: 'crystal', on: 'mag', side: 'LR', w: 0.03, dy: -0.006 }, { kind: 'text', side: 'LR', z: 0.72, dy: -0.004, text: 'WINTER WONDER', style: 'engrave', col: '#bfe6ff', w: 0.1 }],
-      desc: '눈꽃 결정이 빛나는 얼음 총몸 · 총 둘레로 눈송이가 내림 · 살펴보면 서리 띠가 지나감 · 처치하면 거대한 눈꽃 문양이 돌고 얼음 가시가 솟으며 눈보라', lore: '한겨울 밤, 숲을 통째로 얼린 여왕의 활.' },
+    // EXCLUSIVE (v21 개편 — 더 크리스마스답게, id·번호·처치 효과 종류는 그대로라 이미 가진 사람도 새 모습으로)
+    // TREETOP STAR(M416): 크리스마스트리를 입은 총 — 바늘잎 초록 · 금 반짝이 줄 · 둥근 장식 · 색색 전구가 저마다 깜빡(모드 10) · 위에 금빛 트리 별
+    //  처치하면 하늘에서 큰 별이 내려와 꽂히고 별똥별이 쏟아짐
+    xm_m416_northstar: { gun: 'm416', box: 'xmas', rar: 8, xm: 1, no: 'X1', name: 'TREETOP STAR', pat: 'xtree', pal: ['#0d3420', '#1d5a34', '#e0b850', '#c8141e', '#dfe4ea', '#2a6ad0'], sc: 2.2, env: 1.0,
+      body: { p: 1, mr: [0.2, 0.5] }, furn: { p: 1, mr: [0.15, 0.55] }, steel: { c: 0xe0b850, mr: [1, 0.2] },
+      glow: { pat: 'xtree', c: 0xffffff, k: 2.8, anim: 10 }, glowMask: [1, 1, 0], fx: { kind: 'xstar', c: 0xf2cf6a, c2: 0xff3a3a, tr: 0xffe9b0, pal: [0xf2cf6a, 0xff3a3a, 0x3aff6a, 0xffffff], shot: 'frontier', hit: 'frontier' },
+      parts: 'xtree', en: 0xffd65a, enK: 2.2, enAnim: 7,
+      deco: [{ kind: 'text', side: 'LR', z: 0.7, dy: -0.004, text: 'TREETOP STAR', style: 'engrave', col: '#f2cf6a', w: 0.08 }, { kind: 'rim', col: 0xe0b850, orn: 'stars' }],
+      desc: '크리스마스트리를 입은 총 — 바늘잎 초록에 금 반짝이 줄과 둥근 장식, 색색 전구가 저마다 깜빡임 · 위에 금빛 트리 별 · 살펴보면 선물 포장이 풀리고 별이 떠오름 · 처치하면 큰 별이 내려와 꽂히고 별똥별이 쏟아짐', lore: '트리 꼭대기에서 가장 밝게 빛나는 별.' },
+    // CANDY CANE(AKM): 빨강·흰·초록 캔디케인 줄 · 페퍼민트 사탕 · 빛나는 호랑가시 열매 · 총구에 줄무늬 사탕 고리, 옆에 작은 지팡이 사탕, 위에 빨간 나비 리본
+    //  처치하면 거대한 선물 상자가 터지며 리본과 색종이가 쏟아짐
+    xm_akm_candy: { gun: 'akm', box: 'xmas', rar: 8, xm: 1, no: 'X2', name: 'CANDY CANE', pat: 'xcandy', pal: ['#f6f2ea', '#c8141e', '#1f7a3a', '#e8b84a'], sc: 2.4, env: 1.1,
+      body: { p: 1, mr: [0.3, 0.22] }, furn: { p: 1, mr: [0.25, 0.28] }, steel: { c: 0xe8c45a, mr: [1, 0.2] },
+      glow: { pat: 'xcandy', c: 0xffffff, k: 2.4, anim: 10 }, glowMask: [1, 1, 0], fx: { kind: 'xgift', c: 0xff3a4a, c2: 0xffd65a, tr: 0xff7a7a, pal: [0xff3a4a, 0xffd65a, 0x3aff7a, 0xffffff], shot: 'spark', hit: 'spark' },
+      parts: 'xcandy', en: 0xff3a4a, enK: 1.8, enAnim: 1,
+      deco: [{ kind: 'text', side: 'LR', z: 0.66, dy: -0.004, text: 'CANDY CANE', style: 'neon', col: '#ff4a5a', w: 0.08 }, { kind: 'rim', col: 0xe8c45a, orn: 'gems' }],
+      desc: '빨강·흰·초록 캔디케인 줄에 페퍼민트 사탕과 빛나는 호랑가시 열매 · 총구의 줄무늬 사탕 고리와 빨간 나비 리본 · 살펴보면 선물 포장이 풀리고 사탕이 총 둘레를 돎 · 처치하면 거대한 선물 상자가 터짐', lore: '착한 아이 명단에 오르지 못한 자들을 위한 선물.' },
+    // WHITE CHRISTMAS(AWM): 눈 덮인 흰 총몸 · 금 테 두른 빨간 벨벳 리본 띠 · 호랑가시 · 얼음빛으로 빛나는 눈꽃 · 총구 눈꽃 왕관, 총열 아래 금방울 둘
+    //  처치하면 거대한 눈꽃 문양이 돌고 얼음 가시가 솟으며 눈보라
+    xm_awm_winter: { gun: 'awm', box: 'xmas', rar: 8, xm: 1, no: 'X3', name: 'WHITE CHRISTMAS', pat: 'xwhite', pal: ['#eef3f8', '#b4c6d8', '#b3121c', '#e0b850', '#9fe8ff'], sc: 2.4, env: 0.9,
+      body: { p: 1, mr: [0.05, 0.62] }, furn: { c: 0x8e1018, mr: [0.0, 0.72] }, steel: { c: 0xe0b850, mr: [1, 0.18] },
+      glow: { pat: 'xwhite', c: 0xffffff, k: 2.4, anim: 10 }, glowMask: [1, 0, 0], fx: { kind: 'xsnow', c: 0x9fe8ff, c2: 0xffffff, tr: 0xcff4ff, pal: [0x9fe8ff, 0xcff4ff, 0xffffff, 0xff3a4a], shot: 'frost', hit: 'frost' },
+      parts: 'xwhite', en: 0x9fe8ff, enK: 2.4, enAnim: 1,
+      deco: [{ kind: 'text', side: 'LR', z: 0.72, dy: -0.004, text: 'WHITE CHRISTMAS', style: 'engrave', col: '#e0b850', w: 0.1 }],
+      desc: '눈 덮인 흰 총몸에 금 테 두른 빨간 벨벳 리본·개머리와 호랑가시 · 얼음빛 눈꽃이 깜빡임 · 총구의 눈꽃 왕관과 총열 아래 금방울 · 살펴보면 선물 포장이 풀리고 스노글로브 속 눈보라 · 처치하면 거대한 눈꽃 문양과 얼음 가시', lore: '눈 내리는 밤, 모든 창에 불이 켜지는 날.' },
     // ---------- 옷 상자에 2개씩 ----------
     br_s686_hunter: { gun: 's686', box: 'br', rar: 1, name: '사냥꾼', body: { c: 0x3b3e33, mr: [0.45, 0.45] }, furn: { c: 0x7a4626, mr: [0, 0.5] } },
     br_mini14_wood: { gun: 'mini14', box: 'br', rar: 3, name: '산림 위장', pat: 'camo', pal: ['#4e5636', '#3b4129', '#6a6a44', '#2b2b22'], sc: 3.5, body: { p: 1, mr: [0.1, 0.7] }, furn: { p: 1, mr: [0, 0.72] } },
@@ -10281,6 +10423,62 @@ const GunSkin = (() => {
       for (let i = 0; i < 9; i++) { const x = rng() * S, y = rng() * S, r = S * (0.018 + rng() * 0.03); tile(S, (dx, dy) => { star(c, x + dx, y + dy, r, pal[3]); star(gc, x + dx, y + dy, r * 0.9, '#fff'); }); }
       return { alb: a, glow: g };
     },
+    // ---------- v21 크리스마스 EXCLUSIVE 개편: 빛 지도에 색을 넣어(셰이더 모드 10) 전구마다 제 색으로 깜빡 ----------
+    // TREETOP STAR — pal: [짙은 전나무, 밝은 전나무, 금 반짝이, 빨강 볼, 은 볼, 파랑 볼]: 바늘잎 결 · 늘어진 금 반짝이 줄 · 둥근 장식 · 색색 전구
+    xtree(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      const gr = c.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(0, 0, S, S);
+      c.lineCap = 'round'; c.lineWidth = Math.max(1, S / 380);
+      for (let i = 0; i < 2600; i++) { const x = rng() * S, y = rng() * S, L = S * (0.012 + rng() * 0.016), an = Math.PI / 2 + (rng() < 0.5 ? -1 : 1) * (0.45 + rng() * 0.5); c.strokeStyle = rng() < 0.5 ? 'rgba(12,58,30,0.8)' : 'rgba(70,132,80,0.5)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(an) * L, y + Math.sin(an) * L); c.stroke(); }
+      for (let k = 0; k < 3; k++) {
+        const y0 = (k + 0.25) * S / 3, amp = S * 0.07, ph = rng() * TAU, yAt = (x) => y0 + Math.abs(Math.sin(x / S * TAU * 1.5 + ph)) * amp;
+        c.strokeStyle = pal[2]; c.lineWidth = S * 0.011; for (const dy of [-S, 0, S]) { c.beginPath(); for (let x = 0; x <= S; x += 3) { const y = yAt(x) + dy; x ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); }
+        for (let i = 0; i < 46; i++) { const x = rng() * S, y = yAt(x) + (rng() - 0.5) * S * 0.014; c.fillStyle = '#fff6c8'; c.fillRect(x, y, S / 200, S / 200); gc.fillStyle = '#ffe9a0'; gc.fillRect(x, y, S / 260, S / 260); }
+      }
+      const bauble = (ctx, x, y, r, col) => { const rg = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r); rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.28, col); rg.addColorStop(1, '#14080a'); ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.fillStyle = pal[2]; ctx.fillRect(x - r * 0.26, y - r * 1.16, r * 0.52, r * 0.26); };
+      const BC = [pal[3], pal[2], pal[4], pal[5]];
+      for (let i = 0; i < 12; i++) { const x = rng() * S, y = rng() * S, r = S * (0.02 + rng() * 0.02), col = BC[i % 4]; tile(S, (dx, dy) => bauble(c, x + dx, y + dy, r, col)); }
+      const LC = ['#ff3a3a', '#3aff6a', '#ffd040', '#4aa8ff', '#ff7ad8'];
+      for (let i = 0; i < 52; i++) {
+        const x = rng() * S, y = rng() * S, r = S * (0.0055 + rng() * 0.004), col = LC[i % LC.length];
+        tile(S, (dx, dy) => { c.fillStyle = col; c.beginPath(); c.ellipse(x + dx, y + dy, r, r * 1.45, 0.3, 0, TAU); c.fill(); const rg = gc.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r * 2.3); rg.addColorStop(0, col); rg.addColorStop(0.45, col); rg.addColorStop(1, 'rgba(0,0,0,0)'); gc.fillStyle = rg; gc.beginPath(); gc.arc(x + dx, y + dy, r * 2.3, 0, TAU); gc.fill(); });
+      }
+      return { alb: a, glow: g };
+    },
+    // CANDY CANE — pal: [흰 바탕, 빨강 굵은 줄, 초록 가는 줄, 금 띠(빛남)]: 캔디케인 사선 줄 · 페퍼민트 사탕 · 호랑가시 잎과 빨간 열매(빛남)
+    xcandy(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      const w = S / 8, band = (ctx, x, ww) => { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + ww, 0); ctx.lineTo(x + ww - S, S); ctx.lineTo(x - S, S); ctx.closePath(); ctx.fill(); };
+      for (let k = -4; k < 12; k++) { const x = k * w * 2; c.fillStyle = pal[1]; band(c, x, w * 0.92); c.fillStyle = pal[2]; band(c, x + w * 1.18, w * 0.2); c.fillStyle = pal[3]; band(c, x + w * 1.52, w * 0.09); gc.fillStyle = '#ffcf50'; band(gc, x + w * 1.52, w * 0.09); }
+      c.globalAlpha = 0.18; c.fillStyle = '#fff'; for (let k = -4; k < 12; k++) band(c, k * w * 2 + w * 0.14, w * 0.2); c.globalAlpha = 1;
+      const mint = (x, y, r) => { c.fillStyle = '#fbf8f2'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.fillStyle = pal[1]; for (let i = 0; i < 7; i++) { c.save(); c.translate(x, y); c.rotate(i / 7 * TAU); c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(r * 0.55, -r * 0.15, r * 0.93, -r * 0.43); c.quadraticCurveTo(r * 0.8, r * 0.04, 0, 0); c.fill(); c.restore(); } c.strokeStyle = 'rgba(90,0,10,0.35)'; c.lineWidth = Math.max(1, S / 300); c.beginPath(); c.arc(x, y, r, 0, TAU); c.stroke(); };
+      const holly = (x, y, s, rot) => {
+        c.save(); c.translate(x, y); c.rotate(rot);
+        for (const sd of [-1, 1]) { c.save(); c.rotate(sd * 0.75); c.beginPath(); c.moveTo(0, 0); for (let i = 0; i <= 6; i++) { const t = i / 6, ww = Math.sin(t * Math.PI) * s * 0.24 * (i % 2 ? 1.2 : 0.8); c.lineTo(ww, -t * s); } for (let i = 6; i >= 0; i--) { const t = i / 6, ww = Math.sin(t * Math.PI) * s * 0.24 * (i % 2 ? 1.2 : 0.8); c.lineTo(-ww, -t * s); } c.closePath(); c.fillStyle = '#1f7a3a'; c.fill(); c.strokeStyle = '#0e3a1c'; c.lineWidth = Math.max(1, S / 420); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -s); c.stroke(); c.restore(); }
+        c.restore();
+        for (const [bx, by] of [[0, 0], [s * 0.17, s * 0.12], [-s * 0.15, s * 0.13]]) { const px = x + bx, py = y + by; c.fillStyle = '#d0141e'; c.beginPath(); c.arc(px, py, s * 0.13, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,0.65)'; c.fillRect(px - s * 0.06, py - s * 0.07, s * 0.04, s * 0.04); gc.fillStyle = '#ff2a3a'; gc.beginPath(); gc.arc(px, py, s * 0.12, 0, TAU); gc.fill(); }
+      };
+      for (let i = 0; i < 6; i++) { const x = rng() * S, y = rng() * S, r = S * (0.035 + rng() * 0.02); tile(S, (dx, dy) => mint(x + dx, y + dy, r)); }
+      for (let i = 0; i < 7; i++) { const x = rng() * S, y = rng() * S, s = S * (0.07 + rng() * 0.03), rot = rng() * TAU; tile(S, (dx, dy) => holly(x + dx, y + dy, s, rot)); }
+      return { alb: a, glow: g };
+    },
+    // WHITE CHRISTMAS — pal: [눈, 푸른 그늘, 빨간 리본, 금 테, 얼음빛]: 눈 덮인 흰 바탕 · 빨간 벨벳 리본 띠(금 테) · 호랑가시 · 빛나는 눈꽃
+    xwhite(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      const gr = c.createLinearGradient(0, 0, S, S); gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 26; i++) { const x = rng() * S, y = rng() * S, rx = S * (0.05 + rng() * 0.08); tile(S, (dx, dy) => { const rg = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rx); rg.addColorStop(0, 'rgba(255,255,255,0.55)'); rg.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = rg; c.fillRect(x + dx - rx, y + dy - rx, rx * 2, rx * 2); }); }
+      for (let i = 0; i < 900; i++) { c.fillStyle = `rgba(255,255,255,${0.2 + rng() * 0.5})`; c.fillRect(rng() * S, rng() * S, 1 + rng() * 2, 1 + rng() * 2); }
+      c.lineWidth = Math.max(1, S / 420); for (let i = 0; i < 700; i++) { const x = rng() * S, y = rng() * S, L = S * (0.006 + rng() * 0.012), an = rng() * TAU; c.strokeStyle = `rgba(90,130,170,${0.12 + rng() * 0.18})`; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(an) * L, y + Math.sin(an) * L); c.stroke(); }   // 눈 결정 결
+      for (const yf of [0.16, 0.5, 0.84]) { const y = S * yf, hh = S * 0.075; const rg = c.createLinearGradient(0, y - hh / 2, 0, y + hh / 2); rg.addColorStop(0, '#5a0408'); rg.addColorStop(0.5, pal[2]); rg.addColorStop(1, '#5a0408'); c.fillStyle = rg; c.fillRect(0, y - hh / 2, S, hh); c.fillStyle = pal[3]; c.fillRect(0, y - hh / 2 - S * 0.006, S, S * 0.006); c.fillRect(0, y + hh / 2, S, S * 0.006); gc.fillStyle = '#ffcf6a'; gc.fillRect(0, y - hh / 2 - S * 0.005, S, S * 0.004); gc.fillRect(0, y + hh / 2 + S * 0.001, S, S * 0.004); }
+      const flake = (ctx, x, y, r, col, lw) => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; for (let i = 0; i < 6; i++) { const an = i / 6 * TAU + Math.PI / 6; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(an) * r, y + Math.sin(an) * r); ctx.stroke(); for (const f of [0.45, 0.7]) { const bx = x + Math.cos(an) * r * f, by = y + Math.sin(an) * r * f, L = r * 0.28 * (1.15 - f); for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + Math.cos(an + s * 0.85) * L, by + Math.sin(an + s * 0.85) * L); ctx.stroke(); } } } };
+      for (let i = 0; i < 15; i++) { const x = rng() * S, y = rng() * S, r = S * (0.03 + rng() * 0.045), lw = Math.max(1, S / 256 * (1.1 + r / S * 22)); tile(S, (dx, dy) => { flake(c, x + dx, y + dy, r, '#4f8fbf', lw * 1.4); flake(gc, x + dx, y + dy, r, pal[4], lw); }); }
+      for (let i = 0; i < 6; i++) {
+        const x = rng() * S, y = S * [0.16, 0.5, 0.84][i % 3], s = S * 0.06;
+        tile(S, (dx, dy) => { for (const sd of [-1, 1]) { c.save(); c.translate(x + dx, y + dy); c.rotate(sd * 0.9 - 0.2); c.fillStyle = '#1f7a3a'; c.beginPath(); c.ellipse(0, -s * 0.5, s * 0.2, s * 0.5, 0, 0, TAU); c.fill(); c.restore(); } for (const [bx, by] of [[0, 0], [s * 0.15, s * 0.1], [-s * 0.14, s * 0.11]]) { c.fillStyle = '#e01a26'; c.beginPath(); c.arc(x + dx + bx, y + dy + by, s * 0.12, 0, TAU); c.fill(); gc.fillStyle = '#ff2a3a'; gc.beginPath(); gc.arc(x + dx + bx, y + dy + by, s * 0.11, 0, TAU); gc.fill(); } });
+      }
+      return { alb: a, glow: g };
+    },
   });
   // 빛 지도만 (흰 선 = 빛남)
   const GLOW = {
@@ -10381,9 +10579,10 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
   const F_EMIT = `
 	float gsGM = gsRole < 0.5 ? uGlowMask.x : gsRole < 1.5 ? uGlowMask.y : gsRole < 2.5 ? uGlowMask.z : 0.0;
 	if (uGlowAmt > 0.0 && gsGM > 0.0) {
-		float gsG = gsTri(uGlow, vOP, gsNrm).r;
+		vec3 gsG3 = gsTri(uGlow, vOP, gsNrm); float gsG = gsG3.r;
 		float gsA = 1.0; vec3 gsGC = uGlowCol;
-		if (uGlowAnim > 8.5) { float gsW = 0.5 + 0.5 * sin(uTime * 2.4); gsA = 0.2 + 0.8 * pow(gsW, 6.0); }	// 일정한 간격의 맥박 (APOCALYPSE ENGINE)
+		if (uGlowAnim > 9.5) { gsG = max(gsG3.r, max(gsG3.g, gsG3.b)); gsGC = uGlowCol * gsG3 / max(gsG, 0.001); float gsH = gsHash(floor(vOP * 55.0)), gsP = fract(uTime * 0.55 + gsH); gsA = 0.3 + 0.7 * smoothstep(0.0, 0.06, gsP) * smoothstep(0.66, 0.52, gsP); }	// 크리스마스 전구: 빛 지도의 색 그대로, 전구마다 다른 박자로 깜빡 (EXCLUSIVE)
+		else if (uGlowAnim > 8.5) { float gsW = 0.5 + 0.5 * sin(uTime * 2.4); gsA = 0.2 + 0.8 * pow(gsW, 6.0); }	// 일정한 간격의 맥박 (APOCALYPSE ENGINE)
 		else if (uGlowAnim > 7.5) { float gsW = 0.5 + 0.5 * sin(uTime * 1.6 - vOP.z * 12.0); gsA = 0.25 + 0.75 * pow(gsW, 4.0); }	// 붉은 에너지가 천천히 흐름 (INFERNAL SOVEREIGN)
 		else if (uGlowAnim > 6.5) { float gsH = gsHash(floor(vOP * 70.0)); gsA = 0.2 + 0.8 * pow(0.5 + 0.5 * sin(uTime * (0.9 + gsH * 1.8) + gsH * 6.283), 3.0); }	// 별 반짝임 (LAST FRONTIER)
 		else if (uGlowAnim > 5.5) { float gsF = gsHash(vec3(floor(uTime * 9.0), 1.0, 0.0)), gsF2 = gsHash(vec3(floor(uTime * 2.3), 2.0, 0.0)); gsA = 0.3 + 0.7 * mix(gsF * gsF, 1.0, step(0.72, gsF2)); }	// 불규칙 점멸 (CHAOS CORE)
@@ -10807,6 +11006,56 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     else if (kind === 'voidr') { if (s.warp) epsWarp(u < 0.35 ? Math.sin(u / 0.35 * Math.PI) : 0); if (Math.random() < dt * 50 * env) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(); const R = 0.12 + Math.random() * 0.1; _q.set(0, m.boreY, lerp(I.z0, I.z1, 0.6)); g.localToWorld(_q); _p.copy(_q).addScaledVector(_r, R); emit(P, _p, -_r.x * R * 3, -_r.y * R * 3, -_r.z * R * 3, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.33, { sq: Math.random() < 0.4 }); } }
     else if (kind === 'dynasty' && s.crest) { const inK = clamp(u / 0.15, 0, 1), outK = clamp((1 - u) / 0.15, 0, 1); s.crest.scale.setScalar(0.07 * Math.min(inK, outK) + 0.001); s.crest.rotation.y = s.t * 2.4; s.crest.material.opacity = Math.min(inK, outK); if (Math.random() < dt * 20) { s.crest.getWorldPosition(_q); emit(P, _q, (Math.random() - 0.5) * 0.1, -0.05, (Math.random() - 0.5) * 0.1, pick(I.d.fx), 0.004 * k, 0.6, { grow: -0.4 }); } }
   }
+  // ---------- 크리스마스 EXCLUSIVE 살펴보기 (v21) — 엡실론(ε 고리·홀로 명판·키트 전개·총열 축 회전)과 다른 '선물 풀기' ----------
+  //  0~0.2 리본 띠 두 줄과 나비 리본으로 포장된 채 나타남 → 0.2 나비 리본이 톡 터지며(방울 소리·색종이) 리본이 총구 쪽으로 미끄러져 풀림
+  //  → 총 위로 호랑가시 화환이 떠올라 돌고 가운데에 눈 덮인 나무 명판(MERRY CHRISTMAS · 이름 · 소유 번호) · 둘레로 눈이 내림
+  //  · 1인칭은 종을 흔들듯 세 번 살랑(09_player.js) — 흔들 때마다 방울 소리
+  //  총마다: TREETOP STAR = 총 앞쪽 위로 금빛 별이 떠올라 반짝이고 전구가 빠르게 깜빡 · CANDY CANE = 페퍼민트 사탕 넷이 총 둘레를 돎
+  //          WHITE CHRISTMAS = 스노글로브가 총을 감싸고 안에서 눈보라 + 서리 띠
+  const XM_CONF = [0xff3a4a, 0x3aff7a, 0xffd65a, 0xffffff, 0x4aa8ff];
+  function xmInspStart(I, s, g, vm) {
+    const kind = I.d.fx.kind;
+    if (typeof GunDeco !== 'undefined' && GunDeco.xmas) s.xm = GunDeco.xmas(g, I.d, own(s.c) && typeof Eco !== 'undefined' ? Eco.serialOf(I.id) : '', kind);
+    s.popped = false; s.bells = 0;
+    if (kind === 'xsnow') { scan(I, s.dur * 0.75, 0xcff4ff, true); s.scan = true; }
+  }
+  function xmInsp(I, s, g, u, dt, vm, k, P, m) {
+    const kind = I.d.fx.kind, X = s.xm, L = I.z1 - I.z0, zc = (I.z0 + I.z1) / 2;
+    const inK = clamp(u / 0.12, 0, 1), outK = clamp((1 - u) / 0.14, 0, 1), vis = Math.min(inK, outK);
+    if (X) {
+      // 포장 → 풀림: 띠가 부풀며 총구 쪽으로 미끄러져 사라지고, 나비 리본은 커지며 위로 날아가 사라짐
+      const pop = clamp((u - 0.2) / 0.16, 0, 1);
+      for (const b of X.bands) { const R = 0.052 * (1 + pop * 0.7); b.scale.set(R, R, 0.016 * (1 - pop * 0.5)); b.position.z = lerp(I.z0, I.z1, b.userData.f) + pop * pop * L * 0.7; b.material.opacity = inK * (1 - pop); b.visible = pop < 1; }
+      const bs = (vm ? 0.07 : 0.085) * (u < 0.2 ? inK : 1 + (u - 0.2) * 4); X.bow.scale.set(bs, bs, 1); X.bow.material.opacity = u < 0.2 ? inK : Math.max(0, 1 - (u - 0.2) / 0.08); X.bow.position.y = m.boreY + 0.075 + Math.max(0, u - 0.2) * 0.3;
+      if (!s.popped && u >= 0.2) {
+        s.popped = true; I.flash = Math.max(I.flash || 0, 0.8); ACTIVE.add(I);
+        _q.set(0, m.boreY + 0.06, zc); g.localToWorld(_q);
+        for (let i = 0; i < 36; i++) { _r.set(Math.random() - 0.5, Math.random() * 0.8 + 0.1, Math.random() - 0.5).normalize().multiplyScalar(0.4 + Math.random() * 0.6); emit(P, _q, _r.x, _r.y, _r.z, XM_CONF[i % XM_CONF.length], (0.004 + Math.random() * 0.004) * k, 0.6 + Math.random() * 0.4, { sq: 1, g: -1.2, drag: 2.5 }); }
+        if (typeof Audio !== 'undefined' && Audio.jingle && shown(g)) Audio.jingle(s.c && !own(s.c) ? s.c.pos : null, own(s.c), 0.9);
+      }
+      // 화환 (천천히 돎) · 가운데 명판
+      const wr = clamp((u - 0.22) / 0.2, 0, 1) * outK, ws = (vm ? 0.17 : 0.22) * (0.6 + 0.4 * wr);
+      X.wreath.scale.set(ws, ws, 1); X.wreath.material.opacity = 0.95 * wr; X.wreath.material.rotation = s.t * 0.35;
+      const pk = clamp((u - 0.28) / 0.12, 0, 1) * outK, pw = vm ? 0.2 : 0.24; X.plate.scale.set(pw * (0.4 + 0.6 * pk), pw * 0.344 * pk + 0.0005, 1); X.plate.material.opacity = pk;
+      // 총마다
+      if (X.star) {
+        const sk = clamp((u - 0.3) / 0.15, 0, 1) * outK, tw = 1 + 0.12 * Math.sin(s.t * 9);
+        X.star.scale.set(0.1 * sk * tw, 0.1 * sk * tw, 1); X.star.position.y = m.boreY + 0.05 + sk * 0.05; X.star.material.opacity = sk; X.star.material.rotation = Math.sin(s.t * 1.3) * 0.2;
+        I.U.uFlash.value = Math.max(I.U.uFlash.value, 0.35 * sk * (0.5 + 0.5 * Math.sin(s.t * 14)));
+        if (sk > 0.5 && Math.random() < dt * 24) { X.star.getWorldPosition(_q); _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(0.12); emit(P, _q, _r.x, _r.y - 0.05, _r.z, Math.random() < 0.5 ? 0xffffff : 0xffd65a, 0.004 * k, 0.6, { grow: -0.4 }); }
+      }
+      for (const mt of X.extra) { const mk = clamp((u - 0.25) / 0.15, 0, 1) * outK, a = mt.userData.a + s.t * 2.2, R = 0.085; mt.position.set(Math.cos(a) * R, m.boreY + Math.sin(a) * R, zc + Math.sin(a * 0.5) * L * 0.25); const sc = 0.034 * mk; mt.scale.set(sc, sc, 1); mt.material.rotation = -s.t * 5; mt.material.opacity = mk; }
+      if (X.globe) {
+        const gk = clamp((u - 0.22) / 0.15, 0, 1) * outK, gs = (vm ? 0.34 : L * 0.72 + 0.1) * (0.85 + 0.15 * gk); X.globe.scale.set(gs, gs, 1); X.globe.material.opacity = 0.9 * gk; if (vm) X.globe.position.z = zc + L * 0.18;
+        if (gk > 0.3 && Math.random() < dt * 60) { const a = Math.random() * TAU, R = Math.random() * gs * 0.4; _q.set(Math.cos(a) * R * 0.5, m.boreY + Math.sin(a) * R * 0.5, zc + (Math.random() - 0.5) * gs * 0.7); g.localToWorld(_q); emit(P, _q, (Math.random() - 0.5) * 0.14, (Math.random() - 0.4) * 0.1, (Math.random() - 0.5) * 0.14, Math.random() < 0.7 ? 0xffffff : 0xcff4ff, (0.003 + Math.random() * 0.003) * k, 0.8, { sq: Math.random() < 0.3 }); }
+      }
+    }
+    // 눈 (모두): 총 위에서 천천히 내림
+    if (Math.random() < dt * 40 * vis) { const a = Math.random() * TAU, r = 0.04 + Math.random() * 0.1; _q.set(Math.cos(a) * r, m.boreY + 0.09 + Math.random() * 0.05, lerp(I.z0, I.z1, Math.random())); g.localToWorld(_q); emit(P, _q, (Math.random() - 0.5) * 0.02, -0.05, (Math.random() - 0.5) * 0.02, 0xffffff, (0.0028 + Math.random() * 0.0025) * k, 1.1, { grow: -0.3 }); }
+    // 1인칭: 종을 흔드는 세 번(09_player.js 의 살랑 동작 꼭짓점과 같은 박자)마다 방울 소리
+    if (vm && s.bells < 3 && u >= 0.483 + s.bells * 0.0867) { s.bells++; if (typeof Audio !== 'undefined' && Audio.jingle) Audio.jingle(null, true, 0.45 + s.bells * 0.1); }
+    if (kind === 'xsnow' && I.scan && Math.random() < dt * 30) { const a = Math.random() * TAU, r = 0.025 + Math.random() * 0.035; _q.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, I.U.uScanZ.value); g.localToWorld(_q); emit(P, _q, 0, -0.04, 0, Math.random() < 0.4 ? 0xffffff : pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.7, { grow: -0.4, sq: Math.random() < 0.5 }); }
+  }
   // ---------- 테스터: 재장전 · 살펴보기 ----------
   //  재장전(06_combat.js 가 부름): ZERO = 시작할 때 시안 스캔 띠 · CHAOS = 탄창 갈 때 코어 둘레 붉은 입자 · FRONTIER = 끝나면 금빛 한 번
   //  살펴보기(09_player.js · 진열장): ZERO = 옆에 SYSTEM ONLINE 홀로그램 · CHAOS = 코어가 강하게 빛나며 맥박 · FRONTIER = 별빛 띠가 총몸을 따라 천천히 지나감
@@ -10848,6 +11097,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     if (I.insp.sigil) { I.g.remove(I.insp.sigil); for (const ch of I.insp.sigil.children) ch.material.dispose(); }
     if (I.insp.plate) { I.g.remove(I.insp.plate); I.insp.plate.material.dispose(); }
     if (I.insp.kit && I.parts) for (const p of I.parts) if (!p.spin) p.inner.position.set(0, 0, 0);
+    if (I.insp.xm && typeof GunDeco !== 'undefined') GunDeco.xmasDispose(I.insp.xm);
     I.spinBoost = 1; I.wingHold = 0;
     I.U.uDeploy.value = 0; I.U.uFlash.value = Math.max(0, I.flash || 0); I.insp = null;
   }
@@ -10858,7 +11108,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     if (!s.on) {
       s.on = true;
       if (kind === 'zero') s.panel = GunDeco.panel(g);
-      if (I.d.eps || I.d.xm) epsInspStart(I, s, g, vm);
+      if (I.d.xm) xmInspStart(I, s, g, vm); else if (I.d.eps) epsInspStart(I, s, g, vm);
       if (kind === 'frontier') { scan(I, s.dur * 0.85, 0xfff0c0, true); s.scan = true; }
       if (typeof Audio !== 'undefined' && Audio.skinFx && shown(g)) Audio.skinFx('inspect', kind, s.c && !own(s.c) ? s.c.pos : null, own(s.c));
     }
@@ -10870,7 +11120,8 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       const pulse = 0.5 + 0.5 * Math.sin(s.t * 18), env = Math.sin(Math.min(1, u) * Math.PI);
       I.U.uDeploy.value = env * (0.6 + 0.6 * pulse);
       if (Math.random() < dt * 40 * env) { const core = I.parts && I.parts.find((p) => p.core); if (core) core.outer.getWorldPosition(_q); else { _q.set(0, m.boreY, lerp(I.z0, I.z1, 0.4)); g.localToWorld(_q); } _r.set(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(0.2 + Math.random() * 0.35); emit(P, _q, _r.x, _r.y, _r.z, pick(I.d.fx), (0.004 + Math.random() * 0.005) * k, 0.3, { drag: 2 }); }
-    } else if (I.d.eps || I.d.xm) { epsInsp(I, s, g, u, dt, vm, k, P, m); }
+    } else if (I.d.xm) { xmInsp(I, s, g, u, dt, vm, k, P, m); }
+    else if (I.d.eps) { epsInsp(I, s, g, u, dt, vm, k, P, m); }
     else if (kind === 'frontier' && I.scan) {
       if (Math.random() < dt * 30) { const a = Math.random() * TAU, r = 0.02 + Math.random() * 0.03; _q.set(Math.cos(a) * r, m.boreY - 0.01 + Math.sin(a) * r, I.U.uScanZ.value); g.localToWorld(_q); emit(P, _q, 0, 0.02, 0, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.6, { grow: -0.4 }); }
     }
@@ -12947,6 +13198,63 @@ const SkinFx = (() => {
   };
 })();
 
+// ---------- 05_models_guns4.js ----------
+// ============================================================
+// 05_models_guns4.js — v21 판처파우스트 (보급상자 전용 1회용 대전차 로켓) 3D 모델 · 자체 디자인
+//  · 가는 올리브색 발사관 + 앞에 꽂힌 큰 탄두(회전체) · 위 가늠자 판(구멍 3개) · 붉은 발사 레버 · 아래 손잡이·방아쇠 · 앞 나무 손받침
+//  · 탄두는 부품 'head' — 쏘면 숨겨져 빈 발사관만 남고, 날아가는 로켓(06_combat.js)도 같은 모양을 쓴다
+//  좌표: +z 앞(탄두), +y 위, -x 오른쪽. 원점은 손잡이 위. 발사관 축 높이 boreY
+// ============================================================
+(() => {
+  const { A, BX, CY, RB, PF, M, tube, trigger } = Models.kit;
+  const G = Models.GUNS, BY = 0.07, R0 = 0.024;
+  // 탄두 옆모습 (반지름, 앞뒤) — 뒤 원뿔 → 굵은 몸통 → 뾰족한 머리
+  const HEAD = [[0.0, -0.004], [0.019, -0.004], [0.024, 0.0], [0.034, 0.018], [0.047, 0.04], [0.057, 0.066], [0.0625, 0.092], [0.064, 0.118], [0.063, 0.142], [0.058, 0.168], [0.049, 0.196], [0.037, 0.222], [0.024, 0.245], [0.013, 0.262], [0.006, 0.272], [0.0, 0.276]];
+  const lathe = (pts, seg = 26) => { const g = new THREE.LatheGeometry(pts.map(([r, z]) => new THREE.Vector2(r, z)), seg); g.rotateX(Math.PI / 2); return g; };
+  G.pzf = {
+    meta: { railY: 0.14, scopeZ: 0.0, ironY: 0.147, ironRearZ: 0.075, ironRelief: 0.42, muzzleZ: 0.44, boreY: BY, headPos: [0, BY, 0.16], backZ: -0.42,
+      gripPos: [0, -0.04, -0.058], forePos: [0.004, 0.02, 0.1], ejectPos: [0, BY, -0.42], hip: [0.13, -0.17, -0.5], noMag: true },
+    body(g) {
+      const od = M('anod', 0x434a2e), od2 = M('anod', 0x343a24), dk = M('gunmetal', 0x1b1c1a), rd = M('polymer', 0xb02a1e), yl = M('paper', 0xcdb04a), wd = M('wood', 0x6e4628), bk = M('polymer', 0x101010);
+      // 발사관 (안이 빈 관) · 뒤 나팔 · 죔쇠 띠 2개
+      tube(g, R0, R0 - 0.003, 0.58, od, 0, BY, -0.13, 22);
+      A(g, CY(R0, R0 + 0.006, 0.034, 22, 'z', true), od2, 0, BY, -0.403);
+      for (const z of [-0.3, -0.05]) A(g, CY(R0 + 0.0016, R0 + 0.0016, 0.012, 22), dk, 0, BY, z);
+      A(g, CY(R0 + 0.0022, R0 + 0.0022, 0.016, 22), od2, 0, BY, 0.152);
+      // 위 경고 표지 (노란 판 + 검은 줄) — 뒤 화염 주의
+      A(g, BX(0.03, 0.0016, 0.13), yl, 0, BY + R0 - 0.0004, -0.26);
+      for (let i = 0; i < 4; i++) A(g, BX(0.024, 0.0018, 0.006), bk, 0, BY + R0 + 0.0002, -0.31 + i * 0.03);
+      A(g, BX(0.03, 0.0017, 0.012), rd, 0, BY + R0 - 0.0002, -0.185);
+      // 발사 장치: 위 덮개 · 붉은 발사 레버 · 접어 올린 가늠자 판(구멍 3개)
+      A(g, RB(0.022, 0.014, 0.07, 0.004), od2, 0, BY + R0 + 0.004, 0.02);
+      A(g, BX(0.011, 0.006, 0.034), rd, 0, BY + R0 + 0.014, 0.034, -0.18, 0, 0);
+      A(g, CY(0.004, 0.004, 0.024, 8, 'x'), dk, 0, BY + R0 + 0.006, 0.052);
+      A(g, BX(0.028, 0.05, 0.003), od2, 0, BY + R0 + 0.025, 0.075);
+      for (const y of [0.045, 0.033, 0.021]) A(g, BX(0.005, 0.005, 0.0034), bk, 0, BY + R0 + y, 0.075);   // 거리별 조준 구멍 (맨 위가 가늠쇠와 같은 높이)
+      A(g, BX(0.04, 0.004, 0.006), dk, 0, BY + R0 + 0.002, 0.075);
+      // 아래: 방아쇠 몸통 · 손잡이 · 방아쇠울
+      A(g, RB(0.03, 0.026, 0.11, 0.006), od2, 0, BY - R0 - 0.01, -0.03);
+      A(g, PF([[-0.074, 0.034], [-0.034, 0.034], [-0.05, -0.064], [-0.062, -0.078], [-0.08, -0.08], [-0.088, -0.066], [-0.08, 0.03]], 0.028, 0.004), M('polymer', 0x1d1f1b));
+      for (let i = 0; i < 4; i++) A(g, BX(0.029, 0.003, 0.004), bk, 0, 0.01 - i * 0.02, -0.04 - i * 0.004, 0.16, 0, 0);
+      trigger(g, -0.016, 0.034, dk);
+      // 앞 나무 손받침 (탄두 바로 뒤)
+      A(g, RB(0.034, 0.03, 0.1, 0.008), wd, 0, BY - R0 - 0.008, 0.095);
+      for (let i = 0; i < 4; i++) A(g, BX(0.0345, 0.002, 0.004), M('wood', 0x4a2e1a), 0, BY - R0 - 0.0225, 0.06 + i * 0.024);
+    },
+    // 탄두 (부품 축 = 발사관 축). 뒤 꼬리대·접힌 날개는 관 안에 꽂혀 있다가 날아갈 때 보인다
+    head(g) {
+      const od = M('anod', 0x4c5432), dk = M('gunmetal', 0x262824), yl = M('paper', 0xd0ae38), st = M('metal', 0x8a8e88);
+      A(g, CY(0.016, 0.016, 0.2, 14), dk, 0, 0, -0.1);
+      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; A(g, BX(0.0022, 0.012, 0.08), st, Math.cos(a) * 0.017, Math.sin(a) * 0.017, -0.16, 0, 0, a + Math.PI / 2); }
+      A(g, lathe(HEAD), od);
+      A(g, CY(0.0645, 0.0645, 0.012, 26), yl, 0, 0, 0.124);
+      A(g, CY(0.0605, 0.0628, 0.006, 26), dk, 0, 0, 0.152);
+      A(g, CY(0.007, 0.011, 0.016, 12), dk, 0, 0, 0.272);
+      A(g, BX(0.004, 0.014, 0.005), dk, 0, 0.07, 0.118);
+    },
+  };
+})();
+
 // ---------- 05_models_veh.js ----------
 // ============================================================
 // 05_models_veh.js — 차량 3D 모델 (말·오토바이·UAZ·세단·픽업트럭)
@@ -14572,6 +14880,7 @@ function fireWeapon(c, origin, dir) {
   if (!(c.isPlayer && Dev.cheat('ammo'))) wi.mag--;   // 개발자 도구: 무한 탄약
   c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); G.stats.shots++;
   if (c.spawnProt) c.spawnProt = 0; // 데스매치: 쏘면 부활 보호 해제
+  if (d.rocket) return fireRocket(c, wi, d, origin, dir);   // 판처파우스트: 히트스캔 대신 날아가는 로켓
   const spread = weaponSpread(c) * DEG;
   const pellets = d.pellets || 1;
   const g = gunObj(c), meta = g && g.userData.meta;
@@ -14626,6 +14935,108 @@ function fireWeapon(c, origin, dir) {
   return true;
 }
 const _shotEnd = [0, 0, 0, 0];
+// ---------- 판처파우스트 (v21): 날아가는 로켓 ----------
+//  눈(origin)에서 조준 방향으로 rv m/s + 약한 중력(rg). 1/60초마다 벽·지형·차량·사람·물을 확인해 닿으면 폭발, 2.8초 지나면 공중에서 터짐
+//  모양은 총구(탄두 자리)에서 출발해 0.18초 동안 실제 궤적(눈높이)으로 합쳐진다 → 화면에서도 총에서 나가고, 조준한 곳에 정확히 맞음
+//  직격: 사람은 기절 없이 처치, 차량은 탄 사람까지 그 자리에서 폭발 · 반경 blastR 안은 거리·엄폐에 따라 큰 피해(차량 포함)
+//  쏜 뒤 0.7초 지나면 빈 발사관을 버리고 다른 무기로 (discardSpent) · 같이 하기: 다른 기기는 보이기만(remote), 피해는 쏜 기기가 판정
+let ROCKETS = [];
+const _rk = new THREE.Vector3(), _rk2 = new THREE.Vector3();
+function fireRocket(c, wi, d, origin, dir) {
+  const s = weaponSpread(c) * DEG * 0.5, a = Math.random() * TAU, r = Math.sqrt(Math.random()) * Math.tan(s);
+  const up = Math.abs(dir.y) > 0.95 ? _v2.set(1, 0, 0) : _v2.set(0, 1, 0);
+  const ax = _rk.crossVectors(dir, up).normalize(), bx = _rk2.crossVectors(ax, dir).normalize();
+  const D = new THREE.Vector3().copy(dir).addScaledVector(ax, Math.cos(a) * r).addScaledVector(bx, Math.sin(a) * r).normalize();
+  const g = gunObj(c), meta = g && g.userData.meta;
+  const tip = meta ? gunWorldPoint(c, 0, meta.boreY, meta.headPos ? meta.headPos[2] + 0.12 : meta.muzzleZ, new THREE.Vector3()) : null;
+  const start = origin.clone().addScaledVector(D, 0.5);
+  const vis = tip && tip.distanceTo(origin) < 3 ? tip : start;
+  const rk = spawnRocket(c, start, D, vis, d, false);
+  if (G.net) Net.ev({ k: 'rkt', c: c.id, p: [+start.x.toFixed(2), +start.y.toFixed(2), +start.z.toFixed(2)], v: [+D.x.toFixed(4), +D.y.toFixed(4), +D.z.toFixed(4)] });
+  // 뒤 화염(백블라스트): 발사관 뒤로 불꽃·연기
+  const back = meta && meta.backZ !== undefined ? gunWorldPoint(c, 0, meta.boreY, meta.backZ, new THREE.Vector3()) : null;
+  backblast(back && back.distanceTo(origin) < 3 ? back : origin.clone().addScaledVector(D, -0.5), D, c.isPlayer);
+  c.bloom = Math.min(c.bloom + d.recoil * 0.22, 4);
+  c.spentT = 0.7; c.spentSlot = c.inv.cur; c.inspectT = 0;
+  Audio.rocket('launch', origin, c.isPlayer);
+  G.noises.push({ x: origin.x, y: origin.y, z: origin.z, t: G.time, r: 300, by: c, kind: 'shot' });
+  if (G.player && c !== G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 12) G.shake = Math.max(G.shake || 0, 0.25);
+  return !!rk;
+}
+// 뒤 화염: 내 캐릭터면 작고 짧게(3인칭 카메라가 바로 뒤에 있어 화면을 덮지 않게), 남이 쏘면 크게
+function backblast(p, D, own) {
+  const s = own ? 0.45 : 1;
+  FX.puff(p.x - D.x * 0.3, p.y - D.y * 0.3, p.z - D.z * 0.3, 0xffd090, 0.9 * s, 0.1, 1.4, 0);
+  for (let i = 0; i < (own ? 3 : 5); i++) { const k = 0.5 + i * 0.4; FX.puff(p.x - D.x * k + rnd(-0.2, 0.2) * s, p.y - D.y * k - 0.15 + rnd(-0.1, 0.2) * s, p.z - D.z * k + rnd(-0.2, 0.2) * s, i < 1 ? 0xff9a40 : 0xb8b0a4, (0.6 + i * 0.22) * s, (own ? 0.35 : 0.7) + i * 0.15, own ? 1.6 : 2.4, 0.5); }
+}
+function spawnRocket(c, start, D, vis, d, remote) {
+  if (!G.scene) return null;
+  const mesh = Models.cluster('gh:pzf', Models.GUNS.pzf.head), fl = FX.flame(); fl.position.set(0, 0, -0.26); fl.scale.setScalar(0.42); mesh.add(fl);
+  G.scene.add(mesh);
+  const v = d.rv || 80, r = { owner: c, x: start.x, y: start.y, z: start.z, vx: D.x * v, vy: D.y * v, vz: D.z * v, g: d.rg || 2.2, t: 0, mesh, fl, remote, trailT: 0, flyT: 0,
+    ox: vis.x - start.x, oy: vis.y - start.y, oz: vis.z - start.z };
+  ROCKETS.push(r); placeRocket(r);
+  return r;
+}
+function placeRocket(r) {
+  const k = Math.max(0, 1 - r.t / 0.18), m = r.mesh;
+  m.position.set(r.x + r.ox * k, r.y + r.oy * k, r.z + r.oz * k);
+  _rk.set(m.position.x + r.vx, m.position.y + r.vy, m.position.z + r.vz); m.lookAt(_rk);
+  r.fl.scale.setScalar(0.32 + Math.random() * 0.2); r.fl.material.opacity = 0.75 + Math.random() * 0.25;
+}
+function stepRockets(dt) {
+  for (let i = ROCKETS.length - 1; i >= 0; i--) {
+    const r = ROCKETS[i]; r.t += dt; r.vy -= r.g * dt;
+    const sp = Math.hypot(r.vx, r.vy, r.vz), L = sp * dt, dx = r.vx / sp, dy = r.vy / sp, dz = r.vz / sp;
+    const h = raycastAll(r.x, r.y, r.z, dx, dy, dz, L + 0.06, r.owner), wet = r.y + dy * L < WATER_Y && heightAt(r.x, r.z) < WATER_Y;
+    if (h.t <= L + 0.06 || wet || r.t > 2.8) {
+      const t = h.t <= L + 0.06 ? Math.max(0, h.t - 0.06) : wet ? clamp((WATER_Y - r.y) / (dy || -1), 0, L) : 0;
+      G.scene.remove(r.mesh); r.fl.material.dispose(); ROCKETS.splice(i, 1);
+      rocketBoom(r, r.x + dx * t, r.y + dy * t, r.z + dz * t, h.t <= L + 0.06 ? h : null);
+      continue;
+    }
+    r.x += r.vx * dt; r.y += r.vy * dt; r.z += r.vz * dt;
+    placeRocket(r);
+    r.trailT -= dt; if (r.trailT <= 0) { r.trailT = 0.014; const p = r.mesh.position; FX.puff(p.x - dx * 0.35, p.y - dy * 0.35, p.z - dz * 0.35, 0xd2ccc2, 0.24, 0.9, 2.8, 0.2); }
+    r.flyT -= dt; if (r.flyT <= 0 && G.player) { r.flyT = 0.45; Audio.rocket('fly', r.mesh.position, false); }
+  }
+}
+// 직격: 기절 없이 처치 (같은 팀·부활 보호는 그대로 막힘). 다른 기기 캐릭터는 주인 기기에 처치 요청까지
+function rocketLethal(t, own) {
+  if (!t.alive || sameTeam(own, t) || (G.dm && t.spawnProt > G.time)) return;
+  applyDamage(t, 999, 'impact', own, 'pzf');
+  if (G.net && !Net.mine(t)) { if (t.alive) Net.killReq(t, own, 'pzf'); return; }
+  if (t.alive && t.knocked) applyDamage(t, 999, 'impact', own, 'pzf');
+}
+function rocketBoom(r, x, y, z, hit) {
+  FX.blast(x, y, z); Audio.rocket('boom', { x, y, z }, false);
+  G.noises.push({ x, y, z, t: G.time, r: 320, by: r.owner, kind: 'blast' });
+  if (G.player && G.player.alive) { const dd = Math.hypot(G.player.pos.x - x, G.player.pos.z - z); if (dd < 70) G.shake = Math.max(G.shake || 0, (1 - dd / 70) * 1.8); }
+  if (r.remote) return;
+  const own = r.owner, R = ITEMS.pzf.blastR, direct = hit && hit.type === 'char' ? hit.char : null, dveh = hit && hit.type === 'veh' ? hit.veh : null;
+  if (direct) rocketLethal(direct, own);
+  if (dveh) { for (const d of Veh.riders(dveh)) rocketLethal(d, own); Veh.damage(dveh, 1e6, own, 'pzf'); }
+  for (const ch of CHARS) {
+    if (!ch.alive || ch === direct || ch.mode !== 'ground') continue;
+    ch.chest(_v1); const dd = _v1.distanceTo(_v2.set(x, y + 0.2, z)); if (dd > R) continue;
+    const cover = losClear(x, y + 0.3, z, _v1.x, _v1.y, _v1.z, dveh) ? 1 : 0.2;
+    applyDamage(ch, 240 * Math.pow(1 - dd / R, 1.1) * cover, 'blast', own, 'pzf');
+  }
+  Veh.blast(x, y, z, R, 1400, own, dveh);
+}
+// 쏜 뒤 빈 발사관 버리기 → 다른 무기를 든다 (주무기 → 보조무기 순)
+function discardSpent(c) {
+  const i = c.spentSlot, wi = i >= 0 ? c.inv.weapons[i] : null; c.spentSlot = -1;
+  if (!wi || !ITEMS[wi.id].rocket || wi.mag > 0) return;
+  c.inv.weapons[i] = null;
+  if (c.inv.cur === i) {
+    const nx = [0, 1, 2].find((k) => c.inv.weapons[k]);
+    c.inv.cur = nx === undefined ? -1 : nx; c.rl = null; c.cycle = null; c.reloadT = 0; c.inspectT = 0; c.aiming = false;
+    if (nx !== undefined) { c.equipT = 0.6; if (c.isPlayer) Audio.mech('equip', null, c.inv.weapons[nx].id, true); }
+  }
+  c.setVisibleGear();
+  if (c.isPlayer) { HUD.toast('빈 발사관을 버렸습니다', 'info'); if (HUD.refreshInventory) HUD.refreshInventory(); }
+}
 // ---------- 맨손 근접 공격 (무기·탄약이 없을 때) ----------
 //  가드(주먹을 턱 높이) → 지르기(out) → 잠깐 뻗은 채(hold) → 복귀(back). 맞힘 판정은 주먹이 거의 다 뻗은 순간(hitAt)
 //  누르고 있으면 cycle 간격으로 좌우 번갈아 연타, combo 안에 다시 치면 반대손. 마지막 주먹 뒤 guardT 동안 가드 유지
@@ -14963,7 +15374,7 @@ const ss = (t, a, b) => smoothstep01(clamp((t - a) / (b - a), 0, 1));
 function weaponAnim(c, meta) {
   const A = AN, rl = c.rl, cy = c.cycle, wi = c.weapon;
   A.magOff.set(0, 0, 0); A.magVis = true; A.magRot = 0; A.tiltX = A.tiltZ = A.rw = 0; A.rk = 'L'; A.charge = A.fold = A.pump = A.boltUp = A.boltBack = A.slide = A.cover = A.breakOpen = A.lever = 0; A.shellL = A.shellR = false;
-  A.mag2Off.set(0, 0, 0); A.mag2Vis = false; A.mag2Rot = 0; A.clipOff.set(0, 0, 0); A.clipVis = false; A.clipPush = 0;
+  A.mag2Off.set(0, 0, 0); A.mag2Vis = false; A.mag2Rot = 0; A.clipOff.set(0, 0, 0); A.clipVis = false; A.clipPush = 0; A.headVis = !(wi && wi.mag <= 0);
   anchorPos(meta, 'fore', A.left); anchorPos(meta, 'grip', A.right);
   A.li.a = A.li.b = 'fore'; A.li.k = 0; A.ri.a = A.ri.b = 'grip'; A.ri.k = 0;
   if (rl && (rl.kind === 'mag' || rl.kind === 'belt')) {
@@ -15072,6 +15483,7 @@ function applyParts(gun, A) {
   if (P.cover) P.cover.rotation.x = (m.coverAngle || 1.2) * A.cover;
   if (P.barrel) P.barrel.rotation.x = (m.breakAngle || 0.4) * A.breakOpen;
   if (P.lever) P.lever.rotation.x = -(m.leverAngle || 0.9) * A.lever;
+  if (P.head) P.head.visible = A.headVis;
   if (P.clip) {
     P.clip.visible = A.clipVis;
     if (A.clipVis) { P.clip.position.copy(P.clip.userData.home).add(A.clipOff); const r = P.clip.userData.rounds; r.visible = A.clipPush < 0.98; r.position.y = -0.06 * smoothstep01(A.clipPush); }
@@ -15203,7 +15615,7 @@ function killChar(t, attacker, cause) {
   // 사망 시 소지품을 주변에 떨어뜨림 (루팅 가능)
   const sc = G.scene, drop = (id, n, inst) => { const a = Math.random() * TAU, r = 0.4 + Math.random() * 0.9; spawnItem(sc, id, n, t.pos.x + Math.cos(a) * r, groundAt(t.pos.x + Math.cos(a) * r, t.pos.z + Math.sin(a) * r, t.pos.y + 0.5), t.pos.z + Math.sin(a) * r, inst); };
   if (!G.dm) { // 데스매치는 떨어뜨리지 않는다 (부활하면 새로 지급)
-    for (const wi of t.inv.weapons) if (wi) drop(wi.id, 1, wi);
+    for (const wi of t.inv.weapons) if (wi && !(ITEMS[wi.id].rocket && wi.mag <= 0)) drop(wi.id, 1, wi);   // 쏘고 아직 안 버린 빈 발사관은 떨어뜨리지 않음
     for (const k in t.inv.gear) if (t.inv.gear[k]) drop(t.inv.gear[k].id, 1, t.inv.gear[k]);
     for (const id in t.inv.items) drop(id, t.inv.items[id]);
   }
@@ -15235,7 +15647,7 @@ function throwItem(c, type, origin, dir, power, fuse) {
 // 투척물은 1/60초 단위로 나눠 계산 → 프레임률과 상관없이 궤적 미리보기와 같은 곳에 떨어진다
 function updateProjectiles(dt) {
   const n = Math.max(1, Math.ceil(dt * 60 - 1e-6));
-  for (let k = 0; k < n; k++) stepProjectiles(dt / n);
+  for (let k = 0; k < n; k++) { stepProjectiles(dt / n); if (ROCKETS.length) stepRockets(dt / n); }
   for (let i = SMOKES.length - 1; i >= 0; i--) { const s = SMOKES[i]; if (!FX.updateSmoke(s, dt)) SMOKES.splice(i, 1); }
 }
 function stepProjectiles(dt) {
@@ -15307,7 +15719,7 @@ const FX = (() => {
       const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0.8 }));
       l.visible = false; l.frustumCulled = false; scene.add(l); tracers.push({ l, life: 0 });
     }
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 120; i++) {   // v21: 로켓 연기 꼬리 때문에 70 → 120
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, transparent: true, depthWrite: false }));
       s.visible = false; scene.add(s); dots.push({ s, life: 0, max: 1, grow: 1, vy: 0 });
     }
@@ -15405,6 +15817,15 @@ const FX = (() => {
     puff(x, y + 0.6, z, 0xffb050, 3.5, 0.25, 2.5, 0); puff(x, y + 1, z, 0xff7020, 2.2, 0.35, 2, 1);
     for (let i = 0; i < 6; i++) puff(x + rnd(-1.5, 1.5), y + rnd(0.3, 1.5), z + rnd(-1.5, 1.5), 0x4a4440, 2, 1.6, 2.2, 1.2);
   }
+  // 판처파우스트(v21): 로켓 꼬리 불꽃(가산 혼합 스프라이트) · 폭발 = 흰 섬광 → 주황 불덩이 → 검은 연기 + 흙 튐 (수류탄보다 크게)
+  function flame() { return new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, color: 0xffb35a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); }
+  function blast(x, y, z) {
+    if (!scene) return;
+    puff(x, y + 0.5, z, 0xfff2c8, 5.5, 0.16, 1.8, 0); puff(x, y + 0.8, z, 0xffb050, 4.4, 0.34, 2.2, 0.6); puff(x, y + 1.3, z, 0xff6a1a, 3.2, 0.55, 2.0, 1.8);
+    for (let i = 0; i < 9; i++) puff(x + rnd(-2, 2), y + rnd(0.4, 2.2), z + rnd(-2, 2), i % 3 ? 0x3a3532 : 0x5a524a, rnd(2, 3), rnd(1.8, 2.8), 2.4, rnd(1.2, 2.4));
+    for (let i = 0; i < 5; i++) puff(x + rnd(-1.4, 1.4), y + 0.3, z + rnd(-1.4, 1.4), 0x7a6a50, 1.4, 0.9, 2, 3.5);
+    if (G.muzzleLight) { G.muzzleLight.position.set(x, y + 1.5, z); G.muzzleLight.intensity = 9; }
+  }
   function grenadeMesh(type) { const m = Models.display(type); scene.add(m); return m; }
   function smoke(x, y, z) {
     const g = new THREE.Group(), parts = [];
@@ -15436,7 +15857,7 @@ const FX = (() => {
     if (VM.flashLight) VM.flashLight.intensity = Math.max(0, VM.flashLight.intensity - dt * 50);
     updateCases(dt);
   }
-  return { init, tracer, impact, flash, casing, explosion, grenadeMesh, smoke, updateSmoke, update, puff };
+  return { init, tracer, impact, flash, casing, explosion, grenadeMesh, smoke, updateSmoke, update, puff, flame, blast };
 })();
 
 // ---------- 07_bot.js ----------
@@ -15700,6 +16121,7 @@ class Brain {
     const inv = this.c.inv, d = ITEMS[it.id];
     switch (d.type) {
       case 'weapon': {
+        if (d.rocket) return 0;   // 판처파우스트는 봇이 줍지 않음 (1회용 로켓 — 플레이어 전용)
         if (d.slot === 'secondary') return inv.weapons[2] ? 0 : (inv.weapons[0] ? 6 : 45);
         const a = inv.weapons[0], b = inv.weapons[1];
         if (!a || !b) return (a || b) && (a || b).id === it.id ? 4 : 60 + weaponScore(it.inst) / 3;
@@ -16640,7 +17062,7 @@ const BotSkin = (() => {
 // ============================================================
 // 08_airdrop.js — 보급상자: 자기장 1~4단계 축소가 시작될 때마다 수송기가 다음 안전 구역 안에
 //  상자를 떨어뜨린다. 낙하산 강하(약 30초) → 착지 → 주황 연막 → 상자 위에 보급 전용 무기·탄·3레벨 장비
-//  AWM·MG3·SLR은 여기서만 나온다. 지도/미니맵에 위치 표시, 봇도 보고 찾아간다.
+//  AWM·MG3·SLR·AMR·판처파우스트(v21, 45%로 덤)는 여기서만 나온다. 지도/미니맵에 위치 표시, 봇도 보고 찾아간다(판처파우스트는 봇이 줍지 않음).
 // ============================================================
 const Airdrop = (() => {
   let scene = null, list = [], planes = [], lastKey = '', smokeTex = null;
@@ -16709,6 +17131,7 @@ const Airdrop = (() => {
     if (Math.random() < 0.7) put(gun === 'awm' || gun === 'amr' ? weightedPick([['x6', 60], ['x4', 40]]) : weightedPick([['x4', 40], ['x3', 35], ['x6', 25]]), 1);
     put(Math.random() < 0.55 ? 'medkit' : 'firstaid', 1);
     if (gun === 'slr' && Math.random() < 0.5) put('extmag', 1);
+    if (Math.random() < 0.45) put('pzf', 1, newWeapon('pzf', 1));   // v21: 판처파우스트 (보급상자에서만, 45%)
     if (Math.random() < 0.5 && !G.training) put('gold', Math.round(rnd(40, 80)));
     addSmoke(d);
   }
@@ -16754,7 +17177,7 @@ const Airdrop = (() => {
   // 봇용: 가까운 착지 상자(아직 무기가 남아 있음)
   function nearest(x, z, r) {
     let best = null, bd = r;
-    for (const d of list) { if (!d.landed || !d.items.some((it) => it.alive && ITEMS[it.id].type === 'weapon')) continue; const dd = Math.hypot(d.x - x, d.z - z); if (dd < bd) { bd = dd; best = d; } }
+    for (const d of list) { if (!d.landed || !d.items.some((it) => it.alive && ITEMS[it.id].type === 'weapon' && !ITEMS[it.id].rocket)) continue; const dd = Math.hypot(d.x - x, d.z - z); if (dd < bd) { bd = dd; best = d; } }
     return best;
   }
   function markers() { return list.filter((d) => !d.landed || remaining(d) > 0 || (d.remote && G.time - d.landT < 90)).map((d) => ({ x: d.x, z: d.z, falling: !d.landed })); }
@@ -17562,6 +17985,7 @@ const Veh = (() => {
     if (v.hp <= 0) {
       v.hp = 0;
       if (v.T.animal) { kill(v); return; }
+      if (cause === 'pzf') { explode(v); return; }   // 판처파우스트 직격: 불붙는 시간 없이 바로 폭발
       if (v.burnT <= 0) { v.burnT = 3.6; if (G.player && G.player.veh === v) HUD.toast('차량에 불이 붙었습니다! 곧 폭발합니다 — 내리세요 (F)', 'warn'); }
     }
   }
@@ -18523,10 +18947,13 @@ function updateViewModel(dt, p, adsE) {
   VM.tilt.rotation.set(-(A.tiltX + Cam.kickRot * (1 - adsE * 0.6)) - eq * 0.6 + RP.rx * rw, RP.ry * rw, clamp(A.tiltZ * (1 + RP.rz * rw), -0.95, 0.95));
   if (insE > 0) { VM.tilt.rotation.x += lerp(0.32, -0.1, insB) * insE; VM.tilt.rotation.y += lerp(0.3, -0.55, insB) * insE; VM.tilt.rotation.z += lerp(-0.42, 0.55, insB) * insE;
     // 엡실론 전용 살펴보기: 두 자세 사이에서 총이 총열 축으로 한 바퀴 휙 돎
-    const epsI = VM.gun.userData.skin; if (epsI && (epsI.d.eps || epsI.d.xm)) VM.tilt.rotation.z += smoothstep01(clamp((insU - 0.4) / 0.2, 0, 1)) * TAU; }
+    // 크리스마스 EXCLUSIVE(v21): 돌리지 않고 종을 흔들듯 세 번 살랑 + 살짝 들어 올림 (흔들 때마다 방울 소리 — GunSkin.xmInsp)
+    const epsI = VM.gun.userData.skin;
+    if (epsI && epsI.d.xm) { const w = clamp((insU - 0.44) / 0.26, 0, 1), sw = Math.sin(w * Math.PI * 3) * Math.sin(w * Math.PI); VM.tilt.rotation.z += sw * 0.24; VM.tilt.rotation.y += sw * 0.06; VM.tilt.rotation.x += Math.abs(sw) * 0.05 + 0.06 * insE; }
+    else if (epsI && epsI.d.eps) VM.tilt.rotation.z += smoothstep01(clamp((insU - 0.4) / 0.2, 0, 1)) * TAU; }
   VM.shellL.visible = A.shellL; if (A.shellL) { VM.shellL.position.copy(A.left).add(_hw.set(-0.01, 0.025, 0.02)); VM.shellL.rotation.set(0, 0, 0); }
   // 오른손에 든 탄: 무기 탄약에 맞는 모델(7.62 소총탄 · .45 권총탄 …)
-  const ck = CASE_KIND[ITEMS[w.id].ammo], rk = 'rnd' + (ck === 'hull' ? '762' : ck);
+  const ck = CASE_KIND[ITEMS[w.id].ammo] || '762', rk = 'rnd' + (ck === 'hull' ? '762' : ck);
   if (VM.roundKey !== rk) { if (VM.roundR) VM.tilt.remove(VM.roundR); VM.roundR = Models.casing(rk); VM.tilt.add(VM.roundR); VM.roundKey = rk; }
   VM.roundR.visible = A.shellR; if (A.shellR) { VM.roundR.position.copy(A.right).add(_hw.set(0.01, 0.025, 0.03)); }
   // 손: 총의 anchor(손바닥 가운데)로 팔 IK
@@ -18828,7 +19255,7 @@ function playerFire(p) {
     let want = p.burstQ > 0;
     if (!want && Input.fire && (mode === 'auto' || mode === 'slow' || !p.firedThisPress)) { want = true; if (mode === 'burst' && p.weapon.mag > 0) p.burstQ = d.burstN; }
     if (want) {
-      if (p.weapon.mag <= 0) { p.burstQ = 0; if (!p.firedThisPress) { if (!startReload(p)) { Audio.dryfire(); HUD.toast('탄약이 없습니다'); } } p.firedThisPress = true; }
+      if (p.weapon.mag <= 0) { p.burstQ = 0; if (!p.firedThisPress) { if (!startReload(p)) { Audio.dryfire(); HUD.toast(d.rocket ? '빈 발사관입니다 — 곧 버립니다' : '탄약이 없습니다'); } } p.firedThisPress = true; }
       else {
         computeAim(p, _aimO, _aimD);
         if (fireWeapon(p, _aimO, _aimD)) {
@@ -18991,6 +19418,7 @@ function updateCharTimers(c, dt) {
   if (c.pickT > 0) c.pickT = Math.max(0, c.pickT - dt);
   if (c.rollT > 0) c.rollT = Math.max(0, c.rollT - dt);
   if (c.throwAnim > 0) c.throwAnim = Math.max(0, c.throwAnim - dt);
+  if (c.spentT > 0) { c.spentT -= dt; if (c.spentT <= 0) discardSpent(c); }   // 판처파우스트: 쏜 뒤 빈 발사관 버리기
   if (c.knocked) { updateKnocked(c, dt); return; }
   if (c.revive) updateRevive(c, dt);
   if (c.recall && !c.recall.net) Recall.updateReg(c, dt);
@@ -19025,6 +19453,12 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v21', d: '2026-11-16', t: '판처파우스트 · 모바일 무기 바꾸기 · 크리스마스 스킨 개편', items: [
+    '새 무기 판처파우스트 (보급상자에서만) — 1발 쓰고 버리는 대전차 로켓. 맞힌 사람·차량은 한 번에 파괴, 주변 10m 안의 사람·차량도 큰 피해',
+    '모바일: HP 바 위에 주무기 2개, 그 위 오른쪽에 보조무기를 총 실루엣으로 표시 — 누르면 그 무기로 바뀜 (든 무기를 누르면 살펴보기) · 「무기」 버튼은 없앰',
+    '크리스마스 EXCLUSIVE 총기 스킨 개편: TREETOP STAR(트리·색색 전구·트리 별) · CANDY CANE(캔디케인·페퍼민트·나비 리본) · WHITE CHRISTMAS(눈·빨간 리본·금방울)',
+    'EXCLUSIVE 살펴보기를 크리스마스 전용으로 — 선물 포장이 풀리며 화환과 명판이 떠오르고 눈이 내림, 1인칭은 방울 소리에 맞춰 흔듦',
+  ] },
   { v: 'v20', d: '2026-11-15', t: '크리스마스 업데이트', items: [
     '로비가 겨울로 — 눈 내리는 기지 · 눈 덮인 숲과 상자 · 장식 트리와 반짝이는 전구 · 선물 상자 · 눈사람',
     '상점에 크리스마스 상자 — 겨울 테마 옷 · 총기 · 차량 스킨, 새 등급 EXCLUSIVE',
@@ -19430,7 +19864,7 @@ const Dev = (() => {
     if (d.slot === 'secondary') slot = 2;
     else slot = !inv.weapons[0] ? 0 : !inv.weapons[1] ? 1 : inv.cur === 1 ? 1 : 0;
     inv.weapons[slot] = w; inv.cur = slot;
-    inv.items[d.ammo] = (inv.items[d.ammo] || 0) + w.mag * 5;
+    if (d.ammo) inv.items[d.ammo] = (inv.items[d.ammo] || 0) + w.mag * 5;   // 판처파우스트는 탄약 없음
     p.rl = null; p.cycle = null; p.equipT = 0.3; p.setVisibleGear(); HUD.refreshInventory();
     return `${d.name} 지급 (${[w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].filter(Boolean).map((a) => ITEMS[a].name).join(' · ') || '부착물 없음'})`;
   }
@@ -19439,7 +19873,7 @@ const Dev = (() => {
     const inv = p.inv;
     inv.gear = { helmet: { id: 'helm3', dur: ITEMS.helm3.dur }, vest: { id: 'vest3', dur: ITEMS.vest3.dur }, bag: { id: 'bag3' } };
     for (const [id, n] of [['medkit', 2], ['firstaid', 5], ['bandage', 10], ['drink', 5], ['frag', 3], ['smoke', 2]]) inv.items[id] = Math.max(inv.items[id] || 0, n);
-    for (const w of inv.weapons) if (w) inv.items[ITEMS[w.id].ammo] = Math.max(inv.items[ITEMS[w.id].ammo] || 0, inv.magSize(w) * 5);
+    for (const w of inv.weapons) if (w && ITEMS[w.id].ammo) inv.items[ITEMS[w.id].ammo] = Math.max(inv.items[ITEMS[w.id].ammo] || 0, inv.magSize(w) * 5);
     p.hp = 100; p.boost = 100; p.setVisibleGear(); HUD.refreshInventory();
     return '헬멧·조끼·가방 3레벨 + 회복 아이템·수류탄 · 체력·부스트 가득';
   }
@@ -19672,7 +20106,7 @@ const Dev = (() => {
     const r2 = h('div', 'dev-row'); r.parentNode.appendChild(r2);
     const gsel = h('select', 'dev-sel'); const byCls = {};
     for (const id in ITEMS) { const d = ITEMS[id]; if (d.type === 'weapon') (byCls[d.cls] = byCls[d.cls] || []).push(id); }
-    for (const cls of ['AR', 'SMG', 'SG', 'DMR', 'SR', 'LMG', 'PISTOL']) { if (!byCls[cls]) continue; const og = document.createElement('optgroup'); og.label = cls; for (const id of byCls[cls]) { const o = document.createElement('option'); o.value = id; o.textContent = ITEMS[id].name; og.appendChild(o); } gsel.appendChild(og); }
+    for (const cls of ['AR', 'SMG', 'SG', 'DMR', 'SR', 'LMG', 'PISTOL', 'RL']) { if (!byCls[cls]) continue; const og = document.createElement('optgroup'); og.label = cls; for (const id of byCls[cls]) { const o = document.createElement('option'); o.value = id; o.textContent = ITEMS[id].name; og.appendChild(o); } gsel.appendChild(og); }
     gsel.value = F.gun && ITEMS[F.gun] ? F.gun : 'm416'; gsel.disabled = off; gsel.addEventListener('change', () => { F.gun = gsel.value; save(); });
     r2.appendChild(gsel); btn(r2, '총 지급', () => giveGun(gsel.value), { dis: off });
     const r3 = h('div', 'dev-row'); r.parentNode.appendChild(r3);
@@ -19719,7 +20153,7 @@ const Dev = (() => {
 // ============================================================
 const DM = (() => {
   let S = null;
-  const ALL_GUNS = Object.keys(ITEMS).filter((k) => ITEMS[k].type === 'weapon');
+  const ALL_GUNS = Object.keys(ITEMS).filter((k) => ITEMS[k].type === 'weapon' && !ITEMS[k].rocket);   // 판처파우스트(1회용 로켓)는 대결·데스매치 총에서 제외
   const TDM_GUNS = ALL_GUNS.filter((k) => ITEMS[k].cls !== 'PISTOL');          // 전원 권총만 드는 판은 제외
   const SCOPES = ['reddot', 'holo', 'x2', 'x3', 'x4', 'x6'];
   const TEAM_NAMES = ['블루', '레드'];
@@ -19765,7 +20199,7 @@ const DM = (() => {
     try { await generateWorld('arena', sc, prog); }
     catch (e) { console.error(e); fatal('맵 생성 중 오류: ' + e.message); return; }
     prog(0.98, '부대 배치');
-    Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; PathQ.clear(); G.myNade = null;
+    Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
     Zone.cur = Zone.next = null; Zone.state = 'wait'; Airdrop.init(sc); G.plane = null;
     GROUND = []; itemGrid = new Array(IGN * IGN).fill(EMPTY_LIST);
     CHARS = []; G.noises = []; G.time = 0; G.stats = { shots: 0, hits: 0 }; G.killLog = []; G.knockLog = []; G.marker = null; G.updateMarker(); G.spec = null;
@@ -20996,6 +21430,31 @@ const HUD = (() => {
       toast(`${by.name}: 적 발견! ${dirName(dx, dz)}쪽 ${Math.round(Math.hypot(dx, dz))}m`, 'warn');
     }
   }
+  // 모바일(v21): HP 바 위 무기 실루엣 — 주무기 1·2 나란히, 그 위 오른쪽에 보조무기. 누르면 그 무기로 바꾸고, 지금 든 무기를 누르면 살펴보기
+  //  실루엣 = 총 아이콘(부착물 포함)을 흰 그림자로. 지금 든 칸은 밝게 + 탄수 크게, 엡실론·EXCLUSIVE 스킨이면 테두리 색
+  function touchWeapons(p, inv, wkey) {
+    const pri = $('wsPri'), sec = $('wsSec'); if (!pri || pri.dataset.k === wkey) return;
+    pri.dataset.k = wkey; pri.innerHTML = ''; sec.innerHTML = '';
+    for (const i of [0, 1, 2]) {
+      const w = inv.weapons[i], cur = i === inv.cur, sk = w && p.skinOf(w.id), sd = sk && GSKINS[sk];
+      const b = h('button', 'ws-slot' + (cur ? ' cur' : '') + (w ? '' : ' empty') + (sd && sd.rar === 7 ? ' epsilon' : sd && sd.rar === 8 ? ' exclusive' : '') + (w && ITEMS[w.id].rocket ? ' rocket' : '')); b.type = 'button';
+      if (w) {
+        const d = ITEMS[w.id], src = Models.icon(w.id, w.att);
+        if (src) { const im = h('img', 'ws-sil'); im.src = src; im.alt = ''; im.draggable = false; b.appendChild(im); }
+        b.appendChild(h('span', 'ws-n', String(i + 1)));
+        const a = h('span', 'ws-a'); a.append(String(w.mag)); a.appendChild(h('small', '', d.ammo ? ' / ' + inv.count(d.ammo) : ' 발')); b.appendChild(a);
+        if (cur && d.modes.length > 1) b.appendChild(h('span', 'ws-m', modeName(w.id, fireMode(w))));
+        b.setAttribute('aria-label', d.name + (cur ? ' (든 무기 · 누르면 살펴보기)' : ' 들기'));
+      } else { b.appendChild(h('span', 'ws-e', i === 2 ? '보조무기' : '주무기 ' + (i + 1))); b.disabled = true; }
+      b.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault(); ev.stopPropagation(); if (!w) return;
+        try { Audio.init(); } catch (e) { /* 소리 없이도 */ }
+        b.classList.add('down'); setTimeout(() => b.classList.remove('down'), 140);
+        Input.press(cur ? 'inspect' : ['w1', 'w2', 'w3'][i]);
+      });
+      (i === 2 ? sec : pri).appendChild(b);
+    }
+  }
   function update(dt) {
     const p = G.player; if (!p) return;
     const spec = !p.alive && G.spec && G.spec.alive && !G.over;
@@ -21044,13 +21503,14 @@ const HUD = (() => {
         e.appendChild(ico(w.id, w.att, 'ico wide wi'));
         e.appendChild(h('span', 'wn', `${i + 1}  ${d.name}`));
         if (d.modes.length > 1 || i === inv.cur) e.appendChild(h('span', 'wm', modeName(w.id, fireMode(w))));
-        const a = h('span', 'wa'); a.append(String(w.mag)); a.appendChild(h('small', '', ' / ' + inv.count(d.ammo))); e.appendChild(a);
+        const a = h('span', 'wa'); a.append(String(w.mag)); a.appendChild(h('small', '', d.ammo ? ' / ' + inv.count(d.ammo) : ' 발 · 1회용')); e.appendChild(a);
         wp.appendChild(e);
       });
       const meta = h('div', 'wmeta');
       meta.append(`${ITEMS[inv.throwSel].name.split(' ').pop()} ${inv.count(inv.throwSel)}`, ' · ', `회복 ${inv.count('bandage')}/${inv.count('firstaid')}/${inv.count('medkit')}`, ' · ', `음료 ${inv.count('drink')}`);
       wp.appendChild(meta);
     }
+    if (IS_TOUCH) touchWeapons(p, inv, wkey);
     // 카운터
     const alive = CHARS.filter(c => c.alive).length;
     $('alive').textContent = alive;
@@ -21385,7 +21845,7 @@ const HUD = (() => {
       acts.appendChild(btn('버리기', () => dropFromInventory(p, G.scene, { weapon: i })));
       top.appendChild(acts); card.appendChild(top);
       card.appendChild(ico(w.id, w.att, 'ico wide big'));
-      card.appendChild(h('div', 'micro', `${AMMO_NAMES[d.ammo]} · 탄창 ${w.mag}/${inv.magSize(w)} · 보유 ${inv.count(d.ammo)} · 피해 ${d.dmg}${d.pellets ? '×' + d.pellets : ''} · ${d.modes.map(m => modeName(w.id, m)).join('/')}${d.supply ? ' · 보급 전용' : ''}`));
+      card.appendChild(h("div", "micro", d.rocket ? `1회용 대전차 로켓 · ${w.mag ? "장전됨" : "빈 발사관"} · 직격하면 사람·차량 파괴 · 반경 ${d.blastR}m 폭발 · 보급 전용` : `${AMMO_NAMES[d.ammo]} · 탄창 ${w.mag}/${inv.magSize(w)} · 보유 ${inv.count(d.ammo)} · 피해 ${d.dmg}${d.pellets ? '×' + d.pellets : ''} · ${d.modes.map(m => modeName(w.id, m)).join('/')}${d.supply ? ' · 보급 전용' : ''}`));
       const chips = h('div', 'chips');
       for (const slot of ['scope', 'muzzle', 'mag', 'grip']) {
         if (slot === 'scope' && d.fixedScope) { const c = h('button', 'chip'); c.disabled = true; c.title = '총에 붙어 있어 뗄 수 없음'; c.append(d.fixedScope.name); chips.appendChild(c); continue; }
@@ -21803,6 +22263,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: 'v21 신규 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: '크리스마스', title: '크리스마스 상자 — 겨울 옷·총기·차량 스킨 · 새 등급 EXCLUSIVE (루돌프 썰매 · 전용 처치 효과 총 · 빛나는 옷)', img: () => { try { return Shop.crateThumb('xmas'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=gacha]'); if (b) b.click(); } },
     { tag: '콜라보 이벤트', title: `THE BACKROOMS 탈출 이벤트 — 백룸에서 탈출하면 골드 탄피 ${BR_EVENT.gold.toLocaleString()} + 칭호 ‘${BR_EVENT.title}’`, img: () => EvBR.banner(), act: () => EvBR.open() },
     { tag: '이벤트', title: '골드 탄피 이벤트 — 골드 러시 · 행운의 골드 상자 · 매치 보너스 · 주간 챌린지 · 현상금', img: () => LOBBY_ART.vehicles, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=event]'); if (b) b.click(); } },
@@ -22112,6 +22573,7 @@ const Net = (() => {
       case 'rev': netRevive(e); break;
       case 'shot': remoteShot(e); break;
       case 'throw': remoteThrow(e); break;
+      case 'rkt': { const c = charById(e.c); if (c && !mine(c) && G.scene) { const p = new THREE.Vector3(e.p[0], e.p[1], e.p[2]), D = new THREE.Vector3(e.v[0], e.v[1], e.v[2]); spawnRocket(c, p, D, p, ITEMS.pzf, true); backblast(p.clone().addScaledVector(D, -1.1), D); Audio.rocket('launch', p, false); c.lastShotT = G.time; } break; }   // 판처파우스트: 보이기·소리만
       case 'pu': remotePunch(e); break;
       case 'rc': Recall.onNet(e, from); break;   // 리콜: 등록 요청(→방장)·승인(방장→모두)·단말기 작동·거절
       case 'gadd': { if (N.items.has(e.u)) break; N.applying++; spawnItem(G.scene, e.i, e.n, e.x, e.y, e.z, e.in || null, e.u); N.applying--; break; }
@@ -22478,7 +22940,7 @@ const Net = (() => {
     c.botized = true; c.net = { owner: N.cfg.host, mine: true, buf: [], life: c.net ? c.net.life : 0 };
     ev({ k: 'own', c: c.id, o: N.cfg.host });
     if (c.alive) {
-      const wi = c.weapon; if (wi) { const a = ITEMS[wi.id].ammo; c.inv.items[a] = (c.inv.items[a] || 0) + ITEMS[wi.id].mag * 3; }
+      const wi = c.weapon; if (wi && ITEMS[wi.id].ammo) { const a = ITEMS[wi.id].ammo; c.inv.items[a] = (c.inv.items[a] || 0) + ITEMS[wi.id].mag * 3; }
       if (!c.inv.items.bandage) c.inv.items.bandage = 3;
       const b = new Brain(c, 'normal'); b.state = c.mode === 'ground' ? 'EXPLORE' : 'LANDING'; b.landT = G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0;
     }
@@ -24333,7 +24795,7 @@ const TOUCH_BTNS = [
   { id: 'crouch', label: '앉기', tap: 'crouch', size: 54, def: { ax: 'r', ay: 'b', x: 107, y: 43 } },
   { id: 'prone', label: '엎드', tap: 'prone', size: 54, def: { ax: 'r', ay: 'b', x: 171, y: 43 } },
   { id: 'reload', label: '장전', tap: 'reload', size: 54, def: { ax: 'r', ay: 'b', x: 147, y: 107 } },
-  { id: 'swap', label: '무기', tap: 'weaponCycle', size: 54, def: { ax: 'r', ay: 'b', x: 63, y: 196 } },
+  // (v21) '무기' 교체 버튼은 없앰 — HP 바 위 무기 실루엣을 눌러 바꾼다 (10_hud.js touchWeapons)
   { id: 'interact', label: '줍기', tap: 'interact', size: 54, cls: 'interact', def: { ax: 'r', ay: 'b', x: 213, y: 143 } },
   { id: 'mode', label: '모드', tap: 'fireMode', size: 44, def: { ax: 'r', ay: 'b', x: 213, y: 205 } },
   { id: 'sprint', label: '달리기', hold: 'sprint', size: 54, def: { ax: 'l', ay: 't', x: 39, y: 73 } },
@@ -24658,7 +25120,7 @@ const Training = (() => {
     try { await generateWorld('training', sc, prog); }
     catch (e) { console.error(e); fatal('훈련장 생성 중 오류: ' + e.message); return; }
     prog(0.97, '무기고 정리');
-    Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; PathQ.clear(); G.myNade = null;
+    Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
     Zone.cur = Zone.next = null; Zone.state = 'wait'; Airdrop.init(sc); G.plane = null;
     CHARS = []; G.noises = []; G.time = 0; G.stats = { shots: 0, hits: 0 }; G.killLog = []; G.knockLog = []; G.marker = null; G.updateMarker(); G.spec = null;
     G.teamOrder = null; G.spotted = new Map(); G.danger = null; G.ranked = false; G.hc = false; G.quit = false; G.rankResult = null;
@@ -24809,7 +25271,7 @@ const Training = (() => {
       if (!p.alive) { S.respawnT -= dt; if (S.respawnT <= 0) { S.respawnT = 0; respawnPlayer(p); } }
       else {
         if (p.hp < 100 && G.time - p.lastDamageT > 3) p.hp = Math.min(100, p.hp + dt * 30);
-        for (const wi of p.inv.weapons) if (wi) { const a = ITEMS[wi.id].ammo, m = p.inv.magSize(wi); if (p.inv.count(a) < m * 2) p.inv.items[a] = m * 3; }
+        for (const wi of p.inv.weapons) if (wi && ITEMS[wi.id].ammo) { const a = ITEMS[wi.id].ammo, m = p.inv.magSize(wi); if (p.inv.count(a) < m * 2) p.inv.items[a] = m * 3; }
       }
     }
     S.tick -= dt; if (S.tick > 0) return; S.tick = 0.5;
@@ -25644,7 +26106,7 @@ async function startMatch(cfg) {
   Veh.init(sc);
   if (net) Net.seeded(cfg.seed + 2, () => Veh.spawnAll()); else Veh.spawnAll();
   if (net) { Net.indexVehicles(); Net.baseline(); }
-  FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; PathQ.clear(); G.myNade = null;
+  FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
   Zone.init(sc, MODES[SETTINGS.mode].zoneScale, SETTINGS.map);
   Airdrop.init(sc); Recall.init(sc);
   setupPlane(sc, net ? cfg.plane : null);

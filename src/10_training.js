@@ -41,7 +41,7 @@ const Training = (() => {
     try { await generateWorld('training', sc, prog); }
     catch (e) { console.error(e); fatal('훈련장 생성 중 오류: ' + e.message); return; }
     prog(0.97, '무기고 정리');
-    Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; PathQ.clear(); G.myNade = null;
+    Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
     Zone.cur = Zone.next = null; Zone.state = 'wait'; Airdrop.init(sc); G.plane = null;
     CHARS = []; G.noises = []; G.time = 0; G.stats = { shots: 0, hits: 0 }; G.killLog = []; G.knockLog = []; G.marker = null; G.updateMarker(); G.spec = null;
     G.teamOrder = null; G.spotted = new Map(); G.danger = null; G.ranked = false; G.hc = false; G.quit = false; G.rankResult = null;
@@ -192,7 +192,7 @@ const Training = (() => {
       if (!p.alive) { S.respawnT -= dt; if (S.respawnT <= 0) { S.respawnT = 0; respawnPlayer(p); } }
       else {
         if (p.hp < 100 && G.time - p.lastDamageT > 3) p.hp = Math.min(100, p.hp + dt * 30);
-        for (const wi of p.inv.weapons) if (wi) { const a = ITEMS[wi.id].ammo, m = p.inv.magSize(wi); if (p.inv.count(a) < m * 2) p.inv.items[a] = m * 3; }
+        for (const wi of p.inv.weapons) if (wi && ITEMS[wi.id].ammo) { const a = ITEMS[wi.id].ammo, m = p.inv.magSize(wi); if (p.inv.count(a) < m * 2) p.inv.items[a] = m * 3; }
       }
     }
     S.tick -= dt; if (S.tick > 0) return; S.tick = 0.5;

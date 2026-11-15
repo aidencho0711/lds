@@ -258,6 +258,7 @@ class Brain {
     const inv = this.c.inv, d = ITEMS[it.id];
     switch (d.type) {
       case 'weapon': {
+        if (d.rocket) return 0;   // 판처파우스트는 봇이 줍지 않음 (1회용 로켓 — 플레이어 전용)
         if (d.slot === 'secondary') return inv.weapons[2] ? 0 : (inv.weapons[0] ? 6 : 45);
         const a = inv.weapons[0], b = inv.weapons[1];
         if (!a || !b) return (a || b) && (a || b).id === it.id ? 4 : 60 + weaponScore(it.inst) / 3;

@@ -310,6 +310,31 @@ const HUD = (() => {
       toast(`${by.name}: 적 발견! ${dirName(dx, dz)}쪽 ${Math.round(Math.hypot(dx, dz))}m`, 'warn');
     }
   }
+  // 모바일(v21): HP 바 위 무기 실루엣 — 주무기 1·2 나란히, 그 위 오른쪽에 보조무기. 누르면 그 무기로 바꾸고, 지금 든 무기를 누르면 살펴보기
+  //  실루엣 = 총 아이콘(부착물 포함)을 흰 그림자로. 지금 든 칸은 밝게 + 탄수 크게, 엡실론·EXCLUSIVE 스킨이면 테두리 색
+  function touchWeapons(p, inv, wkey) {
+    const pri = $('wsPri'), sec = $('wsSec'); if (!pri || pri.dataset.k === wkey) return;
+    pri.dataset.k = wkey; pri.innerHTML = ''; sec.innerHTML = '';
+    for (const i of [0, 1, 2]) {
+      const w = inv.weapons[i], cur = i === inv.cur, sk = w && p.skinOf(w.id), sd = sk && GSKINS[sk];
+      const b = h('button', 'ws-slot' + (cur ? ' cur' : '') + (w ? '' : ' empty') + (sd && sd.rar === 7 ? ' epsilon' : sd && sd.rar === 8 ? ' exclusive' : '') + (w && ITEMS[w.id].rocket ? ' rocket' : '')); b.type = 'button';
+      if (w) {
+        const d = ITEMS[w.id], src = Models.icon(w.id, w.att);
+        if (src) { const im = h('img', 'ws-sil'); im.src = src; im.alt = ''; im.draggable = false; b.appendChild(im); }
+        b.appendChild(h('span', 'ws-n', String(i + 1)));
+        const a = h('span', 'ws-a'); a.append(String(w.mag)); a.appendChild(h('small', '', d.ammo ? ' / ' + inv.count(d.ammo) : ' 발')); b.appendChild(a);
+        if (cur && d.modes.length > 1) b.appendChild(h('span', 'ws-m', modeName(w.id, fireMode(w))));
+        b.setAttribute('aria-label', d.name + (cur ? ' (든 무기 · 누르면 살펴보기)' : ' 들기'));
+      } else { b.appendChild(h('span', 'ws-e', i === 2 ? '보조무기' : '주무기 ' + (i + 1))); b.disabled = true; }
+      b.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault(); ev.stopPropagation(); if (!w) return;
+        try { Audio.init(); } catch (e) { /* 소리 없이도 */ }
+        b.classList.add('down'); setTimeout(() => b.classList.remove('down'), 140);
+        Input.press(cur ? 'inspect' : ['w1', 'w2', 'w3'][i]);
+      });
+      (i === 2 ? sec : pri).appendChild(b);
+    }
+  }
   function update(dt) {
     const p = G.player; if (!p) return;
     const spec = !p.alive && G.spec && G.spec.alive && !G.over;
@@ -358,13 +383,14 @@ const HUD = (() => {
         e.appendChild(ico(w.id, w.att, 'ico wide wi'));
         e.appendChild(h('span', 'wn', `${i + 1}  ${d.name}`));
         if (d.modes.length > 1 || i === inv.cur) e.appendChild(h('span', 'wm', modeName(w.id, fireMode(w))));
-        const a = h('span', 'wa'); a.append(String(w.mag)); a.appendChild(h('small', '', ' / ' + inv.count(d.ammo))); e.appendChild(a);
+        const a = h('span', 'wa'); a.append(String(w.mag)); a.appendChild(h('small', '', d.ammo ? ' / ' + inv.count(d.ammo) : ' 발 · 1회용')); e.appendChild(a);
         wp.appendChild(e);
       });
       const meta = h('div', 'wmeta');
       meta.append(`${ITEMS[inv.throwSel].name.split(' ').pop()} ${inv.count(inv.throwSel)}`, ' · ', `회복 ${inv.count('bandage')}/${inv.count('firstaid')}/${inv.count('medkit')}`, ' · ', `음료 ${inv.count('drink')}`);
       wp.appendChild(meta);
     }
+    if (IS_TOUCH) touchWeapons(p, inv, wkey);
     // 카운터
     const alive = CHARS.filter(c => c.alive).length;
     $('alive').textContent = alive;
@@ -699,7 +725,7 @@ const HUD = (() => {
       acts.appendChild(btn('버리기', () => dropFromInventory(p, G.scene, { weapon: i })));
       top.appendChild(acts); card.appendChild(top);
       card.appendChild(ico(w.id, w.att, 'ico wide big'));
-      card.appendChild(h('div', 'micro', `${AMMO_NAMES[d.ammo]} · 탄창 ${w.mag}/${inv.magSize(w)} · 보유 ${inv.count(d.ammo)} · 피해 ${d.dmg}${d.pellets ? '×' + d.pellets : ''} · ${d.modes.map(m => modeName(w.id, m)).join('/')}${d.supply ? ' · 보급 전용' : ''}`));
+      card.appendChild(h("div", "micro", d.rocket ? `1회용 대전차 로켓 · ${w.mag ? "장전됨" : "빈 발사관"} · 직격하면 사람·차량 파괴 · 반경 ${d.blastR}m 폭발 · 보급 전용` : `${AMMO_NAMES[d.ammo]} · 탄창 ${w.mag}/${inv.magSize(w)} · 보유 ${inv.count(d.ammo)} · 피해 ${d.dmg}${d.pellets ? '×' + d.pellets : ''} · ${d.modes.map(m => modeName(w.id, m)).join('/')}${d.supply ? ' · 보급 전용' : ''}`));
       const chips = h('div', 'chips');
       for (const slot of ['scope', 'muzzle', 'mag', 'grip']) {
         if (slot === 'scope' && d.fixedScope) { const c = h('button', 'chip'); c.disabled = true; c.title = '총에 붙어 있어 뗄 수 없음'; c.append(d.fixedScope.name); chips.appendChild(c); continue; }
@@ -1117,6 +1143,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: 'v21 신규 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: '크리스마스', title: '크리스마스 상자 — 겨울 옷·총기·차량 스킨 · 새 등급 EXCLUSIVE (루돌프 썰매 · 전용 처치 효과 총 · 빛나는 옷)', img: () => { try { return Shop.crateThumb('xmas'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=gacha]'); if (b) b.click(); } },
     { tag: '콜라보 이벤트', title: `THE BACKROOMS 탈출 이벤트 — 백룸에서 탈출하면 골드 탄피 ${BR_EVENT.gold.toLocaleString()} + 칭호 ‘${BR_EVENT.title}’`, img: () => EvBR.banner(), act: () => EvBR.open() },
     { tag: '이벤트', title: '골드 탄피 이벤트 — 골드 러시 · 행운의 골드 상자 · 매치 보너스 · 주간 챌린지 · 현상금', img: () => LOBBY_ART.vehicles, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=event]'); if (b) b.click(); } },

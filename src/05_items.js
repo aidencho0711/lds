@@ -36,6 +36,9 @@ const ITEMS = {
   groza: { type: 'weapon', name: 'Groza 돌격소총', cls: 'AR', slot: 'primary', ammo: 'a762', dmg: 40, rpm: 750, modes: ['auto', 'single'], mag: 30, reload: 2.5, reloadEmpty: 3.1, rStyle: 'bullpup', spread: 0.85, recoil: 1.2, range: 290, zoom: 1.2, tier: 4, color: 0x262824 },
   amr: { type: 'weapon', name: 'AMR 대물저격소총', cls: 'SR', slot: 'primary', ammo: 'a50', dmg: 150, rpm: 36, modes: ['single'], mag: 5, rKind: 'boltmag', reload: 3.6, reloadEmpty: 4.5, cycle: 'bolt', cycleT: 1.35, spread: 0.025, recoil: 5.8, range: 1000, zoom: 1.25, tier: 4, supply: true, color: 0x2a2c2e },
   dbs: { type: 'weapon', name: 'DBS 산탄총', cls: 'SG', slot: 'primary', ammo: 'a12', dmg: 18, pellets: 9, rpm: 100, modes: ['single'], mag: 14, rKind: 'shell', rOpen: 0.3, rShell: 0.42, rClose: 0.28, rCloseEmpty: 0.4, cycle: 'pump', spread: 2.1, recoil: 2.7, range: 46, zoom: 1.1, tier: 3, noExt: true, color: 0x232527 },
+  // v21 판처파우스트: 보급상자 전용 · 1발 쓰고 버리는 대전차 로켓 (탄약 없음, 장전 불가). 맞힌 사람·차량은 한 번에 파괴, 주변(반경 10m)도 큰 피해
+  //  rocket: 06_combat.js 가 히트스캔 대신 날아가는 로켓을 쏜다 (속도 rv m/s, 중력 rg) · 쏘고 나면 빈 발사관을 버리고 다른 무기로
+  pzf: { type: 'weapon', name: '판처파우스트', cls: 'RL', slot: 'primary', ammo: null, dmg: 999, rpm: 30, modes: ['single'], mag: 1, rocket: true, rv: 90, rg: 1.6, blastR: 10, spread: 0.35, recoil: 5.2, range: 180, zoom: 1.12, tier: 5, supply: true, noExt: true, noScope: true, noMuzzle: true, moveMul: 0.9, adsMul: 1.35, color: 0x4a5230 },
   // ----- 탄약 -----
   a556: { type: 'ammo', name: '5.56mm 탄', w: 0.4, stack: 40, color: 0xb0a040 },
   a762: { type: 'ammo', name: '7.62mm 탄', w: 0.5, stack: 30, color: 0xb07a30 },
@@ -118,7 +121,7 @@ class Inventory {
   healCount() { return this.count('bandage') + this.count('firstaid') * 3 + this.count('medkit') * 4; }
 }
 function newWeapon(id, loaded = 0) { const d = ITEMS[id]; return { id, mag: loaded, fm: 0, att: { scope: d.defScope || null, muzzle: null, mag: null, grip: null } }; }
-function weaponScore(wi) { if (!wi) return 0; const d = ITEMS[wi.id]; return { AR: 60, LMG: 63, DMR: 55, SR: 50, SMG: 45, SG: 40, PISTOL: 15 }[d.cls] + (d.supply ? 12 : 0) + Object.values(wi.att).filter(Boolean).length * 4; }
+function weaponScore(wi) { if (!wi) return 0; const d = ITEMS[wi.id]; return { AR: 60, LMG: 63, DMR: 55, SR: 50, SMG: 45, SG: 40, PISTOL: 15, RL: 30 }[d.cls] + (d.supply ? 12 : 0) + Object.values(wi.att).filter(Boolean).length * 4; }
 function attFits(attId, wid) {
   const a = ITEMS[attId], d = ITEMS[wid];
   if (wid === 's686') return false; // 중절식 2연발: 부착 불가
@@ -270,7 +273,7 @@ function pickupItemRaw(c, it, scene, opts = {}) {
     else slot = (inv.cur === 0 || inv.cur === 1) ? inv.cur : 0;
     const old = inv.weapons[slot];
     if (old) { // 교체: 기존 무기 장전 탄은 회수 후 버림
-      const rec = inv.add(ITEMS[old.id].ammo, old.mag); old.mag -= rec;
+      const oa = ITEMS[old.id].ammo, rec = oa ? inv.add(oa, old.mag) : 0; old.mag -= rec;   // 판처파우스트(탄약 없음)는 장전된 채 그대로 버림
       // 부착물 이전
       for (const k in old.att) if (old.att[k] && !inst.att[k] && attFits(old.att[k], inst.id)) { inst.att[k] = old.att[k]; old.att[k] = null; }
       dropAt(old.id, 1, old);

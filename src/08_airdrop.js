@@ -1,7 +1,7 @@
 // ============================================================
 // 08_airdrop.js — 보급상자: 자기장 1~4단계 축소가 시작될 때마다 수송기가 다음 안전 구역 안에
 //  상자를 떨어뜨린다. 낙하산 강하(약 30초) → 착지 → 주황 연막 → 상자 위에 보급 전용 무기·탄·3레벨 장비
-//  AWM·MG3·SLR은 여기서만 나온다. 지도/미니맵에 위치 표시, 봇도 보고 찾아간다.
+//  AWM·MG3·SLR·AMR·판처파우스트(v21, 45%로 덤)는 여기서만 나온다. 지도/미니맵에 위치 표시, 봇도 보고 찾아간다(판처파우스트는 봇이 줍지 않음).
 // ============================================================
 const Airdrop = (() => {
   let scene = null, list = [], planes = [], lastKey = '', smokeTex = null;
@@ -70,6 +70,7 @@ const Airdrop = (() => {
     if (Math.random() < 0.7) put(gun === 'awm' || gun === 'amr' ? weightedPick([['x6', 60], ['x4', 40]]) : weightedPick([['x4', 40], ['x3', 35], ['x6', 25]]), 1);
     put(Math.random() < 0.55 ? 'medkit' : 'firstaid', 1);
     if (gun === 'slr' && Math.random() < 0.5) put('extmag', 1);
+    if (Math.random() < 0.45) put('pzf', 1, newWeapon('pzf', 1));   // v21: 판처파우스트 (보급상자에서만, 45%)
     if (Math.random() < 0.5 && !G.training) put('gold', Math.round(rnd(40, 80)));
     addSmoke(d);
   }
@@ -115,7 +116,7 @@ const Airdrop = (() => {
   // 봇용: 가까운 착지 상자(아직 무기가 남아 있음)
   function nearest(x, z, r) {
     let best = null, bd = r;
-    for (const d of list) { if (!d.landed || !d.items.some((it) => it.alive && ITEMS[it.id].type === 'weapon')) continue; const dd = Math.hypot(d.x - x, d.z - z); if (dd < bd) { bd = dd; best = d; } }
+    for (const d of list) { if (!d.landed || !d.items.some((it) => it.alive && ITEMS[it.id].type === 'weapon' && !ITEMS[it.id].rocket)) continue; const dd = Math.hypot(d.x - x, d.z - z); if (dd < bd) { bd = dd; best = d; } }
     return best;
   }
   function markers() { return list.filter((d) => !d.landed || remaining(d) > 0 || (d.remote && G.time - d.landT < 90)).map((d) => ({ x: d.x, z: d.z, falling: !d.landed })); }

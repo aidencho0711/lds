@@ -385,6 +385,7 @@ const Models = (() => {
     if (D.cover) mk('cover', 'coverPos', 'gcv:' + id, D.cover);
     if (D.barrel) mk('barrel', 'barrelPos', 'gbr:' + id, D.barrel);
     if (D.lever) mk('lever', 'leverPos', 'glv:' + id, D.lever);
+    if (D.head) mk('head', 'headPos', 'gh:' + id, D.head);   // 판처파우스트 탄두 (쏘면 빈 발사관만 남음)
     // 클립(삽탄자): 클립 띠 + 탄 5발(눌러 내리면 탄창으로 들어감). 장전할 때만 보임
     if (D.clip) { const c = mk('clip', 'clipPos', 'gcl:' + id, D.clip); const r = cluster('gclr:' + id, D.clipRounds); r.name = 'rounds'; c.add(r); c.userData.rounds = r; c.visible = false; }
     const host = meta.scopeOnCover && parts.cover ? parts.cover : (!meta.scopeFixed && parts.slide) || g, hp = host === g ? [0, 0, 0] : host.position.toArray();
@@ -398,7 +399,7 @@ const Models = (() => {
       const S = SC[meta.fixedScope], s = cluster('sc:' + meta.fixedScope, S.build); s.userData.noSkin = true; s.name = 'scope';
       s.position.set(0, meta.railY, meta.scopeZ); g.add(s);
       meta.sightY = meta.railY + S.eyeY; meta.sightRearZ = meta.scopeZ - S.len / 2; meta.relief = S.relief;
-    } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.pistol ? 0.4 : 0.3; }
+    } else { meta.sightY = meta.ironY; meta.sightRearZ = meta.ironRearZ; meta.relief = meta.ironRelief || (meta.pistol ? 0.4 : 0.3); }
     if (D.front) g.add(att.scope && D.frontFolded ? cluster('gff:' + id, D.frontFolded) : cluster('gf:' + id, D.front));
     if (att.muzzle) { const m = cluster('at:comp', ATT.comp); m.userData.noSkin = true; m.position.set(0, meta.boreY, meta.muzzleZ); g.add(m); meta.muzzleZ += 0.05; }
     if (att.grip && meta.vgripPos) { const m = cluster('at:grip', ATT.grip); m.userData.noSkin = true; m.position.fromArray(meta.vgripPos); g.add(m); meta.forePos = meta.vgripHand; meta.vfore = true; }

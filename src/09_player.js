@@ -290,10 +290,13 @@ function updateViewModel(dt, p, adsE) {
   VM.tilt.rotation.set(-(A.tiltX + Cam.kickRot * (1 - adsE * 0.6)) - eq * 0.6 + RP.rx * rw, RP.ry * rw, clamp(A.tiltZ * (1 + RP.rz * rw), -0.95, 0.95));
   if (insE > 0) { VM.tilt.rotation.x += lerp(0.32, -0.1, insB) * insE; VM.tilt.rotation.y += lerp(0.3, -0.55, insB) * insE; VM.tilt.rotation.z += lerp(-0.42, 0.55, insB) * insE;
     // 엡실론 전용 살펴보기: 두 자세 사이에서 총이 총열 축으로 한 바퀴 휙 돎
-    const epsI = VM.gun.userData.skin; if (epsI && (epsI.d.eps || epsI.d.xm)) VM.tilt.rotation.z += smoothstep01(clamp((insU - 0.4) / 0.2, 0, 1)) * TAU; }
+    // 크리스마스 EXCLUSIVE(v21): 돌리지 않고 종을 흔들듯 세 번 살랑 + 살짝 들어 올림 (흔들 때마다 방울 소리 — GunSkin.xmInsp)
+    const epsI = VM.gun.userData.skin;
+    if (epsI && epsI.d.xm) { const w = clamp((insU - 0.44) / 0.26, 0, 1), sw = Math.sin(w * Math.PI * 3) * Math.sin(w * Math.PI); VM.tilt.rotation.z += sw * 0.24; VM.tilt.rotation.y += sw * 0.06; VM.tilt.rotation.x += Math.abs(sw) * 0.05 + 0.06 * insE; }
+    else if (epsI && epsI.d.eps) VM.tilt.rotation.z += smoothstep01(clamp((insU - 0.4) / 0.2, 0, 1)) * TAU; }
   VM.shellL.visible = A.shellL; if (A.shellL) { VM.shellL.position.copy(A.left).add(_hw.set(-0.01, 0.025, 0.02)); VM.shellL.rotation.set(0, 0, 0); }
   // 오른손에 든 탄: 무기 탄약에 맞는 모델(7.62 소총탄 · .45 권총탄 …)
-  const ck = CASE_KIND[ITEMS[w.id].ammo], rk = 'rnd' + (ck === 'hull' ? '762' : ck);
+  const ck = CASE_KIND[ITEMS[w.id].ammo] || '762', rk = 'rnd' + (ck === 'hull' ? '762' : ck);
   if (VM.roundKey !== rk) { if (VM.roundR) VM.tilt.remove(VM.roundR); VM.roundR = Models.casing(rk); VM.tilt.add(VM.roundR); VM.roundKey = rk; }
   VM.roundR.visible = A.shellR; if (A.shellR) { VM.roundR.position.copy(A.right).add(_hw.set(0.01, 0.025, 0.03)); }
   // 손: 총의 anchor(손바닥 가운데)로 팔 IK
@@ -595,7 +598,7 @@ function playerFire(p) {
     let want = p.burstQ > 0;
     if (!want && Input.fire && (mode === 'auto' || mode === 'slow' || !p.firedThisPress)) { want = true; if (mode === 'burst' && p.weapon.mag > 0) p.burstQ = d.burstN; }
     if (want) {
-      if (p.weapon.mag <= 0) { p.burstQ = 0; if (!p.firedThisPress) { if (!startReload(p)) { Audio.dryfire(); HUD.toast('탄약이 없습니다'); } } p.firedThisPress = true; }
+      if (p.weapon.mag <= 0) { p.burstQ = 0; if (!p.firedThisPress) { if (!startReload(p)) { Audio.dryfire(); HUD.toast(d.rocket ? '빈 발사관입니다 — 곧 버립니다' : '탄약이 없습니다'); } } p.firedThisPress = true; }
       else {
         computeAim(p, _aimO, _aimD);
         if (fireWeapon(p, _aimO, _aimD)) {
@@ -758,6 +761,7 @@ function updateCharTimers(c, dt) {
   if (c.pickT > 0) c.pickT = Math.max(0, c.pickT - dt);
   if (c.rollT > 0) c.rollT = Math.max(0, c.rollT - dt);
   if (c.throwAnim > 0) c.throwAnim = Math.max(0, c.throwAnim - dt);
+  if (c.spentT > 0) { c.spentT -= dt; if (c.spentT <= 0) discardSpent(c); }   // 판처파우스트: 쏜 뒤 빈 발사관 버리기
   if (c.knocked) { updateKnocked(c, dt); return; }
   if (c.revive) updateRevive(c, dt);
   if (c.recall && !c.recall.net) Recall.updateReg(c, dt);

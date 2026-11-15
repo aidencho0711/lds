@@ -383,6 +383,34 @@ body.touch #lootList { left: calc(86px + var(--sal)); right: auto; top: 30%; tra
 body.touch #killfeed { top: calc(40px + var(--sat)); left: calc(86px + var(--sal)); }
 body.touch #toasts { top: 26%; }
 body.touch #bottom { bottom: calc(6px + var(--sab)); width: min(300px, 40vw); }
+/* 모바일 무기 실루엣 (v21): HP 바 위 주무기 2칸 · 그 위 오른쪽 보조무기 · 왼쪽 위 장비. 누르면 그 무기로 (지금 든 무기는 살펴보기) */
+#wsPri, #wsSec { display: none; }
+body.touch #bottom { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "gear sec" "pri pri" "hp hp"; align-items: end; gap: 4px 6px; z-index: 5; }
+body.touch #gearRow { grid-area: gear; justify-self: start; flex-wrap: wrap; align-self: end; }
+body.touch #wsSec { grid-area: sec; display: flex; justify-content: flex-end; }
+body.touch #wsPri { grid-area: pri; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+body.touch #hpWrap { grid-area: hp; }
+body.touch #weaponPanel { display: none; }
+.ws-slot { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; height: 42px; min-width: 0; border: 1px solid rgba(233, 226, 207, 0.22); border-radius: 4px; background: linear-gradient(180deg, rgba(13, 17, 19, 0.3), rgba(13, 17, 19, 0.62)); padding: 3px 8px 9px; display: grid; place-items: center; overflow: hidden; color: var(--sand); cursor: pointer; transition: transform 0.08s, border-color 0.15s; }
+#wsSec .ws-slot { width: 108px; height: 34px; padding-bottom: 7px; }
+.ws-sil { width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(0.9); opacity: 0.45; pointer-events: none; }
+.ws-slot.cur { border-color: var(--amber); background: linear-gradient(180deg, rgba(240, 164, 58, 0.18), rgba(13, 17, 19, 0.62)); box-shadow: 0 0 0 1px rgba(240, 164, 58, 0.3) inset; }
+.ws-slot.cur .ws-sil { opacity: 1; filter: brightness(0) invert(1) drop-shadow(0 0 3px rgba(240, 164, 58, 0.75)); }
+.ws-slot.down { transform: scale(0.95); }
+.ws-slot.empty { border-style: dashed; opacity: 0.45; cursor: default; }
+.ws-slot.epsilon:not(.cur) { border-color: rgba(192, 132, 252, 0.7); }
+.ws-slot.exclusive:not(.cur) { border-color: rgba(255, 207, 63, 0.7); }
+.ws-slot.epsilon.cur .ws-sil { filter: brightness(0) invert(1) drop-shadow(0 0 4px rgba(192, 132, 252, 0.9)); }
+.ws-slot.exclusive.cur .ws-sil { filter: brightness(0) invert(1) drop-shadow(0 0 4px rgba(255, 207, 63, 0.9)); }
+.ws-slot.rocket .ws-a { color: #ff9a6a; }
+.ws-n { position: absolute; left: 5px; top: 2px; font-family: var(--f-display); font-size: 0.58rem; color: var(--dim); line-height: 1; }
+.ws-a { position: absolute; right: 6px; bottom: 1px; font-family: var(--f-display); font-size: 0.74rem; line-height: 1.1; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000; }
+.ws-slot.cur .ws-a { font-size: 0.95rem; color: #fff; }
+.ws-a small { font-size: 0.72em; color: var(--dim); }
+.ws-m { position: absolute; right: 5px; top: 2px; font-family: var(--f-display); font-size: 0.55rem; line-height: 1; color: var(--amber); }
+.ws-e { font-size: 0.62rem; color: var(--dim); padding-top: 6px; }
+body.knocked #wsPri, body.knocked #wsSec { display: none; }
+body.driving .ws-slot { pointer-events: none; opacity: 0.4; }
 body.touch #crosshair .dot { width: 4px; height: 4px; }
 @media (prefers-reduced-motion: reduce) { .kf, .toast { animation: none; } .btn.play:hover { transform: none; } }
 #lootList, #hudButtons, #dropPanel, #weaponPanel { z-index: 5; }
