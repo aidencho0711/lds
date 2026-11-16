@@ -315,6 +315,11 @@ const SkinFx = (() => {
       E(P, p, 0, 0, 0, 0xfff0c0, 0.28 * k, 0.07, { grow: 0.8, so: 0.3 });
       for (let i = 0; i < 7; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(0.6, 1.6) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.03, 0.05) * k, rnd(0.45, 0.8), { drag: 2.5, grow: -0.4, so: 0.6 }); }
     },
+    // 핵폭탄(v21): 하얀 섬광 + 초록 번짐 + 초록·노랑 방사능 가루가 떠오름
+    nuke(P, p, d, fx, k, s) {
+      E(P, p, 0, 0, 0, 0xf2ffd8, 0.34 * k, 0.07, { grow: 0.9, so: 0.35 }); E(P, p, 0, 0.15, 0, fx.c, 0.24 * k, 0.45, { grow: 1.4, drag: 2, so: 0.55 });
+      for (let i = 0; i < 10; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1.2), rnd(-1, 1)).normalize().multiplyScalar(rnd(1.2, 3.4) * s); E(P, p, _v.x - d.x, _v.y, _v.z - d.z, Math.random() < 0.3 ? fx.c2 : fx.c, rnd(0.03, 0.06) * k, rnd(0.4, 0.8), { sq: Math.random() < 0.5, drag: 2, g: 0.8, so: 0.75 }); }
+    },
   };
   // 슈퍼레어(약한 효과): 작은 섬광 + 조각 몇 개, 몸에 남는 효과는 짧게
   function liteHit(P, p, d, fx, k, s) {
@@ -323,8 +328,9 @@ const SkinFx = (() => {
     for (let i = 0; i < 4; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1, 2.4) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.02, 0.035) * k, rnd(0.15, 0.3), { sq, drag: 5, g: fx.kind === 'ember' ? -4 : 0, so: 0.7 }); }
   }
   // 몸에 남는 효과: 초당 개수 · 한 번에 하나씩
-  const RATE = { ember: 50, flame: 44, spark: 36, glitch: 44, frost: 40, void: 40, prism: 46, zero: 40, chaos: 48, frontier: 36 };
+  const RATE = { ember: 50, flame: 44, spark: 36, glitch: 44, frost: 40, void: 40, prism: 46, zero: 40, chaos: 48, frontier: 36, nuke: 52 };
   const BODYFX = {
+    nuke(P, p, fx, k) { E(P, p, rnd(-0.1, 0.1), rnd(0.25, 0.85), rnd(-0.1, 0.1), Math.random() < 0.75 ? fx.c : fx.c2, rnd(0.08, 0.14) * k, rnd(0.5, 0.9), { sq: Math.random() < 0.4, grow: -0.3, drag: 1.2, g: 0.5, so: 0.75 }); },   // 핵폭탄: 몸에서 초록 방사능 가루가 피어오름
     ember(P, p, fx, k) { E(P, p, rnd(-0.12, 0.12), rnd(0.15, 0.9), rnd(-0.12, 0.12), Math.random() < 0.6 ? fx.c : fx.c2, rnd(0.1, 0.17) * k, rnd(0.4, 0.8), { g: 0.6, drag: 1.5, so: 0.85 }); },
     flame(P, p, fx, k) { E(P, p, rnd(-0.08, 0.08), rnd(0.4, 1.1), rnd(-0.08, 0.08), Math.random() < 0.3 ? 0xffd27a : fx.c, rnd(0.18, 0.28) * k, rnd(0.2, 0.36), { grow: 1.2, drag: 1.5, so: 0.8 }); },
     spark(P, p, fx, k) { E(P, p, rnd(-1.5, 1.5), rnd(-1, 1.5), rnd(-1.5, 1.5), pick(fx), rnd(0.05, 0.08) * k, rnd(0.08, 0.18), { drag: 6, so: 0.55 }); },
@@ -799,6 +805,62 @@ const SkinFx = (() => {
     add(null, 2.2, (e, u) => { if (u > 0.2 && Math.random() < 0.6) { _a.set(cp.x + rnd(-2, 2), cp.y + rnd(1.5, 3), cp.z + rnd(-2, 2)); E(P, _a, rnd(-0.3, 0.3), rnd(-0.4, -0.1), rnd(-0.3, 0.3), pick(fx), rnd(0.06, 0.1) * k, rnd(1.0, 1.6), { sq: 1, drag: 1.5, so: 0.7 }); } });
     body(t, fx, 2.0, true);
   };
+  // ---------- v21 판처파우스트 처치 (폭발 모양은 06_boom.js — 여기는 쓰러진 몸에 남는 효과) ----------
+  // 빛나는 방사능 표지 · 강착 원반(안으로 감겨 드는 띠) · 'HO HO HO!' 글자
+  const trefoilTex = () => ctex('trefoil', 256, 256, (g) => {
+    halo(g, 124, [[0, 'rgba(255,255,255,0.35)'], [0.6, 'rgba(255,255,255,0.1)'], [1, 'rgba(255,255,255,0)']]);
+    g.translate(128, 128); g.fillStyle = 'rgba(255,255,255,0.95)'; g.shadowColor = '#fff'; g.shadowBlur = 12;
+    g.beginPath(); g.arc(0, 0, 16, 0, TAU); g.fill();
+    for (let i = 0; i < 3; i++) { const ac = Math.PI / 2 + i * TAU / 3; g.beginPath(); g.arc(0, 0, 100, ac - Math.PI / 6, ac + Math.PI / 6); g.arc(0, 0, 28, ac + Math.PI / 6, ac - Math.PI / 6, true); g.closePath(); g.fill(); }
+    g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,0.8)'; g.beginPath(); g.arc(0, 0, 116, 0, TAU); g.stroke();
+  });
+  const diskTex = () => ctex('adisk', 256, 256, (g) => {
+    halo(g, 128, [[0, 'rgba(0,0,0,0)'], [0.28, 'rgba(0,0,0,0)'], [0.34, 'rgba(255,255,255,1)'], [0.5, 'rgba(255,255,255,0.55)'], [0.85, 'rgba(255,255,255,0.12)'], [1, 'rgba(255,255,255,0)']]);
+    g.translate(128, 128); g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineCap = 'round';
+    for (let q = 0; q < 6; q++) { g.lineWidth = 3 - q * 0.3; g.beginPath(); for (let i = 0; i <= 40; i++) { const t = i / 40, a = q * TAU / 6 + t * 3.2, r = 118 - t * 78; i ? g.lineTo(Math.cos(a) * r, Math.sin(a) * r) : g.moveTo(Math.cos(a) * r, Math.sin(a) * r); } g.stroke(); }
+  });
+  const hohoTex = () => ctex('hoho', 512, 160, (g, W, H) => {
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 96px "Saira Condensed","Arial Narrow",Arial,sans-serif';
+    g.lineWidth = 14; g.lineJoin = 'round'; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.strokeText('HO HO HO!', W / 2, H / 2); g.fillStyle = '#ff2a3a'; g.fillText('HO HO HO!', W / 2, H / 2);
+    g.fillStyle = '#ffd65a'; for (const [x, y] of [[30, 30], [480, 40], [40, 130], [470, 120]]) { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 6 : 15; i ? g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : g.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); g.fill(); }
+  });
+  // 핵폭탄: 방사능 소멸 — 하얀·초록 섬광 · 바닥에 빛나는 방사능 표지가 돌고 · 초록 빛 기둥 · 몸이 초록 재로 흩어져 떠오름(일부는 검게 식은 재)
+  KILL.nuke = function (t, fx, gp, cp, k) {
+    const P = pool();
+    glow(cp, 0xeaffd0, 4.4, 0.4); glow(cp, fx.c, 3, 0.8); light(cp, fx.c, 8, 1.0);
+    ring(gp, fx.c, 4.4, 0.7); ring(gp, 0xfff27a, 3, 0.55, null, 0.1);
+    spinDecal(gp, trefoilTex(), 3.6, 3.2, fx.c, 0.6, 0.12);
+    pillar(gp, fx.c, 0.42, 4.5, 0.9, stripeTex(), 1.6);
+    for (let i = 0; i < 70; i++) { bodyPoint(t, _a); E(P, _a, rnd(-0.3, 0.3), rnd(0.4, 1.8), rnd(-0.3, 0.3), Math.random() < 0.65 ? fx.c : Math.random() < 0.5 ? fx.c2 : 0x2a3020, rnd(0.05, 0.1) * k, rnd(1.0, 2.0), { sq: Math.random() < 0.6, drag: 1, g: 0.3, so: 0.85 }); }
+    body(t, fx, 2.6, true);
+  };
+  // EVENT HORIZON: 몸 둘레에 기울어진 강착 원반이 빠르게 돌며 조여 들고 · 가운데 검은 구가 빛을 삼켰다가 · 무너지는 순간 위아래로 제트와 섬광 · 바닥에 소용돌이
+  KILL.horizon = function (t, fx, gp, cp, k) {
+    const P = pool();
+    const core = new THREE.Sprite(sprMat(0x000000)); core.material.blending = THREE.NormalBlending; core.position.copy(cp); core.renderOrder = 9;   // 검은 원 (빛 번짐 그림을 덮어 그리기로 — 같은 셰이더)
+    add(core, 0.75, (e, u) => { const s = u < 0.3 ? u / 0.3 : u < 0.78 ? 1 : 1 - (u - 0.78) / 0.22; core.scale.setScalar(1.5 * s + 0.01); core.material.opacity = Math.min(1, s * 1.6); });
+    const grp = new THREE.Group(), disk = new THREE.Mesh(geo().plane, addMat(diskTex(), fx.c)); disk.renderOrder = 8; grp.add(disk); grp.position.copy(cp); grp.rotation.set(0.5, 0, 0.3);
+    add(grp, 0.85, (e, u) => { disk.rotation.y = -e.t * 7; const s = u < 0.2 ? u / 0.2 : 1 - Math.max(0, u - 0.55) / 0.45; disk.scale.setScalar(Math.max(0.01, 2.8 * s * (1 - u * 0.35))); disk.material.opacity = Math.min(1, s * 1.4); });
+    add(null, 0.6, () => { for (let j = 0; j < 3; j++) { const a = Math.random() * TAU, R = rnd(1.6, 2.6); _a.set(cp.x + Math.cos(a) * R, cp.y + rnd(-0.4, 0.4), cp.z + Math.sin(a) * R); E(P, _a, (-Math.cos(a) * 2.2 - Math.sin(a) * 1.2) * R, rnd(-0.3, 0.3), (-Math.sin(a) * 2.2 + Math.cos(a) * 1.2) * R, pick(fx), rnd(0.04, 0.07) * k, 0.4, { so: 0.6 }); } });
+    delayed(0.62, () => {
+      glow(cp, 0xf0e6ff, 5, 0.35); light(cp, fx.c2, 9, 0.8); ring(gp, fx.c2, 5.2, 0.7); ring(gp, fx.c, 3.4, 0.55, null, 0.08);
+      beam(cp, new THREE.Vector3(cp.x, cp.y + 12, cp.z), 0xffffff, 0.5, 0.6); beam(cp, new THREE.Vector3(cp.x, cp.y + 10, cp.z), fx.c2, 1.4, 0.7); beam(cp, new THREE.Vector3(cp.x, gp.y - 0.2, cp.z), 0xffffff, 0.5, 0.4);
+      spinDecal(gp, swirlTex(), 4.4, 2.6, 0xd8c0ff, -2.4, -0.2);
+      for (let i = 0; i < 50; i++) { _v.set(rnd(-1, 1), rnd(-0.3, 0.3), rnd(-1, 1)).normalize().multiplyScalar(rnd(3, 7)); E(P, cp, _v.x, _v.y, _v.z, pick(fx), rnd(0.05, 0.09) * k, rnd(0.3, 0.6), { drag: 3, so: 0.6 }); }
+    });
+    body(t, fx, 1.8, true);
+  };
+  // SANTA'S DELIVERY: 선물 배달 완료 — 금빛 별 섬광 · 바닥에 화환이 돌고 · 'HO HO HO!' 글자가 떠오름 · 빨강·초록·금 색종이와 눈송이
+  KILL.xsanta = function (t, fx, gp, cp, k) {
+    const P = pool();
+    card(cp, star5Tex(), 0xffe6a0, 0.7, (m, u) => { m.scale.setScalar(3.6 * (0.3 + 0.7 * Math.sqrt(u))); m.rotateZ(u * 1.2); m.material.opacity = (1 - u) * (1 - u); });
+    card(cp, hohoTex(), 0xffffff, 1.7, (m, u) => { const p = Math.min(1, u * 6); m.position.y = cp.y + 1.1 + u * 1.3; m.scale.set(2.6 * (0.5 + 0.5 * p), 0.81 * (0.5 + 0.5 * p), 1); m.rotateZ(Math.sin(u * 18) * 0.06 * (1 - u)); m.material.opacity = u < 0.08 ? u / 0.08 : u > 0.65 ? (1 - u) / 0.35 : 1; });
+    glow(cp, 0xfff0d0, 4.2, 0.4); light(cp, 0xffb070, 8, 0.9); ring(gp, fx.c, 4.4, 0.7); ring(gp, 0x3aff7a, 5.8, 0.9, null, 0.15); ring(gp, fx.c2, 7, 1.0, null, 0.3);
+    if (typeof GunDeco !== 'undefined' && GunDeco.wreathTex) spinDecal(gp, GunDeco.wreathTex(), 4.2, 3.0, 0xffffff, 0.5, 0.1);
+    for (let i = 0; i < 90; i++) { _v.set(rnd(-1, 1), rnd(0.4, 1.6), rnd(-1, 1)).normalize().multiplyScalar(rnd(2.5, 6.5)); E(P, cp, _v.x, _v.y, _v.z, pick(fx), rnd(0.06, 0.11) * k, rnd(1.2, 2.2), { sq: 1, g: -2.2, drag: 1.6, so: 0.85 }); }
+    add(null, 1.6, () => { if (Math.random() < 0.6) { _a.set(cp.x + rnd(-1.8, 1.8), cp.y + rnd(1.4, 2.8), cp.z + rnd(-1.8, 1.8)); E(P, _a, rnd(-0.2, 0.2), rnd(-0.5, -0.2), rnd(-0.2, 0.2), 0xffffff, rnd(0.05, 0.08) * k, rnd(1.0, 1.6), { drag: 1.2, so: 0.7 }); } });
+    body(t, fx, 2.0, true);
+  };
   // 카메라를 보게 세우는 판 (앞면 +z, 같은 지오메트리를 돌려 씀)
   let VP = null; const vplane = () => VP || (VP = new THREE.PlaneGeometry(1, 1));
   // 엡실론 처치 자국·판: 찢어진 틈 · 금빛 아라베스크
@@ -894,5 +956,8 @@ const SkinFx = (() => {
     if (ARCS.length) updateArcs(dt);
     if (LIGHT) updateLight(dt);
   }
-  return { init, hit, kill, update, _live: LIVE, _body: BODY };
+  // v21: 폭발 효과(06_boom.js)가 같은 도구·그림을 쓴다
+  const kit = { add, glow, ring, decal, pillar, dome, beam, card, spinDecal, halo3, light, ground, lay, delayed, geo, addMat, sprMat, vplane, pool, E,
+    tex: { glow: glowTex, ring: ringTex, star4: star4Tex, star5: star5Tex, flake: flakeTex, lava: lavaTex, swirl: swirlTex, stripe: stripeTex, trefoil: trefoilTex, disk: diskTex, fire: fireTex, ice: iceTex } };
+  return { init, hit, kill, update, kit, _live: LIVE, _body: BODY };
 })();

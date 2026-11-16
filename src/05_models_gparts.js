@@ -26,9 +26,12 @@ const GunParts = (() => {
         const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), kd = new Float32Array(n);
         let o = 0;
         for (const e of L) {
-          const c = e.g.attributes.position.count, v = e.dark ? 0.07 : 1;
+          const c = e.g.attributes.position.count, v = e.dark === true ? 0.07 : 1;
           pos.set(e.g.attributes.position.array, o * 3); nor.set(e.g.attributes.normal.array, o * 3);
-          col.fill(v, o * 3, (o + c) * 3); kd.fill(e.kd, o, o + c); o += c; e.g.dispose();
+          // dark 에 색(16진수)을 주면 그 색 — kd 4~6(색을 바꾸지 않는 부위)이 그 색 그대로 보인다 (v21: 흰 털 · 초록 잎 · 검은 띠)
+          if (typeof e.dark === 'number') { const cc = new THREE.Color(e.dark); for (let i = o; i < o + c; i++) { col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b; } }
+          else col.fill(v, o * 3, (o + c) * 3);
+          kd.fill(e.kd, o, o + c); o += c; e.g.dispose();
         }
         const out = new THREE.BufferGeometry();
         out.setAttribute('position', new THREE.BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
@@ -49,6 +52,13 @@ const GunParts = (() => {
   const TO = (R, r, rs = 6, ts = 18) => new THREE.TorusGeometry(R, r, rs, ts);
   const SPH_ = (r) => new THREE.SphereGeometry(r, 10, 6, 0, TAU, 0, Math.PI / 2);   // 반구 (방울 윗부분)
   const HP = Math.PI / 2;
+  // 고리 조각(부채꼴 띠): 총열을 감는 면(xy)에 반지름 r0~r1, 각 a0~a1, 두께 d (v21 방사능 표지 · 경고 띠)
+  const SECT = (r0, r1, a0, a1, d) => {
+    const s = new THREE.Shape();
+    if (a1 - a0 >= TAU - 1e-4) { s.absarc(0, 0, r1, 0, TAU, false); const h = new THREE.Path(); h.absarc(0, 0, r0, 0, TAU, true); s.holes.push(h); }   // 온 고리는 구멍으로
+    else { s.absarc(0, 0, r1, a0, a1, false); s.absarc(0, 0, r0, a1, a0, true); }
+    const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false, curveSegments: 8 }); g.translate(0, 0, -d / 2); return g;
+  };
   // 고리 둘레에 n개 (a: 각도) — 원뿔의 +y가 바깥을 보게 z축으로 돌림
   const around = (n, a0, fn) => { for (let i = 0; i < n; i++) { const a = a0 + (i / n) * TAU; fn(a, Math.cos(a), Math.sin(a), a - HP); } };
 
@@ -281,6 +291,57 @@ const GunParts = (() => {
       { at: 'LR', z: 0.47, build(B) { for (let i = 0; i < 6; i++) { const t = i / 6 * TAU; B.add(BX(0.0016, 0.0012, 0.02), 7, Math.sin(t) * 0.006, 0.0018, Math.cos(t) * 0.006, 0, t, 0); } B.add(OC(0.0036), 3, 0, 0.003, 0, 0, 0, 0, 1, 0.7, 1); } },
       { at: 'top', z: 0.08, build(B) { for (let i = 0; i < 5; i++) { const t = i / 5 * TAU; B.add(CO(0.0028, 0.008, 4), 7, 0, 0.011 + Math.cos(t) * 0.004, Math.sin(t) * 0.004, t); } B.add(CY(0.0016, 0.0024, 0.008, 6), 3, 0, 0.004, 0); } },
     ],
+    // ---------- v21 판처파우스트 (원점 = 발사관 축, r = 발사관 반지름. head: 탄두에 붙어 쏘면 탄두와 같이 숨음) ----------
+    // 핵폭탄: 뒤끝의 노랑·검정 봉쇄 고리(초록 빛 홈) · 발사관을 감은 방사능 표지 판(노란 원판에 검은 세 날개 — 1인칭에서 뒤로 보면 표지가 보임)
+    //  · 양옆 초록 연료봉(강철 틀) · 위의 방사능 계수기(빛나는 눈금판 · 안테나) · 탄두 뒤 초록 봉인 고리
+    nuke: [
+      { at: 'ring', z: 0.06, build(B, r) {
+        for (let i = 0; i < 12; i++) B.add(SECT(r + 0.001, r + 0.0068, i / 12 * TAU, (i + 1) / 12 * TAU, 0.024), 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, i % 2 ? 0x121210 : 0xe3bb1c);
+        for (const z of [-0.0135, 0.0135]) B.add(TO(r + 0.0068, 0.0018, 4, 22), 3, 0, 0, z);
+        B.add(TO(r + 0.0072, 0.0009, 4, 22), 7, 0, 0, 0);
+      } },
+      { at: 'ring', z: 0.3, build(B, r) {
+        B.add(SECT(r + 0.001, r + 0.026, 0, TAU, 0.004), 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0xe3bb1c);
+        for (let i = 0; i < 3; i++) { const ac = Math.PI / 6 + i * TAU / 3; B.add(SECT(r + 0.006, r + 0.0225, ac - Math.PI / 6, ac + Math.PI / 6, 0.0064), 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0x121210); }
+        B.add(TO(r + 0.026, 0.0014, 4, 40), 7, 0, 0, 0); B.add(TO(r + 0.0035, 0.0022, 4, 22), 3, 0, 0, 0);
+      } },
+      { at: 'LR', z: 0.42, build(B) {
+        for (const z of [-0.024, 0.024]) B.add(CY(0.0092, 0.0092, 0.007, 10), 3, 0, 0.009, z, HP);
+        B.add(CY(0.0068, 0.0068, 0.042, 10), 7, 0, 0.009, 0, HP);
+        around(3, 0, (a, c, s) => B.add(BX(0.0018, 0.0018, 0.042), 3, c * 0.0082, 0.009 + s * 0.0082, 0));
+      } },
+      { at: 'top', z: 0.2, build(B) {
+        B.add(BX(0.018, 0.011, 0.024), 0, 0, 0.0055, 0);
+        B.add(CY(0.0065, 0.0065, 0.0024, 14), 7, 0, 0.0112, 0.002);
+        B.add(BX(0.0012, 0.0014, 0.0062), 5, 0.001, 0.0128, 0.002, 0, 0.5, 0, 1, 1, 1, 0x111111);
+        B.add(CY(0.0011, 0.0011, 0.024, 4), 3, 0.006, 0.02, -0.008, -0.35); B.add(OC(0.0022), 7, 0.006, 0.032, -0.012);
+      } },
+      { at: 'ring', mz: -0.287, build(B, r) { B.add(TO(r + 0.004, 0.0032, 6, 24), 3, 0, 0, 0); B.add(TO(r + 0.0062, 0.0014, 4, 26), 7, 0, 0, 0.004); } },
+    ],
+    // SANTA'S DELIVERY: 양 끝 흰 털 테(울퉁불퉁) · 가운데 검은 벨트와 금 버클 · 버클 뒤 양옆 금빛 썰매 방울(빨간 끈) · 위의 호랑가시(초록 잎 · 빛나는 빨간 열매)
+    xsanta: [
+      { at: 'ring', z: 0.035, build(B, r) { B.add(TO(r + 0.008, 0.0105, 8, 22), 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0xf4f4ef); around(16, 0.2, (a, c, s) => { const o = (Math.round(a * 16 / TAU) % 2 ? 1 : -1); B.add(IC(0.0066, 1), 6, c * (r + 0.0158), s * (r + 0.0158), o * 0.0052, 0, 0, 0, 1, 1, 1, 0xfafaf6); }); } },   // 털 뭉치가 두 줄로 엇갈려 삐져나옴
+      { at: 'ring', mz: -0.29, build(B, r) { B.add(TO(r + 0.007, 0.0088, 8, 22), 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0xf4f4ef); around(14, 0.5, (a, c, s) => { const o = (Math.round(a * 14 / TAU) % 2 ? 1 : -1); B.add(IC(0.0056, 1), 6, c * (r + 0.0135), s * (r + 0.0135), o * 0.0044, 0, 0, 0, 1, 1, 1, 0xfafaf6); }); } },
+      { at: 'ring', z: 0.5, build(B, r) {
+        B.add(CY(r + 0.0028, r + 0.0028, 0.028, 22), 6, 0, 0, 0, HP, 0, 0, 1, 1, 1, 0x161210);
+        const y = r + 0.0036;
+        for (const z of [-0.0115, 0.0115]) B.add(BX(0.025, 0.0034, 0.0045), 3, 0, y, z);
+        for (const x of [-0.0105, 0.0105]) B.add(BX(0.0045, 0.0034, 0.022), 3, x, y, 0);
+        B.add(BX(0.0022, 0.003, 0.018), 3, 0, y, 0);
+      } },
+      { at: 'LR', z: 0.42, build(B) { B.add(BX(0.003, 0.008, 0.003), 6, 0, 0.004, 0, 0, 0, 0, 1, 1, 1, 0xb3121c); B.add(IC(0.0072, 1), 3, 0, 0.013, 0); B.add(BX(0.011, 0.002, 0.0026), 5, 0, 0.0196, 0, 0, 0, 0, 1, 1, 1, 0x1a1208); } },
+      { at: 'top', z: 0.22, build(B) {
+        for (const sd of [-1, 1]) B.add(IC(0.008, 1), 6, sd * 0.007, 0.004, sd * 0.003, 0, sd * 0.7, 0, 1.25, 0.28, 0.55, 0x1f7a3a);
+        for (const [x, z] of [[0, 0.002], [0.0036, -0.0018], [-0.0034, -0.0022]]) B.add(IC(0.0025, 1), 6, x, 0.007, z, 0, 0, 0, 1, 1, 1, 0xc80e1a);   // 빨간 열매 (빛나지 않는 칠 — 1인칭에서 분홍으로 번지지 않게)
+      } },
+    ],
+    // EVENT HORIZON(엡실론): 뒤쪽을 기울어져 도는 광자 궤도 고리(빛 구슬 넷) · 양옆 빛나는 고리를 두른 검은 구 · 탄두의 가장 굵은 곳을 감은 광자 고리(탄두와 같이 숨음)
+    horizon: [
+      { at: 'ring', z: 0.07, spin: 2.4, build(B, r) { const R = r + 0.02; B.add(TO(R, 0.0013, 4, 40), 7, 0, 0, 0, 0.42, 0, 0); around(4, 0.3, (a, c, s) => B.add(OC(0.0032), 7, c * R, s * R * Math.cos(0.42), s * R * Math.sin(0.42))); } },
+      { at: 'LR', z: 0.5, build(B) { B.add(CY(0.0095, 0.0075, 0.004, 14), 3, 0, 0.002, 0); B.add(IC(0.0072, 2), 0, 0, 0.0085, 0, 0, 0, 0, 1, 1, 1, true); B.add(TO(0.0094, 0.0009, 4, 24), 7, 0, 0.0085, 0, HP, 0, 0); } },
+      { at: 'ring', mz: -0.162, head: true, build(B) { B.add(TO(0.0705, 0.0021, 6, 48), 7, 0, 0, 0); B.add(TO(0.0765, 0.0009, 4, 48), 7, 0, 0, 0.003); } },
+      { at: 'top', z: 0.28, build(B) { B.add(BX(0.03, 0.0032, 0.15), 0, 0, 0.0016, 0); B.add(BX(0.0036, 0.0036, 0.14), 7, 0, 0.0019, 0); } },   // 발사관 위 경고 표지를 덮는 검은 덮개(가운데 빛 줄)
+    ],
     // OMEGA BREAKER(DBS): 총구 쪽 마젠타 전기 코일 두 줄(은 칼라) · 몸통 양옆 갈라진 패널 사이 마젠타 띠 · 위쪽 Ω 방출구
     omega: [
       ...[-0.025, -0.11].map((mz) => ({ at: 'ring', mz, build(B, r) { B.add(TO(r + 0.006, 0.0028, 6, 20), 3, 0, 0, 0); B.add(TO(r + 0.0095, 0.0012, 4, 24), 7, 0, 0, 0.004); B.add(TO(r + 0.0095, 0.0012, 4, 24), 7, 0, 0, -0.004); } })),
@@ -427,6 +488,17 @@ const GunParts = (() => {
           for (const s of [1, -1]) B.add(BX(0.008, 0.006, 0.03), 7, 0, 0.035, s * 0.034);
         } },
       ],
+      // EVENT HORIZON(판처파우스트, v21): 탄두 뒤를 감싸며 도는 강착 원반(빛나는 고리 세 겹 · 안쪽으로 감겨 드는 나선 팔 다섯 · 안쪽 테) · 발사관 가운데 양옆으로 뒤로 젖힌 렌즈 날(빛나는 끝)
+      horizon: [
+        { at: 'ring', mz: -0.255, head: true, spin: 1.1, build(B) {
+          for (const [R, t] of [[0.078, 0.0026], [0.094, 0.0018], [0.108, 0.0012]]) B.add(TO(R, t, 4, 56), 7, 0, 0, 0, 0, 0, 0, 1, 1, 0.5);
+          for (let k = 0; k < 5; k++) for (let j = 0; j < 7; j++) { const t = j / 6, a = k / 5 * TAU + t * 1.9, R = 0.07 + 0.042 * t; B.add(BX(0.009, 0.0026, 0.002), j % 3 ? 7 : 3, Math.cos(a) * R, Math.sin(a) * R, 0, 0, 0, a + HP); }
+          B.add(TO(0.066, 0.004, 6, 40), 3, 0, 0, 0);
+        } },
+        { at: 'ring', z: 0.42, build(B, r) {
+          for (const s of [1, -1]) { B.add(BX(0.062, 0.003, 0.09), 0, s * (r + 0.03), 0, 0, 0, s * 0.38, s * 0.12); B.add(BX(0.004, 0.0036, 0.07), 7, s * (r + 0.0586), 0.0037, -0.0114, 0, s * 0.38, s * 0.12); }   // 빛 띠 = 날 바깥 끝(같은 회전을 거친 자리)
+        } },
+      ],
     };
   })();
   for (const k in KITS) SETS[k].push(...KITS[k].map((e) => Object.assign(e, { kit: true })));
@@ -483,7 +555,7 @@ const GunParts = (() => {
     return (ANCH[key] = out);
   }
   // 옆·위 부속품 배율 (세트마다)
-  const SIZE = { xtree: 1.8, xcandy: 1.8, xwhite: 1.9, magma: 2.1, dragon: 2.0, plasma: 1.8, glitch: 2.0, frost: 2.3, void: 2.1, proto: 2.0, zero: 1.6, chaos: 1.9, frontier: 1.7, celestial: 1.0, divine: 1.7, infernal: 1.8, void2: 1.8, seraph: 2.0, apocalypse: 1.9, dynasty: 1.7, omega: 1.7 };
+  const SIZE = { nuke: 1.7, xsanta: 1.8, horizon: 1.7, xtree: 1.8, xcandy: 1.8, xwhite: 1.9, magma: 2.1, dragon: 2.0, plasma: 1.8, glitch: 2.0, frost: 2.3, void: 2.1, proto: 2.0, zero: 1.6, chaos: 1.9, frontier: 1.7, celestial: 1.0, divine: 1.7, infernal: 1.8, void2: 1.8, seraph: 2.0, apocalypse: 1.9, dynasty: 1.7, omega: 1.7 };
   // 지오메트리는 (세트 · 부속품 · 반지름)마다 한 번
   const GEO = {};
   function geoOf(set, a) {
@@ -503,14 +575,15 @@ const GunParts = (() => {
   }
   function attach(g, set, mat, z0, z1) {
     if (!SETS[set] || !g.children[0]) return null;
-    const list = [], comp = g.userData.att && g.userData.att.muzzle, meta = Models.GUNS[g.userData.id].meta;
+    const list = [], comp = g.userData.att && g.userData.att.muzzle, meta = Models.GUNS[g.userData.id].meta, hp = g.userData.parts && g.userData.parts.head;
     for (const a of anchors(g, set, z0, z1)) {
       if (comp && a.P.mz > 0) continue;   // 보정기를 달면 총구 앞 부속품은 생략 (보정기와 겹침)
+      const host = a.P.head && hp ? hp : g;   // head: 판처파우스트 탄두에 붙임 → 쏘면 탄두와 같이 숨는다 (v21)
       const geo = geoOf(set, a), outer = new THREE.Group(), inner = new THREE.Group(), mesh = new THREE.Mesh(geo, mat);
-      outer.position.fromArray(a.p); outer.rotation.z = a.rz; outer.add(inner); inner.add(mesh);
+      outer.position.fromArray(a.p); if (host !== g) outer.position.sub(host.position); outer.rotation.z = a.rz; outer.add(inner); inner.add(mesh);
       if (!a.ring) outer.scale.setScalar(SIZE[set] || 1);   // 옆·위 부속품은 실루엣이 바뀌어 보일 만큼 키움 (고리는 총열 반지름에 맞춰 지음)
-      outer.name = 'gpart'; g.add(outer);
-      outer.updateMatrix(); _bx.copy(geo.boundingBox).applyMatrix4(outer.matrix);
+      outer.name = 'gpart'; host.add(outer);
+      outer.updateMatrix(); _bx.copy(geo.boundingBox).applyMatrix4(outer.matrix); if (host !== g) _bx.translate(host.position);
       // sight: 1인칭 정조준 때 접어 넣는 부속품 (GunSkin.update 가 Cam.ads 에 맞춰 접고 편다)
       list.push({ outer, inner, mesh, zn: a.zn, ring: a.ring, popped: true, sight: blocksSight(meta, _bx), spin: a.P.spin || 0, core: !!a.P.core });
     }

@@ -420,6 +420,23 @@ const Audio = (() => {
     const g = ctx.createGain(); g.gain.setValueAtTime(g0, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
     o.connect(g); g.connect(out); o.start(t0); o.stop(t0 + dur + 0.02);
   }
+  // 폭발 소리 층 (v21): g = 크기 · d = 거리(가까울 때만 떨어지는 파편 소리) · style = 판처파우스트 스킨 폭발
+  function boomLayers(out, t, g, d, style) {
+    noise(out, t, 0.09, 'highpass', 1800, 0.7, 1.0 * g);                                   // 날카로운 터짐
+    noise(out, t, 0.7, 'lowpass', 1300, 0.7, 1.1 * g);                                     // 폭발 몸통
+    tone(out, t, 1.4, 'sine', 92, 24, 1.5 * g); tone(out, t, 0.5, 'triangle', 160, 40, 0.45 * g);   // 낮은 쿵
+    noise(out, t + 0.05, 2.6 * Math.sqrt(g), 'lowpass', 260, 0.8, 1.2 * g);                 // 길게 구르는 울림
+    noise(out, t + 0.45, 1.6, 'lowpass', 320, 0.6, 0.32 * g);                              // 메아리
+    if (d < 90) for (let i = 0; i < 9; i++) noise(out, t + 0.35 + i * 0.11 + Math.random() * 0.08, 0.06, 'bandpass', 900 + Math.random() * 2500, 2, 0.13 * g * (1 - i / 10));   // 떨어지는 흙·파편
+    if (style === 'nuke') {
+      tone(out, t, 3.6, 'sine', 55, 18, 1.2); noise(out, t + 0.3, 4.5, 'lowpass', 180, 0.7, 1.0);
+      for (let i = 0; i < 16; i++) noise(out, t + 0.6 + Math.random() * 2.6, 0.012, 'highpass', 4000, 1, 0.22);   // 가이거 계수기
+    } else if (style === 'xsanta') {
+      for (let i = 0; i < 26; i++) noise(out, t + 0.15 + Math.random() * 1.3, 0.02, 'highpass', 3000 + Math.random() * 2000, 1, 0.26);   // 불꽃놀이 탁탁
+      [2093, 2349, 2637, 3136, 2637, 3136].forEach((f, i) => { tone(out, t + 0.12 + i * 0.05, 0.4, 'sine', f, f * 1.003, 0.07); tone(out, t + 0.12 + i * 0.05, 0.2, 'sine', f * 2.76, f * 2.76, 0.02); });
+      noise(out, t + 0.45, 1.8, 'highpass', 6000, 0.6, 0.12);
+    }
+  }
   const CLS_ID = { AR: 'm416', SMG: 'vk9', SG: 's12k', DMR: 'mini14', SR: 'm24', PISTOL: 'p19', LMG: 'm249' };
   // ---------- 차량 엔진 (실시간 합성, 차량별 목소리) ----------
   //  톱니파(기본) + 반 옥타브 아래 사각파(점화 펄스) + 흡배기 잡음 → 포화 → 저역통과. rpm은 기어 변속을 흉내 낸 값
@@ -526,14 +543,16 @@ const Audio = (() => {
     },
     zoneWarn() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.25, 'sawtooth', 440, 430, 0.12); tone(sfxBus, t + 0.3, 0.35, 'sawtooth', 330, 320, 0.12); },
     zoneTick() { if (!ctx || !throttle('ztick', 0.9)) return; const t = ctx.currentTime; tone(sfxBus, t, 0.12, 'sine', 160, 120, 0.25); },
-    explosion(pos) {
-      if (!ctx || !voice(1.5)) return;
+    // 수류탄·차량 폭발 (big: 차량 1.25) — v21: 날카로운 터짐 · 낮은 쿵 · 길게 구르는 울림 · 떨어지는 파편 소리
+    explosion(pos, big = 1) {
+      if (!ctx || !voice(1.8)) return;
       const r = geom(pos), delay = Math.min(r.d / 343, 1.8);
       const out = chain(1.3 / (1 + r.d / 30), r.pan, clamp(9000 / (1 + r.d / 60), 300, 9000), clamp(0.4 + r.d / 200, 0.4, 1.2), false);
-      const t = ctx.currentTime + delay; noise(out, t, 1.1, 'lowpass', 500, 0.6, 1.2); tone(out, t, 0.6, 'sine', 90, 30, 1.2);
+      boomLayers(out, ctx.currentTime + delay, 0.75 * big, r.d, null);
     },
     // 판처파우스트(v21): launch = 낮은 '쿵' + 뒤로 뿜는 화염의 쉭 소리 · fly = 날아가는 로켓의 짧은 바람 소리 · boom = 수류탄보다 크고 길고 낮은 폭발
-    rocket(kind, pos, own) {
+    //  style(스킨 폭발): nuke = 아주 길게 구르는 낮은 울림 + 가이거 계수기 · xsanta = 불꽃놀이 탁탁 + 방울 · horizon = 빨려 드는 소리 뒤에 폭발
+    rocket(kind, pos, own, style) {
       if (!ctx || !voice(kind === 'boom' ? 2 : 1.2)) return;
       const r = own || !pos ? { d: 0, pan: 0 } : geom(pos), delay = own ? 0 : Math.min(r.d / 343, 1.8), t = ctx.currentTime + delay;
       if (kind === 'launch') {
@@ -544,7 +563,19 @@ const Audio = (() => {
         noise(out, ctx.currentTime, 0.5, 'bandpass', 1500, 1.4, 0.5);
       } else {
         const out = chain(1.7 / (1 + r.d / 35), r.pan, clamp(8000 / (1 + r.d / 60), 260, 8000), clamp(0.5 + r.d / 180, 0.5, 1.4), false);
-        noise(out, t, 1.8, 'lowpass', 420, 0.6, 1.5); tone(out, t, 1.0, 'sine', 78, 22, 1.5); noise(out, t, 0.28, 'highpass', 2400, 0.8, 0.5); noise(out, t + 0.12, 1.4, 'bandpass', 700, 0.5, 0.35);
+        let t0 = t;
+        if (style === 'horizon') {   // 블랙홀: 빨려 드는 소리가 1.5초 동안 높아지며 커짐 → 무너지며 폭발
+          const T = typeof Boom !== 'undefined' ? Boom.HZ_T : 1.5;
+          tone(out, t, T, 'sine', 40, 420, 0.5); tone(out, t, T, 'triangle', 22, 180, 0.32); tone(out, t, T * 0.9, 'sawtooth', 30, 60, 0.06); noise(out, t, T, 'lowpass', 240, 0.8, 0.5);
+          for (let i = 0; i < 6; i++) noise(out, t + i * T / 6, T / 6 + 0.12, 'bandpass', 280 + i * 260, 1, 0.1 + i * 0.05);
+          t0 = t + T; [1568, 2093, 2637].forEach((f, i) => tone(out, t0 + i * 0.04, 1.2, 'sine', f, f * 0.995, 0.05));
+        } else if (style === 'xsanta') {   // 선물 상자: 톡 솟는 소리 + 부르르 떨리는 방울 → 0.9초에 뚜껑이 날아가며 폭발
+          const T = typeof Boom !== 'undefined' ? Boom.GIFT_T : 0.9;
+          noise(out, t, 0.1, 'bandpass', 1400, 1.2, 0.5); tone(out, t, 0.22, 'sine', 260, 820, 0.3);
+          for (let i = 0; i < 10; i++) { const f = [2093, 2637, 3136, 2349][i % 4]; tone(out, t + 0.3 + i * 0.055, 0.18, 'sine', f, f, 0.05); }
+          t0 = t + T; noise(out, t0, 0.08, 'highpass', 2600, 0.8, 0.5); tone(out, t0, 0.12, 'square', 900, 300, 0.12);
+        }
+        boomLayers(out, t0, 1, r.d, style);
       }
     },
     pin(pos, own = true) { if (!ctx) return; if (!playBuf('pin', own ? null : pos, own ? 0.6 : 0.5, { own, range: 20, ref: 3 })) { const t = ctx.currentTime; tone(sfxBus, t, 0.04, 'square', 2400, 2400, 0.06); } },
@@ -580,7 +611,9 @@ const Audio = (() => {
       if (lite) { const gn = ctx.createGain(); gn.gain.value = 0.5; gn.connect(out); out = gn; if (ph === 'kill') ph = 'hit'; }
       const t = ctx.currentTime;
       // 엡실론: 주제마다 가까운 기존 소리를 쓰고, 꺼내기·처치·살펴보기에는 엡실론 고유의 맑은 화음을 얹음
-      const EPS_SND = { celestial: 'frontier', divine: 'zero', infernal: 'ember', voidr: 'void', seraph: 'frost', apocalypse: 'chaos', dynasty: 'frontier', omega: 'spark' };
+      const EPS_SND = { celestial: 'frontier', divine: 'zero', infernal: 'ember', voidr: 'void', seraph: 'frost', apocalypse: 'chaos', dynasty: 'frontier', omega: 'spark', horizon: 'void' };
+      // SANTA'S DELIVERY(v21 EXCLUSIVE): 처치하면 썰매 방울이 차르르 쏟아짐
+      if (kind === 'xsanta' && ph === 'kill') { if (throttle('xsk', 0.3) && voice(1)) { for (let i = 0; i < 9; i++) { const f = [2093, 2349, 2637, 3136, 2637, 2349, 2093, 2637, 3136][i]; tone(out, t + i * 0.06, 0.3, 'sine', f, f, 0.06); tone(out, t + i * 0.06, 0.16, 'sine', f * 2.76, f * 2.76, 0.02); } tone(out, t, 0.5, 'sine', 110, 55, 0.2); } return; }
       if (EPS_SND[kind]) {
         if ((ph === 'kill' || ph === 'draw' || ph === 'inspect') && throttle('epsch' + ph, 0.3)) [784, 1175, 1568, 2349].forEach((f, i) => tone(out, t + i * 0.045, ph === 'kill' ? 1.4 : 0.8, 'sine', f, f * 1.002, ph === 'kill' ? 0.05 : 0.035));
         kind = EPS_SND[kind];
@@ -608,6 +641,7 @@ const Audio = (() => {
         else if (kind === 'zero') { tone(out, t, 0.3, 'square', up ? 440 : 1320, up ? 1320 : 440, 0.03); [1760, 2640].forEach((f, i) => tone(out, t + 0.08 + i * 0.07, 0.12, 'sine', f, f, 0.035)); }
         else if (kind === 'chaos') { tone(out, t, 0.45, 'sawtooth', up ? 60 : 110, up ? 110 : 50, 0.06); for (let i = 0; i < 4; i++) tone(out, t + i * 0.08, 0.03, 'square', 600 + Math.random() * 1200, 200, 0.03); }
         else if (kind === 'frontier') [1318, 1568, 2093].forEach((f, i) => tone(out, t + (up ? i : 2 - i) * 0.07, 0.6, 'sine', f, f * 0.999, 0.04));
+        else if (kind === 'nuke') { tone(out, t, 0.42, 'sawtooth', up ? 60 : 120, up ? 120 : 50, 0.05); for (let i = 0; i < 6; i++) noise(out, t + i * 0.055 + Math.random() * 0.03, 0.012, 'highpass', 4200, 1, 0.12); }   // 가이거 계수기 딸깍 + 웅
         return;
       }
       // 맞힘: 총성에 묻히지 않게 짧고 높은 소리 (지글 · 화르륵 · 지직 · 삑)
@@ -623,6 +657,7 @@ const Audio = (() => {
         else if (kind === 'zero') { tone(out, t, 0.05, 'square', 2200, 1800, 0.03); tone(out, t + 0.04, 0.05, 'sine', 3300, 3300, 0.025); }
         else if (kind === 'chaos') { noise(out, t, 0.12, 'bandpass', 900, 0.8, 0.08); tone(out, t, 0.08, 'sawtooth', 220, 90, 0.04); }
         else if (kind === 'frontier') tone(out, t, 0.35, 'sine', 2637, 2630, 0.03);
+        else if (kind === 'nuke') { noise(out, t, 0.1, 'highpass', 3600, 0.8, 0.07); for (let i = 0; i < 3; i++) noise(out, t + i * 0.03, 0.01, 'highpass', 4500, 1, 0.08); }
         return;
       }
       // 처치: 크게 (용암 분출 · 불꽃 용의 포효 · 낙뢰 · 데이터 붕괴)
@@ -665,6 +700,10 @@ const Audio = (() => {
         } else if (kind === 'frontier') {
           // 별자리 승천: 맑은 종소리가 차례로 올라감
           [784, 1046, 1318, 1568, 2093, 2637, 3136].forEach((f, i) => tone(out, t + i * 0.12, 1.1, 'sine', f, f * 0.999, 0.05)); tone(out, t, 0.6, 'sine', 120, 60, 0.2);
+        } else if (kind === 'nuke') {
+          // 방사능 소멸: 낮게 지글거리는 울림 + 빨라지는 가이거 계수기
+          tone(out, t, 1.2, 'sine', 70, 26, 0.35); noise(out, t, 1.4, 'lowpass', 300, 0.8, 0.3); tone(out, t, 0.9, 'sawtooth', 48, 90, 0.06);
+          for (let i = 0; i < 14; i++) noise(out, t + 0.05 + Math.pow(i / 14, 0.7) * 1.2, 0.012, 'highpass', 4200, 1, 0.16);
         }
         return;
       }
@@ -679,6 +718,7 @@ const Audio = (() => {
       else if (kind === 'zero') tone(out, t, 0.05, 'square', 1760, 1500, 0.02);
       else if (kind === 'chaos') noise(out, t, 0.14, 'lowpass', 900, 0.8, 0.06);
       else if (kind === 'frontier') tone(out, t, 0.2, 'sine', 3136, 3100, 0.015);
+      else if (kind === 'nuke') { noise(out, t, 0.18, 'bandpass', 1200, 0.8, 0.12); for (let i = 0; i < 4; i++) noise(out, t + 0.04 + i * 0.03, 0.01, 'highpass', 4500, 1, 0.08); }
     },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
     engine(id, pos, type, rpm, load, own, skid) {

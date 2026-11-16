@@ -1415,6 +1415,8 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .kf.eps.k-apocalypse .eps-ico { animation: pfSpin 0.9s linear infinite; }
 .kf.eps.k-dynasty .kf-eps b { background: linear-gradient(90deg, var(--sk1), #fff, var(--sk1)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: kfGold 2s linear infinite; text-shadow: none; }
 .kf.eps.k-omega .eps-ico, .kf.eps.k-omega .kf-eps b { animation: kfZap 0.5s steps(2) infinite; }
+.kf.eps.k-horizon .eps-ico { animation: pfSpin 1.4s linear infinite; }   /* v21 EVENT HORIZON: 원반이 도는 블랙홀 */
+.kf.eps.k-xsanta .eps-ico { animation: kfFlap 0.7s ease-in-out infinite; transform-origin: 20% 80%; }   /* v21 SANTA'S DELIVERY: 까딱이는 산타 모자 */
 @keyframes kfTwinkle { 50% { transform: scale(1.5) rotate(45deg); filter: drop-shadow(0 0 7px #fff); } }
 @keyframes kfEmber { to { box-shadow: 0 0 0 1px var(--sk2), 0 0 20px var(--sk1); } }
 @keyframes kfGlitch { 0%, 100% { transform: none; text-shadow: 0 0 8px var(--sk1); } 8% { transform: translateX(2px) skewX(-12deg); text-shadow: -2px 0 #fff, 2px 0 var(--sk1); } 12% { transform: translateX(-2px); } 16% { transform: none; } }

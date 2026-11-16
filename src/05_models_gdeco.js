@@ -277,6 +277,16 @@ const GunDeco = (() => {
     g.strokeStyle = 'rgba(255,250,220,0.7)'; g.lineWidth = 2; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(Math.cos(a) * 80, Math.sin(a) * 80); g.lineTo(-Math.cos(a) * 80, -Math.sin(a) * 80); g.stroke(); }
   });
   const mintTex = () => ctex('xmint', 128, 128, (g) => { g.translate(64, 64); g.fillStyle = '#fbf8f2'; g.beginPath(); g.arc(0, 0, 56, 0, TAU); g.fill(); g.fillStyle = '#d0141e'; for (let i = 0; i < 7; i++) { g.save(); g.rotate(i / 7 * TAU); g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(30, -8, 52, -24); g.quadraticCurveTo(44, 2, 0, 0); g.fill(); g.restore(); } g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 4; g.beginPath(); g.arc(-14, -18, 22, Math.PI * 1.1, Math.PI * 1.6); g.stroke(); });
+  // 산타 모자 (v21 SANTA'S DELIVERY): 옆으로 휜 빨간 고깔 · 울퉁불퉁한 흰 털 띠 · 끝의 흰 방울
+  const hatTex = () => ctex('xhat', 256, 256, (g) => {
+    const red = g.createLinearGradient(40, 60, 200, 200); red.addColorStop(0, '#ff4a50'); red.addColorStop(0.5, '#c8141e'); red.addColorStop(1, '#6a0810');
+    g.fillStyle = red; g.beginPath(); g.moveTo(40, 196); g.bezierCurveTo(52, 110, 110, 40, 176, 44); g.bezierCurveTo(206, 46, 222, 70, 214, 96); g.bezierCurveTo(190, 80, 160, 96, 150, 128); g.bezierCurveTo(144, 150, 150, 176, 168, 196); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(80,0,8,0.5)'; g.lineWidth = 3; g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.moveTo(64, 180); g.bezierCurveTo(74, 120, 112, 70, 160, 58); g.lineTo(164, 66); g.bezierCurveTo(120, 82, 90, 126, 80, 182); g.closePath(); g.fill();
+    g.fillStyle = '#f6f6f2'; for (let i = 0; i < 14; i++) { const x = 30 + (i / 13) * 150, r = 22 * (0.45 + ((i * 37) % 7) / 20); g.beginPath(); g.arc(x, 200 + Math.sin(i * 1.7) * 3, r, 0, TAU); g.fill(); }
+    for (let i = 0; i < 9; i++) { const a = i / 9 * TAU; g.beginPath(); g.arc(212 + Math.cos(a) * 12, 100 + Math.sin(a) * 12, 12, 0, TAU); g.fill(); }
+    g.fillStyle = 'rgba(150,165,185,0.35)'; g.beginPath(); g.arc(216, 108, 13, 0, Math.PI); g.fill(); g.fillRect(30, 208, 150, 8);
+  });
   const globeTex = () => ctex('xglobe', 256, 256, (g) => { g.translate(128, 128); const rg = g.createRadialGradient(0, 0, 90, 0, 0, 126); rg.addColorStop(0, 'rgba(200,235,255,0)'); rg.addColorStop(0.8, 'rgba(200,235,255,0.25)'); rg.addColorStop(0.97, 'rgba(240,250,255,0.85)'); rg.addColorStop(1, 'rgba(240,250,255,0)'); g.fillStyle = rg; g.beginPath(); g.arc(0, 0, 127, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 6; g.beginPath(); g.arc(-20, -26, 84, Math.PI * 1.08, Math.PI * 1.42); g.stroke(); });
   function xplateTex(d, serial) {
     return ctex(['xplate', d.name, d.no, serial].join('|'), 640, 220, (g, W, H) => {
@@ -307,10 +317,11 @@ const GunDeco = (() => {
     if (kind === 'xstar') { const st = spr(starTex(), { depthTest: false, blending: THREE.AdditiveBlending }); st.position.set(0, by + 0.06, zc + L * 0.28); root.add(st); out.star = st; }
     else if (kind === 'xgift') for (let i = 0; i < 4; i++) { const mt = spr(mintTex(), { depthTest: true }); mt.userData.a = i / 4 * TAU; root.add(mt); out.extra.push(mt); }
     else if (kind === 'xsnow') { const gl = spr(globeTex(), { depthTest: false }); gl.position.set(0, by, zc); root.add(gl); out.globe = gl; }
+    else if (kind === 'xsanta') { const hat = spr(hatTex(), { depthTest: false }); hat.position.set(0, by + 0.09, m.headPos ? m.headPos[2] + 0.17 : zc + L * 0.5); hat.renderOrder = 11; root.add(hat); out.hat = hat; }   // 판처파우스트 탄두 위에 산타 모자 (빨간 탄두와 겹치지 않게 조금 위)
     g.add(root); return out;
   }
   function xmasDispose(o) { if (!o) return; o.root.traverse((x) => { if (x.material) x.material.dispose(); if (x.geometry && x.geometry !== PLANE && !x.isSprite) x.geometry.dispose(); }); if (o.root.parent) o.root.parent.remove(o.root); }
-  return { attach, panel, crestHolo, sigil, plate, emblemTex, textTex, epsTex, xmas, xmasDispose };
+  return { attach, panel, crestHolo, sigil, plate, emblemTex, textTex, epsTex, xmas, xmasDispose, wreathTex, hatTex };
 })();
 // 특정 각도 글자의 일렁임 시간 (GunSkin.update 가 갱신)
 const GunDeco_T = { value: 0 };

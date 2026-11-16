@@ -202,6 +202,7 @@ function fireRocket(c, wi, d, origin, dir) {
   // 뒤 화염(백블라스트): 발사관 뒤로 불꽃·연기
   const back = meta && meta.backZ !== undefined ? gunWorldPoint(c, 0, meta.boreY, meta.backZ, new THREE.Vector3()) : null;
   backblast(back && back.distanceTo(origin) < 3 ? back : origin.clone().addScaledVector(D, -0.5), D, c.isPlayer);
+  if (g && g.userData.skin) GunSkin.shot(g, c);   // 스킨 판처파우스트: 탄두 끝에서 스킨 섬광 (v21)
   c.bloom = Math.min(c.bloom + d.recoil * 0.22, 4);
   c.spentT = 0.7; c.spentSlot = c.inv.cur; c.inspectT = 0;
   Audio.rocket('launch', origin, c.isPlayer);
@@ -215,14 +216,31 @@ function backblast(p, D, own) {
   FX.puff(p.x - D.x * 0.3, p.y - D.y * 0.3, p.z - D.z * 0.3, 0xffd090, 0.9 * s, 0.1, 1.4, 0);
   for (let i = 0; i < (own ? 3 : 5); i++) { const k = 0.5 + i * 0.4; FX.puff(p.x - D.x * k + rnd(-0.2, 0.2) * s, p.y - D.y * k - 0.15 + rnd(-0.1, 0.2) * s, p.z - D.z * k + rnd(-0.2, 0.2) * s, i < 1 ? 0xff9a40 : 0xb8b0a4, (0.6 + i * 0.22) * s, (own ? 0.35 : 0.7) + i * 0.15, own ? 1.6 : 2.4, 0.5); }
 }
+// 스킨 판처파우스트(v21): 날아가는 로켓도 그 스킨 무늬·탄두 색(GunSkin.dress) · 꼬리 불꽃 색과 꼬리 효과 · 폭발 모양(Boom style = 스킨 효과 종류)
+const ROCKET_FLAME = { nuke: 0xc8ff6a, xsanta: 0xffd65a, horizon: 0xc8a0ff };
 function spawnRocket(c, start, D, vis, d, remote) {
   if (!G.scene) return null;
+  const sk = c && c.skinOf ? c.skinOf('pzf') : null, st = sk && GSKINS[sk].fx ? GSKINS[sk].fx.kind : null;
   const mesh = Models.cluster('gh:pzf', Models.GUNS.pzf.head), fl = FX.flame(); fl.position.set(0, 0, -0.26); fl.scale.setScalar(0.42); mesh.add(fl);
+  if (sk) GunSkin.dress(mesh, sk);
+  if (ROCKET_FLAME[st]) fl.material.color.setHex(ROCKET_FLAME[st]);
   G.scene.add(mesh);
-  const v = d.rv || 80, r = { owner: c, x: start.x, y: start.y, z: start.z, vx: D.x * v, vy: D.y * v, vz: D.z * v, g: d.rg || 2.2, t: 0, mesh, fl, remote, trailT: 0, flyT: 0,
+  const v = d.rv || 80, r = { owner: c, x: start.x, y: start.y, z: start.z, vx: D.x * v, vy: D.y * v, vz: D.z * v, g: d.rg || 2.2, t: 0, mesh, fl, remote, trailT: 0, flyT: 0, sk, st, jT: 0,
     ox: vis.x - start.x, oy: vis.y - start.y, oz: vis.z - start.z };
   ROCKETS.push(r); placeRocket(r);
   return r;
+}
+// 스킨 로켓 꼬리: 핵폭탄 = 초록·노랑 방사능 가루 · SANTA'S DELIVERY = 색색 반짝이 가루(+ 방울 소리) · EVENT HORIZON = 로켓 둘레를 도는 강착 원반 가루
+const _rkE = new THREE.Vector3(), _rkF = new THREE.Vector3(), _rkP = new THREE.Vector3();
+function rocketSkinTrail(r, p, dx, dy, dz) {
+  if (!G.camera || p.distanceTo(G.camera.position) > 160) return;
+  const P = GunSkin.fx.pool(G.scene), E = GunSkin.fx.emit;
+  if (r.st === 'nuke') { for (let i = 0; i < 2; i++) { _rkP.set(p.x - dx * 0.3 + rnd(-0.12, 0.12), p.y - dy * 0.3 + rnd(-0.12, 0.12), p.z - dz * 0.3 + rnd(-0.12, 0.12)); E(P, _rkP, rnd(-0.4, 0.4), rnd(0, 0.8), rnd(-0.4, 0.4), Math.random() < 0.7 ? 0x9dff4a : 0xfff27a, rnd(0.04, 0.07), rnd(0.4, 0.8), { sq: Math.random() < 0.5, drag: 1.5, so: 0.45 }); } }
+  else if (r.st === 'xsanta') { for (let i = 0; i < 3; i++) { _rkP.set(p.x - dx * 0.3 + rnd(-0.15, 0.15), p.y - dy * 0.3 + rnd(-0.15, 0.15), p.z - dz * 0.3 + rnd(-0.15, 0.15)); E(P, _rkP, rnd(-0.5, 0.5), rnd(-0.6, 0.2), rnd(-0.5, 0.5), [0xff3a4a, 0x3aff7a, 0xffd65a, 0xffffff][(Math.random() * 4) | 0], rnd(0.04, 0.07), rnd(0.6, 1.1), { sq: Math.random() < 0.4, drag: 1.2, g: -0.6, so: 0.4 }); } }
+  else if (r.st === 'horizon') {
+    _rkE.set(dz, 0, -dx); if (_rkE.lengthSq() < 1e-4) _rkE.set(1, 0, 0); _rkE.normalize(); _rkF.set(dy * _rkE.z - dz * _rkE.y, dz * _rkE.x - dx * _rkE.z, dx * _rkE.y - dy * _rkE.x);
+    for (let i = 0; i < 3; i++) { const a = r.t * 18 + i * TAU / 3, ca = Math.cos(a), sa = Math.sin(a), R = 0.32; _rkP.set(p.x + (_rkE.x * ca + _rkF.x * sa) * R, p.y + (_rkE.y * ca + _rkF.y * sa) * R, p.z + (_rkE.z * ca + _rkF.z * sa) * R); E(P, _rkP, (-_rkE.x * sa + _rkF.x * ca) * 3 - dx * 2, (-_rkE.y * sa + _rkF.y * ca) * 3 - dy * 2, (-_rkE.z * sa + _rkF.z * ca) * 3 - dz * 2, i ? (Math.random() < 0.5 ? 0xffa34a : 0xb58cff) : 0xffffff, rnd(0.04, 0.06), 0.35, { drag: 2, so: 0.45 }); }
+  }
 }
 function placeRocket(r) {
   const k = Math.max(0, 1 - r.t / 0.18), m = r.mesh;
@@ -237,14 +255,15 @@ function stepRockets(dt) {
     const h = raycastAll(r.x, r.y, r.z, dx, dy, dz, L + 0.06, r.owner), wet = r.y + dy * L < WATER_Y && heightAt(r.x, r.z) < WATER_Y;
     if (h.t <= L + 0.06 || wet || r.t > 2.8) {
       const t = h.t <= L + 0.06 ? Math.max(0, h.t - 0.06) : wet ? clamp((WATER_Y - r.y) / (dy || -1), 0, L) : 0;
-      G.scene.remove(r.mesh); r.fl.material.dispose(); ROCKETS.splice(i, 1);
+      G.scene.remove(r.mesh); r.fl.material.dispose(); if (r.mesh.userData.gsMats) for (const m of r.mesh.userData.gsMats) m.dispose(); ROCKETS.splice(i, 1);
       rocketBoom(r, r.x + dx * t, r.y + dy * t, r.z + dz * t, h.t <= L + 0.06 ? h : null);
       continue;
     }
     r.x += r.vx * dt; r.y += r.vy * dt; r.z += r.vz * dt;
     placeRocket(r);
-    r.trailT -= dt; if (r.trailT <= 0) { r.trailT = 0.014; const p = r.mesh.position; FX.puff(p.x - dx * 0.35, p.y - dy * 0.35, p.z - dz * 0.35, 0xd2ccc2, 0.24, 0.9, 2.8, 0.2); }
+    r.trailT -= dt; if (r.trailT <= 0) { r.trailT = 0.014; const p = r.mesh.position; FX.puff(p.x - dx * 0.35, p.y - dy * 0.35, p.z - dz * 0.35, r.st === 'horizon' ? 0x6a5a8a : r.st === 'nuke' ? 0xc4ccb4 : 0xd2ccc2, 0.24, 0.9, 2.8, 0.2); if (r.st) rocketSkinTrail(r, p, dx, dy, dz); }
     r.flyT -= dt; if (r.flyT <= 0 && G.player) { r.flyT = 0.45; Audio.rocket('fly', r.mesh.position, false); }
+    if (r.st === 'xsanta') { r.jT -= dt; if (r.jT <= 0) { r.jT = 0.22; Audio.jingle(r.mesh.position, false, 0.9); } }   // 썰매 방울 소리를 내며 날아감
   }
 }
 // 직격: 기절 없이 처치 (같은 팀·부활 보호는 그대로 막힘). 다른 기기 캐릭터는 주인 기기에 처치 요청까지
@@ -255,7 +274,7 @@ function rocketLethal(t, own) {
   if (t.alive && t.knocked) applyDamage(t, 999, 'impact', own, 'pzf');
 }
 function rocketBoom(r, x, y, z, hit) {
-  FX.blast(x, y, z); Audio.rocket('boom', { x, y, z }, false);
+  FX.blast(x, y, z, r.st); Audio.rocket('boom', { x, y, z }, false, r.st);   // 스킨이면 그 모양의 폭발(모양만 — 피해는 같음)
   G.noises.push({ x, y, z, t: G.time, r: 320, by: r.owner, kind: 'blast' });
   if (G.player && G.player.alive) { const dd = Math.hypot(G.player.pos.x - x, G.player.pos.z - z); if (dd < 70) G.shake = Math.max(G.shake || 0, (1 - dd / 70) * 1.8); }
   if (r.remote) return;
@@ -1059,17 +1078,20 @@ const FX = (() => {
     else if (kind === 'dirt') puff(x, y, z, 0x8a7a5a, 0.4, 0.5, 2.2, 0.6);
     else { puff(x, y, z, 0xffd080, 0.18, 0.08, 1, 0); puff(x, y, z, 0x9a9a9a, 0.3, 0.4, 2, 0.4); }
   }
+  // 수류탄 폭발 — v21: 06_boom.js 의 제대로 된 폭발(작게). 효과 장면이 없을 때만 예전 연기 몇 개
   function explosion(x, y, z) {
+    if (typeof Boom !== 'undefined' && Boom.blast(x, y, z, { k: 0.62 })) return;
     puff(x, y + 0.6, z, 0xffb050, 3.5, 0.25, 2.5, 0); puff(x, y + 1, z, 0xff7020, 2.2, 0.35, 2, 1);
     for (let i = 0; i < 6; i++) puff(x + rnd(-1.5, 1.5), y + rnd(0.3, 1.5), z + rnd(-1.5, 1.5), 0x4a4440, 2, 1.6, 2.2, 1.2);
   }
-  // 판처파우스트(v21): 로켓 꼬리 불꽃(가산 혼합 스프라이트) · 폭발 = 흰 섬광 → 주황 불덩이 → 검은 연기 + 흙 튐 (수류탄보다 크게)
+  // 판처파우스트(v21): 로켓 꼬리 불꽃(가산 혼합 스프라이트) · 폭발은 06_boom.js (섬광 · 불덩이 · 충격파 · 흙먼지 · 파편 · 연기 기둥 · 그을음)
+  //  style: 판처파우스트 스킨 모양(nuke 버섯구름 · xsanta 불꽃놀이 · horizon 블랙홀) · k: 크기 · car: 차량 폭발(불붙은 조각·잔불이 더 많이)
   function flame() { return new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, color: 0xffb35a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); }
-  function blast(x, y, z) {
+  function blast(x, y, z, style, k = 1, car = false) {
     if (!scene) return;
+    if (typeof Boom !== 'undefined' && Boom.blast(x, y, z, { k, style, car })) return;
     puff(x, y + 0.5, z, 0xfff2c8, 5.5, 0.16, 1.8, 0); puff(x, y + 0.8, z, 0xffb050, 4.4, 0.34, 2.2, 0.6); puff(x, y + 1.3, z, 0xff6a1a, 3.2, 0.55, 2.0, 1.8);
     for (let i = 0; i < 9; i++) puff(x + rnd(-2, 2), y + rnd(0.4, 2.2), z + rnd(-2, 2), i % 3 ? 0x3a3532 : 0x5a524a, rnd(2, 3), rnd(1.8, 2.8), 2.4, rnd(1.2, 2.4));
-    for (let i = 0; i < 5; i++) puff(x + rnd(-1.4, 1.4), y + 0.3, z + rnd(-1.4, 1.4), 0x7a6a50, 1.4, 0.9, 2, 3.5);
     if (G.muzzleLight) { G.muzzleLight.position.set(x, y + 1.5, z); G.muzzleLight.intensity = 9; }
   }
   function grenadeMesh(type) { const m = Models.display(type); scene.add(m); return m; }

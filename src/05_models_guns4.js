@@ -42,7 +42,7 @@
     },
     // 탄두 (부품 축 = 발사관 축). 뒤 꼬리대·접힌 날개는 관 안에 꽂혀 있다가 날아갈 때 보인다
     head(g) {
-      const od = M('anod', 0x4c5432), dk = M('gunmetal', 0x262824), yl = M('paper', 0xd0ae38), st = M('metal', 0x8a8e88);
+      const od = M('shell', 0x4c5432), dk = M('gunmetal', 0x262824), yl = M('paper', 0xd0ae38), st = M('metal', 0x8a8e88);   // shell: 스킨이 탄두만 따로 칠함 (평소엔 무광 올리브)
       A(g, CY(0.016, 0.016, 0.2, 14), dk, 0, 0, -0.1);
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; A(g, BX(0.0022, 0.012, 0.08), st, Math.cos(a) * 0.017, Math.sin(a) * 0.017, -0.16, 0, 0, a + Math.PI / 2); }
       A(g, lathe(HEAD), od);

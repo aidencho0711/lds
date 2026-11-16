@@ -1420,6 +1420,8 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .kf.eps.k-apocalypse .eps-ico { animation: pfSpin 0.9s linear infinite; }
 .kf.eps.k-dynasty .kf-eps b { background: linear-gradient(90deg, var(--sk1), #fff, var(--sk1)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: kfGold 2s linear infinite; text-shadow: none; }
 .kf.eps.k-omega .eps-ico, .kf.eps.k-omega .kf-eps b { animation: kfZap 0.5s steps(2) infinite; }
+.kf.eps.k-horizon .eps-ico { animation: pfSpin 1.4s linear infinite; }   /* v21 EVENT HORIZON: 원반이 도는 블랙홀 */
+.kf.eps.k-xsanta .eps-ico { animation: kfFlap 0.7s ease-in-out infinite; transform-origin: 20% 80%; }   /* v21 SANTA'S DELIVERY: 까딱이는 산타 모자 */
 @keyframes kfTwinkle { 50% { transform: scale(1.5) rotate(45deg); filter: drop-shadow(0 0 7px #fff); } }
 @keyframes kfEmber { to { box-shadow: 0 0 0 1px var(--sk2), 0 0 20px var(--sk1); } }
 @keyframes kfGlitch { 0%, 100% { transform: none; text-shadow: 0 0 8px var(--sk1); } 8% { transform: translateX(2px) skewX(-12deg); text-shadow: -2px 0 #fff, 2px 0 var(--sk1); } 12% { transform: translateX(-2px); } 16% { transform: none; } }
@@ -2730,6 +2732,23 @@ const Audio = (() => {
     const g = ctx.createGain(); g.gain.setValueAtTime(g0, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
     o.connect(g); g.connect(out); o.start(t0); o.stop(t0 + dur + 0.02);
   }
+  // 폭발 소리 층 (v21): g = 크기 · d = 거리(가까울 때만 떨어지는 파편 소리) · style = 판처파우스트 스킨 폭발
+  function boomLayers(out, t, g, d, style) {
+    noise(out, t, 0.09, 'highpass', 1800, 0.7, 1.0 * g);                                   // 날카로운 터짐
+    noise(out, t, 0.7, 'lowpass', 1300, 0.7, 1.1 * g);                                     // 폭발 몸통
+    tone(out, t, 1.4, 'sine', 92, 24, 1.5 * g); tone(out, t, 0.5, 'triangle', 160, 40, 0.45 * g);   // 낮은 쿵
+    noise(out, t + 0.05, 2.6 * Math.sqrt(g), 'lowpass', 260, 0.8, 1.2 * g);                 // 길게 구르는 울림
+    noise(out, t + 0.45, 1.6, 'lowpass', 320, 0.6, 0.32 * g);                              // 메아리
+    if (d < 90) for (let i = 0; i < 9; i++) noise(out, t + 0.35 + i * 0.11 + Math.random() * 0.08, 0.06, 'bandpass', 900 + Math.random() * 2500, 2, 0.13 * g * (1 - i / 10));   // 떨어지는 흙·파편
+    if (style === 'nuke') {
+      tone(out, t, 3.6, 'sine', 55, 18, 1.2); noise(out, t + 0.3, 4.5, 'lowpass', 180, 0.7, 1.0);
+      for (let i = 0; i < 16; i++) noise(out, t + 0.6 + Math.random() * 2.6, 0.012, 'highpass', 4000, 1, 0.22);   // 가이거 계수기
+    } else if (style === 'xsanta') {
+      for (let i = 0; i < 26; i++) noise(out, t + 0.15 + Math.random() * 1.3, 0.02, 'highpass', 3000 + Math.random() * 2000, 1, 0.26);   // 불꽃놀이 탁탁
+      [2093, 2349, 2637, 3136, 2637, 3136].forEach((f, i) => { tone(out, t + 0.12 + i * 0.05, 0.4, 'sine', f, f * 1.003, 0.07); tone(out, t + 0.12 + i * 0.05, 0.2, 'sine', f * 2.76, f * 2.76, 0.02); });
+      noise(out, t + 0.45, 1.8, 'highpass', 6000, 0.6, 0.12);
+    }
+  }
   const CLS_ID = { AR: 'm416', SMG: 'vk9', SG: 's12k', DMR: 'mini14', SR: 'm24', PISTOL: 'p19', LMG: 'm249' };
   // ---------- 차량 엔진 (실시간 합성, 차량별 목소리) ----------
   //  톱니파(기본) + 반 옥타브 아래 사각파(점화 펄스) + 흡배기 잡음 → 포화 → 저역통과. rpm은 기어 변속을 흉내 낸 값
@@ -2836,14 +2855,16 @@ const Audio = (() => {
     },
     zoneWarn() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.25, 'sawtooth', 440, 430, 0.12); tone(sfxBus, t + 0.3, 0.35, 'sawtooth', 330, 320, 0.12); },
     zoneTick() { if (!ctx || !throttle('ztick', 0.9)) return; const t = ctx.currentTime; tone(sfxBus, t, 0.12, 'sine', 160, 120, 0.25); },
-    explosion(pos) {
-      if (!ctx || !voice(1.5)) return;
+    // 수류탄·차량 폭발 (big: 차량 1.25) — v21: 날카로운 터짐 · 낮은 쿵 · 길게 구르는 울림 · 떨어지는 파편 소리
+    explosion(pos, big = 1) {
+      if (!ctx || !voice(1.8)) return;
       const r = geom(pos), delay = Math.min(r.d / 343, 1.8);
       const out = chain(1.3 / (1 + r.d / 30), r.pan, clamp(9000 / (1 + r.d / 60), 300, 9000), clamp(0.4 + r.d / 200, 0.4, 1.2), false);
-      const t = ctx.currentTime + delay; noise(out, t, 1.1, 'lowpass', 500, 0.6, 1.2); tone(out, t, 0.6, 'sine', 90, 30, 1.2);
+      boomLayers(out, ctx.currentTime + delay, 0.75 * big, r.d, null);
     },
     // 판처파우스트(v21): launch = 낮은 '쿵' + 뒤로 뿜는 화염의 쉭 소리 · fly = 날아가는 로켓의 짧은 바람 소리 · boom = 수류탄보다 크고 길고 낮은 폭발
-    rocket(kind, pos, own) {
+    //  style(스킨 폭발): nuke = 아주 길게 구르는 낮은 울림 + 가이거 계수기 · xsanta = 불꽃놀이 탁탁 + 방울 · horizon = 빨려 드는 소리 뒤에 폭발
+    rocket(kind, pos, own, style) {
       if (!ctx || !voice(kind === 'boom' ? 2 : 1.2)) return;
       const r = own || !pos ? { d: 0, pan: 0 } : geom(pos), delay = own ? 0 : Math.min(r.d / 343, 1.8), t = ctx.currentTime + delay;
       if (kind === 'launch') {
@@ -2854,7 +2875,19 @@ const Audio = (() => {
         noise(out, ctx.currentTime, 0.5, 'bandpass', 1500, 1.4, 0.5);
       } else {
         const out = chain(1.7 / (1 + r.d / 35), r.pan, clamp(8000 / (1 + r.d / 60), 260, 8000), clamp(0.5 + r.d / 180, 0.5, 1.4), false);
-        noise(out, t, 1.8, 'lowpass', 420, 0.6, 1.5); tone(out, t, 1.0, 'sine', 78, 22, 1.5); noise(out, t, 0.28, 'highpass', 2400, 0.8, 0.5); noise(out, t + 0.12, 1.4, 'bandpass', 700, 0.5, 0.35);
+        let t0 = t;
+        if (style === 'horizon') {   // 블랙홀: 빨려 드는 소리가 1.5초 동안 높아지며 커짐 → 무너지며 폭발
+          const T = typeof Boom !== 'undefined' ? Boom.HZ_T : 1.5;
+          tone(out, t, T, 'sine', 40, 420, 0.5); tone(out, t, T, 'triangle', 22, 180, 0.32); tone(out, t, T * 0.9, 'sawtooth', 30, 60, 0.06); noise(out, t, T, 'lowpass', 240, 0.8, 0.5);
+          for (let i = 0; i < 6; i++) noise(out, t + i * T / 6, T / 6 + 0.12, 'bandpass', 280 + i * 260, 1, 0.1 + i * 0.05);
+          t0 = t + T; [1568, 2093, 2637].forEach((f, i) => tone(out, t0 + i * 0.04, 1.2, 'sine', f, f * 0.995, 0.05));
+        } else if (style === 'xsanta') {   // 선물 상자: 톡 솟는 소리 + 부르르 떨리는 방울 → 0.9초에 뚜껑이 날아가며 폭발
+          const T = typeof Boom !== 'undefined' ? Boom.GIFT_T : 0.9;
+          noise(out, t, 0.1, 'bandpass', 1400, 1.2, 0.5); tone(out, t, 0.22, 'sine', 260, 820, 0.3);
+          for (let i = 0; i < 10; i++) { const f = [2093, 2637, 3136, 2349][i % 4]; tone(out, t + 0.3 + i * 0.055, 0.18, 'sine', f, f, 0.05); }
+          t0 = t + T; noise(out, t0, 0.08, 'highpass', 2600, 0.8, 0.5); tone(out, t0, 0.12, 'square', 900, 300, 0.12);
+        }
+        boomLayers(out, t0, 1, r.d, style);
       }
     },
     pin(pos, own = true) { if (!ctx) return; if (!playBuf('pin', own ? null : pos, own ? 0.6 : 0.5, { own, range: 20, ref: 3 })) { const t = ctx.currentTime; tone(sfxBus, t, 0.04, 'square', 2400, 2400, 0.06); } },
@@ -2890,7 +2923,9 @@ const Audio = (() => {
       if (lite) { const gn = ctx.createGain(); gn.gain.value = 0.5; gn.connect(out); out = gn; if (ph === 'kill') ph = 'hit'; }
       const t = ctx.currentTime;
       // 엡실론: 주제마다 가까운 기존 소리를 쓰고, 꺼내기·처치·살펴보기에는 엡실론 고유의 맑은 화음을 얹음
-      const EPS_SND = { celestial: 'frontier', divine: 'zero', infernal: 'ember', voidr: 'void', seraph: 'frost', apocalypse: 'chaos', dynasty: 'frontier', omega: 'spark' };
+      const EPS_SND = { celestial: 'frontier', divine: 'zero', infernal: 'ember', voidr: 'void', seraph: 'frost', apocalypse: 'chaos', dynasty: 'frontier', omega: 'spark', horizon: 'void' };
+      // SANTA'S DELIVERY(v21 EXCLUSIVE): 처치하면 썰매 방울이 차르르 쏟아짐
+      if (kind === 'xsanta' && ph === 'kill') { if (throttle('xsk', 0.3) && voice(1)) { for (let i = 0; i < 9; i++) { const f = [2093, 2349, 2637, 3136, 2637, 2349, 2093, 2637, 3136][i]; tone(out, t + i * 0.06, 0.3, 'sine', f, f, 0.06); tone(out, t + i * 0.06, 0.16, 'sine', f * 2.76, f * 2.76, 0.02); } tone(out, t, 0.5, 'sine', 110, 55, 0.2); } return; }
       if (EPS_SND[kind]) {
         if ((ph === 'kill' || ph === 'draw' || ph === 'inspect') && throttle('epsch' + ph, 0.3)) [784, 1175, 1568, 2349].forEach((f, i) => tone(out, t + i * 0.045, ph === 'kill' ? 1.4 : 0.8, 'sine', f, f * 1.002, ph === 'kill' ? 0.05 : 0.035));
         kind = EPS_SND[kind];
@@ -2918,6 +2953,7 @@ const Audio = (() => {
         else if (kind === 'zero') { tone(out, t, 0.3, 'square', up ? 440 : 1320, up ? 1320 : 440, 0.03); [1760, 2640].forEach((f, i) => tone(out, t + 0.08 + i * 0.07, 0.12, 'sine', f, f, 0.035)); }
         else if (kind === 'chaos') { tone(out, t, 0.45, 'sawtooth', up ? 60 : 110, up ? 110 : 50, 0.06); for (let i = 0; i < 4; i++) tone(out, t + i * 0.08, 0.03, 'square', 600 + Math.random() * 1200, 200, 0.03); }
         else if (kind === 'frontier') [1318, 1568, 2093].forEach((f, i) => tone(out, t + (up ? i : 2 - i) * 0.07, 0.6, 'sine', f, f * 0.999, 0.04));
+        else if (kind === 'nuke') { tone(out, t, 0.42, 'sawtooth', up ? 60 : 120, up ? 120 : 50, 0.05); for (let i = 0; i < 6; i++) noise(out, t + i * 0.055 + Math.random() * 0.03, 0.012, 'highpass', 4200, 1, 0.12); }   // 가이거 계수기 딸깍 + 웅
         return;
       }
       // 맞힘: 총성에 묻히지 않게 짧고 높은 소리 (지글 · 화르륵 · 지직 · 삑)
@@ -2933,6 +2969,7 @@ const Audio = (() => {
         else if (kind === 'zero') { tone(out, t, 0.05, 'square', 2200, 1800, 0.03); tone(out, t + 0.04, 0.05, 'sine', 3300, 3300, 0.025); }
         else if (kind === 'chaos') { noise(out, t, 0.12, 'bandpass', 900, 0.8, 0.08); tone(out, t, 0.08, 'sawtooth', 220, 90, 0.04); }
         else if (kind === 'frontier') tone(out, t, 0.35, 'sine', 2637, 2630, 0.03);
+        else if (kind === 'nuke') { noise(out, t, 0.1, 'highpass', 3600, 0.8, 0.07); for (let i = 0; i < 3; i++) noise(out, t + i * 0.03, 0.01, 'highpass', 4500, 1, 0.08); }
         return;
       }
       // 처치: 크게 (용암 분출 · 불꽃 용의 포효 · 낙뢰 · 데이터 붕괴)
@@ -2975,6 +3012,10 @@ const Audio = (() => {
         } else if (kind === 'frontier') {
           // 별자리 승천: 맑은 종소리가 차례로 올라감
           [784, 1046, 1318, 1568, 2093, 2637, 3136].forEach((f, i) => tone(out, t + i * 0.12, 1.1, 'sine', f, f * 0.999, 0.05)); tone(out, t, 0.6, 'sine', 120, 60, 0.2);
+        } else if (kind === 'nuke') {
+          // 방사능 소멸: 낮게 지글거리는 울림 + 빨라지는 가이거 계수기
+          tone(out, t, 1.2, 'sine', 70, 26, 0.35); noise(out, t, 1.4, 'lowpass', 300, 0.8, 0.3); tone(out, t, 0.9, 'sawtooth', 48, 90, 0.06);
+          for (let i = 0; i < 14; i++) noise(out, t + 0.05 + Math.pow(i / 14, 0.7) * 1.2, 0.012, 'highpass', 4200, 1, 0.16);
         }
         return;
       }
@@ -2989,6 +3030,7 @@ const Audio = (() => {
       else if (kind === 'zero') tone(out, t, 0.05, 'square', 1760, 1500, 0.02);
       else if (kind === 'chaos') noise(out, t, 0.14, 'lowpass', 900, 0.8, 0.06);
       else if (kind === 'frontier') tone(out, t, 0.2, 'sine', 3136, 3100, 0.015);
+      else if (kind === 'nuke') { noise(out, t, 0.18, 'bandpass', 1200, 0.8, 0.12); for (let i = 0; i < 4; i++) noise(out, t + 0.04 + i * 0.03, 0.01, 'highpass', 4500, 1, 0.08); }
     },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
     engine(id, pos, type, rpm, load, own, skid) {
@@ -8191,10 +8233,11 @@ const Models = (() => {
   let R = null, ENV = null;
   const CLS = {}, TEXMAT = {}, TEX = {}, CL = {}, ICON = {};
   const WHITE = new THREE.Color(1, 1, 1);
-  const KIND2CLS = { metal: 'metal', brass: 'metal', alu: 'metal', gunmetal: 'matte', anod: 'matte', foil: 'matte', polymer: 'diel', rubber: 'diel', wood: 'diel', cloth: 'diel', paper: 'diel' };
+  const KIND2CLS = { metal: 'metal', brass: 'metal', alu: 'metal', gunmetal: 'matte', anod: 'matte', foil: 'matte', shell: 'matte', polymer: 'diel', rubber: 'diel', wood: 'diel', cloth: 'diel', paper: 'diel' };
   const M = (kind, color) => ({ desc: true, cls: KIND2CLS[kind] || 'diel', color: new THREE.Color(color), kind });
   // 정점마다 남기는 재질 종류(총기 스킨이 부위별로 칠할 때 씀): 0 플라스틱 · 1 나무 · 2 무광 금속 · 3 광택 금속 · 4 황동 · 5 고무 · 6 천·종이
-  const KD = { polymer: 0, wood: 1, gunmetal: 2, anod: 2, metal: 3, alu: 3, brass: 4, rubber: 5, cloth: 6, paper: 6, foil: 6 };
+  //  8 탄두 껍데기(shell, v21 판처파우스트): 스킨이 탄두를 따로 칠할 수 있다(GSKINS 의 head). 정하지 않은 스킨은 몸체처럼 (7 = 부속품 발광, 05_models_gparts.js)
+  const KD = { polymer: 0, wood: 1, gunmetal: 2, anod: 2, metal: 3, alu: 3, brass: 4, rubber: 5, cloth: 6, paper: 6, foil: 6, shell: 8 };
   const FONT = '"Saira Condensed","Arial Narrow",Arial,sans-serif';
 
   // ---------- 환경광(반사) ----------
@@ -9103,6 +9146,16 @@ const GunDeco = (() => {
     g.strokeStyle = 'rgba(255,250,220,0.7)'; g.lineWidth = 2; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(Math.cos(a) * 80, Math.sin(a) * 80); g.lineTo(-Math.cos(a) * 80, -Math.sin(a) * 80); g.stroke(); }
   });
   const mintTex = () => ctex('xmint', 128, 128, (g) => { g.translate(64, 64); g.fillStyle = '#fbf8f2'; g.beginPath(); g.arc(0, 0, 56, 0, TAU); g.fill(); g.fillStyle = '#d0141e'; for (let i = 0; i < 7; i++) { g.save(); g.rotate(i / 7 * TAU); g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(30, -8, 52, -24); g.quadraticCurveTo(44, 2, 0, 0); g.fill(); g.restore(); } g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 4; g.beginPath(); g.arc(-14, -18, 22, Math.PI * 1.1, Math.PI * 1.6); g.stroke(); });
+  // 산타 모자 (v21 SANTA'S DELIVERY): 옆으로 휜 빨간 고깔 · 울퉁불퉁한 흰 털 띠 · 끝의 흰 방울
+  const hatTex = () => ctex('xhat', 256, 256, (g) => {
+    const red = g.createLinearGradient(40, 60, 200, 200); red.addColorStop(0, '#ff4a50'); red.addColorStop(0.5, '#c8141e'); red.addColorStop(1, '#6a0810');
+    g.fillStyle = red; g.beginPath(); g.moveTo(40, 196); g.bezierCurveTo(52, 110, 110, 40, 176, 44); g.bezierCurveTo(206, 46, 222, 70, 214, 96); g.bezierCurveTo(190, 80, 160, 96, 150, 128); g.bezierCurveTo(144, 150, 150, 176, 168, 196); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(80,0,8,0.5)'; g.lineWidth = 3; g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.moveTo(64, 180); g.bezierCurveTo(74, 120, 112, 70, 160, 58); g.lineTo(164, 66); g.bezierCurveTo(120, 82, 90, 126, 80, 182); g.closePath(); g.fill();
+    g.fillStyle = '#f6f6f2'; for (let i = 0; i < 14; i++) { const x = 30 + (i / 13) * 150, r = 22 * (0.45 + ((i * 37) % 7) / 20); g.beginPath(); g.arc(x, 200 + Math.sin(i * 1.7) * 3, r, 0, TAU); g.fill(); }
+    for (let i = 0; i < 9; i++) { const a = i / 9 * TAU; g.beginPath(); g.arc(212 + Math.cos(a) * 12, 100 + Math.sin(a) * 12, 12, 0, TAU); g.fill(); }
+    g.fillStyle = 'rgba(150,165,185,0.35)'; g.beginPath(); g.arc(216, 108, 13, 0, Math.PI); g.fill(); g.fillRect(30, 208, 150, 8);
+  });
   const globeTex = () => ctex('xglobe', 256, 256, (g) => { g.translate(128, 128); const rg = g.createRadialGradient(0, 0, 90, 0, 0, 126); rg.addColorStop(0, 'rgba(200,235,255,0)'); rg.addColorStop(0.8, 'rgba(200,235,255,0.25)'); rg.addColorStop(0.97, 'rgba(240,250,255,0.85)'); rg.addColorStop(1, 'rgba(240,250,255,0)'); g.fillStyle = rg; g.beginPath(); g.arc(0, 0, 127, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 6; g.beginPath(); g.arc(-20, -26, 84, Math.PI * 1.08, Math.PI * 1.42); g.stroke(); });
   function xplateTex(d, serial) {
     return ctex(['xplate', d.name, d.no, serial].join('|'), 640, 220, (g, W, H) => {
@@ -9133,10 +9186,11 @@ const GunDeco = (() => {
     if (kind === 'xstar') { const st = spr(starTex(), { depthTest: false, blending: THREE.AdditiveBlending }); st.position.set(0, by + 0.06, zc + L * 0.28); root.add(st); out.star = st; }
     else if (kind === 'xgift') for (let i = 0; i < 4; i++) { const mt = spr(mintTex(), { depthTest: true }); mt.userData.a = i / 4 * TAU; root.add(mt); out.extra.push(mt); }
     else if (kind === 'xsnow') { const gl = spr(globeTex(), { depthTest: false }); gl.position.set(0, by, zc); root.add(gl); out.globe = gl; }
+    else if (kind === 'xsanta') { const hat = spr(hatTex(), { depthTest: false }); hat.position.set(0, by + 0.09, m.headPos ? m.headPos[2] + 0.17 : zc + L * 0.5); hat.renderOrder = 11; root.add(hat); out.hat = hat; }   // 판처파우스트 탄두 위에 산타 모자 (빨간 탄두와 겹치지 않게 조금 위)
     g.add(root); return out;
   }
   function xmasDispose(o) { if (!o) return; o.root.traverse((x) => { if (x.material) x.material.dispose(); if (x.geometry && x.geometry !== PLANE && !x.isSprite) x.geometry.dispose(); }); if (o.root.parent) o.root.parent.remove(o.root); }
-  return { attach, panel, crestHolo, sigil, plate, emblemTex, textTex, epsTex, xmas, xmasDispose };
+  return { attach, panel, crestHolo, sigil, plate, emblemTex, textTex, epsTex, xmas, xmasDispose, wreathTex, hatTex };
 })();
 // 특정 각도 글자의 일렁임 시간 (GunSkin.update 가 갱신)
 const GunDeco_T = { value: 0 };
@@ -9341,9 +9395,12 @@ const GunParts = (() => {
         const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), kd = new Float32Array(n);
         let o = 0;
         for (const e of L) {
-          const c = e.g.attributes.position.count, v = e.dark ? 0.07 : 1;
+          const c = e.g.attributes.position.count, v = e.dark === true ? 0.07 : 1;
           pos.set(e.g.attributes.position.array, o * 3); nor.set(e.g.attributes.normal.array, o * 3);
-          col.fill(v, o * 3, (o + c) * 3); kd.fill(e.kd, o, o + c); o += c; e.g.dispose();
+          // dark 에 색(16진수)을 주면 그 색 — kd 4~6(색을 바꾸지 않는 부위)이 그 색 그대로 보인다 (v21: 흰 털 · 초록 잎 · 검은 띠)
+          if (typeof e.dark === 'number') { const cc = new THREE.Color(e.dark); for (let i = o; i < o + c; i++) { col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b; } }
+          else col.fill(v, o * 3, (o + c) * 3);
+          kd.fill(e.kd, o, o + c); o += c; e.g.dispose();
         }
         const out = new THREE.BufferGeometry();
         out.setAttribute('position', new THREE.BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
@@ -9364,6 +9421,13 @@ const GunParts = (() => {
   const TO = (R, r, rs = 6, ts = 18) => new THREE.TorusGeometry(R, r, rs, ts);
   const SPH_ = (r) => new THREE.SphereGeometry(r, 10, 6, 0, TAU, 0, Math.PI / 2);   // 반구 (방울 윗부분)
   const HP = Math.PI / 2;
+  // 고리 조각(부채꼴 띠): 총열을 감는 면(xy)에 반지름 r0~r1, 각 a0~a1, 두께 d (v21 방사능 표지 · 경고 띠)
+  const SECT = (r0, r1, a0, a1, d) => {
+    const s = new THREE.Shape();
+    if (a1 - a0 >= TAU - 1e-4) { s.absarc(0, 0, r1, 0, TAU, false); const h = new THREE.Path(); h.absarc(0, 0, r0, 0, TAU, true); s.holes.push(h); }   // 온 고리는 구멍으로
+    else { s.absarc(0, 0, r1, a0, a1, false); s.absarc(0, 0, r0, a1, a0, true); }
+    const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false, curveSegments: 8 }); g.translate(0, 0, -d / 2); return g;
+  };
   // 고리 둘레에 n개 (a: 각도) — 원뿔의 +y가 바깥을 보게 z축으로 돌림
   const around = (n, a0, fn) => { for (let i = 0; i < n; i++) { const a = a0 + (i / n) * TAU; fn(a, Math.cos(a), Math.sin(a), a - HP); } };
 
@@ -9596,6 +9660,57 @@ const GunParts = (() => {
       { at: 'LR', z: 0.47, build(B) { for (let i = 0; i < 6; i++) { const t = i / 6 * TAU; B.add(BX(0.0016, 0.0012, 0.02), 7, Math.sin(t) * 0.006, 0.0018, Math.cos(t) * 0.006, 0, t, 0); } B.add(OC(0.0036), 3, 0, 0.003, 0, 0, 0, 0, 1, 0.7, 1); } },
       { at: 'top', z: 0.08, build(B) { for (let i = 0; i < 5; i++) { const t = i / 5 * TAU; B.add(CO(0.0028, 0.008, 4), 7, 0, 0.011 + Math.cos(t) * 0.004, Math.sin(t) * 0.004, t); } B.add(CY(0.0016, 0.0024, 0.008, 6), 3, 0, 0.004, 0); } },
     ],
+    // ---------- v21 판처파우스트 (원점 = 발사관 축, r = 발사관 반지름. head: 탄두에 붙어 쏘면 탄두와 같이 숨음) ----------
+    // 핵폭탄: 뒤끝의 노랑·검정 봉쇄 고리(초록 빛 홈) · 발사관을 감은 방사능 표지 판(노란 원판에 검은 세 날개 — 1인칭에서 뒤로 보면 표지가 보임)
+    //  · 양옆 초록 연료봉(강철 틀) · 위의 방사능 계수기(빛나는 눈금판 · 안테나) · 탄두 뒤 초록 봉인 고리
+    nuke: [
+      { at: 'ring', z: 0.06, build(B, r) {
+        for (let i = 0; i < 12; i++) B.add(SECT(r + 0.001, r + 0.0068, i / 12 * TAU, (i + 1) / 12 * TAU, 0.024), 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, i % 2 ? 0x121210 : 0xe3bb1c);
+        for (const z of [-0.0135, 0.0135]) B.add(TO(r + 0.0068, 0.0018, 4, 22), 3, 0, 0, z);
+        B.add(TO(r + 0.0072, 0.0009, 4, 22), 7, 0, 0, 0);
+      } },
+      { at: 'ring', z: 0.3, build(B, r) {
+        B.add(SECT(r + 0.001, r + 0.026, 0, TAU, 0.004), 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0xe3bb1c);
+        for (let i = 0; i < 3; i++) { const ac = Math.PI / 6 + i * TAU / 3; B.add(SECT(r + 0.006, r + 0.0225, ac - Math.PI / 6, ac + Math.PI / 6, 0.0064), 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0x121210); }
+        B.add(TO(r + 0.026, 0.0014, 4, 40), 7, 0, 0, 0); B.add(TO(r + 0.0035, 0.0022, 4, 22), 3, 0, 0, 0);
+      } },
+      { at: 'LR', z: 0.42, build(B) {
+        for (const z of [-0.024, 0.024]) B.add(CY(0.0092, 0.0092, 0.007, 10), 3, 0, 0.009, z, HP);
+        B.add(CY(0.0068, 0.0068, 0.042, 10), 7, 0, 0.009, 0, HP);
+        around(3, 0, (a, c, s) => B.add(BX(0.0018, 0.0018, 0.042), 3, c * 0.0082, 0.009 + s * 0.0082, 0));
+      } },
+      { at: 'top', z: 0.2, build(B) {
+        B.add(BX(0.018, 0.011, 0.024), 0, 0, 0.0055, 0);
+        B.add(CY(0.0065, 0.0065, 0.0024, 14), 7, 0, 0.0112, 0.002);
+        B.add(BX(0.0012, 0.0014, 0.0062), 5, 0.001, 0.0128, 0.002, 0, 0.5, 0, 1, 1, 1, 0x111111);
+        B.add(CY(0.0011, 0.0011, 0.024, 4), 3, 0.006, 0.02, -0.008, -0.35); B.add(OC(0.0022), 7, 0.006, 0.032, -0.012);
+      } },
+      { at: 'ring', mz: -0.287, build(B, r) { B.add(TO(r + 0.004, 0.0032, 6, 24), 3, 0, 0, 0); B.add(TO(r + 0.0062, 0.0014, 4, 26), 7, 0, 0, 0.004); } },
+    ],
+    // SANTA'S DELIVERY: 양 끝 흰 털 테(울퉁불퉁) · 가운데 검은 벨트와 금 버클 · 버클 뒤 양옆 금빛 썰매 방울(빨간 끈) · 위의 호랑가시(초록 잎 · 빛나는 빨간 열매)
+    xsanta: [
+      { at: 'ring', z: 0.035, build(B, r) { B.add(TO(r + 0.008, 0.0105, 8, 22), 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0xf4f4ef); around(16, 0.2, (a, c, s) => { const o = (Math.round(a * 16 / TAU) % 2 ? 1 : -1); B.add(IC(0.0066, 1), 6, c * (r + 0.0158), s * (r + 0.0158), o * 0.0052, 0, 0, 0, 1, 1, 1, 0xfafaf6); }); } },   // 털 뭉치가 두 줄로 엇갈려 삐져나옴
+      { at: 'ring', mz: -0.29, build(B, r) { B.add(TO(r + 0.007, 0.0088, 8, 22), 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0xf4f4ef); around(14, 0.5, (a, c, s) => { const o = (Math.round(a * 14 / TAU) % 2 ? 1 : -1); B.add(IC(0.0056, 1), 6, c * (r + 0.0135), s * (r + 0.0135), o * 0.0044, 0, 0, 0, 1, 1, 1, 0xfafaf6); }); } },
+      { at: 'ring', z: 0.5, build(B, r) {
+        B.add(CY(r + 0.0028, r + 0.0028, 0.028, 22), 6, 0, 0, 0, HP, 0, 0, 1, 1, 1, 0x161210);
+        const y = r + 0.0036;
+        for (const z of [-0.0115, 0.0115]) B.add(BX(0.025, 0.0034, 0.0045), 3, 0, y, z);
+        for (const x of [-0.0105, 0.0105]) B.add(BX(0.0045, 0.0034, 0.022), 3, x, y, 0);
+        B.add(BX(0.0022, 0.003, 0.018), 3, 0, y, 0);
+      } },
+      { at: 'LR', z: 0.42, build(B) { B.add(BX(0.003, 0.008, 0.003), 6, 0, 0.004, 0, 0, 0, 0, 1, 1, 1, 0xb3121c); B.add(IC(0.0072, 1), 3, 0, 0.013, 0); B.add(BX(0.011, 0.002, 0.0026), 5, 0, 0.0196, 0, 0, 0, 0, 1, 1, 1, 0x1a1208); } },
+      { at: 'top', z: 0.22, build(B) {
+        for (const sd of [-1, 1]) B.add(IC(0.008, 1), 6, sd * 0.007, 0.004, sd * 0.003, 0, sd * 0.7, 0, 1.25, 0.28, 0.55, 0x1f7a3a);
+        for (const [x, z] of [[0, 0.002], [0.0036, -0.0018], [-0.0034, -0.0022]]) B.add(IC(0.0025, 1), 6, x, 0.007, z, 0, 0, 0, 1, 1, 1, 0xc80e1a);   // 빨간 열매 (빛나지 않는 칠 — 1인칭에서 분홍으로 번지지 않게)
+      } },
+    ],
+    // EVENT HORIZON(엡실론): 뒤쪽을 기울어져 도는 광자 궤도 고리(빛 구슬 넷) · 양옆 빛나는 고리를 두른 검은 구 · 탄두의 가장 굵은 곳을 감은 광자 고리(탄두와 같이 숨음)
+    horizon: [
+      { at: 'ring', z: 0.07, spin: 2.4, build(B, r) { const R = r + 0.02; B.add(TO(R, 0.0013, 4, 40), 7, 0, 0, 0, 0.42, 0, 0); around(4, 0.3, (a, c, s) => B.add(OC(0.0032), 7, c * R, s * R * Math.cos(0.42), s * R * Math.sin(0.42))); } },
+      { at: 'LR', z: 0.5, build(B) { B.add(CY(0.0095, 0.0075, 0.004, 14), 3, 0, 0.002, 0); B.add(IC(0.0072, 2), 0, 0, 0.0085, 0, 0, 0, 0, 1, 1, 1, true); B.add(TO(0.0094, 0.0009, 4, 24), 7, 0, 0.0085, 0, HP, 0, 0); } },
+      { at: 'ring', mz: -0.162, head: true, build(B) { B.add(TO(0.0705, 0.0021, 6, 48), 7, 0, 0, 0); B.add(TO(0.0765, 0.0009, 4, 48), 7, 0, 0, 0.003); } },
+      { at: 'top', z: 0.28, build(B) { B.add(BX(0.03, 0.0032, 0.15), 0, 0, 0.0016, 0); B.add(BX(0.0036, 0.0036, 0.14), 7, 0, 0.0019, 0); } },   // 발사관 위 경고 표지를 덮는 검은 덮개(가운데 빛 줄)
+    ],
     // OMEGA BREAKER(DBS): 총구 쪽 마젠타 전기 코일 두 줄(은 칼라) · 몸통 양옆 갈라진 패널 사이 마젠타 띠 · 위쪽 Ω 방출구
     omega: [
       ...[-0.025, -0.11].map((mz) => ({ at: 'ring', mz, build(B, r) { B.add(TO(r + 0.006, 0.0028, 6, 20), 3, 0, 0, 0); B.add(TO(r + 0.0095, 0.0012, 4, 24), 7, 0, 0, 0.004); B.add(TO(r + 0.0095, 0.0012, 4, 24), 7, 0, 0, -0.004); } })),
@@ -9742,6 +9857,17 @@ const GunParts = (() => {
           for (const s of [1, -1]) B.add(BX(0.008, 0.006, 0.03), 7, 0, 0.035, s * 0.034);
         } },
       ],
+      // EVENT HORIZON(판처파우스트, v21): 탄두 뒤를 감싸며 도는 강착 원반(빛나는 고리 세 겹 · 안쪽으로 감겨 드는 나선 팔 다섯 · 안쪽 테) · 발사관 가운데 양옆으로 뒤로 젖힌 렌즈 날(빛나는 끝)
+      horizon: [
+        { at: 'ring', mz: -0.255, head: true, spin: 1.1, build(B) {
+          for (const [R, t] of [[0.078, 0.0026], [0.094, 0.0018], [0.108, 0.0012]]) B.add(TO(R, t, 4, 56), 7, 0, 0, 0, 0, 0, 0, 1, 1, 0.5);
+          for (let k = 0; k < 5; k++) for (let j = 0; j < 7; j++) { const t = j / 6, a = k / 5 * TAU + t * 1.9, R = 0.07 + 0.042 * t; B.add(BX(0.009, 0.0026, 0.002), j % 3 ? 7 : 3, Math.cos(a) * R, Math.sin(a) * R, 0, 0, 0, a + HP); }
+          B.add(TO(0.066, 0.004, 6, 40), 3, 0, 0, 0);
+        } },
+        { at: 'ring', z: 0.42, build(B, r) {
+          for (const s of [1, -1]) { B.add(BX(0.062, 0.003, 0.09), 0, s * (r + 0.03), 0, 0, 0, s * 0.38, s * 0.12); B.add(BX(0.004, 0.0036, 0.07), 7, s * (r + 0.0586), 0.0037, -0.0114, 0, s * 0.38, s * 0.12); }   // 빛 띠 = 날 바깥 끝(같은 회전을 거친 자리)
+        } },
+      ],
     };
   })();
   for (const k in KITS) SETS[k].push(...KITS[k].map((e) => Object.assign(e, { kit: true })));
@@ -9798,7 +9924,7 @@ const GunParts = (() => {
     return (ANCH[key] = out);
   }
   // 옆·위 부속품 배율 (세트마다)
-  const SIZE = { xtree: 1.8, xcandy: 1.8, xwhite: 1.9, magma: 2.1, dragon: 2.0, plasma: 1.8, glitch: 2.0, frost: 2.3, void: 2.1, proto: 2.0, zero: 1.6, chaos: 1.9, frontier: 1.7, celestial: 1.0, divine: 1.7, infernal: 1.8, void2: 1.8, seraph: 2.0, apocalypse: 1.9, dynasty: 1.7, omega: 1.7 };
+  const SIZE = { nuke: 1.7, xsanta: 1.8, horizon: 1.7, xtree: 1.8, xcandy: 1.8, xwhite: 1.9, magma: 2.1, dragon: 2.0, plasma: 1.8, glitch: 2.0, frost: 2.3, void: 2.1, proto: 2.0, zero: 1.6, chaos: 1.9, frontier: 1.7, celestial: 1.0, divine: 1.7, infernal: 1.8, void2: 1.8, seraph: 2.0, apocalypse: 1.9, dynasty: 1.7, omega: 1.7 };
   // 지오메트리는 (세트 · 부속품 · 반지름)마다 한 번
   const GEO = {};
   function geoOf(set, a) {
@@ -9818,14 +9944,15 @@ const GunParts = (() => {
   }
   function attach(g, set, mat, z0, z1) {
     if (!SETS[set] || !g.children[0]) return null;
-    const list = [], comp = g.userData.att && g.userData.att.muzzle, meta = Models.GUNS[g.userData.id].meta;
+    const list = [], comp = g.userData.att && g.userData.att.muzzle, meta = Models.GUNS[g.userData.id].meta, hp = g.userData.parts && g.userData.parts.head;
     for (const a of anchors(g, set, z0, z1)) {
       if (comp && a.P.mz > 0) continue;   // 보정기를 달면 총구 앞 부속품은 생략 (보정기와 겹침)
+      const host = a.P.head && hp ? hp : g;   // head: 판처파우스트 탄두에 붙임 → 쏘면 탄두와 같이 숨는다 (v21)
       const geo = geoOf(set, a), outer = new THREE.Group(), inner = new THREE.Group(), mesh = new THREE.Mesh(geo, mat);
-      outer.position.fromArray(a.p); outer.rotation.z = a.rz; outer.add(inner); inner.add(mesh);
+      outer.position.fromArray(a.p); if (host !== g) outer.position.sub(host.position); outer.rotation.z = a.rz; outer.add(inner); inner.add(mesh);
       if (!a.ring) outer.scale.setScalar(SIZE[set] || 1);   // 옆·위 부속품은 실루엣이 바뀌어 보일 만큼 키움 (고리는 총열 반지름에 맞춰 지음)
-      outer.name = 'gpart'; g.add(outer);
-      outer.updateMatrix(); _bx.copy(geo.boundingBox).applyMatrix4(outer.matrix);
+      outer.name = 'gpart'; host.add(outer);
+      outer.updateMatrix(); _bx.copy(geo.boundingBox).applyMatrix4(outer.matrix); if (host !== g) _bx.translate(host.position);
       // sight: 1인칭 정조준 때 접어 넣는 부속품 (GunSkin.update 가 Cam.ads 에 맞춰 접고 편다)
       list.push({ outer, inner, mesh, zn: a.zn, ring: a.ring, popped: true, sight: blocksSight(meta, _bx), spin: a.P.spin || 0, core: !!a.P.core });
     }
@@ -10011,6 +10138,37 @@ const GSKINS = (() => {
       parts: 'xwhite', en: 0x9fe8ff, enK: 2.4, enAnim: 1,
       deco: [{ kind: 'text', side: 'LR', z: 0.72, dy: -0.004, text: 'WHITE CHRISTMAS', style: 'engrave', col: '#e0b850', w: 0.1 }],
       desc: '눈 덮인 흰 총몸에 금 테 두른 빨간 벨벳 리본·개머리와 호랑가시 · 얼음빛 눈꽃이 깜빡임 · 총구의 눈꽃 왕관과 총열 아래 금방울 · 살펴보면 선물 포장이 풀리고 스노글로브 속 눈보라 · 처치하면 거대한 눈꽃 문양과 얼음 가시', lore: '눈 내리는 밤, 모든 창에 불이 켜지는 날.' },
+    // ---------- v21 판처파우스트(보급상자 전용 로켓) 스킨 3종 — 탄두(head, kd 8)를 발사관과 따로 칠하고, 날아가는 로켓·폭발 모양까지 스킨을 따른다(06_boom.js) ----------
+    //  head: 탄두 무늬(HEADPAT)·색·금속감 · 성능은 기본 판처파우스트와 같음
+    // 핵탄두(울트라레어, 아스널 상자): 바랜 국방색 발사관에 초록 방사능 균열이 가이거 계수기처럼 지직거리며 빛남 · 노랑·검정 경고 띠와 방사능 표지
+    //  탄두 = 노란 바탕의 검은 방사능 표지 · 꺼내면 경고 띠 봉쇄 고리·방사능 날개·초록 연료봉·계수기가 돋음 · 터지면 버섯구름
+    g1_pzf_nuke: { gun: 'pzf', box: 'g1', rar: 5, name: '핵탄두', pat: 'nuke', pal: ['#20251a', '#424b31', '#e3bb1c', '#0d0e0b', '#a6ff4a'], sc: 2.6, env: 0.75,
+      body: { p: 1, mr: [0.5, 0.58] }, furn: { c: 0x26221c, mr: [0.1, 0.72] }, steel: { c: 0x3c4232, mr: [0.85, 0.38] },
+      head: { pat: 'nukeHead', pal: ['#d8ad16', '#a47c0b', '#121210', '#3a3a30'], sc: 6, mr: [0.25, 0.5] },
+      glow: { pat: 'nuke', c: 0x8dff3a, k: 2.6, anim: 12 }, glowMask: [1, 0, 0], fx: { kind: 'nuke', c: 0x8dff3a, c2: 0xfff27a, tr: 0xa6ff5a },
+      parts: 'nuke', en: 0x6cff2a, enK: 1.4, enAnim: 6,
+      deco: [{ kind: 'text', side: 'LR', z: 0.13, dy: -0.002, text: '☢ NUCLEAR', style: 'warn', col: '#a6ff4a', w: 0.075 }],
+      desc: '바랜 국방색 발사관에 초록 방사능 균열이 지직거리며 빛남 · 노란 탄두의 검은 방사능 표지 · 꺼내면 봉쇄 고리·방사능 날개·연료봉이 돋음 · 쏘면 초록 섬광 · 터지면 18m 버섯구름 · 처치하면 몸이 초록 재로 흩어짐' },
+    // SANTA'S DELIVERY(크리스마스 EXCLUSIVE): 산타 옷을 입은 발사관 — 빨간 벨벳에 금 덩굴무늬와 반짝이 · 양 끝 흰 털 · 가운데 검은 벨트와 금 버클 · 썰매 방울 · 호랑가시
+    //  탄두 = 반짝이는 빨간 크리스마스 장식 볼(금 띠·눈꽃) · 날아가는 로켓이 반짝이 가루를 뿌리고 방울 소리 · 터지면 크리스마스 불꽃놀이
+    xm_pzf_santa: { gun: 'pzf', box: 'xmas', rar: 8, xm: 1, no: 'X4', name: "SANTA'S DELIVERY", pat: 'xsanta', pal: ['#5e0910', '#b3121c', '#e9c25a', '#fff6e6'], sc: 4.2, env: 1.0,
+      body: { p: 1, mr: [0.06, 0.6] }, furn: { c: 0x1a1412, mr: [0.25, 0.42] }, steel: { c: 0xe9c25a, mr: [1, 0.2] },
+      head: { pat: 'xornament', pal: ['#d01624', '#7a0810', '#f3d27a', '#ffffff'], sc: 7, mr: [0.6, 0.16] },
+      glow: { pat: 'xsanta', c: 0xffffff, k: 2.2, anim: 10 }, glowMask: [1, 0, 0],
+      fx: { kind: 'xsanta', c: 0xff3a4a, c2: 0xffd65a, tr: 0xffe0a0, pal: [0xff3a4a, 0xffd65a, 0x3aff7a, 0xffffff], shot: 'frontier', hit: 'spark' },
+      parts: 'xsanta', en: 0xff2a3a, enK: 1.5, enAnim: 1,
+      deco: [{ kind: 'text', side: 'LR', z: 0.3, dy: -0.002, text: "SANTA'S DELIVERY", style: 'engrave', col: '#e9c25a', w: 0.085 }],
+      desc: '산타 옷을 입은 발사관 — 빨간 벨벳의 금 덩굴무늬와 반짝이 · 양 끝 흰 털 · 검은 벨트와 금 버클 · 썰매 방울 · 탄두는 빨간 크리스마스 장식 볼 · 로켓이 반짝이 가루를 뿌리며 날아감 · 터지면 큰 선물 상자가 솟아 뚜껑이 날아가며 크리스마스 불꽃놀이 · 살펴보면 선물 포장이 풀리고 탄두에 산타 모자', lore: '굴뚝이 없는 집에도 선물은 반드시 도착한다.' },
+    // EVENT HORIZON(엡실론 Ε-09): 블랙홀 — 칠흑 발사관에 탄두 쪽으로 빨려 드는 강착 원반 빛줄기(뒤는 주황, 탄두에 가까울수록 푸르게)
+    //  탄두 = 빛을 삼키는 거울 같은 검은 구 + 둘레에 빛나는 광자 고리와 도는 강착 원반 · 로켓은 원반을 두르고 날아감 · 터지면 블랙홀이 생겼다 무너지며 폭발
+    e_pzf_horizon: { gun: 'pzf', box: 'eps', rar: 7, eps: 1, no: '09', name: 'EVENT HORIZON', pat: 'horizon', pal: ['#030306', '#140c26', '#ff9a3a', '#a8d0ff'], sc: 4.6, env: 1.0,
+      body: { p: 1, mr: [0.6, 0.28] }, furn: { p: 1, mr: [0.5, 0.32] }, steel: { c: 0x15121c, mr: [1, 0.18] },
+      head: { pat: 'horizonHead', pal: ['#010102', '#0c0818', '#ffb070', '#9ecbff'], sc: 5, mr: [0.95, 0.07] },
+      glow: { pat: 'horizon', c: 0xffc890, k: 2.6, anim: 11 }, glowMask: [1, 1, 0],
+      fx: { kind: 'horizon', c: 0xffa34a, c2: 0xb58cff, tr: 0xffd2a0, pal: [0xffa34a, 0xffe2b8, 0xb58cff, 0x9ecbff, 0xffffff], shot: 'void', hit: 'void' },
+      parts: 'horizon', en: 0xff9a40, enK: 1.4, enAnim: 8,
+      deco: [{ kind: 'eps', no: '09', side: 'LR', z: 0.707, dy: -0.034, w: 0.022 }, { kind: 'text', side: 'L', z: 0.13, dy: -0.002, text: 'EVENT HORIZON', style: 'neon', col: '#ffb070', w: 0.075 }],
+      desc: '칠흑 발사관에 탄두 쪽으로 빨려 드는 강착 원반 빛줄기 · 빛을 삼키는 검은 탄두와 광자 고리 · 탄두 둘레를 도는 강착 원반 · 로켓이 원반을 두르고 날아감 · 터지면 큰 블랙홀이 1.5초 동안 빛과 흙을 빨아들이다 무너지며 폭발 · 처치하면 몸 둘레에 원반이 돌다 위아래로 제트', lore: '빛조차 돌아오지 못하는 경계 너머에서 날아온 탄.' },
     // ---------- 옷 상자에 2개씩 ----------
     br_s686_hunter: { gun: 's686', box: 'br', rar: 1, name: '사냥꾼', body: { c: 0x3b3e33, mr: [0.45, 0.45] }, furn: { c: 0x7a4626, mr: [0, 0.5] } },
     br_mini14_wood: { gun: 'mini14', box: 'br', rar: 3, name: '산림 위장', pat: 'camo', pal: ['#4e5636', '#3b4129', '#6a6a44', '#2b2b22'], sc: 3.5, body: { p: 1, mr: [0.1, 0.7] }, furn: { p: 1, mr: [0, 0.72] } },
@@ -10481,7 +10639,122 @@ const GunSkin = (() => {
       }
       return { alb: a, glow: g };
     },
+    // ---------- v21 판처파우스트 스킨 ----------
+    // 핵폭탄 — pal: [짙은 국방색, 바랜 국방색, 경고 노랑, 검정, 방사능 초록]: 얼룩진 금속 · 긁힘 · 판 이음매와 리벳 · 노랑·검정 경고 사선 띠(발사관을 감는 고리)
+    //  · 방사능 표지 · 갈라진 틈의 초록 빛과 방사능 얼룩(빛 지도)
+    nuke(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256, n1 = vnoise(rng, 6), n2 = vnoise(rng, 24);
+      const L0 = cv(128), lc = L0.getContext('2d'), img = lc.createImageData(128, 128), c0 = rgb(pal[0]), c1 = rgb(pal[1]);   // 얼룩은 작게 그려 키움 (픽셀마다 계산이 적게)
+      for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) { const k = n1(x / 128 * 6, y / 128 * 6) * 0.65 + n2(x / 128 * 24, y / 128 * 24) * 0.35, i4 = (y * 128 + x) * 4; for (let ch = 0; ch < 3; ch++) img.data[i4 + ch] = lerp(c0[ch], c1[ch], k); img.data[i4 + 3] = 255; }
+      lc.putImageData(img, 0, 0); c.imageSmoothingEnabled = true; c.drawImage(L0, 0, 0, S, S);
+      gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      for (let i = 0; i < 260; i++) { const x = rng() * S, y = rng() * S, l = S * (0.004 + rng() * 0.02), an = rng() * TAU; c.strokeStyle = rng() < 0.5 ? 'rgba(150,150,120,0.22)' : 'rgba(8,10,4,0.3)'; c.lineWidth = lw * (0.6 + rng()); c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(an) * l, y + Math.sin(an) * l); c.stroke(); }
+      c.fillStyle = 'rgba(0,0,0,0.45)'; c.fillRect(0, S * 0.5 - lw, S, lw * 2); c.fillRect(0, 0, S, lw); c.fillRect(S * 0.62 - lw, 0, lw * 2, S);
+      c.fillStyle = 'rgba(255,255,230,0.12)'; c.fillRect(0, S * 0.5 + lw, S, lw * 0.8);
+      for (let i = 0; i < 16; i++) for (const yy of [S * 0.5 - 6 * lw, S * 0.5 + 6 * lw]) { const x = (i + 0.5) * S / 16; c.fillStyle = 'rgba(0,0,0,0.5)'; c.beginPath(); c.arc(x + lw * 0.5, yy + lw * 0.6, 2.2 * lw, 0, TAU); c.fill(); c.fillStyle = '#6a7158'; c.beginPath(); c.arc(x, yy, 1.8 * lw, 0, TAU); c.fill(); }
+      // 노랑·검정 경고 사선 띠: 세로 띠라 발사관을 감는 고리가 된다 (사선 간격 S/8 → 위아래로 이어짐)
+      const hz = (x0, bw) => {
+        c.save(); c.beginPath(); c.rect(x0, 0, bw, S); c.clip(); c.fillStyle = pal[3]; c.fillRect(x0, 0, bw, S); c.fillStyle = pal[2];
+        const st = S / 16; for (let yy = -S / 4; yy < S + S / 8; yy += S / 8) { c.beginPath(); c.moveTo(x0, yy); c.lineTo(x0 + bw, yy + bw * 0.9); c.lineTo(x0 + bw, yy + bw * 0.9 + st); c.lineTo(x0, yy + st); c.closePath(); c.fill(); }
+        c.fillStyle = 'rgba(30,24,8,0.25)'; for (let i = 0; i < 60; i++) c.fillRect(x0 + rng() * bw, rng() * S, lw * (1 + rng() * 3), lw * (1 + rng() * 2));
+        c.restore(); c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(x0 - lw * 1.5, 0, lw * 1.5, S); c.fillRect(x0 + bw, 0, lw * 1.5, S);
+      };
+      hz(S * 0.06, S * 0.1);
+      for (const [x, y, R] of [[S * 0.36, S * 0.25, S * 0.075], [S * 0.82, S * 0.76, S * 0.06]]) trefoil(c, x, y, R, pal[2], pal[3]);
+      // 초록 방사능 균열: 같은 선을 무늬(어두운 틈 + 초록 심)와 빛 지도(흰 심 + 옅은 번짐)에 같이
+      const V = [];
+      const walk = (x, y, an, n, w) => { for (let i = 0; i < n; i++) { const nx = x + Math.cos(an) * S * 0.018, ny = y + Math.sin(an) * S * 0.018; V.push([x, y, nx, ny, w]); x = nx; y = ny; an += (rng() - 0.5) * 1.1; w = Math.max(0.7, w * 0.97); if (rng() < 0.09 && n > 6) walk(x, y, an + (rng() < 0.5 ? 0.9 : -0.9), (n * 0.45) | 0, w * 0.62); } };
+      for (let b = 0; b < 7; b++) walk(rng() * S, rng() * S, rng() * TAU, 16 + ((rng() * 14) | 0), 2.6);
+      const strokeV = (ctx, col, mul) => { ctx.strokeStyle = col; ctx.lineCap = 'round'; for (const [x0, y0, x1, y1, w] of V) W9(S, (dx, dy) => { ctx.lineWidth = w * mul * lw; ctx.beginPath(); ctx.moveTo(x0 + dx, y0 + dy); ctx.lineTo(x1 + dx, y1 + dy); ctx.stroke(); }); };
+      strokeV(c, 'rgba(6,10,2,0.85)', 2.4); strokeV(c, pal[4], 0.9);
+      strokeV(gc, 'rgba(255,255,255,0.28)', 3.4); strokeV(gc, '#ffffff', 1.1);
+      for (let i = 0; i < 9; i++) { const x = rng() * S, y = rng() * S, r = (2 + rng() * 3) * lw; W9(S, (dx, dy) => { const gr = gc.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r * 3); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); gc.fillStyle = gr; gc.fillRect(x + dx - r * 3, y + dy - r * 3, r * 6, r * 6); c.fillStyle = pal[4]; c.beginPath(); c.arc(x + dx, y + dy, r * 0.8, 0, TAU); c.fill(); }); }
+      return { alb: a, glow: g };
+    },
+    // SANTA'S DELIVERY — pal: [짙은 빨강, 빨강, 금, 흰색]: 빨간 벨벳(윤기·결) · 발사관을 따라 길게 금 장식줄 두 줄 · 금 덩굴무늬 · 흰 눈꽃
+    //  · 빛 지도 = 금·흰·빨강 반짝이(모드 10 — 셰이더가 하나씩 다른 박자로 깜빡)
+    xsanta(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256; gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      const gr = c.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, pal[0]); gr.addColorStop(0.35, pal[1]); gr.addColorStop(0.65, pal[1]); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 30; i++) { const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.1), al = 0.08 + rng() * 0.1, lite = rng() < 0.55; tile(S, (dx, dy) => { const rg = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); rg.addColorStop(0, lite ? `rgba(255,120,120,${al})` : `rgba(40,0,6,${al * 1.4})`); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = rg; c.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); }); }
+      c.lineWidth = Math.max(1, S / 512); for (let i = 0; i < 1800; i++) { const x = rng() * S, y = rng() * S; c.strokeStyle = rng() < 0.5 ? 'rgba(255,90,100,0.08)' : 'rgba(50,0,8,0.12)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (rng() - 0.5) * S * 0.01, y + S * 0.006); c.stroke(); }
+      for (const yf of [0.22, 0.78]) { const y = S * yf; c.fillStyle = 'rgba(40,10,0,0.5)'; c.fillRect(0, y - 3.2 * lw, S, 6.4 * lw); c.fillStyle = pal[2]; c.fillRect(0, y - 2.4 * lw, S, 1.6 * lw); c.fillRect(0, y + 0.8 * lw, S, 1.6 * lw); }
+      c.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const x = (i % 3 + 0.5) * S / 3 + (rng() - 0.5) * S * 0.08, y = (i < 3 ? 0.5 : 0) * S + S * 0.25 + (rng() - 0.5) * S * 0.04, R = S * 0.06, dir = i % 2 ? 1 : -1, pts = [];
+        for (let k = 0; k <= 40; k++) { const t = k / 40, an = dir * t * 2.1 * TAU, rr = R * (1 - t * 0.82); pts.push([Math.cos(an) * rr, Math.sin(an) * rr]); }
+        tile(S, (dx, dy) => {
+          for (const [col, w] of [['rgba(60,20,0,0.55)', 3], [pal[2], 1.6]]) { c.strokeStyle = col; c.lineWidth = w * lw; c.beginPath(); pts.forEach(([px, py], k) => (k ? c.lineTo(x + dx + px, y + dy + py) : c.moveTo(x + dx + px, y + dy + py))); c.stroke(); }
+          c.fillStyle = pal[2]; for (const s of [-1, 1]) { c.beginPath(); c.ellipse(x + dx + s * R * 1.25, y + dy + R * 0.2, R * 0.32, R * 0.13, s * 0.6, 0, TAU); c.fill(); }
+        });
+      }
+      const flake = (x, y, r) => { c.strokeStyle = pal[3]; c.lineWidth = Math.max(1, lw * 0.9); for (let i = 0; i < 6; i++) { const an = i / 6 * TAU; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(an) * r, y + Math.sin(an) * r); c.stroke(); } };
+      for (let i = 0; i < 10; i++) { const x = rng() * S, y = rng() * S, r = S * (0.012 + rng() * 0.012); tile(S, (dx, dy) => flake(x + dx, y + dy, r)); }
+      const SC = ['#ffd65a', '#ffffff', '#ffd65a', '#ff6a6a'];
+      for (let i = 0; i < 46; i++) { const x = rng() * S, y = rng() * S, r = S * (0.004 + rng() * 0.004), col = SC[i % 4]; tile(S, (dx, dy) => { c.fillStyle = '#fff6d8'; c.beginPath(); c.arc(x + dx, y + dy, r * 0.8, 0, TAU); c.fill(); const rg = gc.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r * 2.6); rg.addColorStop(0, col); rg.addColorStop(0.4, col); rg.addColorStop(1, 'rgba(0,0,0,0)'); gc.fillStyle = rg; gc.beginPath(); gc.arc(x + dx, y + dy, r * 2.6, 0, TAU); gc.fill(); }); }
+      return { alb: a, glow: g };
+    },
+    // EVENT HORIZON — pal: [칠흑, 짙은 보라, 강착 주황, 푸른 흰빛]: 거의 검은 바탕의 옅은 보라 성운 · 소용돌이 중심으로 감겨 드는 빛줄기(바깥 주황 → 안쪽 흰빛·푸른빛)
+    //  · 가운데 검은 구멍 · 별. 빛 지도 = 빛줄기(안쪽일수록 밝게) + 별
+    horizon(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256;
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      for (let i = 0; i < 16; i++) { const x = rng() * S, y = rng() * S, r = S * (0.08 + rng() * 0.16), al = 0.25 + rng() * 0.3; W9(S, (dx, dy) => { const rg = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); rg.addColorStop(0, pal[1]); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = al; c.fillStyle = rg; c.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); c.globalAlpha = 1; }); }
+      const ccol = (t) => (t < 0.5 ? pal[2] : t < 0.8 ? '#ffe2b8' : pal[3]);
+      for (let s = 0; s < 3; s++) {
+        const cx = rng() * S, cy = rng() * S, rot = rng() * Math.PI, sq = 0.3 + rng() * 0.25;
+        for (let j = 0; j < 9; j++) {
+          const t = j / 8, R = S * (0.16 - t * 0.12), a0 = rng() * TAU, len = 1.1 + rng() * 1.8, w = (0.7 + t * 1.3) * lw;
+          W9(S, (dx, dy) => { for (const [ctx, col, ww, al] of [[c, ccol(t), w, 0.85], [gc, '#ffffff', w * 1.1, 0.5 + t * 0.5], [gc, '#ffffff', w * 3.2, 0.12 + t * 0.12]]) { ctx.save(); ctx.globalAlpha = al; ctx.strokeStyle = col; ctx.lineWidth = ww; ctx.lineCap = 'round'; ctx.beginPath(); ctx.ellipse(cx + dx, cy + dy, R, R * sq, rot, a0, a0 + len); ctx.stroke(); ctx.restore(); } });
+        }
+        W9(S, (dx, dy) => { c.fillStyle = '#000'; c.beginPath(); c.ellipse(cx + dx, cy + dy, S * 0.022, S * 0.022 * sq * 1.6, rot, 0, TAU); c.fill(); });
+      }
+      for (let i = 0; i < 90; i++) { const x = rng() * S, y = rng() * S, r = (0.4 + rng() * 0.9) * lw, b = 0.35 + rng() * 0.65; W9(S, (dx, dy) => { c.fillStyle = `rgba(230,236,255,${b})`; c.fillRect(x + dx, y + dy, r * 1.4, r * 1.4); gc.fillStyle = `rgba(255,255,255,${b * 0.8})`; gc.fillRect(x + dx - r * 0.2, y + dy - r * 0.2, r * 1.8, r * 1.8); }); }
+      return { alb: a, glow: g };
+    },
   });
+  // 방사능 표지: (bg 가 있으면 그 색 원 위에) 가운데 점 + 세 날개(아래 하나 · 위 양쪽) (v21 핵폭탄)
+  function trefoil(ctx, x, y, R, bg, fg) {
+    if (bg) { ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(x, y, R * 0.17, 0, TAU); ctx.fill();
+    for (let i = 0; i < 3; i++) { const ac = Math.PI / 2 + i * TAU / 3, a0 = ac - Math.PI / 6, a1 = ac + Math.PI / 6; ctx.beginPath(); ctx.arc(x, y, R * 0.86, a0, a1); ctx.arc(x, y, R * 0.27, a1, a0, true); ctx.closePath(); ctx.fill(); }
+  }
+  // ---------- 탄두 무늬 (v21 판처파우스트, GSKINS 의 head.pat) — 무늬만(빛 지도 없음). 세로 띠는 탄두를 감는 고리가 된다 ----------
+  const HEADPAT = {
+    // 핵폭탄 — pal: [노랑, 짙은 노랑, 검정, 벗겨진 속 금속]: 노란 칠(얼룩·벗겨짐) · 검은 띠 · 검은 방사능 표지 · 등록 표시
+    nukeHead(S, pal, rng) {
+      const a = cv(S), c = a.getContext('2d'), lw = S / 256;
+      const gr = c.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 400; i++) { c.fillStyle = rng() < 0.5 ? 'rgba(90,60,0,0.12)' : 'rgba(255,240,170,0.12)'; c.fillRect(rng() * S, rng() * S, lw * (1 + rng() * 4), lw * (1 + rng() * 2)); }
+      for (let i = 0; i < 14; i++) { const x = rng() * S, y = rng() * S, r = lw * (2 + rng() * 6), sq = 0.5 + rng() * 0.5, rot = rng() * TAU; W9(S, (dx, dy) => { c.fillStyle = pal[3]; c.beginPath(); c.ellipse(x + dx, y + dy, r, r * sq, rot, 0, TAU); c.fill(); }); }
+      c.fillStyle = pal[2]; c.fillRect(S * 0.02, 0, S * 0.045, S);
+      for (const [x, y, R] of [[S * 0.36, S * 0.27, S * 0.17], [S * 0.8, S * 0.75, S * 0.17]]) trefoil(c, x, y, R, null, pal[2]);
+      for (let i = 0; i < 5; i++) c.fillRect(S * (0.62 + i * 0.05), S * 0.2, S * 0.03, S * 0.045);
+      return a;
+    },
+    // SANTA'S DELIVERY — pal: [빨강, 짙은 빨강, 금, 흰색]: 반짝이는 빨간 장식 볼 · 금 띠 둘(점 무늬) · 흰 눈꽃 · 반짝 가루
+    xornament(S, pal, rng) {
+      const a = cv(S), c = a.getContext('2d'), lw = S / 256;
+      const gr = c.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(0, 0, S, S);
+      for (const x of [S * 0.08, S * 0.58]) {
+        c.fillStyle = 'rgba(60,20,0,0.45)'; c.fillRect(x - 2 * lw, 0, S * 0.07 + 4 * lw, S); c.fillStyle = pal[2]; c.fillRect(x, 0, S * 0.07, S); c.fillStyle = 'rgba(255,250,220,0.5)'; c.fillRect(x + S * 0.012, 0, S * 0.012, S);
+        for (let y = 0; y < S; y += S / 12) { c.fillStyle = pal[1]; c.beginPath(); c.arc(x + S * 0.035, y + S / 24, S * 0.012, 0, TAU); c.fill(); }
+      }
+      const flake = (x, y, r) => { c.strokeStyle = pal[3]; c.lineCap = 'round'; c.lineWidth = Math.max(1, r * 0.12); for (let i = 0; i < 6; i++) { const an = i / 6 * TAU, bx = x + Math.cos(an) * r * 0.5, by = y + Math.sin(an) * r * 0.5; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(an) * r, y + Math.sin(an) * r); c.stroke(); for (const s of [-1, 1]) { c.beginPath(); c.moveTo(bx, by); c.lineTo(bx + Math.cos(an + s * 0.8) * r * 0.32, by + Math.sin(an + s * 0.8) * r * 0.32); c.stroke(); } } };
+      for (const [x, y] of [[0.33, 0.25], [0.33, 0.75], [0.83, 0.5], [0.83, 0], [0.83, 1]]) flake(x * S, y * S, S * 0.12);
+      for (let i = 0; i < 40; i++) { c.fillStyle = 'rgba(255,240,200,0.6)'; c.fillRect(rng() * S, rng() * S, lw * 1.5, lw * 1.5); }
+      return a;
+    },
+    // EVENT HORIZON — pal: [칠흑, 짙은 보라, 주황, 푸른빛]: 거의 검정(거울처럼 반사) · 아주 옅은 렌즈 고리와 별
+    horizonHead(S, pal, rng) {
+      const a = cv(S), c = a.getContext('2d'), lw = S / 256;
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 6; i++) { const x = rng() * S, y = rng() * S, r = S * (0.1 + rng() * 0.2); W9(S, (dx, dy) => { const rg = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); rg.addColorStop(0, pal[1]); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = rg; c.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); }); }
+      for (const [x, y] of [[0.3, 0.3], [0.8, 0.75]]) for (let j = 0; j < 3; j++) { c.strokeStyle = j ? 'rgba(140,170,255,0.12)' : 'rgba(255,170,100,0.16)'; c.lineWidth = lw * (1.2 - j * 0.3); c.beginPath(); c.arc(x * S, y * S, S * (0.1 + j * 0.035), 0, TAU); c.stroke(); }
+      for (let i = 0; i < 30; i++) { c.fillStyle = `rgba(200,210,255,${0.1 + rng() * 0.2})`; c.fillRect(rng() * S, rng() * S, lw, lw); }
+      return a;
+    },
+  };
   // 빛 지도만 (흰 선 = 빛남)
   const GLOW = {
     lines(gc, S) { gc.fillStyle = '#fff'; const h = Math.max(1, S / 160); for (const y of [0.3, 0.7]) gc.fillRect(0, S * y, S, h); for (let x = 0; x < S; x += S / 8) gc.fillRect(x, S * 0.3, S / 64, S * 0.4 * 0.08); },
@@ -10534,11 +10807,13 @@ const GunSkin = (() => {
       if (GLOW[d.glow.pat]) GLOW[d.glow.pat](gc, S, mulberry32(seed ^ 0x5bd1e995)); else if (PAT2[d.glow.pat]) { const r = PAT2[d.glow.pat](S, d.pal || ['#000', '#000', '#fff'], mulberry32(seed)); gc.drawImage(r.glow, 0, 0); }
       out.glow = toTex(c);
     }
+    if (d.head && d.head.pat && HEADPAT[d.head.pat]) out.head = toTex(HEADPAT[d.head.pat](S, d.head.pal || d.pal, mulberry32(seed ^ 0x2545f491)));   // v21 탄두 무늬
     return (TEX[id] = out);
   }
 
   // ---------- 셰이더 ----------
   //  부위: kd 0 플라스틱·2 무광 금속 → 몸체(body) / 1 나무 → 손잡이·개머리(furn) / 3 광택 금속 → 강철(steel) / 4~6 황동·고무·천 → 그대로
+  //        8 탄두 껍데기(v21 판처파우스트) → 탄두(head: 따로 정하지 않은 스킨은 몸체처럼) / 7 = 부속품 발광
   //  모드: 0 원래 색 · 1 단색 · 2 무늬. 디테일(어두운 작은 부품)은 원래 정점 색의 밝기만큼 조금 어둡게
   const V_HEAD = 'attribute float kd;\nvarying float vKd;\nvarying vec3 vOP;\nvarying vec3 vON;\nvarying float vGZ;\nuniform mat4 uGunInv;\n';
   const V_BODY = '\n\tvKd = kd; vOP = position; vON = normal; vGZ = (uGunInv * (modelMatrix * vec4(position, 1.0))).z;\n';
@@ -10546,13 +10821,15 @@ const GunSkin = (() => {
 uniform sampler2D uPat; uniform sampler2D uGlow; uniform float uScale;
 uniform vec3 uBodyCol; uniform vec3 uFurnCol; uniform vec3 uSteelCol; uniform vec3 uMode;
 uniform vec4 uMR; uniform vec2 uSteelMR;
+uniform sampler2D uHeadPat; uniform float uHeadSc; uniform vec3 uHeadCol; uniform float uHeadMode; uniform vec2 uHeadMR; uniform float uHeadGlow;
 uniform vec3 uGlowCol; uniform float uGlowAmt; uniform float uGlowAnim; uniform vec3 uGlowMask; uniform float uScanOn; uniform float uScanZ; uniform vec3 uScanCol;
 uniform float uTime; uniform float uFlash; uniform float uSweepOn; uniform float uSweepZ; uniform vec3 uFxCol;
 uniform vec3 uEnCol; uniform float uEnAmt; uniform float uEnAnim; uniform float uDeploy;
-vec3 gsTri(sampler2D t, vec3 p, vec3 n) {
+vec3 gsTriS(sampler2D t, vec3 p, vec3 n, float s) {
   vec3 w = abs(n); w = w * w; w = w * w; w /= (w.x + w.y + w.z + 1e-5);
-  return texture2D(t, p.zy * uScale).rgb * w.x + texture2D(t, p.zx * uScale).rgb * w.y + texture2D(t, p.xy * uScale).rgb * w.z;
+  return texture2D(t, p.zy * s).rgb * w.x + texture2D(t, p.zx * s).rgb * w.y + texture2D(t, p.xy * s).rgb * w.z;
 }
+vec3 gsTri(sampler2D t, vec3 p, vec3 n) { return gsTriS(t, p, n, uScale); }
 float gsHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
 vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
 `;
@@ -10566,24 +10843,30 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
 `;
   const F_COLOR = `
 	float gsR = floor(vKd + 0.5);
-	float gsRole = gsR < 0.5 ? 0.0 : gsR < 1.5 ? 1.0 : gsR < 2.5 ? 0.0 : gsR < 3.5 ? 2.0 : 3.0;
-	float gsMode = gsRole < 0.5 ? uMode.x : gsRole < 1.5 ? uMode.y : gsRole < 2.5 ? uMode.z : 0.0;
+	if (gsR > 7.5 && uHeadMode < 0.5) gsR = 0.0;
+	float gsRole = gsR < 0.5 ? 0.0 : gsR < 1.5 ? 1.0 : gsR < 2.5 ? 0.0 : gsR < 3.5 ? 2.0 : gsR < 7.5 ? 3.0 : 4.0;
+	float gsMode = gsRole < 0.5 ? uMode.x : gsRole < 1.5 ? uMode.y : gsRole < 2.5 ? uMode.z : gsRole > 3.5 ? uHeadMode : 0.0;
 	vec3 gsNrm = normalize(vON);
 	float gsDet = mix(0.45, 1.0, smoothstep(0.035, 0.14, dot(vColor, vec3(0.3, 0.59, 0.11))));
-	if (gsMode > 1.5) diffuseColor.rgb = gsTri(uPat, vOP, gsNrm) * gsDet;
-	else if (gsMode > 0.5) diffuseColor.rgb = (gsRole < 0.5 ? uBodyCol : gsRole < 1.5 ? uFurnCol : uSteelCol) * gsDet;
-	if (gsR > 6.5) diffuseColor.rgb = uEnCol * 0.3;
+	if (gsMode > 1.5) diffuseColor.rgb = (gsRole > 3.5 ? gsTriS(uHeadPat, vOP, gsNrm, uHeadSc) : gsTri(uPat, vOP, gsNrm)) * gsDet;
+	else if (gsMode > 0.5) diffuseColor.rgb = (gsRole < 0.5 ? uBodyCol : gsRole < 1.5 ? uFurnCol : gsRole < 2.5 ? uSteelCol : uHeadCol) * gsDet;
+	if (gsR > 6.5 && gsR < 7.5) diffuseColor.rgb = uEnCol * 0.3;
 `;
+  // 부속품 kd 4(황동)는 금속, 5·6(고무·천·칠 — 흰 털·잎·띠)은 금속감 없이 (부속품은 재질 하나를 같이 쓰므로)
   const F_MR = `
-	if (gsMode > 0.5) { if (gsRole < 0.5) { metalnessFactor = uMR.x; roughnessFactor = uMR.y; } else if (gsRole < 1.5) { metalnessFactor = uMR.z; roughnessFactor = uMR.w; } else { metalnessFactor = uSteelMR.x; roughnessFactor = uSteelMR.y; } }
-	if (gsR > 6.5) { metalnessFactor = 0.0; roughnessFactor = 0.3; }
+	if (gsMode > 0.5) { if (gsRole < 0.5) { metalnessFactor = uMR.x; roughnessFactor = uMR.y; } else if (gsRole < 1.5) { metalnessFactor = uMR.z; roughnessFactor = uMR.w; } else if (gsRole > 3.5) { metalnessFactor = uHeadMR.x; roughnessFactor = uHeadMR.y; } else { metalnessFactor = uSteelMR.x; roughnessFactor = uSteelMR.y; } }
+	else if (gsR > 4.5 && gsR < 6.5) { metalnessFactor = 0.0; roughnessFactor = max(roughnessFactor, 0.7); }
+	else if (gsR > 3.5 && gsR < 4.5) { metalnessFactor = max(metalnessFactor, 0.85); roughnessFactor = min(roughnessFactor, 0.4); }
+	if (gsR > 6.5 && gsR < 7.5) { metalnessFactor = 0.0; roughnessFactor = 0.3; }
 `;
   const F_EMIT = `
-	float gsGM = gsRole < 0.5 ? uGlowMask.x : gsRole < 1.5 ? uGlowMask.y : gsRole < 2.5 ? uGlowMask.z : 0.0;
+	float gsGM = gsRole < 0.5 ? uGlowMask.x : gsRole < 1.5 ? uGlowMask.y : gsRole < 2.5 ? uGlowMask.z : gsRole > 3.5 ? uHeadGlow : 0.0;
 	if (uGlowAmt > 0.0 && gsGM > 0.0) {
 		vec3 gsG3 = gsTri(uGlow, vOP, gsNrm); float gsG = gsG3.r;
 		float gsA = 1.0; vec3 gsGC = uGlowCol;
-		if (uGlowAnim > 9.5) { gsG = max(gsG3.r, max(gsG3.g, gsG3.b)); gsGC = uGlowCol * gsG3 / max(gsG, 0.001); float gsH = gsHash(floor(vOP * 55.0)), gsP = fract(uTime * 0.55 + gsH); gsA = 0.3 + 0.7 * smoothstep(0.0, 0.06, gsP) * smoothstep(0.66, 0.52, gsP); }	// 크리스마스 전구: 빛 지도의 색 그대로, 전구마다 다른 박자로 깜빡 (EXCLUSIVE)
+		if (uGlowAnim > 11.5) { float gsF = gsHash(vec3(floor(uTime * 15.0), 7.0, 0.0)); gsA = 0.45 + 0.3 * sin(uTime * 2.2 + vOP.z * 4.0) + 0.65 * step(0.86, gsF); }	// 방사능: 은은한 맥박 + 가이거 계수기처럼 불규칙하게 번쩍 (핵폭탄)
+		else if (uGlowAnim > 10.5) { float gsW = 0.5 + 0.5 * sin(uTime * 3.2 - vOP.z * 26.0); gsA = 0.2 + 0.8 * gsW * gsW * gsW; gsGC = mix(uGlowCol, vec3(0.62, 0.78, 1.0) * 1.15, smoothstep(-0.25, 0.15, vOP.z)); }	// 빛줄기가 탄두 쪽으로 빨려 들고 탄두에 가까울수록 푸르게 (EVENT HORIZON)
+		else if (uGlowAnim > 9.5) { gsG = max(gsG3.r, max(gsG3.g, gsG3.b)); gsGC = uGlowCol * gsG3 / max(gsG, 0.001); float gsH = gsHash(floor(vOP * 55.0)), gsP = fract(uTime * 0.55 + gsH); gsA = 0.3 + 0.7 * smoothstep(0.0, 0.06, gsP) * smoothstep(0.66, 0.52, gsP); }	// 크리스마스 전구: 빛 지도의 색 그대로, 전구마다 다른 박자로 깜빡 (EXCLUSIVE)
 		else if (uGlowAnim > 8.5) { float gsW = 0.5 + 0.5 * sin(uTime * 2.4); gsA = 0.2 + 0.8 * pow(gsW, 6.0); }	// 일정한 간격의 맥박 (APOCALYPSE ENGINE)
 		else if (uGlowAnim > 7.5) { float gsW = 0.5 + 0.5 * sin(uTime * 1.6 - vOP.z * 12.0); gsA = 0.25 + 0.75 * pow(gsW, 4.0); }	// 붉은 에너지가 천천히 흐름 (INFERNAL SOVEREIGN)
 		else if (uGlowAnim > 6.5) { float gsH = gsHash(floor(vOP * 70.0)); gsA = 0.2 + 0.8 * pow(0.5 + 0.5 * sin(uTime * (0.9 + gsH * 1.8) + gsH * 6.283), 3.0); }	// 별 반짝임 (LAST FRONTIER)
@@ -10599,7 +10882,7 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
 	// 스캔 띠 (테스터: 재장전·살펴보기 때 총을 따라 지나가는 빛)
 	if (uScanOn > 0.5) totalEmissiveRadiance += uScanCol * smoothstep(0.035, 0.0, abs(vGZ - uScanZ)) * 3.2;
 	// 부속품의 발광 부품(kd 7 = energy): 스킨 색으로 빛나고, 펼쳐질 때(uDeploy) 번쩍
-	if (gsR > 6.5) {
+	if (gsR > 6.5 && gsR < 7.5) {
 		float gsE = 1.0; vec3 gsEC = uEnCol;
 		if (uEnAnim > 8.5) { float gsW = 0.5 + 0.5 * sin(uTime * 2.4); gsE = 0.25 + 1.0 * pow(gsW, 6.0); }
 		else if (uEnAnim > 7.5) gsE = 0.5 + 0.5 * (0.5 + 0.5 * sin(uTime * 1.6 - vOP.z * 12.0));
@@ -10627,10 +10910,13 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
   const STATIC = {};
   function staticU(id) {
     if (STATIC[id]) return STATIC[id];
-    const d = GSKINS[id], T = texOf(id), b = d.body || {}, f = d.furn || {}, s = d.steel || {};
+    const d = GSKINS[id], T = texOf(id), b = d.body || {}, f = d.furn || {}, s = d.steel || {}, hd = d.head || null;
     const mode = (r) => (r.p ? 2 : r.c !== undefined ? 1 : 0), gl = d.glow;
     return (STATIC[id] = {
       uPat: { value: T.pat || blank() }, uGlow: { value: T.glow || blank() }, uScale: { value: d.sc || 3 },
+      // 탄두(v21 판처파우스트): head.pat → 탄두 무늬 · head.c → 단색 · 없으면 몸체처럼(uHeadMode 0)
+      uHeadPat: { value: T.head || blank() }, uHeadSc: { value: (hd && hd.sc) || d.sc || 3 }, uHeadCol: { value: new THREE.Color(hd && hd.c !== undefined ? hd.c : 0x888888) },
+      uHeadMode: { value: hd ? (hd.pat ? 2 : hd.c !== undefined ? 1 : 0) : 0 }, uHeadMR: { value: new THREE.Vector2(...((hd && hd.mr) || b.mr || [0.15, 0.6])) }, uHeadGlow: { value: (hd && hd.glow) || 0 },
       uBodyCol: { value: new THREE.Color(b.c !== undefined ? b.c : 0x888888) }, uFurnCol: { value: new THREE.Color(f.c !== undefined ? f.c : 0x888888) }, uSteelCol: { value: new THREE.Color(s.c !== undefined ? s.c : 0x888888) },
       uMode: { value: new THREE.Vector3(mode(b), mode(f), mode(s)) },
       uMR: { value: new THREE.Vector4((b.mr || [0.15, 0.6])[0], (b.mr || [0.15, 0.6])[1], (f.mr || [0, 0.7])[0], (f.mr || [0, 0.7])[1]) }, uSteelMR: { value: new THREE.Vector2((s.mr || [0.9, 0.3])[0], (s.mr || [0.9, 0.3])[1]) },
@@ -10641,7 +10927,7 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
   function makeMat(base, U, d) {
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: base.roughness, metalness: base.metalness, envMap: base.envMap, envMapIntensity: d.env !== undefined ? Math.max(d.env, base.envMapIntensity) : base.envMapIntensity });
     m.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); sh.vertexShader = patchV(sh.vertexShader); sh.fragmentShader = patchF(sh.fragmentShader); };
-    m.customProgramCacheKey = () => 'gskin-v5';
+    m.customProgramCacheKey = () => 'gskin-v6';
     return m;
   }
   // 그리기 직전에 총 공간 행렬(빛 띠 위치 계산용) — 효과가 진행 중일 때만
@@ -10666,6 +10952,8 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
     const body = g.children[0]; let z0 = 1e9, z1 = -1e9;
     if (body) for (const m of body.children) { const gb = m.geometry && m.geometry.boundingBox; if (gb) { z0 = Math.min(z0, gb.min.z); z1 = Math.max(z1, gb.max.z); } }
     if (z0 < z1) { I.z0 = z0; I.z1 = z1; } else { _bb.setFromObject(g); I.z0 = _bb.min.z; I.z1 = _bb.max.z; }
+    // 판처파우스트: 탄두(부품 head)는 몸체 밖이라 빛 띠·스캔은 탄두 끝까지(zt). 부속품·각인 자리는 몸체 길이(z0~z1) 그대로
+    const hm = g.userData.meta; I.zt = g.userData.parts && g.userData.parts.head && hm && hm.muzzleZ > I.z1 ? hm.muzzleZ : I.z1;
     // 울트라레어 부속품 (05_models_gparts.js): 같은 스킨 재질을 써서 꺼내기·넣기 빛 띠에 같이 나타나고 사라진다
     const pm = mats['cls:metal'] || mats['cls:matte'] || mats['cls:diel'];
     if (d.parts && pm && typeof GunParts !== 'undefined') {
@@ -10803,6 +11091,12 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       emit(P, _p, 0, 0, 0, fx.c2, 0.08 * k, 0.05, { grow: 1.2 });
       for (let i = 0; i < 12; i++) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(); const R = 0.09 + Math.random() * 0.08; _q.copy(_p).addScaledVector(_r, R); emit(P, _q, -_r.x * R * 5, -_r.y * R * 5, -_r.z * R * 5, pick(fx), (0.01 + Math.random() * 0.01) * k, 0.2, { drag: 0 }); }
       for (let i = 0; i < 6; i++) { const sp = 2 + Math.random() * 3; emit(P, _p, _d.x * sp + (Math.random() - 0.5), _d.y * sp + (Math.random() - 0.5), _d.z * sp + (Math.random() - 0.5), fx.c, (0.012 + Math.random() * 0.01) * k, 0.25 + Math.random() * 0.15, { drag: 5 }); }
+    },
+    // 핵폭탄(v21): 하얗게 번쩍인 뒤 초록 섬광 고리가 퍼지고 · 초록·노랑 방사능 가루가 흩날리며 떠오름
+    nuke(P, k, fx) {
+      emit(P, _p, 0, 0, 0, 0xf4ffd8, 0.28 * k, 0.07, { grow: 1.6 });
+      emit(P, _p, _d.x * 0.5, _d.y * 0.5, _d.z * 0.5, fx.c, 0.18 * k, 0.24, { grow: 2.3, drag: 3 });
+      for (let i = 0; i < 18; i++) { const sp = 1 + Math.random() * 3.2; _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(1.6); emit(P, _p, _d.x * sp + _r.x, _d.y * sp + _r.y + 0.3, _d.z * sp + _r.z, Math.random() < 0.3 ? fx.c2 : fx.c, (0.01 + Math.random() * 0.012) * k, 0.35 + Math.random() * 0.4, { drag: 2.5, g: 0.6, sq: Math.random() < 0.4 }); }
     },
   };
   // 테스터(프로토타입 β): 하얀 섬광 + 총구 둘레로 무지개 여섯 빛이 육각으로 퍼짐 + 앞으로 뻗는 프리즘 조각 + 옅은 잔광 고리
@@ -10948,6 +11242,9 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     else if (kind === 'xstar') { I.moteT = vm ? 0.09 : 0.18; const a = rnd2() * TAU, r = 0.04 + rnd2() * 0.05; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, lerp(I.z0, I.z1, rnd2())); g.localToWorld(_p); emit(P, _p, 0, 0.012, 0, rnd2() < 0.3 ? 0xffffff : col, (0.004 + rnd2() * 0.004) * k, 0.8, { grow: -0.5 }); }
     else if (kind === 'xsnow') { I.moteT = vm ? 0.07 : 0.14; const a = rnd2() * TAU, r = 0.05 + rnd2() * 0.06; _p.set(Math.cos(a) * r, m.boreY + 0.06 + rnd2() * 0.04, lerp(I.z0, I.z1, rnd2())); g.localToWorld(_p); emit(P, _p, (rnd2() - 0.5) * 0.02, -0.035, (rnd2() - 0.5) * 0.02, rnd2() < 0.6 ? 0xffffff : col, (0.003 + rnd2() * 0.003) * k, 1.1, { sq: rnd2() < 0.4, grow: -0.3 }); }
     else if (kind === 'xgift') { I.moteT = vm ? 0.08 : 0.16; const a = rnd2() * TAU, r = 0.035 + rnd2() * 0.045; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, lerp(I.z0, I.z1, rnd2())); g.localToWorld(_p); emit(P, _p, (rnd2() - 0.5) * 0.03, 0.02 + rnd2() * 0.03, (rnd2() - 0.5) * 0.03, col, (0.0035 + rnd2() * 0.003) * k, 0.7, { sq: 1, g: -0.05 }); }
+    // v21 판처파우스트: SANTA'S DELIVERY = 금·빨강·흰 반짝이 가루가 천천히 떠오름 · EVENT HORIZON = 탄두 둘레로 물질이 소용돌이치며 빨려 듦
+    else if (kind === 'xsanta') { I.moteT = vm ? 0.08 : 0.16; const a = rnd2() * TAU, r = 0.035 + rnd2() * 0.05; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, lerp(I.z0, I.zt, rnd2())); g.localToWorld(_p); emit(P, _p, (rnd2() - 0.5) * 0.02, 0.025 + rnd2() * 0.03, (rnd2() - 0.5) * 0.02, rnd2() < 0.35 ? 0xffffff : col, (0.0035 + rnd2() * 0.0035) * k, 0.8, { grow: -0.4, sq: rnd2() < 0.25 }); }
+    else if (kind === 'horizon') { I.moteT = vm ? 0.045 : 0.09; const hz = m.headPos ? m.headPos[2] + 0.1 : I.z1; if (!g.userData.parts.head || g.userData.parts.head.visible) { const a = rnd2() * TAU, r = 0.08 + rnd2() * 0.06; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, hz + (rnd2() - 0.5) * 0.04); g.localToWorld(_p); _q.set(0, m.boreY, hz); g.localToWorld(_q); _r.set(-Math.sin(a), Math.cos(a), 0).transformDirection(g.matrixWorld); _q.sub(_p); const L = _q.length(); _q.multiplyScalar(2.4).addScaledVector(_r, L * 3.2); emit(P, _p, _q.x, _q.y, _q.z, rnd2() < 0.25 ? 0xffffff : col, (0.003 + rnd2() * 0.003) * k, 0.32, { sq: rnd2() < 0.3 }); } }
   }
   // VOID REAPER 살펴보기: 화면(캔버스)을 SVG 변위 필터로 잠깐 일그러뜨림 (내 화면에서만)
   let warpEl = null, warpT = 0;
@@ -10974,6 +11271,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     else if (kind === 'xstar') { I.spinBoost = 4; scan(I, s.dur * 0.8, 0xffe6a0, true); s.scan = true; }
     else if (kind === 'xsnow') { scan(I, s.dur * 0.75, 0xcff4ff, true); s.scan = true; }
     else if (kind === 'xgift') { scan(I, s.dur * 0.6, 0xff4a5a, true); s.scan = true; }
+    else if (kind === 'horizon') { I.spinBoost = 6; scan(I, s.dur * 0.7, 0xffb070, true); s.scan = true; s.jet = false; }
   }
   function epsInsp(I, s, g, u, dt, vm, k, P, m) {
     const kind = I.d.fx.kind, env = Math.sin(Math.min(1, u) * Math.PI);
@@ -11007,6 +11305,16 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     else if (kind === 'celestial' || kind === 'infernal') { if (I.scan && Math.random() < dt * 30) { const a = Math.random() * TAU, r = 0.025 + Math.random() * 0.03; _q.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, I.U.uScanZ.value); g.localToWorld(_q); emit(P, _q, 0, kind === 'infernal' ? 0.06 : 0.01, 0, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.6, { grow: -0.4, g: kind === 'infernal' ? -0.5 : 0 }); } }
     else if (kind === 'voidr') { if (s.warp) epsWarp(u < 0.35 ? Math.sin(u / 0.35 * Math.PI) : 0); if (Math.random() < dt * 50 * env) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(); const R = 0.12 + Math.random() * 0.1; _q.set(0, m.boreY, lerp(I.z0, I.z1, 0.6)); g.localToWorld(_q); _p.copy(_q).addScaledVector(_r, R); emit(P, _p, -_r.x * R * 3, -_r.y * R * 3, -_r.z * R * 3, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.33, { sq: Math.random() < 0.4 }); } }
     else if (kind === 'dynasty' && s.crest) { const inK = clamp(u / 0.15, 0, 1), outK = clamp((1 - u) / 0.15, 0, 1); s.crest.scale.setScalar(0.07 * Math.min(inK, outK) + 0.001); s.crest.rotation.y = s.t * 2.4; s.crest.material.opacity = Math.min(inK, outK); if (Math.random() < dt * 20) { s.crest.getWorldPosition(_q); emit(P, _q, (Math.random() - 0.5) * 0.1, -0.05, (Math.random() - 0.5) * 0.1, pick(I.d.fx), 0.004 * k, 0.6, { grow: -0.4 }); } }
+    else if (kind === 'horizon') {
+      // EVENT HORIZON(v21): 강착 원반이 빨라지고 물질이 소용돌이치며 탄두로 빨려 듦 → 절반쯤에서 광자 고리가 번쩍이며 탄두 앞으로 제트가 뿜어지고 둘레로 빛 고리가 퍼짐
+      const hz = m.headPos ? m.headPos[2] + 0.1 : I.z1;
+      if (Math.random() < dt * 70 * env) { const a = Math.random() * TAU, R = 0.11 + Math.random() * 0.08; _p.set(Math.cos(a) * R, m.boreY + Math.sin(a) * R, hz + (Math.random() - 0.5) * 0.06); g.localToWorld(_p); _q.set(0, m.boreY, hz); g.localToWorld(_q); _r.set(-Math.sin(a), Math.cos(a), 0).transformDirection(g.matrixWorld); _q.sub(_p); const L = _q.length(); _q.multiplyScalar(2.6).addScaledVector(_r, L * 3.4); emit(P, _p, _q.x, _q.y, _q.z, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.3, { sq: Math.random() < 0.3 }); }
+      if (!s.jet && u > 0.5) {
+        s.jet = true; I.flash = Math.max(I.flash || 0, 0.9); ACTIVE.add(I);
+        for (let i = 0; i < 28; i++) { const a = i / 28 * TAU; _p.set(0, m.boreY, hz); g.localToWorld(_p); _r.set(Math.cos(a), Math.sin(a), 0).transformDirection(g.matrixWorld).multiplyScalar(vm ? 0.5 : 0.9); emit(P, _p, _r.x, _r.y, _r.z, i % 3 ? pick(I.d.fx) : 0xffffff, 0.004 * k, 0.4, { drag: 2.5, sq: 1 }); }
+      }
+      if (s.jet && u < 0.82) { I.U.uDeploy.value = 0.6 + 0.4 * Math.sin(s.t * 30); if (Math.random() < dt * 80) { _p.set(0, m.boreY, (m.muzzleZ || hz) - 0.02); g.localToWorld(_p); _r.set(0, 0, 1).transformDirection(g.matrixWorld).multiplyScalar(vm ? 0.8 + Math.random() * 0.6 : 1.4 + Math.random()); emit(P, _p, _r.x, _r.y, _r.z, Math.random() < 0.5 ? 0xffffff : 0xb58cff, (0.003 + Math.random() * 0.004) * k, 0.24, { drag: 0.6 }); } }
+    }
   }
   // ---------- 크리스마스 EXCLUSIVE 살펴보기 (v21) — 엡실론(ε 고리·홀로 명판·키트 전개·총열 축 회전)과 다른 '선물 풀기' ----------
   //  0~0.2 리본 띠 두 줄과 나비 리본으로 포장된 채 나타남 → 0.2 나비 리본이 톡 터지며(방울 소리·색종이) 리본이 총구 쪽으로 미끄러져 풀림
@@ -11050,6 +11358,12 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       if (X.globe) {
         const gk = clamp((u - 0.22) / 0.15, 0, 1) * outK, gs = (vm ? 0.34 : L * 0.72 + 0.1) * (0.85 + 0.15 * gk); X.globe.scale.set(gs, gs, 1); X.globe.material.opacity = 0.9 * gk; if (vm) X.globe.position.z = zc + L * 0.18;
         if (gk > 0.3 && Math.random() < dt * 60) { const a = Math.random() * TAU, R = Math.random() * gs * 0.4; _q.set(Math.cos(a) * R * 0.5, m.boreY + Math.sin(a) * R * 0.5, zc + (Math.random() - 0.5) * gs * 0.7); g.localToWorld(_q); emit(P, _q, (Math.random() - 0.5) * 0.14, (Math.random() - 0.4) * 0.1, (Math.random() - 0.5) * 0.14, Math.random() < 0.7 ? 0xffffff : 0xcff4ff, (0.003 + Math.random() * 0.003) * k, 0.8, { sq: Math.random() < 0.3 }); }
+      }
+      // SANTA'S DELIVERY(v21): 탄두 끝에 산타 모자가 톡 튀어나와 까딱이고, 금빛 반짝이가 흩날림
+      if (X.hat) {
+        const hi = clamp((u - 0.3) / 0.14, 0, 1), hk = hi * outK, bo = hi < 1 ? Math.max(0, backOut(hi)) : 1, hs = (vm ? 0.12 : 0.14) * bo * outK;
+        X.hat.scale.set(hs, hs, 1); X.hat.material.opacity = Math.min(1, hk * 2); X.hat.material.rotation = -0.3 + Math.sin(s.t * 5) * 0.12 * hk;
+        if (hk > 0.5 && Math.random() < dt * 20) { X.hat.getWorldPosition(_q); emit(P, _q, (Math.random() - 0.5) * 0.06, 0.03, (Math.random() - 0.5) * 0.06, Math.random() < 0.5 ? 0xffd65a : 0xffffff, 0.004 * k, 0.6, { grow: -0.4 }); }
       }
     }
     // 눈 (모두): 총 위에서 천천히 내림
@@ -11137,7 +11451,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     sc.attach(g); g.updateMatrixWorld(true); I.U.uGunInv.value.copy(g.matrixWorld).invert();
     if (I.dep) { I.dep = null; I.U.uDeploy.value = 0; setParts(I, 1); }   // 부속품은 빛 띠가 지나가며 몸체와 같이 사라짐
     // 1인칭: 화면 아래로 가라앉으며 사라짐 (총구가 멀어 앞에서부터 사라지는 게 잘 안 보이므로)
-    I.sweep = { t: 0, dur, out: true, c, sink: isVM(sc) ? 0.32 : 0 }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.z1 + 0.05; ACTIVE.add(I);
+    I.sweep = { t: 0, dur, out: true, c, sink: isVM(sc) ? 0.32 : 0 }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.zt + 0.05; ACTIVE.add(I);
     if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('holster', I.d.fx.kind, c && !own(c) ? c.pos : null, own(c));
     return true;
   }
@@ -11175,7 +11489,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       const s = I.sweep;
       if (s) {
         s.t += dt; const u = clamp(s.t / s.dur, 0, 1), e = u * u * (3 - 2 * u);
-        const z = s.out ? lerp(I.z1 + 0.05, I.z0 - 0.05, e) : lerp(I.z0 - 0.05, I.z1 + 0.05, e);
+        const z = s.out ? lerp(I.zt + 0.05, I.z0 - 0.05, e) : lerp(I.z0 - 0.05, I.zt + 0.05, e);
         I.U.uSweepZ.value = z;
         if (s.sink) { I.g.position.y -= s.sink * dt / s.dur; I.g.rotation.x += 0.5 * dt / s.dur; }
         if (u < 1) sweepParticles(I, z, dt);
@@ -11184,7 +11498,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       if (I.dep) updateDeploy(I, dt);
       if (I.spin) spinUpdate(I, dt);
       if (I.deco) for (const e of I.deco) e.mesh.visible = !I.sweep || e.zg < I.U.uSweepZ.value;   // 각인·엠블럼은 빛 띠가 지나간 만큼만
-      if (I.scan) { const sc2 = I.scan; sc2.t += dt; const u2 = clamp(sc2.t / sc2.dur, 0, 1), e2 = sc2.slow ? u2 : u2 * u2 * (3 - 2 * u2); I.U.uScanZ.value = lerp(I.z0 - 0.04, I.z1 + 0.04, e2); if (u2 >= 1) { I.scan = null; I.U.uScanOn.value = 0; } }
+      if (I.scan) { const sc2 = I.scan; sc2.t += dt; const u2 = clamp(sc2.t / sc2.dur, 0, 1), e2 = sc2.slow ? u2 : u2 * u2 * (3 - 2 * u2); I.U.uScanZ.value = lerp(I.z0 - 0.04, I.zt + 0.04, e2); if (u2 >= 1) { I.scan = null; I.U.uScanOn.value = 0; } }
       if (I.coreT > 0) { I.coreT -= dt; if (!I.insp) I.U.uDeploy.value = Math.max(0, I.coreT / 0.35) * 0.8; }
       if (I.insp) inspUpdate(I, dt);
       if (!I.sweep && !I.dep && !I.spin && !I.scan && !I.insp && !(I.coreT > 0) && I.flash <= 0) ACTIVE.delete(I);
@@ -11194,11 +11508,20 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     SkinFx.update(dt);   // 맞힘·처치 효과 (입자를 내보낸 뒤 같은 프레임에 갱신)
     updateParticles(dt);
   }
+  // ---------- 따로 만든 모델에 스킨 재질만 (v21: 날아가는 판처파우스트 로켓 — 부속품·각인·효과 없이 무늬·탄두 색·빛만) ----------
+  //  지운 뒤에는 o.userData.gsMats 의 재질을 버린다 (06_combat.js)
+  function dress(o, id) {
+    const d = GSKINS[id]; if (!d || !o) return o;
+    const U = Object.assign({ uTime: TIME, uFlash: { value: 0 }, uSweepOn: { value: 0 }, uSweepZ: { value: 0 }, uScanOn: { value: 0 }, uScanZ: { value: 0 }, uScanCol: { value: new THREE.Color(0) }, uGunInv: { value: new THREE.Matrix4() }, uFxCol: { value: new THREE.Color(d.fx ? d.fx.c : rarOf(d.rar).hex) }, uDeploy: { value: 0 } }, staticU(id)), mats = {};
+    o.traverse((m) => { if (!m.isMesh || !m.material || !m.material.userData) return; const k = m.material.userData.clsKey; if (k === 'cls:metal' || k === 'cls:matte' || k === 'cls:diel') m.material = mats[k] || (mats[k] = makeMat(m.material, U, d)); });
+    o.userData.gsMats = Object.values(mats);
+    return o;
+  }
   // ---------- 이름 ----------
   const short = (gun) => (ITEMS[gun] ? ITEMS[gun].name.replace(/(\s[가-힣]+)+$/, '') : gun);
   const name = (id) => { const d = GSKINS[id]; return d ? `${short(d.gun)} · ${d.name}` : ''; };
   const tracerCol = (g) => { const I = g && g.userData.skin; return I && I.d.fx ? I.d.fx.tr : 0; };
-  return { apply, shot, draw, holster, update, reload, inspect, inspectStop, name, short, tracerCol, texOf, PRISM, fx: { pool, emit }, get time() { return TIME.value; }, _active: ACTIVE, _pools: POOLS, _idle: IDLE };
+  return { apply, dress, shot, draw, holster, update, reload, inspect, inspectStop, name, short, tracerCol, texOf, PRISM, fx: { pool, emit }, get time() { return TIME.value; }, _active: ACTIVE, _pools: POOLS, _idle: IDLE };
 })();
 
 // ---------- 05_models_gskinfx.js ----------
@@ -11519,6 +11842,11 @@ const SkinFx = (() => {
       E(P, p, 0, 0, 0, 0xfff0c0, 0.28 * k, 0.07, { grow: 0.8, so: 0.3 });
       for (let i = 0; i < 7; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(0.6, 1.6) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.03, 0.05) * k, rnd(0.45, 0.8), { drag: 2.5, grow: -0.4, so: 0.6 }); }
     },
+    // 핵폭탄(v21): 하얀 섬광 + 초록 번짐 + 초록·노랑 방사능 가루가 떠오름
+    nuke(P, p, d, fx, k, s) {
+      E(P, p, 0, 0, 0, 0xf2ffd8, 0.34 * k, 0.07, { grow: 0.9, so: 0.35 }); E(P, p, 0, 0.15, 0, fx.c, 0.24 * k, 0.45, { grow: 1.4, drag: 2, so: 0.55 });
+      for (let i = 0; i < 10; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1.2), rnd(-1, 1)).normalize().multiplyScalar(rnd(1.2, 3.4) * s); E(P, p, _v.x - d.x, _v.y, _v.z - d.z, Math.random() < 0.3 ? fx.c2 : fx.c, rnd(0.03, 0.06) * k, rnd(0.4, 0.8), { sq: Math.random() < 0.5, drag: 2, g: 0.8, so: 0.75 }); }
+    },
   };
   // 슈퍼레어(약한 효과): 작은 섬광 + 조각 몇 개, 몸에 남는 효과는 짧게
   function liteHit(P, p, d, fx, k, s) {
@@ -11527,8 +11855,9 @@ const SkinFx = (() => {
     for (let i = 0; i < 4; i++) { _v.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1, 2.4) * s); E(P, p, _v.x, _v.y, _v.z, pick(fx), rnd(0.02, 0.035) * k, rnd(0.15, 0.3), { sq, drag: 5, g: fx.kind === 'ember' ? -4 : 0, so: 0.7 }); }
   }
   // 몸에 남는 효과: 초당 개수 · 한 번에 하나씩
-  const RATE = { ember: 50, flame: 44, spark: 36, glitch: 44, frost: 40, void: 40, prism: 46, zero: 40, chaos: 48, frontier: 36 };
+  const RATE = { ember: 50, flame: 44, spark: 36, glitch: 44, frost: 40, void: 40, prism: 46, zero: 40, chaos: 48, frontier: 36, nuke: 52 };
   const BODYFX = {
+    nuke(P, p, fx, k) { E(P, p, rnd(-0.1, 0.1), rnd(0.25, 0.85), rnd(-0.1, 0.1), Math.random() < 0.75 ? fx.c : fx.c2, rnd(0.08, 0.14) * k, rnd(0.5, 0.9), { sq: Math.random() < 0.4, grow: -0.3, drag: 1.2, g: 0.5, so: 0.75 }); },   // 핵폭탄: 몸에서 초록 방사능 가루가 피어오름
     ember(P, p, fx, k) { E(P, p, rnd(-0.12, 0.12), rnd(0.15, 0.9), rnd(-0.12, 0.12), Math.random() < 0.6 ? fx.c : fx.c2, rnd(0.1, 0.17) * k, rnd(0.4, 0.8), { g: 0.6, drag: 1.5, so: 0.85 }); },
     flame(P, p, fx, k) { E(P, p, rnd(-0.08, 0.08), rnd(0.4, 1.1), rnd(-0.08, 0.08), Math.random() < 0.3 ? 0xffd27a : fx.c, rnd(0.18, 0.28) * k, rnd(0.2, 0.36), { grow: 1.2, drag: 1.5, so: 0.8 }); },
     spark(P, p, fx, k) { E(P, p, rnd(-1.5, 1.5), rnd(-1, 1.5), rnd(-1.5, 1.5), pick(fx), rnd(0.05, 0.08) * k, rnd(0.08, 0.18), { drag: 6, so: 0.55 }); },
@@ -12003,6 +12332,62 @@ const SkinFx = (() => {
     add(null, 2.2, (e, u) => { if (u > 0.2 && Math.random() < 0.6) { _a.set(cp.x + rnd(-2, 2), cp.y + rnd(1.5, 3), cp.z + rnd(-2, 2)); E(P, _a, rnd(-0.3, 0.3), rnd(-0.4, -0.1), rnd(-0.3, 0.3), pick(fx), rnd(0.06, 0.1) * k, rnd(1.0, 1.6), { sq: 1, drag: 1.5, so: 0.7 }); } });
     body(t, fx, 2.0, true);
   };
+  // ---------- v21 판처파우스트 처치 (폭발 모양은 06_boom.js — 여기는 쓰러진 몸에 남는 효과) ----------
+  // 빛나는 방사능 표지 · 강착 원반(안으로 감겨 드는 띠) · 'HO HO HO!' 글자
+  const trefoilTex = () => ctex('trefoil', 256, 256, (g) => {
+    halo(g, 124, [[0, 'rgba(255,255,255,0.35)'], [0.6, 'rgba(255,255,255,0.1)'], [1, 'rgba(255,255,255,0)']]);
+    g.translate(128, 128); g.fillStyle = 'rgba(255,255,255,0.95)'; g.shadowColor = '#fff'; g.shadowBlur = 12;
+    g.beginPath(); g.arc(0, 0, 16, 0, TAU); g.fill();
+    for (let i = 0; i < 3; i++) { const ac = Math.PI / 2 + i * TAU / 3; g.beginPath(); g.arc(0, 0, 100, ac - Math.PI / 6, ac + Math.PI / 6); g.arc(0, 0, 28, ac + Math.PI / 6, ac - Math.PI / 6, true); g.closePath(); g.fill(); }
+    g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,0.8)'; g.beginPath(); g.arc(0, 0, 116, 0, TAU); g.stroke();
+  });
+  const diskTex = () => ctex('adisk', 256, 256, (g) => {
+    halo(g, 128, [[0, 'rgba(0,0,0,0)'], [0.28, 'rgba(0,0,0,0)'], [0.34, 'rgba(255,255,255,1)'], [0.5, 'rgba(255,255,255,0.55)'], [0.85, 'rgba(255,255,255,0.12)'], [1, 'rgba(255,255,255,0)']]);
+    g.translate(128, 128); g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineCap = 'round';
+    for (let q = 0; q < 6; q++) { g.lineWidth = 3 - q * 0.3; g.beginPath(); for (let i = 0; i <= 40; i++) { const t = i / 40, a = q * TAU / 6 + t * 3.2, r = 118 - t * 78; i ? g.lineTo(Math.cos(a) * r, Math.sin(a) * r) : g.moveTo(Math.cos(a) * r, Math.sin(a) * r); } g.stroke(); }
+  });
+  const hohoTex = () => ctex('hoho', 512, 160, (g, W, H) => {
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 96px "Saira Condensed","Arial Narrow",Arial,sans-serif';
+    g.lineWidth = 14; g.lineJoin = 'round'; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.strokeText('HO HO HO!', W / 2, H / 2); g.fillStyle = '#ff2a3a'; g.fillText('HO HO HO!', W / 2, H / 2);
+    g.fillStyle = '#ffd65a'; for (const [x, y] of [[30, 30], [480, 40], [40, 130], [470, 120]]) { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 6 : 15; i ? g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : g.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); g.fill(); }
+  });
+  // 핵폭탄: 방사능 소멸 — 하얀·초록 섬광 · 바닥에 빛나는 방사능 표지가 돌고 · 초록 빛 기둥 · 몸이 초록 재로 흩어져 떠오름(일부는 검게 식은 재)
+  KILL.nuke = function (t, fx, gp, cp, k) {
+    const P = pool();
+    glow(cp, 0xeaffd0, 4.4, 0.4); glow(cp, fx.c, 3, 0.8); light(cp, fx.c, 8, 1.0);
+    ring(gp, fx.c, 4.4, 0.7); ring(gp, 0xfff27a, 3, 0.55, null, 0.1);
+    spinDecal(gp, trefoilTex(), 3.6, 3.2, fx.c, 0.6, 0.12);
+    pillar(gp, fx.c, 0.42, 4.5, 0.9, stripeTex(), 1.6);
+    for (let i = 0; i < 70; i++) { bodyPoint(t, _a); E(P, _a, rnd(-0.3, 0.3), rnd(0.4, 1.8), rnd(-0.3, 0.3), Math.random() < 0.65 ? fx.c : Math.random() < 0.5 ? fx.c2 : 0x2a3020, rnd(0.05, 0.1) * k, rnd(1.0, 2.0), { sq: Math.random() < 0.6, drag: 1, g: 0.3, so: 0.85 }); }
+    body(t, fx, 2.6, true);
+  };
+  // EVENT HORIZON: 몸 둘레에 기울어진 강착 원반이 빠르게 돌며 조여 들고 · 가운데 검은 구가 빛을 삼켰다가 · 무너지는 순간 위아래로 제트와 섬광 · 바닥에 소용돌이
+  KILL.horizon = function (t, fx, gp, cp, k) {
+    const P = pool();
+    const core = new THREE.Sprite(sprMat(0x000000)); core.material.blending = THREE.NormalBlending; core.position.copy(cp); core.renderOrder = 9;   // 검은 원 (빛 번짐 그림을 덮어 그리기로 — 같은 셰이더)
+    add(core, 0.75, (e, u) => { const s = u < 0.3 ? u / 0.3 : u < 0.78 ? 1 : 1 - (u - 0.78) / 0.22; core.scale.setScalar(1.5 * s + 0.01); core.material.opacity = Math.min(1, s * 1.6); });
+    const grp = new THREE.Group(), disk = new THREE.Mesh(geo().plane, addMat(diskTex(), fx.c)); disk.renderOrder = 8; grp.add(disk); grp.position.copy(cp); grp.rotation.set(0.5, 0, 0.3);
+    add(grp, 0.85, (e, u) => { disk.rotation.y = -e.t * 7; const s = u < 0.2 ? u / 0.2 : 1 - Math.max(0, u - 0.55) / 0.45; disk.scale.setScalar(Math.max(0.01, 2.8 * s * (1 - u * 0.35))); disk.material.opacity = Math.min(1, s * 1.4); });
+    add(null, 0.6, () => { for (let j = 0; j < 3; j++) { const a = Math.random() * TAU, R = rnd(1.6, 2.6); _a.set(cp.x + Math.cos(a) * R, cp.y + rnd(-0.4, 0.4), cp.z + Math.sin(a) * R); E(P, _a, (-Math.cos(a) * 2.2 - Math.sin(a) * 1.2) * R, rnd(-0.3, 0.3), (-Math.sin(a) * 2.2 + Math.cos(a) * 1.2) * R, pick(fx), rnd(0.04, 0.07) * k, 0.4, { so: 0.6 }); } });
+    delayed(0.62, () => {
+      glow(cp, 0xf0e6ff, 5, 0.35); light(cp, fx.c2, 9, 0.8); ring(gp, fx.c2, 5.2, 0.7); ring(gp, fx.c, 3.4, 0.55, null, 0.08);
+      beam(cp, new THREE.Vector3(cp.x, cp.y + 12, cp.z), 0xffffff, 0.5, 0.6); beam(cp, new THREE.Vector3(cp.x, cp.y + 10, cp.z), fx.c2, 1.4, 0.7); beam(cp, new THREE.Vector3(cp.x, gp.y - 0.2, cp.z), 0xffffff, 0.5, 0.4);
+      spinDecal(gp, swirlTex(), 4.4, 2.6, 0xd8c0ff, -2.4, -0.2);
+      for (let i = 0; i < 50; i++) { _v.set(rnd(-1, 1), rnd(-0.3, 0.3), rnd(-1, 1)).normalize().multiplyScalar(rnd(3, 7)); E(P, cp, _v.x, _v.y, _v.z, pick(fx), rnd(0.05, 0.09) * k, rnd(0.3, 0.6), { drag: 3, so: 0.6 }); }
+    });
+    body(t, fx, 1.8, true);
+  };
+  // SANTA'S DELIVERY: 선물 배달 완료 — 금빛 별 섬광 · 바닥에 화환이 돌고 · 'HO HO HO!' 글자가 떠오름 · 빨강·초록·금 색종이와 눈송이
+  KILL.xsanta = function (t, fx, gp, cp, k) {
+    const P = pool();
+    card(cp, star5Tex(), 0xffe6a0, 0.7, (m, u) => { m.scale.setScalar(3.6 * (0.3 + 0.7 * Math.sqrt(u))); m.rotateZ(u * 1.2); m.material.opacity = (1 - u) * (1 - u); });
+    card(cp, hohoTex(), 0xffffff, 1.7, (m, u) => { const p = Math.min(1, u * 6); m.position.y = cp.y + 1.1 + u * 1.3; m.scale.set(2.6 * (0.5 + 0.5 * p), 0.81 * (0.5 + 0.5 * p), 1); m.rotateZ(Math.sin(u * 18) * 0.06 * (1 - u)); m.material.opacity = u < 0.08 ? u / 0.08 : u > 0.65 ? (1 - u) / 0.35 : 1; });
+    glow(cp, 0xfff0d0, 4.2, 0.4); light(cp, 0xffb070, 8, 0.9); ring(gp, fx.c, 4.4, 0.7); ring(gp, 0x3aff7a, 5.8, 0.9, null, 0.15); ring(gp, fx.c2, 7, 1.0, null, 0.3);
+    if (typeof GunDeco !== 'undefined' && GunDeco.wreathTex) spinDecal(gp, GunDeco.wreathTex(), 4.2, 3.0, 0xffffff, 0.5, 0.1);
+    for (let i = 0; i < 90; i++) { _v.set(rnd(-1, 1), rnd(0.4, 1.6), rnd(-1, 1)).normalize().multiplyScalar(rnd(2.5, 6.5)); E(P, cp, _v.x, _v.y, _v.z, pick(fx), rnd(0.06, 0.11) * k, rnd(1.2, 2.2), { sq: 1, g: -2.2, drag: 1.6, so: 0.85 }); }
+    add(null, 1.6, () => { if (Math.random() < 0.6) { _a.set(cp.x + rnd(-1.8, 1.8), cp.y + rnd(1.4, 2.8), cp.z + rnd(-1.8, 1.8)); E(P, _a, rnd(-0.2, 0.2), rnd(-0.5, -0.2), rnd(-0.2, 0.2), 0xffffff, rnd(0.05, 0.08) * k, rnd(1.0, 1.6), { drag: 1.2, so: 0.7 }); } });
+    body(t, fx, 2.0, true);
+  };
   // 카메라를 보게 세우는 판 (앞면 +z, 같은 지오메트리를 돌려 씀)
   let VP = null; const vplane = () => VP || (VP = new THREE.PlaneGeometry(1, 1));
   // 엡실론 처치 자국·판: 찢어진 틈 · 금빛 아라베스크
@@ -12098,7 +12483,10 @@ const SkinFx = (() => {
     if (ARCS.length) updateArcs(dt);
     if (LIGHT) updateLight(dt);
   }
-  return { init, hit, kill, update, _live: LIVE, _body: BODY };
+  // v21: 폭발 효과(06_boom.js)가 같은 도구·그림을 쓴다
+  const kit = { add, glow, ring, decal, pillar, dome, beam, card, spinDecal, halo3, light, ground, lay, delayed, geo, addMat, sprMat, vplane, pool, E,
+    tex: { glow: glowTex, ring: ringTex, star4: star4Tex, star5: star5Tex, flake: flakeTex, lava: lavaTex, swirl: swirlTex, stripe: stripeTex, trefoil: trefoilTex, disk: diskTex, fire: fireTex, ice: iceTex } };
+  return { init, hit, kill, update, kit, _live: LIVE, _body: BODY };
 })();
 
 // ---------- 05_models_guns.js ----------
@@ -13245,7 +13633,7 @@ const SkinFx = (() => {
     },
     // 탄두 (부품 축 = 발사관 축). 뒤 꼬리대·접힌 날개는 관 안에 꽂혀 있다가 날아갈 때 보인다
     head(g) {
-      const od = M('anod', 0x4c5432), dk = M('gunmetal', 0x262824), yl = M('paper', 0xd0ae38), st = M('metal', 0x8a8e88);
+      const od = M('shell', 0x4c5432), dk = M('gunmetal', 0x262824), yl = M('paper', 0xd0ae38), st = M('metal', 0x8a8e88);   // shell: 스킨이 탄두만 따로 칠함 (평소엔 무광 올리브)
       A(g, CY(0.016, 0.016, 0.2, 14), dk, 0, 0, -0.1);
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; A(g, BX(0.0022, 0.012, 0.08), st, Math.cos(a) * 0.017, Math.sin(a) * 0.017, -0.16, 0, 0, a + Math.PI / 2); }
       A(g, lathe(HEAD), od);
@@ -14753,6 +15141,385 @@ const VCLS_NAME = { sleigh: '산타 썰매', imperial: '럭셔리 퍼포먼스 S
   }
 })();
 
+// ---------- 06_boom.js ----------
+// ============================================================
+// 06_boom.js — 폭발 효과 (v21): 판처파우스트 로켓 · 수류탄 · 차량 폭발
+//  · 섬광(흰 빛 · 별 섬광 · 주변을 비추는 빛 · 가까우면 화면이 번쩍) → 불덩이(겹친 불꽃 덩이가 부풀며 노랑 → 주황 → 검붉게 식음)
+//    → 충격파(빠르게 퍼지는 빛 껍질 · 바닥 고리) → 흙먼지 고리(바닥을 따라 퍼짐) → 파편(흙·돌 덩이 포물선 · 불티 · 연기 꼬리를 끄는 불붙은 조각)
+//    → 검은 연기 기둥(몇 초 동안 솟으며 퍼지고 옅어짐) · 바닥 그을음 자국(오래 남음)과 달아오른 균열 · 잔불
+//  · 물 위면 물기둥·물보라·물결 고리 · 공중에서 터지면 바닥 효과 없이
+//  · 판처파우스트 스킨(모양만 — 피해는 같음): 핵탄두 = 버섯구름 · SANTA'S DELIVERY = 큰 선물 상자가 솟아 터지며 크리스마스 불꽃놀이
+//    · EVENT HORIZON = 큰 블랙홀이 1.5초 동안 빛과 흙을 빨아들이다 무너진 뒤 폭발
+//  · 큰 모양은 SkinFx 도구(시간 진행 효과 add · 고리 · 돔 · 바닥 자국 — 05_models_gskinfx.js), 작은 입자는 GunSkin 점 구름(그리기 1번)
+//  · 멀수록 덩이·입자 수를 줄인다 (140m · 320m), 900m 넘으면 생략
+// ============================================================
+const Boom = (() => {
+  let K = null;
+  const TEX = {}, UP = new THREE.Vector3(0, 1, 0);
+  const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _v = new THREE.Vector3();
+  function ctex(key, S, fn) { if (TEX[key]) return TEX[key]; const c = document.createElement('canvas'); c.width = c.height = S; fn(c.getContext('2d'), S); return (TEX[key] = new THREE.CanvasTexture(c)); }
+  // 뭉게뭉게한 덩이(연기·먼지·물보라): 흰 덩이 여럿을 겹쳐 가장자리가 울퉁불퉁 · 위가 밝고 아래가 어두움(입체감)
+  const puffTex = () => ctex('puff', 128, (g, S) => {
+    const R = mulberry32(11);
+    for (let i = 0; i < 30; i++) {
+      const a = R() * TAU, d = Math.sqrt(R()) * S * 0.24, x = S / 2 + Math.cos(a) * d, y = S / 2 + Math.sin(a) * d, r = S * (0.1 + R() * 0.14), sh = Math.round(255 * (0.62 + 0.38 * (1 - y / S)));
+      const gr = g.createRadialGradient(x, y - r * 0.25, r * 0.1, x, y, r); gr.addColorStop(0, `rgba(${sh},${sh},${sh},0.5)`); gr.addColorStop(0.6, `rgba(${sh},${sh},${sh},0.24)`); gr.addColorStop(1, `rgba(${sh},${sh},${sh},0)`);
+      g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  });
+  // 불꽃 덩이: 밝은 속 + 울퉁불퉁한 가장자리
+  const fireTex = () => ctex('fireball', 128, (g, S) => {
+    const R = mulberry32(23), base = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    base.addColorStop(0, 'rgba(255,255,255,1)'); base.addColorStop(0.35, 'rgba(255,255,255,0.75)'); base.addColorStop(0.7, 'rgba(255,255,255,0.2)'); base.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = base; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 22; i++) { const a = R() * TAU, d = S * (0.15 + R() * 0.2), x = S / 2 + Math.cos(a) * d, y = S / 2 + Math.sin(a) * d, r = S * (0.08 + R() * 0.12), gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  });
+  // 그을음 자국: 가운데가 진하고 가장자리가 들쭉날쭉 + 바깥으로 뻗는 검은 줄
+  const scorchTex = () => ctex('scorch', 256, (g, S) => {
+    const R = mulberry32(5), c = S / 2;
+    for (let i = 0; i < 40; i++) { const a = R() * TAU, d = Math.sqrt(R()) * S * 0.28, x = c + Math.cos(a) * d, y = c + Math.sin(a) * d, r = S * (0.08 + R() * 0.12), gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(0,0,0,0.42)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineCap = 'round';
+    for (let i = 0; i < 26; i++) { const a = R() * TAU, r0 = S * (0.08 + R() * 0.1), r1 = S * (0.3 + R() * 0.18), a1 = a + (R() - 0.5) * 0.2; g.lineWidth = 1 + R() * 4; g.beginPath(); g.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0); g.lineTo(c + Math.cos(a1) * r1, c + Math.sin(a1) * r1); g.stroke(); }
+    const gr = g.createRadialGradient(c, c, 0, c, c, S * 0.2); gr.addColorStop(0, 'rgba(0,0,0,0.85)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  });
+  // 색 단계 (u 0 → 1)
+  const ST = (arr) => arr.map(([u, h]) => [u, new THREE.Color(h)]);
+  const FIRE = ST([[0, 0xfff4d6], [0.12, 0xffc35a], [0.3, 0xff7a24], [0.55, 0xb8340e], [0.8, 0x4a2014], [1, 0x261612]]);
+  const SMOKE = ST([[0, 0x6a3418], [0.15, 0x2a2522], [0.6, 0x4a4542], [1, 0x77716c]]);
+  const NUKE = ST([[0, 0xfff2c0], [0.15, 0xffb040], [0.35, 0xd0581a], [0.55, 0x6a3a24], [0.8, 0x5a4c44], [1, 0x6e6660]]);
+  function stops(S, u, out) { for (let i = 1; i < S.length; i++) if (u <= S[i][0]) { const a = S[i - 1], b = S[i]; return out.copy(a[1]).lerp(b[1], (u - a[0]) / (b[0] - a[0])); } return out.copy(S[S.length - 1][1]); }
+  const DIRT = [0x3a3026, 0x5a4a38, 0x2a2622, 0x6a5a44], SPARK = [0xffd27a, 0xff9a3a, 0xfff2c0], XM = [0xff3a4a, 0x3aff7a, 0xffd65a, 0xffffff, 0x4aa8ff];
+  // 덮어 그리는 덩이(불꽃·연기·먼지 — FX 연기 점과 같은 셰이더) / 더해 그리는 빛(SkinFx 빛 번짐과 같은 셰이더)
+  const solid = (map, col, ro) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, color: col, transparent: true, depthWrite: false })); s.renderOrder = ro; s.visible = false; return s; };
+  const glowS = (map, col, ro) => { const s = new THREE.Sprite(K.sprMat(col)); if (map) s.material.map = map; s.renderOrder = ro; return s; };
+
+  // ---------- 섬광 · 빛 ----------
+  // 주변을 비추는 빛: 총구 화염용 점광원을 빌려 씀(조명 개수가 그대로라 셰이더를 다시 만들지 않음) — 크게(거리 dist) 비췄다가 깜빡이며 꺼짐
+  function lightUp(p, col, i0, dur, dist) {
+    if (!G.muzzleLight || !G.camera || p.distanceTo(G.camera.position) > 160) return;
+    const P0 = p.clone(), cc = new THREE.Color(col);
+    K.add(null, dur, (e, u) => { const L = G.muzzleLight; if (!L) return; if (u >= 1) { L.color.setHex(0xffb060); L.distance = 9; L.intensity = 0; return; } L.position.copy(P0); L.color.copy(cc); L.distance = dist; L.intensity = i0 * (1 - u) * (1 - u) * (0.85 + 0.15 * Math.sin(e.t * 40)); });
+  }
+  // 가까이에서 터지면 화면이 잠깐 하얗게 (바라보는 쪽일수록 세게)
+  let fl = null;
+  function screenFlash(c, k, col) {
+    if (!G.camera) return;
+    const d = c.distanceTo(G.camera.position), R = 34 * k; if (d > R) return;
+    _v.copy(c).sub(G.camera.position).normalize(); G.camera.getWorldDirection(_b);
+    const a = Math.min(0.55, (1 - d / R) * (0.2 + 0.65 * Math.max(0, _v.dot(_b)))); if (a < 0.04) return;
+    if (!fl) { fl = document.createElement('div'); fl.id = 'boomFlash'; fl.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:2;opacity:0;mix-blend-mode:screen'; document.body.appendChild(fl); }
+    fl.style.background = `radial-gradient(circle at 50% 45%, ${col || 'rgba(255,238,205,0.95)'} 0%, rgba(255,170,90,0.5) 48%, rgba(255,120,40,0) 82%)`;
+    fl.style.transition = 'none'; fl.style.opacity = a.toFixed(2); void fl.offsetWidth; fl.style.transition = 'opacity .55s ease-out'; fl.style.opacity = '0';
+  }
+  function flash(c, k, col, scr) {
+    K.glow(c, col || 0xfff4dc, 12 * k, 0.24); K.glow(c, 0xffb050, 7 * k, 0.5);
+    K.card(c, K.tex.star4(), 0xffe6b8, 0.2, (m, u) => { m.scale.setScalar(8 * k * (0.4 + 0.6 * u)); m.material.opacity = (1 - u) * (1 - u); });
+    lightUp(_a.set(c.x, c.y + 1.5, c.z), col || 0xffa050, 16 * Math.sqrt(k), 0.8, 26 * k);
+    screenFlash(c, k, scr);
+  }
+  // 불덩이 속 뜨거운 빛 (더하기)
+  function core(c, k) {
+    for (const [col, sz, dur] of [[0xfff2c8, 8, 0.35], [0xffa040, 11, 0.65]]) { const s = glowS(null, col, 7); s.position.set(c.x, c.y + 0.6 * k, c.z); K.add(s, dur, (e, u) => { s.scale.setScalar(sz * k * (0.5 + 0.5 * Math.sqrt(u))); s.material.opacity = (1 - u) * (1 - u) * 0.9; }); }
+  }
+
+  // ---------- 불덩이 · 연기 · 먼지 ----------
+  function fireball(c, k, n) {
+    for (let i = 0; i < n; i++) {
+      const s = solid(fireTex(), 0xffffff, 6), dir = new THREE.Vector3(rnd(-1, 1), rnd(0, 1.4), rnd(-1, 1)).normalize(), sp = rnd(3, 8) * k, life = rnd(0.6, 1.1), s0 = rnd(1.8, 2.8) * k, s1 = rnd(4.6, 6.8) * k, rot = rnd(0, TAU), spin = rnd(-1.2, 1.2), delay = i < 3 ? 0 : rnd(0, 0.06);
+      const p0 = c.clone().addScaledVector(dir, rnd(0.2, 0.8) * k);
+      K.add(s, life + delay, (e) => {
+        const t = e.t - delay; if (t < 0) return; s.visible = true;
+        const u = clamp(t / life, 0, 1), ease = 1 - Math.pow(1 - u, 3), d = sp * (1 - Math.exp(-t * 4)) / 4;
+        s.position.copy(p0).addScaledVector(dir, d); s.position.y += t * t * 1.8 * k;   // 뜨거워서 위로
+        s.scale.setScalar(s0 + (s1 - s0) * ease); s.material.rotation = rot + spin * t;
+        stops(FIRE, u, s.material.color); s.material.opacity = (u < 0.06 ? u / 0.06 : 1) * (u > 0.55 ? Math.max(0, 1 - (u - 0.55) / 0.45) : 1);
+      });
+    }
+  }
+  // 검은 연기 기둥: 불덩이가 식을 즈음 나타나 솟으며 퍼지고 옅어짐 (처음엔 불빛을 받아 붉음) · 바람에 조금 흘러감
+  function smoke(c, k, n, wind) {
+    for (let i = 0; i < n; i++) {
+      const s = solid(puffTex(), 0x2a2522, 5), delay = rnd(0.05, 0.35), life = rnd(4, 7), up = rnd(1.8, 3.6) * k, out = rnd(0.6, 1.8) * k, a = rnd(0, TAU), s0 = rnd(2.6, 3.8) * k, s1 = rnd(8, 12) * k, rot = rnd(0, TAU), spin = rnd(-0.3, 0.3), dk = rnd(0.75, 1.15);
+      const p0 = new THREE.Vector3(c.x + Math.cos(a) * rnd(0, 1) * k, c.y + rnd(0.2, 1.2) * k, c.z + Math.sin(a) * rnd(0, 1) * k);
+      K.add(s, life + delay, (e) => {
+        const t = e.t - delay; if (t < 0) return; s.visible = true;
+        const u = clamp(t / life, 0, 1), ease = 1 - (1 - u) * (1 - u);
+        s.position.set(p0.x + Math.cos(a) * out * ease + wind.x * t, p0.y + up * (1 - Math.exp(-t * 0.6)) / 0.6, p0.z + Math.sin(a) * out * ease + wind.z * t);
+        s.scale.setScalar(s0 + (s1 - s0) * ease); s.material.rotation = rot + spin * t;
+        stops(SMOKE, u, s.material.color).multiplyScalar(dk); s.material.opacity = (u < 0.08 ? u / 0.08 : 1) * Math.pow(1 - u, 1.3) * 0.88;
+      });
+    }
+  }
+  // 흙먼지 고리: 바닥을 따라 바깥으로 빠르게 퍼졌다가 멈추며 옅어짐
+  function dust(gp, k, n, col = 0x9a8a70) {
+    for (let i = 0; i < n; i++) {
+      const s = solid(puffTex(), col, 5), a = i / n * TAU + rnd(-0.2, 0.2), sp = rnd(7, 12) * k, life = rnd(1.4, 2.2), s0 = rnd(1, 1.6) * k, s1 = rnd(3.5, 5.5) * k, rot = rnd(0, TAU);
+      K.add(s, life, (e) => {
+        const t = e.t, u = clamp(t / life, 0, 1), d = sp * (1 - Math.exp(-t * 3.2)) / 3.2; s.visible = true;
+        s.position.set(gp.x + Math.cos(a) * d, gp.y + 0.35 * k + t * 0.5, gp.z + Math.sin(a) * d);
+        s.scale.setScalar(s0 + (s1 - s0) * Math.sqrt(u)); s.material.rotation = rot + t * 0.2;
+        s.material.opacity = (u < 0.05 ? u / 0.05 : 1) * Math.pow(1 - u, 1.4) * 0.7;
+      });
+    }
+  }
+
+  // ---------- 파편 · 불티 · 잔불 ----------
+  function debris(c, k, nChunk, nSpark, air) {
+    const P = K.pool();
+    for (let i = 0; i < nChunk; i++) { _v.set(rnd(-1, 1), air ? rnd(-1, 1) : rnd(0.35, 1.3), rnd(-1, 1)).normalize().multiplyScalar(rnd(5, 13) * k); K.E(P, c, _v.x, _v.y, _v.z, DIRT[(Math.random() * 4) | 0], rnd(0.08, 0.16) * k, rnd(1.1, 1.9), { sq: 1, g: -11, drag: 0.4, so: 1 }); }
+    for (let i = 0; i < nSpark; i++) { _v.set(rnd(-1, 1), rnd(-0.3, 1.2), rnd(-1, 1)).normalize().multiplyScalar(rnd(8, 22) * k); K.E(P, c, _v.x, _v.y, _v.z, SPARK[(Math.random() * 3) | 0], rnd(0.04, 0.08) * k, rnd(0.35, 1.0), { g: -7, drag: 2.2, so: 0.35 }); }
+  }
+  // 떠오르는 불씨
+  function embers(c, k, n) { const P = K.pool(); for (let i = 0; i < n; i++) { _a.set(c.x + rnd(-1.5, 1.5) * k, c.y + rnd(0, 1.5) * k, c.z + rnd(-1.5, 1.5) * k); K.E(P, _a, rnd(-0.6, 0.6), rnd(0.5, 2.2), rnd(-0.6, 0.6), Math.random() < 0.6 ? 0xff8a2a : 0xffc060, rnd(0.03, 0.06) * k, rnd(1.4, 2.6), { g: 0.4, drag: 0.8, so: 0.5 }); } }
+  // 불붙은 조각: 포물선으로 날아가며 연기 꼬리와 불꽃을 남기고, 땅에 닿으면 꺼짐
+  function trails(c, k, n) {
+    const P = K.pool();
+    for (let i = 0; i < n; i++) {
+      const v = new THREE.Vector3(rnd(-1, 1), rnd(0.6, 1.4), rnd(-1, 1)).normalize().multiplyScalar(rnd(7, 12) * k), p = c.clone(); let acc = 0, done = false;
+      K.add(null, rnd(1.1, 1.7), (e, u, dt) => {
+        if (done || !dt) return; v.y -= 9.8 * dt; p.addScaledVector(v, dt);
+        if (p.y < groundAt(p.x, p.z, p.y + 1)) { done = true; return; }
+        acc += dt; while (acc > 0.05) { acc -= 0.05; K.E(P, p, rnd(-0.2, 0.2), rnd(0.2, 0.6), rnd(-0.2, 0.2), 0x3a3430, rnd(0.18, 0.3) * k, rnd(0.6, 1.1), { grow: 2.2, drag: 1.5, so: 0.9 }); K.E(P, p, 0, 0, 0, Math.random() < 0.5 ? 0xffa040 : 0xffd27a, rnd(0.1, 0.16) * k, 0.12, { grow: -0.5, so: 0.3 }); }
+      });
+    }
+  }
+  // 잔불: 둘레 바닥에서 몇 초 일렁이며 연기를 피움
+  function fires(gp, k, n) {
+    const P = K.pool();
+    for (let i = 0; i < n; i++) {
+      const a = rnd(0, TAU), r = rnd(0.6, 2.6) * k, x = gp.x + Math.cos(a) * r, z = gp.z + Math.sin(a) * r, y = groundAt(x, z, gp.y + 1) + 0.05, life = rnd(1.6, 3.2), sz = rnd(0.5, 0.9) * k, s = glowS(fireTex(), 0xff9a3a, 7); let acc = 0;
+      s.position.set(x, y + sz * 0.45, z);
+      K.add(s, life, (e, u, dt) => {
+        const f = 0.75 + 0.25 * Math.sin(e.t * 23 + i * 7) * Math.sin(e.t * 13 + i); s.scale.set(sz * f, sz * 1.5 * f, 1); s.material.opacity = (u < 0.1 ? u / 0.1 : 1) * (1 - u) * 0.9;
+        acc += dt; if (acc > 0.12) { acc = 0; K.E(P, s.position, rnd(-0.1, 0.1), rnd(0.6, 1.1), rnd(-0.1, 0.1), 0x34302c, rnd(0.25, 0.4) * k, rnd(0.8, 1.4), { grow: 1.8, drag: 0.6, so: 0.9 }); }
+      });
+    }
+  }
+  // 바닥 그을음(20초 넘게 남음) + 달아오른 균열(금방 식음)
+  function scorch(gp, k) {
+    const m = new THREE.Mesh(K.geo().plane, K.addMat(scorchTex(), 0x0e0b08)); m.material.blending = THREE.NormalBlending; m.material.opacity = 0;
+    K.lay(m, gp, 0.03); m.rotateY(Math.random() * TAU); m.scale.setScalar(4.6 * k); m.renderOrder = 2;
+    K.add(m, 22, (e, u) => { m.material.opacity = Math.min(1, e.t * 6) * (u < 0.7 ? 0.9 : 0.9 * (1 - (u - 0.7) / 0.3)); });
+    K.decal(gp, K.tex.lava(), 2.6 * k, 2.4, 0xffd090, 0x5a1000);
+  }
+
+  // ---------- 물 위 ----------
+  function water(c, k, lod) {
+    const P = K.pool(), wy = WATER_Y, wp = { x: c.x, y: wy, z: c.z, n: UP };
+    K.ring(wp, 0xffffff, 7 * k, 0.9); K.ring(wp, 0xcfeaf5, 10 * k, 1.3, null, 0.2);
+    for (let i = 0; i < (lod > 1 ? 10 : 5); i++) {   // 물기둥: 흰 물보라 덩이가 솟았다가 떨어짐
+      const s = solid(puffTex(), 0xe6f2f6, 5), v0 = rnd(6, 12) * k, a = rnd(0, TAU), r = rnd(0, 1.2) * k, life = rnd(1.3, 1.9), s0 = rnd(1.2, 1.8) * k, s1 = rnd(2.6, 3.6) * k, rot = rnd(0, TAU);
+      K.add(s, life, (e) => { const t = e.t, u = clamp(t / life, 0, 1); s.visible = true; s.position.set(c.x + Math.cos(a) * (r + t * 0.8 * k), wy + Math.max(0, v0 * t - 4.9 * t * t), c.z + Math.sin(a) * (r + t * 0.8 * k)); s.scale.setScalar(s0 + (s1 - s0) * u); s.material.rotation = rot + t * 0.3; s.material.opacity = (u < 0.05 ? u / 0.05 : 1) * Math.pow(1 - u, 1.2) * 0.85; });
+    }
+    for (let i = 0; i < (lod > 1 ? 60 : 25); i++) { _v.set(rnd(-1, 1), rnd(1.2, 3), rnd(-1, 1)).normalize().multiplyScalar(rnd(5, 13) * k); K.E(P, _a.set(c.x, wy + 0.2, c.z), _v.x, _v.y, _v.z, Math.random() < 0.6 ? 0xf2fbff : 0xa8d4e6, rnd(0.06, 0.12) * k, rnd(0.9, 1.6), { g: -9.8, drag: 0.5, so: 0.85 }); }
+    for (let i = 0; i < (lod > 1 ? 5 : 2); i++) {   // 수면 위 물안개
+      const s = solid(puffTex(), 0xdfeef2, 5), a = rnd(0, TAU), life = rnd(2.2, 3.2), sp = rnd(1.5, 3) * k;
+      K.add(s, life, (e) => { const t = e.t, u = clamp(t / life, 0, 1), d = sp * (1 - Math.exp(-t * 1.2)); s.visible = true; s.position.set(c.x + Math.cos(a) * d, wy + 0.6 * k + t * 0.25, c.z + Math.sin(a) * d); s.scale.setScalar((2.4 + 3 * Math.sqrt(u)) * k); s.material.opacity = (u < 0.1 ? u / 0.1 : 1) * Math.pow(1 - u, 1.5) * 0.55; });
+    }
+  }
+
+  // ---------- 판처파우스트 스킨 ----------
+  // 핵탄두: 버섯구름 — 하얀·초록 섬광과 큰 충격파 → 불기둥이 빠르게 솟고(위부터 식어 갈색 연기) 꼭대기에서 둘레가 말려 도는 버섯 머리(약 18m)
+  //  · 머리 속 불빛과 초록 방사능 빛 · 기둥 중간에 수평으로 퍼지는 흰 응결 고리 · 바닥을 따라 크게 퍼지는 먼지 치마 · 빛나는 방사능 표지 · 떠오르는 초록 가루 · 7초 남짓
+  function nuke(c, gp, k, lod) {
+    const P = K.pool(), H = 18 * k, cx = gp.x, cz = gp.z, gy = gp.y, h = (t) => H * (1 - Math.exp(-t * 1.1));
+    K.glow(c, 0xf2ffe0, 26 * k, 0.45); K.glow(c, 0x9dff4a, 15 * k, 1.0);
+    K.ring(gp, 0xffffff, 20 * k, 1.0); K.ring(gp, 0x9dff4a, 13 * k, 0.9, null, 0.08); K.ring(gp, 0xfff0c0, 28 * k, 1.5, null, 0.22);
+    K.spinDecal(gp, K.tex.trefoil(), 7 * k, 6, 0x8dff3a, 0.3, 0.15);
+    lightUp(c, 0xc8ff90, 26 * k, 1.8, 38 * k);
+    // 기둥: 아래는 굵은 흙먼지, 위로 갈수록 가늘게 · 꼭대기를 따라 솟음
+    const NS = lod > 1 ? 15 : 7;
+    for (let i = 0; i < NS; i++) {
+      const f = (i + 0.5) / NS, s = solid(puffTex(), 0xffffff, 5), rot = rnd(0, TAU), life = 6.2 + rnd(0, 0.8), w = (4.6 - f * 2.0) * k, ph = rnd(0, TAU);
+      K.add(s, life, (e) => { const t = e.t, u = t / life; s.visible = true; s.position.set(cx + Math.sin(t * 1.3 + ph) * 0.15 * k, gy + h(t) * f * 0.97, cz + Math.cos(t * 1.1 + ph) * 0.15 * k); s.scale.setScalar(w * (0.6 + 0.4 * Math.min(1, t * 2)) * (1 + u * 0.35)); s.material.rotation = rot + t * 0.4; stops(NUKE, clamp(t / 2.6 + f * 0.25 - (f < 0.2 ? 0.3 : 0), 0, 1), s.material.color); s.material.opacity = Math.min(1, t * 5) * (u > 0.62 ? Math.max(0, 1 - (u - 0.62) / 0.38) : 1) * 0.93; });
+    }
+    // 버섯 머리: 둘레 두 겹이 말려 돌고(바깥은 아래로 처짐) · 가운데 위로 부푼 덩이
+    const NC = lod > 1 ? 24 : 12;
+    for (let i = 0; i < NC; i++) {
+      const top = i >= NC - 6, outer = !top && i % 2 === 0, a0 = i / NC * TAU, s = solid(puffTex(), 0xffffff, 5), rot = rnd(0, TAU), life = 6.6 + rnd(0, 0.8), roll = rnd(0, TAU);
+      K.add(s, life, (e) => {
+        const t = e.t, u = t / life, gr = 1 - Math.exp(-t * 1.4), R = (top ? 1.6 : outer ? 6.4 : 4.2) * k * (0.3 + 0.7 * gr), a = a0 + t * 0.22, rl = roll + t * 1.3;
+        const rr = R + (top ? 0 : Math.cos(rl) * 1.0 * k), yy = h(t) + (top ? 2.0 * k : outer ? -0.8 * k * gr + Math.sin(rl) * 0.8 * k : 0.5 * k + Math.sin(rl) * 1.0 * k);
+        s.visible = true; s.position.set(cx + Math.cos(a) * rr, gy + yy, cz + Math.sin(a) * rr);
+        s.scale.setScalar((top ? 5.8 : outer ? 4.6 : 5.2) * k * (0.4 + 0.6 * Math.min(1, t * 1.4)) * (1 + u * 0.3)); s.material.rotation = rot + t * 0.3;
+        stops(NUKE, clamp(t / 2.6 + (top ? 0.04 : outer ? 0.14 : 0.08), 0, 1), s.material.color); s.material.opacity = Math.min(1, t * 4) * (u > 0.62 ? Math.max(0, 1 - (u - 0.62) / 0.38) : 1) * 0.95;
+      });
+    }
+    for (const [col, sz, dur] of [[0xffd070, 9, 2.0], [0xff8a30, 12, 2.8], [0x9dff4a, 12, 3.4]]) { const s = glowS(null, col, 7); K.add(s, dur, (e, u) => { s.position.set(cx, gy + h(e.t) + 0.6 * k, cz); s.scale.setScalar(sz * k * (0.6 + 0.4 * Math.min(1, e.t * 2))); s.material.opacity = (1 - u) * 0.8; }); }
+    K.halo3(new THREE.Vector3(cx, gy, cz), 0xffffff, H * 0.42, H * 0.5, 2.5 * k, 12 * k, 1.9, 0.3);
+    K.halo3(new THREE.Vector3(cx, gy, cz), 0xe8fff0, H * 0.62, H * 0.68, 2 * k, 9 * k, 1.6, 0.55);
+    K.add(null, 4.2, () => { if (Math.random() < 0.75) { const a = rnd(0, TAU), r = rnd(0.5, 7) * k; K.E(P, _a.set(cx + Math.cos(a) * r, gy + rnd(0.2, 2.5) * k, cz + Math.sin(a) * r), rnd(-0.2, 0.2), rnd(0.8, 2.4), rnd(-0.2, 0.2), Math.random() < 0.7 ? 0x9dff4a : 0xfff27a, rnd(0.06, 0.12) * k, rnd(1.4, 2.6), { sq: Math.random() < 0.5, drag: 0.6, so: 0.6 }); } });
+    dust(gp, k * 1.9, lod > 1 ? 22 : 10, 0x6e6258);
+  }
+  // SANTA'S DELIVERY: 크리스마스 불꽃놀이 — 폭발 위 공중에서 금빛 별 섬광과 함께 다섯 색 국화가 터지고 → 금빛 버들 불꽃이 꼬리를 끌며 천천히 떨어짐
+  //  · 색종이가 흩날리고 바닥에 화환이 돎
+  function xmas(c, gp, k, lod) {
+    const P = K.pool(), top = c.clone(); top.y += 3.5 * k;
+    K.delayed(0.12, () => {
+      K.glow(top, 0xfff0d0, 9 * k, 0.4);
+      K.card(top, K.tex.star5(), 0xffe6a0, 0.9, (m, u) => { m.scale.setScalar(5 * k * (0.3 + 0.7 * Math.sqrt(u))); m.rotateZ(u * 1.4); m.material.opacity = (1 - u) * (1 - u); });
+      for (let i = 0, n = lod > 1 ? 110 : 50; i < n; i++) { _v.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(9, 13) * k); K.E(P, top, _v.x, _v.y, _v.z, XM[i % 5], rnd(0.3, 0.42) * k, rnd(1.3, 2.0), { g: -2.5, drag: 1.7, so: 0.8 }); }   // 덮어 그려 낮 하늘에서도 색이 또렷하게
+      lightUp(top, 0xffd0a0, 14 * k, 1.0, 30 * k);
+    });
+    K.delayed(0.45, () => {
+      const top2 = top.clone(); top2.y += 0.8 * k;
+      for (let i = 0; i < (lod > 1 ? 14 : 7); i++) {
+        const v = new THREE.Vector3(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(5, 8) * k), p = top2.clone(); let acc = 0;
+        K.add(null, rnd(1.8, 2.4), (e, u, dt) => { if (!dt) return; v.multiplyScalar(Math.max(0, 1 - 1.5 * dt)); v.y -= 2.2 * dt; p.addScaledVector(v, dt); acc += dt; while (acc > 0.04) { acc -= 0.04; K.E(P, p, rnd(-0.1, 0.1), rnd(-0.4, -0.1), rnd(-0.1, 0.1), Math.random() < 0.7 ? 0xffd65a : 0xffffff, rnd(0.14, 0.2) * k, rnd(0.5, 0.9), { g: -1.5, drag: 1, so: 0.7 }); } });
+      }
+    });
+    for (let i = 0; i < (lod > 1 ? 60 : 30); i++) { _v.set(rnd(-1, 1), rnd(0.5, 1.6), rnd(-1, 1)).normalize().multiplyScalar(rnd(4, 9) * k); K.E(P, c, _v.x, _v.y, _v.z, XM[i % 5], rnd(0.14, 0.22) * k, rnd(2, 3), { sq: 1, g: -1.8, drag: 2.2, so: 0.9 }); }
+    K.ring(gp, 0xff3a4a, 7 * k, 0.7); K.ring(gp, 0x3aff7a, 9.5 * k, 0.9, null, 0.12);
+    if (typeof GunDeco !== 'undefined' && GunDeco.wreathTex) K.spinDecal(gp, GunDeco.wreathTex(), 5 * k, 3.4, 0xffffff, 0.45, 0.12);
+  }
+  // EVENT HORIZON: 큰 블랙홀 — 1.5초 동안 터진 자리에 지름 6m 남짓한 검은 구가 생겨 빛을 삼킨다
+  //  · 가장자리의 빛나는 광자 고리 · 바깥의 옅은 보라 렌즈 테(천천히 돎) · 기울어진 큰 강착 원반 두 겹(지름 20m · 13m)이 빠르게 돎
+  //  · 둘레의 빛 가루가 소용돌이치며 빨려 들고 · 바닥 흙먼지와 돌 조각이 끌려 올라감 · 바닥에 안으로 감기는 소용돌이 · 가까우면 화면 가장자리가 어두워짐
+  //  → 무너지는 순간 보랏빛 큰 섬광 · 위아래로 뻗는 제트 · 보라 충격파 → 이어서 보통 폭발(rest)
+  const HZ_T = 1.5;
+  // 테가 또렷한 검은 원 (블랙홀) — 덮어 그리기
+  const discTex = () => ctex('disc', 128, (g, S) => { const r = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.8, 'rgba(255,255,255,1)'); r.addColorStop(0.9, 'rgba(255,255,255,0.4)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, S, S); });
+  // 가까이에서 블랙홀이 생기면 화면 가장자리가 어둡게 빨려 드는 듯 (dur 초 뒤 풀림)
+  let tint = null;
+  function screenTint(c, k, dur) {
+    if (!G.camera) return; const d = c.distanceTo(G.camera.position), R = 55 * k; if (d > R) return;
+    if (!tint) { tint = document.createElement('div'); tint.id = 'boomTint'; tint.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:2;opacity:0;background:radial-gradient(circle at 50% 45%, rgba(20,0,40,0) 38%, rgba(26,6,48,0.85) 100%)'; document.body.appendChild(tint); }
+    tint.style.transition = 'opacity .35s ease-in'; tint.style.opacity = (0.75 * (1 - d / R) + 0.15).toFixed(2);
+    clearTimeout(tint._t); tint._t = setTimeout(() => { tint.style.transition = 'opacity .5s ease-out'; tint.style.opacity = '0'; }, dur * 1000);
+  }
+  function horizon(c0h, gp, k, lod, rest) {
+    // 블랙홀은 땅에 묻히지 않게 터진 자리 위로 띄운다 (지름 7m 남짓)
+    const c = new THREE.Vector3(c0h.x, Math.max(c0h.y, gp.y + 4.6 * k), c0h.z);
+    const P = K.pool(), T = HZ_T, sh = (t) => (t < T - 0.12 ? Math.min(1, t / 0.25) : Math.max(0, (T - t) / 0.12));
+    K.glow(c, 0xe0d0ff, 7 * k, 0.3); lightUp(c, 0x9a70ff, 9 * k, T, 26 * k); screenTint(c, k, T);
+    // 기울어진 강착 원반 두 겹 (검은 구 뒤에 그림) — 바깥 원반은 덮어 그려 밝은 낮 하늘에서도 주황이 또렷하게
+    const tilt = rnd(0.85, 1.0), yaw = rnd(0, TAU);   // 비스듬히 누운 원반 — 땅 높이에서 봐도 타원으로 보이게
+    for (const [col, S, sp, dt, nb] of [[0xff8a2a, 22, 9, 0, true], [0xffe8c0, 15, -14, 0.06, false]]) {
+      const grp = new THREE.Group(), disk = new THREE.Mesh(K.geo().plane, K.addMat(K.tex.disk(), col)); if (nb) disk.material.blending = THREE.NormalBlending; disk.renderOrder = 8; grp.add(disk); grp.position.copy(c); grp.rotation.set(tilt + dt, yaw, 0.12);
+      K.add(grp, T, (e) => { const s = sh(e.t); disk.rotation.y = e.t * sp; disk.scale.setScalar(Math.max(0.01, S * k * (0.25 + 0.75 * s))); disk.material.opacity = s * (nb ? 0.9 : 0.85 + 0.15 * Math.sin(e.t * 13)); });
+    }
+    // 검은 구 · 그 뒤의 어두운 그늘 · 광자 고리 · 렌즈 테
+    const shade = glowS(null, 0x000000, 9); shade.material.blending = THREE.NormalBlending; shade.position.copy(c);
+    K.add(shade, T, (e) => { const s = sh(e.t); shade.scale.setScalar(15 * k * s + 0.01); shade.material.opacity = 0.75 * s; });
+    const core = glowS(discTex(), 0x000000, 9); core.material.blending = THREE.NormalBlending; core.position.copy(c);
+    K.add(core, T, (e) => { const s = sh(e.t), p = 1 + 0.025 * Math.sin(e.t * 11); core.scale.setScalar(8.4 * k * s * p + 0.01); core.material.opacity = Math.min(1, s * 1.4); });
+    const ringS = glowS(K.tex.ring(), 0xffd8a8, 10); ringS.position.copy(c);
+    K.add(ringS, T, (e) => { const s = sh(e.t); ringS.scale.setScalar(11.2 * k * s + 0.01); ringS.material.opacity = s * (0.8 + 0.2 * Math.sin(e.t * 23)); });
+    const lens = glowS(K.tex.ring(), 0x8a6cff, 10); lens.position.copy(c);
+    K.add(lens, T, (e) => { const s = sh(e.t); lens.scale.setScalar(19 * k * s + 0.01); lens.material.rotation = e.t * 0.8; lens.material.opacity = 0.4 * s; });
+    // 빨려 드는 빛 가루 · 끌려 올라가는 흙과 돌
+    K.add(null, T - 0.1, (e, u, dt) => {
+      if (!dt) return; const n = Math.max(1, Math.round(dt * (lod > 1 ? 90 : 35)));
+      for (let i = 0; i < n; i++) {
+        const a = rnd(0, TAU), R = rnd(6, 12) * k, y = rnd(-1.2, 1.2) * k, life = rnd(0.35, 0.7); _a.set(c.x + Math.cos(a) * R, c.y + y, c.z + Math.sin(a) * R);
+        K.E(P, _a, (-Math.cos(a) - Math.sin(a) * 0.6) * R / life, -y / life, (-Math.sin(a) + Math.cos(a) * 0.6) * R / life, Math.random() < 0.3 ? 0xffffff : Math.random() < 0.55 ? 0xffa34a : 0xb58cff, rnd(0.13, 0.2) * k, life, { so: 0.45 });
+      }
+      if (lod > 1 && Math.random() < dt * 30) { const a = rnd(0, TAU), R = rnd(3, 9) * k, gx = c.x + Math.cos(a) * R, gz = c.z + Math.sin(a) * R, gy0 = groundAt(gx, gz, c.y + 2) + 0.1, life = rnd(0.5, 0.9); K.E(P, _a.set(gx, gy0, gz), (c.x - gx) / life, (c.y - gy0) / life, (c.z - gz) / life, DIRT[(Math.random() * 4) | 0], rnd(0.1, 0.18) * k, life, { sq: 1, so: 1 }); }
+    });
+    if (gp.y > c.y - 6 * k) {   // 바닥이 가까우면: 흙먼지가 안으로 끌려 들고 바닥 소용돌이
+      K.spinDecal(gp, K.tex.swirl(), 13 * k, T + 0.3, 0xb58cff, -3.2, -0.35);
+      for (let i = 0, n = lod > 1 ? 12 : 6; i < n; i++) {
+        const s = solid(puffTex(), 0x6a5a6a, 5), a = i / n * TAU + rnd(-0.2, 0.2), R0 = rnd(8, 12) * k, life = T, rot = rnd(0, TAU);
+        K.add(s, life, (e) => { const t = e.t, u = clamp(t / life, 0, 1), R = R0 * (1 - u * 0.85), an = a + u * 2.2; s.visible = true; s.position.set(gp.x + Math.cos(an) * R, gp.y + 0.5 * k + u * (c.y - gp.y) * 0.6, gp.z + Math.sin(an) * R); s.scale.setScalar((3 - u * 1.6) * k); s.material.rotation = rot - t * 2; s.material.opacity = Math.min(1, t * 4) * (1 - u) * 0.6; });
+      }
+    }
+    K.delayed(T, () => {
+      K.glow(c, 0xffffff, 24 * k, 0.4); K.glow(c, 0xc8a8ff, 16 * k, 0.8);
+      K.ring(gp, 0xb58cff, 16 * k, 0.9); K.ring(gp, 0xffa34a, 10 * k, 0.7, null, 0.06); K.ring(gp, 0xffffff, 22 * k, 1.1, null, 0.18);
+      K.beam(c, new THREE.Vector3(c.x, c.y + 34 * k, c.z), 0xffffff, 1.1 * k, 0.8); K.beam(c, new THREE.Vector3(c.x, c.y + 28 * k, c.z), 0xb58cff, 3 * k, 0.95);
+      K.beam(c, new THREE.Vector3(c.x, Math.min(gp.y, c.y - 8 * k), c.z), 0xffffff, 0.9 * k, 0.5);
+      K.spinDecal(gp, K.tex.swirl(), 8 * k, 3.6, 0xd8c0ff, -2.2, -0.2);
+      for (let i = 0; i < (lod > 1 ? 80 : 30); i++) { _v.set(rnd(-1, 1), rnd(-0.25, 0.25), rnd(-1, 1)).normalize().multiplyScalar(rnd(10, 22) * k); K.E(P, c, _v.x, _v.y, _v.z, Math.random() < 0.3 ? 0xffffff : Math.random() < 0.5 ? 0xb58cff : 0xffa34a, rnd(0.14, 0.22) * k, rnd(0.4, 0.8), { drag: 2.5, so: 0.45 }); }   // 원반이 터져 납작하게 퍼지는 빛
+      rest(c);   // 블랙홀이 무너진 자리에서 폭발
+    });
+  }
+  // SANTA'S DELIVERY: 큰 선물 상자 모델 — 빨간 포장 상자(흰 물방울무늬) + 네 면을 감은 금 리본 / 뚜껑 + 금 리본 + 큰 금빛 나비 리본
+  //  총기와 같은 재질 3종(Models.cluster)을 같이 써서 셰이더를 새로 만들지 않는다 → 지울 때 재질을 버리지 않음
+  const giftBody = () => Models.cluster('boom:giftbody', (g) => {
+    const { A, BX, CY, M } = Models.kit, red = M('polymer', 0xc4121c), gold = M('metal', 0xe6bc4c), wt = M('paper', 0xf6f1e6);
+    A(g, BX(2.4, 2.0, 2.4), red, 0, 1.0, 0);
+    A(g, BX(0.4, 2.02, 2.42), gold, 0, 1.0, 0); A(g, BX(2.42, 2.02, 0.4), gold, 0, 1.0, 0);
+    for (const [u, y, r] of [[-0.72, 0.5, 0.13], [0.72, 1.45, 0.13], [-0.72, 1.45, 0.13], [0.72, 0.5, 0.13], [-0.9, 1.0, 0.08], [0.9, 1.0, 0.08]]) {
+      A(g, CY(r, r, 0.01, 14, 'z'), wt, u, y, 1.205); A(g, CY(r, r, 0.01, 14, 'z'), wt, -u, y, -1.205); A(g, CY(r, r, 0.01, 14, 'x'), wt, 1.205, y, u); A(g, CY(r, r, 0.01, 14, 'x'), wt, -1.205, y, -u);
+    }
+  });
+  const giftLid = () => Models.cluster('boom:giftlid', (g) => {
+    const { A, BX, SPH, TOR, M } = Models.kit, red = M('polymer', 0xa80e18), gold = M('metal', 0xe6bc4c);
+    A(g, BX(2.6, 0.42, 2.6), red, 0, 0.21, 0);
+    A(g, BX(0.42, 0.44, 2.62), gold, 0, 0.21, 0); A(g, BX(2.62, 0.44, 0.42), gold, 0, 0.21, 0);
+    for (const ry of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {   // 나비 고리 넷: 가운데 매듭에서 바깥·위로 비스듬히
+      const e = 0.62, R = 0.44, o = A(g, TOR(R, 0.12, 8, 22), gold, Math.cos(e) * R * Math.cos(ry), 0.52 + Math.sin(e) * R, -Math.cos(e) * R * Math.sin(ry));
+      o.rotation.order = 'YXZ'; o.rotation.set(0, ry, e); o.scale.set(1, 0.6, 0.7);
+    }
+    for (const ry of [Math.PI / 4, -Math.PI * 3 / 4]) A(g, BX(0.3, 0.05, 1.0), gold, Math.sin(ry) * 0.58, 0.45, Math.cos(ry) * 0.58, 0, ry, 0);   // 리본 꼬리
+    A(g, SPH(0.22, 14, 10), gold, 0, 0.56, 0);
+  });
+  const backOut = (u) => { const a = 1.9, v = u - 1; return 1 + (a + 1) * v * v * v + a * v * v; };
+  // SANTA'S DELIVERY: 터진 자리 바닥에서 큰 선물 상자가 통통 튀며 솟아나(약 3.5m) 부르르 떨다가 → 0.9초에 뚜껑이 하늘로 날아가며 펑!
+  //  상자 속에서 진짜 폭발 + 크리스마스 불꽃놀이 · 상자 입구에서 색종이가 솟구침 · 상자는 옆으로 퍼지며 쭈그러들어 사라지고 뚜껑은 떨어져 튄 뒤 사라짐
+  const GIFT_T = 0.9;
+  function gift(c, gp, k, lod, air, rest) {
+    const P = K.pool(), grp = new THREE.Group(), body = giftBody(), lid = giftLid(), S = 1.5 * k, base = new THREE.Vector3(gp.x, air ? c.y - 1.2 * S : gp.y, gp.z);
+    grp.add(body); lid.position.y = 2.0; grp.add(lid); grp.position.copy(base); grp.rotation.y = rnd(0, TAU); grp.scale.setScalar(0.001); G.scene.add(grp);
+    K.glow(_a.set(base.x, base.y + 1.2 * k, base.z), 0xfff0d0, 9 * k, 0.32); K.ring(gp, 0xffd65a, 7 * k, 0.5); if (!air) dust(gp, k * 0.7, lod > 1 ? 8 : 4);
+    lightUp(_a.set(base.x, base.y + 1.5 * k, base.z), 0xffc890, 10 * k, 0.6, 22 * k);
+    for (let i = 0; i < (lod > 1 ? 30 : 12); i++) { _v.set(rnd(-1, 1), rnd(0.3, 1.2), rnd(-1, 1)).normalize().multiplyScalar(rnd(3, 7) * k); K.E(P, _a.set(base.x, base.y + 0.5 * k, base.z), _v.x, _v.y, _v.z, XM[i % 5], rnd(0.06, 0.1) * k, rnd(0.5, 0.9), { sq: 1, g: -6, drag: 1.5, so: 0.6 }); }
+    let burst = false; const lv = new THREE.Vector3(), lw = new THREE.Vector3();
+    K.add(null, GIFT_T + 2.3, (e, u, dt) => {
+      const t = e.t;
+      if (t < GIFT_T) {
+        const pu = Math.min(1, t / 0.32), s = pu < 1 ? Math.max(0.001, backOut(pu)) : 1, w = clamp((t - 0.3) / (GIFT_T - 0.3), 0, 1);
+        grp.scale.set(S * s, S * s * (1 + 0.07 * Math.sin(t * 34) * w), S * s); grp.rotation.x = Math.sin(t * 27) * 0.07 * w; grp.rotation.z = Math.cos(t * 23) * 0.07 * w;
+        grp.position.set(base.x, base.y - 0.3 * k * (1 - pu) + Math.abs(Math.sin(t * 17)) * 0.1 * k * w, base.z);
+        if (dt && w > 0 && Math.random() < dt * 40) { const a = rnd(0, TAU); K.E(P, _a.set(base.x + Math.cos(a) * 1.3 * S, base.y + rnd(0.2, 2.2) * S, base.z + Math.sin(a) * 1.3 * S), Math.cos(a) * 0.6, rnd(0.2, 0.8), Math.sin(a) * 0.6, Math.random() < 0.5 ? 0xffd65a : 0xffffff, rnd(0.05, 0.08) * k, 0.5, { so: 0.4 }); }   // 리본에서 반짝이
+        return;
+      }
+      if (!burst) {
+        burst = true; G.scene.attach(lid); lv.set(rnd(-2.5, 2.5) * k, rnd(10, 13) * k, rnd(-2.5, 2.5) * k); lw.set(rnd(-6, 6), rnd(-4, 4), rnd(-6, 6));
+        rest(new THREE.Vector3(base.x, base.y + 1.6 * S, base.z));   // 상자 속에서 진짜 폭발 + 불꽃놀이
+        _b.set(base.x, base.y + 2.2 * S, base.z);
+        for (let i = 0; i < (lod > 1 ? 80 : 30); i++) { _v.set(rnd(-0.6, 0.6), rnd(1, 2), rnd(-0.6, 0.6)).normalize().multiplyScalar(rnd(6, 14) * k); K.E(P, _b, _v.x, _v.y, _v.z, XM[i % 5], rnd(0.16, 0.26) * k, rnd(1.6, 2.8), { sq: 1, g: -3, drag: 1.4, so: 0.9 }); }   // 상자 입구에서 색종이
+      }
+      if (!dt) return;
+      const tb = t - GIFT_T, sq = Math.max(0, 1 - tb / 0.35), sw = 1 + (1 - sq) * 0.3;
+      grp.scale.set(S * sw * sq + 0.001, S * sq * sq + 0.001, S * sw * sq + 0.001); grp.visible = sq > 0;
+      lv.y -= 9.8 * dt; lid.position.addScaledVector(lv, dt); lid.rotation.x += lw.x * dt; lid.rotation.y += lw.y * dt; lid.rotation.z += lw.z * dt;
+      const gl = groundAt(lid.position.x, lid.position.z, lid.position.y + 2) + 0.3; if (lid.position.y < gl && lv.y < 0) { lid.position.y = gl; lv.multiplyScalar(0.35); lv.y = Math.abs(lv.y) * 0.6; lw.multiplyScalar(0.5); }
+      lid.scale.setScalar(S * (tb < 1.8 ? 1 : Math.max(0.001, 1 - (tb - 1.8) / 0.45)));
+      if (u >= 1) { G.scene.remove(grp); G.scene.remove(lid); }
+    });
+  }
+
+  // ---------- 폭발 ----------
+  //  o: { k 크기(로켓 1 · 수류탄 0.62 · 차량 1.15), style 'nuke'|'xsanta'|'horizon'(판처파우스트 스킨), car(차량 — 불붙은 조각·잔불이 더 많이) }
+  //  스킨 폭발 중 블랙홀(1.5초)·선물 상자(0.9초)는 그 뒤에 진짜 폭발이 이어진다 — 모양만, 피해는 맞은 순간 그대로
+  function blast(x, y, z, o = {}) {
+    if (!G.scene || !G.camera || typeof SkinFx === 'undefined' || !SkinFx.kit) return false;
+    K = SkinFx.kit;
+    const k = o.k || 1, c0 = new THREE.Vector3(x, y, z), d = c0.distanceTo(G.camera.position); if (d > 900) return true;
+    const lod = d > 320 ? 0 : d > 140 ? 1 : 2, gh = groundAt(x, z, y + 1), wet = y < WATER_Y + 0.8 && heightAt(x, z) < WATER_Y - 0.2, air = !wet && y - gh > 3.2 * k;
+    const gp = wet ? { x, y: WATER_Y, z, n: UP } : K.ground(x, Math.min(y, gh + 0.5), z), st = o.style;
+    const wa = rnd(0, TAU), wind = { x: Math.cos(wa) * 0.35, z: Math.sin(wa) * 0.35 };
+    const main = (cc) => {
+      const c = cc || c0;
+      flash(c, k, st === 'nuke' ? 0xf2ffe0 : st === 'horizon' ? 0xf0e6ff : 0, st === 'nuke' ? 'rgba(235,255,215,0.95)' : st === 'horizon' ? 'rgba(235,220,255,0.95)' : null);
+      if (wet) { water(c, k, lod); fireball(c, k * 0.55, lod > 1 ? 4 : 2); core(c, k * 0.6); if (lod) debris(c, k, 0, lod > 1 ? 20 : 8, true); }
+      else {
+        fireball(c, k * (st === 'nuke' ? 1.3 : 1), lod > 1 ? 9 : lod ? 6 : 3); core(c, k);
+        if (st !== 'nuke') smoke(c, k, lod > 1 ? 12 : lod ? 7 : 4, wind);
+        if (!air && lod) { dust(gp, k, lod > 1 ? 10 : 6); scorch(gp, k * (st === 'nuke' ? 1.4 : 1)); K.ring(gp, 0xfff0d8, 10 * k, 0.5); }
+        if (lod) debris(c, k, lod > 1 ? 28 : 12, lod > 1 ? 36 : 16, air);
+        if (lod > 1) { embers(c, k, 18); trails(c, k, o.car ? 6 : 4); if (!air) fires(gp, k, o.car ? 6 : 4); }
+      }
+      if (st === 'nuke' && !wet) nuke(c, gp, k, lod); else if (st === 'xsanta') xmas(c, gp, k, lod);
+    };
+    if (st === 'horizon') horizon(c0, gp, k, lod, main);
+    else if (st === 'xsanta') gift(c0, gp, k, lod, air, main);
+    else main();
+    return true;
+  }
+  return { blast, HZ_T, GIFT_T };
+})();
+
 // ---------- 06_combat.js ----------
 // ============================================================
 // 06_combat.js — 레이캐스트(벽/지형/캐릭터), 사격, 피해, 사망/루팅 박스,
@@ -14958,6 +15725,7 @@ function fireRocket(c, wi, d, origin, dir) {
   // 뒤 화염(백블라스트): 발사관 뒤로 불꽃·연기
   const back = meta && meta.backZ !== undefined ? gunWorldPoint(c, 0, meta.boreY, meta.backZ, new THREE.Vector3()) : null;
   backblast(back && back.distanceTo(origin) < 3 ? back : origin.clone().addScaledVector(D, -0.5), D, c.isPlayer);
+  if (g && g.userData.skin) GunSkin.shot(g, c);   // 스킨 판처파우스트: 탄두 끝에서 스킨 섬광 (v21)
   c.bloom = Math.min(c.bloom + d.recoil * 0.22, 4);
   c.spentT = 0.7; c.spentSlot = c.inv.cur; c.inspectT = 0;
   Audio.rocket('launch', origin, c.isPlayer);
@@ -14971,14 +15739,31 @@ function backblast(p, D, own) {
   FX.puff(p.x - D.x * 0.3, p.y - D.y * 0.3, p.z - D.z * 0.3, 0xffd090, 0.9 * s, 0.1, 1.4, 0);
   for (let i = 0; i < (own ? 3 : 5); i++) { const k = 0.5 + i * 0.4; FX.puff(p.x - D.x * k + rnd(-0.2, 0.2) * s, p.y - D.y * k - 0.15 + rnd(-0.1, 0.2) * s, p.z - D.z * k + rnd(-0.2, 0.2) * s, i < 1 ? 0xff9a40 : 0xb8b0a4, (0.6 + i * 0.22) * s, (own ? 0.35 : 0.7) + i * 0.15, own ? 1.6 : 2.4, 0.5); }
 }
+// 스킨 판처파우스트(v21): 날아가는 로켓도 그 스킨 무늬·탄두 색(GunSkin.dress) · 꼬리 불꽃 색과 꼬리 효과 · 폭발 모양(Boom style = 스킨 효과 종류)
+const ROCKET_FLAME = { nuke: 0xc8ff6a, xsanta: 0xffd65a, horizon: 0xc8a0ff };
 function spawnRocket(c, start, D, vis, d, remote) {
   if (!G.scene) return null;
+  const sk = c && c.skinOf ? c.skinOf('pzf') : null, st = sk && GSKINS[sk].fx ? GSKINS[sk].fx.kind : null;
   const mesh = Models.cluster('gh:pzf', Models.GUNS.pzf.head), fl = FX.flame(); fl.position.set(0, 0, -0.26); fl.scale.setScalar(0.42); mesh.add(fl);
+  if (sk) GunSkin.dress(mesh, sk);
+  if (ROCKET_FLAME[st]) fl.material.color.setHex(ROCKET_FLAME[st]);
   G.scene.add(mesh);
-  const v = d.rv || 80, r = { owner: c, x: start.x, y: start.y, z: start.z, vx: D.x * v, vy: D.y * v, vz: D.z * v, g: d.rg || 2.2, t: 0, mesh, fl, remote, trailT: 0, flyT: 0,
+  const v = d.rv || 80, r = { owner: c, x: start.x, y: start.y, z: start.z, vx: D.x * v, vy: D.y * v, vz: D.z * v, g: d.rg || 2.2, t: 0, mesh, fl, remote, trailT: 0, flyT: 0, sk, st, jT: 0,
     ox: vis.x - start.x, oy: vis.y - start.y, oz: vis.z - start.z };
   ROCKETS.push(r); placeRocket(r);
   return r;
+}
+// 스킨 로켓 꼬리: 핵폭탄 = 초록·노랑 방사능 가루 · SANTA'S DELIVERY = 색색 반짝이 가루(+ 방울 소리) · EVENT HORIZON = 로켓 둘레를 도는 강착 원반 가루
+const _rkE = new THREE.Vector3(), _rkF = new THREE.Vector3(), _rkP = new THREE.Vector3();
+function rocketSkinTrail(r, p, dx, dy, dz) {
+  if (!G.camera || p.distanceTo(G.camera.position) > 160) return;
+  const P = GunSkin.fx.pool(G.scene), E = GunSkin.fx.emit;
+  if (r.st === 'nuke') { for (let i = 0; i < 2; i++) { _rkP.set(p.x - dx * 0.3 + rnd(-0.12, 0.12), p.y - dy * 0.3 + rnd(-0.12, 0.12), p.z - dz * 0.3 + rnd(-0.12, 0.12)); E(P, _rkP, rnd(-0.4, 0.4), rnd(0, 0.8), rnd(-0.4, 0.4), Math.random() < 0.7 ? 0x9dff4a : 0xfff27a, rnd(0.04, 0.07), rnd(0.4, 0.8), { sq: Math.random() < 0.5, drag: 1.5, so: 0.45 }); } }
+  else if (r.st === 'xsanta') { for (let i = 0; i < 3; i++) { _rkP.set(p.x - dx * 0.3 + rnd(-0.15, 0.15), p.y - dy * 0.3 + rnd(-0.15, 0.15), p.z - dz * 0.3 + rnd(-0.15, 0.15)); E(P, _rkP, rnd(-0.5, 0.5), rnd(-0.6, 0.2), rnd(-0.5, 0.5), [0xff3a4a, 0x3aff7a, 0xffd65a, 0xffffff][(Math.random() * 4) | 0], rnd(0.04, 0.07), rnd(0.6, 1.1), { sq: Math.random() < 0.4, drag: 1.2, g: -0.6, so: 0.4 }); } }
+  else if (r.st === 'horizon') {
+    _rkE.set(dz, 0, -dx); if (_rkE.lengthSq() < 1e-4) _rkE.set(1, 0, 0); _rkE.normalize(); _rkF.set(dy * _rkE.z - dz * _rkE.y, dz * _rkE.x - dx * _rkE.z, dx * _rkE.y - dy * _rkE.x);
+    for (let i = 0; i < 3; i++) { const a = r.t * 18 + i * TAU / 3, ca = Math.cos(a), sa = Math.sin(a), R = 0.32; _rkP.set(p.x + (_rkE.x * ca + _rkF.x * sa) * R, p.y + (_rkE.y * ca + _rkF.y * sa) * R, p.z + (_rkE.z * ca + _rkF.z * sa) * R); E(P, _rkP, (-_rkE.x * sa + _rkF.x * ca) * 3 - dx * 2, (-_rkE.y * sa + _rkF.y * ca) * 3 - dy * 2, (-_rkE.z * sa + _rkF.z * ca) * 3 - dz * 2, i ? (Math.random() < 0.5 ? 0xffa34a : 0xb58cff) : 0xffffff, rnd(0.04, 0.06), 0.35, { drag: 2, so: 0.45 }); }
+  }
 }
 function placeRocket(r) {
   const k = Math.max(0, 1 - r.t / 0.18), m = r.mesh;
@@ -14993,14 +15778,15 @@ function stepRockets(dt) {
     const h = raycastAll(r.x, r.y, r.z, dx, dy, dz, L + 0.06, r.owner), wet = r.y + dy * L < WATER_Y && heightAt(r.x, r.z) < WATER_Y;
     if (h.t <= L + 0.06 || wet || r.t > 2.8) {
       const t = h.t <= L + 0.06 ? Math.max(0, h.t - 0.06) : wet ? clamp((WATER_Y - r.y) / (dy || -1), 0, L) : 0;
-      G.scene.remove(r.mesh); r.fl.material.dispose(); ROCKETS.splice(i, 1);
+      G.scene.remove(r.mesh); r.fl.material.dispose(); if (r.mesh.userData.gsMats) for (const m of r.mesh.userData.gsMats) m.dispose(); ROCKETS.splice(i, 1);
       rocketBoom(r, r.x + dx * t, r.y + dy * t, r.z + dz * t, h.t <= L + 0.06 ? h : null);
       continue;
     }
     r.x += r.vx * dt; r.y += r.vy * dt; r.z += r.vz * dt;
     placeRocket(r);
-    r.trailT -= dt; if (r.trailT <= 0) { r.trailT = 0.014; const p = r.mesh.position; FX.puff(p.x - dx * 0.35, p.y - dy * 0.35, p.z - dz * 0.35, 0xd2ccc2, 0.24, 0.9, 2.8, 0.2); }
+    r.trailT -= dt; if (r.trailT <= 0) { r.trailT = 0.014; const p = r.mesh.position; FX.puff(p.x - dx * 0.35, p.y - dy * 0.35, p.z - dz * 0.35, r.st === 'horizon' ? 0x6a5a8a : r.st === 'nuke' ? 0xc4ccb4 : 0xd2ccc2, 0.24, 0.9, 2.8, 0.2); if (r.st) rocketSkinTrail(r, p, dx, dy, dz); }
     r.flyT -= dt; if (r.flyT <= 0 && G.player) { r.flyT = 0.45; Audio.rocket('fly', r.mesh.position, false); }
+    if (r.st === 'xsanta') { r.jT -= dt; if (r.jT <= 0) { r.jT = 0.22; Audio.jingle(r.mesh.position, false, 0.9); } }   // 썰매 방울 소리를 내며 날아감
   }
 }
 // 직격: 기절 없이 처치 (같은 팀·부활 보호는 그대로 막힘). 다른 기기 캐릭터는 주인 기기에 처치 요청까지
@@ -15011,7 +15797,7 @@ function rocketLethal(t, own) {
   if (t.alive && t.knocked) applyDamage(t, 999, 'impact', own, 'pzf');
 }
 function rocketBoom(r, x, y, z, hit) {
-  FX.blast(x, y, z); Audio.rocket('boom', { x, y, z }, false);
+  FX.blast(x, y, z, r.st); Audio.rocket('boom', { x, y, z }, false, r.st);   // 스킨이면 그 모양의 폭발(모양만 — 피해는 같음)
   G.noises.push({ x, y, z, t: G.time, r: 320, by: r.owner, kind: 'blast' });
   if (G.player && G.player.alive) { const dd = Math.hypot(G.player.pos.x - x, G.player.pos.z - z); if (dd < 70) G.shake = Math.max(G.shake || 0, (1 - dd / 70) * 1.8); }
   if (r.remote) return;
@@ -15815,17 +16601,20 @@ const FX = (() => {
     else if (kind === 'dirt') puff(x, y, z, 0x8a7a5a, 0.4, 0.5, 2.2, 0.6);
     else { puff(x, y, z, 0xffd080, 0.18, 0.08, 1, 0); puff(x, y, z, 0x9a9a9a, 0.3, 0.4, 2, 0.4); }
   }
+  // 수류탄 폭발 — v21: 06_boom.js 의 제대로 된 폭발(작게). 효과 장면이 없을 때만 예전 연기 몇 개
   function explosion(x, y, z) {
+    if (typeof Boom !== 'undefined' && Boom.blast(x, y, z, { k: 0.62 })) return;
     puff(x, y + 0.6, z, 0xffb050, 3.5, 0.25, 2.5, 0); puff(x, y + 1, z, 0xff7020, 2.2, 0.35, 2, 1);
     for (let i = 0; i < 6; i++) puff(x + rnd(-1.5, 1.5), y + rnd(0.3, 1.5), z + rnd(-1.5, 1.5), 0x4a4440, 2, 1.6, 2.2, 1.2);
   }
-  // 판처파우스트(v21): 로켓 꼬리 불꽃(가산 혼합 스프라이트) · 폭발 = 흰 섬광 → 주황 불덩이 → 검은 연기 + 흙 튐 (수류탄보다 크게)
+  // 판처파우스트(v21): 로켓 꼬리 불꽃(가산 혼합 스프라이트) · 폭발은 06_boom.js (섬광 · 불덩이 · 충격파 · 흙먼지 · 파편 · 연기 기둥 · 그을음)
+  //  style: 판처파우스트 스킨 모양(nuke 버섯구름 · xsanta 불꽃놀이 · horizon 블랙홀) · k: 크기 · car: 차량 폭발(불붙은 조각·잔불이 더 많이)
   function flame() { return new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, color: 0xffb35a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); }
-  function blast(x, y, z) {
+  function blast(x, y, z, style, k = 1, car = false) {
     if (!scene) return;
+    if (typeof Boom !== 'undefined' && Boom.blast(x, y, z, { k, style, car })) return;
     puff(x, y + 0.5, z, 0xfff2c8, 5.5, 0.16, 1.8, 0); puff(x, y + 0.8, z, 0xffb050, 4.4, 0.34, 2.2, 0.6); puff(x, y + 1.3, z, 0xff6a1a, 3.2, 0.55, 2.0, 1.8);
     for (let i = 0; i < 9; i++) puff(x + rnd(-2, 2), y + rnd(0.4, 2.2), z + rnd(-2, 2), i % 3 ? 0x3a3532 : 0x5a524a, rnd(2, 3), rnd(1.8, 2.8), 2.4, rnd(1.2, 2.4));
-    for (let i = 0; i < 5; i++) puff(x + rnd(-1.4, 1.4), y + 0.3, z + rnd(-1.4, 1.4), 0x7a6a50, 1.4, 0.9, 2, 3.5);
     if (G.muzzleLight) { G.muzzleLight.position.set(x, y + 1.5, z); G.muzzleLight.intensity = 9; }
   }
   function grenadeMesh(type) { const m = Models.display(type); scene.add(m); return m; }
@@ -18000,7 +18789,7 @@ const Veh = (() => {
     if (G.net) Net.ev({ k: 'vboom', n: v.nid });
     v.dead = true; v.burnT = 0; v.awake = false; v.vx = v.vz = 0;
     const x = v.pos.x, y = v.pos.y + 0.8, z = v.pos.z, by = v.lastHitBy;
-    FX.explosion(x, y, z); FX.explosion(x + rnd(-1, 1), y + 0.6, z + rnd(-1, 1)); Audio.explosion({ x, y, z });
+    FX.blast(x, y, z, null, 1.15, true); Audio.explosion({ x, y, z }, 1.25);   // v21: 큰 폭발(불붙은 조각·잔불 많이)
     G.noises.push({ x, y, z, t: G.time, r: 300, by, kind: 'blast' });
     for (const d of riders(v)) { applyDamage(d, 400, 'impact', by, 'vexp'); if (d.veh) exit(d, false, true); }
     for (const c of CHARS) {
@@ -18027,7 +18816,7 @@ const Veh = (() => {
   function netBoom(v) {
     v.dead = true; v.burnT = 0; v.awake = false; v.vx = v.vz = 0;
     const x = v.pos.x, y = v.pos.y + 0.8, z = v.pos.z;
-    FX.explosion(x, y, z); FX.explosion(x + rnd(-1, 1), y + 0.6, z + rnd(-1, 1)); Audio.explosion({ x, y, z });
+    FX.blast(x, y, z, null, 1.15, true); Audio.explosion({ x, y, z }, 1.25);
     G.noises.push({ x, y, z, t: G.time, r: 300, by: v.lastHitBy, kind: 'blast' });
     for (const d of riders(v)) if (!d.net || d.net.mine) exit(d, false, true);
     VehModels.wreck(v.P); v.P.root.position.y -= 0.12; v.smokeT = 30;
@@ -19455,6 +20244,14 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v21', d: '2026-11-16', t: '판처파우스트 스킨 3종 · 폭발 개편', items: [
+    "판처파우스트 스킨 3종: 핵탄두(울트라레어 · 아스널 상자) · SANTA'S DELIVERY(크리스마스 EXCLUSIVE) · EVENT HORIZON(엡실론 Ε-09)",
+    '스킨마다 탄두를 따로 칠하고, 날아가는 로켓의 모양·꼬리와 폭발까지 스킨을 따름 (모양만 — 성능은 같음)',
+    "터질 때: 핵탄두 = 18m 버섯구름 · SANTA'S DELIVERY = 큰 선물 상자가 솟아 뚜껑이 날아가며 크리스마스 불꽃놀이 · EVENT HORIZON = 큰 블랙홀이 1.5초 동안 빛과 흙을 빨아들이다 무너지며 폭발",
+    '폭발을 새로 — 섬광 · 부풀며 식는 불덩이 · 바닥 충격 고리 · 흙먼지 · 파편과 불붙은 조각 · 솟는 연기 기둥 · 그을음 자국 · 잔불, 물 위에서는 물기둥 (판처파우스트 · 수류탄 · 차량)',
+    '폭발 소리도 새로 — 날카로운 터짐 · 낮은 쿵 · 길게 구르는 울림 · 떨어지는 파편 소리',
+    '엡실론 금고: 엡실론 총기 9종 각 0.1% (초희귀 16.4 → 16.3%)',
+  ] },
   { v: 'v21', d: '2026-11-16', t: '판처파우스트 · 모바일 무기 바꾸기 · 크리스마스 스킨 개편', items: [
     '새 무기 판처파우스트 (보급상자에서만) — 1발 쓰고 버리는 대전차 로켓. 맞힌 사람·차량은 한 번에 파괴, 주변 10m 안의 사람·차량도 큰 피해',
     '모바일: HP 바 위에 주무기 2개, 그 위 오른쪽에 보조무기를 총 실루엣으로 표시 — 누르면 그 무기로 바뀜 (든 무기를 누르면 살펴보기) · 「무기」 버튼은 없앰',
@@ -20561,7 +21358,7 @@ const BOXES = {
   br: { name: '배틀로얄 상자', theme: '전장 테마 옷', cost: 100, accent: '#9db35e', hex: 0x6f8a3a },
   sp: { name: '스페셜 상자', theme: '스트리트 테마 옷', cost: 100, accent: '#ff6fb0', hex: 0xd0457f },
   sup: { name: '보급 상자', theme: '엘리트 테마 옷', cost: 100, accent: '#f0a43a', hex: 0xd07a1e },
-  eps: { name: '엡실론 금고', theme: 'EPSILON 총기 스킨 8종 · 엡실론 차량 4종 · 울트라레어 이하 총기 스킨', cost: 600, accent: '#c084fc', hex: 0x7a3cff, gun: true, isNew: true, eps: true },
+  eps: { name: '엡실론 금고', theme: 'EPSILON 총기 스킨 9종 · 엡실론 차량 4종 · 울트라레어 이하 총기 스킨', cost: 600, accent: '#c084fc', hex: 0x7a3cff, gun: true, isNew: true, eps: true },
   veh: { name: '차량 뽑기', theme: '교환 코인 · 차량 스킨', cost: 200, accent: '#46c8ff', hex: 0x2a8ac0 },
 };
 const BOX_TIER_P = [45, 25, 18, 8, 3.2, 0.8];                 // 옷 상자의 레어도별 확률(%) — 2번(레어)은 골드 탄피
@@ -20576,7 +21373,7 @@ const GBOX_TIER_P = { 1: 18, 3: 8, 4: 3.2, 5: 0.8 };            // 총기 상자
 const GSKIN_PRICE = { 1: 10, 3: 25, 4: 50, 5: 120, 7: 1000 };   // 교환소 가격(총기 교환 코인) · 7 = 엡실론(1,000). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
 const EPS_COINS = [[5, 40], [10, 20], [20, 8], [40, 2]];        // 엡실론 금고 코인 [개수, %] (합 70%)
 const EPS_VEH_P = 0.1;                                          // 엡실론 금고: 엡실론 차량 한 종의 확률(%) — 4종(IMPERIAL X-01 · AURELION GT · TITAN VANGUARD · SOVEREIGN ECLIPSE)
-const EPS_TIER_P = { 3: 16.4, 4: 9, 5: 3.4, 7: 0.8 };              // 엡실론 금고 스킨 레어도별 합(%) — 엡실론 8종이 0.8% 를 똑같이 나눔(각 0.1%) · 나머지는 아스널·네온 상자 스킨            // 교환소 가격(총기 교환 코인). 총기 상자에서 중복이면 절반을 코인으로 돌려받음
+const EPS_TIER_P = { 3: 16.3, 4: 9, 5: 3.4, 7: 0.9 };              // 엡실론 금고 스킨 레어도별 합(%) — 엡실론 9종이 0.9% 를 똑같이 나눔(각 0.1% · v21 EVENT HORIZON 추가, 초희귀 16.4 → 16.3) · 나머지는 아스널·네온 상자 스킨
 const ATTEND = [{ gold: 50 }, { gold: 50 }, { gold: 100 }, { gold: 50 }, { gold: 100 }, { coin: 3 }, { gold: 300 }];
 const WELCOME_GOLD = 1000;
 // 미션: key = 경기에서 세는 값. 일일 미션은 날마다 4개(겹치는 key 없이), 주간 미션은 4개 고정
@@ -20675,7 +21472,7 @@ const Eco = (() => {
       for (const [n, p] of VEH_COINS) out.push({ k: 'coin', n, rar: 2, p });
       for (const r of [3, 4, 5]) { const ids = Object.keys(VSKINS).filter((id) => VSKINS[id].rar === r && !VSKINS[id].box); for (const id of ids) out.push({ k: 'vskin', id, rar: r, p: VEH_SKIN_P[r] / ids.length }); }   // 크리스마스 차량은 크리스마스 상자에서만
     } else if (box === 'eps') {
-      // 엡실론 금고: 총기 교환 코인 70% · 초희귀 16.4% · 슈퍼레어 9% · 울트라레어 3.4% · 엡실론 총기 0.8%(각 0.1%) · 엡실론 차량 0.4%(각 0.1%)
+      // 엡실론 금고: 총기 교환 코인 70% · 초희귀 16.3% · 슈퍼레어 9% · 울트라레어 3.4% · 엡실론 총기 0.9%(각 0.1%) · 엡실론 차량 0.4%(각 0.1%)
       for (const [n, p] of EPS_COINS) out.push({ k: 'gcoin', n, rar: 2, p });
       for (const r of [3, 4, 5, 7]) { const ids = Object.keys(GSKINS).filter((id) => GSKINS[id].rar === r && (r === 7 ? GSKINS[id].box === 'eps' : gunBox(GSKINS[id].box) && GSKINS[id].box !== 'eps')); for (const id of ids) out.push({ k: 'gskin', id, rar: r, p: EPS_TIER_P[r] / ids.length }); }
       for (const id of Object.keys(VSKINS).filter((x) => VSKINS[x].rar === 7 && VSKINS[x].box === 'eps')) out.push({ k: 'vskin', id, rar: 7, p: EPS_VEH_P });
@@ -21167,6 +21964,9 @@ const HUD = (() => {
     xstar: '<path d="M12 1.5l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.6l-6.4 3.5 1.4-7.1-5.3-5 7.2-.9z"/>',
     xsnow: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M12 2l-2.4 2.6M12 2l2.4 2.6M12 22l-2.4-2.6M12 22l2.4-2.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
     xgift: '<path d="M3 10h18v3H3zM4.5 13h15v8h-15z"/><path d="M12 10v11" stroke="#000" stroke-opacity=".35" stroke-width="2"/><path d="M12 10C9 5 5 6 6.5 8.5 7.6 10 12 10 12 10zm0 0c3-5 7-4 5.5-1.5C16.4 10 12 10 12 10z"/>',
+    // v21 판처파우스트: 블랙홀(검은 구 + 기울어진 원반) · 산타 모자
+    horizon: '<ellipse cx="12" cy="12" rx="10.6" ry="3.8" fill="none" stroke="currentColor" stroke-width="2.2" transform="rotate(-18 12 12)"/><circle cx="12" cy="12" r="4.6"/>',
+    xsanta: '<path d="M3.5 17.5c1-6.5 4.6-12 10.4-12.8 2.8-.4 4.7 1.2 5.6 3.4l-2.8 1c-.8-1.4-2-2-3.3-1.8C9.8 8 7.6 12 7 17.5z"/><rect x="2" y="16.6" width="12.4" height="4.4" rx="2.2"/><circle cx="19.8" cy="9.4" r="2.4"/>',
   };
   const epsIco = (kind) => `<svg class="eps-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${EPS_ICO[kind] || EPS_ICO.celestial}</svg>`;
   const hex6 = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
@@ -22265,6 +23065,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: 'v21 판처파우스트 스킨', title: "핵탄두 · SANTA'S DELIVERY · EVENT HORIZON — 터지면 버섯구름 · 큰 선물 상자 · 큰 블랙홀 (업데이트 로그 보기)", img: () => { try { return Shop.gunThumb('pzf', 'e_pzf_horizon') || Models.icon('pzf'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: 'v21 신규 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: '크리스마스', title: '크리스마스 상자 — 겨울 옷·총기·차량 스킨 · 새 등급 EXCLUSIVE (루돌프 썰매 · 전용 처치 효과 총 · 빛나는 옷)', img: () => { try { return Shop.crateThumb('xmas'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=gacha]'); if (b) b.click(); } },
     { tag: '콜라보 이벤트', title: `THE BACKROOMS 탈출 이벤트 — 백룸에서 탈출하면 골드 탄피 ${BR_EVENT.gold.toLocaleString()} + 칭호 ‘${BR_EVENT.title}’`, img: () => EvBR.banner(), act: () => EvBR.open() },
@@ -23725,7 +24526,7 @@ const Shop = (() => {
   }
   function itemSub(o) {
     if (o.k === 'gold' || o.k === 'coin' || o.k === 'gcoin') return '재화';
-    if (o.k === 'gskin') { const S = GSKINS[o.id], cls = ITEMS[S.gun].name.replace(GunSkin.short(S.gun), '').trim(); return `총기 스킨 · ${cls}` + (S.xm ? ' · 대기·살펴보기·사격·처치 효과·킬 로그' : S.fx ? ' · 사격·교체 효과' + (S.parts ? ' · 부속품' : '') : S.lite ? ' · 약한 사격·맞힘 효과' : ''); }
+    if (o.k === 'gskin') { const S = GSKINS[o.id], cls = ITEMS[S.gun].name.replace(GunSkin.short(S.gun), '').trim() || ITEMS[S.gun].name; return `총기 스킨 · ${cls}` + (S.xm ? ' · 대기·살펴보기·사격·처치 효과·킬 로그' : S.fx ? ' · 사격·교체 효과' + (S.parts ? ' · 부속품' : '') : S.lite ? ' · 약한 사격·맞힘 효과' : '') + (S.gun === 'pzf' ? ' · 로켓·폭발 모양' : ''); }
     if (o.k === 'vskin') { const V = VSKINS[o.id]; return `${VEH_SKIN_TYPES[V.veh]} 스킨 · ${VCLS_NAME[V.cls]}` + (V.rar === 8 ? ' · 움직이는 썰매·빛나는 코' : ''); }
     const SK = Body.SKINS[o.id]; return (SLOT_NAME[SK.slot] || '') + (SK.fx ? ' · 입으면 몸 둘레 효과' : '');
   }
@@ -26543,7 +27344,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

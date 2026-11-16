@@ -174,6 +174,37 @@ const GSKINS = (() => {
       parts: 'xwhite', en: 0x9fe8ff, enK: 2.4, enAnim: 1,
       deco: [{ kind: 'text', side: 'LR', z: 0.72, dy: -0.004, text: 'WHITE CHRISTMAS', style: 'engrave', col: '#e0b850', w: 0.1 }],
       desc: '눈 덮인 흰 총몸에 금 테 두른 빨간 벨벳 리본·개머리와 호랑가시 · 얼음빛 눈꽃이 깜빡임 · 총구의 눈꽃 왕관과 총열 아래 금방울 · 살펴보면 선물 포장이 풀리고 스노글로브 속 눈보라 · 처치하면 거대한 눈꽃 문양과 얼음 가시', lore: '눈 내리는 밤, 모든 창에 불이 켜지는 날.' },
+    // ---------- v21 판처파우스트(보급상자 전용 로켓) 스킨 3종 — 탄두(head, kd 8)를 발사관과 따로 칠하고, 날아가는 로켓·폭발 모양까지 스킨을 따른다(06_boom.js) ----------
+    //  head: 탄두 무늬(HEADPAT)·색·금속감 · 성능은 기본 판처파우스트와 같음
+    // 핵탄두(울트라레어, 아스널 상자): 바랜 국방색 발사관에 초록 방사능 균열이 가이거 계수기처럼 지직거리며 빛남 · 노랑·검정 경고 띠와 방사능 표지
+    //  탄두 = 노란 바탕의 검은 방사능 표지 · 꺼내면 경고 띠 봉쇄 고리·방사능 날개·초록 연료봉·계수기가 돋음 · 터지면 버섯구름
+    g1_pzf_nuke: { gun: 'pzf', box: 'g1', rar: 5, name: '핵탄두', pat: 'nuke', pal: ['#20251a', '#424b31', '#e3bb1c', '#0d0e0b', '#a6ff4a'], sc: 2.6, env: 0.75,
+      body: { p: 1, mr: [0.5, 0.58] }, furn: { c: 0x26221c, mr: [0.1, 0.72] }, steel: { c: 0x3c4232, mr: [0.85, 0.38] },
+      head: { pat: 'nukeHead', pal: ['#d8ad16', '#a47c0b', '#121210', '#3a3a30'], sc: 6, mr: [0.25, 0.5] },
+      glow: { pat: 'nuke', c: 0x8dff3a, k: 2.6, anim: 12 }, glowMask: [1, 0, 0], fx: { kind: 'nuke', c: 0x8dff3a, c2: 0xfff27a, tr: 0xa6ff5a },
+      parts: 'nuke', en: 0x6cff2a, enK: 1.4, enAnim: 6,
+      deco: [{ kind: 'text', side: 'LR', z: 0.13, dy: -0.002, text: '☢ NUCLEAR', style: 'warn', col: '#a6ff4a', w: 0.075 }],
+      desc: '바랜 국방색 발사관에 초록 방사능 균열이 지직거리며 빛남 · 노란 탄두의 검은 방사능 표지 · 꺼내면 봉쇄 고리·방사능 날개·연료봉이 돋음 · 쏘면 초록 섬광 · 터지면 18m 버섯구름 · 처치하면 몸이 초록 재로 흩어짐' },
+    // SANTA'S DELIVERY(크리스마스 EXCLUSIVE): 산타 옷을 입은 발사관 — 빨간 벨벳에 금 덩굴무늬와 반짝이 · 양 끝 흰 털 · 가운데 검은 벨트와 금 버클 · 썰매 방울 · 호랑가시
+    //  탄두 = 반짝이는 빨간 크리스마스 장식 볼(금 띠·눈꽃) · 날아가는 로켓이 반짝이 가루를 뿌리고 방울 소리 · 터지면 크리스마스 불꽃놀이
+    xm_pzf_santa: { gun: 'pzf', box: 'xmas', rar: 8, xm: 1, no: 'X4', name: "SANTA'S DELIVERY", pat: 'xsanta', pal: ['#5e0910', '#b3121c', '#e9c25a', '#fff6e6'], sc: 4.2, env: 1.0,
+      body: { p: 1, mr: [0.06, 0.6] }, furn: { c: 0x1a1412, mr: [0.25, 0.42] }, steel: { c: 0xe9c25a, mr: [1, 0.2] },
+      head: { pat: 'xornament', pal: ['#d01624', '#7a0810', '#f3d27a', '#ffffff'], sc: 7, mr: [0.6, 0.16] },
+      glow: { pat: 'xsanta', c: 0xffffff, k: 2.2, anim: 10 }, glowMask: [1, 0, 0],
+      fx: { kind: 'xsanta', c: 0xff3a4a, c2: 0xffd65a, tr: 0xffe0a0, pal: [0xff3a4a, 0xffd65a, 0x3aff7a, 0xffffff], shot: 'frontier', hit: 'spark' },
+      parts: 'xsanta', en: 0xff2a3a, enK: 1.5, enAnim: 1,
+      deco: [{ kind: 'text', side: 'LR', z: 0.3, dy: -0.002, text: "SANTA'S DELIVERY", style: 'engrave', col: '#e9c25a', w: 0.085 }],
+      desc: '산타 옷을 입은 발사관 — 빨간 벨벳의 금 덩굴무늬와 반짝이 · 양 끝 흰 털 · 검은 벨트와 금 버클 · 썰매 방울 · 탄두는 빨간 크리스마스 장식 볼 · 로켓이 반짝이 가루를 뿌리며 날아감 · 터지면 큰 선물 상자가 솟아 뚜껑이 날아가며 크리스마스 불꽃놀이 · 살펴보면 선물 포장이 풀리고 탄두에 산타 모자', lore: '굴뚝이 없는 집에도 선물은 반드시 도착한다.' },
+    // EVENT HORIZON(엡실론 Ε-09): 블랙홀 — 칠흑 발사관에 탄두 쪽으로 빨려 드는 강착 원반 빛줄기(뒤는 주황, 탄두에 가까울수록 푸르게)
+    //  탄두 = 빛을 삼키는 거울 같은 검은 구 + 둘레에 빛나는 광자 고리와 도는 강착 원반 · 로켓은 원반을 두르고 날아감 · 터지면 블랙홀이 생겼다 무너지며 폭발
+    e_pzf_horizon: { gun: 'pzf', box: 'eps', rar: 7, eps: 1, no: '09', name: 'EVENT HORIZON', pat: 'horizon', pal: ['#030306', '#140c26', '#ff9a3a', '#a8d0ff'], sc: 4.6, env: 1.0,
+      body: { p: 1, mr: [0.6, 0.28] }, furn: { p: 1, mr: [0.5, 0.32] }, steel: { c: 0x15121c, mr: [1, 0.18] },
+      head: { pat: 'horizonHead', pal: ['#010102', '#0c0818', '#ffb070', '#9ecbff'], sc: 5, mr: [0.95, 0.07] },
+      glow: { pat: 'horizon', c: 0xffc890, k: 2.6, anim: 11 }, glowMask: [1, 1, 0],
+      fx: { kind: 'horizon', c: 0xffa34a, c2: 0xb58cff, tr: 0xffd2a0, pal: [0xffa34a, 0xffe2b8, 0xb58cff, 0x9ecbff, 0xffffff], shot: 'void', hit: 'void' },
+      parts: 'horizon', en: 0xff9a40, enK: 1.4, enAnim: 8,
+      deco: [{ kind: 'eps', no: '09', side: 'LR', z: 0.707, dy: -0.034, w: 0.022 }, { kind: 'text', side: 'L', z: 0.13, dy: -0.002, text: 'EVENT HORIZON', style: 'neon', col: '#ffb070', w: 0.075 }],
+      desc: '칠흑 발사관에 탄두 쪽으로 빨려 드는 강착 원반 빛줄기 · 빛을 삼키는 검은 탄두와 광자 고리 · 탄두 둘레를 도는 강착 원반 · 로켓이 원반을 두르고 날아감 · 터지면 큰 블랙홀이 1.5초 동안 빛과 흙을 빨아들이다 무너지며 폭발 · 처치하면 몸 둘레에 원반이 돌다 위아래로 제트', lore: '빛조차 돌아오지 못하는 경계 너머에서 날아온 탄.' },
     // ---------- 옷 상자에 2개씩 ----------
     br_s686_hunter: { gun: 's686', box: 'br', rar: 1, name: '사냥꾼', body: { c: 0x3b3e33, mr: [0.45, 0.45] }, furn: { c: 0x7a4626, mr: [0, 0.5] } },
     br_mini14_wood: { gun: 'mini14', box: 'br', rar: 3, name: '산림 위장', pat: 'camo', pal: ['#4e5636', '#3b4129', '#6a6a44', '#2b2b22'], sc: 3.5, body: { p: 1, mr: [0.1, 0.7] }, furn: { p: 1, mr: [0, 0.72] } },
@@ -644,7 +675,122 @@ const GunSkin = (() => {
       }
       return { alb: a, glow: g };
     },
+    // ---------- v21 판처파우스트 스킨 ----------
+    // 핵폭탄 — pal: [짙은 국방색, 바랜 국방색, 경고 노랑, 검정, 방사능 초록]: 얼룩진 금속 · 긁힘 · 판 이음매와 리벳 · 노랑·검정 경고 사선 띠(발사관을 감는 고리)
+    //  · 방사능 표지 · 갈라진 틈의 초록 빛과 방사능 얼룩(빛 지도)
+    nuke(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256, n1 = vnoise(rng, 6), n2 = vnoise(rng, 24);
+      const L0 = cv(128), lc = L0.getContext('2d'), img = lc.createImageData(128, 128), c0 = rgb(pal[0]), c1 = rgb(pal[1]);   // 얼룩은 작게 그려 키움 (픽셀마다 계산이 적게)
+      for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) { const k = n1(x / 128 * 6, y / 128 * 6) * 0.65 + n2(x / 128 * 24, y / 128 * 24) * 0.35, i4 = (y * 128 + x) * 4; for (let ch = 0; ch < 3; ch++) img.data[i4 + ch] = lerp(c0[ch], c1[ch], k); img.data[i4 + 3] = 255; }
+      lc.putImageData(img, 0, 0); c.imageSmoothingEnabled = true; c.drawImage(L0, 0, 0, S, S);
+      gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      for (let i = 0; i < 260; i++) { const x = rng() * S, y = rng() * S, l = S * (0.004 + rng() * 0.02), an = rng() * TAU; c.strokeStyle = rng() < 0.5 ? 'rgba(150,150,120,0.22)' : 'rgba(8,10,4,0.3)'; c.lineWidth = lw * (0.6 + rng()); c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(an) * l, y + Math.sin(an) * l); c.stroke(); }
+      c.fillStyle = 'rgba(0,0,0,0.45)'; c.fillRect(0, S * 0.5 - lw, S, lw * 2); c.fillRect(0, 0, S, lw); c.fillRect(S * 0.62 - lw, 0, lw * 2, S);
+      c.fillStyle = 'rgba(255,255,230,0.12)'; c.fillRect(0, S * 0.5 + lw, S, lw * 0.8);
+      for (let i = 0; i < 16; i++) for (const yy of [S * 0.5 - 6 * lw, S * 0.5 + 6 * lw]) { const x = (i + 0.5) * S / 16; c.fillStyle = 'rgba(0,0,0,0.5)'; c.beginPath(); c.arc(x + lw * 0.5, yy + lw * 0.6, 2.2 * lw, 0, TAU); c.fill(); c.fillStyle = '#6a7158'; c.beginPath(); c.arc(x, yy, 1.8 * lw, 0, TAU); c.fill(); }
+      // 노랑·검정 경고 사선 띠: 세로 띠라 발사관을 감는 고리가 된다 (사선 간격 S/8 → 위아래로 이어짐)
+      const hz = (x0, bw) => {
+        c.save(); c.beginPath(); c.rect(x0, 0, bw, S); c.clip(); c.fillStyle = pal[3]; c.fillRect(x0, 0, bw, S); c.fillStyle = pal[2];
+        const st = S / 16; for (let yy = -S / 4; yy < S + S / 8; yy += S / 8) { c.beginPath(); c.moveTo(x0, yy); c.lineTo(x0 + bw, yy + bw * 0.9); c.lineTo(x0 + bw, yy + bw * 0.9 + st); c.lineTo(x0, yy + st); c.closePath(); c.fill(); }
+        c.fillStyle = 'rgba(30,24,8,0.25)'; for (let i = 0; i < 60; i++) c.fillRect(x0 + rng() * bw, rng() * S, lw * (1 + rng() * 3), lw * (1 + rng() * 2));
+        c.restore(); c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(x0 - lw * 1.5, 0, lw * 1.5, S); c.fillRect(x0 + bw, 0, lw * 1.5, S);
+      };
+      hz(S * 0.06, S * 0.1);
+      for (const [x, y, R] of [[S * 0.36, S * 0.25, S * 0.075], [S * 0.82, S * 0.76, S * 0.06]]) trefoil(c, x, y, R, pal[2], pal[3]);
+      // 초록 방사능 균열: 같은 선을 무늬(어두운 틈 + 초록 심)와 빛 지도(흰 심 + 옅은 번짐)에 같이
+      const V = [];
+      const walk = (x, y, an, n, w) => { for (let i = 0; i < n; i++) { const nx = x + Math.cos(an) * S * 0.018, ny = y + Math.sin(an) * S * 0.018; V.push([x, y, nx, ny, w]); x = nx; y = ny; an += (rng() - 0.5) * 1.1; w = Math.max(0.7, w * 0.97); if (rng() < 0.09 && n > 6) walk(x, y, an + (rng() < 0.5 ? 0.9 : -0.9), (n * 0.45) | 0, w * 0.62); } };
+      for (let b = 0; b < 7; b++) walk(rng() * S, rng() * S, rng() * TAU, 16 + ((rng() * 14) | 0), 2.6);
+      const strokeV = (ctx, col, mul) => { ctx.strokeStyle = col; ctx.lineCap = 'round'; for (const [x0, y0, x1, y1, w] of V) W9(S, (dx, dy) => { ctx.lineWidth = w * mul * lw; ctx.beginPath(); ctx.moveTo(x0 + dx, y0 + dy); ctx.lineTo(x1 + dx, y1 + dy); ctx.stroke(); }); };
+      strokeV(c, 'rgba(6,10,2,0.85)', 2.4); strokeV(c, pal[4], 0.9);
+      strokeV(gc, 'rgba(255,255,255,0.28)', 3.4); strokeV(gc, '#ffffff', 1.1);
+      for (let i = 0; i < 9; i++) { const x = rng() * S, y = rng() * S, r = (2 + rng() * 3) * lw; W9(S, (dx, dy) => { const gr = gc.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r * 3); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); gc.fillStyle = gr; gc.fillRect(x + dx - r * 3, y + dy - r * 3, r * 6, r * 6); c.fillStyle = pal[4]; c.beginPath(); c.arc(x + dx, y + dy, r * 0.8, 0, TAU); c.fill(); }); }
+      return { alb: a, glow: g };
+    },
+    // SANTA'S DELIVERY — pal: [짙은 빨강, 빨강, 금, 흰색]: 빨간 벨벳(윤기·결) · 발사관을 따라 길게 금 장식줄 두 줄 · 금 덩굴무늬 · 흰 눈꽃
+    //  · 빛 지도 = 금·흰·빨강 반짝이(모드 10 — 셰이더가 하나씩 다른 박자로 깜빡)
+    xsanta(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256; gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      const gr = c.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, pal[0]); gr.addColorStop(0.35, pal[1]); gr.addColorStop(0.65, pal[1]); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 30; i++) { const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.1), al = 0.08 + rng() * 0.1, lite = rng() < 0.55; tile(S, (dx, dy) => { const rg = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); rg.addColorStop(0, lite ? `rgba(255,120,120,${al})` : `rgba(40,0,6,${al * 1.4})`); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = rg; c.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); }); }
+      c.lineWidth = Math.max(1, S / 512); for (let i = 0; i < 1800; i++) { const x = rng() * S, y = rng() * S; c.strokeStyle = rng() < 0.5 ? 'rgba(255,90,100,0.08)' : 'rgba(50,0,8,0.12)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (rng() - 0.5) * S * 0.01, y + S * 0.006); c.stroke(); }
+      for (const yf of [0.22, 0.78]) { const y = S * yf; c.fillStyle = 'rgba(40,10,0,0.5)'; c.fillRect(0, y - 3.2 * lw, S, 6.4 * lw); c.fillStyle = pal[2]; c.fillRect(0, y - 2.4 * lw, S, 1.6 * lw); c.fillRect(0, y + 0.8 * lw, S, 1.6 * lw); }
+      c.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const x = (i % 3 + 0.5) * S / 3 + (rng() - 0.5) * S * 0.08, y = (i < 3 ? 0.5 : 0) * S + S * 0.25 + (rng() - 0.5) * S * 0.04, R = S * 0.06, dir = i % 2 ? 1 : -1, pts = [];
+        for (let k = 0; k <= 40; k++) { const t = k / 40, an = dir * t * 2.1 * TAU, rr = R * (1 - t * 0.82); pts.push([Math.cos(an) * rr, Math.sin(an) * rr]); }
+        tile(S, (dx, dy) => {
+          for (const [col, w] of [['rgba(60,20,0,0.55)', 3], [pal[2], 1.6]]) { c.strokeStyle = col; c.lineWidth = w * lw; c.beginPath(); pts.forEach(([px, py], k) => (k ? c.lineTo(x + dx + px, y + dy + py) : c.moveTo(x + dx + px, y + dy + py))); c.stroke(); }
+          c.fillStyle = pal[2]; for (const s of [-1, 1]) { c.beginPath(); c.ellipse(x + dx + s * R * 1.25, y + dy + R * 0.2, R * 0.32, R * 0.13, s * 0.6, 0, TAU); c.fill(); }
+        });
+      }
+      const flake = (x, y, r) => { c.strokeStyle = pal[3]; c.lineWidth = Math.max(1, lw * 0.9); for (let i = 0; i < 6; i++) { const an = i / 6 * TAU; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(an) * r, y + Math.sin(an) * r); c.stroke(); } };
+      for (let i = 0; i < 10; i++) { const x = rng() * S, y = rng() * S, r = S * (0.012 + rng() * 0.012); tile(S, (dx, dy) => flake(x + dx, y + dy, r)); }
+      const SC = ['#ffd65a', '#ffffff', '#ffd65a', '#ff6a6a'];
+      for (let i = 0; i < 46; i++) { const x = rng() * S, y = rng() * S, r = S * (0.004 + rng() * 0.004), col = SC[i % 4]; tile(S, (dx, dy) => { c.fillStyle = '#fff6d8'; c.beginPath(); c.arc(x + dx, y + dy, r * 0.8, 0, TAU); c.fill(); const rg = gc.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r * 2.6); rg.addColorStop(0, col); rg.addColorStop(0.4, col); rg.addColorStop(1, 'rgba(0,0,0,0)'); gc.fillStyle = rg; gc.beginPath(); gc.arc(x + dx, y + dy, r * 2.6, 0, TAU); gc.fill(); }); }
+      return { alb: a, glow: g };
+    },
+    // EVENT HORIZON — pal: [칠흑, 짙은 보라, 강착 주황, 푸른 흰빛]: 거의 검은 바탕의 옅은 보라 성운 · 소용돌이 중심으로 감겨 드는 빛줄기(바깥 주황 → 안쪽 흰빛·푸른빛)
+    //  · 가운데 검은 구멍 · 별. 빛 지도 = 빛줄기(안쪽일수록 밝게) + 별
+    horizon(S, pal, rng) {
+      const a = cv(S), g = cv(S), c = a.getContext('2d'), gc = g.getContext('2d'), lw = S / 256;
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S); gc.fillStyle = '#000'; gc.fillRect(0, 0, S, S);
+      for (let i = 0; i < 16; i++) { const x = rng() * S, y = rng() * S, r = S * (0.08 + rng() * 0.16), al = 0.25 + rng() * 0.3; W9(S, (dx, dy) => { const rg = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); rg.addColorStop(0, pal[1]); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = al; c.fillStyle = rg; c.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); c.globalAlpha = 1; }); }
+      const ccol = (t) => (t < 0.5 ? pal[2] : t < 0.8 ? '#ffe2b8' : pal[3]);
+      for (let s = 0; s < 3; s++) {
+        const cx = rng() * S, cy = rng() * S, rot = rng() * Math.PI, sq = 0.3 + rng() * 0.25;
+        for (let j = 0; j < 9; j++) {
+          const t = j / 8, R = S * (0.16 - t * 0.12), a0 = rng() * TAU, len = 1.1 + rng() * 1.8, w = (0.7 + t * 1.3) * lw;
+          W9(S, (dx, dy) => { for (const [ctx, col, ww, al] of [[c, ccol(t), w, 0.85], [gc, '#ffffff', w * 1.1, 0.5 + t * 0.5], [gc, '#ffffff', w * 3.2, 0.12 + t * 0.12]]) { ctx.save(); ctx.globalAlpha = al; ctx.strokeStyle = col; ctx.lineWidth = ww; ctx.lineCap = 'round'; ctx.beginPath(); ctx.ellipse(cx + dx, cy + dy, R, R * sq, rot, a0, a0 + len); ctx.stroke(); ctx.restore(); } });
+        }
+        W9(S, (dx, dy) => { c.fillStyle = '#000'; c.beginPath(); c.ellipse(cx + dx, cy + dy, S * 0.022, S * 0.022 * sq * 1.6, rot, 0, TAU); c.fill(); });
+      }
+      for (let i = 0; i < 90; i++) { const x = rng() * S, y = rng() * S, r = (0.4 + rng() * 0.9) * lw, b = 0.35 + rng() * 0.65; W9(S, (dx, dy) => { c.fillStyle = `rgba(230,236,255,${b})`; c.fillRect(x + dx, y + dy, r * 1.4, r * 1.4); gc.fillStyle = `rgba(255,255,255,${b * 0.8})`; gc.fillRect(x + dx - r * 0.2, y + dy - r * 0.2, r * 1.8, r * 1.8); }); }
+      return { alb: a, glow: g };
+    },
   });
+  // 방사능 표지: (bg 가 있으면 그 색 원 위에) 가운데 점 + 세 날개(아래 하나 · 위 양쪽) (v21 핵폭탄)
+  function trefoil(ctx, x, y, R, bg, fg) {
+    if (bg) { ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(x, y, R * 0.17, 0, TAU); ctx.fill();
+    for (let i = 0; i < 3; i++) { const ac = Math.PI / 2 + i * TAU / 3, a0 = ac - Math.PI / 6, a1 = ac + Math.PI / 6; ctx.beginPath(); ctx.arc(x, y, R * 0.86, a0, a1); ctx.arc(x, y, R * 0.27, a1, a0, true); ctx.closePath(); ctx.fill(); }
+  }
+  // ---------- 탄두 무늬 (v21 판처파우스트, GSKINS 의 head.pat) — 무늬만(빛 지도 없음). 세로 띠는 탄두를 감는 고리가 된다 ----------
+  const HEADPAT = {
+    // 핵폭탄 — pal: [노랑, 짙은 노랑, 검정, 벗겨진 속 금속]: 노란 칠(얼룩·벗겨짐) · 검은 띠 · 검은 방사능 표지 · 등록 표시
+    nukeHead(S, pal, rng) {
+      const a = cv(S), c = a.getContext('2d'), lw = S / 256;
+      const gr = c.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 400; i++) { c.fillStyle = rng() < 0.5 ? 'rgba(90,60,0,0.12)' : 'rgba(255,240,170,0.12)'; c.fillRect(rng() * S, rng() * S, lw * (1 + rng() * 4), lw * (1 + rng() * 2)); }
+      for (let i = 0; i < 14; i++) { const x = rng() * S, y = rng() * S, r = lw * (2 + rng() * 6), sq = 0.5 + rng() * 0.5, rot = rng() * TAU; W9(S, (dx, dy) => { c.fillStyle = pal[3]; c.beginPath(); c.ellipse(x + dx, y + dy, r, r * sq, rot, 0, TAU); c.fill(); }); }
+      c.fillStyle = pal[2]; c.fillRect(S * 0.02, 0, S * 0.045, S);
+      for (const [x, y, R] of [[S * 0.36, S * 0.27, S * 0.17], [S * 0.8, S * 0.75, S * 0.17]]) trefoil(c, x, y, R, null, pal[2]);
+      for (let i = 0; i < 5; i++) c.fillRect(S * (0.62 + i * 0.05), S * 0.2, S * 0.03, S * 0.045);
+      return a;
+    },
+    // SANTA'S DELIVERY — pal: [빨강, 짙은 빨강, 금, 흰색]: 반짝이는 빨간 장식 볼 · 금 띠 둘(점 무늬) · 흰 눈꽃 · 반짝 가루
+    xornament(S, pal, rng) {
+      const a = cv(S), c = a.getContext('2d'), lw = S / 256;
+      const gr = c.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[0]); c.fillStyle = gr; c.fillRect(0, 0, S, S);
+      for (const x of [S * 0.08, S * 0.58]) {
+        c.fillStyle = 'rgba(60,20,0,0.45)'; c.fillRect(x - 2 * lw, 0, S * 0.07 + 4 * lw, S); c.fillStyle = pal[2]; c.fillRect(x, 0, S * 0.07, S); c.fillStyle = 'rgba(255,250,220,0.5)'; c.fillRect(x + S * 0.012, 0, S * 0.012, S);
+        for (let y = 0; y < S; y += S / 12) { c.fillStyle = pal[1]; c.beginPath(); c.arc(x + S * 0.035, y + S / 24, S * 0.012, 0, TAU); c.fill(); }
+      }
+      const flake = (x, y, r) => { c.strokeStyle = pal[3]; c.lineCap = 'round'; c.lineWidth = Math.max(1, r * 0.12); for (let i = 0; i < 6; i++) { const an = i / 6 * TAU, bx = x + Math.cos(an) * r * 0.5, by = y + Math.sin(an) * r * 0.5; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(an) * r, y + Math.sin(an) * r); c.stroke(); for (const s of [-1, 1]) { c.beginPath(); c.moveTo(bx, by); c.lineTo(bx + Math.cos(an + s * 0.8) * r * 0.32, by + Math.sin(an + s * 0.8) * r * 0.32); c.stroke(); } } };
+      for (const [x, y] of [[0.33, 0.25], [0.33, 0.75], [0.83, 0.5], [0.83, 0], [0.83, 1]]) flake(x * S, y * S, S * 0.12);
+      for (let i = 0; i < 40; i++) { c.fillStyle = 'rgba(255,240,200,0.6)'; c.fillRect(rng() * S, rng() * S, lw * 1.5, lw * 1.5); }
+      return a;
+    },
+    // EVENT HORIZON — pal: [칠흑, 짙은 보라, 주황, 푸른빛]: 거의 검정(거울처럼 반사) · 아주 옅은 렌즈 고리와 별
+    horizonHead(S, pal, rng) {
+      const a = cv(S), c = a.getContext('2d'), lw = S / 256;
+      c.fillStyle = pal[0]; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 6; i++) { const x = rng() * S, y = rng() * S, r = S * (0.1 + rng() * 0.2); W9(S, (dx, dy) => { const rg = c.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); rg.addColorStop(0, pal[1]); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = rg; c.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); }); }
+      for (const [x, y] of [[0.3, 0.3], [0.8, 0.75]]) for (let j = 0; j < 3; j++) { c.strokeStyle = j ? 'rgba(140,170,255,0.12)' : 'rgba(255,170,100,0.16)'; c.lineWidth = lw * (1.2 - j * 0.3); c.beginPath(); c.arc(x * S, y * S, S * (0.1 + j * 0.035), 0, TAU); c.stroke(); }
+      for (let i = 0; i < 30; i++) { c.fillStyle = `rgba(200,210,255,${0.1 + rng() * 0.2})`; c.fillRect(rng() * S, rng() * S, lw, lw); }
+      return a;
+    },
+  };
   // 빛 지도만 (흰 선 = 빛남)
   const GLOW = {
     lines(gc, S) { gc.fillStyle = '#fff'; const h = Math.max(1, S / 160); for (const y of [0.3, 0.7]) gc.fillRect(0, S * y, S, h); for (let x = 0; x < S; x += S / 8) gc.fillRect(x, S * 0.3, S / 64, S * 0.4 * 0.08); },
@@ -697,11 +843,13 @@ const GunSkin = (() => {
       if (GLOW[d.glow.pat]) GLOW[d.glow.pat](gc, S, mulberry32(seed ^ 0x5bd1e995)); else if (PAT2[d.glow.pat]) { const r = PAT2[d.glow.pat](S, d.pal || ['#000', '#000', '#fff'], mulberry32(seed)); gc.drawImage(r.glow, 0, 0); }
       out.glow = toTex(c);
     }
+    if (d.head && d.head.pat && HEADPAT[d.head.pat]) out.head = toTex(HEADPAT[d.head.pat](S, d.head.pal || d.pal, mulberry32(seed ^ 0x2545f491)));   // v21 탄두 무늬
     return (TEX[id] = out);
   }
 
   // ---------- 셰이더 ----------
   //  부위: kd 0 플라스틱·2 무광 금속 → 몸체(body) / 1 나무 → 손잡이·개머리(furn) / 3 광택 금속 → 강철(steel) / 4~6 황동·고무·천 → 그대로
+  //        8 탄두 껍데기(v21 판처파우스트) → 탄두(head: 따로 정하지 않은 스킨은 몸체처럼) / 7 = 부속품 발광
   //  모드: 0 원래 색 · 1 단색 · 2 무늬. 디테일(어두운 작은 부품)은 원래 정점 색의 밝기만큼 조금 어둡게
   const V_HEAD = 'attribute float kd;\nvarying float vKd;\nvarying vec3 vOP;\nvarying vec3 vON;\nvarying float vGZ;\nuniform mat4 uGunInv;\n';
   const V_BODY = '\n\tvKd = kd; vOP = position; vON = normal; vGZ = (uGunInv * (modelMatrix * vec4(position, 1.0))).z;\n';
@@ -709,13 +857,15 @@ const GunSkin = (() => {
 uniform sampler2D uPat; uniform sampler2D uGlow; uniform float uScale;
 uniform vec3 uBodyCol; uniform vec3 uFurnCol; uniform vec3 uSteelCol; uniform vec3 uMode;
 uniform vec4 uMR; uniform vec2 uSteelMR;
+uniform sampler2D uHeadPat; uniform float uHeadSc; uniform vec3 uHeadCol; uniform float uHeadMode; uniform vec2 uHeadMR; uniform float uHeadGlow;
 uniform vec3 uGlowCol; uniform float uGlowAmt; uniform float uGlowAnim; uniform vec3 uGlowMask; uniform float uScanOn; uniform float uScanZ; uniform vec3 uScanCol;
 uniform float uTime; uniform float uFlash; uniform float uSweepOn; uniform float uSweepZ; uniform vec3 uFxCol;
 uniform vec3 uEnCol; uniform float uEnAmt; uniform float uEnAnim; uniform float uDeploy;
-vec3 gsTri(sampler2D t, vec3 p, vec3 n) {
+vec3 gsTriS(sampler2D t, vec3 p, vec3 n, float s) {
   vec3 w = abs(n); w = w * w; w = w * w; w /= (w.x + w.y + w.z + 1e-5);
-  return texture2D(t, p.zy * uScale).rgb * w.x + texture2D(t, p.zx * uScale).rgb * w.y + texture2D(t, p.xy * uScale).rgb * w.z;
+  return texture2D(t, p.zy * s).rgb * w.x + texture2D(t, p.zx * s).rgb * w.y + texture2D(t, p.xy * s).rgb * w.z;
 }
+vec3 gsTri(sampler2D t, vec3 p, vec3 n) { return gsTriS(t, p, n, uScale); }
 float gsHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
 vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
 `;
@@ -729,24 +879,30 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
 `;
   const F_COLOR = `
 	float gsR = floor(vKd + 0.5);
-	float gsRole = gsR < 0.5 ? 0.0 : gsR < 1.5 ? 1.0 : gsR < 2.5 ? 0.0 : gsR < 3.5 ? 2.0 : 3.0;
-	float gsMode = gsRole < 0.5 ? uMode.x : gsRole < 1.5 ? uMode.y : gsRole < 2.5 ? uMode.z : 0.0;
+	if (gsR > 7.5 && uHeadMode < 0.5) gsR = 0.0;
+	float gsRole = gsR < 0.5 ? 0.0 : gsR < 1.5 ? 1.0 : gsR < 2.5 ? 0.0 : gsR < 3.5 ? 2.0 : gsR < 7.5 ? 3.0 : 4.0;
+	float gsMode = gsRole < 0.5 ? uMode.x : gsRole < 1.5 ? uMode.y : gsRole < 2.5 ? uMode.z : gsRole > 3.5 ? uHeadMode : 0.0;
 	vec3 gsNrm = normalize(vON);
 	float gsDet = mix(0.45, 1.0, smoothstep(0.035, 0.14, dot(vColor, vec3(0.3, 0.59, 0.11))));
-	if (gsMode > 1.5) diffuseColor.rgb = gsTri(uPat, vOP, gsNrm) * gsDet;
-	else if (gsMode > 0.5) diffuseColor.rgb = (gsRole < 0.5 ? uBodyCol : gsRole < 1.5 ? uFurnCol : uSteelCol) * gsDet;
-	if (gsR > 6.5) diffuseColor.rgb = uEnCol * 0.3;
+	if (gsMode > 1.5) diffuseColor.rgb = (gsRole > 3.5 ? gsTriS(uHeadPat, vOP, gsNrm, uHeadSc) : gsTri(uPat, vOP, gsNrm)) * gsDet;
+	else if (gsMode > 0.5) diffuseColor.rgb = (gsRole < 0.5 ? uBodyCol : gsRole < 1.5 ? uFurnCol : gsRole < 2.5 ? uSteelCol : uHeadCol) * gsDet;
+	if (gsR > 6.5 && gsR < 7.5) diffuseColor.rgb = uEnCol * 0.3;
 `;
+  // 부속품 kd 4(황동)는 금속, 5·6(고무·천·칠 — 흰 털·잎·띠)은 금속감 없이 (부속품은 재질 하나를 같이 쓰므로)
   const F_MR = `
-	if (gsMode > 0.5) { if (gsRole < 0.5) { metalnessFactor = uMR.x; roughnessFactor = uMR.y; } else if (gsRole < 1.5) { metalnessFactor = uMR.z; roughnessFactor = uMR.w; } else { metalnessFactor = uSteelMR.x; roughnessFactor = uSteelMR.y; } }
-	if (gsR > 6.5) { metalnessFactor = 0.0; roughnessFactor = 0.3; }
+	if (gsMode > 0.5) { if (gsRole < 0.5) { metalnessFactor = uMR.x; roughnessFactor = uMR.y; } else if (gsRole < 1.5) { metalnessFactor = uMR.z; roughnessFactor = uMR.w; } else if (gsRole > 3.5) { metalnessFactor = uHeadMR.x; roughnessFactor = uHeadMR.y; } else { metalnessFactor = uSteelMR.x; roughnessFactor = uSteelMR.y; } }
+	else if (gsR > 4.5 && gsR < 6.5) { metalnessFactor = 0.0; roughnessFactor = max(roughnessFactor, 0.7); }
+	else if (gsR > 3.5 && gsR < 4.5) { metalnessFactor = max(metalnessFactor, 0.85); roughnessFactor = min(roughnessFactor, 0.4); }
+	if (gsR > 6.5 && gsR < 7.5) { metalnessFactor = 0.0; roughnessFactor = 0.3; }
 `;
   const F_EMIT = `
-	float gsGM = gsRole < 0.5 ? uGlowMask.x : gsRole < 1.5 ? uGlowMask.y : gsRole < 2.5 ? uGlowMask.z : 0.0;
+	float gsGM = gsRole < 0.5 ? uGlowMask.x : gsRole < 1.5 ? uGlowMask.y : gsRole < 2.5 ? uGlowMask.z : gsRole > 3.5 ? uHeadGlow : 0.0;
 	if (uGlowAmt > 0.0 && gsGM > 0.0) {
 		vec3 gsG3 = gsTri(uGlow, vOP, gsNrm); float gsG = gsG3.r;
 		float gsA = 1.0; vec3 gsGC = uGlowCol;
-		if (uGlowAnim > 9.5) { gsG = max(gsG3.r, max(gsG3.g, gsG3.b)); gsGC = uGlowCol * gsG3 / max(gsG, 0.001); float gsH = gsHash(floor(vOP * 55.0)), gsP = fract(uTime * 0.55 + gsH); gsA = 0.3 + 0.7 * smoothstep(0.0, 0.06, gsP) * smoothstep(0.66, 0.52, gsP); }	// 크리스마스 전구: 빛 지도의 색 그대로, 전구마다 다른 박자로 깜빡 (EXCLUSIVE)
+		if (uGlowAnim > 11.5) { float gsF = gsHash(vec3(floor(uTime * 15.0), 7.0, 0.0)); gsA = 0.45 + 0.3 * sin(uTime * 2.2 + vOP.z * 4.0) + 0.65 * step(0.86, gsF); }	// 방사능: 은은한 맥박 + 가이거 계수기처럼 불규칙하게 번쩍 (핵폭탄)
+		else if (uGlowAnim > 10.5) { float gsW = 0.5 + 0.5 * sin(uTime * 3.2 - vOP.z * 26.0); gsA = 0.2 + 0.8 * gsW * gsW * gsW; gsGC = mix(uGlowCol, vec3(0.62, 0.78, 1.0) * 1.15, smoothstep(-0.25, 0.15, vOP.z)); }	// 빛줄기가 탄두 쪽으로 빨려 들고 탄두에 가까울수록 푸르게 (EVENT HORIZON)
+		else if (uGlowAnim > 9.5) { gsG = max(gsG3.r, max(gsG3.g, gsG3.b)); gsGC = uGlowCol * gsG3 / max(gsG, 0.001); float gsH = gsHash(floor(vOP * 55.0)), gsP = fract(uTime * 0.55 + gsH); gsA = 0.3 + 0.7 * smoothstep(0.0, 0.06, gsP) * smoothstep(0.66, 0.52, gsP); }	// 크리스마스 전구: 빛 지도의 색 그대로, 전구마다 다른 박자로 깜빡 (EXCLUSIVE)
 		else if (uGlowAnim > 8.5) { float gsW = 0.5 + 0.5 * sin(uTime * 2.4); gsA = 0.2 + 0.8 * pow(gsW, 6.0); }	// 일정한 간격의 맥박 (APOCALYPSE ENGINE)
 		else if (uGlowAnim > 7.5) { float gsW = 0.5 + 0.5 * sin(uTime * 1.6 - vOP.z * 12.0); gsA = 0.25 + 0.75 * pow(gsW, 4.0); }	// 붉은 에너지가 천천히 흐름 (INFERNAL SOVEREIGN)
 		else if (uGlowAnim > 6.5) { float gsH = gsHash(floor(vOP * 70.0)); gsA = 0.2 + 0.8 * pow(0.5 + 0.5 * sin(uTime * (0.9 + gsH * 1.8) + gsH * 6.283), 3.0); }	// 별 반짝임 (LAST FRONTIER)
@@ -762,7 +918,7 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
 	// 스캔 띠 (테스터: 재장전·살펴보기 때 총을 따라 지나가는 빛)
 	if (uScanOn > 0.5) totalEmissiveRadiance += uScanCol * smoothstep(0.035, 0.0, abs(vGZ - uScanZ)) * 3.2;
 	// 부속품의 발광 부품(kd 7 = energy): 스킨 색으로 빛나고, 펼쳐질 때(uDeploy) 번쩍
-	if (gsR > 6.5) {
+	if (gsR > 6.5 && gsR < 7.5) {
 		float gsE = 1.0; vec3 gsEC = uEnCol;
 		if (uEnAnim > 8.5) { float gsW = 0.5 + 0.5 * sin(uTime * 2.4); gsE = 0.25 + 1.0 * pow(gsW, 6.0); }
 		else if (uEnAnim > 7.5) gsE = 0.5 + 0.5 * (0.5 + 0.5 * sin(uTime * 1.6 - vOP.z * 12.0));
@@ -790,10 +946,13 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
   const STATIC = {};
   function staticU(id) {
     if (STATIC[id]) return STATIC[id];
-    const d = GSKINS[id], T = texOf(id), b = d.body || {}, f = d.furn || {}, s = d.steel || {};
+    const d = GSKINS[id], T = texOf(id), b = d.body || {}, f = d.furn || {}, s = d.steel || {}, hd = d.head || null;
     const mode = (r) => (r.p ? 2 : r.c !== undefined ? 1 : 0), gl = d.glow;
     return (STATIC[id] = {
       uPat: { value: T.pat || blank() }, uGlow: { value: T.glow || blank() }, uScale: { value: d.sc || 3 },
+      // 탄두(v21 판처파우스트): head.pat → 탄두 무늬 · head.c → 단색 · 없으면 몸체처럼(uHeadMode 0)
+      uHeadPat: { value: T.head || blank() }, uHeadSc: { value: (hd && hd.sc) || d.sc || 3 }, uHeadCol: { value: new THREE.Color(hd && hd.c !== undefined ? hd.c : 0x888888) },
+      uHeadMode: { value: hd ? (hd.pat ? 2 : hd.c !== undefined ? 1 : 0) : 0 }, uHeadMR: { value: new THREE.Vector2(...((hd && hd.mr) || b.mr || [0.15, 0.6])) }, uHeadGlow: { value: (hd && hd.glow) || 0 },
       uBodyCol: { value: new THREE.Color(b.c !== undefined ? b.c : 0x888888) }, uFurnCol: { value: new THREE.Color(f.c !== undefined ? f.c : 0x888888) }, uSteelCol: { value: new THREE.Color(s.c !== undefined ? s.c : 0x888888) },
       uMode: { value: new THREE.Vector3(mode(b), mode(f), mode(s)) },
       uMR: { value: new THREE.Vector4((b.mr || [0.15, 0.6])[0], (b.mr || [0.15, 0.6])[1], (f.mr || [0, 0.7])[0], (f.mr || [0, 0.7])[1]) }, uSteelMR: { value: new THREE.Vector2((s.mr || [0.9, 0.3])[0], (s.mr || [0.9, 0.3])[1]) },
@@ -804,7 +963,7 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
   function makeMat(base, U, d) {
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: base.roughness, metalness: base.metalness, envMap: base.envMap, envMapIntensity: d.env !== undefined ? Math.max(d.env, base.envMapIntensity) : base.envMapIntensity });
     m.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); sh.vertexShader = patchV(sh.vertexShader); sh.fragmentShader = patchF(sh.fragmentShader); };
-    m.customProgramCacheKey = () => 'gskin-v5';
+    m.customProgramCacheKey = () => 'gskin-v6';
     return m;
   }
   // 그리기 직전에 총 공간 행렬(빛 띠 위치 계산용) — 효과가 진행 중일 때만
@@ -829,6 +988,8 @@ vec3 gsHue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) -
     const body = g.children[0]; let z0 = 1e9, z1 = -1e9;
     if (body) for (const m of body.children) { const gb = m.geometry && m.geometry.boundingBox; if (gb) { z0 = Math.min(z0, gb.min.z); z1 = Math.max(z1, gb.max.z); } }
     if (z0 < z1) { I.z0 = z0; I.z1 = z1; } else { _bb.setFromObject(g); I.z0 = _bb.min.z; I.z1 = _bb.max.z; }
+    // 판처파우스트: 탄두(부품 head)는 몸체 밖이라 빛 띠·스캔은 탄두 끝까지(zt). 부속품·각인 자리는 몸체 길이(z0~z1) 그대로
+    const hm = g.userData.meta; I.zt = g.userData.parts && g.userData.parts.head && hm && hm.muzzleZ > I.z1 ? hm.muzzleZ : I.z1;
     // 울트라레어 부속품 (05_models_gparts.js): 같은 스킨 재질을 써서 꺼내기·넣기 빛 띠에 같이 나타나고 사라진다
     const pm = mats['cls:metal'] || mats['cls:matte'] || mats['cls:diel'];
     if (d.parts && pm && typeof GunParts !== 'undefined') {
@@ -966,6 +1127,12 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       emit(P, _p, 0, 0, 0, fx.c2, 0.08 * k, 0.05, { grow: 1.2 });
       for (let i = 0; i < 12; i++) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(); const R = 0.09 + Math.random() * 0.08; _q.copy(_p).addScaledVector(_r, R); emit(P, _q, -_r.x * R * 5, -_r.y * R * 5, -_r.z * R * 5, pick(fx), (0.01 + Math.random() * 0.01) * k, 0.2, { drag: 0 }); }
       for (let i = 0; i < 6; i++) { const sp = 2 + Math.random() * 3; emit(P, _p, _d.x * sp + (Math.random() - 0.5), _d.y * sp + (Math.random() - 0.5), _d.z * sp + (Math.random() - 0.5), fx.c, (0.012 + Math.random() * 0.01) * k, 0.25 + Math.random() * 0.15, { drag: 5 }); }
+    },
+    // 핵폭탄(v21): 하얗게 번쩍인 뒤 초록 섬광 고리가 퍼지고 · 초록·노랑 방사능 가루가 흩날리며 떠오름
+    nuke(P, k, fx) {
+      emit(P, _p, 0, 0, 0, 0xf4ffd8, 0.28 * k, 0.07, { grow: 1.6 });
+      emit(P, _p, _d.x * 0.5, _d.y * 0.5, _d.z * 0.5, fx.c, 0.18 * k, 0.24, { grow: 2.3, drag: 3 });
+      for (let i = 0; i < 18; i++) { const sp = 1 + Math.random() * 3.2; _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(1.6); emit(P, _p, _d.x * sp + _r.x, _d.y * sp + _r.y + 0.3, _d.z * sp + _r.z, Math.random() < 0.3 ? fx.c2 : fx.c, (0.01 + Math.random() * 0.012) * k, 0.35 + Math.random() * 0.4, { drag: 2.5, g: 0.6, sq: Math.random() < 0.4 }); }
     },
   };
   // 테스터(프로토타입 β): 하얀 섬광 + 총구 둘레로 무지개 여섯 빛이 육각으로 퍼짐 + 앞으로 뻗는 프리즘 조각 + 옅은 잔광 고리
@@ -1111,6 +1278,9 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     else if (kind === 'xstar') { I.moteT = vm ? 0.09 : 0.18; const a = rnd2() * TAU, r = 0.04 + rnd2() * 0.05; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, lerp(I.z0, I.z1, rnd2())); g.localToWorld(_p); emit(P, _p, 0, 0.012, 0, rnd2() < 0.3 ? 0xffffff : col, (0.004 + rnd2() * 0.004) * k, 0.8, { grow: -0.5 }); }
     else if (kind === 'xsnow') { I.moteT = vm ? 0.07 : 0.14; const a = rnd2() * TAU, r = 0.05 + rnd2() * 0.06; _p.set(Math.cos(a) * r, m.boreY + 0.06 + rnd2() * 0.04, lerp(I.z0, I.z1, rnd2())); g.localToWorld(_p); emit(P, _p, (rnd2() - 0.5) * 0.02, -0.035, (rnd2() - 0.5) * 0.02, rnd2() < 0.6 ? 0xffffff : col, (0.003 + rnd2() * 0.003) * k, 1.1, { sq: rnd2() < 0.4, grow: -0.3 }); }
     else if (kind === 'xgift') { I.moteT = vm ? 0.08 : 0.16; const a = rnd2() * TAU, r = 0.035 + rnd2() * 0.045; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, lerp(I.z0, I.z1, rnd2())); g.localToWorld(_p); emit(P, _p, (rnd2() - 0.5) * 0.03, 0.02 + rnd2() * 0.03, (rnd2() - 0.5) * 0.03, col, (0.0035 + rnd2() * 0.003) * k, 0.7, { sq: 1, g: -0.05 }); }
+    // v21 판처파우스트: SANTA'S DELIVERY = 금·빨강·흰 반짝이 가루가 천천히 떠오름 · EVENT HORIZON = 탄두 둘레로 물질이 소용돌이치며 빨려 듦
+    else if (kind === 'xsanta') { I.moteT = vm ? 0.08 : 0.16; const a = rnd2() * TAU, r = 0.035 + rnd2() * 0.05; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, lerp(I.z0, I.zt, rnd2())); g.localToWorld(_p); emit(P, _p, (rnd2() - 0.5) * 0.02, 0.025 + rnd2() * 0.03, (rnd2() - 0.5) * 0.02, rnd2() < 0.35 ? 0xffffff : col, (0.0035 + rnd2() * 0.0035) * k, 0.8, { grow: -0.4, sq: rnd2() < 0.25 }); }
+    else if (kind === 'horizon') { I.moteT = vm ? 0.045 : 0.09; const hz = m.headPos ? m.headPos[2] + 0.1 : I.z1; if (!g.userData.parts.head || g.userData.parts.head.visible) { const a = rnd2() * TAU, r = 0.08 + rnd2() * 0.06; _p.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, hz + (rnd2() - 0.5) * 0.04); g.localToWorld(_p); _q.set(0, m.boreY, hz); g.localToWorld(_q); _r.set(-Math.sin(a), Math.cos(a), 0).transformDirection(g.matrixWorld); _q.sub(_p); const L = _q.length(); _q.multiplyScalar(2.4).addScaledVector(_r, L * 3.2); emit(P, _p, _q.x, _q.y, _q.z, rnd2() < 0.25 ? 0xffffff : col, (0.003 + rnd2() * 0.003) * k, 0.32, { sq: rnd2() < 0.3 }); } }
   }
   // VOID REAPER 살펴보기: 화면(캔버스)을 SVG 변위 필터로 잠깐 일그러뜨림 (내 화면에서만)
   let warpEl = null, warpT = 0;
@@ -1137,6 +1307,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     else if (kind === 'xstar') { I.spinBoost = 4; scan(I, s.dur * 0.8, 0xffe6a0, true); s.scan = true; }
     else if (kind === 'xsnow') { scan(I, s.dur * 0.75, 0xcff4ff, true); s.scan = true; }
     else if (kind === 'xgift') { scan(I, s.dur * 0.6, 0xff4a5a, true); s.scan = true; }
+    else if (kind === 'horizon') { I.spinBoost = 6; scan(I, s.dur * 0.7, 0xffb070, true); s.scan = true; s.jet = false; }
   }
   function epsInsp(I, s, g, u, dt, vm, k, P, m) {
     const kind = I.d.fx.kind, env = Math.sin(Math.min(1, u) * Math.PI);
@@ -1170,6 +1341,16 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     else if (kind === 'celestial' || kind === 'infernal') { if (I.scan && Math.random() < dt * 30) { const a = Math.random() * TAU, r = 0.025 + Math.random() * 0.03; _q.set(Math.cos(a) * r, m.boreY + Math.sin(a) * r, I.U.uScanZ.value); g.localToWorld(_q); emit(P, _q, 0, kind === 'infernal' ? 0.06 : 0.01, 0, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.6, { grow: -0.4, g: kind === 'infernal' ? -0.5 : 0 }); } }
     else if (kind === 'voidr') { if (s.warp) epsWarp(u < 0.35 ? Math.sin(u / 0.35 * Math.PI) : 0); if (Math.random() < dt * 50 * env) { _r.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(); const R = 0.12 + Math.random() * 0.1; _q.set(0, m.boreY, lerp(I.z0, I.z1, 0.6)); g.localToWorld(_q); _p.copy(_q).addScaledVector(_r, R); emit(P, _p, -_r.x * R * 3, -_r.y * R * 3, -_r.z * R * 3, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.33, { sq: Math.random() < 0.4 }); } }
     else if (kind === 'dynasty' && s.crest) { const inK = clamp(u / 0.15, 0, 1), outK = clamp((1 - u) / 0.15, 0, 1); s.crest.scale.setScalar(0.07 * Math.min(inK, outK) + 0.001); s.crest.rotation.y = s.t * 2.4; s.crest.material.opacity = Math.min(inK, outK); if (Math.random() < dt * 20) { s.crest.getWorldPosition(_q); emit(P, _q, (Math.random() - 0.5) * 0.1, -0.05, (Math.random() - 0.5) * 0.1, pick(I.d.fx), 0.004 * k, 0.6, { grow: -0.4 }); } }
+    else if (kind === 'horizon') {
+      // EVENT HORIZON(v21): 강착 원반이 빨라지고 물질이 소용돌이치며 탄두로 빨려 듦 → 절반쯤에서 광자 고리가 번쩍이며 탄두 앞으로 제트가 뿜어지고 둘레로 빛 고리가 퍼짐
+      const hz = m.headPos ? m.headPos[2] + 0.1 : I.z1;
+      if (Math.random() < dt * 70 * env) { const a = Math.random() * TAU, R = 0.11 + Math.random() * 0.08; _p.set(Math.cos(a) * R, m.boreY + Math.sin(a) * R, hz + (Math.random() - 0.5) * 0.06); g.localToWorld(_p); _q.set(0, m.boreY, hz); g.localToWorld(_q); _r.set(-Math.sin(a), Math.cos(a), 0).transformDirection(g.matrixWorld); _q.sub(_p); const L = _q.length(); _q.multiplyScalar(2.6).addScaledVector(_r, L * 3.4); emit(P, _p, _q.x, _q.y, _q.z, pick(I.d.fx), (0.004 + Math.random() * 0.004) * k, 0.3, { sq: Math.random() < 0.3 }); }
+      if (!s.jet && u > 0.5) {
+        s.jet = true; I.flash = Math.max(I.flash || 0, 0.9); ACTIVE.add(I);
+        for (let i = 0; i < 28; i++) { const a = i / 28 * TAU; _p.set(0, m.boreY, hz); g.localToWorld(_p); _r.set(Math.cos(a), Math.sin(a), 0).transformDirection(g.matrixWorld).multiplyScalar(vm ? 0.5 : 0.9); emit(P, _p, _r.x, _r.y, _r.z, i % 3 ? pick(I.d.fx) : 0xffffff, 0.004 * k, 0.4, { drag: 2.5, sq: 1 }); }
+      }
+      if (s.jet && u < 0.82) { I.U.uDeploy.value = 0.6 + 0.4 * Math.sin(s.t * 30); if (Math.random() < dt * 80) { _p.set(0, m.boreY, (m.muzzleZ || hz) - 0.02); g.localToWorld(_p); _r.set(0, 0, 1).transformDirection(g.matrixWorld).multiplyScalar(vm ? 0.8 + Math.random() * 0.6 : 1.4 + Math.random()); emit(P, _p, _r.x, _r.y, _r.z, Math.random() < 0.5 ? 0xffffff : 0xb58cff, (0.003 + Math.random() * 0.004) * k, 0.24, { drag: 0.6 }); } }
+    }
   }
   // ---------- 크리스마스 EXCLUSIVE 살펴보기 (v21) — 엡실론(ε 고리·홀로 명판·키트 전개·총열 축 회전)과 다른 '선물 풀기' ----------
   //  0~0.2 리본 띠 두 줄과 나비 리본으로 포장된 채 나타남 → 0.2 나비 리본이 톡 터지며(방울 소리·색종이) 리본이 총구 쪽으로 미끄러져 풀림
@@ -1213,6 +1394,12 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       if (X.globe) {
         const gk = clamp((u - 0.22) / 0.15, 0, 1) * outK, gs = (vm ? 0.34 : L * 0.72 + 0.1) * (0.85 + 0.15 * gk); X.globe.scale.set(gs, gs, 1); X.globe.material.opacity = 0.9 * gk; if (vm) X.globe.position.z = zc + L * 0.18;
         if (gk > 0.3 && Math.random() < dt * 60) { const a = Math.random() * TAU, R = Math.random() * gs * 0.4; _q.set(Math.cos(a) * R * 0.5, m.boreY + Math.sin(a) * R * 0.5, zc + (Math.random() - 0.5) * gs * 0.7); g.localToWorld(_q); emit(P, _q, (Math.random() - 0.5) * 0.14, (Math.random() - 0.4) * 0.1, (Math.random() - 0.5) * 0.14, Math.random() < 0.7 ? 0xffffff : 0xcff4ff, (0.003 + Math.random() * 0.003) * k, 0.8, { sq: Math.random() < 0.3 }); }
+      }
+      // SANTA'S DELIVERY(v21): 탄두 끝에 산타 모자가 톡 튀어나와 까딱이고, 금빛 반짝이가 흩날림
+      if (X.hat) {
+        const hi = clamp((u - 0.3) / 0.14, 0, 1), hk = hi * outK, bo = hi < 1 ? Math.max(0, backOut(hi)) : 1, hs = (vm ? 0.12 : 0.14) * bo * outK;
+        X.hat.scale.set(hs, hs, 1); X.hat.material.opacity = Math.min(1, hk * 2); X.hat.material.rotation = -0.3 + Math.sin(s.t * 5) * 0.12 * hk;
+        if (hk > 0.5 && Math.random() < dt * 20) { X.hat.getWorldPosition(_q); emit(P, _q, (Math.random() - 0.5) * 0.06, 0.03, (Math.random() - 0.5) * 0.06, Math.random() < 0.5 ? 0xffd65a : 0xffffff, 0.004 * k, 0.6, { grow: -0.4 }); }
       }
     }
     // 눈 (모두): 총 위에서 천천히 내림
@@ -1300,7 +1487,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     sc.attach(g); g.updateMatrixWorld(true); I.U.uGunInv.value.copy(g.matrixWorld).invert();
     if (I.dep) { I.dep = null; I.U.uDeploy.value = 0; setParts(I, 1); }   // 부속품은 빛 띠가 지나가며 몸체와 같이 사라짐
     // 1인칭: 화면 아래로 가라앉으며 사라짐 (총구가 멀어 앞에서부터 사라지는 게 잘 안 보이므로)
-    I.sweep = { t: 0, dur, out: true, c, sink: isVM(sc) ? 0.32 : 0 }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.z1 + 0.05; ACTIVE.add(I);
+    I.sweep = { t: 0, dur, out: true, c, sink: isVM(sc) ? 0.32 : 0 }; I.U.uSweepOn.value = 1; I.U.uSweepZ.value = I.zt + 0.05; ACTIVE.add(I);
     if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('holster', I.d.fx.kind, c && !own(c) ? c.pos : null, own(c));
     return true;
   }
@@ -1338,7 +1525,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       const s = I.sweep;
       if (s) {
         s.t += dt; const u = clamp(s.t / s.dur, 0, 1), e = u * u * (3 - 2 * u);
-        const z = s.out ? lerp(I.z1 + 0.05, I.z0 - 0.05, e) : lerp(I.z0 - 0.05, I.z1 + 0.05, e);
+        const z = s.out ? lerp(I.zt + 0.05, I.z0 - 0.05, e) : lerp(I.z0 - 0.05, I.zt + 0.05, e);
         I.U.uSweepZ.value = z;
         if (s.sink) { I.g.position.y -= s.sink * dt / s.dur; I.g.rotation.x += 0.5 * dt / s.dur; }
         if (u < 1) sweepParticles(I, z, dt);
@@ -1347,7 +1534,7 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
       if (I.dep) updateDeploy(I, dt);
       if (I.spin) spinUpdate(I, dt);
       if (I.deco) for (const e of I.deco) e.mesh.visible = !I.sweep || e.zg < I.U.uSweepZ.value;   // 각인·엠블럼은 빛 띠가 지나간 만큼만
-      if (I.scan) { const sc2 = I.scan; sc2.t += dt; const u2 = clamp(sc2.t / sc2.dur, 0, 1), e2 = sc2.slow ? u2 : u2 * u2 * (3 - 2 * u2); I.U.uScanZ.value = lerp(I.z0 - 0.04, I.z1 + 0.04, e2); if (u2 >= 1) { I.scan = null; I.U.uScanOn.value = 0; } }
+      if (I.scan) { const sc2 = I.scan; sc2.t += dt; const u2 = clamp(sc2.t / sc2.dur, 0, 1), e2 = sc2.slow ? u2 : u2 * u2 * (3 - 2 * u2); I.U.uScanZ.value = lerp(I.z0 - 0.04, I.zt + 0.04, e2); if (u2 >= 1) { I.scan = null; I.U.uScanOn.value = 0; } }
       if (I.coreT > 0) { I.coreT -= dt; if (!I.insp) I.U.uDeploy.value = Math.max(0, I.coreT / 0.35) * 0.8; }
       if (I.insp) inspUpdate(I, dt);
       if (!I.sweep && !I.dep && !I.spin && !I.scan && !I.insp && !(I.coreT > 0) && I.flash <= 0) ACTIVE.delete(I);
@@ -1357,9 +1544,18 @@ void main() { vec2 q = gl_PointCoord - 0.5; float a;
     SkinFx.update(dt);   // 맞힘·처치 효과 (입자를 내보낸 뒤 같은 프레임에 갱신)
     updateParticles(dt);
   }
+  // ---------- 따로 만든 모델에 스킨 재질만 (v21: 날아가는 판처파우스트 로켓 — 부속품·각인·효과 없이 무늬·탄두 색·빛만) ----------
+  //  지운 뒤에는 o.userData.gsMats 의 재질을 버린다 (06_combat.js)
+  function dress(o, id) {
+    const d = GSKINS[id]; if (!d || !o) return o;
+    const U = Object.assign({ uTime: TIME, uFlash: { value: 0 }, uSweepOn: { value: 0 }, uSweepZ: { value: 0 }, uScanOn: { value: 0 }, uScanZ: { value: 0 }, uScanCol: { value: new THREE.Color(0) }, uGunInv: { value: new THREE.Matrix4() }, uFxCol: { value: new THREE.Color(d.fx ? d.fx.c : rarOf(d.rar).hex) }, uDeploy: { value: 0 } }, staticU(id)), mats = {};
+    o.traverse((m) => { if (!m.isMesh || !m.material || !m.material.userData) return; const k = m.material.userData.clsKey; if (k === 'cls:metal' || k === 'cls:matte' || k === 'cls:diel') m.material = mats[k] || (mats[k] = makeMat(m.material, U, d)); });
+    o.userData.gsMats = Object.values(mats);
+    return o;
+  }
   // ---------- 이름 ----------
   const short = (gun) => (ITEMS[gun] ? ITEMS[gun].name.replace(/(\s[가-힣]+)+$/, '') : gun);
   const name = (id) => { const d = GSKINS[id]; return d ? `${short(d.gun)} · ${d.name}` : ''; };
   const tracerCol = (g) => { const I = g && g.userData.skin; return I && I.d.fx ? I.d.fx.tr : 0; };
-  return { apply, shot, draw, holster, update, reload, inspect, inspectStop, name, short, tracerCol, texOf, PRISM, fx: { pool, emit }, get time() { return TIME.value; }, _active: ACTIVE, _pools: POOLS, _idle: IDLE };
+  return { apply, dress, shot, draw, holster, update, reload, inspect, inspectStop, name, short, tracerCol, texOf, PRISM, fx: { pool, emit }, get time() { return TIME.value; }, _active: ACTIVE, _pools: POOLS, _idle: IDLE };
 })();

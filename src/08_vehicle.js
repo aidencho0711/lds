@@ -380,7 +380,7 @@ const Veh = (() => {
     if (G.net) Net.ev({ k: 'vboom', n: v.nid });
     v.dead = true; v.burnT = 0; v.awake = false; v.vx = v.vz = 0;
     const x = v.pos.x, y = v.pos.y + 0.8, z = v.pos.z, by = v.lastHitBy;
-    FX.explosion(x, y, z); FX.explosion(x + rnd(-1, 1), y + 0.6, z + rnd(-1, 1)); Audio.explosion({ x, y, z });
+    FX.blast(x, y, z, null, 1.15, true); Audio.explosion({ x, y, z }, 1.25);   // v21: 큰 폭발(불붙은 조각·잔불 많이)
     G.noises.push({ x, y, z, t: G.time, r: 300, by, kind: 'blast' });
     for (const d of riders(v)) { applyDamage(d, 400, 'impact', by, 'vexp'); if (d.veh) exit(d, false, true); }
     for (const c of CHARS) {
@@ -407,7 +407,7 @@ const Veh = (() => {
   function netBoom(v) {
     v.dead = true; v.burnT = 0; v.awake = false; v.vx = v.vz = 0;
     const x = v.pos.x, y = v.pos.y + 0.8, z = v.pos.z;
-    FX.explosion(x, y, z); FX.explosion(x + rnd(-1, 1), y + 0.6, z + rnd(-1, 1)); Audio.explosion({ x, y, z });
+    FX.blast(x, y, z, null, 1.15, true); Audio.explosion({ x, y, z }, 1.25);
     G.noises.push({ x, y, z, t: G.time, r: 300, by: v.lastHitBy, kind: 'blast' });
     for (const d of riders(v)) if (!d.net || d.net.mine) exit(d, false, true);
     VehModels.wreck(v.P); v.P.root.position.y -= 0.12; v.smokeT = 30;

@@ -45,6 +45,9 @@ const HUD = (() => {
     xstar: '<path d="M12 1.5l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.6l-6.4 3.5 1.4-7.1-5.3-5 7.2-.9z"/>',
     xsnow: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M12 2l-2.4 2.6M12 2l2.4 2.6M12 22l-2.4-2.6M12 22l2.4-2.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
     xgift: '<path d="M3 10h18v3H3zM4.5 13h15v8h-15z"/><path d="M12 10v11" stroke="#000" stroke-opacity=".35" stroke-width="2"/><path d="M12 10C9 5 5 6 6.5 8.5 7.6 10 12 10 12 10zm0 0c3-5 7-4 5.5-1.5C16.4 10 12 10 12 10z"/>',
+    // v21 판처파우스트: 블랙홀(검은 구 + 기울어진 원반) · 산타 모자
+    horizon: '<ellipse cx="12" cy="12" rx="10.6" ry="3.8" fill="none" stroke="currentColor" stroke-width="2.2" transform="rotate(-18 12 12)"/><circle cx="12" cy="12" r="4.6"/>',
+    xsanta: '<path d="M3.5 17.5c1-6.5 4.6-12 10.4-12.8 2.8-.4 4.7 1.2 5.6 3.4l-2.8 1c-.8-1.4-2-2-3.3-1.8C9.8 8 7.6 12 7 17.5z"/><rect x="2" y="16.6" width="12.4" height="4.4" rx="2.2"/><circle cx="19.8" cy="9.4" r="2.4"/>',
   };
   const epsIco = (kind) => `<svg class="eps-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${EPS_ICO[kind] || EPS_ICO.celestial}</svg>`;
   const hex6 = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
@@ -1143,6 +1146,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: 'v21 판처파우스트 스킨', title: "핵탄두 · SANTA'S DELIVERY · EVENT HORIZON — 터지면 버섯구름 · 큰 선물 상자 · 큰 블랙홀 (업데이트 로그 보기)", img: () => { try { return Shop.gunThumb('pzf', 'e_pzf_horizon') || Models.icon('pzf'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: 'v21 신규 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: '크리스마스', title: '크리스마스 상자 — 겨울 옷·총기·차량 스킨 · 새 등급 EXCLUSIVE (루돌프 썰매 · 전용 처치 효과 총 · 빛나는 옷)', img: () => { try { return Shop.crateThumb('xmas'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=gacha]'); if (b) b.click(); } },
     { tag: '콜라보 이벤트', title: `THE BACKROOMS 탈출 이벤트 — 백룸에서 탈출하면 골드 탄피 ${BR_EVENT.gold.toLocaleString()} + 칭호 ‘${BR_EVENT.title}’`, img: () => EvBR.banner(), act: () => EvBR.open() },

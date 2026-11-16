@@ -12,10 +12,11 @@ const Models = (() => {
   let R = null, ENV = null;
   const CLS = {}, TEXMAT = {}, TEX = {}, CL = {}, ICON = {};
   const WHITE = new THREE.Color(1, 1, 1);
-  const KIND2CLS = { metal: 'metal', brass: 'metal', alu: 'metal', gunmetal: 'matte', anod: 'matte', foil: 'matte', polymer: 'diel', rubber: 'diel', wood: 'diel', cloth: 'diel', paper: 'diel' };
+  const KIND2CLS = { metal: 'metal', brass: 'metal', alu: 'metal', gunmetal: 'matte', anod: 'matte', foil: 'matte', shell: 'matte', polymer: 'diel', rubber: 'diel', wood: 'diel', cloth: 'diel', paper: 'diel' };
   const M = (kind, color) => ({ desc: true, cls: KIND2CLS[kind] || 'diel', color: new THREE.Color(color), kind });
   // 정점마다 남기는 재질 종류(총기 스킨이 부위별로 칠할 때 씀): 0 플라스틱 · 1 나무 · 2 무광 금속 · 3 광택 금속 · 4 황동 · 5 고무 · 6 천·종이
-  const KD = { polymer: 0, wood: 1, gunmetal: 2, anod: 2, metal: 3, alu: 3, brass: 4, rubber: 5, cloth: 6, paper: 6, foil: 6 };
+  //  8 탄두 껍데기(shell, v21 판처파우스트): 스킨이 탄두를 따로 칠할 수 있다(GSKINS 의 head). 정하지 않은 스킨은 몸체처럼 (7 = 부속품 발광, 05_models_gparts.js)
+  const KD = { polymer: 0, wood: 1, gunmetal: 2, anod: 2, metal: 3, alu: 3, brass: 4, rubber: 5, cloth: 6, paper: 6, foil: 6, shell: 8 };
   const FONT = '"Saira Condensed","Arial Narrow",Arial,sans-serif';
 
   // ---------- 환경광(반사) ----------
