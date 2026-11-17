@@ -1,6 +1,7 @@
 // ============================================================
 // 10_dev.js — 개발자 계정: 모든 스킨 + 개발자 도구
-//  · 개발자 계정 = 로그인한 아이디가 DEV_IDS(00_config.js)에 있는 계정 (지금은 '개발자')
+//  · 개발자 계정 = 서버의 관리자 목록(supabase/admin.sql public.admins)에 있는 계정 — 아이디가 아니라 계정 고유번호로 판단 (v21)
+//    → 아이디를 바꿔도 개발자 그대로, 다른 사람이 '개발자' 아이디를 만들어도 개발자가 아님 (서버에 admin.sql 이 없을 때만 DEV_IDS 아이디로)
 //  · 로그인할 때마다 옷·차량·총기 스킨을 모두 그 계정 기록에 넣는다 → 서버에 저장, 새 스킨이 생기면 다음 로그인 때 추가
 //  · 개발자 도구: 로비 오른쪽 위 'DEV' 버튼 · 경기 중 메뉴 → '개발자 도구'
 //    재화·레벨·출석·미션 / 경기: 무적 · 무한 탄약 · 총 지급(부착물·탄약 포함) · 장비 풀세트 · 차량 소환
@@ -12,7 +13,7 @@
 const Dev = (() => {
   const F = Object.assign({ god: false, ammo: false, tp: false, zone: false, stats: false }, store.get('dev', null) || {});
   const save = () => store.set('dev', F);
-  const is = () => !!(Cloud.user && Cloud.name && DEV_IDS.includes(String(Cloud.name).normalize('NFC').trim().toLowerCase()));
+  const is = () => !!(Cloud.user && Cloud.admin);   // 로그인할 때 서버에 물어본 관리자 여부 (10_cloud.js checkAdmin)
   const inMatch = () => G.state === 'play' && !!G.player;
   const cheatsOk = () => is() && inMatch() && !G.net;
   const cheat = (k) => !!F[k] && is() && !G.net;   // 경기 코드에서 부르는 검사 (같이 하기에선 항상 꺼짐)

@@ -5,6 +5,8 @@
 //      이 창이 열려 있으면 postMessage 로 바로 · 아니면 탈출 화면의 '보상 받기' 링크로 ?brx=코드 를 달고 돌아옴
 //  · 코드가 이 기기의 n 과 서명이 맞아야 인정(링크를 남에게 나눠 줘도 다른 기기에서는 안 됨) → '보상 받기' 로 골드 탄피 + 칭호 '백룸 탈출자'
 //  · 받은 기록은 이 기기(localStorage)에 — 기기마다 1번. 칭호는 계정(STATS.eco.brx)에 남는다
+//  · v21: 보상은 Eco.grant(보상 대기열)로 넣는다 — 계정을 불러오는 중에 받아도, 서버에 올리기 전에 창을 닫아도 사라지지 않음
+//    예전 판에서 그렇게 사라진 보상은 그 기기에서 로그인하면 한 번 복구 (recover)
 //  · 서명은 두 게임이 같은 식(FNV-1a)으로 만든다 — 실제 돈이 오가지 않는 홍보 보상이라 가볍게 막는 정도
 // ============================================================
 const BR_EVENT = { url: 'https://backrooms-theta.vercel.app/', origin: 'https://backrooms-theta.vercel.app', gold: 30000, salt: 'ldr-backrooms-escape-v1', title: '백룸 탈출자' };
@@ -69,18 +71,29 @@ const EvBR = (() => {
     return true;
   }
   // 보상이 늘었을 때(1,000 → 30,000): 이미 받은 기기에는 차액을 한 번 더 (s.gold = 이 기기에서 받은 양)
+  //  v21: 보상은 Eco.grant(보상 대기열)로 — 계정을 불러오는 중이어도 사라지지 않고, 서버에 저장될 때까지 기기에 남는다
   function topUp() {
     const s = get(); if (s.st !== 'done') return;
     const had = s.gold || 1000; if (had >= BR_EVENT.gold) return;
-    s.gold = BR_EVENT.gold; put(s); Eco.brClaim(BR_EVENT.gold - had);
+    s.gold = BR_EVENT.gold; put(s); Eco.grant({ id: 'brxup:' + s.n + ':' + BR_EVENT.gold, gold: BR_EVENT.gold - had, brx: 1 });
     flash(`백룸 탈출 이벤트 보상이 늘었습니다 — 차액 골드 탄피 ${(BR_EVENT.gold - had).toLocaleString()}개를 더 드렸고, 사진 ‘스마일러’와 테두리 ‘백룸 탈출자’도 열렸습니다`); open();
   }
   function claim() {
     const s = get(); if (s.st !== 'esc') return;
-    s.st = 'done'; s.doneT = Date.now(); s.gold = BR_EVENT.gold; put(s);
-    Eco.brClaim(BR_EVENT.gold);
+    s.st = 'done'; s.doneT = Date.now(); s.gold = BR_EVENT.gold; s.fix = 1; s.who = (typeof Cloud !== 'undefined' && Cloud.name) || ''; put(s);   // fix: 새 방식으로 받음 → 아래 복구 대상 아님 · who: 받은 계정 이름(표시용)
+    const r = Eco.grant({ id: 'brx:' + s.n, gold: BR_EVENT.gold, brx: 1 });
     const m = el('evMsg'); if (m) m.hidden = true;
     render(true); dots();
+    if (r === 'wait') flash('계정을 불러오는 중입니다 — 다 불러오면 보상이 계정에 들어갑니다');
+  }
+  // v21 복구: 예전 판에서는 계정을 불러오는 중에 받으면 보상이 사라졌다 → 이 기기는 받았는데 로그인한 계정에 '백룸 탈출자'가 없으면 한 번 다시 넣는다
+  //  기기마다 한 번만 (s.fix). 로그인한 계정을 다 불러온 뒤 10_cloud.js 가 부름
+  function recover() {
+    const s = get(); if (s.st !== 'done' || s.fix || typeof Cloud === 'undefined' || !Cloud.user) return;
+    s.fix = 1; put(s);
+    if (STATS.eco && STATS.eco.brx) return;   // 이 계정에 이미 들어와 있음
+    Eco.grant({ id: 'brxfix:' + s.n, gold: s.gold || BR_EVENT.gold, brx: 1 });
+    setTimeout(() => { try { HUD.lobbyNote(`백룸 탈출 이벤트 보상이 계정에 들어오지 않은 것을 확인해 다시 드렸습니다 — 골드 탄피 ${(s.gold || BR_EVENT.gold).toLocaleString()} · 칭호·사진·테두리`); } catch (e) { /* 로비 밖이면 생략 */ } }, 600);
   }
 
   // ---------- 화면 ----------
@@ -111,7 +124,7 @@ const EvBR = (() => {
     if (s.st === 'new') { st.textContent = '아직 참여하지 않았습니다'; act.appendChild(btn('백룸 들어가기 ↗', 'amber', go)); }
     else if (s.st === 'go') { st.innerHTML = '<i class="evb-wait"></i>백룸에서 탈출을 기다리는 중…'; act.appendChild(btn('백룸 다시 열기 ↗', '', go)); }
     else if (s.st === 'esc') { st.textContent = '탈출 확인 완료!'; act.appendChild(btn('보상 받기', 'amber pulse', claim)); }
-    else { st.textContent = justClaimed ? `받았습니다 — 골드 탄피 ${BR_EVENT.gold.toLocaleString()} · 칭호·사진·테두리 ‘${BR_EVENT.title}’ (프로필에서 바꿀 수 있음)` : '이 기기에서 받은 이벤트입니다 (사진·테두리·칭호는 프로필에서)'; const b = btn('받음 ✓', '', null); b.disabled = true; act.appendChild(b); act.appendChild(btn('백룸 또 하러 가기 ↗', 'ghost', () => window.open(BR_EVENT.url, '_blank'))); }
+    else { st.textContent = justClaimed ? `받았습니다 — 골드 탄피 ${BR_EVENT.gold.toLocaleString()} · 칭호·사진·테두리 ‘${BR_EVENT.title}’ (프로필에서 바꿀 수 있음)` : `이 기기에서 받은 이벤트입니다${s.who ? ` (받은 계정: ${s.who})` : ''} — 사진·테두리·칭호는 프로필에서`; const b = btn('받음 ✓', '', null); b.disabled = true; act.appendChild(b); act.appendChild(btn('백룸 또 하러 가기 ↗', 'ghost', () => window.open(BR_EVENT.url, '_blank'))); }
     act.prepend(st); txt.appendChild(act);
     if (justClaimed) { const p = h('div', 'evb-pop', `+${BR_EVENT.gold.toLocaleString()}`); card.appendChild(p); setTimeout(() => p.remove(), 1600); }
     card.appendChild(txt); box.appendChild(card);
@@ -137,5 +150,5 @@ const EvBR = (() => {
   let pendingCode = null;
   // 로비에 들어올 때마다: 경기 중에 온 탈출 알림 · 돌아오기 링크로 온 코드를 처리
   function lobby() { dots(); if (pendingCode) { const c = pendingCode; pendingCode = null; accept(c); } else topUp(); }
-  return { init, lobby, open, banner, state: () => get().st, _sign: sign, _accept: accept };
+  return { init, lobby, open, banner, recover, state: () => get().st, _sign: sign, _accept: accept };
 })();

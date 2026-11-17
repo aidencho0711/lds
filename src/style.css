@@ -1152,6 +1152,13 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .ti-d b { font-size: 0.84rem; } .ti-d small { font-size: 0.7rem; color: var(--dim); }
 .ti-none { flex: 1; padding: 4px 8px; color: var(--dim); font-weight: 700; }
 .prof-acct { display: flex; flex-direction: column; gap: 6px; padding: 10px 4px; }
+/* v21 비밀번호 변경: 입력 셋 + 버튼 (좁은 화면은 한 줄씩) */
+.pw-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pw-form input { min-width: 0; font: inherit; font-size: 1rem; color: var(--sand); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line-2); border-radius: 4px; padding: 8px 10px; }
+.pw-form input:focus { outline: none; border-color: var(--amber); }
+.pw-form input:first-child { grid-column: 1 / -1; }
+.pw-form button { grid-column: 1 / -1; }
+@media (max-width: 520px) { .pw-form { grid-template-columns: 1fr; } }
 @media (max-height: 520px) { .menu.prof { max-height: 96vh; gap: 6px; } .prof-hero { padding: 2px 4px 0 12px; } .prof-hero .pf { --s: 56px !important; } .prof-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); padding-top: 12px; } }
 .tier .tier-ext { display: block; margin-top: 2px; font-size: 0.66rem; font-weight: 700; color: #ff7a6a; }
 

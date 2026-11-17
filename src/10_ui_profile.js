@@ -212,6 +212,9 @@ const Prof = (() => {
       box.innerHTML = `<div class="eyebrow">아이디 변경</div><p class="micro">3일에 한 번 바꿀 수 있습니다. 바꾸면 다음 로그인부터 새 아이디로 로그인합니다 (비밀번호는 그대로).</p>
         <form class="fr-add" id="profNameForm" autocomplete="off"><input id="profNewName" maxlength="10" placeholder="새 아이디 (2~10자)" ${left ? 'disabled' : ''}><button class="btn amber" type="submit" ${left ? 'disabled' : ''}>변경</button></form>
         <p class="acct-msg${nameMsg.startsWith('!') ? ' bad' : nameMsg ? ' ok' : ''}" id="profNameMsg">${left ? `다음 변경까지 ${fmtLeft(left)}` : (nameMsg || '').replace(/^!/, '')}</p>
+        <div class="eyebrow mt">비밀번호 변경</div><p class="micro">지금 비밀번호를 확인한 뒤 바꿉니다. 바꾸면 <b>이 기기를 뺀 다른 모든 기기의 로그인이 끊깁니다</b> — 다른 사람이 비밀번호를 알게 됐을 때 바로 바꾸세요.</p>
+        <form class="pw-form" id="profPwForm" autocomplete="off"><input type="password" id="profPwCur" placeholder="지금 비밀번호" autocomplete="current-password"><input type="password" id="profPwNew" placeholder="새 비밀번호 (6자 이상)" autocomplete="new-password"><input type="password" id="profPwNew2" placeholder="새 비밀번호 확인" autocomplete="new-password"><button class="btn amber" type="submit">비밀번호 바꾸기</button></form>
+        <p class="acct-msg" id="profPwMsg"></p>
         <div class="eyebrow mt">저장</div><p class="micro" id="profSync">${Cloud.status === 'error' ? '저장 실패 — ' + Cloud.lastError : '전적·레벨·랭크·꾸미기·설정이 서버에 저장되어 다른 기기에서도 이어집니다.'}</p>
         <div class="acct-btns"><button class="btn" type="button" id="profSyncNow">지금 저장</button><button class="btn danger" type="button" id="profLogout">로그아웃</button></div>`;
       B.appendChild(box);
@@ -220,6 +223,17 @@ const Prof = (() => {
         nameMsg = '바꾸는 중…'; $('profNameMsg').textContent = nameMsg;
         try { await Cloud.rename(v); STATS.nameT = Date.now(); saveStats(); nameMsg = `아이디를 「${Cloud.name}」(으)로 바꿨습니다`; changed(); HUD.lobbyNote(nameMsg); }
         catch (err) { nameMsg = '!' + (err.message || String(err)); render(); }
+      };
+      $('profPwForm').onsubmit = async (e) => {
+        e.preventDefault(); const m = $('profPwMsg'), btn = $('profPwForm').querySelector('button'); if (btn.disabled) return;
+        btn.disabled = true; m.className = 'acct-msg ok'; m.textContent = '바꾸는 중…';
+        try {
+          const others = await Cloud.changePassword($('profPwCur').value, $('profPwNew').value, $('profPwNew2').value);
+          for (const id of ['profPwCur', 'profPwNew', 'profPwNew2']) $(id).value = '';
+          m.textContent = others ? '비밀번호를 바꿨습니다 — 다른 기기의 로그인은 모두 끊겼습니다 (이미 열린 화면은 최대 1시간 안에 끊김)' : '비밀번호를 바꿨습니다 (다른 기기 로그아웃은 확인하지 못했습니다)';
+          HUD.lobbyNote('비밀번호를 바꿨습니다');
+        } catch (err) { m.className = 'acct-msg bad'; m.textContent = err.message || String(err); }
+        finally { btn.disabled = false; }
       };
       $('profSyncNow').onclick = async () => { const ok = await Cloud.pushNow(); $('profSync').textContent = ok ? '저장했습니다' : '저장 실패 — ' + Cloud.lastError; };
       $('profLogout').onclick = async () => { await Cloud.signOut(); close(); HUD.lobbyNote('로그아웃했습니다 — 이 기기의 게스트 기록으로 돌아왔습니다'); };

@@ -275,8 +275,40 @@ const Eco = (() => {
   }
   // 경기 중 골드 탄피 주머니 (바로 지급)
   function found(n) { E().gold += n; changed('found'); }
-  // 홍보 이벤트 보상 (10_event.js 가 기기마다 1번만 부름): 골드 탄피 + 칭호 '백룸 탈출자'(STATS.eco.brx)
-  function brClaim(gold) { const e = E(); e.gold += gold; e.brx = 1; changed('brx'); return gold; }
+  // ---------- 보상 대기열 (v21) — 이벤트 보상이 사라지지 않게 ----------
+  //  문제였던 것: 백룸에서 돌아와 새로 열린 창은 계정을 불러오는 데 몇 초 걸리는데, 그 사이 받은 보상은 기기 기록에만 들어갔다가
+  //   계정을 다 불러오면서 서버 기록으로 덮여 사라졌다(1,000 → 30,000 차액 지급도 같은 이유). 받자마자 창을 닫아 서버에 못 올린 보상도 사라졌다
+  //  지금: 보상을 기기에 따로 적어 두고(store 'pendG') 계정을 다 불러온 뒤 넣으며, 서버에 저장될 때까지 지우지 않는다
+  //   넣은 보상은 계정 기록(STATS.eco.gr = 받은 보상 id)에 남아 다시 불러와도 두 번 들어가지 않는다
+  const PEND = 'pendG';
+  const pend = () => { const P = store.get(PEND, null); return Array.isArray(P) ? P : []; };
+  function grantApply(g) {
+    const e = E(); if (!Array.isArray(e.gr)) e.gr = [];
+    if (e.gr.includes(g.id)) return false;
+    e.gr.push(g.id); if (g.gold) e.gold += g.gold; if (g.brx) e.brx = 1;
+    changed('grant'); return true;
+  }
+  // g = { id, gold, brx } → 'ok'(지금 넣음) · 'wait'(계정을 불러오는 중 — 다 불러오면 들어감)
+  function grant(g) {
+    const P = pend(); if (!P.some((x) => x.id === g.id)) { P.push(g); store.set(PEND, P); }
+    if (typeof Cloud !== 'undefined' && Cloud.status === 'restoring') return 'wait';
+    grantApply(g);
+    if (!(typeof Cloud !== 'undefined' && Cloud.user) && !store.get('account', null)) store.set(PEND, pend().filter((x) => x.id !== g.id));   // 계정을 쓰지 않는 기기(게스트): 서버가 없으니 바로 끝
+    return 'ok';
+  }
+  // mode 'login': 계정 기록을 막 불러옴 → 기록에 없는 것은 넣고(서버에 저장될 때까지 남김), 이미 있는 것은 지움 / 'saved': 서버 저장 성공 → 기록에 있는 것만 지움
+  function flushGrants(mode) {
+    const P = pend(); if (!P.length) return;
+    const e = E(), left = [];
+    for (const g of P) {
+      const had = Array.isArray(e.gr) && e.gr.includes(g.id);
+      if (mode === 'login' && !had) { grantApply(g); left.push(g); }
+      else if (!had) left.push(g);
+    }
+    store.set(PEND, left);
+  }
+  // 홍보 이벤트 보상 (예전 이름 — 지금은 10_event.js 가 grant 에 id 를 붙여 부름)
+  function brClaim(gold) { return grant({ id: 'brx:' + Date.now().toString(36), gold, brx: 1 }); }
   // ---------- 골드 탄피 이벤트 ----------
   function evS() {
     const e = E(), d = today(), w = weekKey();
@@ -370,6 +402,7 @@ const Eco = (() => {
         else e.bp = lb && sb ? ((lb.s || 0) > (sb.s || 0) ? lb : sb) : lb || sb || undefined;
         if (le.bpt || se.bpt) e.bpt = [...new Set([...(se.bpt || []), ...(le.bpt || [])])]; }
       if (le.brx || se.brx) e.brx = 1;   // 백룸 탈출 이벤트 칭호: 한 기기에서라도 받았으면 계정에 유지 (받기 자체는 기기마다 — 10_event.js)
+      if (le.gr || se.gr) e.gr = [...new Set([...(se.gr || []), ...(le.gr || [])])];   // 받은 보상 id (보상 대기열 — 두 번 들어가지 않게)
       e.welcome = 1; e.rev = Math.max(le.rev || 0, se.rev || 0) + 1; e.dev = DEV;
       out.eco = e;
     }
@@ -430,6 +463,6 @@ const Eco = (() => {
   function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; else if (kind === 'bp') bpAdd(n, true); changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, brClaim, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, brClaim, grant, flushGrants, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();

@@ -1155,6 +1155,13 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .ti-d b { font-size: 0.84rem; } .ti-d small { font-size: 0.7rem; color: var(--dim); }
 .ti-none { flex: 1; padding: 4px 8px; color: var(--dim); font-weight: 700; }
 .prof-acct { display: flex; flex-direction: column; gap: 6px; padding: 10px 4px; }
+/* v21 비밀번호 변경: 입력 셋 + 버튼 (좁은 화면은 한 줄씩) */
+.pw-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pw-form input { min-width: 0; font: inherit; font-size: 1rem; color: var(--sand); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line-2); border-radius: 4px; padding: 8px 10px; }
+.pw-form input:focus { outline: none; border-color: var(--amber); }
+.pw-form input:first-child { grid-column: 1 / -1; }
+.pw-form button { grid-column: 1 / -1; }
+@media (max-width: 520px) { .pw-form { grid-template-columns: 1fr; } }
 @media (max-height: 520px) { .menu.prof { max-height: 96vh; gap: 6px; } .prof-hero { padding: 2px 4px 0 12px; } .prof-hero .pf { --s: 56px !important; } .prof-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); padding-top: 12px; } }
 .tier .tier-ext { display: block; margin-top: 2px; font-size: 0.66rem; font-weight: 700; color: #ff7a6a; }
 
@@ -2110,8 +2117,8 @@ const CLOUD_CFG = {
   idDomain: 'lds-training.vercel.app',
   sdk: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js',
 };
-// 개발자 계정 아이디(소문자로 비교). 이 아이디로 로그인하면 모든 스킨 + 개발자 도구 (10_dev.js)
-//  주의: 아이디는 먼저 가입한 사람이 가지므로, 쓰려는 아이디는 직접 먼저 가입해 둘 것
+// 개발자 계정은 서버의 관리자 목록(supabase/admin.sql 의 public.admins, 계정 고유번호)으로 정한다 (v21) — 아이디를 바꿔도 그대로
+//  아래 아이디는 서버에 admin.sql 을 아직 실행하지 않았을 때만 쓰는 예비 값(소문자로 비교)
 const DEV_IDS = ['개발자'];
 
 // ---------- 00_core.js ----------
@@ -20242,6 +20249,12 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v21', d: '2026-11-18', t: '계정 보안 · 백룸 보상 오류 수정', items: [
+    '프로필 → 계정에 비밀번호 변경 추가 — 지금 비밀번호를 확인한 뒤 바꾸고, 이 기기를 뺀 다른 모든 기기의 로그인을 끊음',
+    '개발자 계정을 아이디가 아니라 서버의 관리자 등록(계정 고유번호)으로 확인 — 아이디를 바꿔도 개발자 도구가 그대로이고, 다른 사람이 같은 아이디로 가입해도 개발자가 아님',
+    '백룸 탈출 보상: 계정을 불러오는 중에 받거나 받자마자 창을 닫으면 보상이 사라지던 오류 수정 — 서버에 저장될 때까지 기기에 보관했다가 넣음',
+    '예전에 그렇게 사라진 백룸 보상은 그 기기에서 로그인하면 한 번 다시 지급 · 이벤트 창에 받은 계정 이름 표시',
+  ] },
   { v: 'v21', d: '2026-11-16', t: '판처파우스트 스킨 3종 · 폭발 개편', items: [
     "판처파우스트 스킨 3종: 핵탄두(울트라레어 · 아스널 상자) · SANTA'S DELIVERY(크리스마스 EXCLUSIVE) · EVENT HORIZON(엡실론 Ε-09)",
     '스킨마다 탄두를 따로 칠하고, 날아가는 로켓의 모양·꼬리와 폭발까지 스킨을 따름 (모양만 — 성능은 같음)',
@@ -20347,7 +20360,7 @@ const ChangeLog = (() => {
 // ============================================================
 const Cloud = (() => {
   const cfg = CLOUD_CFG, enabled = !!(cfg.url && cfg.key);
-  let sb = null, loading = null, user = null, name = null, status = enabled ? 'idle' : 'off', lastSync = 0, dirty = false, syncT = null, busy = false, lastErr = '';
+  let sb = null, loading = null, user = null, name = null, status = enabled ? 'idle' : 'off', lastSync = 0, dirty = false, syncT = null, busy = false, lastErr = '', admin = false;
   const ID_RE = /^[가-힣A-Za-z0-9_]+$/;
 
   // ---------- 아이디 규칙 ----------
@@ -20367,6 +20380,8 @@ const Cloud = (() => {
     const m = ((err && (err.message || err.error_description)) || String(err || '')).toLowerCase(), code = err && err.code;
     if (code === 'user_already_exists' || m.includes('already registered') || m.includes('already exists')) return '이미 사용 중인 아이디입니다';
     if (code === 'invalid_credentials' || m.includes('invalid login credentials')) return '아이디 또는 비밀번호가 맞지 않습니다';
+    if (code === 'same_password' || m.includes('different from the old')) return '지금 비밀번호와 같습니다 — 다른 비밀번호로 정해 주세요';
+    if (code === 'reauthentication_needed' || m.includes('reauthenticat')) return '보안을 위해 로그아웃 후 다시 로그인한 뒤 바꿔 주세요';
     if (code === 'weak_password' || m.includes('password should be')) return '비밀번호가 너무 짧거나 단순합니다 (6자 이상)';
     if (code === 'over_request_rate_limit' || code === 'over_email_send_rate_limit' || m.includes('rate limit')) return '요청이 너무 많습니다. 잠시 뒤 다시 시도하세요';
     if (code === 'email_not_confirmed' || m.includes('not confirmed')) return '서버 설정 필요: Supabase에서 "Confirm email"을 꺼 주세요';
@@ -20444,6 +20459,7 @@ const Cloud = (() => {
       if (error) throw error;
       base = snap(STATS);
       lastSync = Date.now(); status = 'online'; lastErr = '';
+      Eco.flushGrants('saved');   // 서버에 저장된 보상은 대기열에서 지움 (10_eco.js)
       return true;
     } catch (e) { status = 'error'; lastErr = msgOf(e); dirty = true; return false; }
     finally { busy = false; render(); if (dirty && status !== 'error') schedule(1500); }
@@ -20490,10 +20506,41 @@ const Cloud = (() => {
     }
     store.set('account', { id: u.id, name });
     status = 'online'; lastSync = Date.now();
+    admin = await checkAdmin(name);
+    Eco.flushGrants('login');   // 계정을 불러오는 중에 받은 보상 · 서버에 아직 못 올린 보상을 이 계정 기록에 다시 넣음 (10_eco.js)
+    EvBR.recover();             // 예전에 이 기기에서 받았는데 계정에 들어오지 않은 백룸 보상을 한 번 복구 (10_event.js)
     Dev.onLogin();   // 개발자 계정이면 모든 스킨 지급 (10_dev.js)
     refreshUi();
     if (G.onAuth) try { G.onAuth(true); } catch (e) { console.warn(e); } // 친구·파티 연결
     return note;
+  }
+
+  // 관리자(개발자) 여부: 서버의 관리자 목록(supabase/admin.sql 의 public.admins — 계정 고유번호)으로 판단
+  //  → 아이디를 바꿔도 관리자 그대로이고, 다른 사람이 '개발자' 아이디를 만들어도 관리자가 아니다
+  //  서버에 admin.sql 이 아예 없을 때만 예전처럼 아이디(DEV_IDS)로 본다
+  async function checkAdmin(nm) {
+    try {
+      const { data, error } = await sb.rpc('is_admin');
+      if (!error) return data === true;
+      const m = String(error.message || '').toLowerCase();
+      if (error.code === 'PGRST202' || m.includes('could not find') || m.includes('does not exist')) return DEV_IDS.includes(String(nm || '').normalize('NFC').trim().toLowerCase());
+    } catch (e) { /* 연결 실패: 관리자가 아닌 것으로 */ }
+    return false;
+  }
+  // 비밀번호 변경: 지금 비밀번호로 다시 로그인해 확인 → 새 비밀번호로 바꿈 → 이 기기를 뺀 다른 모든 기기의 로그인을 끊음
+  //  돌려주는 값: 다른 기기 로그아웃까지 됐으면 true
+  async function changePassword(cur, pw, pw2) {
+    if (!sb || !user) throw new Error('로그인이 필요합니다');
+    if (!cur) throw new Error('지금 비밀번호를 입력하세요');
+    if (!pw || pw.length < 6) throw new Error('새 비밀번호는 6자 이상으로 정해 주세요');
+    if (pw !== pw2) throw new Error('새 비밀번호 확인이 일치하지 않습니다');
+    if (pw === cur) throw new Error('지금 비밀번호와 같습니다 — 다른 비밀번호로 정해 주세요');
+    const a = await sb.auth.signInWithPassword({ email: user.email || idEmail(name), password: cur });
+    if (a.error) { const m = String(a.error.message || '').toLowerCase(); throw new Error(a.error.code === 'invalid_credentials' || m.includes('invalid login credentials') ? '지금 비밀번호가 맞지 않습니다' : msgOf(a.error)); }
+    if (a.data && a.data.user) user = a.data.user;
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) throw new Error(msgOf(error));
+    try { const r = await sb.auth.signOut({ scope: 'others' }); return !(r && r.error); } catch (e) { return false; }
   }
 
   // ---------- 공개 API ----------
@@ -20540,7 +20587,7 @@ const Cloud = (() => {
     if (dirty) await pushNow();
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ }
     if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
-    user = null; name = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
+    user = null; name = null; admin = false; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
     store.set('account', null);
     restoreGuest();
     refreshUi();
@@ -20606,8 +20653,8 @@ const Cloud = (() => {
     $('acctSyncNow').addEventListener('click', async () => { const ok = await pushNow(); render(); if (ok) msg('저장했습니다', true); });
     render();
   }
-  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
-    get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get status() { return status; }, get lastError() { return lastErr; } };
+  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
+    get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get admin() { return admin; }, get status() { return status; }, get lastError() { return lastErr; } };
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'
 const playerName = () => (Cloud.user && Cloud.name) || '나';
@@ -20615,7 +20662,8 @@ const playerName = () => (Cloud.user && Cloud.name) || '나';
 // ---------- 10_dev.js ----------
 // ============================================================
 // 10_dev.js — 개발자 계정: 모든 스킨 + 개발자 도구
-//  · 개발자 계정 = 로그인한 아이디가 DEV_IDS(00_config.js)에 있는 계정 (지금은 '개발자')
+//  · 개발자 계정 = 서버의 관리자 목록(supabase/admin.sql public.admins)에 있는 계정 — 아이디가 아니라 계정 고유번호로 판단 (v21)
+//    → 아이디를 바꿔도 개발자 그대로, 다른 사람이 '개발자' 아이디를 만들어도 개발자가 아님 (서버에 admin.sql 이 없을 때만 DEV_IDS 아이디로)
 //  · 로그인할 때마다 옷·차량·총기 스킨을 모두 그 계정 기록에 넣는다 → 서버에 저장, 새 스킨이 생기면 다음 로그인 때 추가
 //  · 개발자 도구: 로비 오른쪽 위 'DEV' 버튼 · 경기 중 메뉴 → '개발자 도구'
 //    재화·레벨·출석·미션 / 경기: 무적 · 무한 탄약 · 총 지급(부착물·탄약 포함) · 장비 풀세트 · 차량 소환
@@ -20627,7 +20675,7 @@ const playerName = () => (Cloud.user && Cloud.name) || '나';
 const Dev = (() => {
   const F = Object.assign({ god: false, ammo: false, tp: false, zone: false, stats: false }, store.get('dev', null) || {});
   const save = () => store.set('dev', F);
-  const is = () => !!(Cloud.user && Cloud.name && DEV_IDS.includes(String(Cloud.name).normalize('NFC').trim().toLowerCase()));
+  const is = () => !!(Cloud.user && Cloud.admin);   // 로그인할 때 서버에 물어본 관리자 여부 (10_cloud.js checkAdmin)
   const inMatch = () => G.state === 'play' && !!G.player;
   const cheatsOk = () => is() && inMatch() && !G.net;
   const cheat = (k) => !!F[k] && is() && !G.net;   // 경기 코드에서 부르는 검사 (같이 하기에선 항상 꺼짐)
@@ -21612,8 +21660,40 @@ const Eco = (() => {
   }
   // 경기 중 골드 탄피 주머니 (바로 지급)
   function found(n) { E().gold += n; changed('found'); }
-  // 홍보 이벤트 보상 (10_event.js 가 기기마다 1번만 부름): 골드 탄피 + 칭호 '백룸 탈출자'(STATS.eco.brx)
-  function brClaim(gold) { const e = E(); e.gold += gold; e.brx = 1; changed('brx'); return gold; }
+  // ---------- 보상 대기열 (v21) — 이벤트 보상이 사라지지 않게 ----------
+  //  문제였던 것: 백룸에서 돌아와 새로 열린 창은 계정을 불러오는 데 몇 초 걸리는데, 그 사이 받은 보상은 기기 기록에만 들어갔다가
+  //   계정을 다 불러오면서 서버 기록으로 덮여 사라졌다(1,000 → 30,000 차액 지급도 같은 이유). 받자마자 창을 닫아 서버에 못 올린 보상도 사라졌다
+  //  지금: 보상을 기기에 따로 적어 두고(store 'pendG') 계정을 다 불러온 뒤 넣으며, 서버에 저장될 때까지 지우지 않는다
+  //   넣은 보상은 계정 기록(STATS.eco.gr = 받은 보상 id)에 남아 다시 불러와도 두 번 들어가지 않는다
+  const PEND = 'pendG';
+  const pend = () => { const P = store.get(PEND, null); return Array.isArray(P) ? P : []; };
+  function grantApply(g) {
+    const e = E(); if (!Array.isArray(e.gr)) e.gr = [];
+    if (e.gr.includes(g.id)) return false;
+    e.gr.push(g.id); if (g.gold) e.gold += g.gold; if (g.brx) e.brx = 1;
+    changed('grant'); return true;
+  }
+  // g = { id, gold, brx } → 'ok'(지금 넣음) · 'wait'(계정을 불러오는 중 — 다 불러오면 들어감)
+  function grant(g) {
+    const P = pend(); if (!P.some((x) => x.id === g.id)) { P.push(g); store.set(PEND, P); }
+    if (typeof Cloud !== 'undefined' && Cloud.status === 'restoring') return 'wait';
+    grantApply(g);
+    if (!(typeof Cloud !== 'undefined' && Cloud.user) && !store.get('account', null)) store.set(PEND, pend().filter((x) => x.id !== g.id));   // 계정을 쓰지 않는 기기(게스트): 서버가 없으니 바로 끝
+    return 'ok';
+  }
+  // mode 'login': 계정 기록을 막 불러옴 → 기록에 없는 것은 넣고(서버에 저장될 때까지 남김), 이미 있는 것은 지움 / 'saved': 서버 저장 성공 → 기록에 있는 것만 지움
+  function flushGrants(mode) {
+    const P = pend(); if (!P.length) return;
+    const e = E(), left = [];
+    for (const g of P) {
+      const had = Array.isArray(e.gr) && e.gr.includes(g.id);
+      if (mode === 'login' && !had) { grantApply(g); left.push(g); }
+      else if (!had) left.push(g);
+    }
+    store.set(PEND, left);
+  }
+  // 홍보 이벤트 보상 (예전 이름 — 지금은 10_event.js 가 grant 에 id 를 붙여 부름)
+  function brClaim(gold) { return grant({ id: 'brx:' + Date.now().toString(36), gold, brx: 1 }); }
   // ---------- 골드 탄피 이벤트 ----------
   function evS() {
     const e = E(), d = today(), w = weekKey();
@@ -21707,6 +21787,7 @@ const Eco = (() => {
         else e.bp = lb && sb ? ((lb.s || 0) > (sb.s || 0) ? lb : sb) : lb || sb || undefined;
         if (le.bpt || se.bpt) e.bpt = [...new Set([...(se.bpt || []), ...(le.bpt || [])])]; }
       if (le.brx || se.brx) e.brx = 1;   // 백룸 탈출 이벤트 칭호: 한 기기에서라도 받았으면 계정에 유지 (받기 자체는 기기마다 — 10_event.js)
+      if (le.gr || se.gr) e.gr = [...new Set([...(se.gr || []), ...(le.gr || [])])];   // 받은 보상 id (보상 대기열 — 두 번 들어가지 않게)
       e.welcome = 1; e.rev = Math.max(le.rev || 0, se.rev || 0) + 1; e.dev = DEV;
       out.eco = e;
     }
@@ -21767,7 +21848,7 @@ const Eco = (() => {
   function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; else if (kind === 'bp') bpAdd(n, true); changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, brClaim, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, brClaim, grant, flushGrants, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();
 
@@ -21779,6 +21860,8 @@ const Eco = (() => {
 //      이 창이 열려 있으면 postMessage 로 바로 · 아니면 탈출 화면의 '보상 받기' 링크로 ?brx=코드 를 달고 돌아옴
 //  · 코드가 이 기기의 n 과 서명이 맞아야 인정(링크를 남에게 나눠 줘도 다른 기기에서는 안 됨) → '보상 받기' 로 골드 탄피 + 칭호 '백룸 탈출자'
 //  · 받은 기록은 이 기기(localStorage)에 — 기기마다 1번. 칭호는 계정(STATS.eco.brx)에 남는다
+//  · v21: 보상은 Eco.grant(보상 대기열)로 넣는다 — 계정을 불러오는 중에 받아도, 서버에 올리기 전에 창을 닫아도 사라지지 않음
+//    예전 판에서 그렇게 사라진 보상은 그 기기에서 로그인하면 한 번 복구 (recover)
 //  · 서명은 두 게임이 같은 식(FNV-1a)으로 만든다 — 실제 돈이 오가지 않는 홍보 보상이라 가볍게 막는 정도
 // ============================================================
 const BR_EVENT = { url: 'https://backrooms-theta.vercel.app/', origin: 'https://backrooms-theta.vercel.app', gold: 30000, salt: 'ldr-backrooms-escape-v1', title: '백룸 탈출자' };
@@ -21843,18 +21926,29 @@ const EvBR = (() => {
     return true;
   }
   // 보상이 늘었을 때(1,000 → 30,000): 이미 받은 기기에는 차액을 한 번 더 (s.gold = 이 기기에서 받은 양)
+  //  v21: 보상은 Eco.grant(보상 대기열)로 — 계정을 불러오는 중이어도 사라지지 않고, 서버에 저장될 때까지 기기에 남는다
   function topUp() {
     const s = get(); if (s.st !== 'done') return;
     const had = s.gold || 1000; if (had >= BR_EVENT.gold) return;
-    s.gold = BR_EVENT.gold; put(s); Eco.brClaim(BR_EVENT.gold - had);
+    s.gold = BR_EVENT.gold; put(s); Eco.grant({ id: 'brxup:' + s.n + ':' + BR_EVENT.gold, gold: BR_EVENT.gold - had, brx: 1 });
     flash(`백룸 탈출 이벤트 보상이 늘었습니다 — 차액 골드 탄피 ${(BR_EVENT.gold - had).toLocaleString()}개를 더 드렸고, 사진 ‘스마일러’와 테두리 ‘백룸 탈출자’도 열렸습니다`); open();
   }
   function claim() {
     const s = get(); if (s.st !== 'esc') return;
-    s.st = 'done'; s.doneT = Date.now(); s.gold = BR_EVENT.gold; put(s);
-    Eco.brClaim(BR_EVENT.gold);
+    s.st = 'done'; s.doneT = Date.now(); s.gold = BR_EVENT.gold; s.fix = 1; s.who = (typeof Cloud !== 'undefined' && Cloud.name) || ''; put(s);   // fix: 새 방식으로 받음 → 아래 복구 대상 아님 · who: 받은 계정 이름(표시용)
+    const r = Eco.grant({ id: 'brx:' + s.n, gold: BR_EVENT.gold, brx: 1 });
     const m = el('evMsg'); if (m) m.hidden = true;
     render(true); dots();
+    if (r === 'wait') flash('계정을 불러오는 중입니다 — 다 불러오면 보상이 계정에 들어갑니다');
+  }
+  // v21 복구: 예전 판에서는 계정을 불러오는 중에 받으면 보상이 사라졌다 → 이 기기는 받았는데 로그인한 계정에 '백룸 탈출자'가 없으면 한 번 다시 넣는다
+  //  기기마다 한 번만 (s.fix). 로그인한 계정을 다 불러온 뒤 10_cloud.js 가 부름
+  function recover() {
+    const s = get(); if (s.st !== 'done' || s.fix || typeof Cloud === 'undefined' || !Cloud.user) return;
+    s.fix = 1; put(s);
+    if (STATS.eco && STATS.eco.brx) return;   // 이 계정에 이미 들어와 있음
+    Eco.grant({ id: 'brxfix:' + s.n, gold: s.gold || BR_EVENT.gold, brx: 1 });
+    setTimeout(() => { try { HUD.lobbyNote(`백룸 탈출 이벤트 보상이 계정에 들어오지 않은 것을 확인해 다시 드렸습니다 — 골드 탄피 ${(s.gold || BR_EVENT.gold).toLocaleString()} · 칭호·사진·테두리`); } catch (e) { /* 로비 밖이면 생략 */ } }, 600);
   }
 
   // ---------- 화면 ----------
@@ -21885,7 +21979,7 @@ const EvBR = (() => {
     if (s.st === 'new') { st.textContent = '아직 참여하지 않았습니다'; act.appendChild(btn('백룸 들어가기 ↗', 'amber', go)); }
     else if (s.st === 'go') { st.innerHTML = '<i class="evb-wait"></i>백룸에서 탈출을 기다리는 중…'; act.appendChild(btn('백룸 다시 열기 ↗', '', go)); }
     else if (s.st === 'esc') { st.textContent = '탈출 확인 완료!'; act.appendChild(btn('보상 받기', 'amber pulse', claim)); }
-    else { st.textContent = justClaimed ? `받았습니다 — 골드 탄피 ${BR_EVENT.gold.toLocaleString()} · 칭호·사진·테두리 ‘${BR_EVENT.title}’ (프로필에서 바꿀 수 있음)` : '이 기기에서 받은 이벤트입니다 (사진·테두리·칭호는 프로필에서)'; const b = btn('받음 ✓', '', null); b.disabled = true; act.appendChild(b); act.appendChild(btn('백룸 또 하러 가기 ↗', 'ghost', () => window.open(BR_EVENT.url, '_blank'))); }
+    else { st.textContent = justClaimed ? `받았습니다 — 골드 탄피 ${BR_EVENT.gold.toLocaleString()} · 칭호·사진·테두리 ‘${BR_EVENT.title}’ (프로필에서 바꿀 수 있음)` : `이 기기에서 받은 이벤트입니다${s.who ? ` (받은 계정: ${s.who})` : ''} — 사진·테두리·칭호는 프로필에서`; const b = btn('받음 ✓', '', null); b.disabled = true; act.appendChild(b); act.appendChild(btn('백룸 또 하러 가기 ↗', 'ghost', () => window.open(BR_EVENT.url, '_blank'))); }
     act.prepend(st); txt.appendChild(act);
     if (justClaimed) { const p = h('div', 'evb-pop', `+${BR_EVENT.gold.toLocaleString()}`); card.appendChild(p); setTimeout(() => p.remove(), 1600); }
     card.appendChild(txt); box.appendChild(card);
@@ -21911,7 +22005,7 @@ const EvBR = (() => {
   let pendingCode = null;
   // 로비에 들어올 때마다: 경기 중에 온 탈출 알림 · 돌아오기 링크로 온 코드를 처리
   function lobby() { dots(); if (pendingCode) { const c = pendingCode; pendingCode = null; accept(c); } else topUp(); }
-  return { init, lobby, open, banner, state: () => get().st, _sign: sign, _accept: accept };
+  return { init, lobby, open, banner, recover, state: () => get().st, _sign: sign, _accept: accept };
 })();
 
 // ---------- 10_hud.js ----------
@@ -26384,6 +26478,9 @@ const Prof = (() => {
       box.innerHTML = `<div class="eyebrow">아이디 변경</div><p class="micro">3일에 한 번 바꿀 수 있습니다. 바꾸면 다음 로그인부터 새 아이디로 로그인합니다 (비밀번호는 그대로).</p>
         <form class="fr-add" id="profNameForm" autocomplete="off"><input id="profNewName" maxlength="10" placeholder="새 아이디 (2~10자)" ${left ? 'disabled' : ''}><button class="btn amber" type="submit" ${left ? 'disabled' : ''}>변경</button></form>
         <p class="acct-msg${nameMsg.startsWith('!') ? ' bad' : nameMsg ? ' ok' : ''}" id="profNameMsg">${left ? `다음 변경까지 ${fmtLeft(left)}` : (nameMsg || '').replace(/^!/, '')}</p>
+        <div class="eyebrow mt">비밀번호 변경</div><p class="micro">지금 비밀번호를 확인한 뒤 바꿉니다. 바꾸면 <b>이 기기를 뺀 다른 모든 기기의 로그인이 끊깁니다</b> — 다른 사람이 비밀번호를 알게 됐을 때 바로 바꾸세요.</p>
+        <form class="pw-form" id="profPwForm" autocomplete="off"><input type="password" id="profPwCur" placeholder="지금 비밀번호" autocomplete="current-password"><input type="password" id="profPwNew" placeholder="새 비밀번호 (6자 이상)" autocomplete="new-password"><input type="password" id="profPwNew2" placeholder="새 비밀번호 확인" autocomplete="new-password"><button class="btn amber" type="submit">비밀번호 바꾸기</button></form>
+        <p class="acct-msg" id="profPwMsg"></p>
         <div class="eyebrow mt">저장</div><p class="micro" id="profSync">${Cloud.status === 'error' ? '저장 실패 — ' + Cloud.lastError : '전적·레벨·랭크·꾸미기·설정이 서버에 저장되어 다른 기기에서도 이어집니다.'}</p>
         <div class="acct-btns"><button class="btn" type="button" id="profSyncNow">지금 저장</button><button class="btn danger" type="button" id="profLogout">로그아웃</button></div>`;
       B.appendChild(box);
@@ -26392,6 +26489,17 @@ const Prof = (() => {
         nameMsg = '바꾸는 중…'; $('profNameMsg').textContent = nameMsg;
         try { await Cloud.rename(v); STATS.nameT = Date.now(); saveStats(); nameMsg = `아이디를 「${Cloud.name}」(으)로 바꿨습니다`; changed(); HUD.lobbyNote(nameMsg); }
         catch (err) { nameMsg = '!' + (err.message || String(err)); render(); }
+      };
+      $('profPwForm').onsubmit = async (e) => {
+        e.preventDefault(); const m = $('profPwMsg'), btn = $('profPwForm').querySelector('button'); if (btn.disabled) return;
+        btn.disabled = true; m.className = 'acct-msg ok'; m.textContent = '바꾸는 중…';
+        try {
+          const others = await Cloud.changePassword($('profPwCur').value, $('profPwNew').value, $('profPwNew2').value);
+          for (const id of ['profPwCur', 'profPwNew', 'profPwNew2']) $(id).value = '';
+          m.textContent = others ? '비밀번호를 바꿨습니다 — 다른 기기의 로그인은 모두 끊겼습니다 (이미 열린 화면은 최대 1시간 안에 끊김)' : '비밀번호를 바꿨습니다 (다른 기기 로그아웃은 확인하지 못했습니다)';
+          HUD.lobbyNote('비밀번호를 바꿨습니다');
+        } catch (err) { m.className = 'acct-msg bad'; m.textContent = err.message || String(err); }
+        finally { btn.disabled = false; }
       };
       $('profSyncNow').onclick = async () => { const ok = await Cloud.pushNow(); $('profSync').textContent = ok ? '저장했습니다' : '저장 실패 — ' + Cloud.lastError; };
       $('profLogout').onclick = async () => { await Cloud.signOut(); close(); HUD.lobbyNote('로그아웃했습니다 — 이 기기의 게스트 기록으로 돌아왔습니다'); };

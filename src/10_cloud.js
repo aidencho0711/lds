@@ -10,7 +10,7 @@
 // ============================================================
 const Cloud = (() => {
   const cfg = CLOUD_CFG, enabled = !!(cfg.url && cfg.key);
-  let sb = null, loading = null, user = null, name = null, status = enabled ? 'idle' : 'off', lastSync = 0, dirty = false, syncT = null, busy = false, lastErr = '';
+  let sb = null, loading = null, user = null, name = null, status = enabled ? 'idle' : 'off', lastSync = 0, dirty = false, syncT = null, busy = false, lastErr = '', admin = false;
   const ID_RE = /^[가-힣A-Za-z0-9_]+$/;
 
   // ---------- 아이디 규칙 ----------
@@ -30,6 +30,8 @@ const Cloud = (() => {
     const m = ((err && (err.message || err.error_description)) || String(err || '')).toLowerCase(), code = err && err.code;
     if (code === 'user_already_exists' || m.includes('already registered') || m.includes('already exists')) return '이미 사용 중인 아이디입니다';
     if (code === 'invalid_credentials' || m.includes('invalid login credentials')) return '아이디 또는 비밀번호가 맞지 않습니다';
+    if (code === 'same_password' || m.includes('different from the old')) return '지금 비밀번호와 같습니다 — 다른 비밀번호로 정해 주세요';
+    if (code === 'reauthentication_needed' || m.includes('reauthenticat')) return '보안을 위해 로그아웃 후 다시 로그인한 뒤 바꿔 주세요';
     if (code === 'weak_password' || m.includes('password should be')) return '비밀번호가 너무 짧거나 단순합니다 (6자 이상)';
     if (code === 'over_request_rate_limit' || code === 'over_email_send_rate_limit' || m.includes('rate limit')) return '요청이 너무 많습니다. 잠시 뒤 다시 시도하세요';
     if (code === 'email_not_confirmed' || m.includes('not confirmed')) return '서버 설정 필요: Supabase에서 "Confirm email"을 꺼 주세요';
@@ -107,6 +109,7 @@ const Cloud = (() => {
       if (error) throw error;
       base = snap(STATS);
       lastSync = Date.now(); status = 'online'; lastErr = '';
+      Eco.flushGrants('saved');   // 서버에 저장된 보상은 대기열에서 지움 (10_eco.js)
       return true;
     } catch (e) { status = 'error'; lastErr = msgOf(e); dirty = true; return false; }
     finally { busy = false; render(); if (dirty && status !== 'error') schedule(1500); }
@@ -153,10 +156,41 @@ const Cloud = (() => {
     }
     store.set('account', { id: u.id, name });
     status = 'online'; lastSync = Date.now();
+    admin = await checkAdmin(name);
+    Eco.flushGrants('login');   // 계정을 불러오는 중에 받은 보상 · 서버에 아직 못 올린 보상을 이 계정 기록에 다시 넣음 (10_eco.js)
+    EvBR.recover();             // 예전에 이 기기에서 받았는데 계정에 들어오지 않은 백룸 보상을 한 번 복구 (10_event.js)
     Dev.onLogin();   // 개발자 계정이면 모든 스킨 지급 (10_dev.js)
     refreshUi();
     if (G.onAuth) try { G.onAuth(true); } catch (e) { console.warn(e); } // 친구·파티 연결
     return note;
+  }
+
+  // 관리자(개발자) 여부: 서버의 관리자 목록(supabase/admin.sql 의 public.admins — 계정 고유번호)으로 판단
+  //  → 아이디를 바꿔도 관리자 그대로이고, 다른 사람이 '개발자' 아이디를 만들어도 관리자가 아니다
+  //  서버에 admin.sql 이 아예 없을 때만 예전처럼 아이디(DEV_IDS)로 본다
+  async function checkAdmin(nm) {
+    try {
+      const { data, error } = await sb.rpc('is_admin');
+      if (!error) return data === true;
+      const m = String(error.message || '').toLowerCase();
+      if (error.code === 'PGRST202' || m.includes('could not find') || m.includes('does not exist')) return DEV_IDS.includes(String(nm || '').normalize('NFC').trim().toLowerCase());
+    } catch (e) { /* 연결 실패: 관리자가 아닌 것으로 */ }
+    return false;
+  }
+  // 비밀번호 변경: 지금 비밀번호로 다시 로그인해 확인 → 새 비밀번호로 바꿈 → 이 기기를 뺀 다른 모든 기기의 로그인을 끊음
+  //  돌려주는 값: 다른 기기 로그아웃까지 됐으면 true
+  async function changePassword(cur, pw, pw2) {
+    if (!sb || !user) throw new Error('로그인이 필요합니다');
+    if (!cur) throw new Error('지금 비밀번호를 입력하세요');
+    if (!pw || pw.length < 6) throw new Error('새 비밀번호는 6자 이상으로 정해 주세요');
+    if (pw !== pw2) throw new Error('새 비밀번호 확인이 일치하지 않습니다');
+    if (pw === cur) throw new Error('지금 비밀번호와 같습니다 — 다른 비밀번호로 정해 주세요');
+    const a = await sb.auth.signInWithPassword({ email: user.email || idEmail(name), password: cur });
+    if (a.error) { const m = String(a.error.message || '').toLowerCase(); throw new Error(a.error.code === 'invalid_credentials' || m.includes('invalid login credentials') ? '지금 비밀번호가 맞지 않습니다' : msgOf(a.error)); }
+    if (a.data && a.data.user) user = a.data.user;
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) throw new Error(msgOf(error));
+    try { const r = await sb.auth.signOut({ scope: 'others' }); return !(r && r.error); } catch (e) { return false; }
   }
 
   // ---------- 공개 API ----------
@@ -203,7 +237,7 @@ const Cloud = (() => {
     if (dirty) await pushNow();
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ }
     if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
-    user = null; name = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
+    user = null; name = null; admin = false; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
     store.set('account', null);
     restoreGuest();
     refreshUi();
@@ -269,8 +303,8 @@ const Cloud = (() => {
     $('acctSyncNow').addEventListener('click', async () => { const ok = await pushNow(); render(); if (ok) msg('저장했습니다', true); });
     render();
   }
-  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
-    get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get status() { return status; }, get lastError() { return lastErr; } };
+  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
+    get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get admin() { return admin; }, get status() { return status; }, get lastError() { return lastErr; } };
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'
 const playerName = () => (Cloud.user && Cloud.name) || '나';

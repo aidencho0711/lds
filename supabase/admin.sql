@@ -11,7 +11,8 @@ create table if not exists public.admins (
   id uuid primary key references auth.users (id) on delete cascade
 );
 alter table public.admins enable row level security;   -- 정책 없음: API로는 아무도 못 읽음 (아래 함수만 사용)
-insert into public.admins (id) select id from public.profiles where lower(username) = lower('개발자') on conflict do nothing;
+-- 관리자가 아직 하나도 없을 때만 아이디 '개발자' 계정을 등록 (v21: 다시 실행해도 지금 '개발자' 아이디를 가진 다른 계정이 관리자가 되지 않게)
+insert into public.admins (id) select id from public.profiles where lower(username) = lower('개발자') and not exists (select 1 from public.admins) on conflict do nothing;
 
 create or replace function public.is_admin() returns boolean
 language sql security definer set search_path = '' stable as $$
