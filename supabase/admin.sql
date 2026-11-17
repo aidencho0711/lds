@@ -20,16 +20,19 @@ language sql security definer set search_path = '' stable as $$
 $$;
 
 -- 계정 목록 (최근 저장 순, 이름 검색)
+--  v21: 숫자 칸을 bigint 로 — 경험치가 21억(integer 한도)을 넘는 계정이 하나라도 있으면 'integer out of range' 로 목록 전체가 안 열렸다
+--  반환 형식이 바뀌면 create or replace 가 안 되므로 먼저 지운다 (함수만 지움, 기록은 그대로)
+drop function if exists public.admin_list(text);
 create or replace function public.admin_list(p_q text default '')
-returns table (id uuid, username text, created_at timestamptz, updated_at timestamptz, xp integer, matches integer, wins integer, kills integer, gold integer, rp integer, admin boolean)
+returns table (id uuid, username text, created_at timestamptz, updated_at timestamptz, xp bigint, matches bigint, wins bigint, kills bigint, gold bigint, rp bigint, admin boolean)
 language plpgsql security definer set search_path = '' as $$
 begin
   if not exists (select 1 from public.admins a where a.id = auth.uid()) then raise exception 'not admin'; end if;
   return query
     select p.id, p.username, p.created_at, d.updated_at,
-      coalesce((d.stats ->> 'xp')::numeric, 0)::integer, coalesce((d.stats ->> 'matches')::numeric, 0)::integer,
-      coalesce((d.stats ->> 'wins')::numeric, 0)::integer, coalesce((d.stats ->> 'kills')::numeric, 0)::integer,
-      coalesce((d.stats -> 'eco' ->> 'gold')::numeric, 0)::integer, coalesce((d.rank ->> 'rp')::numeric, 0)::integer,
+      least(coalesce(floor((d.stats ->> 'xp')::numeric), 0), 9e15)::bigint, least(coalesce(floor((d.stats ->> 'matches')::numeric), 0), 9e15)::bigint,
+      least(coalesce(floor((d.stats ->> 'wins')::numeric), 0), 9e15)::bigint, least(coalesce(floor((d.stats ->> 'kills')::numeric), 0), 9e15)::bigint,
+      least(coalesce(floor((d.stats -> 'eco' ->> 'gold')::numeric), 0), 9e15)::bigint, least(coalesce(floor((d.rank ->> 'rp')::numeric), 0), 9e15)::bigint,
       exists (select 1 from public.admins a2 where a2.id = p.id)
     from public.profiles p left join public.player_data d on d.user_id = p.id
     where coalesce(p_q, '') = '' or p.username ilike '%' || p_q || '%'
@@ -63,8 +66,8 @@ begin
   select stats into s from public.player_data where user_id = p_id for update;
   s := coalesce(s, '{}'::jsonb);
   e := coalesce(s -> 'eco', jsonb_build_object('v', 1, 'gold', 1000, 'coin', 0, 'gcoin', 0, 'rev', 1, 'pulls', '{}'::jsonb, 'att', jsonb_build_object('last', '', 'n', 0), 'welcome', 1));
-  e := jsonb_set(e, '{gold}', to_jsonb(coalesce((e ->> 'gold')::numeric, 0)::integer + p_amount));
-  e := jsonb_set(e, '{rev}', to_jsonb(greatest(coalesce((e ->> 'rev')::numeric, 0)::integer + 1, 3)));
+  e := jsonb_set(e, '{gold}', to_jsonb(least(coalesce(floor((e ->> 'gold')::numeric), 0), 9e15)::bigint + p_amount));   -- v21: bigint (21억 넘는 골드도 지급 가능)
+  e := jsonb_set(e, '{rev}', to_jsonb(greatest(least(coalesce(floor((e ->> 'rev')::numeric), 0), 9e15)::bigint + 1, 3)));
   s := jsonb_set(s, '{eco}', e);
   s := jsonb_set(s, '{sync}', to_jsonb('admin:' || floor(extract(epoch from clock_timestamp()) * 1000)::bigint));
   insert into public.player_data (user_id, stats) values (p_id, s)

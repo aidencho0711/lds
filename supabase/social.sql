@@ -66,11 +66,14 @@ language sql security definer set search_path = '' as $$
 $$;
 
 -- 내 친구 목록 (상대 아이디·상태·받은 요청 여부·경험치 → 레벨 표시용)
+--  v21: 경험치를 bigint 로 — 경험치가 21억(integer 한도)을 넘는 친구가 있으면 'integer out of range' 로 친구 목록이 안 열렸다
+--  반환 형식이 바뀌면 create or replace 가 안 되므로 먼저 지운다 (함수만 지움, 친구 관계는 그대로)
+drop function if exists public.friend_list();
 create or replace function public.friend_list()
-returns table (id uuid, username text, status text, incoming boolean, xp integer)
+returns table (id uuid, username text, status text, incoming boolean, xp bigint)
 language sql security definer set search_path = '' stable as $$
   select p.id, p.username, f.status, (f.b = auth.uid()) as incoming,
-         coalesce(floor((d.stats ->> 'xp')::numeric), 0)::integer as xp
+         least(coalesce(floor((d.stats ->> 'xp')::numeric), 0), 9e15)::bigint as xp
   from public.friendships f
   join public.profiles p on p.id = case when f.a = auth.uid() then f.b else f.a end
   left join public.player_data d on d.user_id = p.id
