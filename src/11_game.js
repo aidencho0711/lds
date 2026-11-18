@@ -246,6 +246,19 @@ function mateJump(c, pl) {
   let k = 0; for (const m of teamMembers(c)) if (m !== c && m.mode === 'plane' && m.brain && planeOf(m) === pl) m.brain.jumpAt = pl.t + 0.3 + 0.35 * k++;
 }
 G.mateJump = (c) => mateJump(c);
+// 봇 강하 계획 (방장을 넘겨받은 기기가 수송기·스타트 섬에 있는 봇을 맡을 때 — 10_net.js adopt)
+//  팀의 사람이 아직 수송기에 있으면 그 사람을 따라 뛰고, 아니면 지역을 골라 그 위에서 뜀
+function planDrop(br, mate) {
+  const pl = G.plane; if (!pl) return;
+  if (mate && (mate.mode === 'plane' || G.island)) {
+    br.followJump = true; br.followC = mate; br.jumpAt = Infinity; br.chuteH = 95; br.dropTarget = { x: 0, z: 0 };
+    const a = rnd(0, TAU); br.followOff = [Math.cos(a) * rnd(6, 11), Math.sin(a) * rnd(6, 11)]; return;
+  }
+  br.dropTarget = pickDropTarget(); br.chuteH = rnd(70, 140);
+  const along = (br.dropTarget.x - pl.ax) * pl.dx + (br.dropTarget.z - pl.az) * pl.dz;
+  br.jumpAt = Math.max(pl.t + rnd(0.5, 2.5), clamp(along - rnd(40, 110), 60, pl.len - 80) / pl.speed);
+}
+G.planDrop = planDrop;
 // 자유낙하/낙하산 이동 (플레이어·봇 공용)
 function updateDrop(c, dt, sx, sz, dive) {
   const ground = groundAt(c.pos.x, c.pos.z, c.pos.y);
@@ -702,7 +715,6 @@ G.ui = function (a) {
     case 'closeMapPick': $('mapPickPanel').hidden = true; HUD.renderLobby(); break;
     case 'closeRanks': $('rankPanel').hidden = true; break;
     case 'quit': $('pausePanel').hidden = true; G.paused = false;
-      if (G.net && Net.isHost() && Net.othersPlaying() && !G.quitSure) { G.quitSure = true; setTimeout(() => { G.quitSure = false; }, 4000); HUD.toast('다른 사람이 아직 경기 중입니다 — 방장이 나가면 모두의 경기가 끝납니다. 한 번 더 누르면 나갑니다', 'warn'); $('pausePanel').hidden = false; G.paused = true; break; }
       if (G.training || G.dm || G.island) { toLobby(); break; }   // 스타트 섬(시작 전)에서 나가면 기록 없음
       if (G.player && G.state === 'play' && !G.over) {
         // 경기 중 나가기(관전 중 포함): 지금 살아 있는 팀 수를 순위로
@@ -714,12 +726,10 @@ G.ui = function (a) {
       toLobby(); break;
     case 'specNext': nextSpectate(); break;
     case 'again':
-      if (G.net && Net.isHost() && Net.othersPlaying() && !G.quitSure) { G.quitSure = true; setTimeout(() => { G.quitSure = false; }, 4000); HUD.toast('다른 사람이 아직 경기 중입니다 — 방장이 나가면 모두의 경기가 끝납니다. 한 번 더 누르면 나갑니다', 'warn'); break; }
       if (G.net || (Party.lockInfo() && !Party.isLeader())) { toLobby(); break; }
       if (SETTINGS.online && Cloud.user) { toLobby(); G.startMatch(); break; }   // 온라인 매칭: 로비에서 다시 줄 서기
       $('resultPanel').hidden = true; G.startMatch(); break;
     case 'lobby':
-      if (G.net && Net.isHost() && Net.othersPlaying() && !G.quitSure) { G.quitSure = true; setTimeout(() => { G.quitSure = false; }, 4000); HUD.toast('다른 사람이 아직 경기 중입니다 — 한 번 더 누르면 로비로 나갑니다(방장이 나가면 모두의 경기가 끝남)', 'warn'); break; }
       toLobby(); break;
   }
 };

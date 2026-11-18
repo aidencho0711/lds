@@ -81,6 +81,7 @@ const DM = (() => {
       const hl = r.human ? (r.look || (me ? myLook() : {})) : null, sk = !hl && r.diff ? BotSkin.forBot(BP, r.diff, seed, r.id) : null;
       const look = hl ? Body.makeLook(hl.eq, hl.body) : sk ? sk.look : Body.makeLook(null, Body.randomBody(mulberry32((seed + 7919 * (r.id + 1)) | 0)));
       const c = new Character({ id: r.id, name: r.name || names[i % names.length], isPlayer: me, look, team: r.team });
+      if (!r.human) c.diffKey = r.diff || null; else c.human = true;   // 봇 난이도 — 방장을 넘겨받은 기기가 이 봇을 맡을 때 (10_net.js adopt) · 사람 표시
       if (hl) c.glook = hl.gun || (me ? Eco.glook() : null);   // 총기 스킨
       if (sk) { c.glook = sk.gun; G.botLooks.push(look); }
       c.slot = G.teams[r.team].members.length; G.teams[r.team].members.push(c); CHARS.push(c); sc.add(c.root);

@@ -5,6 +5,8 @@
 //   · 파티원: 내 캐릭터·내가 운전하는 차량·내가 던진 수류탄만 계산, 나머지는 받은 상태를 보간해서 그린다
 //  연결: WebRTC 데이터 채널(기기끼리 직접). 신호(offer/answer/ICE)는 파티 실시간 채널로
 //   · 온라인 매칭 경기(10_mm.js, cfg.mm)는 그 경기 전용 채널(ld-mm-*)로 — 파티원이 'hi'를 보내면 방장이 연결을 시작한다
+//  방장 넘겨주기(v22): 방장이 나가거나(로비·창 닫기 — 다음 방장을 골라 알림) 연결이 끊겨도(20초) 남은 사람 중 한 명이
+//   방장을 넘겨받아 봇·자기장·보급·빈 차량·점수를 이어서 계산하고, 다른 사람은 새 방장에게 다시 연결 → 경기는 계속
 //   · 12초 안에 직접 연결이 안 되면(일부 모바일 망) 파티 채널로 중계 — 초당 5회로 줄여 보낸다
 //     (Supabase 무료 플랜 실시간 메시지 한도가 프로젝트 전체 초당 100개라 직접 연결이 기본)
 //  피해: 쏜 쪽이 맞힌 것을 판정 → 맞은 캐릭터의 주인 기기로 'hit' → 주인이 방어구 계산·기절·사망 처리 후 결과를 알림
@@ -75,7 +77,7 @@ const Net = (() => {
     SETTINGS.game = cfg.game;
     const myIdx = cfg.humans.findIndex((h) => h.uid === Cloud.uid);
     N = { cfg, host: cfg.host === Cloud.uid, me: Cloud.uid, myIdx, peers: new Map(), quiet: 0, applying: 0, seq: 0, uidBase: (myIdx + 1) * 1e7, uidN: 0, own,
-      items: new Map(), vehs: [], outB: [], tickT: 0, zoneT: 0, t0: now(), welcomed: false, ended: false, ready: false, hiT: 0, stats: { tx: 0, rx: 0 } };
+      items: new Map(), vehs: [], outB: [], tickT: 0, zoneT: 0, t0: now(), welcomed: false, ended: false, ready: false, hiT: 0, gone: new Set(), epoch: 0, mig: false, claimN: 0, claimT: 0, stats: { tx: 0, rx: 0 } };   // gone: 나간 사람 · epoch·mig: 방장 넘겨받은 횟수 · claim: 새 방장 알림
     G.net = N; G.netAuthority = () => !N || N.host;
     // 온라인 매칭: 이 경기 채널로 신호. 방장은 파티원이 '들어왔다(hi)'고 알릴 때 연결을 시작한다 (채널에 늦게 들어온 사람이 신호를 놓치지 않게)
     if (cfg.mm) MM.chOpen(cfg.mm, onMM, () => { if (N && !N.host) hi(); });
@@ -88,12 +90,17 @@ const Net = (() => {
   // 신호·중계 보내기: 온라인 매칭은 경기 채널, 파티는 파티 채널
   function bus(k, d) { return viaMM() ? MM.chSend(k, d) : Party.send(k, d); }
   function hi() { if (N && !N.host) { N.hiT = now(); bus('hi', { to: N.cfg.host }); } }
-  // 경기 채널로 온 메시지
+  // 경기 채널로 온 메시지 (나머지 sig·g·hi·host 는 파티 채널과 같이 onParty)
   function onMM(m) {
     if (!N || (m.to && m.to !== Cloud.uid)) return;
-    if (m.k === 'hi') { if (N.host) { const p = N.peers.get(m.from); if (p && !p.open && !p.relay && (!p.pc || now() - (p.offerT || 0) > 5)) offer(p); } return; }
-    if (m.k === 'bye') { peerLeft(m.from); return; }
+    if (m.k === 'bye') { peerLeft(m.from, m.next); return; }
     onParty(m);
+  }
+  // 파티원이 '연결해 주세요(hi)' → 방장이 offer (온라인 매칭 처음 · 방장을 넘겨받은 뒤)
+  function onHi(m) {
+    if (!N || !N.host) return;
+    const p = N.peers.get(m.from);
+    if (p && !p.open && !p.relay && (!p.pc || (p.offerT && now() - p.offerT > 5))) offer(p);
   }
   // 이번 경기만 쓴 방장 설정을 내 설정으로 되돌림 (온라인 매칭)
   function restoreOwn(n0) { if (n0 && n0.own) { Object.assign(SETTINGS, n0.own); n0.own = null; } }
@@ -163,6 +170,8 @@ const Net = (() => {
     if (m.to && m.to !== Cloud.uid) return;
     if (m.k === 'sig') { if (!N) { (pendBuf || (pendBuf = [])).push(m); setTimeout(() => { pendBuf = null; }, 15000); return; } onSig(m); }
     else if (m.k === 'g' && N) { const p = N.peers.get(m.from); if (p) { if (!p.relay && !p.open) toRelay(p, 'peer-relay'); recv(p, m.d); } }
+    else if (m.k === 'hi') onHi(m);
+    else if (m.k === 'host') onHostClaim(m);
   }
   function sendTo(p, obj, reliable) {
     if (!p.open && !p.relay) { if (reliable) { (p.q || (p.q = [])).push(obj); if (p.q.length > 300) p.q.shift(); } return; } // 아직 연결 전: 중요한 것만 모아 둔다
@@ -251,7 +260,7 @@ const Net = (() => {
       case 'loot': recvLoot(e); break;
       case 'lootReq': if (N.host) sendLoot(N.peers.get(from)); break;
       case 'vehs': recvVehs(e); break;
-      case 'bye': peerLeft(from === N.me ? e.from : (e.uid || from)); break;
+      case 'bye': peerLeft(from === N.me ? e.from : (e.uid || from), e.next); break;
       case 'isl': if (!N.host && G.island) Island.end(); break;   // 방장의 스타트 섬이 끝남 → 모두 수송기로
     }
   }
@@ -550,7 +559,9 @@ const Net = (() => {
     if (!N) return;
     const t = now();
     // 온라인 매칭 파티원: 방장의 offer 가 올 때까지 'hi'를 2.5초마다 다시 (방장이 채널에 늦게 들어온 경우)
-    if (viaMM() && !N.host) { const hp = N.peers.get(N.cfg.host); if (hp && !hp.open && !hp.relay && !hp.oid && t - N.hiT > 2.5) hi(); }
+    if ((viaMM() || N.mig) && !N.host) { const hp = N.peers.get(N.cfg.host); if (hp && !hp.open && !hp.relay && !hp.oid && t - N.hiT > 2.5) hi(); }
+    // 방장을 넘겨받은 기기: 3초마다 5번 '내가 방장' 알림 (다른 사람을 고른 파티원도 이쪽으로)
+    if (N.host && N.claimN > 0 && t - N.claimT > 3) { N.claimN--; N.claimT = t; bus('host', { uid: N.me, ep: N.epoch }); }
     // 연결 시간 초과 → 중계
     for (const p of N.peers.values()) {
       if (!p.open && !p.relay && t - p.t0 > 12) toRelay(p, 'timeout');
@@ -588,11 +599,14 @@ const Net = (() => {
   const charById2 = (uid) => CHARS.find((c) => c.net && c.net.owner === uid && N.cfg.humans.some((h) => h.uid === uid) && !c.botized) || null;
 
   // ---------- 나가기 ----------
-  function peerLeft(uid) {
-    if (!N || N.ended) return;
+  // next: 나가는 방장이 고른 다음 방장 (없으면 남은 사람 중 정해진 순서)
+  function peerLeft(uid, next) {
+    if (!N || N.ended || !uid || uid === N.me) return;
     const p = N.peers.get(uid); if (p && p.left) return; if (p) p.left = true;
+    if (N.gone.has(uid)) return;
+    N.gone.add(uid);
     const hm = N.cfg.humans.find((h) => h.uid === uid);
-    if (!N.host && uid === N.cfg.host) { hostGone(); return; }
+    if (!N.host && uid === N.cfg.host) { migrate(uid, next); return; }   // 방장이 나감 → 경기는 계속, 다음 사람이 방장
     if (N.host && hm) {
       // 떠난 파티원 캐릭터는 봇이 이어받는다
       const c = CHARS.find((x) => x.net && x.net.owner === uid && !x.botized);
@@ -600,7 +614,76 @@ const Net = (() => {
       HUD.toast(`${hm.name}님이 경기를 떠났습니다${c && c.alive ? ' — 봇이 이어서 합니다' : ''}`, 'warn');
     }
   }
+
+  // ---------- 방장 넘겨주기 (v22) ----------
+  //  방장이 로비로 나가거나 연결이 끊겨도 경기는 계속된다: 남은 사람 중 한 명이 방장(서버 역할)을 넘겨받는다
+  //  · 다음 방장 = 나가는 방장이 고른 사람(살아 있는 사람 우선) · 연결이 끊긴 경우는 남은 사람 중 살아 있는 사람 → 처음 명단 순서
+  //  · 새 방장: 봇·나간 사람 캐릭터를 맡아 AI 로 움직이고(보이던 총 + 예비 탄약), 자기장·보급·빈 차량·점수를 이어서 계산,
+  //    남은 사람에게 새로 연결(파티원이 'hi' → offer) · 3초마다 '내가 방장' 알림
+  //  · 다른 사람: 봇·나간 사람 캐릭터의 주인을 새 방장으로 바꾸고 새 방장에게 다시 연결
+  function successors(oldHost) {
+    const alive = (uid) => CHARS.some((c) => c.human && c.net && c.net.owner === uid && c.alive && !c.botized);
+    const list = N.cfg.humans.map((h) => h.uid).filter((u) => u !== oldHost && !N.gone.has(u));
+    return list.filter(alive).concat(list.filter((u) => !alive(u)));
+  }
+  function migrate(oldHost, next) {
+    const cand = successors(oldHost), nh = next && cand.includes(next) ? next : cand[0];
+    if (!nh) { hostGone(); return; }
+    if (nh === N.me) takeOver(oldHost); else follow(nh, oldHost);
+  }
+  function closePeer(p) { try { if (p.pc) p.pc.close(); } catch (e) { /* */ } }
+  function takeOver(oldHost) {
+    N.host = true; N.cfg.host = N.me; N.mig = true; N.epoch++;
+    G.netAuthority = () => !N || N.host;
+    for (const c of CHARS) {
+      if (!c.net || c.net.mine) continue;
+      const o = c.net.owner;
+      if (o !== oldHost && !N.gone.has(o) && N.cfg.humans.some((h) => h.uid === o)) continue;   // 다른 사람이 움직이는 캐릭터는 그대로
+      adopt(c);
+    }
+    for (const p of N.peers.values()) closePeer(p);
+    N.peers.clear();
+    for (const hm of N.cfg.humans) if (hm.uid !== N.me && !N.gone.has(hm.uid)) N.peers.set(hm.uid, newPeer(hm.uid, true, true));   // 상대가 'hi'를 보내면 offer
+    N.zoneT = 0; N.claimN = 5; N.claimT = 0; N.t0 = now();
+    if (G.state === 'result') G.bgSim = true;   // 결과 화면에 있던 사람이 넘겨받으면 뒤에서 경기를 돌린다
+    HUD.toast('방장이 나가서 이 기기가 경기를 이어받았습니다 — 경기는 계속됩니다', 'ok');
+  }
+  // 봇·나간 사람 캐릭터를 이 기기가 맡음 (다른 기기에는 지금 든 총·장비만 보였으므로 예비 탄약·붕대를 채워 준다)
+  function adopt(c) {
+    if (c.human) { c.origOwner = c.net.owner; c.botized = true; }
+    c.net = { owner: N.me, mine: true, buf: [], life: c.net.life };
+    ev({ k: 'own', c: c.id, o: N.me });
+    if (!c.alive) return;
+    c.revive = null; c.heal = null; c.rl = null;
+    const wi = c.weapon; if (wi && ITEMS[wi.id] && ITEMS[wi.id].ammo) { const a = ITEMS[wi.id].ammo; c.inv.items[a] = (c.inv.items[a] || 0) + ITEMS[wi.id].mag * 3; }
+    if (!c.inv.items.bandage) c.inv.items.bandage = 3;
+    const b = c.brain || new Brain(c, DIFF[c.diffKey] ? c.diffKey : 'normal');
+    if (G.dm) { b.state = 'LANDING'; b.stateT = 0; b.landT = G.time; b.lookYaw = c.yaw; }
+    else {
+      const mate = teamMembers(c).find((m) => m !== c && m.human && m.alive && !m.botized);
+      if (mate) b.followC = mate;
+      if (G.island || c.mode === 'plane') G.planDrop(b, mate);
+      else if (c.mode === 'fall' || c.mode === 'chute') { b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0; }
+      else { b.setState('EXPLORE'); b.landT = G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; }
+    }
+    if (c.knocked) b.onKnocked();
+  }
+  function follow(nh, oldHost) {
+    N.host = false; N.cfg.host = nh; N.mig = true; N.epoch++;
+    for (const c of CHARS) if (c.net && !c.net.mine) { const o = c.net.owner; if (o === oldHost || N.gone.has(o) || !N.cfg.humans.some((h) => h.uid === o)) c.net.owner = nh; }
+    for (const p of N.peers.values()) closePeer(p);
+    N.peers.clear(); N.peers.set(nh, newPeer(nh, false)); N.hiT = 0; N.t0 = now();
+    hi();
+    HUD.toast(`방장이 나가서 ${(N.cfg.humans.find((h) => h.uid === nh) || {}).name || '다른 사람'}님이 경기를 이어받습니다 — 경기는 계속됩니다`, 'warn');
+  }
+  // 다른 기기가 '내가 방장'이라고 알림: 내가 따르던 방장과 연결이 안 되어 있으면 그쪽으로
+  function onHostClaim(m) {
+    if (!N || N.host || m.uid === N.cfg.host || m.uid === N.me || (m.ep || 0) < N.epoch || N.gone.has(m.uid)) return;
+    const hp = N.peers.get(N.cfg.host); if (hp && (hp.open || hp.relay)) return;
+    const old = N.cfg.host; N.gone.add(old); follow(m.uid, old);
+  }
   function unbotize(c, p) {
+    N.gone.delete(p.uid);
     c.botized = false; c.brain = null; c.net = charNet(p.uid); p.gone = false; p.left = false;
     ev({ k: 'own', c: c.id, o: p.uid });
     HUD.toast(`${p.name}님이 다시 연결되었습니다`, 'ok');
@@ -627,7 +710,10 @@ const Net = (() => {
   }
   function leave() {
     if (!N) return;
-    try { ev({ k: 'bye', uid: N.me }); flush(true); if (viaMM()) bus('bye', {}); } catch (e) { /* */ }
+    // 방장이 나가면 다음 방장을 골라 알린다 (연결된 사람 중 살아 있는 사람 우선) → 남은 사람의 경기는 계속
+    let next;
+    if (N.host) { const ok = (u) => { const p = N.peers.get(u); return !!p && (p.open || p.relay) && !p.left; }; next = successors(N.me).find(ok) || successors(N.me)[0]; }
+    try { ev({ k: 'bye', uid: N.me, next }); flush(true); if (viaMM()) bus('bye', { next }); } catch (e) { /* */ }
     const n0 = N, mm = n0.cfg.mm; setTimeout(() => { closePeers(n0); if (mm) MM.chClose(mm); }, 400);
     N = null; G.net = null; restoreOwn(n0);
   }
@@ -639,6 +725,8 @@ const Net = (() => {
   function waiting() { if (!N || !N.host) return 0; let n = 0; for (const p of N.peers.values()) if (!p.helloSeen && !p.left && !p.gone) n++; return n; }
   function status() { if (!N) return null; return { host: N.host, peers: [...N.peers.values()].map((p) => ({ uid: p.uid, name: p.name, open: p.open, relay: p.relay, rx: Math.round(now() - p.lastRx) })), tx: N.stats.tx, rx: N.stats.rx, items: N.items.size, vehs: N.vehs.length }; }
 
+  // 창을 닫거나 새로고침할 때도 나간다고 알린다 (방장이면 다음 방장을 골라 넘김 → 남은 사람의 경기는 계속)
+  window.addEventListener('pagehide', () => { try { if (N) leave(); } catch (e) { /* */ } });
   return { makeConfig, join, ready, onParty, tick, active, isHost, isGuest, mine, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
     remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, waiting, status, ev, flush,
     get state() { return N; } };
