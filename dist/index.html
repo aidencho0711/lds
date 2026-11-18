@@ -24580,7 +24580,8 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
-    { tag: 'v21 온라인 매칭', title: '온라인 매칭 · 스타트 섬 — 같은 모드를 고른 사람끼리 한 경기로, 빈자리는 AI · 시작 전 25초 스타트 섬 (업데이트 로그 보기)', img: () => LOBBY_ART.kalden, act: () => ChangeLog.open() },
+    { tag: 'v22 새 맵', title: '크리스마스 섬(1.5km) — 눈 덮인 섬 · 북극성 광장 큰 트리 · 산타 공방 · 얼어붙은 호수 · 모든 맵의 집 외형 개편 (맵 선택)', img: () => LOBBY_ART.xmas || LOBBY_ART.kalden, act: () => G.ui('mapPick') },
+    { tag: 'v22 온라인 매칭', title: '온라인 매칭 · 스타트 섬 — 같은 모드를 고른 사람끼리 한 경기로, 빈자리는 AI · 시작 전 25초 스타트 섬 (업데이트 로그 보기)', img: () => LOBBY_ART.kalden, act: () => ChangeLog.open() },
     { tag: 'v21 판처파우스트 스킨', title: "핵탄두 · SANTA'S DELIVERY · EVENT HORIZON — 터지면 버섯구름 · 큰 선물 상자 · 큰 블랙홀 (업데이트 로그 보기)", img: () => { try { return Shop.gunThumb('pzf', 'e_pzf_horizon') || Models.icon('pzf'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: 'v21 신규 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: '크리스마스', title: '크리스마스 상자 — 겨울 옷·총기·차량 스킨 · 새 등급 EXCLUSIVE (루돌프 썰매 · 전용 처치 효과 총 · 빛나는 옷)', img: () => { try { return Shop.crateThumb('xmas'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=gacha]'); if (b) b.click(); } },
