@@ -175,6 +175,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .map-opt .mo-img { aspect-ratio: 1 / 1; background-size: cover; background-position: center; position: relative; }
 .map-opt .mo-img em { position: absolute; left: 6px; top: 6px; font-style: normal; font-size: 0.66rem; font-weight: 700; background: rgba(13, 17, 19, 0.75); padding: 1px 6px; border-radius: 3px; }
 .map-opt .mo-img em.big { background: rgba(229, 72, 77, 0.85); color: #fff; }
+.map-opt .mo-img em.xmas { background: linear-gradient(90deg, rgba(200, 32, 46, 0.92), rgba(42, 122, 58, 0.92)); color: #fff; }
 .map-opt .mo-txt { padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; }
 .map-opt b { font-family: var(--f-display); font-size: 1.2rem; letter-spacing: 0.03em; }
 .map-opt span { font-size: 0.72rem; color: var(--dim); line-height: 1.45; }

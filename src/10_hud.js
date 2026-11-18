@@ -1096,10 +1096,10 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       $('mcTop').textContent = `${GT.name} · ${DTS} 대 ${DTS} · ${viewKo}`; $('mcName').textContent = MAPS.arena.name;
       $('mcTime').textContent = duel ? `먼저 ${DUEL_RULES.win}라운드 · 라운드 ${DUEL_RULES.round}초` : `최대 ${DM_RULES.timeLimit / 60}분`; $('mcPlayers').textContent = `${DTS * 2}명 · 2팀`; $('mcWarn').hidden = true;
     } else {
-      $('mcImg').style.backgroundImage = `url(${LOBBY_ART[SETTINGS.map]})`;
+      $('mcImg').style.backgroundImage = `url(${LOBBY_ART[SETTINGS.map] || LOBBY_ART.kalden})`;
       $('mcTop').textContent = `${ranked ? '랭크 · ' + sqName : sqName} · ${viewKo} · ${MODES[SETTINGS.mode].name}`;
       $('mcName').textContent = MP.name.replace(/\s*\(.*\)$/, '');
-      $('mcTime').textContent = `약 ${mins}분`; $('mcPlayers').textContent = TS > 1 ? `${total}명 · ${nTeams}팀` : `${total}명`; $('mcWarn').hidden = !MP.big;
+      $('mcTime').textContent = `약 ${mins}분`; $('mcPlayers').textContent = TS > 1 ? `${total}명 · ${nTeams}팀` : `${total}명`; $('mcWarn').hidden = !(MP.big && MP.half >= 2000);
     }
     // 모드 선택 (맵 선택 창 위쪽)
     const gg = $('gameGrid'); gg.innerHTML = '';
@@ -1120,18 +1120,18 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       if (M.training) continue; // 훈련장은 로비의 별도 버튼
       if (!!M.arena !== dm) continue; // 데스매치는 전용 맵 하나
       const on = dm || k === SETTINGS.map, b = h('button', 'map-opt' + (on ? ' on' : '') + (dm ? ' fixed' : '')); b.type = 'button';
-      const im = h('div', 'mo-img'); im.style.backgroundImage = `url(${LOBBY_ART[k] || LOBBY_ART.kalden})`; im.appendChild(h('em', M.big ? 'big' : '', M.big ? `${mapSize(k)} · 렉 주의` : M.arena ? '72×72m' : mapSize(k)));
+      const im = h('div', 'mo-img'); im.style.backgroundImage = `url(${LOBBY_ART[k] || LOBBY_ART.kalden})`; im.appendChild(h('em', M.big && M.half >= 2000 ? 'big' : M.snow ? 'xmas' : '', M.big && M.half >= 2000 ? `${mapSize(k)} · 렉 주의` : M.snow ? `${mapSize(k)} · 크리스마스` : M.arena ? '72×72m' : mapSize(k)));
       const tx = h('div', 'mo-txt'); tx.appendChild(h('b', '', M.name.replace(/\s*\(.*\)$/, ''))); tx.appendChild(h('span', '', M.desc)); tx.appendChild(h('span', '', M.arena ? '데스매치·대결 전용' : `봇 최대 ${mapMaxBots(k)}명`));
       b.appendChild(im); b.appendChild(tx);
       if (!dm) b.addEventListener('click', () => {
         if (lock && !lock.leader) { showLobbyNote('모드와 맵은 방장만 바꿀 수 있습니다'); return; }
         SETTINGS.map = k; saveSettings(); Audio.init(); Audio.ui(); renderLobby(); if (lock) Party.settingsChanged();
-        if (M.big) { const mw = $('mapWarn'); mw.classList.remove('flash'); void mw.offsetWidth; mw.classList.add('flash'); }
+        if (M.big && M.half >= 2000) { const mw = $('mapWarn'); mw.classList.remove('flash'); void mw.offsetWidth; mw.classList.add('flash'); }
       });
       mg.appendChild(b);
     }
-    $('mapWarn').hidden = dm || !MP.big;
-    if (!dm && MP.big) $('mapWarn').textContent = `⚠ 대형 맵(${mapSize(SETTINGS.map)})은 기기 성능에 따라 렉이 걸릴 수 있습니다. 로딩에 ${MP.half >= 4000 ? '수십 초' : '십여 초'}가 걸리고 메모리를 많이 씁니다(휴대폰은 경기 설정에서 봇 수를 줄이는 것을 권장). 봇 최대 ${maxB}명 · 차량 ${MP.veh || 170}대 · 한 판 약 ${mins}분.`;
+    $('mapWarn').hidden = dm || !(MP.big && MP.half >= 2000);
+    if (!dm && MP.big && MP.half >= 2000) $('mapWarn').textContent = `⚠ 대형 맵(${mapSize(SETTINGS.map)})은 기기 성능에 따라 렉이 걸릴 수 있습니다. 로딩에 ${MP.half >= 4000 ? '수십 초' : '십여 초'}가 걸리고 메모리를 많이 씁니다(휴대폰은 경기 설정에서 봇 수를 줄이는 것을 권장). 봇 최대 ${maxB}명 · 차량 ${MP.veh || 170}대 · 한 판 약 ${mins}분.`;
     // 출격 버튼 · 요약
     const humans = Math.min(partyN, TS), mateBots = Math.max(0, Math.min(TS, total) - humans);
     if (dm) { const dts = dmTeamSize(SETTINGS.game), dg = isDuel(SETTINGS.game); $('matchBrief').textContent = `${GT.name} · ${MAPS.arena.name} · ${TIMES_KO[SETTINGS.time] || ''} · ${dts} 대 ${dts} (${partyN > 1 ? `파티 ${partyN}명 + ` : ''}봇 ${Math.max(0, dts * 2 - partyN)}명, ${DIFFICULTY_NAMES[SETTINGS.difficulty]}) · 목표: ${dg ? `먼저 ${DUEL_RULES.win}라운드 (라운드 ${DUEL_RULES.round}초)` : `먼저 ${DM_RULES.killTarget}킬 (최대 ${DM_RULES.timeLimit / 60}분)`}`; }

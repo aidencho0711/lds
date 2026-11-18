@@ -80,12 +80,21 @@ function queryBoxes(x0, z0, x1, z1, out) {
 }
 
 // ---------- 지오메트리 병합 배치 (드로우콜 절감) ----------
+// v22: key 'tex' = 무늬 재질(uv + 아틀라스 칸 trect) · 'lit' = 크리스마스 전구(반짝임 위상 tph)
+const _bc = new THREE.Color();
 class Batch {
-  constructor() { this.pos = []; this.nor = []; this.col = []; this.idx = []; }
+  constructor(key) { this.pos = []; this.nor = []; this.col = []; this.idx = []; this.tex = key === 'tex' || key === 'texo'; this.lit = key === 'lit'; if (this.tex) { this.uv = []; this.rc = []; } if (this.lit) this.ph = []; }
   get vcount() { return this.pos.length / 3; }
-  box(x0, y0, z0, x1, y1, z1, color) {
+  box(x0, y0, z0, x1, y1, z1, color, pat, uo) {
     const c = new THREE.Color(color), b = this.vcount;
     const P = this.pos, N = this.nor, C = this.col, I = this.idx;
+    if (this.tex) { // 면마다 세계 좌표 기준 uv (uo = 집 기준점 → 숫자가 작아 휴대폰 GPU 정밀도에서도 무늬가 깨지지 않음)
+      const R = (pat || HTX.P.plain).r, sx = (pat || HTX.P.plain).sx, sy = (pat || HTX.P.plain).sy, ox = uo ? uo[0] : 0, oy = uo ? uo[1] : 0, oz = uo ? uo[2] : 0;
+      const U = this.uv, RC = this.rc, f = (x, y, z, k) => { if (k < 2) U.push((z - oz) / sx, -(y - oy) / sy); else if (k < 4) U.push((x - ox) / sx, (z - oz) / sy); else U.push((x - ox) / sx, -(y - oy) / sy); RC.push(R[0], R[1], R[2], R[3]); };
+      const V = [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y0, z1], [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0]];
+      for (let i = 0; i < 24; i++) f(V[i][0], V[i][1], V[i][2], Math.floor(i / 4));
+    }
+    if (this.lit) for (let i = 0; i < 24; i++) this.ph.push(pat || 0);
     const faces = [
       [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1], [1, 0, 0], 0.88],
       [[x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [x0, y0, z0], [-1, 0, 0], 0.82],
@@ -109,9 +118,30 @@ class Batch {
       this.pos.push(p[i], p[i + 1], p[i + 2]); this.nor.push(n[i], n[i + 1], n[i + 2]);
       const shade = 0.85 + 0.15 * Math.max(0, n[i + 1]);
       this.col.push(c.r * shade, c.g * shade, c.b * shade);
+      if (this.tex) { this.uv.push(0, 0); this.rc.push(HTX.P.plain.r[0], HTX.P.plain.r[1], HTX.P.plain.r[2], HTX.P.plain.r[3]); }
+      if (this.lit) this.ph.push(0);
     }
     for (let i = 0; i < p.length / 3; i++) this.idx.push(b + i);
     g.dispose();
+  }
+  // 볼록 다각형(점 3~4개, 세계 좌표, 반시계) · pat: 무늬 · uv: [[u,v],…] (무늬 칸 단위)
+  poly(W, color, pat, uv) {
+    const c = _bc.setHex(color), b = this.vcount, a = W[0], p = W[1], q = W[2];
+    let nx = (p[1] - a[1]) * (q[2] - a[2]) - (p[2] - a[2]) * (q[1] - a[1]), ny = (p[2] - a[2]) * (q[0] - a[0]) - (p[0] - a[0]) * (q[2] - a[2]), nz = (p[0] - a[0]) * (q[1] - a[1]) - (p[1] - a[1]) * (q[0] - a[0]);
+    const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    const sh = ny > 0.25 ? 0.9 + 0.12 * ny : ny < -0.25 ? 0.62 : 0.84 + 0.08 * Math.abs(nx);
+    for (let i = 0; i < W.length; i++) {
+      this.pos.push(W[i][0], W[i][1], W[i][2]); this.nor.push(nx, ny, nz); this.col.push(c.r * sh, c.g * sh, c.b * sh);
+      if (this.tex) { const R = (pat || HTX.P.plain).r; this.uv.push(uv ? uv[i][0] : 0, uv ? uv[i][1] : 0); this.rc.push(R[0], R[1], R[2], R[3]); }
+      if (this.lit) this.ph.push(pat || 0);
+    }
+    this.idx.push(b, b + 1, b + 2); if (W.length > 3) this.idx.push(b, b + 2, b + 3);
+  }
+  // 전구: 팔면체 (빛을 받지 않는 재질이라 법선은 위로 고정)
+  oct(x, y, z, s, color, ph) {
+    const c = _bc.setHex(color), b = this.vcount, V = [[x + s, y, z], [x - s, y, z], [x, y + s, z], [x, y - s, z], [x, y, z + s], [x, y, z - s]];
+    for (const v of V) { this.pos.push(v[0], v[1], v[2]); this.nor.push(0, 1, 0); this.col.push(c.r, c.g, c.b); if (this.lit) this.ph.push(ph); if (this.tex) { this.uv.push(0, 0); this.rc.push(0, 0, 0, 0); } }
+    for (const [i, j, k] of [[0, 2, 4], [4, 2, 1], [1, 2, 5], [5, 2, 0], [4, 3, 0], [1, 3, 4], [5, 3, 1], [0, 3, 5]]) this.idx.push(b + i, b + j, b + k);
   }
   build(mat) {
     if (!this.pos.length) return null;
@@ -119,6 +149,8 @@ class Batch {
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
+    if (this.tex) { g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2)); g.setAttribute('trect', new THREE.Float32BufferAttribute(this.rc, 4)); }
+    if (this.lit) g.setAttribute('tph', new THREE.Float32BufferAttribute(this.ph, 1));
     g.setIndex(this.vcount > 65535 ? new THREE.Uint32BufferAttribute(this.idx, 1) : new THREE.Uint16BufferAttribute(this.idx, 1));
     g.computeBoundingSphere();
     const m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true;
@@ -149,8 +181,9 @@ async function generateWorld(mapId, scene, progress) {
   const big = !!M.big, SC_ = HALF / 350, TR = !!M.training, AR = !!M.arena, FLAT = TR || AR;
   w.big = big; w.isTraining = TR; w.isArena = AR;
   // v2 생성기(노르덴 개편·키나루 정글): 02_world_v2.js. 작은 맵은 아래 기존 경로를 그대로 탄다(결과 불변)
-  const V2 = M.v2 || '', JG = V2 === 'jungle';
-  const K = V2 ? { M, w, rng, R, RI, RP, n1, n2, n3, n4, V2, JG } : null;
+  const V2 = M.v2 || '', JG = V2 === 'jungle', XM = V2 === 'xmas';   // XM: 크리스마스 섬 (02_world_xmas.js)
+  const K = V2 ? { M, w, rng, R, RI, RP, n1, n2, n3, n4, V2, JG, XM } : null;
+  w.xmas = XM;
   w.v2 = V2; w.roadLines = [];
   // 산(여러 개 가능)·호수·강. 대형 맵은 산맥 4개, 호수 3개, 큰 강 1개
   const mounts = [], lakes = [];
@@ -376,11 +409,11 @@ async function generateWorld(mapId, scene, progress) {
 
   // ----- 충돌 박스 API -----
   const batches = new Map();
-  const CH = big ? 16 : 4, chunk = (x, z) => clamp(Math.floor((x + HALF) / (SIZE / CH)), 0, CH - 1) + clamp(Math.floor((z + HALF) / (SIZE / CH)), 0, CH - 1) * CH;
+  const CH = big ? (M.ch || 16) : 4, chunk = (x, z) => clamp(Math.floor((x + HALF) / (SIZE / CH)), 0, CH - 1) + clamp(Math.floor((z + HALF) / (SIZE / CH)), 0, CH - 1) * CH;
   // 대형 맵: 구역(500m)별 물체 목록 → 카메라에서 먼 구역은 숨김
   w.chunkObjs = new Map();
   const regChunk = (k, obj) => { if (!big) return; let e = w.chunkObjs.get(k); if (!e) { const ci = k % CH, cj = Math.floor(k / CH); e = { x: -HALF + (ci + 0.5) * SIZE / CH, z: -HALF + (cj + 0.5) * SIZE / CH, objs: [] }; w.chunkObjs.set(k, e); } e.objs.push(obj); };
-  const getBatch = (x, z, key = 'solid') => { const c = chunk(x, z), k = key + c; if (!batches.has(k)) batches.set(k, { key, b: new Batch(), c }); return batches.get(k).b; };
+  const getBatch = (x, z, key = 'solid') => { const c = chunk(x, z), k = key + c; if (!batches.has(k)) batches.set(k, { key, b: new Batch(key), c }); return batches.get(k).b; };
   function addCollider(x0, y0, z0, x1, y1, z1, o = {}) {
     const b = { x0, y0, z0, x1, y1, z1, soft: !!o.soft, nav: !!o.nav, _q: 0, kind: o.kind || 'solid' };
     w.boxes.push(b);
@@ -392,7 +425,7 @@ async function generateWorld(mapId, scene, progress) {
   }
   function addBox(x0, y0, z0, x1, y1, z1, color, o = {}) {
     if (x0 > x1) [x0, x1] = [x1, x0]; if (z0 > z1) [z0, z1] = [z1, z0];
-    if (!o.invisible) getBatch((x0 + x1) / 2, (z0 + z1) / 2, o.mat).box(x0, y0, z0, x1, y1, z1, color);
+    if (!o.invisible) getBatch((x0 + x1) / 2, (z0 + z1) / 2, o.mat).box(x0, y0, z0, x1, y1, z1, color, o.pat, o.uo);
     if (!o.noCollide) return addCollider(x0, y0, z0, x1, y1, z1, o);
     return null;
   }
@@ -511,14 +544,16 @@ async function generateWorld(mapId, scene, progress) {
     container: [0xa8452f, 0x2f6a8a, 0x4f7a3a, 0xc08a2a, 0x6a6f74, 0x8a3a5a],
     furn: 0x6b4f37, furn2: 0x5a6068, sand: 0xa89670, rail: 0x55524c,
   };
+  const DX = { PAL, getBatch, XM, JG };   // 집 외형(02_world_house.js)에 넘기는 도구
   const DOOR = (a) => ({ a, b: a + 1.8, lo: 0, hi: 2.35 });
   const WIN = (a, wd = 1.4) => ({ a, b: a + wd, lo: 1.0, hi: 2.15 });
 
   // ----- 주택 (1~2층, 실내, 문, 창문, 계단, 발코니) -----
   function buildHouse(F, wd, dp, floors, pal, o = {}) {
     const t = 0.24, fh = 3.2, hw = wd / 2, hd = dp / 2, tier = o.tier || 'low';
-    const wallC = pal[0], roofC = pal[1];
-    F.box(-hw - 0.15, -1.6, -hd - 0.15, hw + 0.15, 0.15, hd + 0.15, PAL.found, { nav: true });
+    // v22 집 외형: 양식·색·재질·장식은 houseLook(위치 시드 난수)이 정한다 → 아래 월드 난수(R·rng) 사용 순서·충돌 상자는 예전과 같다
+    const S = houseLook(DX, F, wd, dp, floors, pal, o), wallC = S.wallC, roofC = S.roofC, WO = S.wallO, WL = [];
+    F.box(-hw - 0.15, -1.6, -hd - 0.15, hw + 0.15, 0.15, hd + 0.15, S.foundC, { nav: true, mat: 'tex', pat: S.key === 'military' || S.key === 'modern' ? HTX.P.concrete : HTX.P.floor, uo: S.uo });
     // 현관 앞 발판
     F.box(-1.4, -1.2, -hd - 1.4, 1.4, 0.05, -hd - 0.15, PAL.found, {});
     // 내부 칸막이 위치: 현관문(로컬 x -0.9~0.9)을 가르지 않도록 문 폭 밖으로 (예전엔 칸막이가 현관 한가운데로 이어져 봇이 못 들어가는 집이 15%)
@@ -530,15 +565,17 @@ async function generateWorld(mapId, scene, progress) {
       const y0 = fl * fh + 0.15, h = fh - 0.15;
       const frontOps = fl === 0 ? [DOOR(-0.9)] : (o.balcony ? [DOOR(-0.9)] : [WIN(-0.7)]);
       if (wd > 7.5) { frontOps.push(WIN(-hw + 1.0)); if (!(hasStair && fl === 0)) frontOps.push(WIN(hw - 2.4)); }
-      F.wallX(-hd, -hw, hw, y0, h, t, frontOps, wallC);
+      F.wallX(-hd, -hw, hw, y0, h, t, frontOps, wallC, WO);
       // 뒷문도 칸막이와 겹치면 창문으로
       const backOps = [WIN(-hw + 1.2)]; if (wd > 7) backOps.push(fl === 0 && rng() < 0.6 && (xs < hw - 3.6 || xs > hw - 0.6) ? DOOR(hw - 3.0) : WIN(hw - 2.6));
-      F.wallX(hd, -hw, hw, y0, h, t, backOps, wallC);
-      F.wallZ(-hw, -hd + t / 2, hd - t / 2, y0, h, t, [WIN(-0.7)], wallC);
-      F.wallZ(hw, -hd + t / 2, hd - t / 2, y0, h, t, hasStair ? [WIN(hd - 2.4)] : [WIN(-0.7)], wallC);
+      F.wallX(hd, -hw, hw, y0, h, t, backOps, wallC, WO);
+      const lOps = [WIN(-0.7)], rOps = hasStair ? [WIN(hd - 2.4)] : [WIN(-0.7)];
+      F.wallZ(-hw, -hd + t / 2, hd - t / 2, y0, h, t, lOps, wallC, WO);
+      F.wallZ(hw, -hd + t / 2, hd - t / 2, y0, h, t, rOps, wallC, WO);
+      WL.push({ sd: 'f', fl, ops: frontOps }, { sd: 'b', fl, ops: backOps }, { sd: 'l', fl, ops: lOps }, { sd: 'r', fl, ops: rOps });
       // 칸막이 벽 (문 포함)
       const dz = clamp(R(-hd + 0.6, hd - 2.6), -hd + 0.5, hd - 2.5);
-      F.wallZ(xs, -hd + t / 2, hd - t / 2, y0, h, 0.14, [DOOR(dz)], 0xd8d0c0);
+      F.wallZ(xs, -hd + t / 2, hd - t / 2, y0, h, 0.14, [DOOR(dz)], 0xd8d0c0, S.innerO);
       // 봇용 계단 동선 (2층 주택): 계단 옆 A → 계단 발치 B → 계단 위 T → 난간 끝 T2, 위층 칸막이 문 양쪽 Dl/Dr
       if (hasStair && fl === 1 && F.bld) {
         const sxm = (sx0 + sx1) / 2, O = F.pt(0, 0), E = F.pt(1, 0);
@@ -558,40 +595,41 @@ async function generateWorld(mapId, scene, progress) {
       // 위층 바닥 (계단 구멍 제외)
       if (fl > 0) {
         const fy = fl * fh;
-        F.box(-hw, fy - 0.12, -hd, sx0, fy + 0.15, hd, PAL.floorWood);
-        F.box(sx0, fy - 0.12, sz1, hw, fy + 0.15, hd, PAL.floorWood);
-        F.box(sx0, fy - 0.12, -hd, hw, fy + 0.15, sz0, PAL.floorWood);
+        F.box(-hw, fy - 0.12, -hd, sx0, fy + 0.15, hd, PAL.floorWood, S.floorO);
+        F.box(sx0, fy - 0.12, sz1, hw, fy + 0.15, hd, PAL.floorWood, S.floorO);
+        F.box(sx0, fy - 0.12, -hd, hw, fy + 0.15, sz0, PAL.floorWood, S.floorO);
         F.box(sx0 - 0.08, fy + 0.15, sz0, sx0, fy + 1.1, sz1, PAL.rail); // 난간
       }
     }
     if (hasStair) F.ramp(sx0 + 0.05, sz0, sx1 - 0.05, sz1, 0.15, fh + 0.15, 'z', 0x8a7a66);
-    // 발코니
+    // 발코니 (난간 충돌 상자는 그대로, 모양은 houseDeco 의 난간 살)
     if (floors > 1 && o.balcony) {
       const fy = fh;
-      F.box(-2.2, fy - 0.12, -hd - 2.2, 2.2, fy + 0.15, -hd - t / 2, PAL.found);
-      F.box(-2.2, fy + 0.15, -hd - 2.2, 2.2, fy + 1.15, -hd - 2.05, PAL.rail);
-      F.box(-2.2, fy + 0.15, -hd - 2.2, -2.05, fy + 1.15, -hd - t / 2, PAL.rail);
-      F.box(2.05, fy + 0.15, -hd - 2.2, 2.2, fy + 1.15, -hd - t / 2, PAL.rail);
+      F.box(-2.2, fy - 0.12, -hd - 2.2, 2.2, fy + 0.15, -hd - t / 2, PAL.found, S.floorO);
+      F.box(-2.2, fy + 0.15, -hd - 2.2, 2.2, fy + 1.15, -hd - 2.05, PAL.rail, { invisible: true });
+      F.box(-2.2, fy + 0.15, -hd - 2.2, -2.05, fy + 1.15, -hd - t / 2, PAL.rail, { invisible: true });
+      F.box(2.05, fy + 0.15, -hd - 2.2, 2.2, fy + 1.15, -hd - t / 2, PAL.rail, { invisible: true });
     }
-    // 지붕
-    const ry = floors * fh;
-    if (o.flatRoof || floors > 1) {
-      F.box(-hw - 0.2, ry - 0.12, -hd - 0.2, hw + 0.2, ry + 0.2, hd + 0.2, roofC);
-      F.box(-hw - 0.2, ry + 0.2, -hd - 0.2, hw + 0.2, ry + 0.75, -hd + 0.05, wallC);
-      F.box(-hw - 0.2, ry + 0.2, hd - 0.05, hw + 0.2, ry + 0.75, hd + 0.2, wallC);
-      F.box(-hw - 0.2, ry + 0.2, -hd + 0.05, -hw + 0.05, ry + 0.75, hd - 0.05, wallC);
-      F.box(hw - 0.05, ry + 0.2, -hd + 0.05, hw + 0.2, ry + 0.75, hd - 0.05, wallC);
+    // 지붕 (평지붕: 판 + 난간 충돌 상자 그대로 · 경사 지붕: 천장 판 위에 houseDeco 가 박공·모임지붕을 그린다)
+    const ry = floors * fh, flat = !!(o.flatRoof || floors > 1);
+    if (flat) {
+      F.box(-hw - 0.2, ry - 0.12, -hd - 0.2, hw + 0.2, ry + 0.2, hd + 0.2, S.flatC, S.slabO);
+      F.box(-hw - 0.2, ry + 0.2, -hd - 0.2, hw + 0.2, ry + 0.75, -hd + 0.05, wallC, WO);
+      F.box(-hw - 0.2, ry + 0.2, hd - 0.05, hw + 0.2, ry + 0.75, hd + 0.2, wallC, WO);
+      F.box(-hw - 0.2, ry + 0.2, -hd + 0.05, -hw + 0.05, ry + 0.75, hd - 0.05, wallC, WO);
+      F.box(hw - 0.05, ry + 0.2, -hd + 0.05, hw + 0.2, ry + 0.75, hd - 0.05, wallC, WO);
     } else {
       F.box(-hw - 0.1, ry - 0.12, -hd - 0.1, hw + 0.1, ry + 0.1, hd + 0.1, 0x6f6658);
-      F.geo(prism(wd + 0.9, dp + 0.9, 1.9), 0, ry + 0.1, 0, roofC);
     }
+    houseDeco(DX, F, { wd, dp, floors, fh, t, hw, hd, flat, balcony: floors > 1 && !!o.balcony, walls: WL, S });
+    void roofC;
   }
   function prism(wd, dp, h) { // 박공 지붕
     const g = new THREE.BufferGeometry(), hw = wd / 2, hd = dp / 2;
     const v = [
-      -hw, 0, -hd, hw, 0, -hd, hw, h, 0, -hw, 0, -hd, hw, h, 0, -hw, h, 0,
-      -hw, 0, hd, -hw, h, 0, hw, h, 0, -hw, 0, hd, hw, h, 0, hw, 0, hd,
-      -hw, 0, -hd, -hw, h, 0, -hw, 0, hd, hw, 0, -hd, hw, 0, hd, hw, h, 0,
+      -hw, 0, -hd, hw, h, 0, hw, 0, -hd, -hw, 0, -hd, -hw, h, 0, hw, h, 0,   // v22: 바깥에서 반시계 (예전엔 안쪽을 향해 지붕이 어둡게 보였음)
+      -hw, 0, hd, hw, h, 0, -hw, h, 0, -hw, 0, hd, hw, 0, hd, hw, h, 0,
+      -hw, 0, -hd, -hw, 0, hd, -hw, h, 0, hw, 0, -hd, hw, h, 0, hw, 0, hd,
     ];
     g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); return g;
   }
@@ -605,6 +643,7 @@ async function generateWorld(mapId, scene, progress) {
     F.wallZ(-hw, -hd + t / 2, hd - t / 2, 0.12, ht, t, [{ a: -2, b: 0, lo: ht - 2.4, hi: ht - 1.2 }, DOOR(1.4)], color);
     F.wallZ(hw, -hd + t / 2, hd - t / 2, 0.12, ht, t, [{ a: 0, b: 2, lo: ht - 2.4, hi: ht - 1.2 }], color);
     F.box(-hw - 0.4, ht + 0.12, -hd - 0.4, hw + 0.4, ht + 0.5, hd + 0.4, o.roof || 0x4a4f52);
+    if (XM) F.box(-hw - 0.36, ht + 0.5, -hd - 0.36, hw + 0.36, ht + 0.6, hd + 0.36, 0xf4f8fb, { noCollide: true });   // 크리스마스 섬: 지붕 눈
     // 내부: 상자 더미, 선반
     const n = Math.floor(wd * dp / 70);
     for (let i = 0; i < n; i++) {
@@ -927,7 +966,7 @@ async function generateWorld(mapId, scene, progress) {
       }
     } else if (p.type === 'farm') {
       let F = placeLot(p.x + R(-8, 8), p.z + R(-8, 8), RI(0, 3), 18, 13, 'barn', 3);
-      if (F) { buildWarehouse(F, 16, 12, 5.5, RP(PAL.barn), { tier: 'low', roof: 0x4a3a33 }); F.geo(prism(17, 13, 3), 0, 6.1, 0, 0x4a3a33); }
+      if (F) { buildWarehouse(F, 16, 12, 5.5, RP(PAL.barn), { tier: 'low', roof: 0x4a3a33 }); F.geo(prism(17, 13, 3), 0, 6.1, 0, 0x4a3a33); if (XM) F.geo(prism(16.8, 13, 3), 0, 6.18, 0, 0xf4f8fb); }
       for (let i = 0; i < 3; i++) { const wd = R(8, 10), dp = R(7, 9); F = placeLot(p.x + R(-p.r + 10, p.r - 10), p.z + R(-p.r + 10, p.r - 10), RI(0, 3), wd, dp, 'house', 1.5); if (F) buildHouse(F, wd, dp, rng() < 0.5 ? 2 : 1, RP(PAL.house), { balcony: rng() < 0.5, tier: 'low' }); }
       for (let i = 0; i < 18; i++) { // 건초더미
         const x = p.x + R(-p.r - 30, p.r + 30), z = p.z + R(-p.r - 30, p.r + 30);
@@ -948,12 +987,12 @@ async function generateWorld(mapId, scene, progress) {
     } else if (V2) v2Build(K, p);   // v2: 특수 지역·정글 지역·길가 마을·주유소
   }
   // ----- 외딴 집/오두막 -----
-  for (let i = 0, tries = 0; !FLAT && i < (V2 ? (JG ? 60 : 150) : big ? 240 : 26) && tries < (big ? 9000 : 900); tries++) {
+  for (let i = 0, tries = 0; !FLAT && i < (V2 ? (JG ? 60 : XM ? 34 : 150) : big ? 240 : 26) && tries < (big ? 9000 : 900); tries++) {
     const x = R(-HALF * 0.78, HALF * 0.78), z = R(-HALF * 0.78, HALF * 0.78);
     if (poisNear(x, z).some(p => Math.hypot(p.x - x, p.z - z) < p.r + 25)) continue;
     const wd = R(6.5, 9), dp = R(6, 8.5), F = placeLot(x, z, RI(0, 3), wd, dp, 'house', 1.0, 3, 2);
     if (!F) continue; i++;
-    buildHouse(F, wd, dp, rng() < 0.3 ? 2 : 1, RP(JG ? V2_PAL.wood : PAL.house), { balcony: rng() < 0.4, tier: 'low' });
+    buildHouse(F, wd, dp, rng() < 0.3 ? 2 : 1, RP(JG ? V2_PAL.wood : XM ? XM_PAL.house : PAL.house), { balcony: rng() < 0.4, tier: 'low' });
   }
   // ----- 다리 -----
   for (const r of w.roads) {
@@ -997,8 +1036,10 @@ async function generateWorld(mapId, scene, progress) {
   // 9 논물(어두운 청록) · 10 벼(밝은 연두) · 11 흙길(정글 도로) — v2 맵에서만 쓰임
   const SC = [[0.32, 0.47, 0.22], [0.48, 0.40, 0.28], [0.47, 0.45, 0.42], [0.76, 0.69, 0.50], [0.30, 0.29, 0.27], [0.50, 0.49, 0.46], [0.62, 0.55, 0.26], [0.42, 0.50, 0.21], [0.27, 0.38, 0.19], [0.25, 0.40, 0.34], [0.46, 0.60, 0.20], [0.50, 0.38, 0.25]];
   if (JG) SC[8] = [0.20, 0.33, 0.15];   // 정글 숲바닥은 더 짙게
+  // 크리스마스 섬: 눈밭 · 숲 눈 · 녹은 흙 · 바위 · 언 모래 · 도로 · 포장 · 눈 덮인 밭 · 얼음
+  if (XM) Object.assign(SC, { 0: [0.86, 0.89, 0.93], 1: [0.62, 0.6, 0.58], 2: [0.56, 0.58, 0.62], 3: [0.66, 0.67, 0.69], 4: [0.3, 0.31, 0.33], 5: [0.6, 0.61, 0.64], 6: [0.84, 0.87, 0.91], 7: [0.8, 0.84, 0.89], 8: [0.8, 0.84, 0.9], 9: [0.7, 0.82, 0.9] });
   const terrMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  const TCH = big ? 16 : 4, per = (HF_N - 1) / TCH;
+  const TCH = big ? (M.tch || 16) : 4, per = (HF_N - 1) / TCH;   // M.tch: 지형 청크 수 (높이맵 칸 수가 나누어떨어지게)
   function terrainChunk(ci, cj) {
     const pos = new Float32Array((per + 1) * (per + 1) * 3), col = new Float32Array((per + 1) * (per + 1) * 3), idx = [], i0 = ci * per, j0 = cj * per;
     let v = 0;
@@ -1040,10 +1081,10 @@ async function generateWorld(mapId, scene, progress) {
     w.terrainLive = live;
   }
   // 바다/강/호수 수면
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(SIZE * 3, SIZE * 3), new THREE.MeshPhongMaterial({ color: 0x2c6474, transparent: true, opacity: 0.78, shininess: 80, specular: 0x88aabb }));
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(SIZE * 3, SIZE * 3), new THREE.MeshPhongMaterial({ color: XM ? 0x2a4c62 : 0x2c6474, transparent: true, opacity: 0.78, shininess: 80, specular: 0x88aabb }));
   water.rotation.x = -Math.PI / 2; water.position.y = WATER_Y; w.objects.add(water); w.water = water;
   // 도로 리본
-  const roadMat = new THREE.MeshLambertMaterial({ color: 0x3b3c3d, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const roadMat = new THREE.MeshLambertMaterial({ color: XM ? 0x4a4d52 : 0x3b3c3d, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const lineMat = new THREE.MeshLambertMaterial({ color: 0xc9b25a, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   const rp = [], ri = [], lp = [], li = [];
   for (const r of w.roads) {
@@ -1165,7 +1206,7 @@ async function generateWorld(mapId, scene, progress) {
   // ----- 병합 메시 확정 -----
   const solidMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   const fenceMat = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.45, depthWrite: false });
-  for (const [, v] of batches) { const m = v.b.build(v.key === 'fence' ? fenceMat : solidMat); if (m) { if (v.key === 'fence') m.castShadow = false; w.objects.add(m); regChunk(v.c, m); } }
+  for (const [, v] of batches) { const m = v.b.build(v.key === 'fence' ? fenceMat : v.key === 'tex' ? HTX.mat() : v.key === 'texo' ? HTX.matOff() : v.key === 'lit' ? HTX.lit() : solidMat); if (m) { if (v.key === 'fence' || v.key === 'lit') m.castShadow = false; if (v.key === 'lit') m.receiveShadow = false; w.objects.add(m); regChunk(v.c, m); } }
   // 생성용 임시 자료 해제 (스트리밍 클로저가 이 함수 범위를 붙잡고 있어 직접 비워야 GC된다)
   batches.clear(); fpGrid.length = 0; w.footprints.length = 0;
   // 대형 맵 구역 숨김 (카메라 거리 기준)
@@ -1181,10 +1222,11 @@ async function generateWorld(mapId, scene, progress) {
 
 // 미니맵 배경 이미지 (실제 높이맵/표면/도로/건물에서 생성)
 function buildMinimapImage(w) {
-  const S = w.big ? 2048 : 1024, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const S = w.big && HALF > 1000 ? 2048 : 1024, cv = document.createElement('canvas'); cv.width = cv.height = S;
   const g = cv.getContext('2d'), img = g.createImageData(S, S), d = img.data;
   const SC = [[86, 120, 62], [124, 104, 74], [128, 122, 114], [196, 180, 132], [70, 70, 70], [140, 138, 132], [160, 142, 70], [110, 128, 56], [72, 100, 54], [64, 104, 92], [118, 156, 54], [132, 102, 68]];
   if (w.v2 === 'jungle') SC[8] = [52, 86, 42];
+  if (w.xmas) Object.assign(SC, { 0: [226, 232, 240], 1: [168, 160, 152], 2: [140, 146, 156], 3: [176, 178, 182], 5: [158, 160, 166], 6: [214, 222, 232], 7: [204, 214, 226], 8: [196, 208, 222], 9: [176, 210, 232] });   // 크리스마스 섬
   for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
     const x = -HALF + (px + 0.5) / S * SIZE, z = -HALF + (py + 0.5) / S * SIZE, h = heightAt(x, z);
     let c;

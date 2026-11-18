@@ -355,6 +355,7 @@ async function startMatch(cfg) {
   FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
   Zone.init(sc, MODES[SETTINGS.mode].zoneScale, SETTINGS.map);
   Airdrop.init(sc); Recall.init(sc);
+  if (W.xmas) XmasFx.init(sc, G.camera.position); else XmasFx.dispose();   // 크리스마스 섬: 내리는 눈·전구 반짝임
   setupPlane(sc, net ? cfg.plane : null);
   if (W.streamTerrain) { W.streamTerrain(G.plane.pos.x, G.plane.pos.z, Q.far + 250, 99); W.cullChunks(G.plane.pos.x, G.plane.pos.z, Q.far); }
   // 캐릭터 생성
@@ -425,7 +426,7 @@ async function startMatch(cfg) {
 function disposeMatch() {
   Training.dispose(); DM.dispose();
   if (!G.scene) return;
-  Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose();
+  Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose(); XmasFx.dispose();
   G.scene.traverse(o => { if (o.geometry && !o.isSprite) o.geometry.dispose(); });
   for (const c of CHARS) if (c.rig && c.rig.skel) c.rig.skel.dispose();   // 뼈대 텍스처(GPU) 해제
   if (G.botLooks) { const ml = myLook(); BotSkin.purge(G.botLooks, CHARS.filter((c) => c.human || c.isPlayer).map((c) => c.look).concat([Body.makeLook(ml.eq, ml.body)])); G.botLooks = null; }   // 봇 옷 묶음 몸 메시(CPU) 정리
@@ -585,6 +586,7 @@ G.update = function (dt) {
   separateChars();
   if (!G.training && !G.dm) { if (!G.over || G.win) Zone.update(dt); Airdrop.update(dt); Recall.update(dt); }
   updateProjectiles(dt); FX.update(dt);
+  if (W.xmas) XmasFx.update(dt, G.time, G.camera.position);
   if (G.noises.length > 80 || (G.noises.length && G.time - G.noises[0].t > 2)) G.noises = G.noises.filter(n => G.time - n.t < 2);
   // 거리 기반 표시 최적화
   const Q = QUALITY[SETTINGS.quality], cam = G.camera.position;

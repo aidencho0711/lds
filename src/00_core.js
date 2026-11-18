@@ -142,6 +142,12 @@ const MAPS = {
     plane: { L: 2700, speed: 95, alt: 400, off: 800 }, zone0: 1950, zoneOff: 260,
     zone: [{ wait: 200, shrink: 200, r: 1150, dps: 0.5 }, { wait: 120, shrink: 110, r: 650, dps: 1.2 }, { wait: 100, shrink: 85, r: 350, dps: 2.5 }, { wait: 75, shrink: 60, r: 180, dps: 4 },
       { wait: 55, shrink: 45, r: 90, dps: 7 }, { wait: 40, shrink: 35, r: 40, dps: 10 }, { wait: 30, shrink: 30, r: 15, dps: 14 }, { wait: 20, shrink: 25, r: 5, dps: 16 }] },
+  // v22 크리스마스 섬: 1.5×1.5km 눈 덮인 섬 (02_world_xmas.js). 높이맵 3m · 지형 스트리밍(지형 300m · 물체 250m 구역) · 경기 중 눈이 내림
+  xmas: { name: '크리스마스 섬', seed: 122524, desc: '1.5×1.5km 눈 덮인 섬 · 북극성 광장 큰 트리 · 산타 공방 · 얼어붙은 호수 · 스키 산장 · 크리스마스 마을', big: true, v2: 'xmas', half: 750, hfRes: 3, tch: 5, ch: 6, snow: true,
+    veh: 30, horses: 6, gold: 16, wait0Min: 100, fog: { color: 0xdfe8f2, near: 0.2, far: 0.95 },
+    plane: { L: 1000, speed: 62, alt: 330, off: 300 }, zone0: 700, zoneOff: 120,
+    zone: [{ wait: 130, shrink: 120, r: 420, dps: 0.5 }, { wait: 90, shrink: 80, r: 240, dps: 1.2 }, { wait: 75, shrink: 60, r: 130, dps: 2.4 }, { wait: 60, shrink: 45, r: 65, dps: 4 },
+      { wait: 45, shrink: 35, r: 30, dps: 7 }, { wait: 35, shrink: 30, r: 12, dps: 10 }, { wait: 25, shrink: 25, r: 4, dps: 14 }] },
   // 훈련장: 봇·자기장 없는 평지. 로비의 '훈련장' 버튼으로만 들어간다 (맵 선택 목록에는 없음)
   training: { name: '훈련장', seed: 2468, desc: '사격장·더미·차량·장애물 코스', training: true, half: 320, mountain: 0 },
   // 데스매치 전용: 72×72m 컨테이너 야드 (팀 데스매치·웨폰 데스매치 공용, 맵 선택 목록에는 없음)
