@@ -1612,3 +1612,56 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 .gc-card.xmas { background: linear-gradient(150deg, rgba(120, 14, 22, 0.55), rgba(16, 50, 28, 0.55)), var(--panel); border-color: rgba(255, 207, 63, 0.6); position: relative; overflow: hidden; }
 .gc-card.xmas::before { content: '❄ ❅ ❆'; position: absolute; right: 8px; top: 6px; font-size: 0.8rem; letter-spacing: 0.3em; color: rgba(255, 255, 255, 0.55); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .gr-card.r8, .wh-item.exclusive, #weaponPanel .wslot.exclusive { animation: none; } }
+
+/* ---------- v21 온라인 매칭: 출격 옆 켬/끔 · 매칭 중 카드 ---------- */
+.play-row { display: flex; gap: 6px; align-items: stretch; }
+.play-row .btn.play { flex: 1; min-width: 0; }
+.online-tg { flex: 0 0 auto; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 4px; border: 1px solid var(--line-2); border-radius: 5px; background: rgba(13, 17, 19, 0.72); color: var(--sand); cursor: pointer; font: inherit; }
+.online-tg svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; opacity: 0.6; }
+.online-tg b { font-size: 0.74rem; font-weight: 800; white-space: nowrap; }
+.online-tg small { font-size: 0.62rem; opacity: 0.75; white-space: nowrap; }
+.online-tg.on { border-color: rgba(94, 214, 140, 0.75); background: linear-gradient(180deg, rgba(60, 170, 100, 0.3), rgba(13, 17, 19, 0.78)); color: #d2f7de; }
+.online-tg.on svg { opacity: 1; stroke: #7be3a2; }
+.online-tg.lock { opacity: 0.6; cursor: default; }
+.btn.play.mm { background: linear-gradient(135deg, #2f7a52, #1b4a33); color: #e9fff1; }
+.btn.play.mm span { letter-spacing: 0.12em; }
+.mm-panel { display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; border: 1px solid rgba(94, 214, 140, 0.55); border-radius: 6px; background: linear-gradient(180deg, rgba(20, 56, 38, 0.94), rgba(13, 17, 19, 0.92)); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+.mm-panel[hidden] { display: none; }
+.mm-head { display: flex; align-items: center; gap: 8px; }
+.mm-head b { flex: 1; font-size: 0.92rem; color: #e2ffeb; }
+.mm-head span { font-size: 0.8rem; color: #a6eac0; font-variant-numeric: tabular-nums; }
+.mm-spin { width: 14px; height: 14px; flex: 0 0 auto; border-radius: 50%; border: 2px solid rgba(123, 227, 162, 0.3); border-top-color: #7be3a2; animation: mmSpin 0.9s linear infinite; }
+@keyframes mmSpin { to { transform: rotate(360deg); } }
+.mm-bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.mm-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #4fc27f, #b3f2cb); transition: width 0.25s linear; }
+.mm-sub { font-size: 0.72rem; color: var(--sand); opacity: 0.88; }
+.mm-who { display: flex; flex-wrap: wrap; gap: 4px; }
+.mm-who:empty { display: none; }
+.mm-chip { padding: 1px 8px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.07); font-size: 0.68rem; color: var(--sand); white-space: nowrap; }
+.mm-chip.g1 { border-color: rgba(90, 184, 240, 0.6); } .mm-chip.g2 { border-color: rgba(242, 153, 74, 0.6); } .mm-chip.g3 { border-color: rgba(187, 140, 255, 0.6); } .mm-chip.g4 { border-color: rgba(242, 201, 76, 0.6); } .mm-chip.g5 { border-color: rgba(255, 110, 140, 0.6); }
+.mm-chip.me { border-color: #7be3a2; color: #e2ffeb; font-weight: 700; }
+.mm-btns { display: flex; gap: 6px; }
+.mm-btns[hidden] { display: none; }
+.mm-btns .btn { flex: 1; }
+.lb-launch.mm .news-card, .lb-launch.mm .train-btn { display: none; }
+@media (max-height: 520px), (max-width: 860px) {
+  .online-tg { width: 74px; padding: 3px 2px; } .online-tg svg { width: 17px; height: 17px; } .online-tg b { font-size: 0.64rem; } .online-tg small { font-size: 0.56rem; }
+  .mm-panel { padding: 5px 8px; gap: 3px; } .mm-head b { font-size: 0.8rem; } .mm-sub { font-size: 0.64rem; } .mm-who { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .mm-spin { animation: none; } }
+
+/* ---------- v21 스타트 섬: 남은 시간 · 머리 위 칭호/봇 난이도 ---------- */
+#islandBar { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 54px); transform: translateX(-50%) scale(var(--hud-s)); transform-origin: 50% 0; display: flex; flex-direction: column; align-items: center; padding: 5px 34px 7px; background: linear-gradient(90deg, rgba(10, 13, 15, 0), rgba(10, 13, 15, 0.72) 20%, rgba(10, 13, 15, 0.72) 80%, rgba(10, 13, 15, 0)); text-align: center; pointer-events: none; z-index: 4; }
+#islandBar[hidden] { display: none; }
+#islandBar b { font-size: 0.7rem; letter-spacing: 0.32em; color: var(--amber); }
+#islandBar span { font-family: var(--f-display); font-size: 2.1rem; font-weight: 800; line-height: 1.05; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6); }
+#islandBar small { font-size: 0.7rem; color: var(--sand); opacity: 0.9; white-space: nowrap; }
+#islandTags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.itag { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; transform-origin: 50% 100%; will-change: transform; }
+.itag[hidden] { display: none; }
+.itag-name { font-size: 0.8rem; font-weight: 700; color: #fff; white-space: nowrap; text-shadow: 0 1px 3px #000, 0 0 6px rgba(0, 0, 0, 0.6); }
+.itag.me .itag-name { color: var(--amber); }
+.itag-diff { padding: 1px 8px; border-radius: 3px; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.04em; color: #fff; white-space: nowrap; background: rgba(70, 120, 190, 0.92); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); }
+.itag-diff.d-easy { background: rgba(64, 150, 88, 0.92); } .itag-diff.d-hard { background: rgba(206, 118, 36, 0.94); } .itag-diff.d-extreme { background: rgba(186, 34, 34, 0.95); }
+body.island #mini, body.island .mini-info, body.island #counters, body.island #zoneInfo { visibility: hidden; }
+body.touch #islandBar { top: calc(env(safe-area-inset-top, 0px) + 38px); } body.touch #islandBar span { font-size: 1.6rem; }

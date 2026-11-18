@@ -167,9 +167,10 @@ class Brain {
     // 무장한 봇만 그쪽을 돌아본다 (맨손 봇이 서로 돌아보다 주먹 싸움이 늘던 문제)
     if (this.usableWeapons().length && (!this.target || !this.aware.get(this.target) || !this.aware.get(this.target).visible)) this.lookYaw = Math.atan2(x - c.pos.x, z - c.pos.z);
   }
-  // 플레이어 팀원이면 플레이어 (살아 있을 때) — 플레이어를 따라가고 지시를 받는다
-  playerMate() { const p = G.player; return !G.dm && G.teamSize > 1 && p && p.alive && p !== this.c && p.team === this.c.team && p.mode === 'ground' ? p : null; }
-  order() { return this.playerMate() ? G.teamOrder : null; }
+  // 사람의 팀원이면 그 사람 (살아 있을 때) — 따라다닌다. 지시(핑)는 이 기기 플레이어의 팀원만 받는다
+  //  followC: 팀의 사람 (온라인 매칭·파티에서 다른 기기 사람의 팀원 봇도 방장 기기가 움직임 — 11_game.js startMatch)
+  playerMate() { const p = this.followC || G.player; return !G.dm && G.teamSize > 1 && p && p.alive && p !== this.c && p.team === this.c.team && p.mode === 'ground' ? p : null; }
+  order() { const pm = this.playerMate(); return pm && pm === G.player ? G.teamOrder : null; }
   // 따라가기 자리: 플레이어 진행 방향 기준 왼뒤·오른뒤·뒤
   followSlot(p) {
     const yaw = Math.hypot(p.vel.x, p.vel.z) > 1 ? Math.atan2(p.vel.x, p.vel.z) : p.yaw;
@@ -334,7 +335,7 @@ class Brain {
     this.target = tgt;
     // 조심 모드: 막 부활했거나 체력이 낮으면 돌진·추격·소리 수색을 하지 않는다
     const recovering = G.time < (this.recoverUntil || 0);
-    const pm = this.playerMate(), ord = pm ? G.teamOrder : null;
+    const pm = this.playerMate(), ord = pm && pm === G.player ? G.teamOrder : null;
     const cautious = this.cautious = recovering || c.hp < 35;
 
     // 무기 정비

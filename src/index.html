@@ -121,7 +121,17 @@
             <span class="mc-warn" id="mcWarn" hidden>렉 주의</span>
             <span class="mc-gear"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg></span>
           </button>
-          <button class="btn play" id="playBtn" type="button"><span>출격</span><small id="playSub">솔로 · 칼덴 섬</small></button>
+          <div class="mm-panel" id="mmPanel" hidden>
+            <div class="mm-head"><i class="mm-spin" aria-hidden="true"></i><b id="mmTitle">온라인 매칭 중</b><span id="mmTime">0:00 / 3:00</span></div>
+            <div class="mm-bar"><i id="mmBar"></i></div>
+            <div class="mm-sub" id="mmSub"></div>
+            <div class="mm-who" id="mmWho"></div>
+            <div class="mm-btns" id="mmBtns"><button class="btn sm ghost" id="mmCancel" type="button">매칭 취소</button><button class="btn sm" id="mmAi" type="button">AI로 바로 시작</button></div>
+          </div>
+          <div class="play-row">
+            <button class="online-tg on" id="onlineBtn" type="button" aria-label="온라인 매칭 켬/끔"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3.4 3.4 3.4 14.6 0 18M12 3c-3.4 3.4-3.4 14.6 0 18"/></svg><b>온라인 매칭</b><small>켬</small></button>
+            <button class="btn play" id="playBtn" type="button"><span>출격</span><small id="playSub">솔로 · 칼덴 섬</small></button>
+          </div>
         </div>
       </div>
       <div class="lb-brief"><div class="match-brief" id="matchBrief"></div><div class="micro" id="storeNote"></div></div>
@@ -238,6 +248,8 @@
     <div id="dmRespawn" hidden><span>부활까지</span><b id="dmRespawnT">3.0</b><small>출발 구역에서 다시 시작합니다</small></div>
     <div id="dmProt" hidden></div>
     <div id="duelBanner" hidden></div>
+    <div id="islandTags"></div>
+    <div id="islandBar" hidden><b>스타트 섬</b><span id="islandT">25</span><small id="islandSub">출발까지</small></div>
     <div id="teamPanel" hidden></div>
     <div id="teamTags" hidden></div>
     <div id="pingTag" hidden><i></i><span></span></div>

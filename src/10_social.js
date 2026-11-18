@@ -176,7 +176,7 @@ const Social = (() => {
 
 const Party = (() => {
   let P = null, ch = null, chOk = false, own = null, joining = null, pushT = 0, lastShared = '', absent = new Map(), present = new Set();
-  const SHARED = ['game', 'map', 'mode', 'squad', 'queue', 'time', 'difficulty', 'bots'];
+  const SHARED = ['game', 'map', 'mode', 'squad', 'queue', 'time', 'difficulty', 'bots', 'online'];   // online: 온라인 매칭 켬/끔 (방장이 정함)
   const me = () => Cloud.uid;
   const sb = () => Cloud.client();
   const isLeader = () => !!P && P.leader === me();
@@ -224,10 +224,11 @@ const Party = (() => {
   }
   function leave(quiet) {
     if (P) {
+      if (isLeader()) MM.partyChanged();   // 파티째 매칭 중이면 취소
       send('bye', {});
       if (isLeader() && P.members.length > 1) { const next = P.members.find((m) => m.uid !== me()); if (next) send('lead', { uid: next.uid }); }
     }
-    close();
+    close(); MM.partyGone();
     const was = !!P; P = null; joining = null;
     restoreOwn();
     if (was && !quiet) HUD.lobbyNote('파티에서 나왔습니다');
@@ -236,7 +237,7 @@ const Party = (() => {
   function kick(uid) {
     if (!isLeader()) return;
     const m = P.members.find((x) => x.uid === uid); if (!m) return;
-    send('kick', { uid }); P.members = P.members.filter((x) => x.uid !== uid); pushState(); renderAll();
+    send('kick', { uid }); P.members = P.members.filter((x) => x.uid !== uid); MM.partyChanged(); pushState(); renderAll();
     HUD.lobbyNote(`${m.name}님을 파티에서 내보냈습니다`);
   }
   // 파티원: 내 설정 보관 → 방장 설정 적용 / 나가면 복원
@@ -266,13 +267,13 @@ const Party = (() => {
         if (!isLeader()) return;
         const idx = P.members.findIndex((x) => x.uid === m.m.uid);
         if (idx < 0 && P.members.length >= PARTY_MAX) { send('full', { to: m.m.uid }); return; }
-        if (idx < 0) { P.members.push(m.m); HUD.lobbyNote(`${m.m.name}님이 파티에 들어왔습니다`); Audio.ui && Audio.ui(); }
+        if (idx < 0) { P.members.push(m.m); MM.partyChanged(); HUD.lobbyNote(`${m.m.name}님이 파티에 들어왔습니다`); Audio.ui && Audio.ui(); }
         else P.members[idx] = Object.assign(P.members[idx], m.m);
         absent.delete(m.m.uid); pushState(); renderAll(); break;
       }
       case 'state': {
         const p = m.p; if (!p || !p.members) return;
-        if (!p.members.some((x) => x.uid === me())) { if (P && P.id === p.id) { close(); P = null; restoreOwn(); HUD.lobbyNote('파티에서 빠졌습니다'); renderAll(); } return; }
+        if (!p.members.some((x) => x.uid === me())) { if (P && P.id === p.id) { close(); P = null; MM.partyGone(); restoreOwn(); HUD.lobbyNote('파티에서 빠졌습니다'); renderAll(); } return; }
         const first = !P;
         P = p; joining = null; applyShared(p.s);
         if (first) HUD.lobbyNote(`${(p.members.find((x) => x.uid === p.leader) || {}).name || '방장'}님의 파티에 들어왔습니다`);
@@ -281,19 +282,20 @@ const Party = (() => {
       case 'bye': {
         if (!P) return;
         const m0 = P.members.find((x) => x.uid === m.from);
-        if (isLeader() && m0) { P.members = P.members.filter((x) => x.uid !== m.from); pushState(); HUD.lobbyNote(`${m0.name}님이 파티를 나갔습니다`); renderAll(); }
+        if (isLeader() && m0) { P.members = P.members.filter((x) => x.uid !== m.from); MM.partyChanged(); pushState(); HUD.lobbyNote(`${m0.name}님이 파티를 나갔습니다`); renderAll(); }
         if (Net.active()) Net.peerLeft(m.from);
         break;
       }
       case 'lead': { // 방장이 나가면서 다음 방장 지정
         if (!P) return;
         P.members = P.members.filter((x) => x.uid !== m.from);
-        P.leader = m.uid; if (isLeader()) { HUD.lobbyNote('방장이 나가서 내가 방장이 되었습니다'); pushState(); }
+        P.leader = m.uid; MM.partyGone(); if (isLeader()) { HUD.lobbyNote('방장이 나가서 내가 방장이 되었습니다'); pushState(); }
         renderAll(); break;
       }
-      case 'kick': if (m.uid === me()) { close(); P = null; restoreOwn(); HUD.lobbyNote('방장이 파티에서 내보냈습니다'); Social.track(); renderAll(); } break;
+      case 'kick': if (m.uid === me()) { close(); P = null; MM.partyGone(); restoreOwn(); HUD.lobbyNote('방장이 파티에서 내보냈습니다'); Social.track(); renderAll(); } break;
       case 'full': if (m.to === me()) { close(); P = null; joining = null; restoreOwn(); HUD.lobbyNote('파티가 가득 찼습니다'); renderAll(); } break;
-      case 'start': if (P && m.cfg && m.cfg.humans.some((x) => x.uid === me())) Net.join(m.cfg); break;
+      case 'start': if (P && m.cfg && m.cfg.humans.some((x) => x.uid === me())) { MM.partyGone(); Net.join(m.cfg); } break;
+      case 'mm': if (P && m.from === P.leader) MM.onParty(m); break;   // 방장이 온라인 매칭 중 (10_mm.js)
       default: if (Net.onParty) Net.onParty(m);
     }
   }
@@ -319,9 +321,10 @@ const Party = (() => {
         P.members = P.members.filter((x) => x.uid !== uid);
         const next = P.members.find((x) => present.has(x.uid) || x.uid === me());
         if (next) P.leader = next.uid;
+        MM.partyGone();
         HUD.lobbyNote(`방장 ${m.name}님의 연결이 끊겼습니다${isLeader() ? ' — 내가 방장이 되었습니다' : ''}`);
         if (isLeader()) pushState();
-      } else if (isLeader()) { P.members = P.members.filter((x) => x.uid !== uid); HUD.lobbyNote(`${m.name}님의 연결이 끊겨 파티에서 뺐습니다`); pushState(); }
+      } else if (isLeader()) { P.members = P.members.filter((x) => x.uid !== uid); MM.partyChanged(); HUD.lobbyNote(`${m.name}님의 연결이 끊겨 파티에서 뺐습니다`); pushState(); }
       if (Net.active()) Net.peerLeft(uid);
       renderAll();
     }
@@ -350,7 +353,7 @@ const Party = (() => {
   function decoratePlay() {
     const L = lockInfo(); if (!L) return;
     const b = $('playBtn');
-    if (!L.leader) { b.classList.add('wait'); b.querySelector('span').textContent = '방장 대기'; $('playSub').textContent = '방장이 출격하면 함께 시작합니다'; }
+    if (!L.leader) { b.classList.add('wait'); b.querySelector('span').textContent = MM.party ? '방장 매칭 중' : '방장 대기'; $('playSub').textContent = MM.party ? '방장이 온라인 매칭 중입니다 — 경기가 잡히면 함께 시작합니다' : '방장이 출격하면 함께 시작합니다'; }
     else {
       const notReady = P.members.filter((m) => m.uid !== me() && m.st !== 'lobby');
       b.classList.toggle('wait', notReady.length > 0);
@@ -358,15 +361,18 @@ const Party = (() => {
     }
   }
   // 출격 (로비 출격 버튼). 파티가 아니면 false → 혼자 시작
-  function tryStart() {
+  //  온라인 매칭이 켜져 있으면 파티째 줄 서기 (10_mm.js) · noMM: 매칭 없이 파티원끼리 바로 (AI로 바로 시작 · 매칭 서버 연결 실패)
+  function tryStart(noMM) {
     const L = lockInfo(); if (!L) return false;
-    if (!L.leader) { HUD.lobbyNote('방장이 출격하면 함께 시작합니다'); return true; }
+    if (!L.leader) { HUD.lobbyNote(MM.party ? '방장이 온라인 매칭 중입니다' : '방장이 출격하면 함께 시작합니다'); return true; }
+    if (MM.searching()) { MM.cancel('매칭을 취소했습니다'); return true; }
     const notReady = P.members.filter((m) => m.uid !== me() && m.st !== 'lobby');
     if (notReady.length) { HUD.lobbyNote(`${notReady.map((m) => m.name).join(', ')}님이 아직 게임 중입니다`); return true; }
     if (SETTINGS.queue !== 'normal' && !isDmGame(SETTINGS.game) && !L.rankOk) { HUD.lobbyNote(`파티원 중 레벨 3 미만이 있어 랭크전을 할 수 없습니다 (${L.lowNames.join(', ')})`); return true; }
     if (SETTINGS.queue === 'hardcore' && !isDmGame(SETTINGS.game) && !L.hcOk) { HUD.lobbyNote(`파티원 중 다이아 4를 찍어 보지 못한 사람이 있어 하드코어를 할 수 없습니다 (${L.hcLow.join(', ')})`); return true; }
     if (isDuel(SETTINGS.game) && P.members.length > dmTeamSize(SETTINGS.game) * 2) { HUD.lobbyNote(`${GAME_TYPES[SETTINGS.game].name}은 ${dmTeamSize(SETTINGS.game) * 2}명까지 할 수 있습니다 (지금 파티 ${P.members.length}명)`); return true; }
     const humans = P.members.map((m) => ({ uid: m.uid, name: m.name, look: m.look, lv: m.lv }));
+    if (!noMM && MM.want(humans.length)) { MM.start(humans, true); return true; }
     const cfg = Net.makeConfig(humans);
     send('start', { cfg });
     Net.join(cfg);

@@ -1139,6 +1139,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     $('playBtn').classList.toggle('ranked', ranked); $('playBtn').classList.toggle('hc', hc); $('playBtn').querySelector('span').textContent = hc ? '하드코어 출격' : ranked ? '랭크 출격' : '출격';
     $('playSub').textContent = dm ? `${GT.name} · ${MAPS.arena.name}` : ranked ? `${MAPS[SETTINGS.map].name} · ${rs.label}` : `${sqName} · ${MAPS[SETTINGS.map].name} · ${DIFFICULTY_NAMES[SETTINGS.difficulty]}`;
     if (lock) Party.decoratePlay();
+    MM.decorate();   // 온라인 매칭 켬/끔 · 매칭 중이면 '매칭 취소' (10_mm.js)
     setTab(lobbyTab);
     EvBR.lobby();   // 이벤트: 돌아오기 링크·경기 중 받은 탈출 알림 처리 + 빨간 점
   }
@@ -1146,6 +1147,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: 'v21 온라인 매칭', title: '온라인 매칭 · 스타트 섬 — 같은 모드를 고른 사람끼리 한 경기로, 빈자리는 AI · 시작 전 25초 스타트 섬 (업데이트 로그 보기)', img: () => LOBBY_ART.kalden, act: () => ChangeLog.open() },
     { tag: 'v21 판처파우스트 스킨', title: "핵탄두 · SANTA'S DELIVERY · EVENT HORIZON — 터지면 버섯구름 · 큰 선물 상자 · 큰 블랙홀 (업데이트 로그 보기)", img: () => { try { return Shop.gunThumb('pzf', 'e_pzf_horizon') || Models.icon('pzf'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: 'v21 신규 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: '크리스마스', title: '크리스마스 상자 — 겨울 옷·총기·차량 스킨 · 새 등급 EXCLUSIVE (루돌프 썰매 · 전용 처치 효과 총 · 빛나는 옷)', img: () => { try { return Shop.crateThumb('xmas'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=gacha]'); if (b) b.click(); } },
@@ -1181,6 +1183,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     document.querySelectorAll('#lbTabs button').forEach((b) => b.addEventListener('click', () => { Audio.init(); Audio.ui(); setTab(b.dataset.tab); }));
     document.querySelectorAll('[data-tab-go]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); Audio.init(); Audio.ui(); setTab(b.dataset.tabGo); }));
     $('newsCard').addEventListener('click', () => { Audio.init(); Audio.ui(); NEWS[newsI % NEWS.length].act(); });
+    MM.setup();   // 출격 옆 '온라인 매칭' 켬/끔 · 매칭 카드 (10_mm.js)
     EvBR.init();   // 상단 '이벤트' (10_event.js)
     ChangeLog.init();   // 메뉴 → 업데이트 로그 (10_changelog.js)
     if (!store.set('probe', 1)) $('storeNote').textContent = '이 브라우저에서는 기록을 저장할 수 없어 이번 세션에만 유지됩니다.';

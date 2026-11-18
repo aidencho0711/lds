@@ -194,6 +194,7 @@ function collideChar(c) {
   Veh.pushChar(c);
   const lim = HALF - 3;
   c.pos.x = clamp(c.pos.x, -lim, lim); c.pos.z = clamp(c.pos.z, -lim, lim);
+  if (G.island) Island.clamp(c);   // 스타트 섬 밖(바다)으로는 못 나감
 }
 // wx, wz: 원하는 이동 방향(정규화), speed: 목표 속도
 function stepPhysics(c, dt, wx, wz, speed, jump) {

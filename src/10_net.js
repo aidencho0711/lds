@@ -4,6 +4,7 @@
 //   · 방장: 봇·자기장·보급·데스매치 점수·빈 차량을 계산, 다른 파티원 상태를 모아 다시 나눠 준다
 //   · 파티원: 내 캐릭터·내가 운전하는 차량·내가 던진 수류탄만 계산, 나머지는 받은 상태를 보간해서 그린다
 //  연결: WebRTC 데이터 채널(기기끼리 직접). 신호(offer/answer/ICE)는 파티 실시간 채널로
+//   · 온라인 매칭 경기(10_mm.js, cfg.mm)는 그 경기 전용 채널(ld-mm-*)로 — 파티원이 'hi'를 보내면 방장이 연결을 시작한다
 //   · 12초 안에 직접 연결이 안 되면(일부 모바일 망) 파티 채널로 중계 — 초당 5회로 줄여 보낸다
 //     (Supabase 무료 플랜 실시간 메시지 한도가 프로젝트 전체 초당 100개라 직접 연결이 기본)
 //  피해: 쏜 쪽이 맞힌 것을 판정 → 맞은 캐릭터의 주인 기기로 'hit' → 주인이 방어구 계산·기절·사망 처리 후 결과를 알림
@@ -23,25 +24,39 @@ const Net = (() => {
   const ownerOf = (c) => (c && c.net ? c.net.owner : N ? N.cfg.host : null);
 
   // ---------- 경기 설정 (방장) ----------
-  function makeConfig(humans) {
-    const game = SETTINGS.game, dm = isDmGame(game), seed = (Math.random() * 2147483647) | 0;
+  // opt.mm: 온라인 매칭 경기 번호 (10_mm.js) — humans[].g = 줄(파티) 번호: 같은 줄은 같은 팀, 다른 줄과는 팀이 되지 않는다
+  function makeConfig(humans, opt) {
+    opt = opt || {};
+    const game = SETTINGS.game, dm = isDmGame(game), seed = (Math.random() * 2147483647) | 0, mm = !!opt.mm;
     const cfg = { v: NET_VER, mid: (Math.random() * 1e9).toString(36), host: Cloud.uid, game, dm, seed, humans,
       s: { map: SETTINGS.map, mode: SETTINGS.mode, squad: SETTINGS.squad, queue: SETTINGS.queue, time: SETTINGS.time, difficulty: SETTINGS.difficulty, bots: SETTINGS.bots } };
+    if (mm) cfg.mm = opt.mm;
+    const groups = new Map(); humans.forEach((h, i) => { const g = mm ? h.g || 0 : 0; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(i); });
+    const gMax = Math.max(...[...groups.values()].map((l) => l.length));
     if (dm) {
       const duel = isDuel(game), ts = dmTeamSize(game);
       cfg.loadout = game === 'tdm' || duel ? DM.loadout(mulberry32(seed), DM.TDM_GUNS, null) : null;
       // 데스매치: 파티원은 모두 같은 팀(블루) · 대결: 파티원을 번갈아 양 팀으로 (1대1 = 서로 상대)
-      const roster = humans.map((hm, i) => ({ id: i, team: duel ? i % 2 : 0, human: true, name: hm.name, look: hm.look, uid: hm.uid }));
+      // 온라인 매칭: 같은 줄(파티)은 같은 팀, 큰 줄부터 사람이 적은 팀에 (양 팀 인원을 고르게)
+      let teamOf = null;
+      if (mm) {
+        const cnt = [0, 0]; teamOf = [];
+        [...groups.values()].sort((a, b) => b.length - a.length).forEach((ix) => { let t = cnt[0] <= cnt[1] ? 0 : 1; if (cnt[t] + ix.length > ts) t = 1 - t; for (const i of ix) { const tt = cnt[t] < ts ? t : 1 - t; teamOf[i] = tt; cnt[tt]++; } });
+      }
+      const roster = humans.map((hm, i) => ({ id: i, team: teamOf ? teamOf[i] : duel ? i % 2 : 0, human: true, name: hm.name, look: hm.look, uid: hm.uid }));
       const nm = shuffled(BOT_NAMES, mulberry32(seed ^ 0x5bd1e995)), cnt = [0, 0]; for (const r of roster) cnt[r.team]++;
       let id = humans.length;
       for (const t of [0, 1]) while (cnt[t] < ts) { roster.push({ id, team: t, name: nm[id % nm.length], diff: BotSkin.pickDiff(false) }); id++; cnt[t]++; }
       cfg.roster = roster;
     } else {
-      cfg.hc = SETTINGS.queue === 'hardcore' && Rank.hcOk();
-      cfg.ranked = (SETTINGS.queue === 'ranked' || cfg.hc) && Rank.unlocked();
-      const want = (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.duo).size;
-      cfg.teamSize = Math.max(want, humans.length);
+      // 온라인 매칭: 대기열(일반·랭크·하드코어)은 각자 줄 서기 전에 자격을 확인했으므로 대기열 그대로
+      cfg.hc = mm ? SETTINGS.queue === 'hardcore' : SETTINGS.queue === 'hardcore' && Rank.hcOk();
+      cfg.ranked = mm ? SETTINGS.queue !== 'normal' : (SETTINGS.queue === 'ranked' || cfg.hc) && Rank.unlocked();
+      const want = mm && opt.spec ? opt.spec.ts : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.duo).size;
+      cfg.teamSize = mm ? Math.max(want, gMax) : Math.max(want, humans.length);
       cfg.nBots = cfg.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, humans.length, mapMaxBots(SETTINGS.map));
+      // 매칭: 사람 팀마다 빈자리(팀원 봇)를 채우고도 다른 팀이 하나 이상 있게
+      if (mm) cfg.nBots = Math.min(mapMaxBots(SETTINGS.map), Math.max(cfg.nBots, groups.size * cfg.teamSize + cfg.teamSize - 1));
       cfg.bd = BotSkin.diffCodes(Math.max(0, cfg.nBots - humans.length + 1), cfg.ranked, cfg.hc);   // 봇 난이도(한 글자씩) — 파티원 기기도 봇 스킨을 같게 입힌다
       cfg.plane = { a: Math.random() * TAU, off: Math.random() * 2 - 1 };
     }
@@ -54,17 +69,34 @@ const Net = (() => {
     if (!Cloud.uid || G.state === 'loading') return;
     if (N) close(true);
     if (G.state === 'play' || G.state === 'result') { $('resultPanel').hidden = true; disposeMatch(); G.state = 'lobby'; }
-    for (const k in cfg.s) SETTINGS[k] = cfg.s[k];          // 이번 경기만 방장 설정 (저장하지 않음)
+    // 이번 경기만 방장 설정 (저장하지 않음). 온라인 매칭은 모르는 사람의 설정이므로 끝나면 내 설정으로 되돌린다
+    const own = cfg.mm ? Object.assign({ game: SETTINGS.game }, ...Object.keys(cfg.s).map((k) => ({ [k]: SETTINGS[k] }))) : null;
+    for (const k in cfg.s) SETTINGS[k] = cfg.s[k];
     SETTINGS.game = cfg.game;
     const myIdx = cfg.humans.findIndex((h) => h.uid === Cloud.uid);
-    N = { cfg, host: cfg.host === Cloud.uid, me: Cloud.uid, myIdx, peers: new Map(), quiet: 0, applying: 0, seq: 0, uidBase: (myIdx + 1) * 1e7, uidN: 0,
-      items: new Map(), vehs: [], outB: [], tickT: 0, zoneT: 0, t0: now(), welcomed: false, ended: false, ready: false, stats: { tx: 0, rx: 0 } };
+    N = { cfg, host: cfg.host === Cloud.uid, me: Cloud.uid, myIdx, peers: new Map(), quiet: 0, applying: 0, seq: 0, uidBase: (myIdx + 1) * 1e7, uidN: 0, own,
+      items: new Map(), vehs: [], outB: [], tickT: 0, zoneT: 0, t0: now(), welcomed: false, ended: false, ready: false, hiT: 0, stats: { tx: 0, rx: 0 } };
     G.net = N; G.netAuthority = () => !N || N.host;
-    if (N.host) { for (const hm of cfg.humans) if (hm.uid !== N.me) N.peers.set(hm.uid, newPeer(hm.uid, true)); }
+    // 온라인 매칭: 이 경기 채널로 신호. 방장은 파티원이 '들어왔다(hi)'고 알릴 때 연결을 시작한다 (채널에 늦게 들어온 사람이 신호를 놓치지 않게)
+    if (cfg.mm) MM.chOpen(cfg.mm, onMM, () => { if (N && !N.host) hi(); });
+    if (N.host) { for (const hm of cfg.humans) if (hm.uid !== N.me) N.peers.set(hm.uid, newPeer(hm.uid, true, !!cfg.mm)); }
     else N.peers.set(cfg.host, newPeer(cfg.host, false));
     if (pendBuf) { const b = pendBuf; pendBuf = null; for (const m of b) if (m.from === cfg.host || N.host) onSig(m); }
     if (cfg.dm) DM.start(dmCfg(cfg)); else G.startMatchNet(cfg);
   }
+  const viaMM = () => !!(N && N.cfg.mm);
+  // 신호·중계 보내기: 온라인 매칭은 경기 채널, 파티는 파티 채널
+  function bus(k, d) { return viaMM() ? MM.chSend(k, d) : Party.send(k, d); }
+  function hi() { if (N && !N.host) { N.hiT = now(); bus('hi', { to: N.cfg.host }); } }
+  // 경기 채널로 온 메시지
+  function onMM(m) {
+    if (!N || (m.to && m.to !== Cloud.uid)) return;
+    if (m.k === 'hi') { if (N.host) { const p = N.peers.get(m.from); if (p && !p.open && !p.relay && (!p.pc || now() - (p.offerT || 0) > 5)) offer(p); } return; }
+    if (m.k === 'bye') { peerLeft(m.from); return; }
+    onParty(m);
+  }
+  // 이번 경기만 쓴 방장 설정을 내 설정으로 되돌림 (온라인 매칭)
+  function restoreOwn(n0) { if (n0 && n0.own) { Object.assign(SETTINGS, n0.own); n0.own = null; } }
   function dmCfg(cfg) {
     const host = cfg.host, me = Cloud.uid;
     const roster = cfg.roster.map((r) => { const o = Object.assign({}, r); if (r.human) o.net = charNet(r.uid); else if (host !== me) o.net = charNet(host); return o; });
@@ -75,20 +107,28 @@ const Net = (() => {
   function charNet(owner) { return { owner, mine: owner === Cloud.uid, buf: [], life: -1 }; }
 
   // ---------- 연결 ----------
-  function newPeer(uid, offerer) {
-    const p = { uid, pc: null, r: null, u: null, open: false, relay: false, t0: now(), lastRx: now(), pend: [], name: (N.cfg.humans.find((h) => h.uid === uid) || {}).name || '?' };
+  // defer: 연결은 나중에 (온라인 매칭 방장 — 상대의 'hi'를 받으면 offer)
+  function newPeer(uid, offerer, defer) {
+    const p = { uid, pc: null, r: null, u: null, open: false, relay: false, t0: now(), lastRx: now(), pend: [], oid: 0, offerT: 0, name: (N.cfg.humans.find((h) => h.uid === uid) || {}).name || '?' };
+    if (!defer) makePc(p, offerer);
+    return p;
+  }
+  // WebRTC 연결 만들기. oid = 연결 번호: 방장이 다시 시작(offer)하면 번호가 바뀌고, 받는 쪽도 새 연결로 바꾼다 · 지난 번호의 신호는 버림
+  function makePc(p, offerer) {
+    const uid = p.uid, oid = p.oid;
     try {
       const pc = p.pc = new RTCPeerConnection({ iceServers: NET_ICE });
-      pc.onicecandidate = (e) => { if (e.candidate) sig(uid, { ice: e.candidate.toJSON ? e.candidate.toJSON() : { candidate: e.candidate.candidate, sdpMid: e.candidate.sdpMid, sdpMLineIndex: e.candidate.sdpMLineIndex } }); };
-      pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed' && !p.relay) toRelay(p, 'failed'); };
+      pc.onicecandidate = (e) => { if (e.candidate && p.pc === pc) sig(uid, { ice: e.candidate.toJSON ? e.candidate.toJSON() : { candidate: e.candidate.candidate, sdpMid: e.candidate.sdpMid, sdpMLineIndex: e.candidate.sdpMLineIndex } }, oid); };
+      pc.onconnectionstatechange = () => { if (p.pc === pc && pc.connectionState === 'failed' && !p.relay) toRelay(p, 'failed'); };
       if (offerer) {
         p.r = pc.createDataChannel('r', { ordered: true }); p.u = pc.createDataChannel('u', { ordered: false, maxRetransmits: 0 });
         setupDc(p, p.r); setupDc(p, p.u);
-        pc.createOffer().then((o) => pc.setLocalDescription(o)).then(() => sig(uid, { sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } })).catch((e) => { console.warn('offer', e); toRelay(p, 'offer'); });
-      } else pc.ondatachannel = (e) => { if (e.channel.label === 'r') p.r = e.channel; else p.u = e.channel; setupDc(p, e.channel); };
+        pc.createOffer().then((o) => pc.setLocalDescription(o)).then(() => { if (p.pc === pc) sig(uid, { sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } }, oid); }).catch((e) => { console.warn('offer', e); toRelay(p, 'offer'); });
+      } else pc.ondatachannel = (e) => { if (p.pc !== pc) return; if (e.channel.label === 'r') p.r = e.channel; else p.u = e.channel; setupDc(p, e.channel); };
     } catch (e) { console.warn('WebRTC 사용 불가', e); p.relay = true; p.needHello = true; }
-    return p;
   }
+  // 방장: (다시) 연결 시작
+  function offer(p) { try { if (p.pc) p.pc.close(); } catch (e) { /* */ } p.oid++; p.offerT = now(); p.pend = []; p.r = p.u = null; makePc(p, true); }
   function setupDc(p, dc) {
     dc.onopen = () => { if (p.r && p.r.readyState === 'open') { p.open = true; if (p.relay) { p.relay = false; } hello(p); linkUp(p); } };
     dc.onmessage = (e) => recv(p, e.data);
@@ -100,15 +140,19 @@ const Net = (() => {
     if (p.q && p.q.length) { const q = p.q.splice(0); for (const m of q) sendTo(p, m, true); }
     if (N.host && p.helloSeen) welcome(p);
   }
-  function sig(to, d) { Party.send('sig', { to, d }); }
+  function sig(to, d, o) { bus('sig', { to, d, o: o || 0 }); }
   async function onSig(m) {
     if (!N) { (pendBuf || (pendBuf = [])).push(m); return; }
-    const p = N.peers.get(m.from); if (!p || !p.pc) return;
-    const pc = p.pc, d = m.d;
+    const p = N.peers.get(m.from); if (!p) return;
+    const d = m.d, o = m.o || 0;
+    // 방장이 연결을 새로 시작함 → 나도 새 연결 (온라인 매칭: 내가 채널에 늦게 들어와 처음 offer 를 놓친 경우 등)
+    if (!N.host && d.sdp && d.sdp.type === 'offer' && o !== p.oid) { try { if (p.pc) p.pc.close(); } catch (e) { /* */ } p.oid = o; p.pend = []; p.open = false; p.r = p.u = null; makePc(p, false); }
+    if (o !== p.oid || !p.pc) return;   // 지난 연결의 신호
+    const pc = p.pc;
     try {
       if (d.sdp) {
         await pc.setRemoteDescription(d.sdp);
-        if (d.sdp.type === 'offer') { const a = await pc.createAnswer(); await pc.setLocalDescription(a); sig(m.from, { sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } }); }
+        if (d.sdp.type === 'offer') { const a = await pc.createAnswer(); await pc.setLocalDescription(a); if (p.pc === pc) sig(m.from, { sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } }, o); }
         for (const c of p.pend.splice(0)) pc.addIceCandidate(c).catch(() => {});
       } else if (d.ice) { if (pc.remoteDescription) await pc.addIceCandidate(d.ice).catch(() => {}); else p.pend.push(d.ice); }
     } catch (e) { console.warn('신호 처리', e); }
@@ -128,7 +172,7 @@ const Net = (() => {
       const dc = reliable || !p.u || p.u.readyState !== 'open' ? p.r : p.u;
       if (dc && dc.readyState === 'open') { if (dc.bufferedAmount < 2e6 || reliable) { try { dc.send(s); } catch (e) { console.warn(e); } } return; }
     }
-    if (p.relay) Party.send('g', { to: p.uid, d: s });
+    if (p.relay) bus('g', { to: p.uid, d: s });
   }
   // 큰 목록(아이템 등)은 나눠 보낸다
   function sendBig(p, kind, list, per = 400) {
@@ -208,6 +252,7 @@ const Net = (() => {
       case 'lootReq': if (N.host) sendLoot(N.peers.get(from)); break;
       case 'vehs': recvVehs(e); break;
       case 'bye': peerLeft(from === N.me ? e.from : (e.uid || from)); break;
+      case 'isl': if (!N.host && G.island) Island.end(); break;   // 방장의 스타트 섬이 끝남 → 모두 수송기로
     }
   }
 
@@ -286,7 +331,10 @@ const Net = (() => {
     c.combatFacing = !!(f & FL.ready); if (f & FL.ready) c.lastShotT = Math.max(c.lastShotT || -99, G.time - 1.2);
     c.stance = f & FL.prone ? 'prone' : f & FL.crouch ? 'crouch' : 'stand'; c.lean = f & FL.leanL ? -1 : f & FL.leanR ? 1 : 0; c.leanCap = 1;
     const mode = f & FL.plane ? 'plane' : f & FL.chute ? 'chute' : f & FL.fall ? 'fall' : 'ground';
-    if (c.mode !== mode) { c.mode = mode; if (mode !== 'plane') c.root.visible = true; }
+    if (c.mode !== mode) {
+      const was = c.mode; c.mode = mode; if (mode !== 'plane') c.root.visible = true;
+      if (N.host && c.human && was === 'plane' && (mode === 'fall' || mode === 'chute')) G.mateJump(c);   // 다른 기기 사람이 뛰어내림 → 그 팀원 봇도 따라 뜀
+    }
     if (alive) c.hp = a[7];
     c.heal = f & FL.heal ? { id: a[13] || 'bandage', t: 1, total: 2 } : null;
     c.throwMode = f & FL.nade && a[13] ? { type: a[13], pin: !!(f & FL.pin) } : null;
@@ -491,6 +539,8 @@ const Net = (() => {
   }
   function applyWorld(w) {
     if (N.host) return;
+    // 스타트 섬: 방장이 남은 시간(isl)을 보낸다. 방장 쪽 섬이 끝났으면(isl 없음) 나도 수송기로
+    if (G.island) { if (w.isl === undefined) Island.end(); else { Island.sync(w.isl); return; } }
     if (w.t !== undefined && Math.abs(G.time - w.t) > 1.2) G.time = w.t;
     if (w.pt !== undefined && G.plane && G.plane.active && Math.abs(G.plane.t - w.pt) > 0.4) { G.plane.t = w.pt; if (G.previewT > 0 && w.pt > 0) { G.previewT = 0; HUD.closeMap(); } }
   }
@@ -499,6 +549,8 @@ const Net = (() => {
   function tick(dt) {
     if (!N) return;
     const t = now();
+    // 온라인 매칭 파티원: 방장의 offer 가 올 때까지 'hi'를 2.5초마다 다시 (방장이 채널에 늦게 들어온 경우)
+    if (viaMM() && !N.host) { const hp = N.peers.get(N.cfg.host); if (hp && !hp.open && !hp.relay && !hp.oid && t - N.hiT > 2.5) hi(); }
     // 연결 시간 초과 → 중계
     for (const p of N.peers.values()) {
       if (!p.open && !p.relay && t - p.t0 > 12) toRelay(p, 'timeout');
@@ -516,7 +568,7 @@ const Net = (() => {
       const mineS = [], others = [];
       for (const c of CHARS) { if (mine(c)) mineS.push(c); else if (N.host) others.push(c); }
       const myVeh = []; for (const v of N.vehs) if (!vehRemote(v) && (v.awake || v.burnT > 0 || v.netDirty)) { myVeh.push(encVeh(v)); v.netDirty = v.awake; }
-      const w = N.host ? { t: r2(G.time), pt: G.plane && G.plane.active ? r2(G.plane.t) : undefined } : undefined;
+      const w = N.host ? { t: r2(G.time), pt: G.plane && G.plane.active ? r2(G.plane.t) : undefined, isl: G.island ? r2(Island.left()) : undefined } : undefined;
       for (const p of N.peers.values()) {
         if (!(p.open || p.relay) || (p.relay && !relayTick)) continue;
         const me0 = G.player, far = (c) => { if (!N.host) return false; const pc = charById2(p.uid); if (!pc || !c.alive) return false; const d = Math.hypot(c.pos.x - pc.pos.x, c.pos.z - pc.pos.z); return d > 260 && N.tickN % 10 !== 0; };
@@ -566,6 +618,8 @@ const Net = (() => {
   function hostGone() {
     if (!N || N.ended) return;
     N.ended = true;
+    // 스타트 섬(경기 시작 전)에서 끊기면 기록 없이 로비로
+    if (G.island && G.state === 'play') { HUD.toast('방장의 연결이 끊겨 경기를 시작하지 못했습니다 — 로비로 돌아갑니다', 'warn'); setTimeout(() => { if (G.state === 'play' && G.island) toLobby(); }, 1500); return; }
     HUD.toast('방장의 연결이 끊겨 경기가 끝났습니다', 'warn');
     if (G.state !== 'play') return;
     if (G.dm) { const S = G.dm; if (!S.over) DM.finish(S.score[0] === S.score[1] ? -1 : S.score[0] > S.score[1] ? 0 : 1); }
@@ -573,17 +627,19 @@ const Net = (() => {
   }
   function leave() {
     if (!N) return;
-    try { ev({ k: 'bye', uid: N.me }); flush(true); } catch (e) { /* */ }
-    const n0 = N; setTimeout(() => closePeers(n0), 400);
-    N = null; G.net = null;
+    try { ev({ k: 'bye', uid: N.me }); flush(true); if (viaMM()) bus('bye', {}); } catch (e) { /* */ }
+    const n0 = N, mm = n0.cfg.mm; setTimeout(() => { closePeers(n0); if (mm) MM.chClose(mm); }, 400);
+    N = null; G.net = null; restoreOwn(n0);
   }
   function closePeers(n0) { for (const p of n0.peers.values()) { try { p.pc && p.pc.close(); } catch (e) { /* */ } } }
-  function close(quiet) { if (!N) return; if (!quiet) leave(); else { closePeers(N); N = null; G.net = null; } }
+  function close(quiet) { if (!N) return; if (!quiet) leave(); else { const n0 = N; closePeers(n0); if (n0.cfg.mm) MM.chClose(n0.cfg.mm); N = null; G.net = null; restoreOwn(n0); } }
   // 방장이 로비로 나가려 할 때 아직 살아 있는 파티원이 있는지
   function othersPlaying() { if (!N || !N.host) return false; return N.cfg.humans.some((hm) => hm.uid !== N.me && CHARS.some((c) => c.net && c.net.owner === hm.uid && c.alive && !c.botized)); }
+  // 방장: 아직 인사(hello)가 없는 사람 수 — 스타트 섬을 조금 더 기다린다
+  function waiting() { if (!N || !N.host) return 0; let n = 0; for (const p of N.peers.values()) if (!p.helloSeen && !p.left && !p.gone) n++; return n; }
   function status() { if (!N) return null; return { host: N.host, peers: [...N.peers.values()].map((p) => ({ uid: p.uid, name: p.name, open: p.open, relay: p.relay, rx: Math.round(now() - p.lastRx) })), tx: N.stats.tx, rx: N.stats.rx, items: N.items.size, vehs: N.vehs.length }; }
 
   return { makeConfig, join, ready, onParty, tick, active, isHost, isGuest, mine, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
-    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, status, ev, flush,
+    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, waiting, status, ev, flush,
     get state() { return N; } };
 })();
