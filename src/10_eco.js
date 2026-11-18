@@ -285,10 +285,10 @@ const Eco = (() => {
   function grantApply(g) {
     const e = E(); if (!Array.isArray(e.gr)) e.gr = [];
     if (e.gr.includes(g.id)) return false;
-    e.gr.push(g.id); if (g.gold) e.gold += g.gold; if (g.brx) e.brx = 1;
+    e.gr.push(g.id); if (g.gold) e.gold += g.gold; if (g.brx) e.brx = 1; if (g.brx12) e.brx12 = 1;
     changed('grant'); return true;
   }
-  // g = { id, gold, brx } → 'ok'(지금 넣음) · 'wait'(계정을 불러오는 중 — 다 불러오면 들어감)
+  // g = { id, gold, brx(백룸 탈출 1회 칭호·사진·테두리), brx12(백룸 12가지 탈출) } → 'ok'(지금 넣음) · 'wait'(계정을 불러오는 중 — 다 불러오면 들어감)
   function grant(g) {
     const P = pend(); if (!P.some((x) => x.id === g.id)) { P.push(g); store.set(PEND, P); }
     if (typeof Cloud !== 'undefined' && Cloud.status === 'restoring') return 'wait';
@@ -401,7 +401,8 @@ const Eco = (() => {
         if (lb && sb && lb.s === sb.s) e.bp = { s: lb.s, xp: Math.max(0, bb ? delta(bb.xp, lb.xp, sb.xp) : Math.max(lb.xp || 0, sb.xp || 0)), m: Math.max(0, bb ? delta(bb.m, lb.m, sb.m) : Math.max(lb.m || 0, sb.m || 0)), lv: Math.max(lb.lv || 0, sb.lv || 0), lp: Math.max(lb.lp || 0, sb.lp || 0), plus: lb.plus || sb.plus ? 1 : 0 };
         else e.bp = lb && sb ? ((lb.s || 0) > (sb.s || 0) ? lb : sb) : lb || sb || undefined;
         if (le.bpt || se.bpt) e.bpt = [...new Set([...(se.bpt || []), ...(le.bpt || [])])]; }
-      if (le.brx || se.brx) e.brx = 1;   // 백룸 탈출 이벤트 칭호: 한 기기에서라도 받았으면 계정에 유지 (받기 자체는 기기마다 — 10_event.js)
+      if (le.brx || se.brx) e.brx = 1;   // 백룸 탈출 이벤트 칭호: 한 기기에서라도 받았으면 계정에 유지 (v22: 받기는 계정마다 한 번 — 서버 br_claim, 10_event.js)
+      if (le.brx12 || se.brx12) e.brx12 = 1;   // 백룸 12가지 탈출 이벤트 (v22)
       if (le.gr || se.gr) e.gr = [...new Set([...(se.gr || []), ...(le.gr || [])])];   // 받은 보상 id (보상 대기열 — 두 번 들어가지 않게)
       e.welcome = 1; e.rev = Math.max(le.rev || 0, se.rev || 0) + 1; e.dev = DEV;
       out.eco = e;

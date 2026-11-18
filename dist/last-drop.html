@@ -1584,6 +1584,35 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 .fr-br_escape .pf-ring { animation: pfSpin 9s linear infinite; }
 .fr-br_escape::after { animation: brFlicker 3.2s steps(1) infinite; }
 @keyframes brFlicker { 0%, 100% { opacity: 1; } 46% { opacity: 1; } 47% { opacity: 0.25; } 48% { opacity: 1; } 52% { opacity: 0.4; } 53% { opacity: 1; } }
+/* v22 백룸 완전 탈출(12가지) 테두리 · 칭호: 노란 벽지 고리에 초록 비상등 줄 + EXIT 표지 */
+.fr-br_all { --rg: repeating-conic-gradient(#efd978 0 6deg, #b49a3a 6deg 13deg, #8dff9a 13deg 15deg); --w: calc(var(--s) * 0.12); --gl: rgba(150, 255, 140, 0.65); }
+.fr-br_all .pf-ring { animation: pfSpin 6s linear infinite; }
+.fr-br_all::after { animation: brFlicker 3.6s steps(1) infinite; }
+.pf-rays.br { background: repeating-conic-gradient(rgba(170, 255, 150, 0.5) 0 4deg, transparent 4deg 14deg); }
+.ttl-br_all { background: linear-gradient(90deg, rgba(10, 50, 18, 0), #0d3a16 12%, #1f6c2c 40%, #3a9a46 50%, #1f6c2c 60%, #0d3a16 88%, rgba(10, 50, 18, 0)); border-color: rgba(190, 255, 170, 0.85); color: #eaffde; text-shadow: 0 0 6px rgba(120, 255, 130, 0.85); }
+.ttl-br_all::before { content: '▶'; color: #c4ffbe; text-shadow: 0 0 6px #7dff8a; }
+/* v22 백룸 이벤트 2가지: 카드 사이 · 12가지 진행 */
+.evb + .evb { margin-top: 12px; }
+.evb.evb-all { border-color: rgba(140, 255, 130, 0.4); }
+.evb.evb-all.ready { border-color: rgba(160, 255, 140, 0.95); box-shadow: 0 0 0 1px rgba(160, 255, 140, 0.3), 0 0 22px rgba(120, 255, 120, 0.25); }
+.evb.evb-all .evb-tag { color: #c4ffbe; }
+.evb-prog { display: flex; flex-direction: column; gap: 7px; }
+.evb-bar { position: relative; height: 20px; border-radius: 10px; background: rgba(0, 0, 0, 0.38); border: 1px solid var(--line-2); overflow: hidden; }
+.evb-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #4f9a3e, #b8ff9a); }
+.evb-bar b { position: relative; display: block; text-align: center; font: 800 0.8rem/18px var(--f-display); color: #fff; text-shadow: 0 1px 2px #000; letter-spacing: 0.08em; }
+.evb-esc { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.evb-e { display: flex; flex-direction: column; gap: 1px; padding: 5px 8px; border-radius: 5px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); min-width: 0; }
+.evb-e i { font: 700 0.62rem/1.1 var(--f-display); color: var(--dim); font-style: normal; letter-spacing: 0.1em; }
+.evb-e b { font-size: 0.76rem; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evb-e small { font-size: 0.64rem; color: var(--dim); opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evb-e.on { border-color: rgba(140, 210, 120, 0.6); background: rgba(110, 190, 90, 0.13); }
+.evb-e.on b { color: #dcffcc; }
+.evb-e.on i { color: #8fe07a; }
+.evb-e.on i::after { content: ' ✓'; }
+.evb-act .btn.ghost { padding-left: 0.8rem; padding-right: 0.8rem; }
+.evb-foot b { color: var(--sand); }
+@media (max-width: 560px) { .evb-esc { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-height: 520px) { .evb-e small { display: none; } .evb-e { padding: 4px 7px; } }
 .evb-chip .pf { vertical-align: middle; }/* 업데이트 로그 (10_changelog.js) */
 .more-btn { position: relative; }
 .more-btn .tab-dot, #clBtn .tab-dot { top: -3px; right: -3px; }
@@ -21923,6 +21952,13 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v22', d: '2026-11-19', t: '백룸 이벤트: 계정마다 1번 · 12가지 탈출 이벤트', items: [
+    'THE BACKROOMS 탈출 이벤트: 엘리베이터가 아니어도 — 백룸의 12가지 탈출 방법 중 아무거나로 탈출 1회 → 골드 탄피 30,000 + 칭호·테두리 「백룸 탈출자」 + 사진 「스마일러」',
+    '새 이벤트 「백룸 완전 탈출」: 12가지 방법을 모두 탈출하면 골드 탄피 150,000 + 새 칭호·테두리 「백룸 정복자」(초록 비상등 · EXIT 표지) + 새 사진 「Level 0」(노란 벽지 복도)',
+    '보상은 기기마다가 아니라 계정마다 한 번 — 이벤트 창의 「백룸 들어가기」로 연 백룸은 로그인한 계정과 연결되어, 탈출할 때마다 계정에 기록됨 (다른 기기에서 이어서 해도 같은 계정이면 합쳐짐 · 참여하려면 로그인)',
+    '이벤트 창에서 12가지 중 몇 가지를 탈출했는지 보임 · 백룸 탭이 열려 있으면 탈출하자마자 바로 반영 · 백룸 탈출 화면의 「Last Drop Royale 보상 받기」로 돌아와도 됨',
+    '예전에 탈출 이벤트 보상을 받은 계정은 그대로 「받음」 (다시 받을 수 없음)',
+  ] },
   { v: 'v22', d: '2026-11-18', t: '매칭 인원 제한 없앰 · 아레나 3곳 추가 · 렉 줄이기', items: [
     '온라인 매칭 배틀로얄: 사람 8명 제한을 없앰 — 3분 동안 줄 선 사람은 모두 한 경기로 (맵 최대 인원 75명 · 노르덴 100명까지, 그만큼 차면 바로 시작) · 빈자리는 AI',
     '데스매치·대결 아레나 3곳 추가 — 모두 컨테이너 야드와 같은 72×72m, 양 팀이 똑같은 모양: 녹슨 공장(지붕 덮인 작업장 · 2층 사무동 · 저장 탱크 · 지게차) · 모래 사원(2단 제단과 오벨리스크 · 기둥 회랑 · 폐허 집 · 야자나무) · 골목 마을(분수 광장 · 발코니 2층집 · 시장 가판대 · 골목)',
@@ -23382,10 +23418,10 @@ const Eco = (() => {
   function grantApply(g) {
     const e = E(); if (!Array.isArray(e.gr)) e.gr = [];
     if (e.gr.includes(g.id)) return false;
-    e.gr.push(g.id); if (g.gold) e.gold += g.gold; if (g.brx) e.brx = 1;
+    e.gr.push(g.id); if (g.gold) e.gold += g.gold; if (g.brx) e.brx = 1; if (g.brx12) e.brx12 = 1;
     changed('grant'); return true;
   }
-  // g = { id, gold, brx } → 'ok'(지금 넣음) · 'wait'(계정을 불러오는 중 — 다 불러오면 들어감)
+  // g = { id, gold, brx(백룸 탈출 1회 칭호·사진·테두리), brx12(백룸 12가지 탈출) } → 'ok'(지금 넣음) · 'wait'(계정을 불러오는 중 — 다 불러오면 들어감)
   function grant(g) {
     const P = pend(); if (!P.some((x) => x.id === g.id)) { P.push(g); store.set(PEND, P); }
     if (typeof Cloud !== 'undefined' && Cloud.status === 'restoring') return 'wait';
@@ -23498,7 +23534,8 @@ const Eco = (() => {
         if (lb && sb && lb.s === sb.s) e.bp = { s: lb.s, xp: Math.max(0, bb ? delta(bb.xp, lb.xp, sb.xp) : Math.max(lb.xp || 0, sb.xp || 0)), m: Math.max(0, bb ? delta(bb.m, lb.m, sb.m) : Math.max(lb.m || 0, sb.m || 0)), lv: Math.max(lb.lv || 0, sb.lv || 0), lp: Math.max(lb.lp || 0, sb.lp || 0), plus: lb.plus || sb.plus ? 1 : 0 };
         else e.bp = lb && sb ? ((lb.s || 0) > (sb.s || 0) ? lb : sb) : lb || sb || undefined;
         if (le.bpt || se.bpt) e.bpt = [...new Set([...(se.bpt || []), ...(le.bpt || [])])]; }
-      if (le.brx || se.brx) e.brx = 1;   // 백룸 탈출 이벤트 칭호: 한 기기에서라도 받았으면 계정에 유지 (받기 자체는 기기마다 — 10_event.js)
+      if (le.brx || se.brx) e.brx = 1;   // 백룸 탈출 이벤트 칭호: 한 기기에서라도 받았으면 계정에 유지 (v22: 받기는 계정마다 한 번 — 서버 br_claim, 10_event.js)
+      if (le.brx12 || se.brx12) e.brx12 = 1;   // 백룸 12가지 탈출 이벤트 (v22)
       if (le.gr || se.gr) e.gr = [...new Set([...(se.gr || []), ...(le.gr || [])])];   // 받은 보상 id (보상 대기열 — 두 번 들어가지 않게)
       e.welcome = 1; e.rev = Math.max(le.rev || 0, se.rev || 0) + 1; e.dev = DEV;
       out.eco = e;
@@ -23566,34 +23603,92 @@ const Eco = (() => {
 
 // ---------- 10_event.js ----------
 // ============================================================
-// 10_event.js — 로비 상단 '이벤트': 다른 게임 홍보 · THE BACKROOMS 탈출 이벤트 (기기마다 1번)
-//  · '백룸 들어가기' → 이 기기의 참가 코드 n 을 만들어 기억하고 새 탭으로 backrooms-theta.vercel.app/?from=ldr&n=..&r=(돌아올 주소)
-//  · 백룸에서 엘리베이터로 탈출하면 그쪽(js/ldr.js)이 n 에 서명한 탈출 코드를 돌려준다:
-//      이 창이 열려 있으면 postMessage 로 바로 · 아니면 탈출 화면의 '보상 받기' 링크로 ?brx=코드 를 달고 돌아옴
-//  · 코드가 이 기기의 n 과 서명이 맞아야 인정(링크를 남에게 나눠 줘도 다른 기기에서는 안 됨) → '보상 받기' 로 골드 탄피 + 칭호 '백룸 탈출자'
-//  · 받은 기록은 이 기기(localStorage)에 — 기기마다 1번. 칭호는 계정(STATS.eco.brx)에 남는다
-//  · v21: 보상은 Eco.grant(보상 대기열)로 넣는다 — 계정을 불러오는 중에 받아도, 서버에 올리기 전에 창을 닫아도 사라지지 않음
-//    예전 판에서 그렇게 사라진 보상은 그 기기에서 로그인하면 한 번 복구 (recover)
-//  · 서명은 두 게임이 같은 식(FNV-1a)으로 만든다 — 실제 돈이 오가지 않는 홍보 보상이라 가볍게 막는 정도
+// 10_event.js — 로비 상단 '이벤트': THE BACKROOMS 콜라보 이벤트 2가지 (v22 — 계정마다 1번)
+//  ① 탈출 이벤트: 백룸에서 어떤 방법으로든 탈출 1회 → 골드 탄피 30,000 + 칭호·테두리 '백룸 탈출자' + 사진 '스마일러'
+//  ② 완전 탈출 이벤트: 12가지 방법을 모두 탈출 → 골드 탄피 150,000 + 칭호·테두리 '백룸 정복자' + 사진 'Level 0'
+//  · 계정 연동 (supabase/backrooms.sql): 로그인한 계정마다 연결 코드가 하나 있고, '백룸 들어가기'가 그 코드를 주소 뒤(#ldr=코드)로 넘긴다
+//    → 백룸(js/ldr.js)은 그 기기에서 탈출할 때마다 서버에 '이 계정이 이 방법으로 탈출'을 기록한다 (로그인 없이 코드로)
+//    → 이 창은 서버의 기록(br_state)으로 진행을 보여 주고, 받기(br_claim)는 서버가 계정마다 한 번만 허락한다 — 기기가 아니라 계정마다
+//  · 보상은 Eco.grant(보상 대기열)로 넣는다 — 계정을 불러오는 중이어도, 서버에 올리기 전에 창을 닫아도 사라지지 않음
+//  · 백룸 탭이 열려 있으면 탈출하자마자 postMessage 로 알려 오고, 탈출 화면의 '보상 받기' 버튼은 ?brx=1 을 달고 돌아온다
+//  · 예전 판(v20~v21, 기기마다 1번)과 이어짐
+//    - 예전에 받은 계정(STATS.eco.brx)은 서버에 '받음'으로만 적는다 (br_claim mark — 보상 없음)
+//    - 예전 방식으로 이 기기에서 탈출이 확인됐지만 아직 안 받은 것(기기 기록 st 'esc')은 그대로 받을 수 있다 (br_claim old)
+//    - 예전 백룸이 돌려주는 서명 코드(이 기기의 참가 코드 n 에 FNV-1a 서명)도 아직 받는다 → 그래서 주소에 n 도 함께 넘긴다
+//    - v21 복구(recover)·차액 지급(topUp)은 예전 기기 기록 그대로
 // ============================================================
-const BR_EVENT = { url: 'https://backrooms-theta.vercel.app/', origin: 'https://backrooms-theta.vercel.app', gold: 30000, salt: 'ldr-backrooms-escape-v1', title: '백룸 탈출자' };
+const BR_EVENT = { url: 'https://backrooms-theta.vercel.app/', origin: 'https://backrooms-theta.vercel.app', gold: 30000, salt: 'ldr-backrooms-escape-v1', title: '백룸 탈출자', gold12: 150000, title12: '백룸 정복자' };
+// 백룸의 탈출 방법 12가지 — 백룸 js/escapes.js · supabase/backrooms.sql 과 같은 id · 도감 순서 [id, 이름, 레벨]
+const BR_ESCAPES = [['elevator', '비상 엘리베이터', 'Level 3'], ['radio', 'M.E.G. 구조 요청', 'Level 1'], ['drain', '배수구', 'Level 37'], ['boarding', '귀가 편', 'Level 36'], ['train', '막차', 'Level -10'], ['pod', '탈출 포드', 'Level -25'],
+  ['lighthouse', '등대', 'Level 7'], ['dream', '꿈에서 깨기', 'Level 18'], ['phones', '세 통의 전화', 'Level 11'], ['book', '이름이 적힌 책', 'THE END'], ['stairs', '계단 위의 문', 'Level -14'], ['mirror', '거울 너머', 'Level -3']];
 const EvBR = (() => {
   const K = 'evBR', el = (id) => document.getElementById(id);
   const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
-  // 상태: st = new(아직) · go(백룸으로 감 · 탈출 기다림) · esc(탈출 확인 · 받기 전) · done(받음) / n = 이 기기의 참가 코드 / seen = 이벤트 창을 연 적 있음
+  // 기기 기록 (예전 판에서 이어짐): st = new · go(백룸으로 감) · esc(예전 방식으로 탈출 확인 · 받기 전) · done(예전 방식으로 받음)
+  //  n = 이 기기의 참가 코드 · seen / seen2 = 이벤트 창을 열어 봄 (seen2 = 12가지 이벤트가 생긴 뒤)
   const get = () => { const s = store.get(K, null); return s && typeof s === 'object' && s.st ? s : { st: 'new', n: null, seen: 0 }; };
   const put = (s) => store.set(K, s);
   const fnv = (s) => { let x = 2166136261; for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); } return (x >>> 0).toString(36); };
   const sign = (n) => n + '.' + fnv(n + '|escaped|' + BR_EVENT.salt) + fnv(BR_EVENT.salt + '|' + n);
   const local = () => /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const okOrigin = (o) => o === BR_EVENT.origin || (local() && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o));   // 로컬 개발 때는 로컬 백룸도
-  let art = null, msgT = null;
+  const art = {};
+  let msgT = null;
+
+  // ---------- 계정 상태 (서버 br_state) ----------
+  //  st: idle · guest(로그인 안 함) · wait(계정 불러오는 중) · load · ok · off(서버에 backrooms.sql 이 아직 없음) · err
+  const A0 = (uid) => ({ st: 'idle', uid, code: null, esc: new Map(), claims: new Set(), t: 0, err: '' });
+  let A = A0(null), syncP = null, busy = '';
+  function sync(force) {
+    const uid = (typeof Cloud !== 'undefined' && Cloud.uid) || null;
+    if (A.uid !== uid) A = A0(uid);
+    if (!uid) { A.st = typeof Cloud !== 'undefined' && Cloud.status === 'restoring' ? 'wait' : 'guest'; return Promise.resolve(A); }
+    const sb = Cloud.client(); if (!sb) { A.st = 'wait'; return Promise.resolve(A); }
+    if (syncP) return syncP;
+    if (!force && A.st === 'ok' && Date.now() - A.t < 20000) return Promise.resolve(A);
+    if (A.st !== 'ok') A.st = 'load';
+    syncP = (async () => {
+      try {
+        const { data, error } = await sb.rpc('br_state');
+        if (Cloud.uid !== uid) return A;   // 그사이 계정이 바뀜
+        if (error) throw error;
+        A.code = (data && data.code) || null;
+        A.esc = new Map(((data && data.esc) || []).map((x) => [x.m, x.at]));
+        A.claims = new Set((data && data.claims) || []);
+        A.st = 'ok'; A.t = Date.now(); A.err = '';
+        await legacy(sb);
+      } catch (e) {
+        const m = String((e && e.message) || e).toLowerCase();
+        A.st = e && (e.code === 'PGRST202' || m.includes('could not find') || m.includes('does not exist')) ? 'off' : 'err';
+        A.err = Cloud.msgOf(e);
+      } finally { syncP = null; }
+      return A;
+    })();
+    return syncP;
+  }
+  // 예전 판에서 이미 받은 계정(STATS.eco.brx) → 서버에 '받음'으로만 적는다 (다른 기기에서도 받음으로 보이게)
+  async function legacy(sb) {
+    if (A.claims.has('one') || !(STATS.eco && STATS.eco.brx)) return;
+    try { const { data, error } = await sb.rpc('br_claim', { p_ev: 'one', p_how: 'mark' }); if (!error && (data === 'marked' || data === 'already')) A.claims.add('one'); } catch (e) { /* 다음에 다시 */ }
+  }
+  const n12 = () => BR_ESCAPES.filter(([id]) => A.esc.has(id)).length;
+  const nameOf = (m) => { const e = BR_ESCAPES.find(([id]) => id === m); return e ? e[1] : ''; };
+  // 이벤트 하나의 상태: lock(로그인·서버 확인 전) · run(진행 중) · ready(받을 수 있음) · done(받음)
+  function evSt(ev) {
+    if (A.st !== 'ok') return 'lock';
+    const e = STATS.eco || {};
+    if (A.claims.has(ev) || (ev === 'one' ? e.brx : e.brx12)) return 'done';
+    if (ev === 'one') return A.esc.size > 0 || get().st === 'esc' ? 'ready' : 'run';
+    return n12() >= BR_ESCAPES.length ? 'ready' : 'run';
+  }
 
   // ---------- 백룸 배너 그림 (외부 이미지 없이 캔버스로: 노란 벽지 · 형광등 · 끝없는 복도) ----------
-  function banner() {
-    if (art) return art;
+  //  kind 'one' = 탈출 이벤트 · 'all' = 완전 탈출(12가지) — 소실점을 반대로 두고 복도 끝에 초록 EXIT 표지
+  function banner(kind) {
+    const all = kind === 'all', key = all ? 'all' : 'one';
+    if (art[key]) return art[key];
     const W = 720, H = 240, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
-    const vx = W * 0.62, vy = H * 0.47;   // 소실점
+    const vx = W * (all ? 0.36 : 0.62), vy = H * 0.47;   // 소실점
     g.fillStyle = '#c8b560'; g.fillRect(0, 0, W, H);
     // 벽지: 세로 줄 + 작은 V 무늬
     for (let x = 0; x < W; x += 14) { g.fillStyle = x % 28 ? 'rgba(120,100,30,0.10)' : 'rgba(255,245,180,0.10)'; g.fillRect(x, 0, 7, H); }
@@ -23605,62 +23700,97 @@ const EvBR = (() => {
     // 형광등: 소실점으로 갈수록 작아짐
     for (let i = 0; i < 7; i++) { const k = Math.pow(0.62, i), y = vy - 26 - (vy - 26) * k * 0.82, w = 120 * k, cx = vx + (W * 0.5 - vx) * k;
       g.fillStyle = `rgba(255,255,236,${0.95 - i * 0.08})`; g.fillRect(cx - w / 2, y, w, Math.max(2, 10 * k)); g.fillStyle = `rgba(255,252,210,${0.18 - i * 0.02})`; g.fillRect(cx - w, y - 4 * k, w * 2, 22 * k); }
-    // 복도 끝 문 (어두움)
+    // 복도 끝 문 (어두움) — 완전 탈출은 문 위에 초록 EXIT 표지와 새어 나오는 빛
     g.fillStyle = '#2b2510'; g.fillRect(vx - 16, vy - 22, 32, 48); g.fillStyle = 'rgba(255,240,170,0.25)'; g.fillRect(vx - 16, vy - 22, 32, 3);
+    if (all) {
+      const gl = g.createRadialGradient(vx, vy - 30, 2, vx, vy - 30, 60); gl.addColorStop(0, 'rgba(120,255,140,0.55)'); gl.addColorStop(1, 'rgba(120,255,140,0)'); g.fillStyle = gl; g.fillRect(vx - 70, vy - 90, 140, 120);
+      g.fillStyle = '#0d3a16'; g.fillRect(vx - 21, vy - 39, 42, 14); g.strokeStyle = '#8dff9a'; g.lineWidth = 1.5; g.strokeRect(vx - 21, vy - 39, 42, 14);
+      g.font = '800 11px "Saira Condensed", "Arial Narrow", sans-serif'; g.textAlign = 'center'; g.fillStyle = '#c4ffbe'; g.fillText('EXIT', vx, vy - 28); g.textAlign = 'left';
+      g.fillStyle = 'rgba(150,255,150,0.18)'; g.fillRect(vx - 16, vy - 22, 32, 48);
+    }
     // 가장자리 어둡게
     const vg = g.createRadialGradient(vx, vy, 30, vx, vy, W * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(20,16,4,0.62)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
-    // 제목 (살짝 어긋난 잔상)
+    // 제목 (살짝 어긋난 잔상) — 완전 탈출은 오른쪽 정렬
+    const tx = all ? W - 28 : 28; g.textAlign = all ? 'right' : 'left';
     g.font = '800 54px "Saira Condensed", "Arial Narrow", sans-serif'; g.textBaseline = 'alphabetic';
-    g.fillStyle = 'rgba(255,40,40,0.45)'; g.fillText('THE BACKROOMS', 31, 196); g.fillStyle = 'rgba(40,220,255,0.4)'; g.fillText('THE BACKROOMS', 25, 194);
-    g.fillStyle = '#f7f0cf'; g.fillText('THE BACKROOMS', 28, 195);
-    g.font = '600 17px "IBM Plex Sans KR", sans-serif'; g.fillStyle = 'rgba(247,240,207,0.9)'; g.fillText('엘리베이터를 찾아 탈출하라', 30, 222);
-    return (art = c.toDataURL('image/jpeg', 0.86));
+    const T = all ? '12 EXITS' : 'THE BACKROOMS';
+    g.fillStyle = 'rgba(255,40,40,0.45)'; g.fillText(T, tx + 3, 196); g.fillStyle = all ? 'rgba(80,255,120,0.45)' : 'rgba(40,220,255,0.4)'; g.fillText(T, tx - 3, 194);
+    g.fillStyle = '#f7f0cf'; g.fillText(T, tx, 195);
+    g.font = '600 17px "IBM Plex Sans KR", sans-serif'; g.fillStyle = 'rgba(247,240,207,0.9)'; g.fillText(all ? 'THE BACKROOMS — 12가지 방법으로 모두 탈출하라' : '어떤 출구든 찾아 탈출하라', tx + (all ? -2 : 2), 222);
+    return (art[key] = c.toDataURL('image/jpeg', 0.86));
   }
 
   // ---------- 흐름 ----------
-  // 백룸 열기: 참가 코드를 만들고 새 탭으로 (돌아올 주소 = 지금 이 게임 주소)
+  // 백룸 열기: 계정 연결 코드(#ldr=) + 예전 백룸용 참가 코드(n) + 돌아올 주소(r) 를 달고 새 탭으로
+  //  (window.open 은 누른 그 순간에 불러야 팝업이 막히지 않는다 → 연결 코드는 창을 열 때 미리 받아 둠)
   function go() {
-    const s = get(); if (s.st === 'done') return;
+    if (A.st !== 'ok' || !A.code) { sync(true).then(() => render()); return; }
+    const s = get();
     if (!s.n) s.n = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).slice(0, 16);
     if (s.st === 'new') s.st = 'go'; s.goT = Date.now(); put(s);
-    const u = new URL(BR_EVENT.url); u.searchParams.set('from', 'ldr'); u.searchParams.set('n', s.n); u.searchParams.set('r', location.origin + location.pathname);
+    const u = new URL(BR_EVENT.url); u.searchParams.set('from', 'ldr'); u.searchParams.set('n', s.n); u.searchParams.set('r', location.origin + location.pathname); u.hash = 'ldr=' + A.code;
     const w = window.open(u.toString(), '_blank');   // opener 를 남겨 둠 → 탈출하면 백룸 탭이 이 창에 바로 알림
-    if (!w) location.href = u.toString();             // 팝업이 막혔으면 이 탭에서 이동 (돌아오기 링크로 확인)
+    if (!w) location.href = u.toString();             // 팝업이 막혔으면 이 탭에서 이동 (탈출 화면의 돌아오기 버튼으로 확인)
     render(); dots();
   }
-  // 탈출 코드 받음 (postMessage 또는 ?brx=)
+  // 예전 백룸의 탈출 코드 (postMessage 또는 ?brx=코드) — 이 기기의 참가 코드와 서명이 맞아야
   function accept(code) {
     const s = get();
-    if (s.st === 'done') { flash('이 기기에서는 이미 백룸 탈출 보상을 받았습니다'); open(); return false; }
     if (!s.n || typeof code !== 'string' || code !== sign(s.n)) { flash('이 기기에서 시작한 이벤트 기록과 맞지 않습니다 — 이벤트 창에서 ‘백룸 들어가기’를 눌러 시작한 뒤 탈출해 주세요'); open(); return false; }
     if (s.st !== 'esc') { s.st = 'esc'; s.escT = Date.now(); put(s); }
     open(); flash('백룸 탈출 확인! 보상을 받으세요'); try { Audio.init(); Audio.ui(); } catch (e) { /* 소리 없이도 */ }
     return true;
   }
-  // 보상이 늘었을 때(1,000 → 30,000): 이미 받은 기기에는 차액을 한 번 더 (s.gold = 이 기기에서 받은 양)
-  //  v21: 보상은 Eco.grant(보상 대기열)로 — 계정을 불러오는 중이어도 사라지지 않고, 서버에 저장될 때까지 기기에 남는다
+  // 새 백룸: 서버에 기록했다는 알림 → 다시 불러와 보여 줌
+  function escaped(m) {
+    open().then(() => { const nm = nameOf(m); if (A.st === 'ok' && (A.esc.size || !m)) flash(m ? `백룸 탈출이 계정에 기록됐습니다 — ‘${nm || m}’ · 12가지 중 ${n12()}가지` : `백룸에서 돌아왔습니다 — 계정에 기록된 탈출 ${n12()} / 12가지`); });
+    try { Audio.init(); Audio.ui(); } catch (e) { /* 소리 없이도 */ }
+  }
+  // 보상이 늘었을 때(1,000 → 30,000): 예전 방식으로 받은 기기에는 차액을 한 번 더 (s.gold = 이 기기에서 받은 양)
   function topUp() {
     const s = get(); if (s.st !== 'done') return;
     const had = s.gold || 1000; if (had >= BR_EVENT.gold) return;
     s.gold = BR_EVENT.gold; put(s); Eco.grant({ id: 'brxup:' + s.n + ':' + BR_EVENT.gold, gold: BR_EVENT.gold - had, brx: 1 });
     flash(`백룸 탈출 이벤트 보상이 늘었습니다 — 차액 골드 탄피 ${(BR_EVENT.gold - had).toLocaleString()}개를 더 드렸고, 사진 ‘스마일러’와 테두리 ‘백룸 탈출자’도 열렸습니다`); open();
   }
-  function claim() {
-    const s = get(); if (s.st !== 'esc') return;
-    s.st = 'done'; s.doneT = Date.now(); s.gold = BR_EVENT.gold; s.fix = 1; s.who = (typeof Cloud !== 'undefined' && Cloud.name) || ''; put(s);   // fix: 새 방식으로 받음 → 아래 복구 대상 아님 · who: 받은 계정 이름(표시용)
-    const r = Eco.grant({ id: 'brx:' + s.n, gold: BR_EVENT.gold, brx: 1 });
-    const m = el('evMsg'); if (m) m.hidden = true;
-    render(true); dots();
-    if (r === 'wait') flash('계정을 불러오는 중입니다 — 다 불러오면 보상이 계정에 들어갑니다');
+  // 보상 받기: 서버가 계정마다 한 번만 'ok' → 보상 대기열에 넣음
+  async function claim(ev) {
+    if (busy || evSt(ev) !== 'ready') return;
+    busy = ev; render();
+    const s0 = get(), how = ev === 'one' && !A.esc.size && s0.st === 'esc' ? 'old' : 'new';
+    try {
+      const { data, error } = await Cloud.client().rpc('br_claim', { p_ev: ev, p_how: how });
+      if (error) throw error;
+      if (data === 'ok') {
+        A.claims.add(ev);
+        const s = get(); if (ev === 'one' && s.st === 'esc') { s.st = 'done'; s.doneT = Date.now(); s.gold = BR_EVENT.gold; s.fix = 1; s.who = Cloud.name || ''; put(s); }
+        const r = Eco.grant(ev === 'one' ? { id: 'brx1:' + A.uid, gold: BR_EVENT.gold, brx: 1 } : { id: 'brx12:' + A.uid, gold: BR_EVENT.gold12, brx12: 1 });
+        busy = ''; const m = el('evMsg'); if (m) m.hidden = true;
+        render(ev); dots();
+        if (r === 'wait') flash('계정을 불러오는 중입니다 — 다 불러오면 보상이 계정에 들어갑니다');
+        return;
+      }
+      if (data === 'already') { A.claims.add(ev); flash('이 계정은 이미 이 이벤트 보상을 받았습니다'); }
+      else if (data === 'not-yet') { A.t = 0; await sync(true); flash(ev === 'all' ? `아직 12가지를 다 탈출하지 않았습니다 (${n12()} / 12)` : '아직 계정에 기록된 탈출이 없습니다'); }
+      else flash('보상을 받지 못했습니다 (' + data + ')');
+    } catch (e) { flash('보상을 받지 못했습니다 — ' + Cloud.msgOf(e)); }
+    busy = ''; render(); dots();
   }
   // v21 복구: 예전 판에서는 계정을 불러오는 중에 받으면 보상이 사라졌다 → 이 기기는 받았는데 로그인한 계정에 '백룸 탈출자'가 없으면 한 번 다시 넣는다
-  //  기기마다 한 번만 (s.fix). 로그인한 계정을 다 불러온 뒤 10_cloud.js 가 부름
+  //  기기마다 한 번만 (s.fix). 로그인한 계정을 다 불러온 뒤 10_cloud.js 가 부름 — v22: 그때 서버의 이벤트 기록도 새로 불러옴
   function recover() {
+    setTimeout(() => sync(true).then(() => { dots(); if (!el('evPanel').hidden) render(); }), 0);
     const s = get(); if (s.st !== 'done' || s.fix || typeof Cloud === 'undefined' || !Cloud.user) return;
     s.fix = 1; put(s);
     if (STATS.eco && STATS.eco.brx) return;   // 이 계정에 이미 들어와 있음
     Eco.grant({ id: 'brxfix:' + s.n, gold: s.gold || BR_EVENT.gold, brx: 1 });
     setTimeout(() => { try { HUD.lobbyNote(`백룸 탈출 이벤트 보상이 계정에 들어오지 않은 것을 확인해 다시 드렸습니다 — 골드 탄피 ${(s.gold || BR_EVENT.gold).toLocaleString()} · 칭호·사진·테두리`); } catch (e) { /* 로비 밖이면 생략 */ } }, 600);
+  }
+  // 프로필 칭호 목록의 진행 표시 (10_ui_profile.js)
+  function prog(ev) {
+    if (typeof Cloud === 'undefined' || !Cloud.user) return '로그인 후 로비 위 이벤트에서';
+    const st = evSt(ev);
+    return st === 'done' ? '받음' : st === 'ready' ? '이벤트 창에서 보상 받기' : st === 'lock' ? '이벤트 창을 열어 확인' : ev === 'one' ? '백룸에서 탈출 1회' : `탈출 ${n12()} / ${BR_ESCAPES.length}가지`;
   }
 
   // ---------- 화면 ----------
@@ -23668,56 +23798,97 @@ const EvBR = (() => {
   const GOLD_SVG = '<svg viewBox="0 0 24 24" class="evb-cur"><circle cx="12" cy="12" r="9" fill="url(#g-gold)" stroke="#5a3a08" stroke-width="1.2"/><path d="M9 8h6M9 12h6M9 16h6" stroke="#5a3a08" stroke-width="1.4" stroke-linecap="round"/></svg>';
   function render(justClaimed) {
     const box = el('evBody'); if (!box) return;
-    const s = get(); box.innerHTML = '';
-    const card = h('div', 'evb' + (s.st === 'esc' ? ' ready' : s.st === 'done' ? ' done' : ''));
-    const top = h('div', 'evb-art'); top.style.backgroundImage = `url(${banner()})`;
-    top.appendChild(h('span', 'evb-tag', '콜라보 이벤트 · 다른 게임'));
-    card.appendChild(top);
+    box.innerHTML = '';
+    box.appendChild(card('all', justClaimed === 'all'));
+    box.appendChild(card('one', justClaimed === 'one'));
+    box.appendChild(h('p', 'micro evb-foot', '보상은 <b>계정마다</b> 이벤트 하나에 한 번 받을 수 있습니다 — 다른 기기에서 받았어도 같은 계정이면 끝. 이 창의 ‘백룸 들어가기’로 연 백룸은 로그인한 계정과 연결되어, 그 기기에서 탈출할 때마다 계정에 기록됩니다 (연결하기 전에 한 탈출은 세지 않음). 사진·테두리·칭호는 프로필에서 바꿀 수 있습니다.'));
+  }
+  function card(ev, just) {
+    const one = ev === 'one', st = evSt(ev), gold = one ? BR_EVENT.gold : BR_EVENT.gold12, n = n12(), s = get();
+    const c = h('div', 'evb' + (one ? '' : ' evb-all') + (st === 'ready' ? ' ready' : st === 'done' ? ' done' : ''));
+    const top = h('div', 'evb-art'); top.style.backgroundImage = `url(${banner(ev)})`;
+    top.appendChild(h('span', 'evb-tag', one ? '콜라보 이벤트 · 다른 게임' : 'NEW · 고난도 이벤트'));
+    c.appendChild(top);
     const txt = h('div', 'evb-txt');
-    txt.appendChild(h('b', 'evb-title', 'THE BACKROOMS 탈출 이벤트'));
-    txt.appendChild(h('p', 'evb-desc', '끝없는 노란 방, <b>THE BACKROOMS</b> 에서 Level 3 어딘가의 엘리베이터를 🗝️ 열쇠로 열고 <b>탈출 1회</b>에 성공하면 이 게임에서 보상을 드립니다.'));
-    const steps = h('ol', 'evb-steps');
-    [['백룸 들어가기', '아래 버튼으로 새 탭에서 THE BACKROOMS 열기'], ['탈출 1회', '열쇠를 찾아 엘리베이터로 탈출'], ['탈출 확인', '이 창이 열려 있으면 자동 확인 · 아니면 탈출 화면의 ‘Last Drop Royale 보상 받기’'], ['보상 받기', '여기서 받기 — 기기마다 한 번']]
-      .forEach(([a, b], i) => { const li = h('li', i < ({ new: 0, go: 1, esc: 3, done: 4 })[s.st] ? 'on' : '', `<b>${a}</b><span>${b}</span>`); steps.appendChild(li); });
-    txt.appendChild(steps);
+    txt.appendChild(h('b', 'evb-title', one ? 'THE BACKROOMS 탈출 이벤트' : '백룸 완전 탈출 — 12가지 출구'));
+    txt.appendChild(h('p', 'evb-desc', one
+      ? '끝없는 노란 방, <b>THE BACKROOMS</b> 에서 <b>어떤 방법으로든 탈출 1회</b>에 성공하면 이 게임에서 보상을 드립니다. 엘리베이터가 아니어도 됩니다 — 탈출 방법은 12가지.'
+      : 'THE BACKROOMS 를 빠져나가는 <b>12가지 방법을 모두</b> 찾아 탈출하세요. 계정에 기록된 탈출 방법이 12가지가 되면 큰 보상을 드립니다. 상당히 어렵습니다 — 백룸의 📖 탈출 도감에서 아직 못 찾은 방법의 힌트를 볼 수 있어요.'));
+    if (one) {
+      const p = st === 'done' ? 4 : st === 'ready' ? 3 : s.goT ? 1 : 0, steps = h('ol', 'evb-steps');
+      [['백룸 들어가기', '아래 버튼으로 새 탭에서 — 이 계정과 연결됨'], ['탈출 1회', '12가지 방법 중 아무거나'], ['계정에 기록', '탈출하면 자동 · 이 창이 열려 있으면 바로'], ['보상 받기', '여기서 받기 — 계정마다 한 번']]
+        .forEach(([a, b], i) => steps.appendChild(h('li', i < p ? 'on' : '', `<b>${a}</b><span>${b}</span>`)));
+      txt.appendChild(steps);
+    } else {
+      const pg = h('div', 'evb-prog');
+      pg.appendChild(h('div', 'evb-bar', `<i style="width:${(n / BR_ESCAPES.length * 100).toFixed(1)}%"></i><b>탈출 ${n} / ${BR_ESCAPES.length}</b>`));
+      const g = h('div', 'evb-esc');
+      BR_ESCAPES.forEach(([id, nm, lv], i) => { const ok = A.esc.has(id); g.appendChild(h('span', 'evb-e' + (ok ? ' on' : ''), `<i>No.${String(i + 1).padStart(2, '0')}</i><b>${ok ? nm : '???'}</b><small>${ok ? lv : '아직 못 찾음'}</small>`)); });
+      pg.appendChild(g); txt.appendChild(pg);
+    }
     const rw = h('div', 'evb-rw'); rw.appendChild(h('span', 'evb-rw-k', '보상'));
-    rw.appendChild(h('span', 'evb-chip', `${GOLD_SVG}<b>${BR_EVENT.gold.toLocaleString()}</b> 골드 탄피`));
-    rw.appendChild(h('span', 'evb-chip', `<span class="ttl sm ttl-br_escape">${BR_EVENT.title}</span> 칭호`));
-    rw.appendChild(h('span', 'evb-chip', `${Prof.frameHTML('none', 'smiler', 26)} 사진 ‘스마일러’`));
-    rw.appendChild(h('span', 'evb-chip', `${Prof.frameHTML('br_escape', 'helmet', 26)} 테두리 ‘백룸 탈출자’`));
+    rw.appendChild(h('span', 'evb-chip', `${GOLD_SVG}<b>${gold.toLocaleString()}</b> 골드 탄피`));
+    rw.appendChild(h('span', 'evb-chip', `<span class="ttl sm ttl-${one ? 'br_escape' : 'br_all'}">${one ? BR_EVENT.title : BR_EVENT.title12}</span> 칭호`));
+    rw.appendChild(h('span', 'evb-chip', `${Prof.frameHTML('none', one ? 'smiler' : 'level0', 26)} 사진 ‘${one ? '스마일러' : 'Level 0'}’`));
+    rw.appendChild(h('span', 'evb-chip', `${Prof.frameHTML(one ? 'br_escape' : 'br_all', 'helmet', 26)} 테두리 ‘${one ? BR_EVENT.title : BR_EVENT.title12}’`));
     txt.appendChild(rw);
-    const act = h('div', 'evb-act');
-    const st = h('span', 'evb-st');
-    if (s.st === 'new') { st.textContent = '아직 참여하지 않았습니다'; act.appendChild(btn('백룸 들어가기 ↗', 'amber', go)); }
-    else if (s.st === 'go') { st.innerHTML = '<i class="evb-wait"></i>백룸에서 탈출을 기다리는 중…'; act.appendChild(btn('백룸 다시 열기 ↗', '', go)); }
-    else if (s.st === 'esc') { st.textContent = '탈출 확인 완료!'; act.appendChild(btn('보상 받기', 'amber pulse', claim)); }
-    else { st.textContent = justClaimed ? `받았습니다 — 골드 탄피 ${BR_EVENT.gold.toLocaleString()} · 칭호·사진·테두리 ‘${BR_EVENT.title}’ (프로필에서 바꿀 수 있음)` : `이 기기에서 받은 이벤트입니다${s.who ? ` (받은 계정: ${s.who})` : ''} — 사진·테두리·칭호는 프로필에서`; const b = btn('받음 ✓', '', null); b.disabled = true; act.appendChild(b); act.appendChild(btn('백룸 또 하러 가기 ↗', 'ghost', () => window.open(BR_EVENT.url, '_blank'))); }
-    act.prepend(st); txt.appendChild(act);
-    if (justClaimed) { const p = h('div', 'evb-pop', `+${BR_EVENT.gold.toLocaleString()}`); card.appendChild(p); setTimeout(() => p.remove(), 1600); }
-    card.appendChild(txt); box.appendChild(card);
-    box.appendChild(h('p', 'micro evb-foot', '보상은 기기마다 한 번 받을 수 있습니다. 이 기기에서 ‘백룸 들어가기’로 시작한 탈출만 인정됩니다. 칭호는 로그인하면 계정에 저장됩니다.'));
+    const act = h('div', 'evb-act'), se = h('span', 'evb-st');
+    const goBtn = (cls) => { const b = btn('백룸 들어가기 ↗', cls, go); if (!A.code) b.disabled = true; return b; };
+    if (A.st === 'guest') { se.textContent = '로그인한 계정마다 한 번 받을 수 있습니다'; act.appendChild(btn('로그인하고 참여', 'amber', () => { close(); Cloud.open(); })); }
+    else if (A.st !== 'ok' && A.st !== 'off' && A.st !== 'err') se.innerHTML = '<i class="evb-wait"></i>계정의 이벤트 기록을 불러오는 중…';
+    else if (A.st === 'off') { se.textContent = '이벤트 서버 준비 중입니다 — 잠시 뒤 다시 열어 주세요'; act.appendChild(btn('다시 확인', '', () => { sync(true).then(() => render()); })); }
+    else if (A.st === 'err') { se.textContent = '이벤트 기록을 불러오지 못했습니다 — ' + A.err; act.appendChild(btn('다시 시도', '', () => { sync(true).then(() => render()); })); }
+    else if (st === 'done') {
+      se.textContent = just ? `받았습니다 — 골드 탄피 ${gold.toLocaleString()} · 칭호·사진·테두리 (프로필에서 바꿀 수 있음)` : '이 계정은 받았습니다 — 사진·테두리·칭호는 프로필에서';
+      const b = btn('받음 ✓', '', null); b.disabled = true; act.appendChild(b);
+    } else if (st === 'ready') { se.textContent = one ? '탈출 확인 완료!' : '12가지 탈출 완료!'; const b = btn(busy === ev ? '받는 중…' : '보상 받기', 'amber pulse', () => claim(ev)); if (busy) b.disabled = true; act.appendChild(b); }
+    else if (one) { if (s.goT) se.innerHTML = '<i class="evb-wait"></i>백룸에서 탈출을 기다리는 중…'; else se.textContent = '아직 참여하지 않았습니다'; act.appendChild(goBtn(s.goT ? '' : 'amber')); }
+    else { se.textContent = n ? `${BR_ESCAPES.length - n}가지 남음` : '아직 계정에 기록된 탈출이 없습니다'; act.appendChild(btn('↻', 'ghost', () => { A.t = 0; sync(true).then(() => render()); })); act.appendChild(goBtn('amber')); }
+    act.prepend(se); txt.appendChild(act);
+    if (just) { const p = h('div', 'evb-pop', `+${gold.toLocaleString()}`); c.appendChild(p); setTimeout(() => p.remove(), 1600); }
+    c.appendChild(txt);
+    return c;
   }
   function btn(label, cls, fn) { const b = h('button', 'btn ' + cls, label); b.type = 'button'; if (fn) b.addEventListener('click', () => { try { Audio.init(); Audio.ui(); } catch (e) { /* 소리 없이도 */ } fn(); }); return b; }
-  // 상단 버튼의 빨간 점: 아직 열어 보지 않았거나, 받을 보상이 있을 때
-  function dots() { const s = get(), d = el('evTopDot'); if (d) d.hidden = !(s.st === 'esc' || (!s.seen && s.st !== 'done')); const b = el('evTopBtn'); if (b) b.classList.toggle('ready', s.st === 'esc'); }
-  function open() { const s = get(); if (!s.seen) { s.seen = 1; put(s); } render(); el('evPanel').hidden = false; dots(); }
+  // 상단 버튼의 빨간 점: 받을 보상이 있거나, 12가지 이벤트가 생긴 뒤 아직 열어 보지 않았을 때
+  function dots() {
+    const s = get(), ready = evSt('one') === 'ready' || evSt('all') === 'ready', d = el('evTopDot');
+    if (d) d.hidden = !(ready || (!s.seen2 && evSt('all') !== 'done'));
+    const b = el('evTopBtn'); if (b) b.classList.toggle('ready', ready);
+  }
+  function open() {
+    const s = get(); if (!s.seen || !s.seen2) { s.seen = 1; s.seen2 = 1; put(s); }
+    render(); el('evPanel').hidden = false; dots();
+    return sync(true).then(() => { if (!el('evPanel').hidden && !busy) render(); dots(); });
+  }
   function close() { el('evPanel').hidden = true; }
 
   // ---------- 시작 (로비 준비 때 한 번) ----------
+  let pending = null;   // 경기 중에 온 알림 · 돌아오기 링크 → 로비에 들어오면 처리 ('1' = 새 방식, 그 밖 = 예전 탈출 코드)
   function init() {
     el('evTopBtn').addEventListener('click', () => { try { Audio.init(); Audio.ui(); } catch (e) { /* 소리 없이도 */ } open(); });
     el('evClose').addEventListener('click', close);
     el('evPanel').addEventListener('click', (e) => { if (e.target === el('evPanel')) close(); });
-    // 백룸 탭이 이 창에 바로 알림 (window.opener.postMessage)
-    window.addEventListener('message', (e) => { const d = e.data; if (!okOrigin(e.origin) || !d || d.type !== 'ldr-br-escape') return; if (G.state === 'lobby') accept(String(d.code || '')); else pendingCode = String(d.code || ''); });
-    // 탈출 화면의 링크로 돌아옴: ?brx=코드 → 확인하고 주소에서 지움
-    try { const q = new URLSearchParams(location.search), code = q.get('brx'); if (code) { pendingCode = code; q.delete('brx'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); } } catch (e) { /* 주소 못 읽으면 건너뜀 */ }
+    // 백룸 탭이 이 창에 바로 알림 (window.opener.postMessage): 새 방식 { m: 탈출 방법 } · 예전 방식 { code }
+    window.addEventListener('message', (e) => {
+      const d = e.data; if (!okOrigin(e.origin) || !d || d.type !== 'ldr-br-escape') return;
+      if (d.code) { if (G.state === 'lobby') accept(String(d.code)); else pending = String(d.code); return; }
+      if (G.state === 'lobby') escaped(String(d.m || '')); else pending = '1';
+    });
+    // 탈출 화면의 버튼으로 돌아옴: ?brx=1 (새 방식) · ?brx=코드 (예전) → 로비에서 처리하고 주소에서 지움
+    try { const q = new URLSearchParams(location.search), code = q.get('brx'); if (code) { pending = code; q.delete('brx'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); } } catch (e) { /* 주소 못 읽으면 건너뜀 */ }
+    // 백룸 탭에서 돌아오면 기록을 다시 불러옴
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible' || G.state !== 'lobby' || typeof Cloud === 'undefined' || !Cloud.uid) return; A.t = 0; sync(true).then(() => { dots(); if (!el('evPanel').hidden && !busy) render(); }); });
     dots();
   }
-  let pendingCode = null;
-  // 로비에 들어올 때마다: 경기 중에 온 탈출 알림 · 돌아오기 링크로 온 코드를 처리
-  function lobby() { dots(); if (pendingCode) { const c = pendingCode; pendingCode = null; accept(c); } else topUp(); }
-  return { init, lobby, open, banner, recover, state: () => get().st, _sign: sign, _accept: accept };
+  // 로비에 들어올 때마다: 경기 중에 온 알림 · 돌아오기 링크를 처리하고, 서버 기록을 (20초에 한 번까지) 새로
+  function lobby() {
+    dots();
+    if (pending) { const c = pending; pending = null; if (c === '1') escaped(''); else accept(c); }
+    else topUp();
+    sync().then(() => { dots(); if (!el('evPanel').hidden && !busy) render(); });
+  }
+  return { init, lobby, open, banner, recover, prog, sync, state: () => get().st, get acct() { return A; }, _sign: sign, _accept: accept };
 })();
 
 // ---------- 10_hud.js ----------
@@ -24903,13 +25074,14 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: '새 이벤트', title: `백룸 완전 탈출 — THE BACKROOMS 를 12가지 방법으로 모두 탈출하면 골드 탄피 ${BR_EVENT.gold12.toLocaleString()} + 칭호·테두리 ‘${BR_EVENT.title12}’ + 사진 ‘Level 0’ (계정마다 1번)`, img: () => EvBR.banner('all'), act: () => EvBR.open() },
     { tag: 'v22 새 아레나', title: '데스매치·대결 아레나 3곳 추가 — 녹슨 공장 · 모래 사원 · 골목 마을 (72×72m, 맵 선택에서 고르거나 무작위)', img: () => LOBBY_ART.factory || LOBBY_ART.arena, act: () => G.ui('mapPick') },
     { tag: 'v22 새 맵', title: '크리스마스 섬(1.5km) — 눈 덮인 섬 · 북극성 광장 큰 트리 · 산타 공방 · 얼어붙은 호수 · 모든 맵의 집 외형 개편 (맵 선택)', img: () => LOBBY_ART.xmas || LOBBY_ART.kalden, act: () => G.ui('mapPick') },
     { tag: 'v22 온라인 매칭', title: '온라인 매칭 · 스타트 섬 — 같은 모드를 고른 사람끼리 한 경기로, 빈자리는 AI · 시작 전 25초 스타트 섬 (업데이트 로그 보기)', img: () => LOBBY_ART.kalden, act: () => ChangeLog.open() },
     { tag: 'v21 판처파우스트 스킨', title: "핵탄두 · SANTA'S DELIVERY · EVENT HORIZON — 터지면 버섯구름 · 큰 선물 상자 · 큰 블랙홀 (업데이트 로그 보기)", img: () => { try { return Shop.gunThumb('pzf', 'e_pzf_horizon') || Models.icon('pzf'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: 'v21 신규 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: '크리스마스', title: '크리스마스 상자 — 겨울 옷·총기·차량 스킨 · 새 등급 EXCLUSIVE (루돌프 썰매 · 전용 처치 효과 총 · 빛나는 옷)', img: () => { try { return Shop.crateThumb('xmas'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=gacha]'); if (b) b.click(); } },
-    { tag: '콜라보 이벤트', title: `THE BACKROOMS 탈출 이벤트 — 백룸에서 탈출하면 골드 탄피 ${BR_EVENT.gold.toLocaleString()} + 칭호 ‘${BR_EVENT.title}’`, img: () => EvBR.banner(), act: () => EvBR.open() },
+    { tag: '콜라보 이벤트', title: `THE BACKROOMS 탈출 이벤트 — 어떤 방법으로든 탈출 1회 → 골드 탄피 ${BR_EVENT.gold.toLocaleString()} + 칭호 ‘${BR_EVENT.title}’ (계정마다 1번)`, img: () => EvBR.banner(), act: () => EvBR.open() },
     { tag: '이벤트', title: '골드 탄피 이벤트 — 골드 러시 · 행운의 골드 상자 · 매치 보너스 · 주간 챌린지 · 현상금', img: () => LOBBY_ART.vehicles, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=event]'); if (b) b.click(); } },
     { tag: '신규', title: '상점 오픈 — 상자 3종 · 차량 뽑기 · 교환소, 미션·출석 보상', img: () => LOBBY_ART.vehicles, act: () => setTab('shop') },
     { tag: '신규', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
@@ -28419,6 +28591,28 @@ const Training = (() => {
 // ============================================================
 const Prof = (() => {
   // ---------- 프로필 사진 (64×64, 바탕 그라데이션 + 흰 그림) ----------
+  // Level 0 (백룸 12가지 탈출 이벤트 보상): 한 점 투시 복도 — 천장 타일 · 형광등 · 노란 벽지 줄무늬 · 눅눅한 카펫 · 어두운 출입구
+  //  복도 끝 벽 x 24..40 · y 24..38. 왼쪽 벽 위 모서리 y = x · 아래 모서리 y = 64 - x·26/24 (오른쪽 벽은 좌우 대칭)
+  const L0_SVG = (() => {
+    const f = (v) => +v.toFixed(2), top = (x) => (x <= 32 ? x : 64 - x), bot = (x) => (x <= 32 ? 64 - x * 26 / 24 : 64 - (64 - x) * 26 / 24);
+    const door = (x0, x1, k) => `M${x0} ${f(top(x0) + (bot(x0) - top(x0)) * k)}L${x1} ${f(top(x1) + (bot(x1) - top(x1)) * k)}V${f(bot(x1))}L${x0} ${f(bot(x0))}z`;
+    const pt = (t, u) => `${f(32 + u * (32 - 24 * t))} ${f(24 * t)}`, quad = (t0, t1, u) => `M${pt(t0, -u)}L${pt(t0, u)}L${pt(t1, u)}L${pt(t1, -u)}z`;
+    let stripe = '', tile = '', lamp = '', halo = '';
+    for (let i = 1; i <= 9; i++) { const x = 24 * (1 - Math.pow(0.78, i)); stripe += `M${f(x)} ${f(top(x))}V${f(bot(x))}M${f(64 - x)} ${f(top(x))}V${f(bot(64 - x))}`; }
+    for (const x of [8, 16, 24, 40, 48, 56]) tile += `M${x} 0L${f(24 + x / 4)} 24`;
+    for (let i = 1; i <= 6; i++) { const y = 24 * (1 - Math.pow(0.6, i)); tile += `M${f(y)} ${f(y)}H${f(64 - y)}`; }
+    for (const [t0, t1] of [[0.08, 0.26], [0.46, 0.56], [0.68, 0.75], [0.81, 0.845], [0.885, 0.905]]) { lamp += quad(t0, t1, 0.25); halo += quad(Math.max(0, t0 - 0.03), t1 + 0.03, 0.42); }
+    return '<defs><linearGradient id="l0c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6efc8"/><stop offset="1" stop-color="#d6c98a"/></linearGradient>'
+      + '<linearGradient id="l0f" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#66541e"/><stop offset="1" stop-color="#a48e44"/></linearGradient>'
+      + '<radialGradient id="l0v" cx="50%" cy="48%" r="64%"><stop offset=".5" stop-color="#140f02" stop-opacity="0"/><stop offset="1" stop-color="#140f02" stop-opacity=".62"/></radialGradient>'
+      + '<filter id="l0b" x="-40%" y="-150%" width="180%" height="400%"><feGaussianBlur stdDeviation="1.1"/></filter></defs>'
+      + '<path d="M0 0H64L40 24H24z" fill="url(#l0c)"/><path d="M0 64H64L40 38H24z" fill="url(#l0f)"/>'
+      + '<path d="M0 0L24 24V38L0 64z" fill="#d8c262"/><path d="M64 0L40 24V38L64 64z" fill="#c9b153"/><path d="M24 24H40V38H24z" fill="#b9a24a"/>'
+      + `<path d="${stripe}" fill="none" stroke="#8a7424" stroke-width=".55" opacity=".45"/><path d="${tile}" fill="none" stroke="#a89a5c" stroke-width=".45" opacity=".6"/>`
+      + `<path d="${door(17, 19.6, 0.3)}" fill="#5a4a16"/><path d="${door(45.5, 51.5, 0.3)}" fill="#3e3210"/><path d="M29.6 29.2H34.4V38H29.6z" fill="#342a0c"/>`
+      + '<path d="M14 64L27.5 38M50 64L36.5 38" fill="none" stroke="#5a4a18" stroke-width=".5" opacity=".4"/><ellipse cx="21" cy="56" rx="7" ry="2.1" fill="#4e3f12" opacity=".35"/><ellipse cx="41.5" cy="46.5" rx="3.6" ry="1.1" fill="#4e3f12" opacity=".3"/>'
+      + `<path d="${halo}" fill="#fff6c8" opacity=".6" filter="url(#l0b)"/><path d="${lamp}" fill="#fffdf2"/><rect width="64" height="64" fill="url(#l0v)"/>`;
+  })();
   const AV = [
     { id: 'helmet', name: '전투모', lv: 1, bg: ['#5c6b4a', '#2d3626'], svg: '<path d="M12 40c0-15 9-25 22-25s20 9 20 22v3H12z"/><path d="M8 40h50v5H8z"/><path d="M20 45l-3 9h4l4-9z" opacity=".7"/><path d="M22 25c4-4 9-6 14-6" fill="none" stroke="#fff" stroke-width="2" opacity=".5"/>' },
     { id: 'scope', name: '조준선', lv: 1, bg: ['#4b5560', '#20262c'], svg: '<circle cx="32" cy="32" r="17" fill="none" stroke="#fff" stroke-width="3"/><path d="M32 8v14M32 42v14M8 32h14M42 32h14" stroke="#fff" stroke-width="3"/><circle cx="32" cy="32" r="3"/>' },
@@ -28436,6 +28630,8 @@ const Prof = (() => {
     { id: 'beta', name: '베타 테스터', lv: 1, beta: true, bg: ['#0f5560', '#03151b'], svg: '<path d="M23 8h18v4h-3v13l12 21c2 4-1 9-5 9H19c-4 0-7-5-5-9l12-21V12h-3z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><path d="M17 45l8-13h14l8 13c1 3-1 5-3 5H20c-2 0-4-2-3-5z" fill="#3ff5d6"/><circle cx="28" cy="38" r="1.6" fill="#fff"/><circle cx="37" cy="42" r="1.2" fill="#fff"/><text x="32" y="49" font-size="13" font-weight="900" text-anchor="middle" fill="#03151b" font-family="Arial,sans-serif">β</text><path d="M50 10l1.5 3.5L55 15l-3.5 1.5L50 20l-1.5-3.5L45 15l3.5-1.5z"/>' },
     // THE BACKROOMS 탈출 이벤트 보상 (10_event.js): 어둠 속에서 빛나는 눈과 이빨 가득한 웃음 — 엔티티 '스마일러'
     { id: 'smiler', name: '스마일러', lv: 1, ev: 'brx', bg: ['#1a1608', '#000000'], svg: '<defs><filter id="smGl" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#smGl)"><path d="M14 24c3-5 9-6 13-2-4 3-9 4-13 2z"/><path d="M50 24c-3-5-9-6-13-2 4 3 9 4 13 2z"/><circle cx="20" cy="22.6" r="1.6" fill="#000"/><circle cx="44" cy="22.6" r="1.6" fill="#000"/><path d="M8 33c7 13 41 13 48 0-2 9-11 17-24 17S10 42 8 33z"/><path d="M11 35.5l2.6 5 2.6-4 2.6 6 2.6-5 2.6 6.4 2.6-5.6 2.6 6.6 2.6-5.6 2.6 6.4 2.6-5 2.6 6 2.6-4 2.6 5 2.6-6" fill="none" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/><path d="M15 43l3-3 3 4 3-4 3 4 3-4 3 4 3-4 3 4 3-4 3 4 3-3" fill="none" stroke="#000" stroke-width="1.3" stroke-linejoin="round"/></g>' },
+    // 백룸 완전 탈출(12가지) 이벤트 보상 (10_event.js): Level 0 — 끝없이 이어지는 노란 벽지 복도
+    { id: 'level0', name: 'Level 0', lv: 1, ev: 'brx12', bg: ['#e4d27c', '#6a5a1e'], svg: L0_SVG },
   ];
   const avOf = (id) => AV.find((a) => a.id === id) || AV[0];
   function avatarSVG(id) {
@@ -28462,6 +28658,8 @@ const Prof = (() => {
     { id: 'champ_hc', name: '하드코어 패왕', kind: 'title', title: 'champ_hc', desc: '하드코어 랭킹 1위 (빼앗기면 회수)' },
     // 콜라보 이벤트 (10_event.js): THE BACKROOMS 탈출 — 노란 벽지 고리 + 위의 형광등 + 아래 스마일러 웃음
     { id: 'br_escape', name: '백룸 탈출자', kind: 'title', title: 'br_escape', desc: '칭호 「백룸 탈출자」(THE BACKROOMS 탈출 이벤트)' },
+    // 백룸 완전 탈출 (12가지) — 노란 벽지 고리 + 양옆 초록 비상등 12개 + 위의 EXIT 표지 + 아래 12/12 명판
+    { id: 'br_all', name: '백룸 정복자', kind: 'title', title: 'br_all', desc: '칭호 「백룸 정복자」(백룸 12가지 탈출 이벤트)' },
   ];
   for (const f of FR) if (f.kind === 'tier') { f.name = RANK_TIERS[f.t].name; f.desc = `랭크 ${RANK_TIERS[f.t].name} 도달`; }
   // 장식(테두리 위·옆에 붙는 그림, viewBox -16..80) — 높은 티어일수록 많아짐
@@ -28498,7 +28696,10 @@ const Prof = (() => {
   ORN.br_escape = `<rect x="12" y="-12" width="40" height="7" rx="3.5" fill="#fffbe0" stroke="#8a7a2a" stroke-width="1.1"/><rect x="15" y="-10.4" width="34" height="3.8" rx="1.9" fill="#ffffff"/><path d="M20 -5l-4 7M44 -5l4 7" stroke="#6a5a1a" stroke-width="1.1"/>`
     + `<path d="M18 63c4 7 24 7 28 0-2 5-8 9-14 9s-12-4-14-9z" fill="#0b0904" stroke="#fffbe0" stroke-width="1.1"/><path d="M20 64.5l2 2.6 2-2.2 2 2.8 2-2.4 2 3 2-2.6 2 3 2-2.4 2 2.8 2-2.2 2 2.6 2-2.2" fill="none" stroke="#fffbe0" stroke-width="1" stroke-linejoin="round"/>`
     + `<path d="M-4 30c3-2 6-2 8 0-3 1-6 1-8 0zM60 30c2-2 5-2 8 0-2 1-5 1-8 0z" fill="#fffbe0"/>`;
-  const ORN_FX = { br_escape: '<i class="pf-scan"></i>', champ_lv: '<i class="pf-rays lv"></i>', champ_tier: '<i class="pf-rays"></i><i class="pf-orb"></i><i class="pf-orb b"></i>', champ_hc: '<i class="pf-rays hc"></i>', eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
+  ORN.br_all = [40, 60, 80, 100, 120, 140, -40, -60, -80, -100, -120, -140].map((d) => { const a = (d - 90) * Math.PI / 180, x = 32 + Math.cos(a) * 37.5, y = 32 + Math.sin(a) * 37.5; return `<rect x="${(x - 3.3).toFixed(1)}" y="${(y - 1.6).toFixed(1)}" width="6.6" height="3.2" rx="1.3" transform="rotate(${d} ${x.toFixed(1)} ${y.toFixed(1)})" fill="#dcffcc" stroke="#2f7a2a" stroke-width=".8"/>`; }).join('')
+    + `<rect x="15" y="-15.5" width="34" height="12" rx="2" fill="#0c3a16" stroke="#8dff9a" stroke-width="1.3"/><text x="29" y="-6.2" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="9" fill="#c4ffbe" letter-spacing=".7">EXIT</text><path d="M39.5 -9.5h5.5m-2.2 -2.6 2.6 2.6-2.6 2.6" fill="none" stroke="#c4ffbe" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`
+    + `<path d="M14 62h36l-4 6 4 6H14l4-6z" fill="#2a2208" stroke="#f4e07a" stroke-width="1.1"/><text x="32" y="71.3" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="8.4" fill="#fff3b0" letter-spacing=".5">12 / 12</text>`;
+  const ORN_FX = { br_escape: '<i class="pf-scan"></i>', br_all: '<i class="pf-rays br"></i>', champ_lv: '<i class="pf-rays lv"></i>', champ_tier: '<i class="pf-rays"></i><i class="pf-orb"></i><i class="pf-orb b"></i>', champ_hc: '<i class="pf-rays hc"></i>', eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
   function frameHTML(fr, av, size = 44, extra = '') {
     const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id];
     return `<span class="pf fr-${f.id}${extra ? ' ' + extra : ''}" style="--s:${size}px">${ORN_FX[f.id] || ''}<span class="pf-av">${avatarSVG(av)}</span><span class="pf-ring"></span>${f.id === 'grandmaster' ? '<span class="pf-spk"><svg viewBox="-16 -16 96 96">' + o + '</svg></span>' : o ? `<span class="pf-orn"><svg viewBox="-16 -16 96 96">${o}</svg></span>` : ''}</span>`;
@@ -28525,8 +28726,9 @@ const Prof = (() => {
     { id: 'bp_run', name: BP_TITLES.bp_run, desc: '배틀패스 시즌 1 — 50단계 달성', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_run') },
     { id: 'bp_plus', name: BP_TITLES.bp_plus, desc: '배틀패스 플러스 구매 (테두리 함께)', prog: () => '배틀패스 플러스 필요', ok: () => Eco.bpTitle('bp_plus'), fr: 'bp_plus' },
     { id: 'bp_s1', name: BP_TITLES.bp_s1, desc: '배틀패스 플러스로 시즌 1 — 50단계 달성 (테두리 함께)', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_s1'), fr: 'bp_s1' },
-    // 콜라보 이벤트 (10_event.js): THE BACKROOMS 에서 탈출 1회 → 이벤트 창에서 받기
-    { id: 'br_escape', name: BR_EVENT.title, desc: 'THE BACKROOMS 탈출 이벤트 — 백룸에서 엘리베이터로 탈출 (로비 상단 이벤트)', prog: () => ({ new: '이벤트 미참여', go: '백룸에서 탈출하기', esc: '이벤트 창에서 보상 받기', done: '받음' })[EvBR.state()] || '', ok: () => !!(STATS.eco && STATS.eco.brx) },
+    // 콜라보 이벤트 (10_event.js): THE BACKROOMS 탈출 1회 · 12가지 모두 → 이벤트 창에서 받기 (계정마다 한 번)
+    { id: 'br_escape', name: BR_EVENT.title, desc: 'THE BACKROOMS 탈출 이벤트 — 백룸에서 어떤 방법으로든 탈출 1회 (로비 상단 이벤트)', prog: () => EvBR.prog('one'), ok: () => !!(STATS.eco && STATS.eco.brx) },
+    { id: 'br_all', name: BR_EVENT.title12, desc: '백룸 완전 탈출 이벤트 — 12가지 방법으로 모두 탈출 (테두리 함께)', prog: () => EvBR.prog('all'), ok: () => !!(STATS.eco && STATS.eco.brx12), fr: 'br_all' },
     // 랭킹 1위 (10_ranking.js): 1위인 동안만 — 다른 계정이 1위가 되면 칭호·테두리가 회수된다
     { id: 'champ_lv', name: '정점의 베테랑', desc: '레벨 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('lv'), ok: () => Ladder.champ('lv'), fr: 'champ_lv' },
     { id: 'champ_tier', name: '랭크 챔피언', desc: '랭크 티어 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('tier'), ok: () => Ladder.champ('tier'), fr: 'champ_tier' },
@@ -28540,7 +28742,8 @@ const Prof = (() => {
   const P0 = { av: 'helmet', fr: 'none', ti: null };
   const st = () => (STATS.prof && typeof STATS.prof === 'object' ? STATS.prof : (STATS.prof = Object.assign({}, P0)));
   const lv = () => levelFromXp(STATS.xp || 0).lv;
-  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (a.ev === 'brx' ? !!(STATS.eco && STATS.eco.brx) : a.beta ? Eco.isBeta() : lv() >= a.lv); };
+  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (a.ev ? !!(STATS.eco && STATS.eco[a.ev]) : a.beta ? Eco.isBeta() : lv() >= a.lv); };
+  const avEv = (a) => (a.ev === 'brx12' ? '백룸 12가지 탈출 이벤트' : '백룸 탈출 이벤트');
   const frOk = (id) => { const f = FR.find((x) => x.id === id); if (!f) return false; if (f.kind === 'base') return true; if (f.kind === 'tier') return placedOk() && peakT() >= f.t; if (f.kind === 'hc') return hcPeakT() >= f.t; const t = tiOf(f.title); return !!t && t.ok(); };
   const tiOk = (id) => { const t = tiOf(id); return !!t && t.ok(); };
   // 지금 보여 줄 값 (조건이 사라진 것은 기본으로)
@@ -28590,8 +28793,8 @@ const Prof = (() => {
       const g = document.createElement('div'); g.className = 'prof-grid';
       for (const a of AV) {
         const ok = avOk(a.id), b = document.createElement('button'); b.type = 'button'; b.className = 'prof-it' + (m.av === a.id ? ' on' : '') + (ok ? '' : ' lock') + (a.beta ? ' beta' : '');
-        b.innerHTML = frameHTML('none', a.id, 58) + `<b>${a.name}</b><small>${ok ? (m.av === a.id ? '사용 중' : '선택') : a.ev ? '백룸 탈출 이벤트' : a.beta ? '베타 테스터 전용' : `Lv ${a.lv} 해금`}</small>`;
-        b.onclick = () => { if (!ok) { msg(a.ev ? 'THE BACKROOMS 탈출 이벤트 보상입니다 (로비 위 이벤트)' : a.beta ? '베타 테스터 칭호를 받은 계정만 쓸 수 있습니다' : `레벨 ${a.lv}에 해금됩니다 (지금 Lv ${lv()})`); return; } set('av', a.id); Audio.ui(); };
+        b.innerHTML = frameHTML('none', a.id, 58) + `<b>${a.name}</b><small>${ok ? (m.av === a.id ? '사용 중' : '선택') : a.ev ? avEv(a) : a.beta ? '베타 테스터 전용' : `Lv ${a.lv} 해금`}</small>`;
+        b.onclick = () => { if (!ok) { msg(a.ev ? (a.ev === 'brx12' ? '백룸 완전 탈출(12가지) 이벤트 보상입니다 (로비 위 이벤트)' : 'THE BACKROOMS 탈출 이벤트 보상입니다 (로비 위 이벤트)') : a.beta ? '베타 테스터 칭호를 받은 계정만 쓸 수 있습니다' : `레벨 ${a.lv}에 해금됩니다 (지금 Lv ${lv()})`); return; } set('av', a.id); Audio.ui(); };
         g.appendChild(b);
       }
       B.appendChild(g);

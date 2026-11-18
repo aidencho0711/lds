@@ -9,6 +9,28 @@
 // ============================================================
 const Prof = (() => {
   // ---------- 프로필 사진 (64×64, 바탕 그라데이션 + 흰 그림) ----------
+  // Level 0 (백룸 12가지 탈출 이벤트 보상): 한 점 투시 복도 — 천장 타일 · 형광등 · 노란 벽지 줄무늬 · 눅눅한 카펫 · 어두운 출입구
+  //  복도 끝 벽 x 24..40 · y 24..38. 왼쪽 벽 위 모서리 y = x · 아래 모서리 y = 64 - x·26/24 (오른쪽 벽은 좌우 대칭)
+  const L0_SVG = (() => {
+    const f = (v) => +v.toFixed(2), top = (x) => (x <= 32 ? x : 64 - x), bot = (x) => (x <= 32 ? 64 - x * 26 / 24 : 64 - (64 - x) * 26 / 24);
+    const door = (x0, x1, k) => `M${x0} ${f(top(x0) + (bot(x0) - top(x0)) * k)}L${x1} ${f(top(x1) + (bot(x1) - top(x1)) * k)}V${f(bot(x1))}L${x0} ${f(bot(x0))}z`;
+    const pt = (t, u) => `${f(32 + u * (32 - 24 * t))} ${f(24 * t)}`, quad = (t0, t1, u) => `M${pt(t0, -u)}L${pt(t0, u)}L${pt(t1, u)}L${pt(t1, -u)}z`;
+    let stripe = '', tile = '', lamp = '', halo = '';
+    for (let i = 1; i <= 9; i++) { const x = 24 * (1 - Math.pow(0.78, i)); stripe += `M${f(x)} ${f(top(x))}V${f(bot(x))}M${f(64 - x)} ${f(top(x))}V${f(bot(64 - x))}`; }
+    for (const x of [8, 16, 24, 40, 48, 56]) tile += `M${x} 0L${f(24 + x / 4)} 24`;
+    for (let i = 1; i <= 6; i++) { const y = 24 * (1 - Math.pow(0.6, i)); tile += `M${f(y)} ${f(y)}H${f(64 - y)}`; }
+    for (const [t0, t1] of [[0.08, 0.26], [0.46, 0.56], [0.68, 0.75], [0.81, 0.845], [0.885, 0.905]]) { lamp += quad(t0, t1, 0.25); halo += quad(Math.max(0, t0 - 0.03), t1 + 0.03, 0.42); }
+    return '<defs><linearGradient id="l0c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6efc8"/><stop offset="1" stop-color="#d6c98a"/></linearGradient>'
+      + '<linearGradient id="l0f" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#66541e"/><stop offset="1" stop-color="#a48e44"/></linearGradient>'
+      + '<radialGradient id="l0v" cx="50%" cy="48%" r="64%"><stop offset=".5" stop-color="#140f02" stop-opacity="0"/><stop offset="1" stop-color="#140f02" stop-opacity=".62"/></radialGradient>'
+      + '<filter id="l0b" x="-40%" y="-150%" width="180%" height="400%"><feGaussianBlur stdDeviation="1.1"/></filter></defs>'
+      + '<path d="M0 0H64L40 24H24z" fill="url(#l0c)"/><path d="M0 64H64L40 38H24z" fill="url(#l0f)"/>'
+      + '<path d="M0 0L24 24V38L0 64z" fill="#d8c262"/><path d="M64 0L40 24V38L64 64z" fill="#c9b153"/><path d="M24 24H40V38H24z" fill="#b9a24a"/>'
+      + `<path d="${stripe}" fill="none" stroke="#8a7424" stroke-width=".55" opacity=".45"/><path d="${tile}" fill="none" stroke="#a89a5c" stroke-width=".45" opacity=".6"/>`
+      + `<path d="${door(17, 19.6, 0.3)}" fill="#5a4a16"/><path d="${door(45.5, 51.5, 0.3)}" fill="#3e3210"/><path d="M29.6 29.2H34.4V38H29.6z" fill="#342a0c"/>`
+      + '<path d="M14 64L27.5 38M50 64L36.5 38" fill="none" stroke="#5a4a18" stroke-width=".5" opacity=".4"/><ellipse cx="21" cy="56" rx="7" ry="2.1" fill="#4e3f12" opacity=".35"/><ellipse cx="41.5" cy="46.5" rx="3.6" ry="1.1" fill="#4e3f12" opacity=".3"/>'
+      + `<path d="${halo}" fill="#fff6c8" opacity=".6" filter="url(#l0b)"/><path d="${lamp}" fill="#fffdf2"/><rect width="64" height="64" fill="url(#l0v)"/>`;
+  })();
   const AV = [
     { id: 'helmet', name: '전투모', lv: 1, bg: ['#5c6b4a', '#2d3626'], svg: '<path d="M12 40c0-15 9-25 22-25s20 9 20 22v3H12z"/><path d="M8 40h50v5H8z"/><path d="M20 45l-3 9h4l4-9z" opacity=".7"/><path d="M22 25c4-4 9-6 14-6" fill="none" stroke="#fff" stroke-width="2" opacity=".5"/>' },
     { id: 'scope', name: '조준선', lv: 1, bg: ['#4b5560', '#20262c'], svg: '<circle cx="32" cy="32" r="17" fill="none" stroke="#fff" stroke-width="3"/><path d="M32 8v14M32 42v14M8 32h14M42 32h14" stroke="#fff" stroke-width="3"/><circle cx="32" cy="32" r="3"/>' },
@@ -26,6 +48,8 @@ const Prof = (() => {
     { id: 'beta', name: '베타 테스터', lv: 1, beta: true, bg: ['#0f5560', '#03151b'], svg: '<path d="M23 8h18v4h-3v13l12 21c2 4-1 9-5 9H19c-4 0-7-5-5-9l12-21V12h-3z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><path d="M17 45l8-13h14l8 13c1 3-1 5-3 5H20c-2 0-4-2-3-5z" fill="#3ff5d6"/><circle cx="28" cy="38" r="1.6" fill="#fff"/><circle cx="37" cy="42" r="1.2" fill="#fff"/><text x="32" y="49" font-size="13" font-weight="900" text-anchor="middle" fill="#03151b" font-family="Arial,sans-serif">β</text><path d="M50 10l1.5 3.5L55 15l-3.5 1.5L50 20l-1.5-3.5L45 15l3.5-1.5z"/>' },
     // THE BACKROOMS 탈출 이벤트 보상 (10_event.js): 어둠 속에서 빛나는 눈과 이빨 가득한 웃음 — 엔티티 '스마일러'
     { id: 'smiler', name: '스마일러', lv: 1, ev: 'brx', bg: ['#1a1608', '#000000'], svg: '<defs><filter id="smGl" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#smGl)"><path d="M14 24c3-5 9-6 13-2-4 3-9 4-13 2z"/><path d="M50 24c-3-5-9-6-13-2 4 3 9 4 13 2z"/><circle cx="20" cy="22.6" r="1.6" fill="#000"/><circle cx="44" cy="22.6" r="1.6" fill="#000"/><path d="M8 33c7 13 41 13 48 0-2 9-11 17-24 17S10 42 8 33z"/><path d="M11 35.5l2.6 5 2.6-4 2.6 6 2.6-5 2.6 6.4 2.6-5.6 2.6 6.6 2.6-5.6 2.6 6.4 2.6-5 2.6 6 2.6-4 2.6 5 2.6-6" fill="none" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/><path d="M15 43l3-3 3 4 3-4 3 4 3-4 3 4 3-4 3 4 3-4 3 4 3-3" fill="none" stroke="#000" stroke-width="1.3" stroke-linejoin="round"/></g>' },
+    // 백룸 완전 탈출(12가지) 이벤트 보상 (10_event.js): Level 0 — 끝없이 이어지는 노란 벽지 복도
+    { id: 'level0', name: 'Level 0', lv: 1, ev: 'brx12', bg: ['#e4d27c', '#6a5a1e'], svg: L0_SVG },
   ];
   const avOf = (id) => AV.find((a) => a.id === id) || AV[0];
   function avatarSVG(id) {
@@ -52,6 +76,8 @@ const Prof = (() => {
     { id: 'champ_hc', name: '하드코어 패왕', kind: 'title', title: 'champ_hc', desc: '하드코어 랭킹 1위 (빼앗기면 회수)' },
     // 콜라보 이벤트 (10_event.js): THE BACKROOMS 탈출 — 노란 벽지 고리 + 위의 형광등 + 아래 스마일러 웃음
     { id: 'br_escape', name: '백룸 탈출자', kind: 'title', title: 'br_escape', desc: '칭호 「백룸 탈출자」(THE BACKROOMS 탈출 이벤트)' },
+    // 백룸 완전 탈출 (12가지) — 노란 벽지 고리 + 양옆 초록 비상등 12개 + 위의 EXIT 표지 + 아래 12/12 명판
+    { id: 'br_all', name: '백룸 정복자', kind: 'title', title: 'br_all', desc: '칭호 「백룸 정복자」(백룸 12가지 탈출 이벤트)' },
   ];
   for (const f of FR) if (f.kind === 'tier') { f.name = RANK_TIERS[f.t].name; f.desc = `랭크 ${RANK_TIERS[f.t].name} 도달`; }
   // 장식(테두리 위·옆에 붙는 그림, viewBox -16..80) — 높은 티어일수록 많아짐
@@ -88,7 +114,10 @@ const Prof = (() => {
   ORN.br_escape = `<rect x="12" y="-12" width="40" height="7" rx="3.5" fill="#fffbe0" stroke="#8a7a2a" stroke-width="1.1"/><rect x="15" y="-10.4" width="34" height="3.8" rx="1.9" fill="#ffffff"/><path d="M20 -5l-4 7M44 -5l4 7" stroke="#6a5a1a" stroke-width="1.1"/>`
     + `<path d="M18 63c4 7 24 7 28 0-2 5-8 9-14 9s-12-4-14-9z" fill="#0b0904" stroke="#fffbe0" stroke-width="1.1"/><path d="M20 64.5l2 2.6 2-2.2 2 2.8 2-2.4 2 3 2-2.6 2 3 2-2.4 2 2.8 2-2.2 2 2.6 2-2.2" fill="none" stroke="#fffbe0" stroke-width="1" stroke-linejoin="round"/>`
     + `<path d="M-4 30c3-2 6-2 8 0-3 1-6 1-8 0zM60 30c2-2 5-2 8 0-2 1-5 1-8 0z" fill="#fffbe0"/>`;
-  const ORN_FX = { br_escape: '<i class="pf-scan"></i>', champ_lv: '<i class="pf-rays lv"></i>', champ_tier: '<i class="pf-rays"></i><i class="pf-orb"></i><i class="pf-orb b"></i>', champ_hc: '<i class="pf-rays hc"></i>', eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
+  ORN.br_all = [40, 60, 80, 100, 120, 140, -40, -60, -80, -100, -120, -140].map((d) => { const a = (d - 90) * Math.PI / 180, x = 32 + Math.cos(a) * 37.5, y = 32 + Math.sin(a) * 37.5; return `<rect x="${(x - 3.3).toFixed(1)}" y="${(y - 1.6).toFixed(1)}" width="6.6" height="3.2" rx="1.3" transform="rotate(${d} ${x.toFixed(1)} ${y.toFixed(1)})" fill="#dcffcc" stroke="#2f7a2a" stroke-width=".8"/>`; }).join('')
+    + `<rect x="15" y="-15.5" width="34" height="12" rx="2" fill="#0c3a16" stroke="#8dff9a" stroke-width="1.3"/><text x="29" y="-6.2" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="9" fill="#c4ffbe" letter-spacing=".7">EXIT</text><path d="M39.5 -9.5h5.5m-2.2 -2.6 2.6 2.6-2.6 2.6" fill="none" stroke="#c4ffbe" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`
+    + `<path d="M14 62h36l-4 6 4 6H14l4-6z" fill="#2a2208" stroke="#f4e07a" stroke-width="1.1"/><text x="32" y="71.3" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="8.4" fill="#fff3b0" letter-spacing=".5">12 / 12</text>`;
+  const ORN_FX = { br_escape: '<i class="pf-scan"></i>', br_all: '<i class="pf-rays br"></i>', champ_lv: '<i class="pf-rays lv"></i>', champ_tier: '<i class="pf-rays"></i><i class="pf-orb"></i><i class="pf-orb b"></i>', champ_hc: '<i class="pf-rays hc"></i>', eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
   function frameHTML(fr, av, size = 44, extra = '') {
     const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id];
     return `<span class="pf fr-${f.id}${extra ? ' ' + extra : ''}" style="--s:${size}px">${ORN_FX[f.id] || ''}<span class="pf-av">${avatarSVG(av)}</span><span class="pf-ring"></span>${f.id === 'grandmaster' ? '<span class="pf-spk"><svg viewBox="-16 -16 96 96">' + o + '</svg></span>' : o ? `<span class="pf-orn"><svg viewBox="-16 -16 96 96">${o}</svg></span>` : ''}</span>`;
@@ -115,8 +144,9 @@ const Prof = (() => {
     { id: 'bp_run', name: BP_TITLES.bp_run, desc: '배틀패스 시즌 1 — 50단계 달성', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_run') },
     { id: 'bp_plus', name: BP_TITLES.bp_plus, desc: '배틀패스 플러스 구매 (테두리 함께)', prog: () => '배틀패스 플러스 필요', ok: () => Eco.bpTitle('bp_plus'), fr: 'bp_plus' },
     { id: 'bp_s1', name: BP_TITLES.bp_s1, desc: '배틀패스 플러스로 시즌 1 — 50단계 달성 (테두리 함께)', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_s1'), fr: 'bp_s1' },
-    // 콜라보 이벤트 (10_event.js): THE BACKROOMS 에서 탈출 1회 → 이벤트 창에서 받기
-    { id: 'br_escape', name: BR_EVENT.title, desc: 'THE BACKROOMS 탈출 이벤트 — 백룸에서 엘리베이터로 탈출 (로비 상단 이벤트)', prog: () => ({ new: '이벤트 미참여', go: '백룸에서 탈출하기', esc: '이벤트 창에서 보상 받기', done: '받음' })[EvBR.state()] || '', ok: () => !!(STATS.eco && STATS.eco.brx) },
+    // 콜라보 이벤트 (10_event.js): THE BACKROOMS 탈출 1회 · 12가지 모두 → 이벤트 창에서 받기 (계정마다 한 번)
+    { id: 'br_escape', name: BR_EVENT.title, desc: 'THE BACKROOMS 탈출 이벤트 — 백룸에서 어떤 방법으로든 탈출 1회 (로비 상단 이벤트)', prog: () => EvBR.prog('one'), ok: () => !!(STATS.eco && STATS.eco.brx) },
+    { id: 'br_all', name: BR_EVENT.title12, desc: '백룸 완전 탈출 이벤트 — 12가지 방법으로 모두 탈출 (테두리 함께)', prog: () => EvBR.prog('all'), ok: () => !!(STATS.eco && STATS.eco.brx12), fr: 'br_all' },
     // 랭킹 1위 (10_ranking.js): 1위인 동안만 — 다른 계정이 1위가 되면 칭호·테두리가 회수된다
     { id: 'champ_lv', name: '정점의 베테랑', desc: '레벨 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('lv'), ok: () => Ladder.champ('lv'), fr: 'champ_lv' },
     { id: 'champ_tier', name: '랭크 챔피언', desc: '랭크 티어 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('tier'), ok: () => Ladder.champ('tier'), fr: 'champ_tier' },
@@ -130,7 +160,8 @@ const Prof = (() => {
   const P0 = { av: 'helmet', fr: 'none', ti: null };
   const st = () => (STATS.prof && typeof STATS.prof === 'object' ? STATS.prof : (STATS.prof = Object.assign({}, P0)));
   const lv = () => levelFromXp(STATS.xp || 0).lv;
-  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (a.ev === 'brx' ? !!(STATS.eco && STATS.eco.brx) : a.beta ? Eco.isBeta() : lv() >= a.lv); };
+  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (a.ev ? !!(STATS.eco && STATS.eco[a.ev]) : a.beta ? Eco.isBeta() : lv() >= a.lv); };
+  const avEv = (a) => (a.ev === 'brx12' ? '백룸 12가지 탈출 이벤트' : '백룸 탈출 이벤트');
   const frOk = (id) => { const f = FR.find((x) => x.id === id); if (!f) return false; if (f.kind === 'base') return true; if (f.kind === 'tier') return placedOk() && peakT() >= f.t; if (f.kind === 'hc') return hcPeakT() >= f.t; const t = tiOf(f.title); return !!t && t.ok(); };
   const tiOk = (id) => { const t = tiOf(id); return !!t && t.ok(); };
   // 지금 보여 줄 값 (조건이 사라진 것은 기본으로)
@@ -180,8 +211,8 @@ const Prof = (() => {
       const g = document.createElement('div'); g.className = 'prof-grid';
       for (const a of AV) {
         const ok = avOk(a.id), b = document.createElement('button'); b.type = 'button'; b.className = 'prof-it' + (m.av === a.id ? ' on' : '') + (ok ? '' : ' lock') + (a.beta ? ' beta' : '');
-        b.innerHTML = frameHTML('none', a.id, 58) + `<b>${a.name}</b><small>${ok ? (m.av === a.id ? '사용 중' : '선택') : a.ev ? '백룸 탈출 이벤트' : a.beta ? '베타 테스터 전용' : `Lv ${a.lv} 해금`}</small>`;
-        b.onclick = () => { if (!ok) { msg(a.ev ? 'THE BACKROOMS 탈출 이벤트 보상입니다 (로비 위 이벤트)' : a.beta ? '베타 테스터 칭호를 받은 계정만 쓸 수 있습니다' : `레벨 ${a.lv}에 해금됩니다 (지금 Lv ${lv()})`); return; } set('av', a.id); Audio.ui(); };
+        b.innerHTML = frameHTML('none', a.id, 58) + `<b>${a.name}</b><small>${ok ? (m.av === a.id ? '사용 중' : '선택') : a.ev ? avEv(a) : a.beta ? '베타 테스터 전용' : `Lv ${a.lv} 해금`}</small>`;
+        b.onclick = () => { if (!ok) { msg(a.ev ? (a.ev === 'brx12' ? '백룸 완전 탈출(12가지) 이벤트 보상입니다 (로비 위 이벤트)' : 'THE BACKROOMS 탈출 이벤트 보상입니다 (로비 위 이벤트)') : a.beta ? '베타 테스터 칭호를 받은 계정만 쓸 수 있습니다' : `레벨 ${a.lv}에 해금됩니다 (지금 Lv ${lv()})`); return; } set('av', a.id); Audio.ui(); };
         g.appendChild(b);
       }
       B.appendChild(g);

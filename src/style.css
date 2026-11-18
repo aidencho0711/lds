@@ -1581,6 +1581,35 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 .fr-br_escape .pf-ring { animation: pfSpin 9s linear infinite; }
 .fr-br_escape::after { animation: brFlicker 3.2s steps(1) infinite; }
 @keyframes brFlicker { 0%, 100% { opacity: 1; } 46% { opacity: 1; } 47% { opacity: 0.25; } 48% { opacity: 1; } 52% { opacity: 0.4; } 53% { opacity: 1; } }
+/* v22 백룸 완전 탈출(12가지) 테두리 · 칭호: 노란 벽지 고리에 초록 비상등 줄 + EXIT 표지 */
+.fr-br_all { --rg: repeating-conic-gradient(#efd978 0 6deg, #b49a3a 6deg 13deg, #8dff9a 13deg 15deg); --w: calc(var(--s) * 0.12); --gl: rgba(150, 255, 140, 0.65); }
+.fr-br_all .pf-ring { animation: pfSpin 6s linear infinite; }
+.fr-br_all::after { animation: brFlicker 3.6s steps(1) infinite; }
+.pf-rays.br { background: repeating-conic-gradient(rgba(170, 255, 150, 0.5) 0 4deg, transparent 4deg 14deg); }
+.ttl-br_all { background: linear-gradient(90deg, rgba(10, 50, 18, 0), #0d3a16 12%, #1f6c2c 40%, #3a9a46 50%, #1f6c2c 60%, #0d3a16 88%, rgba(10, 50, 18, 0)); border-color: rgba(190, 255, 170, 0.85); color: #eaffde; text-shadow: 0 0 6px rgba(120, 255, 130, 0.85); }
+.ttl-br_all::before { content: '▶'; color: #c4ffbe; text-shadow: 0 0 6px #7dff8a; }
+/* v22 백룸 이벤트 2가지: 카드 사이 · 12가지 진행 */
+.evb + .evb { margin-top: 12px; }
+.evb.evb-all { border-color: rgba(140, 255, 130, 0.4); }
+.evb.evb-all.ready { border-color: rgba(160, 255, 140, 0.95); box-shadow: 0 0 0 1px rgba(160, 255, 140, 0.3), 0 0 22px rgba(120, 255, 120, 0.25); }
+.evb.evb-all .evb-tag { color: #c4ffbe; }
+.evb-prog { display: flex; flex-direction: column; gap: 7px; }
+.evb-bar { position: relative; height: 20px; border-radius: 10px; background: rgba(0, 0, 0, 0.38); border: 1px solid var(--line-2); overflow: hidden; }
+.evb-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #4f9a3e, #b8ff9a); }
+.evb-bar b { position: relative; display: block; text-align: center; font: 800 0.8rem/18px var(--f-display); color: #fff; text-shadow: 0 1px 2px #000; letter-spacing: 0.08em; }
+.evb-esc { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.evb-e { display: flex; flex-direction: column; gap: 1px; padding: 5px 8px; border-radius: 5px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); min-width: 0; }
+.evb-e i { font: 700 0.62rem/1.1 var(--f-display); color: var(--dim); font-style: normal; letter-spacing: 0.1em; }
+.evb-e b { font-size: 0.76rem; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evb-e small { font-size: 0.64rem; color: var(--dim); opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evb-e.on { border-color: rgba(140, 210, 120, 0.6); background: rgba(110, 190, 90, 0.13); }
+.evb-e.on b { color: #dcffcc; }
+.evb-e.on i { color: #8fe07a; }
+.evb-e.on i::after { content: ' ✓'; }
+.evb-act .btn.ghost { padding-left: 0.8rem; padding-right: 0.8rem; }
+.evb-foot b { color: var(--sand); }
+@media (max-width: 560px) { .evb-esc { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-height: 520px) { .evb-e small { display: none; } .evb-e { padding: 4px 7px; } }
 .evb-chip .pf { vertical-align: middle; }/* 업데이트 로그 (10_changelog.js) */
 .more-btn { position: relative; }
 .more-btn .tab-dot, #clBtn .tab-dot { top: -3px; right: -3px; }
