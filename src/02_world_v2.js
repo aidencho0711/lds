@@ -29,6 +29,7 @@ const v2EntRot = (p) => p.ent ? v2FaceRot(p.ent[0], p.ent[1]) : 0;
 
 // ---------- 거시 지형: 해안선 · 강 · 산맥 · 호수 · 높이 ----------
 function v2Layout(K) {
+  if (K.XM) return xmLayout(K);   // 크리스마스 섬 (02_world_xmas.js)
   const { R, rng, n3, JG } = K, H = HALF;
   const nC = makeNoise(rng), nR = makeNoise(rng), nH = makeNoise(rng), nF = makeNoise(rng);
   Object.assign(K, { nC, nR, nH, nF });
@@ -124,6 +125,7 @@ function v2Layout(K) {
 
 // ---------- 지역 배치: 후보 여러 개 중 기존 지역에서 가장 먼 곳 ----------
 function v2PlacePois(K, NAMES) {
+  if (K.XM) return xmPlacePois(K, NAMES);
   const { w, R, rng, JG } = K, H = HALF, NM = V2_NAMES[JG ? 'jungle' : 'norden'];
   const rep = (n, a) => Array.from({ length: n }, () => a);
   const S = JG ? [
@@ -221,6 +223,7 @@ function v2Parcel(x, z) { // 46×30m 필지마다 작물 색
   return c < 3 ? 6 : c < 6 ? 7 : 1;
 }
 function v2Surf(K, x, z, h, mw, rdist, carve, road) {
+  if (K.XM) return xmSurf(K, x, z, h, mw, rdist);
   const JG = K.JG, dirt = road && road.kind === 'dirt';
   if (rdist < (dirt ? 3.7 : 4.6) && carve < 0.5) return dirt ? 11 : 4;
   if (h < 1.1 && carve <= 0.4 && JG) for (const p of K.poisNear(x, z)) if (p.coast === 'sea' && Math.hypot(x - p.x, z - p.z) < p.r + 30) return 9;   // 수상 마을 석호 바닥: 어두운 청록
@@ -279,7 +282,7 @@ function v2AddPolyRoad(K, pts, width, kind) {
 }
 function v2Roads(K) {
   const { w, rng, JG } = K, P = w.pois;
-  const GC = JG ? 25 : 50, GN = Math.ceil(SIZE / GC), NN = GN * GN, RW = K.river.w;
+  const GC = JG ? 25 : K.XM ? 20 : 50, GN = Math.ceil(SIZE / GC), NN = GN * GN, RW = K.river.w;
   const hN = new Float32Array(NN), blk = new Uint8Array(NN), rv = new Uint8Array(NN), used = new Uint8Array(NN), pc = new Float32Array(NN).fill(1);
   const cc = (i) => -HALF + (i + 0.5) * GC, cell = (x, z) => clamp(Math.floor((z + HALF) / GC), 0, GN - 1) * GN + clamp(Math.floor((x + HALF) / GC), 0, GN - 1);
   for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) {
@@ -327,7 +330,7 @@ function v2Roads(K) {
   for (let a = 0; a < Q.length; a++) {
     let bb = -1, bd = 1e9;
     for (let b = 0; b < Q.length; b++) if (b !== a && !edges.some(e => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a))) { const d = Math.hypot(Q[a].x - Q[b].x, Q[a].z - Q[b].z); if (d < bd) { bd = d; bb = b; } }
-    if (bb >= 0 && bd < (JG ? 1100 : 1800) && rng() < 0.5) edges.push([a, bb, bd]);
+    if (bb >= 0 && bd < (JG ? 1100 : K.XM ? 520 : 1800) && rng() < 0.5) edges.push([a, bb, bd]);
   }
   edges.sort((a, b) => a[2] - b[2]);
   // 직선 구간 검사: 막힌 칸(물·해안)을 지나거나 강을 원래 경로와 다르게 건너면 안 된다
@@ -437,7 +440,7 @@ function v2Ribbons(K, rp, ri, lp, li, dp, di) {
 
 // ---------- 길가 작은 마을 · 주유소 (노르덴) ----------
 function v2Roadside(K) {
-  const { w, R, rng, JG } = K; if (JG) return;
+  const { w, R, rng, JG } = K; if (JG || K.XM) return;
   const mains = w.roads.filter(r => r.kind === 'main' && r.len > 8), tot = mains.reduce((s, r) => s + r.len, 0); if (!tot) return;
   const pickPt = () => { let s = rng() * tot; for (const r of mains) { if (s < r.len) return [r, s]; s -= r.len; } return [mains[0], 0]; };
   const taken = new Set(w.pois.map(p => p.name)), A = ['엘름', '버치', '애쉬', '오크', '파인', '윌로', '메이플', '시더', '헤이즐', '로완', '린든', '헤더', '클로버', '브라이어', '솔트', '스톤', '브룩', '웨스트', '노스', '그린', '폭스', '래빗', '아울', '크로'],
@@ -799,6 +802,7 @@ function v2Build(K, p) {
       }
       break;
     }
+    default: if (K.XM) xmBuild(K, p);   // 크리스마스 섬 특수 지역 (02_world_xmas.js)
   }
 }
 // 다리 (v2 도로): 도로 방향으로 돌린 상판·난간·교각. 충돌은 도로를 따라 촘촘한 축정렬 상자로 근사
@@ -837,6 +841,7 @@ function v2Merge(list) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
 }
 async function v2Vegetation(K) {
+  if (K.XM) return xmVegetation(K);
   const { w, R, rng, Q, mk, vegMat, JG } = K, RW = K.RV.w;
   // 지역 근처(작은 마을·주유소 포함)는 나무를 비운다: 64m 칸 색인
   const PC = 64, PN = Math.ceil(SIZE / PC), pg = new Array(PN * PN).fill(EMPTY_LIST);
