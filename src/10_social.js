@@ -176,7 +176,7 @@ const Social = (() => {
 
 const Party = (() => {
   let P = null, ch = null, chOk = false, own = null, joining = null, pushT = 0, lastShared = '', absent = new Map(), present = new Set();
-  const SHARED = ['game', 'map', 'mode', 'squad', 'queue', 'time', 'difficulty', 'bots', 'online'];   // online: 온라인 매칭 켬/끔 (방장이 정함)
+  const SHARED = ['game', 'map', 'mode', 'squad', 'queue', 'time', 'difficulty', 'bots', 'online', 'arena'];   // online: 온라인 매칭 켬/끔 · arena: 데스매치 아레나 (방장이 정함)
   const me = () => Cloud.uid;
   const sb = () => Cloud.client();
   const isLeader = () => !!P && P.leader === me();

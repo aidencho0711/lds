@@ -552,7 +552,8 @@ const Models = (() => {
     iconCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 40);
   }
   const _v = new THREE.Vector3(), _col = new THREE.Color();
-  function renderIcon(obj, W, H, dir) {
+  // 아이콘 3D 렌더: 렌더 타깃에 그리고 크기·복원 함수를 돌려준다 (픽셀 읽기는 아래 동기/비동기)
+  function iconShot(obj, W, H, dir) {
     if (!iconScene) setupIcon();
     const S = 2, rw = W * S, rh = H * S;
     if (!iconRT || iconRT.width !== rw || iconRT.height !== rh) { if (iconRT) iconRT.dispose(); iconRT = new THREE.WebGLRenderTarget(rw, rh); }
@@ -571,34 +572,91 @@ const Models = (() => {
     iconCam.left = cx - w / 2; iconCam.right = cx + w / 2; iconCam.top = cy + h / 2; iconCam.bottom = cy - h / 2; iconCam.updateProjectionMatrix();
     const prevRT = R.getRenderTarget(), prevA = R.getClearAlpha(); R.getClearColor(_col);
     R.setRenderTarget(iconRT); R.setClearColor(0x000000, 0); R.clear(); R.render(iconScene, iconCam);
-    const px = new Uint8Array(rw * rh * 4); R.readRenderTargetPixels(iconRT, 0, 0, rw, rh, px);
-    R.setRenderTarget(prevRT); R.setClearColor(_col, prevA);
-    iconScene.remove(obj);
+    return { rw, rh, W, H, done() { R.setRenderTarget(prevRT); R.setClearColor(_col, prevA); iconScene.remove(obj); } };
+  }
+  // 읽은 픽셀(아래가 위) → 뒤집어 2배 크기 캔버스 → 반으로 줄인 캔버스 (부드러운 가장자리)
+  function iconCanvas(px, rw, rh, W, H) {
     const big = document.createElement('canvas'); big.width = rw; big.height = rh;
     const bg = big.getContext('2d'), img = bg.createImageData(rw, rh);
     for (let y = 0; y < rh; y++) img.data.set(px.subarray((rh - 1 - y) * rw * 4, (rh - y) * rw * 4), y * rw * 4);
     bg.putImageData(img, 0, 0);
     const out = document.createElement('canvas'); out.width = W; out.height = H;
     const og = out.getContext('2d'); og.imageSmoothingEnabled = true; og.imageSmoothingQuality = 'high'; og.drawImage(big, 0, 0, W, H);
-    return out.toDataURL('image/png');
+    return out;
+  }
+  function renderIcon(obj, W, H, dir) {
+    const s = iconShot(obj, W, H, dir), px = new Uint8Array(s.rw * s.rh * 4);
+    R.readRenderTargetPixels(iconRT, 0, 0, s.rw, s.rh, px); s.done();
+    return iconCanvas(px, s.rw, s.rh, W, H).toDataURL('image/png');
+  }
+  // v22 비동기 아이콘 (경기 중): 픽셀 읽기를 GPU 가 끝낼 때까지 기다리지 않고(WebGL2 PBO + fence) 다음 프레임들에서 받아 오고,
+  //  PNG 인코딩도 toBlob(다른 스레드)으로 — 경기 중 부착물을 주우면 화면이 잠깐 멈추던 것(아이콘 하나에 PC 30~60ms, 태블릿은 몇 배)
+  let rd = null;   // 읽는 중: { sync, buf, rw, rh, W, H, cb, t0 }
+  function renderIconAsync(obj, W, H, dir, cb) {
+    const gl = R.getContext();
+    if (!R.capabilities.isWebGL2 || typeof gl.fenceSync !== 'function') { cb(renderIcon(obj, W, H, dir)); return; }
+    const s = iconShot(obj, W, H, dir), buf = gl.createBuffer();
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buf); gl.bufferData(gl.PIXEL_PACK_BUFFER, s.rw * s.rh * 4, gl.STREAM_READ);
+    gl.readPixels(0, 0, s.rw, s.rh, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+    const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); gl.flush();
+    s.done();
+    rd = { sync, buf, rw: s.rw, rh: s.rh, W, H, cb, t0: performance.now() };
+  }
+  // 읽기가 끝났으면 마무리하고 true (읽는 중이 아니어도 true)
+  function readDone() {
+    if (!rd) return true;
+    const gl = R.getContext();
+    if (gl.getSyncParameter(rd.sync, gl.SYNC_STATUS) !== gl.SIGNALED && performance.now() - rd.t0 < 3000) return false;
+    const r = rd; rd = null;
+    const px = new Uint8Array(r.rw * r.rh * 4);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, r.buf); gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, px); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+    gl.deleteSync(r.sync); gl.deleteBuffer(r.buf);
+    const out = iconCanvas(px, r.rw, r.rh, r.W, r.H);
+    if (out.toBlob) out.toBlob((b) => r.cb(b ? URL.createObjectURL(b) : out.toDataURL('image/png')), 'image/png'); else r.cb(out.toDataURL('image/png'));
+    return true;
   }
   function iconKey(id, att) { return ITEMS[id].type === 'weapon' ? 'w:' + id + ':' + attKey(att) : 'i:' + id; }
-  function icon(id, att) {
+  // cb: 경기 중이라 바로 못 그렸을 때 다 그려지면 불림 (그동안은 같은 총의 부착물 없는 아이콘 · 없으면 '')
+  const later = new Map(), inflight = new Map();   // 경기 중 미룬 아이콘 · 그리는 중: key → { id, att, cbs }
+  let laterT = 0;
+  const finish = (key, e, url) => { ICON[key] = url; inflight.delete(key); for (const f of e.cbs) { try { f(url); } catch (er) { console.warn(er); } } };
+  function icon(id, att, cb) {
     if (!ITEMS[id]) return '';
     const key = iconKey(id, att);
     if (ICON[key] !== undefined) return ICON[key];
     if (!R) return '';
+    if (G.state === 'play') {
+      let e = inflight.get(key) || later.get(key);
+      if (!e) { e = { id, att: att ? Object.assign({}, att) : null, cbs: [] }; later.set(key, e); }
+      if (cb) e.cbs.push(cb);
+      return (ITEMS[id].type === 'weapon' && ICON[iconKey(id, null)]) || '';
+    }
     try {
       const d = ITEMS[id], wide = d.type === 'weapon';
       ICON[key] = renderIcon(buildDisplay(id, att), wide ? 320 : 160, wide ? 128 : 160, VIEW[id] || VIEW[d.type] || VIEW.ammo);
     } catch (e) { console.warn('아이콘 렌더 실패', id, e); ICON[key] = ''; }
     return ICON[key];
   }
+  // 경기 중 매 프레임 (11_game.js loop): 미룬 아이콘을 0.35초에 하나씩, GPU 를 기다리지 않고 그린다
+  function idle() {
+    if (!R || !readDone() || !later.size) return;
+    const t = performance.now(); if (t - laterT < 350) return; laterT = t;
+    const [key, e] = later.entries().next().value; later.delete(key);
+    if (ICON[key] !== undefined) { finish(key, e, ICON[key]); return; }
+    inflight.set(key, e);
+    try {
+      const d = ITEMS[e.id], wide = d.type === 'weapon';
+      renderIconAsync(buildDisplay(e.id, e.att), wide ? 320 : 160, wide ? 128 : 160, VIEW[e.id] || VIEW[d.type] || VIEW.ammo, (url) => finish(key, e, url));
+    } catch (er) { console.warn('아이콘 렌더 실패', e.id, er); finish(key, e, ''); }
+  }
   const queue = [];
   function prewarm() { for (const id in ITEMS) queue.push(id); }
+  // 로비에서 (경기 중에는 부르지 않음 — v22): 미리 그리기 + 경기 중 미뤄 둔 것 마저
   function pump(budgetMs = 6) {
-    if (!queue.length || !R) return;
+    if (!R || !readDone()) return;
     const t0 = performance.now();
+    while (later.size && G.state !== 'play' && performance.now() - t0 < budgetMs) { const [key, e] = later.entries().next().value; later.delete(key); finish(key, e, icon(e.id, e.att)); }
     while (queue.length && performance.now() - t0 < budgetMs) icon(queue.shift());
   }
 
@@ -641,6 +699,6 @@ const Models = (() => {
   }
   const scopeInfo = (id) => SC[id] || null;
   const kit = { A, BX, CY, RB, PF, SPH, TOR, PL, rail, trigger, magPts, tube, flip, M, cart };
-  return { init, buildGun, ground, display: buildDisplay, icon, iconKey, prewarm, pump, hand, sleeve, casing, scopeInfo, cluster, M, crate, canopy, kit, _render: renderIcon, get env() { return ENV; }, GUNS, CLS };
+  return { init, buildGun, ground, display: buildDisplay, icon, iconKey, prewarm, pump, idle, hand, sleeve, casing, scopeInfo, cluster, M, crate, canopy, kit, _render: renderIcon, get env() { return ENV; }, GUNS, CLS };
 })();
 function buildGunMesh(id, att, skin) { return Models.buildGun(id, att, skin); }

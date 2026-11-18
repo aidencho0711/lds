@@ -368,9 +368,10 @@ async function generateWorld(mapId, scene, progress) {
       w.hf[j * HF_N + i] = h;
       let s = 0;
       const mw = mountW(x, z);
-      if (AR) { // 아레나: 담 안은 콘크리트, 밖은 풀·흙
-        const m = Math.max(Math.abs(x), Math.abs(z));
-        s = m < 37.5 ? 5 : m < 44 ? 1 : (fbm(n4, x * 0.02, z * 0.02, 3) > 0.2 ? 8 : 0);
+      if (AR) { // 아레나: 담 안은 콘크리트, 밖은 풀·흙 (v22: 녹슨 공장 = 아스팔트·콘크리트 · 모래 사원 = 모래 · 골목 마을 = 돌바닥)
+        const m = Math.max(Math.abs(x), Math.abs(z)), LY = M.layout, sd = LY === 'ruins';
+        if (!LY) s = m < 37.5 ? 5 : m < 44 ? 1 : (fbm(n4, x * 0.02, z * 0.02, 3) > 0.2 ? 8 : 0);
+        else s = m < 37.5 ? (sd ? 3 : LY === 'factory' ? (fbm(n4, x * 0.05, z * 0.05, 2) > 0.1 ? 4 : 5) : 5) : m < 44 ? (sd ? 3 : 1) : sd ? (fbm(n4, x * 0.02, z * 0.02, 3) > 0.25 ? 1 : 3) : (fbm(n4, x * 0.02, z * 0.02, 3) > 0.2 ? 8 : 0);
         w.surf[j * HF_N + i] = s; continue;
       }
       if (TR) {
@@ -881,7 +882,7 @@ async function generateWorld(mapId, scene, progress) {
     w.pois.push({ type: 'arena', name: '전망대', x: 0, z: 0, r: 8, h: G0 }, { type: 'arena', name: '블루 출발', x: 0, z: 31, r: 6, h: G0 }, { type: 'arena', name: '레드 출발', x: 0, z: -31, r: 6, h: G0 });
   }
   if (TR) buildTraining();
-  if (AR) buildArena();
+  if (AR) { if (M.layout) buildArenaLayout({ w, M, frame, addBox, addRamp, PAL, DOOR, WIN, buildHouse, buildCar, getBatch }); else buildArena(); }   // v22: 아레나 3곳 추가 (02_world_arena.js)
 
   await yieldUI(0.4, '건물 배치');
   if (V2) Object.assign(K, { PAL, DOOR, WIN, frame, placeLot, addBox, addCollider, addRamp, claim, footprintFree, roadClear, flattenRect, baseHeight, worldRect, buildHouse, buildWarehouse, buildTower, buildContainer, buildCar, prism, getBatch, RV,
@@ -1128,6 +1129,7 @@ async function generateWorld(mapId, scene, progress) {
     if (riverDist(x, z) < RV.w + 9 || w.roadDist(x, z) < 6.5) continue;
     if (poisNear(x, z).some(p => Math.hypot(p.x - x, p.z - z) < p.r + (p.type === 'village' ? -4 : 6))) continue;
     if (!footprintFree(x - 0.6, z - 0.6, x + 0.6, z + 0.6, 1.2)) continue;
+    if (AR && M.layout === 'ruins') continue;   // 모래 사원: 담 밖도 나무 없음
     if (TR && Math.max(Math.abs(x), Math.abs(z)) < 222) continue;
     if (AR && Math.max(Math.abs(x), Math.abs(z)) < 47) continue;
     const pine = h > 14 || mountW(x, z) > 0.3 ? rng() < 0.85 : rng() < 0.3;
@@ -1151,6 +1153,7 @@ async function generateWorld(mapId, scene, progress) {
   for (let t = 0; t < (V2 ? 0 : big ? 60000 : 4000) && bushes.length < (big ? 14000 : 700) * Q.trees; t++) {
     const x = R(-HALF * 0.88, HALF * 0.88), z = R(-HALF * 0.88, HALF * 0.88), h = heightAt(x, z), s = surfaceAt(x, z);
     if (h < 1.3 || s === 4 || s === 5 || s === 3 || w.roadDist(x, z) < 5) continue;
+    if (AR && M.layout === 'ruins') continue;
     if (TR && Math.max(Math.abs(x), Math.abs(z)) < 222) continue;
     if (AR && Math.max(Math.abs(x), Math.abs(z)) < 47) continue;
     if (!footprintFree(x - 0.8, z - 0.8, x + 0.8, z + 0.8, 0.3)) continue;

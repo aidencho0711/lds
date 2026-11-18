@@ -718,7 +718,12 @@ class Brain {
     const pts = this.path.pts;
     while (this.pathI < pts.length && Math.hypot(pts[this.pathI][0] - c.pos.x, pts[this.pathI][1] - c.pos.z) < 0.9) this.pathI++;
     if (this.pathI >= pts.length) {
-      if (!this.path.complete && this.goal && Math.hypot(this.goal.x - c.pos.x, this.goal.z - c.pos.z) > 3) { this.wantPath = this.goal; this.path = null; PathQ.push(this); return [0, 0]; }
+      if (!this.path.complete && this.goal && Math.hypot(this.goal.x - c.pos.x, this.goal.z - c.pos.z) > 3) {
+        // v22: 끝까지 못 가는 목표(막힌 곳)면 부분 경로가 제자리에서 끝나 매 프레임 다시 찾던 것(봇 하나에 프레임마다 수 ms) —
+        //  이번 경로로 2m 도 못 갔거나 0.6초 안에 또 찾으려 하면 도착한 것으로 (탐색 중이면 다음 목표로)
+        if (Math.hypot(c.pos.x - pts[0][0], c.pos.z - pts[0][1]) < 2 || G.time - (this.repathT || -9) < 0.6) { this.path = null; this.arrived = true; return null; }
+        this.repathT = G.time; this.wantPath = this.goal; this.path = null; PathQ.push(this); return [0, 0];
+      }
       this.path = null; this.arrived = true; return null;
     }
     const p = pts[this.pathI], dx = p[0] - c.pos.x, dz = p[1] - c.pos.z, L = Math.hypot(dx, dz) || 1;

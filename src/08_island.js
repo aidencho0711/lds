@@ -167,8 +167,10 @@ const Island = (() => {
       if (_v.z > 1 || _v.x < -1.2 || _v.x > 1.2 || _v.y < -1.2 || _v.y > 1.2) { if (!d.hidden) d.hidden = true; continue; }
       if (d.hidden) d.hidden = false;
       const x = (_v.x + 1) / 2 * Wd, y = (1 - _v.y) / 2 * Hd, s = clamp(1.25 - dist / 45, 0.55, 1.1);
-      d.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%) scale(${s.toFixed(2)})`;
-      d.style.zIndex = String(1000 - Math.round(dist * 10));
+      // v22: 바뀐 것만 쓴다 (75명 이름표를 매 프레임 다시 쓰면 태블릿에서 무거움) · 겹침 순서는 0.5m 단위
+      const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%) scale(${s.toFixed(2)})`, zi = String(1000 - Math.round(dist * 2));
+      if (t.tf !== tf) { t.tf = tf; d.style.transform = tf; }
+      if (t.zi !== zi) { t.zi = zi; d.style.zIndex = zi; }
     }
   }
   // 봇: 섬 안을 걷고·뛰고·멈춰 둘러보기 (방장·혼자 기기)

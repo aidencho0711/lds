@@ -1,5 +1,5 @@
 // ============================================================
-// 10_dm.js — 팀 데스매치 / 웨폰 데스매치 (4 대 4, 컨테이너 야드)
+// 10_dm.js — 팀 데스매치 / 웨폰 데스매치 (4 대 4) · 대결 — 아레나 4곳(컨테이너 야드 · v22 녹슨 공장 · 모래 사원 · 골목 마을, 무작위 가능)
 //  · 먼저 40킬 한 팀 승리. 10분이 지나면 킬이 많은 팀 승리(같으면 무승부)
 //  · 죽으면 3초 뒤 자기 팀 출발 구역에서 부활(적에게서 가장 먼 자리), 부활 직후 2초 보호(쏘면 해제)
 //  · 4초 동안 안 맞으면 체력 회복, 탄약은 자동 보충, 모두 Lv2 헬멧·조끼(부활 때 새것)
@@ -39,7 +39,8 @@ const DM = (() => {
     Audio.music(false);
     $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
     const duel = isDuel(type) ? GAME_TYPES[type].duel : 0, TSZ = dmTeamSize(type);
-    $('loadMap').textContent = `${GAME_TYPES[type].name} · ${MAPS.arena.name}`;
+    const arenaId = cfg.arena && MAPS[cfg.arena] && MAPS[cfg.arena].arena ? cfg.arena : arenaResolve(arenaPick());   // v22: 아레나 4곳 (같이 하기는 방장이 정한 곳)
+    $('loadMap').textContent = `${GAME_TYPES[type].name} · ${MAPS[arenaId].name}`;
     $('loadTip').textContent = duel ? `${GAME_TYPES[type].name}: 라운드마다 모두 같은 무작위 총으로 싸웁니다. 죽으면 그 라운드는 관전, 먼저 ${DUEL_RULES.win}라운드를 이기는 팀이 승리합니다.`
       : type === 'tdm' ? '팀 데스매치: 모두 같은 총으로 싸웁니다. 먼저 40킬 하는 팀이 이깁니다.' : '웨폰 데스매치: 적을 처치할 때마다 총과 스코프가 바뀝니다. 먼저 40킬 하는 팀이 이깁니다.';
     const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
@@ -55,8 +56,8 @@ const DM = (() => {
     VM.hemi.color.setHex(t.hemiS); VM.hemi.groundColor.setHex(t.hemiG); VM.dir.color.setHex(t.sun); VM.dir.intensity = t.sunI * 0.8; VM.hemi.intensity = t.hemiI * 0.9;
     G.focusRing = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.36, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf0c060, transparent: true, opacity: 0.6, depthWrite: false }));
     G.focusRing.visible = false; sc.add(G.focusRing);
-    setMapSize('arena');
-    try { await generateWorld('arena', sc, prog); }
+    setMapSize(arenaId);
+    try { await generateWorld(arenaId, sc, prog); }
     catch (e) { console.error(e); fatal('맵 생성 중 오류: ' + e.message); return; }
     prog(0.98, '부대 배치');
     Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
@@ -67,7 +68,7 @@ const DM = (() => {
     G.teamSize = TSZ; G.teams = [{ id: 0, members: [], place: 0 }, { id: 1, members: [], place: 0 }];
     const seed = cfg.seed || ((Math.random() * 1e9) | 0);
     const rand = mulberry32(seed);
-    S = { type, seed, rand, score: [0, 0], over: false, winner: null, loadout: null, myDeaths: 0, net: !!cfg.roster, duel, round: duel ? { n: 1, ph: 'prep', t0: 0 } : null, lastWin: null };
+    S = { type, seed, rand, arena: arenaId, score: [0, 0], over: false, winner: null, loadout: null, myDeaths: 0, net: !!cfg.roster, duel, round: duel ? { n: 1, ph: 'prep', t0: 0 } : null, lastWin: null };
     S.loadout = cfg.loadout || (type === 'tdm' || duel ? loadout(rand, TDM_GUNS, null) : null);
     G.dm = S; G.frozen = !!duel;
     // 참가자: 혼자면 나 + 봇(데스매치 7명 · 대결은 팀 크기만큼). 같이 하기면 방장이 정한 명단
@@ -346,7 +347,7 @@ const DM = (() => {
     const D = STATS.dm || (STATS.dm = Object.assign({}, DM_STATS0));
     D.matches++; D.kills += p.kills; D.deaths += S.myDeaths; if (win) D.wins++;
     try { const B = Eco.bpDm(p.kills, win); if (B && B.xp) HUD.toast(`배틀패스 +${B.xp} 경험치` + (B.lv > B.lv0 ? ` · ${B.lv}단계 달성! 보상이 들어왔습니다` : ''), 'ok'); } catch (e) { console.warn('배틀패스 반영 실패', e); }   // 데스매치도 패스 경험치(적게)
-    STATS.recent.unshift({ dm: S.type, us: S.score[my], them: S.score[en], win, draw, kills: p.kills, deaths: S.myDeaths, time: Math.round(G.time), map: 'arena', party: S.net ? 1 : 0 });
+    STATS.recent.unshift({ dm: S.type, us: S.score[my], them: S.score[en], win, draw, kills: p.kills, deaths: S.myDeaths, time: Math.round(G.time), map: S.arena || 'arena', party: S.net ? 1 : 0 });
     STATS.recent = STATS.recent.slice(0, 5);
     G.statsSaved = saveStats();
     showResult(win, draw);

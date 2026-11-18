@@ -13,7 +13,7 @@
 //  아이템: 시작 아이템·차량은 같은 시드로 각자 생성(방장이 개수·위치 합계로 검증, 다르면 목록 전송), 이후 줍기·버리기는 사건으로
 //  리콜(08_recall.js): 'rc' — 등록 요청은 방장에게, 방장이 확인해 승인을 모두에게. 되살리기는 그 캐릭터의 주인 기기
 // ============================================================
-const NET_VER = 1;
+const NET_VER = 2;   // v22: 2 = 데스매치 아레나(cfg.arena) — 버전이 다르면 매칭 대기열이 갈린다
 const NET_ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }].concat(CLOUD_CFG.turn || []);
 const Net = (() => {
   let N = null;
@@ -38,6 +38,7 @@ const Net = (() => {
     if (dm) {
       const duel = isDuel(game), ts = dmTeamSize(game);
       cfg.loadout = game === 'tdm' || duel ? DM.loadout(mulberry32(seed), DM.TDM_GUNS, null) : null;
+      cfg.arena = arenaResolve(arenaPick(), mulberry32(seed ^ 0x2545f491));   // v22: 아레나 (무작위면 시드로 뽑음 → 모두 같은 곳)
       // 데스매치: 파티원은 모두 같은 팀(블루) · 대결: 파티원을 번갈아 양 팀으로 (1대1 = 서로 상대)
       // 온라인 매칭: 같은 줄(파티)은 같은 팀, 큰 줄부터 사람이 적은 팀에 (양 팀 인원을 고르게)
       let teamOf = null;
@@ -108,7 +109,7 @@ const Net = (() => {
     const host = cfg.host, me = Cloud.uid;
     const roster = cfg.roster.map((r) => { const o = Object.assign({}, r); if (r.human) o.net = charNet(r.uid); else if (host !== me) o.net = charNet(host); return o; });
     const mr = cfg.roster.find((r) => r.uid === me);
-    return { type: cfg.game, seed: cfg.seed, roster, loadout: cfg.loadout, myId: mr ? mr.id : 0 };
+    return { type: cfg.game, seed: cfg.seed, arena: cfg.arena, roster, loadout: cfg.loadout, myId: mr ? mr.id : 0 };
   }
   // 배틀로얄 캐릭터의 net 정보
   function charNet(owner) { return { owner, mine: owner === Cloud.uid, buf: [], life: -1 }; }
@@ -230,7 +231,9 @@ const Net = (() => {
       if (!e.to || e.to === N.me) handle(e, p.uid);
     }
   }
-  const charById = (id) => CHARS.find((c) => c.id === id) || null;
+  // 번호 → 캐릭터 (CHARS 가 바뀌거나 늘면 다시 만든다 — 받은 상태마다 배열 전체를 훑지 않게)
+  let cmA = null, cmN = -1, cmM = null;
+  const charById = (id) => { if (cmA !== CHARS || cmN !== CHARS.length) { cmA = CHARS; cmN = CHARS.length; cmM = new Map(); for (const c of CHARS) cmM.set(c.id, c); } return cmM.get(id) || null; };
   function handle(e, from) {
     switch (e.k) {
       case 'hello': { if (N.host) { const p = N.peers.get(from); if (p) { p.helloSeen = true; welcome(p); } } break; }
@@ -580,15 +583,22 @@ const Net = (() => {
       for (const c of CHARS) { if (mine(c)) mineS.push(c); else if (N.host) others.push(c); }
       const myVeh = []; for (const v of N.vehs) if (!vehRemote(v) && (v.awake || v.burnT > 0 || v.netDirty)) { myVeh.push(encVeh(v)); v.netDirty = v.awake; }
       const w = N.host ? { t: r2(G.time), pt: G.plane && G.plane.active ? r2(G.plane.t) : undefined, isl: G.island ? r2(Island.left()) : undefined } : undefined;
+      // v22: 캐릭터 상태는 틱마다 한 번만 JSON 으로 만들고, 사람마다 거리로 골라 이어 붙인다 (사람이 많아도 방장 부담이 덜 늘게)
+      //  받는 사람 캐릭터에서 150m 안 = 초당 20번, 150~260m = 10번, 그 밖 = 2번 (멀리 있는 캐릭터는 작게 보여 덜 자주 보내도 티가 안 남)
+      const EM = [], EO = [];
+      for (const c of mineS) EM.push(c, JSON.stringify(encChar(c)));
+      if (N.host) for (const c of others) if (c.net.lastA) EO.push(c, JSON.stringify(c.net.lastA));
+      const tail = (myVeh.length ? ',"v":' + JSON.stringify(myVeh) : '') + (w ? ',"w":' + JSON.stringify(w) : ''), me0 = G.player, tn = N.tickN;
       for (const p of N.peers.values()) {
         if (!(p.open || p.relay) || (p.relay && !relayTick)) continue;
-        const me0 = G.player, far = (c) => { if (!N.host) return false; const pc = charById2(p.uid); if (!pc || !c.alive) return false; const d = Math.hypot(c.pos.x - pc.pos.x, c.pos.z - pc.pos.z); return d > 260 && N.tickN % 10 !== 0; };
+        const pc = N.host ? charById2(p.uid) : null, px = pc ? pc.pos.x : 0, pz = pc ? pc.pos.z : 0;
+        const send = (c) => { if (!pc || !c.alive) return true; const d = Math.hypot(c.pos.x - px, c.pos.z - pz); return d <= 150 || (d <= 260 ? tn % 2 === 0 : tn % 10 === 0); };
         const S = [];
-        for (const c of mineS) if (!far(c) || c === me0) S.push(encChar(c));
-        if (N.host) for (const c of others) if (ownerOf(c) !== p.uid && c.net.lastA && !far(c)) S.push(c.net.lastA);
-        const pkt = { s: S, v: myVeh.length ? myVeh : undefined, w };
-        if (p.relay && p.held && p.held.length) pkt.e = p.held.splice(0);
-        sendTo(p, pkt, false);
+        for (let i = 0; i < EM.length; i += 2) if (EM[i] === me0 || send(EM[i])) S.push(EM[i + 1]);
+        for (let i = 0; i < EO.length; i += 2) if (ownerOf(EO[i]) !== p.uid && send(EO[i])) S.push(EO[i + 1]);
+        let pkt = '{"s":[' + S.join(',') + ']' + tail;
+        if (p.relay && p.held && p.held.length) pkt += ',"e":' + JSON.stringify(p.held.splice(0));
+        sendTo(p, pkt + '}', false);
       }
       // 방장: 자기장 1초마다
       if (N.host && !G.dm && Zone.cur) { N.zoneT -= 0.05; if (N.zoneT <= 0) { N.zoneT = 1; ev({ k: 'zone', z: zoneSnap() }); } }

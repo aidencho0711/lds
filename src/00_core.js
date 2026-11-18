@@ -94,6 +94,7 @@ const DEFAULT_SETTINGS = {
   touchLayout: {}, stickFixed: false, queue: 'normal', squad: 'solo', game: 'br',
   fps: 0, showFps: false,   // v20: 프레임 제한(30·60·120, 0 = 제한 없음 — 화면 주사율까지) · FPS 표시
   online: true,             // v21: 온라인 매칭 (출격 옆 버튼, 기본 켬) — 끄면 AI 와 바로 시작 (10_mm.js)
+  arena: 'random',          // v22: 데스매치·대결 아레나 (무작위 · 컨테이너 야드 · 녹슨 공장 · 모래 사원 · 골목 마을)
 };
 let SETTINGS = Object.assign({}, DEFAULT_SETTINGS, store.get('settings', {}));
 delete SETTINGS.outfit;   // v14: 옛 복장 번호는 창고 장착 정보(look)로 대체
@@ -153,6 +154,10 @@ const MAPS = {
   training: { name: '훈련장', seed: 2468, desc: '사격장·더미·차량·장애물 코스', training: true, half: 320, mountain: 0 },
   // 데스매치 전용: 72×72m 컨테이너 야드 (팀 데스매치·웨폰 데스매치 공용, 맵 선택 목록에는 없음)
   arena: { name: '컨테이너 야드', seed: 7123, desc: '72×72m · 2층 전망대 · 컨테이너 · 창고', arena: true, half: 100, mountain: 0 },
+  // v22 데스매치·대결 아레나 3곳 추가 (02_world_arena.js) — 모두 72×72m · 가운데 기준 180° 회전 대칭 · layout = 짓는 함수
+  factory: { name: '녹슨 공장', seed: 7351, desc: '72×72m · 지붕 덮인 작업장 · 2층 사무동 · 저장 탱크 · 지게차', arena: true, half: 100, mountain: 0, layout: 'factory' },
+  ruins:   { name: '모래 사원', seed: 7489, desc: '72×72m · 2단 제단(계단 4곳) · 기둥 회랑 · 폐허 집 · 야자나무', arena: true, half: 100, mountain: 0, layout: 'ruins' },
+  town:    { name: '골목 마을', seed: 7607, desc: '72×72m · 분수 광장 · 발코니 2층집 · 시장 가판대 · 골목', arena: true, half: 100, mountain: 0, layout: 'town' },
 };
 // 게임 종류: 배틀로얄 / 팀 데스매치 / 웨폰 데스매치
 const GAME_TYPES = {
@@ -169,6 +174,12 @@ const DUEL_RULES = { win: 4, round: 90, prep: 3, gap: 3.5 };
 const dmTeamSize = (g) => (GAME_TYPES[g] && GAME_TYPES[g].duel) || DM_RULES.teamSize;
 const isDuel = (g) => !!(GAME_TYPES[g] && GAME_TYPES[g].duel);
 const isDmGame = (g) => !!(GAME_TYPES[g] && GAME_TYPES[g].dm);
+// 데스매치·대결 아레나 (맵 선택 창 순서) · SETTINGS.arena = 'random'(무작위) 또는 아레나 id
+const ARENAS = ['arena', 'factory', 'ruins', 'town'];
+const arenaPick = () => (ARENAS.includes(SETTINGS.arena) ? SETTINGS.arena : 'random');
+const arenaLabel = (id) => (MAPS[id] && MAPS[id].arena ? MAPS[id].name : '무작위 아레나');
+// 무작위면 하나 뽑는다 (같이 하기·온라인 매칭은 방장이 경기 시드로 뽑아 cfg.arena 로 보냄)
+const arenaResolve = (pick, rand) => (ARENAS.includes(pick) ? pick : ARENAS[Math.floor((rand || Math.random)() * ARENAS.length) % ARENAS.length]);
 // 한 판 최대 인원: 기본 75명(봇 74 + 나) · 노르덴 100명
 const MATCH_BOTS = 74;
 const mapMaxBots = (id) => (MAPS[id] && MAPS[id].maxBots) || MATCH_BOTS;

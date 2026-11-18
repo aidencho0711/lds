@@ -6,8 +6,16 @@ const $ = (id) => document.getElementById(id);
 const HUD = (() => {
   let loot = [], focusIdx = 0, lastHp = 100, lastLootKey = '', toastQ = [];
   const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes'];
-  const ico = (id, att, cls = 'ico') => { const w = h('span', cls), src = Models.icon(id, att); if (src) { const im = h('img'); im.src = src; im.alt = ''; im.draggable = false; w.appendChild(im); } return w; };
+  // 아이콘 칸 — 경기 중 처음 보는 부착물 조합은 기본 아이콘을 먼저 보여 주고 다 그려지면 바꾼다 (v22, 05_models.js idle)
+  const ico = (id, att, cls = 'ico') => { const w = h('span', cls), im = h('img'); im.alt = ''; im.draggable = false; const src = Models.icon(id, att, (u) => { if (!u) return; im.src = u; if (!im.parentNode) w.appendChild(im); }); if (src) { im.src = src; w.appendChild(im); } return w; };
   const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+  // v22 경기 화면: 바뀐 것만 DOM 에 쓴다 — 매 프레임 같은 글자·폭을 다시 쓰면 휴대폰·태블릿에서 스타일·배치 계산이 매번 일어난다
+  const setT = (el, t) => { if (el && el.textContent !== t) el.textContent = t; };
+  const setSt = (el, k, v) => { if (!el) return; const c = el._st || (el._st = {}); if (c[k] !== v) { c[k] = v; el.style[k] = v; } };
+  // 요소 폭(clientWidth)은 읽을 때마다 배치 계산을 강제하므로 저장해 두고, 창 크기가 바뀌면(또는 2초마다) 다시 읽는다
+  const BW = {}; let bwT = 0;
+  const boxW = (id) => { const t = performance.now(); if (t - bwT > 2000) { bwT = t; for (const k in BW) delete BW[k]; } if (!BW[id]) { const e = $(id); BW[id] = e ? e.clientWidth : 0; } return BW[id]; };   // 0(숨김)은 저장하지 않음
+  window.addEventListener('resize', () => { for (const k in BW) delete BW[k]; });
 
   function modalOpen() { return modals.some(id => !$(id).hidden); }
   function toast(msg, kind = '') {
@@ -315,17 +323,19 @@ const HUD = (() => {
   }
   // 모바일(v21): HP 바 위 무기 실루엣 — 주무기 1·2 나란히, 그 위 오른쪽에 보조무기. 누르면 그 무기로 바꾸고, 지금 든 무기를 누르면 살펴보기
   //  실루엣 = 총 아이콘(부착물 포함)을 흰 그림자로. 지금 든 칸은 밝게 + 탄수 크게, 엡실론·EXCLUSIVE 스킨이면 테두리 색
+  // 모바일 무기 칸: 총 구성(wkey)이 바뀔 때만 다시 만들고, 탄약 수는 아래 ammoText 가 글자만 바꾼다 (v22: 쏠 때마다 칸을 새로 만들던 것 → 렉)
   function touchWeapons(p, inv, wkey) {
-    const pri = $('wsPri'), sec = $('wsSec'); if (!pri || pri.dataset.k === wkey) return;
-    pri.dataset.k = wkey; pri.innerHTML = ''; sec.innerHTML = '';
+    const pri = $('wsPri'), sec = $('wsSec'); if (!pri) return;
+    if (pri.dataset.k !== wkey) {
+    pri.dataset.k = wkey; pri.innerHTML = ''; sec.innerHTML = ''; pri._a = [];
     for (const i of [0, 1, 2]) {
       const w = inv.weapons[i], cur = i === inv.cur, sk = w && p.skinOf(w.id), sd = sk && GSKINS[sk];
       const b = h('button', 'ws-slot' + (cur ? ' cur' : '') + (w ? '' : ' empty') + (sd && sd.rar === 7 ? ' epsilon' : sd && sd.rar === 8 ? ' exclusive' : '') + (w && ITEMS[w.id].rocket ? ' rocket' : '')); b.type = 'button';
       if (w) {
-        const d = ITEMS[w.id], src = Models.icon(w.id, w.att);
-        if (src) { const im = h('img', 'ws-sil'); im.src = src; im.alt = ''; im.draggable = false; b.appendChild(im); }
+        const d = ITEMS[w.id];
+        const im = h('img', 'ws-sil'); im.alt = ''; im.draggable = false; iconInto(im, w.id, w.att); b.appendChild(im);
         b.appendChild(h('span', 'ws-n', String(i + 1)));
-        const a = h('span', 'ws-a'); a.append(String(w.mag)); a.appendChild(h('small', '', d.ammo ? ' / ' + inv.count(d.ammo) : ' 발')); b.appendChild(a);
+        const a = h('span', 'ws-a'), at = document.createTextNode(''), am = h('small', ''); a.append(at); a.appendChild(am); b.appendChild(a); pri._a[i] = { at, am, x: ' 발' };
         if (cur && d.modes.length > 1) b.appendChild(h('span', 'ws-m', modeName(w.id, fireMode(w))));
         b.setAttribute('aria-label', d.name + (cur ? ' (든 무기 · 누르면 살펴보기)' : ' 들기'));
       } else { b.appendChild(h('span', 'ws-e', i === 2 ? '보조무기' : '주무기 ' + (i + 1))); b.disabled = true; }
@@ -337,7 +347,21 @@ const HUD = (() => {
       });
       (i === 2 ? sec : pri).appendChild(b);
     }
+    }
+    ammoText(pri._a, inv);
   }
+  // 무기 칸 탄약 글자: 바뀐 것만 고친다 (refs[i] = { at: 탄창 글자 노드, am: '/ 예비' small, x: 1회용 무기 꼬리말 })
+  function ammoText(refs, inv) {
+    if (!refs) return;
+    for (let i = 0; i < 3; i++) {
+      const r = refs[i], w = inv.weapons[i]; if (!r || !w) continue;
+      const d = ITEMS[w.id], t1 = String(w.mag), t2 = d.ammo ? ' / ' + inv.count(d.ammo) : r.x;
+      if (r.at.data !== t1) r.at.data = t1;
+      if (r.am.textContent !== t2) r.am.textContent = t2;
+    }
+  }
+  // 아이콘을 img 에 넣는다 — 경기 중 처음 보는 부착물 조합은 잠시 기본 아이콘을 보여 주다가 다 그려지면 바꾼다 (05_models.js)
+  function iconInto(im, id, att) { const src = Models.icon(id, att, (u) => { if (u) im.src = u; }); if (src) im.src = src; }
   function update(dt) {
     const p = G.player; if (!p) return;
     const spec = !p.alive && G.spec && G.spec.alive && !G.over;
@@ -357,10 +381,10 @@ const HUD = (() => {
     const sb = $('specBar'); sb.hidden = !spec;
     if (spec) { const rl = Recall.specLine(p), t = `관전 중 · ${G.spec.name}${G.spec.knocked ? ' (기절)' : ''}${rl ? ' · ' + rl : ''}`; if ($('specName').textContent !== t) $('specName').textContent = t; }
     // 체력
-    const hp = Math.max(0, p.hp);
-    $('hpFill').style.width = hp + '%'; $('hpLag').style.width = hp + '%';
+    const hp = Math.max(0, p.hp), hpW = Math.round(hp * 10) / 10 + '%';
+    setSt($('hpFill'), 'width', hpW); setSt($('hpLag'), 'width', hpW);
     $('hpBar').classList.toggle('low', hp < 30);
-    $('boostBar').style.width = p.boost + '%';
+    setSt($('boostBar'), 'width', Math.round(p.boost * 10) / 10 + '%');
     // 장비
     const gr = $('gearRow'), g = p.inv.gear;
     const gearKey = ['helmet', 'vest', 'bag'].map(k => g[k] ? g[k].id + Math.round((g[k].dur || 0) / 10) : '-').join();
@@ -373,11 +397,11 @@ const HUD = (() => {
         gr.appendChild(e);
       }
     }
-    // 무기
+    // 무기 (v22: 총·부착물·발사 모드·든 칸이 바뀔 때만 칸을 다시 만들고, 탄약·투척물·회복 수는 글자만 바꾼다)
     const wp = $('weaponPanel'), inv = p.inv;
-    const wkey = inv.weapons.map(w => w ? w.id + ':' + w.mag + ':' + (w.fm || 0) + ':' + inv.count(ITEMS[w.id].ammo) + ':' + Object.values(w.att).join(',') : '-').join('|') + inv.cur + '|' + inv.count('frag') + inv.count('smoke') + inv.healCount() + inv.throwSel;
+    const wkey = inv.weapons.map(w => w ? w.id + ':' + (w.fm || 0) + ':' + Object.values(w.att).join(',') + ':' + (p.skinOf(w.id) || '') : '-').join('|') + inv.cur + '|' + inv.throwSel;
     if (wp.dataset.k !== wkey) {
-      wp.dataset.k = wkey; wp.innerHTML = '';
+      wp.dataset.k = wkey; wp.innerHTML = ''; wp._a = []; wp._mt = '';
       inv.weapons.forEach((w, i) => {
         if (!w) return; const d = ITEMS[w.id], sk = p.skinOf(w.id), tst = !!sk && !!GSKINS[sk].tester, eps = !!sk && GSKINS[sk].rar === 7, xmS = !!sk && GSKINS[sk].rar === 8, e = h('div', 'wslot' + (i === inv.cur ? ' cur' : '') + (tst ? ' tester' : '') + (eps ? ' epsilon' : '') + (xmS ? ' exclusive' : ''));
         if (i === inv.cur) { e.title = '눌러서 총 살펴보기 (N)'; e.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); Input.press('inspect'); }); }   // 모바일: 지금 무기 칸을 누르면 살펴보기
@@ -386,18 +410,19 @@ const HUD = (() => {
         e.appendChild(ico(w.id, w.att, 'ico wide wi'));
         e.appendChild(h('span', 'wn', `${i + 1}  ${d.name}`));
         if (d.modes.length > 1 || i === inv.cur) e.appendChild(h('span', 'wm', modeName(w.id, fireMode(w))));
-        const a = h('span', 'wa'); a.append(String(w.mag)); a.appendChild(h('small', '', d.ammo ? ' / ' + inv.count(d.ammo) : ' 발 · 1회용')); e.appendChild(a);
+        const a = h('span', 'wa'), at = document.createTextNode(''), am = h('small', ''); a.append(at); a.appendChild(am); e.appendChild(a); wp._a[i] = { at, am, x: ' 발 · 1회용' };
         wp.appendChild(e);
       });
-      const meta = h('div', 'wmeta');
-      meta.append(`${ITEMS[inv.throwSel].name.split(' ').pop()} ${inv.count(inv.throwSel)}`, ' · ', `회복 ${inv.count('bandage')}/${inv.count('firstaid')}/${inv.count('medkit')}`, ' · ', `음료 ${inv.count('drink')}`);
-      wp.appendChild(meta);
+      wp._meta = h('div', 'wmeta'); wp.appendChild(wp._meta);
     }
+    ammoText(wp._a, inv);
+    const mt = `${ITEMS[inv.throwSel].name.split(' ').pop()} ${inv.count(inv.throwSel)} · 회복 ${inv.count('bandage')}/${inv.count('firstaid')}/${inv.count('medkit')} · 음료 ${inv.count('drink')}`;
+    if (wp._meta && wp._mt !== mt) { wp._mt = mt; wp._meta.textContent = mt; }
     if (IS_TOUCH) touchWeapons(p, inv, wkey);
     // 카운터
-    const alive = CHARS.filter(c => c.alive).length;
-    $('alive').textContent = alive;
-    const tc = $('teamsCtr'); tc.hidden = !(G.teamSize > 1); if (!tc.hidden) $('teamsAlive').textContent = aliveTeamCount(); $('kills').textContent = p.kills; $('mtime').textContent = fmtTime(G.time);
+    let alive = 0; for (const c of CHARS) if (c.alive) alive++;
+    setT($('alive'), String(alive));
+    const tc = $('teamsCtr'); tc.hidden = !(G.teamSize > 1); if (!tc.hidden) setT($('teamsAlive'), String(aliveTeamCount())); setT($('kills'), String(p.kills)); setT($('mtime'), fmtTime(G.time));
     // 자기장
     const zi = $('zoneInfo'), out = Zone.cur && !Zone.inside(p.pos.x, p.pos.z, Zone.cur);
     let zt = '';
@@ -407,13 +432,13 @@ const HUD = (() => {
     if (Zone.next && p.mode === 'ground') { const d = Math.max(0, Math.hypot(p.pos.x - Zone.next.x, p.pos.z - Zone.next.z) - Zone.next.r); if (d > 0) zt += ` · 다음 구역까지 ${Math.round(d)}m`; }
     if (G.training) zt = '훈련장 · 메뉴에서 나가기';
     if (G.dm) zt = '';
-    zi.textContent = zt; zi.className = 'zone-info' + (out ? ' out' : Zone.state === 'shrink' ? ' shrink' : '');
-    $('zoneVignette').style.opacity = out && p.mode === 'ground' ? 1 : 0;
+    setT(zi, zt); const zc = 'zone-info' + (out ? ' out' : Zone.state === 'shrink' ? ' shrink' : ''); if (zi.className !== zc) zi.className = zc;
+    setSt($('zoneVignette'), 'opacity', out && p.mode === 'ground' ? '1' : '0');
     // 나침반
     if (!compassBuilt) buildCompass();
     let deg = (180 - (p.yaw * 180 / Math.PI)) % 360; if (deg < 0) deg += 360; // 북쪽(-z) 기준 시계방향
-    const px = 30 / 15, half = $('compass').clientWidth / 2;
-    $('compassStrip').style.transform = `translateX(${half - (deg + 360 * 2) * px - 15}px)`;
+    const px = 30 / 15, half = boxW('compass') / 2;
+    setSt($('compassStrip'), 'transform', `translateX(${(half - (deg + 360 * 2) * px - 15).toFixed(1)}px)`);
     // 조준점
     const adsE = smoothstep01(Cam.ads), si = Cam.si, ground = p.mode === 'ground' && p.alive && (!p.veh || p.seat > 0) && !p.knocked;
     // 차량: 속도계·내구도 / 탑승 안내
@@ -426,7 +451,7 @@ const HUD = (() => {
         $('vehName').textContent = p.seat === 0 ? `${v.T.name} · 최고 ${v.T.kmh}km/h · ${occ}/${v.seats.length}명` : `${v.T.name} · ${p.seat + 1}번 좌석(동승) · ${occ}/${v.seats.length}명`;
         $('vehKeys').textContent = p.seat === 0 ? 'W/S 가속·후진 · A/D 조향 · Space 핸드브레이크 · C 좌석 · F 하차' : '우클릭 조준 = 창밖으로 몸 내밀기 · 사격 · R 장전 · C 좌석 · F 하차';
       }
-      $('vehSpd').textContent = kmh; $('vehHp').style.width = hpP + '%'; vh.classList.toggle('low', hpP < 30 || v.burnT > 0);
+      setT($('vehSpd'), String(kmh)); setSt($('vehHp'), 'width', Math.round(hpP * 10) / 10 + '%'); vh.classList.toggle('low', hpP < 30 || v.burnT > 0);
     }
     const free = !v && p.alive && !p.knocked && p.mode === 'ground';
     const riding = !!v && p.seat > 0;
@@ -446,7 +471,7 @@ const HUD = (() => {
     if (quickT > 0) { quickT -= dt; if (quickT <= 0 || !p.alive || p.knocked) closeQuick(); }
     drawSound(p, dt); updateFuse(p);
     const ch = $('crosshair'), spread = weaponSpread(p) || 1.5, gap = 4 + spread * 9;
-    ch.style.display = ground && adsE < 0.3 ? '' : 'none'; ch.classList.toggle('nade', !!p.throwMode);
+    setSt(ch, 'display', ground && adsE < 0.3 ? '' : 'none'); ch.classList.toggle('nade', !!p.throwMode);
     // 산탄총: 펠릿이 퍼지는 실제 원(화면 px)에 맞춘 상하좌우 호
     const sg = !!(p.weapon && ITEMS[p.weapon.id].cls === 'SG');
     if (ch.classList.contains('sg') !== sg) ch.classList.toggle('sg', sg);
@@ -458,8 +483,8 @@ const HUD = (() => {
         ch.querySelector('.sgo').setAttribute('d', d); ch.querySelector('.sgi').setAttribute('d', d);
       }
     } else {
-      ch.querySelector('.t').style.top = -(gap + 9) + 'px'; ch.querySelector('.b').style.top = gap + 'px';
-      ch.querySelector('.l').style.left = -(gap + 9) + 'px'; ch.querySelector('.r').style.left = gap + 'px';
+      const cq = ch._q || (ch._q = ['.t', '.b', '.l', '.r'].map((s) => ch.querySelector(s))), g9 = -(gap + 9).toFixed(1) + 'px', g0 = gap.toFixed(1) + 'px';
+      setSt(cq[0], 'top', g9); setSt(cq[1], 'top', g0); setSt(cq[2], 'left', g9); setSt(cq[3], 'left', g0);
     }
     // 배율 조준경: 렌즈 밖은 검게, 안쪽에 조준선 / 레드닷·홀로: 유리 위에 빛나는 조준점
     const scopeOn = ground && si && si.mag && adsE > 0.72;
@@ -478,7 +503,7 @@ const HUD = (() => {
     else if (p.rl) prog = [p.rl.kind === 'mag' || p.rl.kind === 'belt' ? '재장전' : `장전 ${p.weapon ? p.weapon.mag : 0}/${p.weapon ? p.inv.magSize(p.weapon) : 0}`, p.rl.t / p.rl.total];
     else if (p.heal) prog = [ITEMS[p.heal.id].name + ' 사용 중', 1 - p.heal.t / p.heal.total];
     $('progress').hidden = !prog;
-    if (prog) { $('progLabel').textContent = prog[0]; $('progArc').style.strokeDashoffset = 106.8 * (1 - clamp(prog[1], 0, 1)); }
+    if (prog) { setT($('progLabel'), prog[0]); setSt($('progArc'), 'strokeDashoffset', (106.8 * (1 - clamp(prog[1], 0, 1))).toFixed(2)); }
     // 강하 패널
     const dp = $('dropPanel');
     if (p.mode === 'plane' || p.mode === 'fall' || p.mode === 'chute') {
@@ -489,7 +514,7 @@ const HUD = (() => {
     } else dp.hidden = true;
     const vc = G.viewChar ? G.viewChar() : p;
     if (!$('mapPanel').hidden) { bigT -= dt; if (bigT <= 0) { bigT = 0.3; drawBig(); } }
-    $('coord').textContent = `X ${Math.round(vc.pos.x)}  Z ${Math.round(vc.pos.z)}  ·  ${gridRef(vc.pos.x, vc.pos.z)}`;
+    setT($('coord'), `X ${Math.round(vc.pos.x)}  Z ${Math.round(vc.pos.z)}  ·  ${gridRef(vc.pos.x, vc.pos.z)}`);
     drawMini();
   }
   function gridRef(x, z) { const c = 'ABCDEFGH'[clamp(Math.floor((x + HALF) / (SIZE / 8)), 0, 7)], r = clamp(Math.floor((z + HALF) / (SIZE / 8)), 0, 7) + 1; return c + r; }
@@ -587,7 +612,7 @@ const HUD = (() => {
   function drawMini() {
     const cv = $('mini'), p0 = G.player; if (!W || !W.minimap || !p0) return;
     const p = G.viewChar ? G.viewChar() : p0;
-    const S = Math.round(cv.clientWidth * Math.min(2, window.devicePixelRatio || 1));
+    const S = Math.round(boxW('mini') * Math.min(2, window.devicePixelRatio || 1)); if (!S) return;
     if (cv.width !== S) { cv.width = cv.height = S; }
     const ctx = cv.getContext('2d');
     const src = p.mode === 'plane' ? planeOf(p).pos : p.pos;
@@ -1007,6 +1032,8 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   }
   const ringSet = (id, f) => { $(id).style.strokeDashoffset = (100.5 * (1 - clamp(f, 0, 1))).toFixed(1); };
   const mapSize = (k) => mapKm(k);
+  // 무작위 아레나 그림: 아레나 4곳을 2×2 로 (v22)
+  function arenaMosaic(el) { el.style.backgroundImage = ARENAS.map((k) => `url(${LOBBY_ART[k] || LOBBY_ART.arena || LOBBY_ART.kalden})`).join(', '); el.style.backgroundSize = '50% 50%'; el.style.backgroundPosition = '0 0, 100% 0, 0 100%, 100% 100%'; el.style.backgroundRepeat = 'no-repeat'; }
   function renderLobby() {
     const L = levelFromXp(STATS.xp);
     $('lvBadge').textContent = L.lv; $('lvNum').textContent = L.lv; $('xpBar').style.width = (L.cur / L.need * 100) + '%';
@@ -1092,11 +1119,12 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     const nb = ranked ? Rank.botCount(SETTINGS.map) : SETTINGS.bots, total = nb + 1, mins = Math.round(matchMinutes()), nTeams = Math.ceil(total / TS);
     const viewKo = SETTINGS.view === 'fpp' ? '1인칭' : '3인칭';
     if (dm) {
-      $('mcImg').style.backgroundImage = `url(${LOBBY_ART.arena || LOBBY_ART.kalden})`;
-      $('mcTop').textContent = `${GT.name} · ${DTS} 대 ${DTS} · ${viewKo}`; $('mcName').textContent = MAPS.arena.name;
+      const ap = arenaPick(), mi = $('mcImg');
+      if (ap === 'random') arenaMosaic(mi); else { mi.style.backgroundImage = `url(${LOBBY_ART[ap] || LOBBY_ART.arena || LOBBY_ART.kalden})`; mi.style.backgroundSize = mi.style.backgroundPosition = mi.style.backgroundRepeat = ''; }
+      $('mcTop').textContent = `${GT.name} · ${DTS} 대 ${DTS} · ${viewKo}`; $('mcName').textContent = arenaLabel(ap);
       $('mcTime').textContent = duel ? `먼저 ${DUEL_RULES.win}라운드 · 라운드 ${DUEL_RULES.round}초` : `최대 ${DM_RULES.timeLimit / 60}분`; $('mcPlayers').textContent = `${DTS * 2}명 · 2팀`; $('mcWarn').hidden = true;
     } else {
-      $('mcImg').style.backgroundImage = `url(${LOBBY_ART[SETTINGS.map] || LOBBY_ART.kalden})`;
+      { const mi = $('mcImg'); mi.style.backgroundImage = `url(${LOBBY_ART[SETTINGS.map] || LOBBY_ART.kalden})`; mi.style.backgroundSize = mi.style.backgroundPosition = mi.style.backgroundRepeat = ''; }
       $('mcTop').textContent = `${ranked ? '랭크 · ' + sqName : sqName} · ${viewKo} · ${MODES[SETTINGS.mode].name}`;
       $('mcName').textContent = MP.name.replace(/\s*\(.*\)$/, '');
       $('mcTime').textContent = `약 ${mins}분`; $('mcPlayers').textContent = TS > 1 ? `${total}명 · ${nTeams}팀` : `${total}명`; $('mcWarn').hidden = !(MP.big && MP.half >= 2000);
@@ -1116,17 +1144,22 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     }
     // 맵 선택 창
     const mg = $('mapGrid'); mg.innerHTML = '';
-    for (const [k, M] of Object.entries(MAPS)) {
-      if (M.training) continue; // 훈련장은 로비의 별도 버튼
-      if (!!M.arena !== dm) continue; // 데스매치는 전용 맵 하나
-      const on = dm || k === SETTINGS.map, b = h('button', 'map-opt' + (on ? ' on' : '') + (dm ? ' fixed' : '')); b.type = 'button';
-      const im = h('div', 'mo-img'); im.style.backgroundImage = `url(${LOBBY_ART[k] || LOBBY_ART.kalden})`; im.appendChild(h('em', M.big && M.half >= 2000 ? 'big' : M.snow ? 'xmas' : '', M.big && M.half >= 2000 ? `${mapSize(k)} · 렉 주의` : M.snow ? `${mapSize(k)} · 크리스마스` : M.arena ? '72×72m' : mapSize(k)));
-      const tx = h('div', 'mo-txt'); tx.appendChild(h('b', '', M.name.replace(/\s*\(.*\)$/, ''))); tx.appendChild(h('span', '', M.desc)); tx.appendChild(h('span', '', M.arena ? '데스매치·대결 전용' : `봇 최대 ${mapMaxBots(k)}명`));
+    // 데스매치·대결: 아레나 4곳 + 무작위 (v22) · 배틀로얄: 섬 맵들
+    const ents = dm ? [['random', null]].concat(ARENAS.map((k) => [k, MAPS[k]])) : Object.entries(MAPS).filter(([, M]) => !M.training && !M.arena);
+    for (const [k, M] of ents) {
+      const on = dm ? k === arenaPick() : k === SETTINGS.map, b = h('button', 'map-opt' + (on ? ' on' : '')); b.type = 'button';
+      const im = h('div', 'mo-img');
+      if (M) im.style.backgroundImage = `url(${LOBBY_ART[k] || LOBBY_ART.arena || LOBBY_ART.kalden})`; else arenaMosaic(im);
+      im.appendChild(h('em', M && M.big && M.half >= 2000 ? 'big' : M && M.snow ? 'xmas' : '', !M ? '4곳 중 하나' : M.big && M.half >= 2000 ? `${mapSize(k)} · 렉 주의` : M.snow ? `${mapSize(k)} · 크리스마스` : M.arena ? '72×72m' : mapSize(k)));
+      const tx = h('div', 'mo-txt'); tx.appendChild(h('b', '', M ? M.name.replace(/\s*\(.*\)$/, '') : '무작위'));
+      tx.appendChild(h('span', '', M ? M.desc : '경기마다 아레나 4곳 중 한 곳 (같이 하기·온라인 매칭은 방장이 뽑음)'));
+      tx.appendChild(h('span', '', !M ? '데스매치·대결' : M.arena ? (k === 'arena' ? '데스매치·대결' : 'v22 새 아레나 · 데스매치·대결') : `봇 최대 ${mapMaxBots(k)}명`));
       b.appendChild(im); b.appendChild(tx);
-      if (!dm) b.addEventListener('click', () => {
+      b.addEventListener('click', () => {
         if (lock && !lock.leader) { showLobbyNote('모드와 맵은 방장만 바꿀 수 있습니다'); return; }
-        SETTINGS.map = k; saveSettings(); Audio.init(); Audio.ui(); renderLobby(); if (lock) Party.settingsChanged();
-        if (M.big && M.half >= 2000) { const mw = $('mapWarn'); mw.classList.remove('flash'); void mw.offsetWidth; mw.classList.add('flash'); }
+        if (dm) SETTINGS.arena = k; else SETTINGS.map = k;
+        saveSettings(); Audio.init(); Audio.ui(); renderLobby(); if (lock) Party.settingsChanged();
+        if (M && M.big && M.half >= 2000) { const mw = $('mapWarn'); mw.classList.remove('flash'); void mw.offsetWidth; mw.classList.add('flash'); }
       });
       mg.appendChild(b);
     }
@@ -1134,10 +1167,10 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     if (!dm && MP.big && MP.half >= 2000) $('mapWarn').textContent = `⚠ 대형 맵(${mapSize(SETTINGS.map)})은 기기 성능에 따라 렉이 걸릴 수 있습니다. 로딩에 ${MP.half >= 4000 ? '수십 초' : '십여 초'}가 걸리고 메모리를 많이 씁니다(휴대폰은 경기 설정에서 봇 수를 줄이는 것을 권장). 봇 최대 ${maxB}명 · 차량 ${MP.veh || 170}대 · 한 판 약 ${mins}분.`;
     // 출격 버튼 · 요약
     const humans = Math.min(partyN, TS), mateBots = Math.max(0, Math.min(TS, total) - humans);
-    if (dm) { const dts = dmTeamSize(SETTINGS.game), dg = isDuel(SETTINGS.game); $('matchBrief').textContent = `${GT.name} · ${MAPS.arena.name} · ${TIMES_KO[SETTINGS.time] || ''} · ${dts} 대 ${dts} (${partyN > 1 ? `파티 ${partyN}명 + ` : ''}봇 ${Math.max(0, dts * 2 - partyN)}명, ${DIFFICULTY_NAMES[SETTINGS.difficulty]}) · 목표: ${dg ? `먼저 ${DUEL_RULES.win}라운드 (라운드 ${DUEL_RULES.round}초)` : `먼저 ${DM_RULES.killTarget}킬 (최대 ${DM_RULES.timeLimit / 60}분)`}`; }
+    if (dm) { const dts = dmTeamSize(SETTINGS.game), dg = isDuel(SETTINGS.game); $('matchBrief').textContent = `${GT.name} · ${arenaLabel(arenaPick())} · ${TIMES_KO[SETTINGS.time] || ''} · ${dts} 대 ${dts} (${partyN > 1 ? `파티 ${partyN}명 + ` : ''}봇 ${Math.max(0, dts * 2 - partyN)}명, ${DIFFICULTY_NAMES[SETTINGS.difficulty]}) · 목표: ${dg ? `먼저 ${DUEL_RULES.win}라운드 (라운드 ${DUEL_RULES.round}초)` : `먼저 ${DM_RULES.killTarget}킬 (최대 ${DM_RULES.timeLimit / 60}분)`}`; }
     else $('matchBrief').textContent = `${hc ? '하드코어 랭크전 · ' : ranked ? '랭크전 · ' : ''}${MAPS[SETTINGS.map].name} · ${MODES[SETTINGS.mode].name} · ${TIMES_KO[SETTINGS.time] || ''} · 봇 ${nb}명(${ranked ? '자동' : DIFFICULTY_NAMES[SETTINGS.difficulty]}) · ${TS > 1 ? `${sqName}(${TS}인 팀 · ${partyN > 1 ? `파티 ${humans}명` : '나'}${mateBots ? ` + 봇 ${mateBots}명` : ''}) · 목표: ${nTeams}팀 중 최후의 팀` : `목표: ${total}명 중 최후의 1인`}`;
     $('playBtn').classList.toggle('ranked', ranked); $('playBtn').classList.toggle('hc', hc); $('playBtn').querySelector('span').textContent = hc ? '하드코어 출격' : ranked ? '랭크 출격' : '출격';
-    $('playSub').textContent = dm ? `${GT.name} · ${MAPS.arena.name}` : ranked ? `${MAPS[SETTINGS.map].name} · ${rs.label}` : `${sqName} · ${MAPS[SETTINGS.map].name} · ${DIFFICULTY_NAMES[SETTINGS.difficulty]}`;
+    $('playSub').textContent = dm ? `${GT.name} · ${arenaLabel(arenaPick())}` : ranked ? `${MAPS[SETTINGS.map].name} · ${rs.label}` : `${sqName} · ${MAPS[SETTINGS.map].name} · ${DIFFICULTY_NAMES[SETTINGS.difficulty]}`;
     if (lock) Party.decoratePlay();
     MM.decorate();   // 온라인 매칭 켬/끔 · 매칭 중이면 '매칭 취소' (10_mm.js)
     setTab(lobbyTab);
@@ -1147,6 +1180,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: 'v22 새 아레나', title: '데스매치·대결 아레나 3곳 추가 — 녹슨 공장 · 모래 사원 · 골목 마을 (72×72m, 맵 선택에서 고르거나 무작위)', img: () => LOBBY_ART.factory || LOBBY_ART.arena, act: () => G.ui('mapPick') },
     { tag: 'v22 새 맵', title: '크리스마스 섬(1.5km) — 눈 덮인 섬 · 북극성 광장 큰 트리 · 산타 공방 · 얼어붙은 호수 · 모든 맵의 집 외형 개편 (맵 선택)', img: () => LOBBY_ART.xmas || LOBBY_ART.kalden, act: () => G.ui('mapPick') },
     { tag: 'v22 온라인 매칭', title: '온라인 매칭 · 스타트 섬 — 같은 모드를 고른 사람끼리 한 경기로, 빈자리는 AI · 시작 전 25초 스타트 섬 (업데이트 로그 보기)', img: () => LOBBY_ART.kalden, act: () => ChangeLog.open() },
     { tag: 'v21 판처파우스트 스킨', title: "핵탄두 · SANTA'S DELIVERY · EVENT HORIZON — 터지면 버섯구름 · 큰 선물 상자 · 큰 블랙홀 (업데이트 로그 보기)", img: () => { try { return Shop.gunThumb('pzf', 'e_pzf_horizon') || Models.icon('pzf'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },

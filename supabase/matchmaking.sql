@@ -2,7 +2,8 @@
 -- Last Drop Royale — 온라인 매칭 (v21, Supabase SQL Editor에서 한 번 실행)
 --  · 대기열 한 줄(mm_tickets) = 혼자 또는 파티 하나(방장이 대표). 같은 대기열 키끼리 한 경기(mm_matches)로 묶는다
 --    대기열 키 = 게임 버전·게임 종류·맵·팀 구성·일반/랭크/하드코어 (게임이 만들어 보냄)
---  · 경기는 사람이 다 차거나(cap) 최대 대기 시간(wait_s, 배틀로얄 3분)이 지나면 마감
+--  · 경기는 사람이 다 차거나(cap) 최대 대기 시간(wait_s, 3분)이 지나면 마감
+--    배틀로얄 cap = 맵 최대 인원(75·100명) — 사실상 3분 동안 줄 선 사람 모두 (v22, 예전 8명 제한 없앰)
 --    → 가장 먼저 줄 선 사람이 방장(경기 서버 역할)이 되어 경기 설정(cfg)을 올리고, 나머지가 받아서 같은 경기에 들어간다
 --    → 빈자리는 게임에서 AI(봇)로 채운다
 --  · 2초마다 확인(mm_poll). 15초 넘게 확인이 없는 줄은 연결이 끊긴 것으로 보고 뺀다
@@ -65,7 +66,7 @@ declare
 begin
   if me is null then raise exception 'auth'; end if;
   if p_qkey is null or char_length(p_qkey) not between 1 and 80 then raise exception 'qkey'; end if;
-  if p_cap is null or p_cap not between 2 and 16 then raise exception 'cap'; end if;
+  if p_cap is null or p_cap not between 2 and 128 then raise exception 'cap'; end if;   -- 배틀로얄 = 맵 최대 인원(75·100명)
   if p_wait is null or p_wait not between 5 and 300 then raise exception 'wait'; end if;
   if p_members is null or jsonb_typeof(p_members) <> 'array' or octet_length(p_members::text) > 24000 then raise exception 'members'; end if;
   k := jsonb_array_length(p_members);

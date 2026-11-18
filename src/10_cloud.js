@@ -129,7 +129,9 @@ const Cloud = (() => {
       return true;
     } catch (e) { return false; }
   }
-  function schedule(ms) { if (!user) return; clearTimeout(syncT); syncT = setTimeout(pushNow, ms); }
+  // v22: 경기 중에는 서버 저장(조회 + 병합 + 전체 업로드)을 미뤘다가 경기가 끝나면 보낸다 — 처치·줍기마다 2초 뒤 업로드하던 것이 렉
+  //  (기기에는 그때그때 저장되고, 앱을 내리거나 창을 닫으면 아래 visibilitychange 가 바로 보낸다)
+  function schedule(ms) { if (!user) return; clearTimeout(syncT); syncT = setTimeout(() => { if (G.state === 'play') schedule(15000); else pushNow(); }, ms); }
   onDataSaved = () => { if (user) { dirty = true; schedule(2000); } };
   // 창을 닫거나 다른 앱으로 갈 때 밀린 저장을 바로 보냄
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && user && dirty) { clearTimeout(syncT); pushNow(); } else if (document.visibilityState === 'visible' && user) pull(); });

@@ -3,13 +3,15 @@
 //  로비 출격 버튼 옆 '온라인 매칭'(기본 켬): 켜면 같은 모드·맵·팀 구성을 고른 사람끼리 한 경기로 묶고, 끄면 지금처럼 AI 와 바로 시작
 //  · 서버(supabase/matchmaking.sql): 줄 서기(mm_join) → 2초마다 확인(mm_poll) → 마감되면 먼저 줄 선 사람이 방장
 //    → 방장이 경기 설정(Net.makeConfig)을 올리고(mm_cfg) 모두 같은 경기에 들어간다. 빈자리는 봇(AI)
-//  · 배틀로얄(일반·랭크·하드코어): 사람 최대 8명 — 3분 기다려도 다 안 차면 그때까지 모인 사람 + AI 로 시작 (시작 전 스타트 섬)
+//  · 배틀로얄(일반·랭크·하드코어): 3분 동안 줄 선 사람은 모두 한 경기로 (v22: 8명 제한 없앰 — 한 경기 최대 인원은 맵 최대 인원
+//    75명·노르덴 100명, 그만큼 차면 바로 시작) → 3분이 지나면 모인 사람 + AI 로 시작 (시작 전 스타트 섬)
 //  · 1대1·2대2·팀 데스매치·웨폰 데스매치: 모드 인원(2·4·8명)이 차면 바로 시작, 3분이 지나면 빈자리는 AI (스타트 섬 없음)
+//    대기열은 아레나(맵)별 — '무작위'를 고른 사람끼리는 방장이 아레나를 뽑는다
 //  · 파티: 방장이 파티째 줄 선다 (파티원은 같은 팀). 파티원 화면에는 '방장이 온라인 매칭 중'
 //  · 경기 연결: 이 경기 전용 실시간 채널(ld-mm-<경기 번호>)로 WebRTC 신호를 주고받는다 (10_net.js)
 // ============================================================
 const MM = (() => {
-  const T = { wait: 180, poll: 2000, brCap: 8 };   // 최대 대기(초) · 확인 간격(ms) · 배틀로얄 한 경기 최대 사람 수
+  const T = { wait: 180, poll: 2000 };   // 최대 대기(초) · 확인 간격(ms)
   let Q = null;      // 매칭 중(나 또는 내가 방장인 파티): { s, members, party, t0, ticket, st, busy, err, timer, cfgBusy, launched }
   let pv = null;     // 파티원: 방장이 매칭 중 { t0, n, cap, label, dm }
   let uiT = null, lastKey = '';
@@ -20,11 +22,12 @@ const MM = (() => {
   // 지금 고른 경기의 대기열 키 · 한 경기 사람 수(cap) · 팀 크기
   function spec(partyN) {
     const game = SETTINGS.game;
-    if (isDmGame(game)) { const ts = dmTeamSize(game); return { key: `v${NET_VER}|${game}`, cap: ts * 2, dm: true, ts, label: GAME_TYPES[game].name }; }
+    if (isDmGame(game)) { const ts = dmTeamSize(game), am = arenaPick(); return { key: `v${NET_VER}|${game}|${am}`, cap: ts * 2, dm: true, ts, label: `${GAME_TYPES[game].name} · ${arenaLabel(am)}` }; }
     const ranked = SETTINGS.queue !== 'normal', hc = SETTINGS.queue === 'hardcore';
     const ts = ranked && partyN < 2 ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
     const sq = ts === 1 ? '솔로' : (Object.values(TEAM_MODES).find((m) => m.size === ts) || TEAM_MODES.solo).name;
-    return { key: `v${NET_VER}|br|${SETTINGS.map}|${SETTINGS.mode}|${ts}|${SETTINGS.queue}`, cap: T.brCap, dm: false, ts, ranked, hc,
+    // 배틀로얄 한 경기 최대 사람 수 = 맵 최대 인원 (봇 자리까지 전부 사람이어도 됨) — 사실상 3분 동안 들어온 사람 모두
+    return { key: `v${NET_VER}|br|${SETTINGS.map}|${SETTINGS.mode}|${ts}|${SETTINGS.queue}`, cap: mapMaxBots(SETTINGS.map) + 1, dm: false, ts, ranked, hc,
       label: `${hc ? '하드코어 · ' : ranked ? '랭크 · ' : ''}${sq} · ${MAPS[SETTINGS.map].name.replace(/\s*\(.*\)$/, '')}` };
   }
   // 이 인원으로 온라인 매칭을 할지: 켜져 있고, 파티만으로 다 차지 않고, (데스매치) 파티가 한 팀에 들어감
@@ -59,7 +62,11 @@ const MM = (() => {
     const q = Q; if (!q) return;
     q.busy = true; let data = null;
     try { const r = await sb().rpc('mm_join', { p_qkey: q.s.key, p_cap: q.s.cap, p_wait: T.wait, p_members: q.members }); if (r.error) throw r.error; data = r.data; }
-    catch (e) { q.busy = false; if (Q !== q) return; console.warn('mm_join', e); if (missing(e) || ++q.err >= 3) { fail(); return; } schedule(1500); return; }
+    catch (e) {
+      q.busy = false; if (Q !== q) return; console.warn('mm_join', e);
+      if (q.s.cap > 16 && /cap/.test(String(e && e.message || ''))) { q.s.cap = 16; schedule(300); return; }   // 서버 SQL 이 아직 예전 것(한 경기 최대 16명)이면 16명으로 다시
+      if (missing(e) || ++q.err >= 3) { fail(); return; } schedule(1500); return;
+    }
     q.busy = false;
     if (Q !== q) { leaveSrv(); return; }   // 그 사이 취소함
     q.err = 0; q.ticket = data.ticket; onState(data);
@@ -160,7 +167,8 @@ const MM = (() => {
     $('mmTitle').textContent = closed ? '매칭 완료 — 경기 준비 중' : q ? '온라인 매칭 중' : '방장이 온라인 매칭 중';
     $('mmTime').textContent = `${fmt(el)} / ${fmt(T.wait)}`;
     $('mmBar').style.width = (closed ? 100 : el / T.wait * 100).toFixed(1) + '%';
-    $('mmSub').textContent = `${q ? q.s.label : v.label} · 사람 ${n}/${cap}명 · ${dm ? '다 모이면 바로 시작, ' : ''}${fmt(T.wait)}이 지나면 빈자리는 AI`;
+    $('mmSub').textContent = dm ? `${q ? q.s.label : v.label} · 사람 ${n}/${cap}명 · 다 모이면 바로 시작, ${fmt(T.wait)}이 지나면 빈자리는 AI`
+      : `${q ? q.s.label : v.label} · 사람 ${n}명 · ${fmt(T.wait)} 동안 들어온 사람 모두와 시작 (빈자리는 AI)`;
     const who = $('mmWho'), list = q ? names(st) : v.names || [], key = JSON.stringify(list);
     if (who._k !== key) {
       who._k = key; who.innerHTML = '';
@@ -180,7 +188,7 @@ const MM = (() => {
     if (Q) {
       const st = Q.st, el = Math.min(T.wait, Math.max(0, (now() - Q.t0) / 1000));
       b.querySelector('span').textContent = '매칭 취소';
-      $('playSub').textContent = `매칭 중 ${fmt(el)} · 사람 ${st ? st.n : Q.members.length}/${st ? st.cap : Q.s.cap}`;
+      $('playSub').textContent = `매칭 중 ${fmt(el)} · 사람 ${st ? st.n : Q.members.length}${Q.s.dm ? '/' + (st ? st.cap : Q.s.cap) : '명'}`;
     }
   }
   function toggle() {

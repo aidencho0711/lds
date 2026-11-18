@@ -583,8 +583,12 @@ G.update = function (dt) {
     else { Input.lookX = Input.lookY = 0; if (p.veh) { p.veh.ctrl.throttle = 0; p.veh.ctrl.steer = 0; } else stepPhysics(p, dt, 0, 0, 0, false); }
   }
   // 봇 (대형 맵: 카메라에서 600m 밖의 봇은 두 프레임에 한 번, 누적 dt로 갱신 — 봇마다 번갈아 부하 분산)
+  //  v22: 작은 맵도 봇 표시 거리 밖(화면에 그리지 않는 거리, 최소 220m)이면 같게. 단 싸우는 중(COMBAT)이거나
+  //  다른 기기 사람(같이 하기·온라인 매칭) 가까이 있는 봇은 매 프레임 (움직임은 stepPhysics 가 큰 dt 를 잘게 나눠 벽을 뚫지 않음)
   G.frame = (G.frame || 0) + 1;
-  const camP = G.camera.position;
+  const camP = G.camera.position, lodR = W.big ? 600 : Math.max(QUALITY[SETTINGS.quality].botDraw, 220);
+  let hum = null; if (G.net) for (const h of CHARS) if (h.human && h.alive && h.net && !h.net.mine && !h.botized) (hum || (hum = [])).push(h);
+  const nearHum = (c) => { if (!hum) return false; for (const h of hum) if (Math.abs(h.pos.x - c.pos.x) < lodR && Math.abs(h.pos.z - c.pos.z) < lodR) return true; return false; };
   for (const c of CHARS) {
     if (c.net && !c.net.mine) { Net.updateProxy(c, dt); continue; } // 다른 기기가 움직이는 캐릭터: 받은 상태 보간
     if (c.isPlayer || !c.alive) continue;
@@ -604,7 +608,7 @@ G.update = function (dt) {
       if (c.mode === 'fall' && G.time - c.jumpT > 1.5 && L > (c.pos.y - Math.max(heightAt(c.pos.x, c.pos.z), WATER_Y)) * 1.05) openChute(c);
       updateDrop(c, dt, sx, sz, L > 120 ? 1 : L > 30 ? 0.5 : -0.3);
     } else if (c.mode === 'ground') {
-      if (!W.big || Math.hypot(c.pos.x - camP.x, c.pos.z - camP.z) < 600) { c._lod = 0; b.update(dt); }
+      if (Math.hypot(c.pos.x - camP.x, c.pos.z - camP.z) < lodR || b.state === 'COMBAT' || nearHum(c)) { if (c._lod) { b.update(c._lod + dt); c._lod = 0; } else b.update(dt); }
       else { c._lod = (c._lod || 0) + dt; if ((G.frame + c.id) % 2 === 0) { b.update(c._lod); c._lod = 0; } }
     }
   }
@@ -613,13 +617,23 @@ G.update = function (dt) {
   Veh.update(dt);
   if (G.training) Training.update(dt);
   if (G.dm) DM.update(dt);
+  // 스타트 섬은 75명이 지름 80m 섬에 모여 모두 가까이 보이므로 25m 부터 (섬 봇은 걷기·멈추기뿐)
+  const Qa = QUALITY[SETTINGS.quality], animFar = G.island ? 25 : Math.max(45, (Qa.lod || (SETTINGS.quality === 'low' ? 18 : SETTINGS.quality === 'high' ? 45 : 30)) + 15);
   for (const c of CHARS) {
     if (c.mode === 'plane') continue;
     if (!c.net || c.net.mine) updateCharTimers(c, dt);
     else if (c.punch) updatePunch(c, dt);   // 다른 기기 캐릭터의 주먹: 동작·소리만
     if (c.net && !c.net.mine && (c.lean || c.leanA)) { const lt = c.alive && !c.knocked && c.mode === 'ground' ? c.lean || 0 : 0; c.leanA += (lt - c.leanA) * Math.min(1, dt * 11); if (!lt && Math.abs(c.leanA) < 0.003) c.leanA = 0; }   // 다른 기기 캐릭터의 기울이기
     // 화면에 안 보이는 캐릭터는 관절 애니메이션 생략
-    if (c.isPlayer || c.root.visible) animateChar(c, dt);
+    //  v22: 멀리 있는(카메라에서 정밀 메시 거리 + 15m, 최소 45m 밖 — 강하 중 포함) 캐릭터는 관절 자세를 두 프레임에 한 번(쌓인 시간으로) 계산하고,
+    //  그 사이 프레임은 몸만 이동한 만큼 옮긴다 — 멀리서는 차이가 보이지 않고, 애니메이션이 프레임 시간에서 가장 큰 몫
+    if (c.isPlayer || c.root.visible) {
+      const ap = c._ap;
+      if (ap && !c.isPlayer && !c.veh && G.frame - c._animF <= 2 && ((G.frame + c.id) & 1) && Math.hypot(c.pos.x - camP.x, c.pos.y - camP.y, c.pos.z - camP.z) > animFar) {
+        const rp = c.root.position; rp.x += c.pos.x - ap.x; rp.y += c.pos.y - ap.y; rp.z += c.pos.z - ap.z; ap.copy(c.pos);
+        c._animAcc = (c._animAcc || 0) + dt;
+      } else { animateChar(c, dt + (c._animAcc || 0)); c._animAcc = 0; c._animF = G.frame; (c._ap || (c._ap = new THREE.Vector3())).copy(c.pos); }
+    }
     if (c.rig.ofx.length && c.alive && c.root.visible && !(c.isPlayer && VM.active)) { const d = G.camera.position.distanceTo(c.pos); if (d < 40) OutfitFx.update(c.rig, dt, d < 15 ? 1 : 0.5); }   // EXCLUSIVE 옷 효과
     footsteps(c, dt);
   }
@@ -811,7 +825,7 @@ function loop(ts) {
       }
       G.renderer.render(G.scene, G.camera);
       if (G.state === 'play') renderViewModel();
-      Models.pump(2);
+      if (G.state === 'play') Models.idle(); else Models.pump(2);   // v22: 경기 중에는 아이콘 미리 그리기를 멈추고, 꼭 필요한 것만 GPU 를 기다리지 않고
     }
   } catch (e) { console.error(e); if (!G._errShown) { G._errShown = true; HUD.toast('오류: ' + e.message, 'warn'); } }
 }

@@ -81,6 +81,7 @@ class Character {
     this.fireCd = 0; this.rl = null; this.cycle = null; this.slideKick = 0; this.equipT = 0; this.bloom = 0;
     this.heal = null; // {id, t, total}
     this.rig = buildRig(this.look); this.root = this.rig.root;
+    if (!this.isPlayer) this.root.updateMatrixWorld = rootMatrixWorld;   // v22: 안 보이는(멀리 있는) 캐릭터는 관절 행렬 계산을 건너뜀 (내 캐릭터는 1인칭에서 숨겨도 그대로)
     this.anim = { phase: 0, crouch: 0, prone: 0, aim: 0, flinch: 0, flinchDir: 1, land: 0, dead: 0, fall: 0, chute: 0, speed: 0, armed: 0, stepAcc: 0 };
     this.lastAttacker = null; this.lastDamageT = -99; this.outsideZoneT = 0;
     // 팀·기절·부활
@@ -148,6 +149,9 @@ class Character {
 
 const _bx = new THREE.Vector3(), _by = new THREE.Vector3(), _bz = new THREE.Vector3(), _bm = new THREE.Matrix4();
 // ---------- 히트박스 (구 목록) ----------
+// v22: 캐릭터 뿌리의 행렬 갱신 — 화면에 안 그리는(root.visible=false: 봇 표시 거리 밖·수송기 안) 캐릭터는 관절 60여 개의 행렬 계산을 통째로 건너뛴다
+//  (한 판 75명이면 매 프레임 노드 4천여 개 → 보이는 캐릭터만). 맞힘 판정(hitSpheres)·총구 위치(gunObj)는 안 보이는 캐릭터의 관절을 쓰지 않는다
+function rootMatrixWorld(force) { if (this.visible) THREE.Object3D.prototype.updateMatrixWorld.call(this, force); }
 function hitSpheres(c, out) {
   out.length = 0; if (!c.alive || c.mode === 'plane') return out;
   const a = c.anim, x = c.pos.x, y = c.pos.y, z = c.pos.z;
