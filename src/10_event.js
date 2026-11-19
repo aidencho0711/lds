@@ -197,7 +197,7 @@ const EvBR = (() => {
     box.innerHTML = '';
     box.appendChild(card('all', justClaimed === 'all'));
     box.appendChild(card('one', justClaimed === 'one'));
-    box.appendChild(h('p', 'micro evb-foot', '보상은 <b>계정마다</b> 이벤트 하나에 한 번 받을 수 있습니다 — 다른 기기에서 받았어도 같은 계정이면 끝. 이 창의 ‘백룸 들어가기’로 연 백룸은 로그인한 계정과 연결되어, 그 기기에서 탈출할 때마다 계정에 기록됩니다 (연결하기 전에 한 탈출은 세지 않음). 사진·테두리·칭호는 프로필에서 바꿀 수 있습니다.'));
+    box.appendChild(h('p', 'micro evb-foot', '보상은 <b>계정마다</b> 이벤트 하나에 한 번 받을 수 있습니다 — 다른 기기에서 받았어도 같은 계정이면 끝. 이 창의 ‘백룸 들어가기’로 연 백룸은 로그인한 계정과 연결되어, 그 기기에서 탈출할 때마다 계정에 기록됩니다 (연결하기 전에 그 기기에서 한 탈출도 처음 연결한 계정 한 곳에 한 번 옮겨짐). 사진·테두리·칭호는 프로필에서 바꿀 수 있습니다.'));
   }
   function card(ev, just) {
     const one = ev === 'one', st = evSt(ev), gold = one ? BR_EVENT.gold : BR_EVENT.gold12, n = n12(), s = get();

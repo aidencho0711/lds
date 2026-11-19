@@ -86,17 +86,22 @@ end; $$;
 grant execute on function public.br_escape(text, text) to anon, authenticated;
 
 -- 백룸: 연결 확인 (메인 메뉴 · 탈출 도감에 계정 이름과 기록)
+--  admin: 연결된 계정이 관리자(admin.sql 의 public.admins)인지 — 백룸 개발자 메뉴용 (v22, 백룸 js/dev.js). admin.sql 이 없으면 false
 create or replace function public.br_peek(p_code text) returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
-  me uuid;
-  nm text;
+  me  uuid;
+  nm  text;
+  adm boolean := false;
 begin
   if p_code is null or p_code !~ '^[0-9a-f]{40}$' then raise exception 'code'; end if;
   select owner into me from public.br_links where code = p_code;
   if me is null then raise exception 'code'; end if;
   select username into nm from public.profiles where id = me;
-  return jsonb_build_object('name', coalesce(nm, ''), 'esc', public.br_list(me));
+  if to_regclass('public.admins') is not null then
+    execute 'select exists (select 1 from public.admins where id = $1)' into adm using me;
+  end if;
+  return jsonb_build_object('name', coalesce(nm, ''), 'esc', public.br_list(me), 'admin', coalesce(adm, false));
 end; $$;
 grant execute on function public.br_peek(text) to anon, authenticated;
 
