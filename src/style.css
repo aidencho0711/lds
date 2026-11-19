@@ -1152,7 +1152,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .ti-d { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ti-d b { font-size: 0.84rem; } .ti-d small { font-size: 0.7rem; color: var(--dim); }
 .ti-none { flex: 1; padding: 4px 8px; color: var(--dim); font-weight: 700; }
-/* v22 파티 입장·퇴장 연출 고르기 (계정 정보 → 입장 연출 탭, 10_partyfx.js) */
+/* v23 파티 입장·퇴장 연출 고르기 (계정 정보 → 입장 연출 탭, 10_partyfx.js) */
 .ent-row .ent-name { flex: none; min-width: 112px; text-align: center; }
 .ent-nm { display: inline-block; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.02em; color: var(--ec); text-shadow: 0 0 10px var(--ec), 0 0 2px rgba(0, 0, 0, 0.85); }
 .ent-auto { display: inline-block; padding: 2px 12px; border: 1px solid var(--line); border-radius: 4px; font-weight: 800; color: var(--sand); }

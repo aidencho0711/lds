@@ -102,7 +102,7 @@ const Lobby = {
   // looks: 파티원 외형 {eq, body, gun, sg} (있으면 그 외형으로, 없으면 기본 옷 + 무작위 얼굴)
   //  파티원은 자기가 로비에서 들고 있는 총(sg)을 장착한 스킨으로 든다 — 울트라레어면 빛 띠·부속품과 함께 나타남
   // infos: 파티원 [{uid, name, pf, ent}] — 캐릭터 아래 이름·칭호 표시용 (10_ui_profile.js lobbyTags). 프로필만 바뀌면 캐릭터는 다시 만들지 않는다
-  //  v22 파티 입장·퇴장 연출(10_partyfx.js): 들어온 사람은 그 자리에서 등장, 나간 사람의 리그는 넘겨서 퇴장 동작 뒤 치움 · 파티원 자리는 uid 마다 고정
+  //  v23 파티 입장·퇴장 연출(10_partyfx.js): 들어온 사람은 그 자리에서 등장, 나간 사람의 리그는 넘겨서 퇴장 동작 뒤 치움 · 파티원 자리는 uid 마다 고정
   setTeam(n, looks, infos) {
     this.mateInfo = infos || [];
     const FX = typeof PartyFx !== 'undefined' ? PartyFx : null, gone = FX ? FX.team(this, infos) : null;

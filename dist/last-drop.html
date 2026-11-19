@@ -1155,7 +1155,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .ti-d { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ti-d b { font-size: 0.84rem; } .ti-d small { font-size: 0.7rem; color: var(--dim); }
 .ti-none { flex: 1; padding: 4px 8px; color: var(--dim); font-weight: 700; }
-/* v22 파티 입장·퇴장 연출 고르기 (계정 정보 → 입장 연출 탭, 10_partyfx.js) */
+/* v23 파티 입장·퇴장 연출 고르기 (계정 정보 → 입장 연출 탭, 10_partyfx.js) */
 .ent-row .ent-name { flex: none; min-width: 112px; text-align: center; }
 .ent-nm { display: inline-block; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.02em; color: var(--ec); text-shadow: 0 0 10px var(--ec), 0 0 2px rgba(0, 0, 0, 0.85); }
 .ent-auto { display: inline-block; padding: 2px 12px; border: 1px solid var(--line); border-radius: 4px; font-weight: 800; color: var(--sand); }
@@ -3550,7 +3550,7 @@ const Audio = (() => {
       else if (kind === 'nuke') { noise(out, t, 0.18, 'bandpass', 1200, 0.8, 0.12); for (let i = 0; i < 4; i++) noise(out, t + 0.04 + i * 0.03, 0.01, 'highpass', 4500, 1, 0.08); }
     },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
-    // v22 파티 입장·퇴장 연출 (10_partyfx.js): 동작마다 그 순간(착지·번개·불기둥 …)에 맞춘 소리 · kind = 동작 이름, 'bye' = 작별 몸짓
+    // v23 파티 입장·퇴장 연출 (10_partyfx.js): 동작마다 그 순간(착지·번개·불기둥 …)에 맞춘 소리 · kind = 동작 이름, 'bye' = 작별 몸짓
     partyFx(kind) {
       if (!ctx || !voice(2)) return; const t = ctx.currentTime, o = sfxBus;
       const boom = (t0, k = 1) => { tone(o, t0, 0.7, 'sine', 95, 32, 0.42 * k); noise(o, t0, 0.8, 'lowpass', 340, 0.8, 0.34 * k); noise(o, t0 + 0.02, 0.5, 'highpass', 3200, 0.7, 0.08 * k); };
@@ -23197,7 +23197,7 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
-  { v: 'v22', d: '2026-11-20', t: '파티 입장·퇴장 연출 — 상위 티어 4종 · 어려운 칭호', items: [
+  { v: 'v23', d: '2026-11-20', t: '파티 입장·퇴장 연출 — 상위 티어 4종 · 어려운 칭호', items: [
     '상위 티어(노바·셀레스티얼·이클립스·제니스)나 따기 어려운 칭호(랭크 챔피언·하드코어 패왕·정점의 베테랑·이터널·오버로드·백룸 정복자·전쟁의 신)를 가진 사람이 파티에 들어오거나 나가면, 로비 파티 줄에서 그 캐릭터가 직접 움직이며 등장·퇴장 — 같은 파티 모두의 화면에 보임',
     '상위 티어 등장: 노바 = 유성처럼 떨어져 한 무릎 착지 · 셀레스티얼 = 금빛 빛기둥 속으로 천천히 내려와 두 손을 폄 · 이클립스 = 하늘이 어두워지고 검은 태양 아래 붉은 구멍에서 팔짱 낀 채 솟아오름 · 제니스 = 하늘의 별이 열리고 빛줄기 속을 돌며 내려와 충격파 · 승리의 주먹',
     '칭호 등장: 랭크 챔피언 = 금빛 조명 · 두 팔 V · 색종이 대포 · 왕관 / 하드코어 패왕 = 불꼬리를 끌며 떨어져 주먹으로 땅을 내려침 · 용암 균열 / 정점의 베테랑 = 은빛 고리가 훑으며 나타나 경례 · 별 훈장 / 이터널 = 보랏빛 구슬이 모여 몸이 빚어짐 / 오버로드 = 불기둥 속에서 나타나 주먹을 손바닥에 / 백룸 정복자 = 형광등이 깜빡이고 노란 문틀에서 지직거리며 나타남 / 전쟁의 신 = 붉은 번개 세 줄기 · 힘자랑',
@@ -27808,7 +27808,7 @@ const Net = (() => {
 
 // ---------- 10_partyfx.js ----------
 // ============================================================
-// 10_partyfx.js — 파티 입장·퇴장 연출 (v22)
+// 10_partyfx.js — 파티 입장·퇴장 연출 (v23)
 //  새 티어 4종(노바·셀레스티얼·이클립스·제니스)이나 따기 어려운 칭호(랭크 챔피언·하드코어 패왕·정점의 베테랑·이터널·오버로드·
 //  백룸 정복자·전쟁의 신)를 가진 사람이 파티에 들어오거나 나갈 때, 로비 3D 파티 줄에서 캐릭터가 직접 움직이고
 //  (유성처럼 떨어져 한 무릎 착지 · 돌며 강하 · 빛기둥 속으로 내려옴 · 땅속에서 솟음 · 경례 · 노클립으로 바닥 아래로 …)
@@ -32715,7 +32715,7 @@ const Lobby = {
   // looks: 파티원 외형 {eq, body, gun, sg} (있으면 그 외형으로, 없으면 기본 옷 + 무작위 얼굴)
   //  파티원은 자기가 로비에서 들고 있는 총(sg)을 장착한 스킨으로 든다 — 울트라레어면 빛 띠·부속품과 함께 나타남
   // infos: 파티원 [{uid, name, pf, ent}] — 캐릭터 아래 이름·칭호 표시용 (10_ui_profile.js lobbyTags). 프로필만 바뀌면 캐릭터는 다시 만들지 않는다
-  //  v22 파티 입장·퇴장 연출(10_partyfx.js): 들어온 사람은 그 자리에서 등장, 나간 사람의 리그는 넘겨서 퇴장 동작 뒤 치움 · 파티원 자리는 uid 마다 고정
+  //  v23 파티 입장·퇴장 연출(10_partyfx.js): 들어온 사람은 그 자리에서 등장, 나간 사람의 리그는 넘겨서 퇴장 동작 뒤 치움 · 파티원 자리는 uid 마다 고정
   setTeam(n, looks, infos) {
     this.mateInfo = infos || [];
     const FX = typeof PartyFx !== 'undefined' ? PartyFx : null, gone = FX ? FX.team(this, infos) : null;
