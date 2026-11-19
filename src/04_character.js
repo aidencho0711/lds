@@ -38,13 +38,14 @@ function buildRig(look) {
   const leg = (k) => ({ hip: B['hip' + k], knee: B['knee' + k], foot: B['foot' + k], toe: B['toe' + k], side: k === 'L' ? 1 : -1 });
   const gunMount = new THREE.Group(); B.chest.add(gunMount);
   const backGuns = new THREE.Group(); B.chest.add(backGuns);   // 등에 멘 주무기(손에 없는 것)
+  const meleeHip = new THREE.Group(); B.hips.add(meleeHip);     // v22 허리에 찬 근접 무기(손에 없을 때)
   const helmet = new THREE.Group(), vest = new THREE.Group(), pack = new THREE.Group(); B.head.add(helmet); B.chest.add(vest); B.chest.add(pack);
   // 모자 스킨: 머리 뼈에 붙는 단단한 메시. 헬멧을 쓰면 숨긴다
   const hat = new THREE.Group(); B.head.add(hat);
   if (L.hat) { const hm = Body.hatMesh(L.hat); if (hm) hat.add(hm); }
   const chute = Gear.canopy(L.chute); chute.visible = false; root.add(chute);
   const rig = { root, body, hips: B.hips, spine: B.spine, chest: B.chest, neck: B.neck, head: B.head, armL: arm('L'), armR: arm('R'), legL: leg('L'), legR: leg('R'),
-    gunMount, backGuns, backKey: ['', ''], chute, helmet, vest, pack, hat, mesh: I.hi, meshLo: I.lo, skel: I.skel, bones: I.list, look: L, gunId: null, gunObj: null, gearKey: '', lod: 0, shadow: true,
+    gunMount, backGuns, backKey: ['', ''], meleeHip, meleeKey: '', chute, helmet, vest, pack, hat, mesh: I.hi, meshLo: I.lo, skel: I.skel, bones: I.list, look: L, gunId: null, gunObj: null, gearKey: '', lod: 0, shadow: true,
     ofx: typeof OutfitFx !== 'undefined' ? OutfitFx.kindsOf(L) : [],   // EXCLUSIVE 옷 효과 종류 (08_outfitfx.js)
     // 장비 단계(0 = 없음): 바뀔 때만 메시 교체
     setGear(h, v, p) {
@@ -58,7 +59,7 @@ function buildRig(look) {
     setShadow(on) {
       if (this.shadow === on) return; this.shadow = on;
       this.mesh.castShadow = this.meshLo.castShadow = on;
-      for (const grp of [helmet, vest, pack, hat, gunMount, backGuns]) grp.traverse((o) => { if (o.isMesh) o.castShadow = on; });
+      for (const grp of [helmet, vest, pack, hat, gunMount, backGuns, meleeHip]) grp.traverse((o) => { if (o.isMesh) o.castShadow = on; });
     },
     // 0 = 가까이(정밀), 1 = 멀리(간략)
     setLod(l) { if (this.lod === l) return; this.lod = l; this.mesh.visible = l === 0; this.meshLo.visible = l !== 0; },
@@ -99,6 +100,8 @@ class Character {
   get reloadT() { return this.rl ? Math.max(1e-4, this.rl.total - this.rl.t) : 0; }
   set reloadT(v) { if (!v) this.rl = null; }
   get weapon() { return this.inv.current(); }
+  // v22 손에 든 근접 무기 id — 총을 넣었고(맨손 자리) 근접 무기가 있을 때
+  get melee() { return !this.inv.current() && !this.knocked ? this.inv.melee : null; }
   forward(out) { out.set(Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), Math.cos(this.yaw) * Math.cos(this.pitch)); return out; }
   eye(out) {
     const a = this.anim;

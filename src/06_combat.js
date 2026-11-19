@@ -311,8 +311,9 @@ function punchExt(t) {
   const P = PUNCH, u = t / P.out;
   return t < P.out ? 1 - (1 - u) * (1 - u) : t < P.out + P.hold ? 1 : 1 - sstep(P.out + P.hold, P.out + P.hold + P.back, t);
 }
-// 주먹 시작. dir = 치는 방향(월드). 피해는 updatePunch에서 hitAt에 준다
+// 주먹 시작. dir = 치는 방향(월드). 피해는 updatePunch에서 hitAt에 준다 · v22: 근접 무기를 들었으면 그 무기로 휘두른다
 function melee(c, dir) {
+  if (c.melee) return swingMelee(c, dir);
   if (c.fireCd > 0 || c.heal || c.inWater || c.knocked || c.revive) return false;
   c.fireCd = PUNCH.cycle;
   const side = G.time - (c.punchT || -99) < PUNCH.combo ? -(c.punchSide || -1) : 1;   // 처음은 왼손 잽, 이어 치면 좌우 번갈아
@@ -337,6 +338,71 @@ function updatePunch(c, dt) {
     }
   }
   if (pu.t >= PUNCH.out + PUNCH.hold + PUNCH.back) c.punch = null;
+}
+// ---------- v22 근접 무기 휘두르기 ----------
+//  c.swing = { id, t, total, hitAt, hit, dx, dy, dz, side, remote } — 동작은 ITEMS[id].style 로 04_motion.js(3인칭)·09_player.js(1인칭)가 그린다
+//  맞힘: 휘두르는 순간(젖히기 + 휘두르기의 60%)에 조준 방향 레이(머리·몸) → 없으면 부채꼴(arc) 안 가장 가까운 사람 (벽 너머는 안 맞음)
+//   머리는 1.5배 · 벽·차량에 맞으면 불꽃·소리 · 누르고 있으면 계속 휘두름 (마체테는 번갈아 되베기)
+const meleeTotal = (D) => D.wind + D.strike + D.rec;
+function swingMelee(c, dir) {
+  const id = c.melee; if (!id) return false;
+  if (c.fireCd > 0 || c.heal || c.inWater || c.knocked || c.revive || c.equipT > 0 || c.swing) return false;
+  const D = ITEMS[id], total = meleeTotal(D);
+  c.fireCd = total * 0.94;
+  const side = D.style === 'slash' && G.time - (c.swingT || -99) < total + 0.5 ? -(c.swingSide || -1) : 1;   // 마체테: 이어서 휘두르면 되베기
+  c.swingSide = side; c.swingT = G.time; c.punchT = G.time;
+  c.swing = { id, t: 0, total, hitAt: D.wind + D.strike * 0.6, hit: false, dx: dir.x, dy: dir.y, dz: dir.z, side, remote: false };
+  if (c.spawnProt) c.spawnProt = 0;
+  if (G.net) Net.sendPunch(c, side, id);
+  return true;
+}
+function updateSwing(c, dt) {
+  const sw = c.swing;
+  if (!c.alive || c.knocked || !ITEMS[sw.id]) { c.swing = null; return; }
+  sw.t += dt;
+  const D = ITEMS[sw.id];
+  if (!sw.woosh && sw.t >= D.wind * 0.75) { sw.woosh = true; Audio.melee('swing', sw.id, c.pos, c.isPlayer); }
+  if (!sw.hit && sw.t >= sw.hitAt) { sw.hit = true; meleeHit(c, sw); }
+  if (sw.t >= sw.total) c.swing = null;
+}
+const _mh = new THREE.Vector3(), _mt = new THREE.Vector3(), _mc = new THREE.Vector3();
+function meleeHit(c, sw) {
+  const D = ITEMS[sw.id]; c.eye(_mh);
+  // 내 캐릭터는 지금 바라보는 방향(휘두르는 동안 돌려도 그쪽을 벤다)
+  if (c.isPlayer && !sw.remote && G.camera) { G.camera.getWorldDirection(_mt); sw.dx = _mt.x; sw.dy = _mt.y; sw.dz = _mt.z; }
+  const wall = Math.min(rayBoxes(_mh.x, _mh.y, _mh.z, sw.dx, sw.dy, sw.dz, D.reach, false).t, rayTerrain(_mh.x, _mh.y, _mh.z, sw.dx, sw.dy, sw.dz, D.reach));
+  let tgt = null, part = 'body', hx = 0, hy = 0, hz = 0;
+  const h = rayChars(_mh.x, _mh.y, _mh.z, sw.dx, sw.dy, sw.dz, Math.min(D.reach, wall), c);
+  if (h.char && !sameTeam(c, h.char)) { tgt = h.char; part = h.part; hx = _mh.x + sw.dx * h.t; hy = _mh.y + sw.dy * h.t; hz = _mh.z + sw.dz * h.t; }
+  else {
+    // 너그러운 판정: 부채꼴 안 가장 가까운 사람의 가슴 (벽·연막 너머 제외)
+    let bd = D.reach + 0.35; const ca = Math.cos(D.arc * DEG);
+    for (const o of CHARS) {
+      if (o === c || !o.alive || o.mode !== 'ground' || sameTeam(c, o) || o.mode === 'plane') continue;
+      o.chest(_mc); const dx = _mc.x - _mh.x, dy = (_mc.y - _mh.y) * 0.6, dz = _mc.z - _mh.z, L = Math.hypot(dx, dy, dz);
+      if (L > bd || L < 0.05) continue;
+      if ((dx * sw.dx + dy * sw.dy + dz * sw.dz) / L < ca) continue;
+      if (!losClear(_mh.x, _mh.y, _mh.z, _mc.x, _mc.y, _mc.z)) continue;
+      bd = L; tgt = o; hx = _mc.x; hy = _mc.y; hz = _mc.z;
+    }
+  }
+  if (tgt) {
+    if (!sw.remote) applyDamage(tgt, part === 'head' ? D.dmg * 0.72 : D.dmg, part, c, sw.id, hx, hy, hz);   // 머리: applyDamage ×2.1 → 1.5배
+    FX.impact(hx, hy, hz, 'blood'); if (D.style !== 'bash') FX.impact(hx, hy - 0.05, hz, 'blood');
+    Audio.melee('hit', sw.id, tgt.pos, c.isPlayer);
+    if (c.isPlayer) { G.shake = Math.max(G.shake || 0, D.style === 'bash' ? 0.22 : 0.13); Cam.kick += 0.02; }
+    return;
+  }
+  if (wall < D.reach) {
+    const px = _mh.x + sw.dx * wall, py = _mh.y + sw.dy * wall, pz = _mh.z + sw.dz * wall;
+    FX.impact(px, py, pz, 'spark'); Audio.melee('wall', sw.id, { x: px, y: py, z: pz }, c.isPlayer);
+    if (c.isPlayer) G.shake = Math.max(G.shake || 0, 0.1);
+    return;
+  }
+  if (Veh.active) {
+    const vh = Veh.ray(_mh.x, _mh.y, _mh.z, sw.dx, sw.dy, sw.dz, D.reach, c.veh);
+    if (vh.t < D.reach) { const px = _mh.x + sw.dx * vh.t, py = _mh.y + sw.dy * vh.t, pz = _mh.z + sw.dz * vh.t; if (!sw.remote) Veh.damage(vh.v, D.dmg * 0.4, c, sw.id); FX.impact(px, py, pz, vh.v.T.animal ? 'blood' : 'spark'); Audio.melee(vh.v.T.animal ? 'hit' : 'wall', sw.id, vh.v.pos, c.isPlayer); }
+  }
 }
 // 탄피/산탄피 배출 (가까운 경우만)
 function ejectCase(c, d, drop) {
@@ -784,12 +850,15 @@ function applyDamage(t, dmg, part, attacker, cause, hx, hy, hz) {
   t.anim.flinch = Math.min(1, t.anim.flinch + d / 30); t.anim.flinchDir = Math.random() < 0.5 ? -1 : 1;
   if (t.heal && cause !== 'zone') { t.heal = null; if (t.isPlayer) HUD.toast('회복이 중단되었습니다'); }
   if (t.isPlayer) { HUD.damage(attacker && attacker !== t ? attacker.pos : null, d); if (cause !== 'zone') Audio.hurt(); }
-  if (attacker && attacker.isPlayer && attacker !== t) { HUD.hitmarker(part === 'head', t.hp <= 0); part === 'head' ? Audio.headshot() : Audio.hitmarker(); }
+  if (attacker && attacker.isPlayer && attacker !== t && hmOk(attacker, cause, t.hp <= 0)) { HUD.hitmarker(part === 'head', t.hp <= 0); part === 'head' ? Audio.headshot() : Audio.hitmarker(); }
   if (t.brain) t.brain.onDamaged(attacker, cause);
   if (t.hp <= 0 && G.training && t.isPlayer) { Training.playerDown(t); return d; }
   if (t.hp <= 0) { if (canKnock(t)) knockChar(t, attacker, cause); else killChar(t, attacker, cause); }
   return d;
 }
+// 맞힘 표시: 불·자기장 수류탄처럼 계속 들어가는 피해는 0.6초에 한 번만 (처치는 언제나)
+const DOT_CAUSE = { molotov: 1, zonegren: 1 };
+function hmOk(a, cause, kill) { if (kill || !DOT_CAUSE[cause]) return true; if (G.time - (a._dotHm || -9) < 0.6) return false; a._dotHm = G.time; return true; }
 // 팀 정보: 맞은 쪽 팀원은 쏜 적의 위치를, 쏜 쪽 팀원은 맞힌 적의 위치를 안다 (집중 사격·지원용)
 function shareHit(a, t) {
   a.lastTarget = t; a.lastTargetT = G.time;
@@ -806,7 +875,7 @@ function damageKnocked(t, dmg, part, attacker, cause) {
   if (attacker && attacker !== t) { t.lastAttacker = attacker; attacker.damageDealt += d; }
   t.anim.flinch = Math.min(1, t.anim.flinch + d / 40);
   if (t.isPlayer) { HUD.damage(attacker && attacker !== t ? attacker.pos : null, d); if (cause !== 'zone') Audio.hurt(); }
-  if (attacker && attacker.isPlayer && attacker !== t) { HUD.hitmarker(part === 'head', t.hp <= 0); part === 'head' ? Audio.headshot() : Audio.hitmarker(); }
+  if (attacker && attacker.isPlayer && attacker !== t && hmOk(attacker, cause, t.hp <= 0)) { HUD.hitmarker(part === 'head', t.hp <= 0); part === 'head' ? Audio.headshot() : Audio.hitmarker(); }
   if (t.brain) t.brain.onDamaged(attacker, cause);
   if (t.hp <= 0) killChar(t, attacker && attacker !== t ? attacker : t.knockedBy, cause);
   return d;
@@ -878,14 +947,18 @@ function killChar(t, attacker, cause) {
   if (t.veh) Veh.exit(t, true, true);
   if (attacker && attacker !== t) attacker.kills++;
   if (G.killLog) G.killLog.push({ t: Math.round(G.time), cause, kn: wasKnocked, by: attacker && attacker !== t ? (attacker.isPlayer ? 'player' : 'bot') : 'env' });
-  // 사망 시 소지품을 주변에 떨어뜨림 (루팅 가능)
-  const sc = G.scene, drop = (id, n, inst) => { const a = Math.random() * TAU, r = 0.4 + Math.random() * 0.9; spawnItem(sc, id, n, t.pos.x + Math.cos(a) * r, groundAt(t.pos.x + Math.cos(a) * r, t.pos.z + Math.sin(a) * r, t.pos.y + 0.5), t.pos.z + Math.sin(a) * r, inst); };
-  if (!G.dm) { // 데스매치는 떨어뜨리지 않는다 (부활하면 새로 지급)
-    for (const wi of t.inv.weapons) if (wi && !(ITEMS[wi.id].rocket && wi.mag <= 0)) drop(wi.id, 1, wi);   // 쏘고 아직 안 버린 빈 발사관은 떨어뜨리지 않음
-    for (const k in t.inv.gear) if (t.inv.gear[k]) drop(t.inv.gear[k].id, 1, t.inv.gear[k]);
-    for (const id in t.inv.items) drop(id, t.inv.items[id]);
+  // v22 시체 상자: 소지품을 흩뿌리지 않고 시체 오른쪽 옆의 상자 하나에 전부 넣는다 (시체는 10초 뒤 사라지고 상자는 남음 — 11_game.js)
+  if (!G.dm && G.scene) { // 데스매치는 떨어뜨리지 않는다 (부활하면 새로 지급)
+    const yw = t.bodyYaw || 0, rx = -Math.cos(yw), rz = Math.sin(yw);
+    let cx = t.pos.x + rx * 0.8, cz = t.pos.z + rz * 0.8;
+    if (rayBoxes(t.pos.x, t.pos.y + 0.35, t.pos.z, rx, 0, rz, 1.15, true).t < 1.15 || Math.abs(groundAt(cx, cz, t.pos.y + 0.5) - t.pos.y) > 0.6) { cx = t.pos.x; cz = t.pos.z; }   // 옆이 벽·턱이면 시체 자리
+    const cy = groundAt(cx, cz, t.pos.y + 0.5), key = Crates.newKey(t), put = (id, n, inst) => spawnItem(G.scene, id, n, cx, cy, cz, inst, undefined, key);
+    for (const wi of t.inv.weapons) if (wi && !(ITEMS[wi.id].rocket && wi.mag <= 0)) put(wi.id, 1, wi);   // 쏘고 아직 안 버린 빈 발사관은 넣지 않음
+    if (t.inv.melee) put(t.inv.melee, 1);
+    for (const k in t.inv.gear) if (t.inv.gear[k]) put(t.inv.gear[k].id, 1, t.inv.gear[k]);
+    for (const id in t.inv.items) put(id, t.inv.items[id]);
   }
-  t.inv.weapons = [null, null, null]; t.inv.items = {}; t.inv.cur = -1; t.inv.gear = { helmet: null, vest: null, bag: null };
+  t.inv.weapons = [null, null, null]; t.inv.items = {}; t.inv.cur = -1; t.inv.gear = { helmet: null, vest: null, bag: null }; t.inv.melee = null; t.swing = null; t.nadeQ = null;
   t.setVisibleGear();
   HUD.killfeed(attacker && attacker !== t ? attacker.name : null, t.name, causeName(cause), attacker && attacker.isPlayer, t.isPlayer, cause === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t), attacker && attacker !== t && attacker.skinOf ? attacker.skinOf(cause) : null);
   Audio.death(t.pos);
@@ -900,61 +973,248 @@ function killChar(t, attacker, cause) {
 
 // ---------- 투척물 ----------
 let PROJ = [], SMOKES = [];
-// 핀을 뽑은 뒤 터지기까지(초). fuse 인자 = 던지는 순간 남은 시간
-const FUSE = { frag: 7, smoke: 3 };
+// 핀을 뽑은 뒤 터지기까지(초) — ITEMS[].fuse. fuse 인자 = 던지는 순간 남은 시간
+const FUSE = {}; for (const id of THROWS) FUSE[id] = ITEMS[id].fuse;
+// v22 던지는 동작: (봇은 wind 동안 젖힌 채 겨눔) → 팔을 휘두름(THROW_ANIM초) → THROW_REL초에 손을 떠난다
+const THROW_ANIM = 0.5, THROW_REL = 0.14;
 function throwItem(c, type, origin, dir, power, fuse) {
   if (c.inv.take(type, 1) <= 0) return false;
   const pr = { type, owner: c, x: origin.x, y: origin.y, z: origin.z, vx: dir.x * power, vy: dir.y * power + 3.2, vz: dir.z * power, t: 0, fuse: fuse !== undefined ? fuse : FUSE[type], mesh: FX.grenadeMesh(type) };
   PROJ.push(pr);
   if (G.net) Net.sendThrow(c, pr);
-  if (!c.isPlayer) { c.throwAnim = 0.35; if (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 25) Audio.spoon(c.pos, false); }
+  if (!c.isPlayer && G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 25) Audio.spoon(c.pos, false);
   return pr;
+}
+// 던지기 예약 (플레이어·봇 공용): 팔이 머리 위를 지나 앞으로 나가는 순간(THROW_REL) 손을 떠난다
+//  dir = 예약한 순간의 조준 방향 · fuse = 지금 남은 신관 시간(손에 있는 동안도 줄어 — 0이 되면 손에서 터짐, 충격형 제외) · wind > 0: 먼저 그만큼 젖혀 겨눔(봇)
+const _nqo = new THREE.Vector3(), _nqd = new THREE.Vector3();
+function queueThrow(c, type, dir, power, fuse, wind) {
+  c.nadeQ = { type, dx: dir.x, dy: dir.y, dz: dir.z, power, fuse, wind: wind || 0, t: 0 };
+  if (wind) { c.throwMode = { type, pin: true, auto: true }; c.throwAnim = 0; } else c.throwAnim = THROW_ANIM;
+}
+function updateNadeQ(c, dt) {
+  const q = c.nadeQ;
+  if (!c.alive || c.knocked || c.veh || c.mode !== 'ground') { c.nadeQ = null; if (c.throwMode && c.throwMode.auto) c.throwMode = null; return; }
+  const cook = !ITEMS[q.type].impact; q.fuse -= dt;
+  if (cook && q.fuse <= 0) { // 너무 오래 쥐었다 — 손에서 터짐
+    c.nadeQ = null; if (c.throwMode && c.throwMode.auto) c.throwMode = null;
+    c.chest(_nqo); _nqd.set(Math.sin(c.yaw), 0, Math.cos(c.yaw));
+    const pr = throwItem(c, q.type, _nqo, _nqd, 0.5, 0); if (pr) pr.inHand = true;
+    return;
+  }
+  if (q.wind > 0) { q.wind -= dt; if (q.wind <= 0) { if (c.throwMode && c.throwMode.auto) c.throwMode = null; c.throwAnim = THROW_ANIM; } return; }
+  q.t += dt; if (q.t < THROW_REL) return;
+  c.nadeQ = null;
+  _nqd.set(q.dx, q.dy, q.dz); c.eye(_nqo).addScaledVector(_nqd, 0.5);
+  const pr = throwItem(c, q.type, _nqo, _nqd, q.power, q.fuse);
+  if (pr && c.isPlayer) G.myNade = pr;
 }
 // 투척물은 1/60초 단위로 나눠 계산 → 프레임률과 상관없이 궤적 미리보기와 같은 곳에 떨어진다
 function updateProjectiles(dt) {
   const n = Math.max(1, Math.ceil(dt * 60 - 1e-6));
   for (let k = 0; k < n; k++) { stepProjectiles(dt / n); if (ROCKETS.length) stepRockets(dt / n); }
   for (let i = SMOKES.length - 1; i >= 0; i--) { const s = SMOKES[i]; if (!FX.updateSmoke(s, dt)) SMOKES.splice(i, 1); }
+  Hazard.update(dt);
 }
 function stepProjectiles(dt) {
   for (let i = PROJ.length - 1; i >= 0; i--) {
     const p = PROJ[i]; p.t += dt;
+    const imp = !!ITEMS[p.type].impact;   // 화염병·충격 수류탄: 처음 닿는 곳(벽·땅·사람·차량)에서 바로
+    let hit = false;
     p.vy -= GRAVITY * 0.9 * dt;
     const nx = p.x + p.vx * dt, ny = p.y + p.vy * dt, nz = p.z + p.vz * dt;
     const sp = Math.hypot(p.vx, p.vy, p.vz);
     if (sp > 0.1) {
-      const L = sp * dt, r = rayBoxes(p.x, p.y, p.z, p.vx / sp, p.vy / sp, p.vz / sp, L + 0.1, true);
+      const L = sp * dt, ux = p.vx / sp, uy = p.vy / sp, uz = p.vz / sp, r = rayBoxes(p.x, p.y, p.z, ux, uy, uz, L + 0.1, true);
       if (r.t <= L + 0.1) {
-        if (sp > 3) Audio.nadeBounce(p);
-        if (r.nx) p.vx *= -0.4; if (r.ny) p.vy *= -0.35; if (r.nz) p.vz *= -0.4;
-        p.vx *= 0.7; p.vz *= 0.7;
-      } else { p.x = nx; p.y = ny; p.z = nz; }
+        if (imp) { const t = Math.max(0, r.t - 0.06); p.x += ux * t; p.y += uy * t; p.z += uz * t; hit = true; }
+        else {
+          if (sp > 3) Audio.nadeBounce(p);
+          if (r.nx) p.vx *= -0.4; if (r.ny) p.vy *= -0.35; if (r.nz) p.vz *= -0.4;
+          p.vx *= 0.7; p.vz *= 0.7;
+        }
+      } else {
+        if (imp && p.t > 0.04) {
+          const hc = rayChars(p.x, p.y, p.z, ux, uy, uz, L + 0.05, p.t < 0.3 ? p.owner : null);
+          if (hc.char || (Veh.active && Veh.ray(p.x, p.y, p.z, ux, uy, uz, L + 0.05, p.t < 0.3 && p.owner ? p.owner.veh : null).t <= L + 0.05)) hit = true;
+        }
+        p.x = nx; p.y = ny; p.z = nz;
+      }
     }
     const g = groundAt(p.x, p.z, p.y + 0.3);
-    if (p.y < g + 0.08) { if (p.vy < -3) Audio.nadeBounce(p); p.y = g + 0.08; if (p.vy < 0) p.vy *= -0.3; p.vx *= 0.6; p.vz *= 0.6; if (Math.abs(p.vy) < 0.6) p.vy = 0; }
-    p.mesh.position.set(p.x, p.y, p.z); p.mesh.rotation.x += dt * 8;
-    if (p.t >= p.fuse) {
-      if (p.type === 'frag') explode(p);
-      else SMOKES.push(FX.smoke(p.x, p.y, p.z));
+    if (p.y < g + 0.08) {
+      p.y = g + 0.08;
+      if (imp) hit = true;
+      else { if (p.vy < -3) Audio.nadeBounce(p); if (p.vy < 0) p.vy *= -0.3; p.vx *= 0.6; p.vz *= 0.6; if (Math.abs(p.vy) < 0.6) p.vy = 0; }
+    }
+    p.mesh.position.set(p.x, p.y, p.z); p.mesh.rotation.x += dt * (p.type === 'molotov' ? 11 : 8); if (p.type === 'molotov') p.mesh.rotation.z += dt * 3;
+    if (p.type === 'molotov' && G.camera && Math.random() < 0.5 && p.mesh.position.distanceTo(G.camera.position) < 60) FX.puff(p.x, p.y + 0.12, p.z, Math.random() < 0.5 ? 0xffa040 : 0xff6a1a, 0.09, 0.18, 1.6, 0.4);   // 타는 심지
+    if (hit || p.t >= p.fuse) {
       G.scene.remove(p.mesh); PROJ.splice(i, 1); if (G.myNade === p) G.myNade = null;
+      detonate(p);
     }
   }
 }
-function explode(p) {
-  FX.explosion(p.x, p.y, p.z); Audio.explosion(p);
+// 터짐: 종류별 효과
+function detonate(p) {
+  switch (p.type) {
+    case 'frag': explode(p, 9, 160, 8, 420, 0.62); break;
+    case 'impact': explode(p, 6.5, 132, 6, 320, 0.5); break;
+    case 'molotov': Hazard.fire(p); break;
+    case 'zonegren': Hazard.field(p); break;
+    case 'flash': flashBang(p); break;
+    default: SMOKES.push(FX.smoke(p.x, p.y, p.z));
+  }
+}
+// R: 피해 반경 · dmg: 바로 옆 최대 피해 · vR·vD: 차량 피해 반경·크기 · k: 폭발 모양 크기
+function explode(p, R = 9, dmg = 160, vR = 8, vD = 420, k = 0.62) {
+  FX.explosion(p.x, p.y, p.z, k); Audio.explosion(p, k < 0.6 ? 0.85 : 1);
   G.noises.push({ x: p.x, y: p.y, z: p.z, t: G.time, r: 220, by: p.owner, kind: 'blast' });
-  if (p.remote) { if (G.player && G.player.alive) { const d = Math.hypot(G.player.pos.x - p.x, G.player.pos.z - p.z); if (d < 40) G.shake = Math.max(G.shake, (1 - d / 40) * 1.2); } return; } // 다른 기기 수류탄: 피해는 던진 쪽이 판정
+  if (G.player && G.player.alive) { const d = Math.hypot(G.player.pos.x - p.x, G.player.pos.z - p.z); if (d < 40) G.shake = Math.max(G.shake, (1 - d / 40) * 1.2 * (R / 9)); }
+  if (p.remote) return; // 다른 기기 수류탄: 피해는 던진 쪽이 판정
   for (const c of CHARS) {
     if (!c.alive || c.mode !== 'ground') continue;
     c.chest(_v1); const d = _v1.distanceTo(_v2.set(p.x, p.y + 0.3, p.z));
-    if (d > 9) continue;
+    if (d > R) continue;
     const cover = losClear(p.x, p.y + 0.4, p.z, _v1.x, _v1.y, _v1.z) ? 1 : 0.15;
     // 손에 쥔 채 터지면 방탄조끼와 상관없이 치명상
-    applyDamage(c, p.inHand && c === p.owner ? 400 : 160 * Math.pow(1 - d / 9, 1.35) * cover, 'blast', p.owner, 'frag');
+    applyDamage(c, p.inHand && c === p.owner ? 400 : dmg * Math.pow(1 - d / R, 1.35) * cover, 'blast', p.owner, p.type);
   }
-  if (G.player && G.player.alive) { const d = Math.hypot(G.player.pos.x - p.x, G.player.pos.z - p.z); if (d < 40) G.shake = Math.max(G.shake, (1 - d / 40) * 1.2); }
-  Veh.blast(p.x, p.y, p.z, 8, 420, p.owner);
+  Veh.blast(p.x, p.y, p.z, vR, vD, p.owner);
 }
+// 섬광탄 (v22): 번쩍 + 귀 울림 · 25m 안에서 터진 곳이 보이면(벽·연막 없이) 거리·바라보는 방향에 따라 최대 5.5초 눈이 멂 (등지면 짧게)
+//  내 캐릭터는 화면이 하얗게(HUD.flash), 봇은 그동안 아무것도 못 본다(07_bot.js perceive). 피해는 없다 · 같이 하기: 기기마다 자기 캐릭터만
+function flashBang(p) {
+  FX.flashBurst(p.x, p.y + 0.2, p.z); Audio.flashbang(p);
+  G.noises.push({ x: p.x, y: p.y, z: p.z, t: G.time, r: 140, by: p.owner, kind: 'blast' });
+  for (const c of CHARS) {
+    if (!c.alive || c.mode !== 'ground' || (G.net && !Net.mine(c))) continue;
+    c.eye(_v1); const dx = p.x - _v1.x, dy = p.y + 0.2 - _v1.y, dz = p.z - _v1.z, d = Math.hypot(dx, dy, dz);
+    if (d > 25) continue;
+    if (d > 1.2 && !losClear(_v1.x, _v1.y, _v1.z, p.x, p.y + 0.2, p.z)) continue;
+    if (c.isPlayer && G.camera) G.camera.getWorldDirection(_v2); else c.forward(_v2);
+    const face = d < 1.2 ? 1 : (dx * _v2.x + dy * _v2.y + dz * _v2.z) / d;
+    const k = (1 - d / 25) * (face > 0.25 ? 0.45 + 0.55 * face : 0.2), dur = clamp(k * 5.5, 0, 5.5);
+    if (dur < 0.35) continue;
+    c.blindT = Math.max(c.blindT || 0, G.time + dur);
+    if (c.isPlayer) HUD.flash(dur, k);
+  }
+}
+// ---------- 불바다(화염병) · 자기장 수류탄 (v22) ----------
+//  모든 기기에서 보이고(같이 하기: 투척물이 그대로 날아와 같은 곳에서 깨짐), 피해는 던진 기기만 준다(remote = 보이기만)
+//  불: 반경 0.8 → 3.6m 로 0.6초에 번지고 9초 · 안에 있으면 초당 14(방어구 무시) + 나와도 1.2초 동안 초당 6(몸에 붙은 불) · 물에서는 꺼짐 · 차량도 탄다
+//  자기장: 반경 5.5m 반구 10초 · 안에 있으면 초당 9 (자기장처럼 방어구 무시)
+const Hazard = (() => {
+  let scene = null, list = [], fTex = null;
+  const FIRE = { r: 3.6, life: 9, dps: 14, after: 1.2, afterDps: 6 }, FIELD = { r: 5.5, life: 10, dps: 9 };
+  function flameTex() {
+    if (fTex) return fTex;
+    const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d');
+    const gr = g.createRadialGradient(32, 92, 2, 32, 80, 60); gr.addColorStop(0, 'rgba(255,250,220,1)'); gr.addColorStop(0.25, 'rgba(255,200,90,0.9)'); gr.addColorStop(0.6, 'rgba(255,110,30,0.45)'); gr.addColorStop(1, 'rgba(255,60,0,0)');
+    g.fillStyle = gr; g.beginPath(); g.moveTo(32, 0); g.quadraticCurveTo(62, 70, 52, 108); g.quadraticCurveTo(32, 128, 12, 108); g.quadraticCurveTo(2, 70, 32, 0); g.fill();
+    return (fTex = new THREE.CanvasTexture(c));
+  }
+  function init(sc) { for (const h of list) if (h.g.parent) h.g.parent.remove(h.g); list = []; scene = sc; }
+  function fire(p) {
+    if (!scene) return;
+    const gy = groundAt(p.x, p.z, p.y + 0.4);
+    Audio.molotov(p);
+    if (gy < WATER_Y - 0.05 && p.y < WATER_Y + 0.4) { for (let i = 0; i < 6; i++) FX.puff(p.x + rnd(-0.6, 0.6), WATER_Y + 0.2, p.z + rnd(-0.6, 0.6), 0xd8dcdc, 0.7, 1.2, 2, 0.8); return; }   // 물 위: 꺼지고 김만
+    const g = new THREE.Group(), fl = [];
+    const mat = () => new THREE.SpriteMaterial({ map: flameTex(), color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+    for (let i = 0; i < 26; i++) {
+      const a = Math.random() * TAU, rr = Math.sqrt(Math.random()), s = new THREE.Sprite(mat());
+      s.userData = { a, rr, ph: Math.random() * TAU, k: rnd(0.7, 1.25) }; s.visible = false; g.add(s); fl.push(s);
+    }
+    const scorch = new THREE.Mesh(new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0c0a08, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+    scorch.position.y = 0.03; g.add(scorch);
+    g.position.set(p.x, gy, p.z); scene.add(g);
+    list.push({ kind: 'fire', x: p.x, y: gy, z: p.z, r: 0.8, R: FIRE.r, t: 0, life: FIRE.life, owner: p.owner, remote: !!p.remote, g, fl, scorch, tick: 0, smokeT: 0, sndT: 0 });
+    G.noises.push({ x: p.x, y: gy, z: p.z, t: G.time, r: 90, by: p.owner, kind: 'blast' });
+  }
+  function field(p) {
+    if (!scene) return;
+    const gy = groundAt(p.x, p.z, p.y + 0.4), g = new THREE.Group();
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 12, 0, TAU, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x2f7fff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x9cd2ff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+    ring.position.y = 0.05; g.add(dome); g.add(ring);
+    // 번개 줄기 4개 (매 0.07초 새 모양)
+    const arcs = [];
+    for (let i = 0; i < 4; i++) { const ag = new THREE.BufferGeometry(); ag.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(8 * 3), 3)); const l = new THREE.Line(ag, new THREE.LineBasicMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); l.frustumCulled = false; g.add(l); arcs.push(l); }
+    g.position.set(p.x, gy, p.z); scene.add(g);
+    FX.flashBurst(p.x, gy + 0.6, p.z, 0x6fb4ff, 0.6); Audio.zoneBurst(p);
+    list.push({ kind: 'field', x: p.x, y: gy, z: p.z, r: 0.5, R: FIELD.r, t: 0, life: FIELD.life, owner: p.owner, remote: !!p.remote, g, dome, ring, arcs, tick: 0, arcT: 0, sndT: 0 });
+    G.noises.push({ x: p.x, y: gy, z: p.z, t: G.time, r: 80, by: p.owner, kind: 'blast' });
+  }
+  const zig = (l, h) => {
+    const P = l.geometry.attributes.position, a0 = Math.random() * TAU, a1 = a0 + rnd(0.6, 2.2), up = Math.random() < 0.5;
+    for (let i = 0; i < 8; i++) {
+      const u = i / 7, a = lerp(a0, a1, u), el = up ? Math.sin(u * Math.PI) * 1.1 : rnd(0.05, 0.5), cr = Math.cos(Math.min(el, 1.4));
+      const R = h.r * (up ? 1 : rnd(0.3, 1));
+      P.setXYZ(i, Math.cos(a) * R * cr + rnd(-0.15, 0.15), Math.sin(Math.min(el, 1.4)) * R * (up ? 1 : 0.2) + rnd(-0.1, 0.1) + 0.1, Math.sin(a) * R * cr + rnd(-0.15, 0.15));
+    }
+    P.needsUpdate = true;
+  };
+  function update(dt) {
+    if (!list.length) return;
+    const cam = G.camera && G.camera.position;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const h = list[i]; h.t += dt;
+      const fade = h.t > h.life - 1.2 ? Math.max(0, (h.life - h.t) / 1.2) : 1;
+      h.r = h.R * (h.kind === 'fire' ? (0.22 + 0.78 * smoothstep01(clamp(h.t / 0.6, 0, 1))) : (0.1 + 0.9 * smoothstep01(clamp(h.t / 0.35, 0, 1)))) * (fade > 0.3 ? 1 : fade / 0.3);
+      const near = !cam || Math.hypot(cam.x - h.x, cam.z - h.z) < 140;
+      if (h.kind === 'fire') {
+        if (near) {
+          for (const s of h.fl) {
+            const u = s.userData, rr = u.rr * h.r, px = h.x + Math.cos(u.a) * rr, pz = h.z + Math.sin(u.a) * rr, fy = groundAt(px, pz, h.y + 0.6);
+            const fk = (0.75 + 0.25 * Math.sin(G.time * 13 + u.ph) + 0.12 * Math.sin(G.time * 29 + u.ph * 2)) * u.k * fade * (1 - u.rr * 0.35);
+            s.visible = true; s.position.set(px - h.x, fy - h.y + 0.62 * fk, pz - h.z); s.scale.set(1.15 * fk, 1.55 * fk, 1); s.material.opacity = 0.9 * Math.min(1, h.t * 6) * fade;
+          }
+          h.scorch.scale.setScalar(h.r * 1.05); h.scorch.material.opacity = 0.55 * Math.min(1, h.t * 2);
+          h.smokeT -= dt; if (h.smokeT <= 0) { h.smokeT = 0.12; const a = Math.random() * TAU, rr = Math.sqrt(Math.random()) * h.r; FX.puff(h.x + Math.cos(a) * rr, h.y + 0.8, h.z + Math.sin(a) * rr, Math.random() < 0.3 ? 0x5a4a3a : 0x3a3532, rnd(0.6, 1.1), rnd(1.4, 2.2), 2.4, rnd(1.2, 2)); }
+          if (G.muzzleLight && Math.random() < 0.25 && cam && Math.hypot(cam.x - h.x, cam.z - h.z) < 45) { G.muzzleLight.position.set(h.x, h.y + 1, h.z); G.muzzleLight.intensity = Math.max(G.muzzleLight.intensity, 1.4 * fade); }
+        }
+        h.sndT -= dt; if (h.sndT <= 0) { h.sndT = 0.45; Audio.fireLoop(h); }
+        if (!h.remote) {
+          h.tick -= dt;
+          if (h.tick <= 0) {
+            h.tick = 0.2;
+            for (const c of CHARS) {
+              if (!c.alive || c.mode !== 'ground' || c.inWater) continue;
+              const d = Math.hypot(c.pos.x - h.x, c.pos.z - h.z), inside = d < h.r && Math.abs(c.pos.y - h.y) < 1.7;
+              if (inside) { c._burnH = h; c._burnU = G.time + FIRE.after; applyDamage(c, FIRE.dps * 0.2 * fade, 'fire', h.owner, 'molotov'); }
+              else if (c._burnH === h && G.time < c._burnU) applyDamage(c, FIRE.afterDps * 0.2, 'fire', h.owner, 'molotov');
+            }
+            if (Veh.active) for (const v of Veh.list) if (!v.dead && Math.hypot(v.pos.x - h.x, v.pos.z - h.z) < h.r + 1 && Math.abs(v.pos.y - h.y) < 2) Veh.damage(v, 30 * 0.2, h.owner, 'molotov');
+          }
+        }
+      } else {
+        h.g.visible = near;
+        if (near) {
+          const fl = 0.75 + 0.25 * Math.sin(G.time * 17) * Math.sin(G.time * 5.3);
+          h.dome.scale.setScalar(h.r); h.dome.material.opacity = (0.13 * fl + 0.06) * fade; h.ring.scale.setScalar(h.r); h.ring.material.opacity = 0.75 * fade;
+          h.arcT -= dt; if (h.arcT <= 0) { h.arcT = 0.07; for (const l of h.arcs) { zig(l, h); l.visible = Math.random() < 0.8; l.material.opacity = 0.9 * fade; } }
+        }
+        h.sndT -= dt; if (h.sndT <= 0) { h.sndT = 0.5; Audio.zoneField(h); }
+        if (!h.remote) {
+          h.tick -= dt;
+          if (h.tick <= 0) {
+            h.tick = 0.2;
+            for (const c of CHARS) {
+              if (!c.alive || c.mode !== 'ground') continue;
+              const dx = c.pos.x - h.x, dz = c.pos.z - h.z, dy = c.pos.y + 0.9 - h.y;
+              if (dx * dx + dz * dz + Math.max(0, dy) * Math.max(0, dy) < h.r * h.r && dy > -1.5) applyDamage(c, FIELD.dps * 0.2, 'zone', h.owner, 'zonegren');
+            }
+          }
+        }
+      }
+      if (h.t >= h.life) { if (h.g.parent) h.g.parent.remove(h.g); list.splice(i, 1); }
+    }
+  }
+  // 이 점이 불·자기장 안인가 (봇이 피함 · HUD 화면 가장자리) — pad: 여유(m)
+  function inside(x, y, z, pad = 0) { for (const h of list) { if (Math.abs(y - h.y) > 2.2) continue; if (Math.hypot(x - h.x, z - h.z) < h.r + pad) return h; } return null; }
+  return { init, fire, field, update, inside, get list() { return list; } };
+})();
 function smokeBlocks(ox, oy, oz, dx, dy, dz, L) {
   for (const s of SMOKES) {
     if (s.r < 2) continue;
@@ -969,7 +1229,7 @@ function smokeBlocks(ox, oy, oz, dx, dy, dz, L) {
 // ---------- 시각 효과 ----------
 const FX = (() => {
   let scene = null, tracers = [], dots = [], flashes = [], dotTex = null, smokeTex = null, ti = 0, di = 0, fi = 0;
-  let starTex = null, flameTex = null, vmFlash = null, cases = [];
+  let starTex = null, flameTex = null, vmFlash = null, cases = [], bursts = [], trails = [];
   function tex(soft, size = 64) {
     const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d');
     const gr = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
@@ -977,8 +1237,8 @@ const FX = (() => {
     g.fillStyle = gr; g.fillRect(0, 0, size, size); return new THREE.CanvasTexture(c);
   }
   function init(sc) {
-    scene = sc; tracers = []; dots = []; flashes = [];
-    SkinFx.init(sc);
+    scene = sc; tracers = []; dots = []; flashes = []; bursts = []; trails = [];
+    SkinFx.init(sc); Hazard.init(sc); Crates.init(sc);   // v22 불·자기장 수류탄 · 시체 상자도 경기마다 새로
     dotTex = dotTex || tex(0.35); smokeTex = smokeTex || tex(0.6, 128);
     for (let i = 0; i < 40; i++) {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 1], 3));
@@ -1079,9 +1339,42 @@ const FX = (() => {
     else if (kind === 'dirt') puff(x, y, z, 0x8a7a5a, 0.4, 0.5, 2.2, 0.6);
     else { puff(x, y, z, 0xffd080, 0.18, 0.08, 1, 0); puff(x, y, z, 0x9a9a9a, 0.3, 0.4, 2, 0.4); }
   }
-  // 수류탄 폭발 — v21: 06_boom.js 의 제대로 된 폭발(작게). 효과 장면이 없을 때만 예전 연기 몇 개
-  function explosion(x, y, z) {
-    if (typeof Boom !== 'undefined' && Boom.blast(x, y, z, { k: 0.62 })) return;
+  // 섬광(v22 섬광탄·자기장 수류탄): 가산 혼합 흰 빛 덩이가 크게 번쩍였다 사라짐 + 주변 조명
+  function flashBurst(x, y, z, col = 0xffffff, k = 1) {
+    if (!scene) return;
+    let b = bursts.find((o) => o.life <= 0);
+    if (!b) { if (bursts.length >= 3) b = bursts[0]; else { b = { s: new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending })), life: 0 }; b.s.renderOrder = 997; scene.add(b.s); bursts.push(b); } }
+    b.s.position.set(x, y, z); b.s.material.color.setHex(col); b.life = b.max = 0.32; b.k = k; b.s.visible = true;
+    if (G.muzzleLight) { G.muzzleLight.position.set(x, y + 0.5, z); G.muzzleLight.intensity = 14 * k; }
+  }
+  // 휘두르기 자국 (v22 근접 무기): 날 끝·뿌리의 최근 위치로 만든 띠 — 가산 혼합, 오래된 쪽일수록 어둡게(= 투명) · sc: 그릴 장면(1인칭은 뷰모델 장면)
+  const TRN = 10;
+  function trail(key, sc, tip, base) {
+    let tr = trails.find((o) => o.key === key);
+    if (!tr) {
+      if (trails.length > 6) { const o = trails.shift(); if (o.m.parent) o.m.parent.remove(o.m); }
+      const g = new THREE.BufferGeometry(), pos = new Float32Array(TRN * 2 * 3), col = new Float32Array(TRN * 2 * 3), idx = [];
+      for (let i = 0; i < TRN - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setIndex(idx);
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
+      m.frustumCulled = false; tr = { key, m, pts: [], idle: 0 }; trails.push(tr);
+    }
+    if (tr.m.parent !== sc) sc.add(tr.m);
+    tr.pts.unshift([tip.x, tip.y, tip.z, base.x, base.y, base.z, G.time]); if (tr.pts.length > TRN) tr.pts.length = TRN;
+    tr.idle = 0; tr.m.visible = true; drawTrail(tr);
+  }
+  function drawTrail(tr) {
+    const P = tr.m.geometry.attributes.position, C = tr.m.geometry.attributes.color, n = tr.pts.length;
+    for (let i = 0; i < TRN; i++) {
+      const q = tr.pts[Math.min(i, n - 1)], age = G.time - q[6], k = i < n ? clamp(1 - age / 0.14, 0, 1) * (1 - i / TRN) : 0;
+      P.setXYZ(i * 2, q[0], q[1], q[2]); P.setXYZ(i * 2 + 1, q[3] * 0.4 + q[0] * 0.6, q[4] * 0.4 + q[1] * 0.6, q[5] * 0.4 + q[2] * 0.6);
+      const w = 0.55 * k; C.setXYZ(i * 2, w, w * 0.97, w * 0.92); C.setXYZ(i * 2 + 1, 0, 0, 0);
+    }
+    P.needsUpdate = true; C.needsUpdate = true;
+  }
+  // 수류탄 폭발 — v21: 06_boom.js 의 제대로 된 폭발(작게). 효과 장면이 없을 때만 예전 연기 몇 개 · k: 크기(v22 충격 수류탄은 작게)
+  function explosion(x, y, z, k = 0.62) {
+    if (typeof Boom !== 'undefined' && Boom.blast(x, y, z, { k })) return;
     puff(x, y + 0.6, z, 0xffb050, 3.5, 0.25, 2.5, 0); puff(x, y + 1, z, 0xff7020, 2.2, 0.35, 2, 1);
     for (let i = 0; i < 6; i++) puff(x + rnd(-1.5, 1.5), y + rnd(0.3, 1.5), z + rnd(-1.5, 1.5), 0x4a4440, 2, 1.6, 2.2, 1.2);
   }
@@ -1124,7 +1417,9 @@ const FX = (() => {
     if (vmFlash && vmFlash.life > 0) { vmFlash.life -= dt; if (vmFlash.life <= 0) vmFlash.o.visible = false; }
     if (G.muzzleLight) G.muzzleLight.intensity = Math.max(0, G.muzzleLight.intensity - dt * 60);
     if (VM.flashLight) VM.flashLight.intensity = Math.max(0, VM.flashLight.intensity - dt * 50);
+    for (const b of bursts) if (b.life > 0) { b.life -= dt; const u = 1 - b.life / b.max; b.s.scale.setScalar((2 + u * 14) * b.k); b.s.material.opacity = Math.max(0, 1 - u * u); if (b.life <= 0) b.s.visible = false; }
+    for (const tr of trails) if (tr.m.visible) { tr.idle += dt; if (tr.idle > 0.16) tr.m.visible = false; else drawTrail(tr); }
     updateCases(dt);
   }
-  return { init, tracer, impact, flash, casing, explosion, grenadeMesh, smoke, updateSmoke, update, puff, flame, blast };
+  return { init, tracer, impact, flash, casing, explosion, grenadeMesh, smoke, updateSmoke, update, puff, flame, blast, flashBurst, trail };
 })();

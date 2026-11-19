@@ -530,6 +530,9 @@ function endMatch() {
 
 // ---------- 메인 업데이트 ----------
 let lootCullT = 0;
+// v22 시체: 죽고 10초 뒤 1.2초 동안 땅으로 가라앉아 사라진다 (소지품은 옆의 시체 상자에 — 06_combat.js killChar) · 0 = 그대로, 1 = 사라짐
+const CORPSE_T = 10, CORPSE_SINK = 1.2;
+function corpseK(c) { return !c.alive && c.deathTime && !G.dm && c.mode === 'ground' ? clamp((G.time - c.deathTime - CORPSE_T) / CORPSE_SINK, 0, 1) : 0; }
 const _sp = new THREE.Vector3();
 G.update = function (dt) {
   G.time += dt;
@@ -622,7 +625,7 @@ G.update = function (dt) {
   for (const c of CHARS) {
     if (c.mode === 'plane') continue;
     if (!c.net || c.net.mine) updateCharTimers(c, dt);
-    else if (c.punch) updatePunch(c, dt);   // 다른 기기 캐릭터의 주먹: 동작·소리만
+    else { if (c.punch) updatePunch(c, dt); if (c.swing) updateSwing(c, dt); }   // 다른 기기 캐릭터의 주먹·근접 무기: 동작·소리만
     if (c.net && !c.net.mine && (c.lean || c.leanA)) { const lt = c.alive && !c.knocked && c.mode === 'ground' ? c.lean || 0 : 0; c.leanA += (lt - c.leanA) * Math.min(1, dt * 11); if (!lt && Math.abs(c.leanA) < 0.003) c.leanA = 0; }   // 다른 기기 캐릭터의 기울이기
     // 화면에 안 보이는 캐릭터는 관절 애니메이션 생략
     //  v22: 멀리 있는(카메라에서 정밀 메시 거리 + 15m, 최소 45m 밖 — 강하 중 포함) 캐릭터는 관절 자세를 두 프레임에 한 번(쌓인 시간으로) 계산하고,
@@ -633,6 +636,7 @@ G.update = function (dt) {
         const rp = c.root.position; rp.x += c.pos.x - ap.x; rp.y += c.pos.y - ap.y; rp.z += c.pos.z - ap.z; ap.copy(c.pos);
         c._animAcc = (c._animAcc || 0) + dt;
       } else { animateChar(c, dt + (c._animAcc || 0)); c._animAcc = 0; c._animF = G.frame; (c._ap || (c._ap = new THREE.Vector3())).copy(c.pos); }
+      if (!c.alive) { const ck = corpseK(c); if (ck > 0) c.root.position.y = c.pos.y - ck * 0.9; }   // v22 시체: 10초 뒤 가라앉으며 사라짐
     }
     if (c.rig.ofx.length && c.alive && c.root.visible && !(c.isPlayer && VM.active)) { const d = G.camera.position.distanceTo(c.pos); if (d < 40) OutfitFx.update(c.rig, dt, d < 15 ? 1 : 0.5); }   // EXCLUSIVE 옷 효과
     footsteps(c, dt);
@@ -649,16 +653,17 @@ G.update = function (dt) {
   const lodD = Q.lod || (SETTINGS.quality === 'low' ? 18 : SETTINGS.quality === 'high' ? 45 : 30), shD = Q.shadow || 45;
   for (const c of CHARS) if (!c.isPlayer && c.mode !== 'plane') {
     const d = Math.hypot(c.pos.x - cam.x, c.pos.z - cam.z);
-    c.root.visible = d < Q.botDraw || c.mode !== 'ground' || !!c.dummy;
+    c.root.visible = (d < Q.botDraw || c.mode !== 'ground' || !!c.dummy) && corpseK(c) < 1;
     c.rig.setShadow(d < shD); c.rig.setLod(d > lodD && !c.dummy ? 1 : 0); c.rig.backGuns.visible = d < Math.max(60, lodD + 15);   // 정밀 메시 거리: 낮음 18m·보통 30m·높음 45m·엑스트라 70m(캐릭터 그림자 90m), 그 밖은 등의 총 생략
   }
   lootCullT -= dt;
   if (lootCullT <= 0) {
     lootCullT = 0.25;
-    for (const it of GROUND) if (it.alive) { const d = Math.hypot(it.x - cam.x, it.z - cam.z); if (d < Q.near) itemMesh(it).visible = true; else if (it.mesh) it.mesh.visible = false; }
+    for (const it of GROUND) if (it.alive && !it.bx) { const d = Math.hypot(it.x - cam.x, it.z - cam.z); if (d < Q.near) itemMesh(it).visible = true; else if (it.mesh) it.mesh.visible = false; }   // 상자 안 물건은 모델 없음 (상자 하나로)
     // 대형 맵: 카메라 주변 지형 스트리밍 + 먼 구역 숨김
     if (W.streamTerrain) { W.streamTerrain(cam.x, cam.z, Q.far + 250, 2); W.cullChunks(cam.x, cam.z, Q.far * (G.fogK ? G.fogK[1] : 1)); }   // 안개 너머 구역은 숨김
   }
+  Crates.update(cam, Math.max(Q.near * 2, 90), dt);   // v22 시체 상자: 먼 것은 숨기고, 다 비우면 뚜껑이 열림
   // 줍기 대상 표시 링
   const fi = p && p.alive && p.mode === 'ground' && !p.veh ? HUD.focusItem() : null;
   if (G.focusRing) { G.focusRing.visible = !!fi; if (fi) { G.focusRing.position.set(fi.x, fi.y + 0.015, fi.z); G.focusRing.material.opacity = 0.35 + Math.sin(G.time * 5) * 0.2; } }
@@ -671,12 +676,12 @@ G.update = function (dt) {
       G.camera.lookAt(pp.pos.x, pp.pos.y, pp.pos.z); G.camera.fov = 70; G.camera.updateProjectionMatrix();
       p.root.visible = false; VM.active = false;
     } else if (!p.alive && G.spec && G.spec.alive && !G.over) {
-      spectateCamera(dt, G.spec); p.root.visible = true;
+      spectateCamera(dt, G.spec); p.root.visible = corpseK(p) < 1;
       if (Input.consume('interact') || Input.consume('jump')) nextSpectate();
     } else if (!p.alive) {
       if (G.spec && !G.spec.alive && !G.over) nextSpectate();
       const a = G.time * 0.25; G.camera.position.set(p.pos.x + Math.sin(a) * 8, p.pos.y + 5, p.pos.z + Math.cos(a) * 8); G.camera.lookAt(p.pos.x, p.pos.y + 0.5, p.pos.z);
-      p.root.visible = true; VM.active = false;
+      p.root.visible = corpseK(p) < 1; VM.active = false;
     } else updateCamera(dt);
     ThrowViz.update(p);
     if (G.training) Training.hud(dt);
@@ -853,7 +858,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

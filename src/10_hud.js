@@ -35,6 +35,9 @@ const HUD = (() => {
     const e = h('div', 'dmg'); e.style.transform = `rotate(${-rel}rad)`; e.style.opacity = clamp(amount / 25, 0.4, 1);
     $('dmgRing').appendChild(e); setTimeout(() => e.remove(), 1400);
   }
+  // v22 섬광탄: 화면이 하얗게 → 마지막 1.5초 동안 돌아옴 (+ 귀 울림)
+  let flashT = 0;
+  function flash(dur, k) { flashT = Math.max(flashT, dur); setSt($('flashFx'), 'opacity', clamp(flashT / 1.5, 0, 1).toFixed(2)); Audio.earRing(dur, k); }
   let hmT = 0;
   function hitmarker(head, kill) { const e = $('hitmark'); e.className = kill ? 'kill' : head ? 'head' : ''; e.style.opacity = 1; hmT = kill ? 0.45 : 0.18; }
   // kind: '' 처치 / 'knock' 기절 / 'wipe' 팀 전멸로 탈락. mate: 피해자가 내 팀원
@@ -84,25 +87,35 @@ const HUD = (() => {
     setTimeout(() => e.remove(), eps ? 9500 : 7000);
     if (byPlayer) toast(kind === 'knock' ? `${victim} 기절` : `${victim} 처치`, 'ok');
   }
+  // 줍기 목록 (v22): 상자 안 물건은 상자 이름 아래로 묶고, 주워야 할 것(자동 줍기 대상 · 지금보다 좋은 장비)은 노란색
   function setLoot(list) {
-    loot = list; const key = list.map(i => i.id + i.count).join(',');
+    loot = list; const key = list.map(i => i.id + i.count + (i._want ? '*' : '') + (i.bx || '')).join(',');
     if (focusIdx >= list.length) focusIdx = 0;
     if (key === lastLootKey) return; lastLootKey = key;
     const box = $('lootList'); box.innerHTML = '';
+    let bx = null; const MAXL = IS_TOUCH ? 6 : 10;
     list.forEach((it, i) => {
-      const b = h('button', 'loot' + (i === focusIdx ? ' focus' : ''));
-      b.appendChild(ico(it.id, it.inst && it.inst.att, ITEMS[it.id].type === 'weapon' ? 'ico wide sm' : 'ico sm'));
-      b.appendChild(h('span', 'lt', itemLabel(it))); b.appendChild(h('span', 'micro', i === 0 ? (IS_TOUCH ? '줍기' : 'F') : ''));
+      if (i >= MAXL) return;
+      if (it.bx && it.bx !== bx && it.box) { const hd = h('div', 'loot-hd' + (it.box.dead ? '' : ' air')); hd.textContent = Crates.label(it.box); box.appendChild(hd); }
+      bx = it.bx || null;
+      const b = h('button', 'loot' + (i === focusIdx ? ' focus' : '') + (it._want ? ' want' : '') + (it.bx ? ' inbox' : ''));
+      b.appendChild(ico(it.id, it.inst && it.inst.att, wideItem(it.id) ? 'ico wide sm' : 'ico sm'));
+      b.appendChild(h('span', 'lt', itemLabel(it)));
+      const mk = h('span', 'micro'); if (i === 0) { if (IS_TOUCH) mk.innerHTML = Touch.icon('pickup'); else mk.textContent = 'F'; } b.appendChild(mk);
       b.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); if (it.alive && G.player) doPickup(G.player, it); });
       box.appendChild(b);
     });
+    // 더 있으면 한 줄로 (누르면 가방 창 — 주변 아이템 전부)
+    if (list.length > MAXL) { const more = h('button', 'loot more', `+${list.length - MAXL}개 더 · ${IS_TOUCH ? '눌러서' : 'Tab'} 가방에서 보기`); more.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); openInv(); }); box.appendChild(more); }
     if (!$('invPanel').hidden) renderInventory();
   }
   function focusItem() { return loot[focusIdx] && loot[focusIdx].alive ? loot[focusIdx] : null; }
 
   // ---------- 모바일 회복·투척 빠른 선택 (버튼 위에 펼침) ----------
-  const QUICK = { heal: ['bandage', 'firstaid', 'medkit', 'drink'], throw: ['frag', 'smoke'] };
-  const SHORT = { bandage: '붕대', firstaid: '구급상자', medkit: '의료 키트', drink: '드링크', frag: '수류탄', smoke: '연막탄' };
+  const QUICK = { heal: ['bandage', 'firstaid', 'medkit', 'drink', 'pills'], throw: THROWS };
+  const SHORT = { bandage: '붕대', firstaid: '구급상자', medkit: '의료 키트', drink: '드링크', pills: '진통제' };
+  for (const id of THROWS) SHORT[id] = ITEMS[id].short;
+  const THROW_INFO = { frag: '7초 신관', smoke: '3초 신관', impact: '닿으면 폭발', molotov: '불바다 9초', zonegren: '자기장 10초', flash: '눈멀게' };
   let quickT = 0;
   function closeQuick() { const q = $('qpop'); if (q && !q.hidden) { q.hidden = true; q.dataset.kind = ''; } quickT = 0; }
   function quick(kind, el) {
@@ -123,7 +136,7 @@ const HUD = (() => {
       if (capped) b.appendChild(h('small', 'qx', d.cap === 100 ? '가득' : d.cap + '까지'));
       else if (d.type === 'heal') b.appendChild(h('small', 'qx', `+${d.heal} · ${d.time}초`));
       else if (d.type === 'boost') b.appendChild(h('small', 'qx', `부스트 · ${d.time}초`));
-      else b.appendChild(h('small', 'qx', `${FUSE[id]}초 신관`));
+      else b.appendChild(h('small', 'qx', THROW_INFO[id] || `${FUSE[id]}초 신관`));
       b.addEventListener('pointerdown', (e) => {
         e.preventDefault(); e.stopPropagation(); closeQuick();
         if (kind === 'heal') { if (p.veh && p.seat === 0 && Math.hypot(p.veh.vx, p.veh.vz) > 0.8) toast('차량을 멈춘 뒤 사용할 수 있습니다'); else useConsumable(p, id); }
@@ -157,7 +170,7 @@ const HUD = (() => {
       }
       for (const m of best.values()) marks.push({ kind: m.step ? 'step' : 'shot', ang: Math.atan2(m.n.x - p.pos.x, m.n.z - p.pos.z), a: Math.min(1, (1 - m.age / m.life) * 1.25) * (m.step ? 0.78 * (1 - m.d / m.maxD * 0.45) : 0.9 * (1 - m.d / m.maxD * 0.5)) });
       for (const pr of PROJ) {
-        if (pr.type !== 'frag' || pr.owner === p) continue;
+        if ((pr.type !== 'frag' && pr.type !== 'molotov' && pr.type !== 'impact') || pr.owner === p) continue;
         const d = Math.hypot(pr.x - p.pos.x, pr.z - p.pos.z); if (d > 11 || d < 0.3) continue;
         marks.push({ kind: 'nade', ang: Math.atan2(pr.x - p.pos.x, pr.z - p.pos.z), a: 0.65 + Math.sin(G.time * 14) * 0.3 });
       }
@@ -183,11 +196,11 @@ const HUD = (() => {
   // 신관 카운트다운: 핀을 뽑고 쥐고 있을 때 / 내가 던진 수류탄이 터지기 전까지
   function updateFuse(p) {
     const fh = $('fuseHud'), tm = p.alive && p.throwMode, nd = G.myNade;
-    let left = null, total = 7, txt = '';
-    if (tm) { total = FUSE[tm.type]; left = tm.pin ? FUSE[tm.type] - tm.cook : total; txt = IS_TOUCH ? (tm.pin ? '떼면 투척' : '누르면 핀 뽑기') : tm.pin ? `${ITEMS[tm.type].name} · 버튼을 떼면 투척` : `${ITEMS[tm.type].name} · 좌클릭: 누르면 핀 뽑기, 떼면 투척 · G 취소`; }
-    else if (nd && PROJ.includes(nd)) { total = FUSE[nd.type]; left = nd.fuse - nd.t; txt = nd.type === 'frag' ? '폭발까지' : '연막까지'; }
+    let left = null, total = 7, txt = '', imp = false;
+    if (tm) { imp = !!ITEMS[tm.type].impact; total = FUSE[tm.type]; left = tm.pin && !imp ? FUSE[tm.type] - tm.cook : total; txt = IS_TOUCH ? (tm.pin ? '떼면 투척' : '누르면 핀 뽑기') : tm.pin ? `${ITEMS[tm.type].name} · 버튼을 떼면 투척` : `${ITEMS[tm.type].name} · 좌클릭: 누르면 핀 뽑기, 떼면 투척 · T 바꾸기 · G 취소`; }
+    else if (nd && PROJ.includes(nd) && !ITEMS[nd.type].impact) { total = FUSE[nd.type]; left = nd.fuse - nd.t; txt = ({ frag: '폭발까지', smoke: '연막까지', zonegren: '자기장까지', flash: '섬광까지' })[nd.type] || '터지기까지'; }
     fh.hidden = left === null; if (left === null) return;
-    const v = Math.max(0, left).toFixed(1); if ($('fuseNum').textContent !== v) $('fuseNum').textContent = v;
+    const v = imp ? '충격' : Math.max(0, left).toFixed(1); if ($('fuseNum').textContent !== v) $('fuseNum').textContent = v;
     if ($('fuseTxt').textContent !== txt) $('fuseTxt').textContent = txt;
     fh.classList.toggle('armed', !!(tm && tm.pin) || !tm); fh.classList.toggle('hot', left < 2 && (!tm || tm.pin));
     $('fuseArc').style.strokeDashoffset = (106.8 * (1 - clamp(left / total, 0, 1))).toFixed(1);
@@ -328,6 +341,14 @@ const HUD = (() => {
     const pri = $('wsPri'), sec = $('wsSec'); if (!pri) return;
     if (pri.dataset.k !== wkey) {
     pri.dataset.k = wkey; pri.innerHTML = ''; sec.innerHTML = ''; pri._a = [];
+    // v22 근접 무기 칸 (보조무기 왼쪽): 누르면 총을 넣고 근접 무기를 든다
+    if (inv.melee) {
+      const cur = inv.cur < 0, mb = h('button', 'ws-slot melee' + (cur ? ' cur' : '')); mb.type = 'button';
+      const im = h('img', 'ws-sil'); im.alt = ''; im.draggable = false; iconInto(im, inv.melee); mb.appendChild(im);
+      mb.appendChild(h('span', 'ws-n', '4')); mb.setAttribute('aria-label', ITEMS[inv.melee].name + (cur ? ' (든 무기)' : ' 들기'));
+      mb.addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); try { Audio.init(); } catch (e) { /* 소리 없이도 */ } mb.classList.add('down'); setTimeout(() => mb.classList.remove('down'), 140); Input.press('w4'); });
+      Touch.dragLook(mb); sec.appendChild(mb);
+    }
     for (const i of [0, 1, 2]) {
       const w = inv.weapons[i], cur = i === inv.cur, sk = w && p.skinOf(w.id), sd = sk && GSKINS[sk];
       const b = h('button', 'ws-slot' + (cur ? ' cur' : '') + (w ? '' : ' empty') + (sd && sd.rar === 7 ? ' epsilon' : sd && sd.rar === 8 ? ' exclusive' : '') + (w && ITEMS[w.id].rocket ? ' rocket' : '')); b.type = 'button';
@@ -338,13 +359,14 @@ const HUD = (() => {
         const a = h('span', 'ws-a'), at = document.createTextNode(''), am = h('small', ''); a.append(at); a.appendChild(am); b.appendChild(a); pri._a[i] = { at, am, x: ' 발' };
         if (cur && d.modes.length > 1) b.appendChild(h('span', 'ws-m', modeName(w.id, fireMode(w))));
         b.setAttribute('aria-label', d.name + (cur ? ' (든 무기 · 누르면 살펴보기)' : ' 들기'));
-      } else { b.appendChild(h('span', 'ws-e', i === 2 ? '보조무기' : '주무기 ' + (i + 1))); b.disabled = true; }
+      } else { const e = h('span', 'ws-e'); e.innerHTML = Touch.icon(i === 2 ? 'pistol' : 'rifle'); b.appendChild(e); b.setAttribute('aria-label', i === 2 ? '보조무기 (비어 있음)' : `주무기 ${i + 1} (비어 있음)`); b.disabled = true; }   // v22: 빈 칸도 글자 대신 총 윤곽
       b.addEventListener('pointerdown', (ev) => {
         ev.preventDefault(); ev.stopPropagation(); if (!w) return;
         try { Audio.init(); } catch (e) { /* 소리 없이도 */ }
         b.classList.add('down'); setTimeout(() => b.classList.remove('down'), 140);
         Input.press(cur ? 'inspect' : ['w1', 'w2', 'w3'][i]);
       });
+      Touch.dragLook(b);   // v22: 무기 칸을 누른 채 끌어도 화면이 돈다
       (i === 2 ? sec : pri).appendChild(b);
     }
     }
@@ -399,7 +421,7 @@ const HUD = (() => {
     }
     // 무기 (v22: 총·부착물·발사 모드·든 칸이 바뀔 때만 칸을 다시 만들고, 탄약·투척물·회복 수는 글자만 바꾼다)
     const wp = $('weaponPanel'), inv = p.inv;
-    const wkey = inv.weapons.map(w => w ? w.id + ':' + (w.fm || 0) + ':' + Object.values(w.att).join(',') + ':' + (p.skinOf(w.id) || '') : '-').join('|') + inv.cur + '|' + inv.throwSel;
+    const wkey = inv.weapons.map(w => w ? w.id + ':' + (w.fm || 0) + ':' + Object.values(w.att).join(',') + ':' + (p.skinOf(w.id) || '') : '-').join('|') + inv.cur + '|' + inv.throwSel + '|' + (inv.melee || '');
     if (wp.dataset.k !== wkey) {
       wp.dataset.k = wkey; wp.innerHTML = ''; wp._a = []; wp._mt = '';
       inv.weapons.forEach((w, i) => {
@@ -413,10 +435,17 @@ const HUD = (() => {
         const a = h('span', 'wa'), at = document.createTextNode(''), am = h('small', ''); a.append(at); a.appendChild(am); e.appendChild(a); wp._a[i] = { at, am, x: ' 발 · 1회용' };
         wp.appendChild(e);
       });
+      // v22 근접 무기 줄 (4)
+      if (inv.melee) {
+        const e = h('div', 'wslot melee' + (inv.cur < 0 ? ' cur' : '')); e.appendChild(ico(inv.melee, null, 'ico wide wi'));
+        e.appendChild(h('span', 'wn', `4  ${ITEMS[inv.melee].name}`)); e.appendChild(h('span', 'wm', '근접'));
+        if (inv.cur >= 0) e.title = '눌러서 들기 (4)'; e.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); if (inv.cur >= 0) Input.press('w4'); });
+        wp.appendChild(e);
+      }
       wp._meta = h('div', 'wmeta'); wp.appendChild(wp._meta);
     }
     ammoText(wp._a, inv);
-    const mt = `${ITEMS[inv.throwSel].name.split(' ').pop()} ${inv.count(inv.throwSel)} · 회복 ${inv.count('bandage')}/${inv.count('firstaid')}/${inv.count('medkit')} · 음료 ${inv.count('drink')}`;
+    const ts = inv.throwPick(), mt = `${ITEMS[ts].short} ${inv.count(ts)}${THROWS.filter((id) => id !== ts && inv.count(id)).length ? ' (T)' : ''} · 회복 ${inv.count('bandage')}/${inv.count('firstaid')}/${inv.count('medkit')} · 부스트 ${inv.count('drink')}/${inv.count('pills')}`;
     if (wp._meta && wp._mt !== mt) { wp._mt = mt; wp._meta.textContent = mt; }
     if (IS_TOUCH) touchWeapons(p, inv, wkey);
     // 카운터
@@ -433,7 +462,10 @@ const HUD = (() => {
     if (G.training) zt = '훈련장 · 메뉴에서 나가기';
     if (G.dm) zt = '';
     setT(zi, zt); const zc = 'zone-info' + (out ? ' out' : Zone.state === 'shrink' ? ' shrink' : ''); if (zi.className !== zc) zi.className = zc;
-    setSt($('zoneVignette'), 'opacity', out && p.mode === 'ground' ? '1' : '0');
+    const inField = p.alive && Hazard.list.length && Hazard.inside(p.pos.x, p.pos.y, p.pos.z), hzK = inField ? inField.kind : '';   // v22 불·자기장 수류탄 안
+    setSt($('zoneVignette'), 'opacity', (out || hzK === 'field') && p.mode === 'ground' ? '1' : '0');
+    setSt($('fireVignette'), 'opacity', hzK === 'fire' ? '1' : '0');
+    if (flashT > 0) { flashT = Math.max(0, flashT - dt); setSt($('flashFx'), 'opacity', clamp(flashT / 1.5, 0, 1).toFixed(2)); }
     // 나침반
     if (!compassBuilt) buildCompass();
     let deg = (180 - (p.yaw * 180 / Math.PI)) % 360; if (deg < 0) deg += 360; // 북쪽(-z) 기준 시계방향
@@ -461,11 +493,14 @@ const HUD = (() => {
     vp.hidden = !(nv || km || rp);
     if (!vp.hidden) { const fs = nv ? Veh.freeSeats(nv) : 0, t = km ? `${IS_TOUCH ? '부활 버튼' : 'F'} · ${km.name} 부활 (${REVIVE_T}초)` : rp && (rp.act || !nv) ? rp.text : (IS_TOUCH ? '탑승 버튼' : 'F') + ' · ' + nv.T.name + ' ' + (!fs ? '동승 (봇 팀원과 자리 바꾸기)' : nv.seats[0] ? `동승 (빈자리 ${fs})` : '탑승'); if (vp.textContent !== t) vp.textContent = t; vp.classList.toggle('rc', !!rp && t === rp.text); }
     document.body.classList.toggle('driving', !!v && !riding); document.body.classList.toggle('riding', riding);
-    const ib = $('tb_interact'); if (ib) { const lb = v ? '하차' : p.revive || p.recall ? '취소' : km ? '부활' : rp && rp.act ? '리콜' : nv ? '탑승' : '줍기'; if (ib.textContent !== lb) ib.textContent = lb; }
+    // v22 모바일 버튼: 글자 대신 그림 (상황에 따라 그림이 바뀜 — 10_touch.js Touch.icon)
+    const ib = $('tb_interact'); if (ib) { const [ic, lb] = v ? ['exit', '하차'] : p.revive || p.recall ? ['cancel', '취소'] : km ? ['revive', '부활'] : rp && rp.act ? ['recall', '리콜'] : nv ? ['board', '탑승'] : ['pickup', '줍기']; Touch.setIcon(ib, ic, lb); }
     if (IS_TOUCH || $('tb_jump')) {
-      setLbl('tb_jump', p.vaultHint === 'vault' ? '넘기' : p.vaultHint === 'climb' ? '오르기' : '점프'); const jb = $('tb_jump'); if (jb) jb.classList.toggle('hint', !!p.vaultHint);
-      setLbl('tb_heal', p.heal ? '취소' : '회복'); setLbl('tb_throw', p.throwMode ? '취소' : '투척');
-      const fl = p.throwMode ? (p.throwMode.pin ? '던지기' : '핀 뽑기') : '사격'; setLbl('tb_fire', fl); setLbl('tb_fire2', fl);
+      const jb = $('tb_jump'); Touch.setIcon(jb, p.vaultHint === 'vault' ? 'vault' : p.vaultHint === 'climb' ? 'climb' : 'jump', p.vaultHint === 'vault' ? '넘기' : p.vaultHint === 'climb' ? '오르기' : '점프'); if (jb) jb.classList.toggle('hint', !!p.vaultHint);
+      Touch.setIcon($('tb_heal'), p.heal ? 'cancel' : 'heal', p.heal ? '회복 취소' : '회복'); Touch.setIcon($('tb_throw'), p.throwMode ? 'cancel' : 'throw', p.throwMode ? '투척 취소' : '투척');
+      const [fi, fl] = p.throwMode ? (p.throwMode.pin ? ['toss', '던지기'] : ['pin', '핀 뽑기']) : p.weapon ? ['fire', '사격'] : p.melee ? ['slash', '휘두르기'] : ['fist', '주먹'];
+      Touch.setIcon($('tb_fire'), fi, fl); Touch.setIcon($('tb_fire2'), fi, fl);
+      const fm = p.weapon ? fireMode(p.weapon) : 'single'; Touch.setIcon($('tb_mode'), 'mode_' + fm, '사격 모드: ' + modeName(p.weapon ? p.weapon.id : 'm416', fm));
       $('tbtns').classList.toggle('throwing', !!p.throwMode);
     }
     if (quickT > 0) { quickT -= dt; if (quickT <= 0 || !p.alive || p.knocked) closeQuick(); }
@@ -716,7 +751,7 @@ const HUD = (() => {
     // 주변 아이템
     const gbox = $('invGround'); gbox.innerHTML = '';
     if (!loot.length) gbox.appendChild(h('div', 'micro', '주변에 아이템이 없습니다'));
-    loot.forEach(it => gbox.appendChild(row(itemLabel(it), '', [btn('줍기', () => doPickup(p, it))], ico(it.id, it.inst && it.inst.att, ITEMS[it.id].type === 'weapon' ? 'ico wide' : 'ico'))));
+    loot.forEach(it => { const r = row(itemLabel(it), it.box ? Crates.label(it.box) : '', [btn('줍기', () => doPickup(p, it))], ico(it.id, it.inst && it.inst.att, wideItem(it.id) ? 'ico wide' : 'ico')); if (it._want) r.classList.add('want'); gbox.appendChild(r); });
     // 가방
     const cap = inv.capacity(), wgt = inv.weight();
     $('invCap').textContent = `${Math.round(wgt)} / ${cap}`; $('capBar').style.width = clamp(wgt / cap * 100, 0, 100) + '%';
@@ -727,7 +762,7 @@ const HUD = (() => {
       const d = ITEMS[id], acts = [];
       if (d.type === 'heal' || d.type === 'boost') acts.push(btn('사용', () => { useConsumable(p, id); closeInv(); }));
       if (d.type === 'att') acts.push(btn('장착', () => { if (!attachFromBag(p, id)) toast('장착할 수 있는 무기가 없습니다', 'warn'); }));
-      if (d.type === 'throw') acts.push(btn('선택', () => { inv.throwSel = id; }));
+      if (d.type === 'throw') acts.push(btn(inv.throwSel === id ? '선택됨' : '선택', () => { inv.throwSel = id; }));
       acts.push(btn('1개 버리기', () => dropFromInventory(p, G.scene, { item: id, count: 1 })));
       if (inv.count(id) > 1) acts.push(btn('모두', () => dropFromInventory(p, G.scene, { item: id })));
       ibox.appendChild(row(`${d.name} ×${inv.count(id)}`, `무게 ${(d.w * inv.count(id)).toFixed(1)}`, acts, ico(id)));
@@ -765,6 +800,16 @@ const HUD = (() => {
       }
       card.appendChild(chips); wb.appendChild(card);
     });
+    // v22 근접 무기 (하나만)
+    const mc = h('div', 'wcard melee' + (inv.melee && inv.cur < 0 ? ' cur' : '')), mt = h('div', 'top');
+    if (!inv.melee) { mt.append('4. 근접 무기 비어 있음'); mc.appendChild(mt); wb.appendChild(mc); return; }
+    const md = ITEMS[inv.melee]; mt.append(`4. ${md.name}`);
+    const ma = h('div', 'acts'); ma.style.display = 'flex'; ma.style.gap = '4px';
+    if (inv.cur >= 0) ma.appendChild(btn('들기', () => drawMelee(p, true)));
+    ma.appendChild(btn('버리기', () => dropFromInventory(p, G.scene, { melee: true })));
+    mt.appendChild(ma); mc.appendChild(mt); mc.appendChild(ico(inv.melee, null, 'ico wide big'));
+    mc.appendChild(h('div', 'micro', `근접 무기 · 피해 ${md.dmg} (머리 1.5배) · 거리 ${md.reach}m · ${{ stab: '찌르기', slash: '베기 (이어 휘두르면 되베기)', bash: '크게 휘두르기', chop: '내려찍기' }[md.style]} · 하나만 들 수 있음`));
+    wb.appendChild(mc);
   }
   function refreshInventory() { if (!$('invPanel').hidden) renderInventory(); }
   function openInv() { if (!G.player || G.player.mode !== 'ground') return; $('invPanel').hidden = false; releaseLock(); renderInventory(); Audio.ui(); }
@@ -800,6 +845,7 @@ const HUD = (() => {
     ['view', '시점', 'seg', [['tpp', '3인칭'], ['fpp', '1인칭']]],
     ['difficulty', '봇 난이도', 'seg', [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움'], ['extreme', '익스트림'], ['mixed', '혼합']]],
     ['bots', '봇 수', 'range', [8, 48, 1]],
+    ['autoPick', '자동 줍기', 'seg', [[true, '켬'], [false, '끔']]],   // v22: 총(없을 때)·맞는 탄·투척 2개씩·근접 무기·회복을 지나가며 줍는다 (09_player.js autoPickup)
     ['_h', '친구 · 관전'],
     ['watchOk', '친구가 내 경기 관전', 'seg', [[true, '허용'], [false, '끔']]],   // v22 (10_watch.js) — 꺼도 운영자는 볼 수 있음(화면 위 표시는 그대로)
     ['_h', '화면 · 모바일 조작'],
@@ -1301,5 +1347,5 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       }
     }
   }
-  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
+  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();

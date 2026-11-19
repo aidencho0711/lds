@@ -56,10 +56,11 @@ const Dev = (() => {
     const p = G.player; if (!p || !p.alive) return '지금은 줄 수 없습니다';
     const inv = p.inv;
     inv.gear = { helmet: { id: 'helm3', dur: ITEMS.helm3.dur }, vest: { id: 'vest3', dur: ITEMS.vest3.dur }, bag: { id: 'bag3' } };
-    for (const [id, n] of [['medkit', 2], ['firstaid', 5], ['bandage', 10], ['drink', 5], ['frag', 3], ['smoke', 2]]) inv.items[id] = Math.max(inv.items[id] || 0, n);
+    for (const [id, n] of [['medkit', 2], ['firstaid', 5], ['bandage', 10], ['drink', 5], ['pills', 3], ['frag', 3], ['smoke', 2], ['impact', 2], ['molotov', 2], ['zonegren', 2], ['flash', 2]]) inv.items[id] = Math.max(inv.items[id] || 0, n);
+    if (!inv.melee) inv.melee = 'machete';   // v22 근접 무기
     for (const w of inv.weapons) if (w && ITEMS[w.id].ammo) inv.items[ITEMS[w.id].ammo] = Math.max(inv.items[ITEMS[w.id].ammo] || 0, inv.magSize(w) * 5);
     p.hp = 100; p.boost = 100; p.setVisibleGear(); HUD.refreshInventory();
-    return '헬멧·조끼·가방 3레벨 + 회복 아이템·수류탄 · 체력·부스트 가득';
+    return '헬멧·조끼·가방 3레벨 + 회복·부스트 아이템·투척 무기 6종·마체테 · 체력·부스트 가득';
   }
   function spawnVeh(type) {
     const p = G.player; if (!p || !p.alive || p.mode !== 'ground' || p.veh) return '땅에 서 있을 때만 소환할 수 있습니다';

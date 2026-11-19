@@ -9,7 +9,7 @@ const Input = {
   consume(a) { if (this.edge.has(a)) { this.edge.delete(a); return true; } return false; },
   reset() { this.pingQ.length = 0; this.pingDown = false; this.keys = {}; this.fire = false; this.aim = false; this.move.x = this.move.z = 0; this.edge.clear(); this.lookX = this.lookY = 0; this.touchSprint = false; },
 };
-const KEYMAP = { Space: 'jump', KeyC: 'crouch', KeyZ: 'prone', Tab: 'inventory', KeyI: 'inventory', KeyM: 'map', KeyF: 'interact', Escape: 'pause', KeyR: 'reload', Digit1: 'w1', Digit2: 'w2', Digit3: 'w3', KeyX: 'holster', KeyG: 'throw', KeyT: 'throwSwap', KeyH: 'heal', KeyJ: 'drink', KeyV: 'view', KeyP: 'pause', KeyB: 'fireMode', KeyY: 'ping', KeyN: 'inspect' };   // Q·E 는 기울이기(누르는 동안) — 핑은 Y
+const KEYMAP = { Space: 'jump', KeyC: 'crouch', KeyZ: 'prone', Tab: 'inventory', KeyI: 'inventory', KeyM: 'map', KeyF: 'interact', Escape: 'pause', KeyR: 'reload', Digit1: 'w1', Digit2: 'w2', Digit3: 'w3', Digit4: 'w4', KeyX: 'holster', KeyG: 'throw', KeyT: 'throwSwap', KeyH: 'heal', KeyJ: 'drink', KeyV: 'view', KeyP: 'pause', KeyB: 'fireMode', KeyY: 'ping', KeyN: 'inspect' };   // Q·E 는 기울이기(누르는 동안) — 핑은 Y
 const INSPECT_DUR = 2.4;   // 총 살펴보기 길이(초)
 
 function setupInput(canvas) {
@@ -123,30 +123,43 @@ function vmResetArms(R) {
   for (const Ar of [R.L, R.R]) { const T = Body.REST['thumb1' + (Ar.side > 0 ? 'L' : 'R')]; Ar.thumb1.rotation.set(T[0], T[1], T[2]); }
   R.root.updateMatrixWorld(true);
 }
+// v22 1인칭 던지기: 놓은 뒤 손 궤적 [u, 오른손(x,y,d), 왼손(x,y,d), 오른손가락 방향(x,y,z), 손바닥 방향(x,y,z)] — 카메라 공간(z+ = 뒤)
+//  핀을 뽑으면 오른손을 오른쪽 위 뒤로 젖히고 왼팔은 앞으로 뻗어 겨눔 → 놓으면 머리 위를 지나 화면 가운데 위에서 손을 떠나 왼쪽 아래로 휘둘러 내림
+const VMT_HOLD = [0.13, -0.12, 0.38, -0.03, -0.14, 0.4, 0.35, 0.45, -0.85, -0.9, 0.2, 0.2], VMT_WIND = [0.23, 0.07, 0.26, -0.07, -0.03, 0.5, 0.1, 0.9, 0.35, -0.2, 0.1, -0.95];
+const VMT_KF = [[0].concat(VMT_WIND),
+  [0.14, 0.22, 0.2, 0.34, -0.12, -0.12, 0.46, 0.05, 0.8, -0.4, -0.1, 0.4, -0.9],
+  [0.28, 0.1, 0.12, 0.62, -0.2, -0.25, 0.42, 0, 0.3, -0.95, 0, -0.8, -0.5],
+  [0.45, -0.1, -0.2, 0.55, -0.26, -0.38, 0.36, -0.2, -0.7, -0.6, 0.3, -0.5, 0.8],
+  [0.7, -0.16, -0.45, 0.36, -0.3, -0.5, 0.32, -0.2, -0.9, -0.3, 0.4, -0.2, 0.9],
+  [1, 0.05, -0.55, 0.3, -0.2, -0.5, 0.35, 0, -1, -0.2, 0.5, 0, 0.85]];
+const _vt12 = new Array(12).fill(0);
 // 1인칭 회복·투척: 손 위치(x 오른쪽, y 위, d 앞쪽 거리)와 아이템
 function updateHoldVM(dt, p) {
-  const T = G.time, k = clamp(dt * 14, 0, 1), tm = p.throwMode;
-  let L = [-0.13, -0.2, 0.4], R = [0.15, -0.17, 0.4], itL = null, itR = null;
+  const T = G.time, tm = p.throwMode;
+  let L = [-0.13, -0.2, 0.4], R = [0.15, -0.17, 0.4], itL = null, itR = null, Q = null, direct = false;
   if (p.heal) {
     const id = p.heal.id, u = 1 - p.heal.t / p.heal.total;
     if (id === 'bandage') { itR = 'bandage'; L = [-0.06, -0.18, 0.48]; R = [0.05 + Math.cos(T * 8) * 0.05, -0.14 + Math.sin(T * 8) * 0.035, 0.46]; }
-    else if (id === 'drink') { itR = 'drink'; const up = sstep(0, 0.2, u) * (1 - sstep(0.88, 1, u)); R = [lerp(0.15, 0.03, up), lerp(-0.17, -0.06, up), lerp(0.4, 0.2, up)]; L = [-0.17, -0.3, 0.38]; }
+    else if (id === 'drink' || id === 'pills') { itR = id; const up = id === 'pills' ? sstep(0.25, 0.4, u) * (1 - sstep(0.62, 0.8, u)) : sstep(0, 0.2, u) * (1 - sstep(0.88, 1, u)); R = [lerp(0.15, 0.03, up), lerp(-0.17, -0.06, up) + (id === 'pills' && u < 0.25 ? Math.sin(T * 26) * 0.018 : 0), lerp(0.4, 0.2, up)]; L = [-0.17, -0.3, 0.38]; }
     else { itL = id; L = [-0.05, -0.17, 0.44]; R = [0.08 + Math.sin(T * 6) * 0.03, -0.1 + Math.cos(T * 7) * 0.02, 0.41]; }
   } else {
     const nade = tm ? tm.type : (p.inv.throwSel || 'frag');
-    const thr = p.throwAnim > 0 ? 1 - p.throwAnim / 0.35 : 0;
-    itR = thr > 0.35 ? null : nade;
-    if (tm && tm.pin) { R = [0.2, -0.02, 0.24]; L = [-0.1, -0.08, 0.48]; }
-    else if (thr > 0) { R = [lerp(0.2, 0.08, thr), lerp(-0.02, -0.22, thr), lerp(0.24, 0.75, thr)]; L = [-0.12, -0.17, 0.45]; }
-    else { R = [0.13, -0.12, 0.38]; L = [-0.03, -0.14, 0.4]; }
+    const thr = p.throwAnim > 0 ? clamp(1 - p.throwAnim / THROW_ANIM, 0, 1) : 0;
+    itR = thr > 0.28 ? null : nade;
+    if (thr > 0) { kfSample(VMT_KF, thr, _vt12); direct = true; }
+    else { const w = tm && tm.pin ? 1 : 0; for (let i = 0; i < 12; i++) _vt12[i] = w ? VMT_WIND[i] : VMT_HOLD[i]; }
+    R = [_vt12[0], _vt12[1], _vt12[2]]; L = [_vt12[3], _vt12[4], _vt12[5]]; Q = _vt12;
   }
-  // 부드럽게 따라가는 손 위치 (카메라 공간: x 오른쪽, y 위, -z 앞)
-  const S = VM.holdS || (VM.holdS = { L: new THREE.Vector3(-0.13, -0.2, -0.4), R: new THREE.Vector3(0.15, -0.17, -0.4) });
+  // 부드럽게 따라가는 손 위치 (카메라 공간: x 오른쪽, y 위, -z 앞) — 던지는 동안은 궤적을 그대로
+  const k = direct ? 1 : clamp(dt * 14, 0, 1);
+  const S = VM.holdS || (VM.holdS = { L: new THREE.Vector3(-0.13, -0.2, -0.4), R: new THREE.Vector3(0.15, -0.17, -0.4), fd: new THREE.Vector3(0.35, 0.45, -0.85), pn: new THREE.Vector3(-0.9, 0.2, 0.2) });
   S.L.x = lerp(S.L.x, L[0], k); S.L.y = lerp(S.L.y, L[1], k); S.L.z = lerp(S.L.z, -L[2], k);
   S.R.x = lerp(S.R.x, R[0], k); S.R.y = lerp(S.R.y, R[1], k); S.R.z = lerp(S.R.z, -R[2], k);
   const A = vmArms(); A.root.visible = true; vmResetArms(A);
-  const drinkUp = itR === 'drink' && S.R.z > -0.3;
-  handQuat(_vq, _vs.set(0.35, drinkUp ? 0.2 : 0.45, -0.85), _vt.set(-0.9, 0.2, 0.2), -1); vmReach(A.R, S.R, _vq, _vpole.set(0.55, -0.7, 0.1), FING.hold);
+  const drinkUp = (itR === 'drink' || itR === 'pills') && S.R.z > -0.3;
+  if (Q) { S.fd.lerp(_vs.set(Q[6], Q[7], Q[8]), k); S.pn.lerp(_vt.set(Q[9], Q[10], Q[11]), k); }
+  else { S.fd.lerp(_vs.set(0.35, drinkUp ? 0.2 : 0.45, -0.85), k); S.pn.lerp(_vt.set(-0.9, 0.2, 0.2), k); }
+  handQuat(_vq, _vs.copy(S.fd), _vt.copy(S.pn), -1); vmReach(A.R, S.R, _vq, _vpole.set(0.55, -0.7, 0.1), FING.hold);
   handQuat(_vh, _vs.set(-0.3, 0.4, -0.85), _vt.set(itL ? 0.2 : 0.9, itL ? 0.9 : 0.2, 0.2), 1); vmReach(A.L, S.L, _vh, _vpole.set(-0.55, -0.7, 0.1), itL ? FING.hold : FING.relax);
   vmHeld(A.L, itL); vmHeld(A.R, itR);
   if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
@@ -167,6 +180,44 @@ function updateFistVM(dt, p) {
     handQuat(_fvQ, _fvD.set(x * 0.03, 0.72, -0.69), _fvN.set(-x * 0.4, -0.85, 0.25), s);
     if (e > 0) { _fvD.copy(_fvJ).sub(_fvN.setFromMatrixPosition(Ar.sh.matrixWorld)).normalize(); handQuat(_fvQ2, _fvD, _fvN.set(-x * 0.22, -1, 0), s); _fvQ.slerp(_fvQ2, e); }
     vmReach(Ar, _fvP, _fvQ, _vpole.set(x * 0.5, -0.8, 0.1), FING.fist); setFist(Ar);
+  }
+  if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
+}
+// v22 1인칭 근접 무기: 오른손에 무기 · 왼손은 화면 왼쪽 아래 가드 (휘두를 때 반대로 당김) · 휘두르는 구간엔 자국
+//  한 줄 = [u, 손(x, y, d앞), 날 방향(x, y, 앞), 때리는 쪽(x, y, 앞)] — 카메라 공간
+const vmKf = (u, row) => [u].concat(row.slice(1));
+const VMK_READY = [0, 0.17, -0.2, 0.42, -0.18, 0.62, 0.76, 0, -0.75, 0.66];
+const VMK_PAN = [0, 0.19, -0.24, 0.4, -0.2, 0.8, 0.55, 0.3, -0.5, 0.8];
+const VMK_CROW = [0, 0.18, -0.18, 0.4, -0.15, 0.92, 0.36, 0.1, -0.35, 0.93];
+const VMK = {
+  stab: [VMK_READY, [0.24, 0.22, -0.19, 0.28, -0.02, 0.15, 1, 0, -1, 0.15], [0.43, 0.04, -0.07, 0.78, -0.04, 0.06, 1, 0, -1, 0.06], [0.56, 0.05, -0.08, 0.75, -0.04, 0.06, 1, 0, -1, 0.06], vmKf(1, VMK_READY)],
+  slash: [VMK_READY, [0.29, 0.3, 0.15, 0.34, 0.35, 0.6, -0.4, -0.6, -0.15, 0.7], [0.39, 0.06, 0.02, 0.62, -0.3, 0.62, 0.7, -0.65, -0.6, 0.5], [0.48, -0.34, -0.34, 0.5, -0.82, -0.3, 0.5, -0.35, -0.9, 0.2], [0.62, -0.42, -0.46, 0.4, -0.8, -0.5, 0.3, -0.3, -0.95, 0], vmKf(1, VMK_READY)],
+  slashB: [VMK_READY, [0.29, -0.3, -0.32, 0.45, -0.8, -0.3, 0.45, 0.6, 0.5, 0.6], [0.39, 0, 0.02, 0.62, 0.2, 0.62, 0.75, 0.8, 0.3, 0.4], [0.48, 0.38, 0.24, 0.4, 0.72, 0.6, 0.2, 0.5, 0.6, -0.5], [0.62, 0.42, 0.3, 0.32, 0.75, 0.62, 0.05, 0.45, 0.65, -0.6], vmKf(1, VMK_READY)],
+  bash: [VMK_PAN, [0.34, 0.37, 0.0, 0.32, 0.72, 0.4, -0.5, -0.5, 0, 0.85], [0.44, 0.05, 0.03, 0.6, 0.1, 0.4, 0.9, -1, 0, 0.1], [0.51, -0.4, -0.05, 0.42, -0.8, 0.3, 0.4, -0.4, 0, -0.8], [0.66, -0.48, -0.15, 0.32, -0.9, 0.15, 0.1, -0.2, 0, -1], vmKf(1, VMK_PAN)],
+  chop: [VMK_CROW, [0.33, 0.1, 0.3, 0.28, 0, 0.4, -0.9, 0, 1, 0.3], [0.42, 0.06, 0.3, 0.5, 0, 0.86, 0.5, 0, 0.5, 0.86], [0.51, 0.04, -0.3, 0.62, 0, -0.5, 0.86, 0, -0.86, -0.5], [0.66, 0.04, -0.42, 0.55, 0, -0.75, 0.66, 0, -0.66, -0.75], vmKf(1, VMK_CROW)],
+};
+const _mv9 = new Array(9).fill(0), _mvP = new THREE.Vector3(), _mvB = new THREE.Vector3(), _mvE = new THREE.Vector3(), _mvQ = new THREE.Quaternion(), _mvT = new THREE.Vector3(), _mvT2 = new THREE.Vector3();
+function updateMeleeVM(dt, p) {
+  const A = vmArms(); A.root.visible = true; vmResetArms(A);
+  const id = p.melee, D = ITEMS[id], st = D.style, sw = p.swing && p.swing.id === id ? p.swing : null;
+  const ready = st === 'bash' ? VMK_PAN : st === 'chop' ? VMK_CROW : VMK_READY;
+  if (sw) kfSample(VMK[st === 'slash' && sw.side < 0 ? 'slashB' : st], clamp(sw.t / sw.total, 0, 1), _mv9); else for (let i = 0; i < 9; i++) _mv9[i] = ready[i + 1];
+  // 꺼내기: 아래에서 올라옴 · 걷는 흔들림 · 달리면 아래로 내림
+  const eq = clamp(p.equipT / 0.35, 0, 1), bobAmp = clamp(p.anim.speed / 5, 0, 1);
+  const S = VM.melS || (VM.melS = { run: 0 }); S.run = lerp(S.run, p.sprint && !sw ? 1 : 0, clamp(dt * 8, 0, 1));
+  _mvP.set(_mv9[0] + Math.sin(p.anim.phase) * 0.012 * bobAmp + S.run * 0.05, _mv9[1] - Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp - eq * 0.36 - S.run * 0.14, -_mv9[2]);
+  _mvB.set(_mv9[3], _mv9[4] - S.run * 0.55, -_mv9[5]); _mvE.set(_mv9[6], _mv9[7], -_mv9[8]);
+  bladeQuat(_mvQ, _mvB, _mvE);
+  vmHeld(A.R, id); vmHeld(A.L, null);
+  vmReach(A.R, _mvP, _mvQ, _vpole.set(0.6, -0.7, 0.15), FING.fist); setFist(A.R);
+  const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0, pull = sw ? Math.sin(Math.PI * clamp((u - 0.2) / 0.55, 0, 1)) : 0;
+  _fvP.set(-0.17 - pull * 0.09, -0.31 - pull * 0.1 - eq * 0.2 - S.run * 0.1, -0.42 + pull * 0.1);
+  handQuat(_fvQ, _fvD.set(0.03, 0.72, -0.69), _fvN.set(0.4, -0.85, 0.25), 1);
+  vmReach(A.L, _fvP, _fvQ, _vpole.set(-0.5, -0.8, 0.1), FING.fist); setFist(A.L);
+  if (sw && sw.t > D.wind * 0.85 && sw.t < D.wind + D.strike * 1.4) {
+    A.R.hold.updateWorldMatrix(true, false);
+    _mvT.set(0, 0, MEL_TIP[id] || 0.3).applyMatrix4(A.R.hold.matrixWorld); _mvT2.set(0, 0, 0.1).applyMatrix4(A.R.hold.matrixWorld);
+    FX.trail('vm', VM.scene, _mvT, _mvT2);
   }
   if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
 }
@@ -247,17 +298,23 @@ function updateCamera(dt) {
     cam.position.lerpVectors(_tp, _cp, adsE);
   }
   p.root.visible = !(fppBase || adsE > 0.5) && !(Cam.dist < 0.6 && adsE < 0.2);
-  cam.rotation.order = 'YXZ'; cam.rotation.set(pitch, yaw + Math.PI, -(p.leanA || 0) * lerp(fppBase ? 0.13 : 0.045, 0.1, adsE));   // 기울이면 화면도 살짝 기운다(1인칭·조준 때 더)
+  // v22 던지기·근접 무기: 휘두르는 순간 화면이 따라 숙여지고(내려찍기·던지기) 기운다(베기·가로 휘두르기) — 1인칭은 크게, 3인칭은 작게
+  let fxP = 0, fxR = 0;
+  if (p.throwAnim > 0) { const u = 1 - p.throwAnim / THROW_ANIM; fxP -= Math.sin(Math.PI * clamp((u - 0.12) / 0.45, 0, 1)) * 0.028; }
+  if (p.swing && ITEMS[p.swing.id]) { const D = ITEMS[p.swing.id], u = (p.swing.t - D.wind * 0.6) / (D.strike + D.wind * 0.4 + D.rec * 0.4); if (u > 0 && u < 1) { const kk = Math.sin(Math.PI * u); if (D.style === 'chop') fxP -= kk * 0.05; else if (D.style === 'stab') fxP -= kk * 0.014; else fxR += kk * 0.04 * (D.style === 'slash' ? p.swing.side : 1); } }
+  if (!fppBase) { fxP *= 0.4; fxR *= 0.35; }
+  cam.rotation.order = 'YXZ'; cam.rotation.set(pitch + fxP, yaw + Math.PI, -(p.leanA || 0) * lerp(fppBase ? 0.13 : 0.045, 0.1, adsE) + fxR);   // 기울이면 화면도 살짝 기운다(1인칭·조준 때 더)
   if (G.shake > 0) { G.shake = Math.max(0, G.shake - dt * 2.5); cam.position.x += rnd(-1, 1) * G.shake * 0.15; cam.position.y += rnd(-1, 1) * G.shake * 0.15; }
   cam.updateMatrixWorld();
   Cam.recoilP = lerp(Cam.recoilP, 0, clamp(dt * 9, 0, 1));
   // 뷰모델: 1인칭이거나 정조준 중일 때. 배율 조준경을 끝까지 당기면 스코프 화면으로 대체
-  const holding = p.alive && !p.knocked && p.mode === 'ground' && !p.veh && (p.heal || p.throwMode || p.throwAnim > 0);
-  const fists = !holding && !p.weapon && p.alive && !p.knocked && p.mode === 'ground' && !p.veh && p.anim.guard > 0.02;   // 맨손 가드·주먹
-  VM.active = holding || fists ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
+  const holding = p.alive && !p.knocked && p.mode === 'ground' && !p.veh && (p.heal || p.throwMode || p.throwAnim > 0 || p.nadeQ);
+  const mel = !holding && !p.weapon && !!p.melee && p.alive && p.mode === 'ground' && !p.veh;   // v22 근접 무기
+  const fists = !holding && !mel && !p.weapon && p.alive && !p.knocked && p.mode === 'ground' && !p.veh && p.anim.guard > 0.02;   // 맨손 가드·주먹
+  VM.active = holding || fists || mel ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
   VM.root.visible = VM.active;
-  if (VM.pivot) VM.pivot.visible = !holding && !fists;
-  if (VM.active) { if (holding) updateHoldVM(dt, p); else if (fists) updateFistVM(dt, p); else updateViewModel(dt, p, adsE); }
+  if (VM.pivot) VM.pivot.visible = !holding && !fists && !mel;
+  if (VM.active) { if (holding) updateHoldVM(dt, p); else if (mel) updateMeleeVM(dt, p); else if (fists) updateFistVM(dt, p); else updateViewModel(dt, p, adsE); }
 }
 function updateViewModel(dt, p, adsE) {
   const w = p.weapon, sk = p.skinOf(w.id);
@@ -325,7 +382,7 @@ function renderViewModel() {
 // ---------- 플레이어 조작 ----------
 const _aimO = new THREE.Vector3(), _aimD = new THREE.Vector3(), _near = [];
 // 기절: 시점 돌리기 + 기어가기만 (사격·회복·줍기·탑승 불가). 부활받는 동안은 멈춘다
-const KNOCK_IGNORE = ['inspect', 'crouch', 'prone', 'reload', 'w1', 'w2', 'w3', 'weaponCycle', 'holster', 'throw', 'throwSwap', 'fireMode', 'jump', 'view', 'interact', 'heal', 'drink'];
+const KNOCK_IGNORE = ['inspect', 'crouch', 'prone', 'reload', 'w1', 'w2', 'w3', 'w4', 'weaponCycle', 'holster', 'throw', 'throwSwap', 'fireMode', 'jump', 'view', 'interact', 'heal', 'drink'];
 function updateKnockedPlayer(dt, p) {
   const sens = 0.0023 * SETTINGS.lookSens;
   p.yaw -= Input.lookX * sens; p.pitch = clamp(p.pitch - Input.lookY * sens, -0.9, 0.9); Input.lookX = Input.lookY = 0;
@@ -361,14 +418,19 @@ function updatePlayer(dt) {
   if (Input.consume('prone')) { if (p.stance === 'prone') p.stance = 'crouch'; else if (!p.inWater) p.stance = 'prone'; }
   if (Input.consume('reload')) { if (p.throwMode) exitThrow(p, true); startReload(p); }
   for (const [k, i] of [['w1', 0], ['w2', 1], ['w3', 2]]) if (Input.consume(k)) { if (p.throwMode) exitThrow(p, true); switchWeapon(p, i); }
-  if (Input.consume('weaponCycle')) { if (p.throwMode) exitThrow(p, true); else { const order = [0, 1, 2].filter(i => p.inv.weapons[i]); if (order.length) switchWeapon(p, order[(order.indexOf(p.inv.cur) + 1) % order.length]); } }
-  if (Input.consume('holster')) { if (p.throwMode) exitThrow(p, true); p.inv.cur = -1; p.reloadT = 0; p.cycle = null; p.setVisibleGear(); }
+  if (Input.consume('w4')) { if (p.throwMode) exitThrow(p, true); drawMelee(p, true); }   // v22 근접 무기 (4)
+  if (Input.consume('weaponCycle')) {
+    if (p.throwMode) exitThrow(p, true);
+    else { const order = [0, 1, 2].filter(i => p.inv.weapons[i]); if (p.inv.melee) order.push(-1); if (order.length) { const nx = order[(order.indexOf(p.inv.cur) + 1) % order.length]; if (nx < 0) drawMelee(p); else switchWeapon(p, nx); } }
+  }
+  if (Input.consume('holster')) { if (p.throwMode) exitThrow(p, true); if (p.inv.melee) drawMelee(p); else { p.inv.cur = -1; p.reloadT = 0; p.cycle = null; p.setVisibleGear(); } }
   if (Input.consume('heal')) usePlayerHeal(p);
-  if (Input.consume('drink')) useConsumable(p, 'drink');
+  if (Input.consume('drink')) useBoost(p);
   if (Input.consume('throwSwap')) {
-    const nx = p.inv.throwSel === 'frag' ? 'smoke' : 'frag';
-    if (p.throwMode && !p.throwMode.pin) { if (p.inv.count(nx)) { p.throwMode.type = nx; p.inv.throwSel = nx; HUD.toast(ITEMS[nx].name + ' 선택'); } else HUD.toast(ITEMS[nx].name + ' 없음'); }
-    else if (!p.throwMode) { p.inv.throwSel = nx; HUD.toast(ITEMS[p.inv.throwSel].name + ' 선택'); }
+    // v22: 가진 투척 무기를 차례로 (T)
+    const cur = p.throwMode ? p.throwMode.type : p.inv.throwSel, nx = p.inv.nextThrow(cur);
+    if (p.throwMode && !p.throwMode.pin) { if (nx !== cur && p.inv.count(nx)) { p.throwMode.type = nx; p.inv.throwSel = nx; HUD.toast(ITEMS[nx].name + ' 선택'); } else HUD.toast('다른 투척 무기가 없습니다'); }
+    else if (!p.throwMode) { if (nx !== cur) { p.inv.throwSel = nx; HUD.toast(ITEMS[nx].name + ' 선택'); } else HUD.toast(p.inv.count(cur) ? ITEMS[cur].name + '만 있습니다' : '투척 무기가 없습니다'); }
   }
   if (Input.consume('throw')) { if (p.throwMode) exitThrow(p); else enterThrow(p); }
   if (Input.consume('fireMode') && p.weapon) {
@@ -447,8 +509,9 @@ function updatePlayer(dt) {
     if (Input.fire && !p.weapon && (!p.firedThisPress || p.punchHold) && p.fireCd <= 0) { G.camera.getWorldDirection(_aimD); p.punchHold = melee(p, _aimD) || p.punchHold; p.firedThisPress = true; }
     if (!Input.fire) p.punchHold = false;
   }
-  // 상호작용 (주변 아이템)
+  // 상호작용 (주변 아이템) · v22 자동 줍기
   updateNearbyLoot(p);
+  autoPickup(p, dt);
   // 봇에게 자리를 부탁해 둔 차: 자리가 나면 바로 탄다 (같이 하기 파티원 기기 — 봇은 방장 기기가 움직임)
   if (p.pendingBoard) { const pb = p.pendingBoard; if (p.veh || !p.alive || G.time > pb.until) p.pendingBoard = null; else if (Veh.freeSeats(pb.v) && Veh.nearestEnterable(p, 3) === pb.v) { p.pendingBoard = null; if (Veh.enter(p, pb.v)) HUD.setLoot([]); } }
   if (Input.consume('interact')) {
@@ -462,19 +525,19 @@ function updatePlayer(dt) {
   }
 }
 // ---------- 운전 ----------
-const DRIVE_IGNORE = ['inspect', 'prone', 'reload', 'w1', 'w2', 'w3', 'weaponCycle', 'holster', 'throw', 'throwSwap', 'fireMode', 'jump', 'view'];
+const DRIVE_IGNORE = ['inspect', 'prone', 'reload', 'w1', 'w2', 'w3', 'w4', 'weaponCycle', 'holster', 'throw', 'throwSwap', 'fireMode', 'jump', 'view'];
 // 동승석: 자유 시점 + 조준·사격·장전·무기 교체 (이동은 운전자가)
 function updatePassenger(dt, p, v) {
   const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + (Cam.si.sens || Cam.si.key)] || 1) / Math.max(1, Cam.zoom) : 1, sens = 0.0023 * SETTINGS.lookSens * sensK;
   p.yaw -= Input.lookX * sens; p.pitch = clamp(p.pitch - Input.lookY * sens, -1.1, 1.0); Input.lookX = Input.lookY = 0;
-  for (const k of ['prone', 'holster', 'throw', 'throwSwap', 'jump', 'view']) Input.consume(k);
+  for (const k of ['prone', 'holster', 'throw', 'throwSwap', 'jump', 'view', 'w4']) Input.consume(k);
   if (Input.consume('reload')) startReload(p);
   for (const [k, i] of [['w1', 0], ['w2', 1], ['w3', 2]]) if (Input.consume(k)) switchWeapon(p, i);
   if (Input.consume('weaponCycle')) { const order = [0, 1, 2].filter(i => p.inv.weapons[i]); if (order.length) switchWeapon(p, order[(order.indexOf(p.inv.cur) + 1) % order.length]); }
   if (Input.consume('fireMode') && p.weapon && cycleFireMode(p.weapon)) { p.burstQ = 0; Audio.mech('selector', null, p.weapon.id, true); HUD.toast('사격 모드: ' + modeName(p.weapon.id, fireMode(p.weapon))); }
   if (Input.consume('crouch') || Input.consume('seat')) Veh.switchSeat(p);
   if (Input.consume('heal')) usePlayerHeal(p);
-  if (Input.consume('drink')) useConsumable(p, 'drink');
+  if (Input.consume('drink')) useBoost(p);
   p.aiming = !!((Input.aim || Input.aimToggle) && p.weapon && p.reloadT <= 0 && p.equipT <= 0);
   p.sprint = false; p.moving = false;
   playerFire(p);
@@ -503,7 +566,7 @@ function updateDriving(dt) {
   p.fireHold = false; p.aiming = false; p.sprint = false; p.moving = sp > 0.5;
   for (const k of DRIVE_IGNORE) Input.consume(k);
   if (Input.consume('heal')) { if (sp < 0.8) usePlayerHeal(p); else HUD.toast('차량을 멈춘 뒤 사용할 수 있습니다'); }
-  if (Input.consume('drink')) { if (sp < 0.8) useConsumable(p, 'drink'); else HUD.toast('차량을 멈춘 뒤 사용할 수 있습니다'); }
+  if (Input.consume('drink')) { if (sp < 0.8) useBoost(p); else HUD.toast('차량을 멈춘 뒤 사용할 수 있습니다'); }
   if (Input.consume('interact')) Veh.exit(p);
   if (Input.consume('ping')) pingInputs(p);
   if (Input.consume('crouch') || Input.consume('seat')) Veh.switchSeat(p);
@@ -630,9 +693,18 @@ function computeAim(p, origin, dir) {
 }
 function switchWeapon(p, i) {
   if (!p.inv.weapons[i] || p.inv.cur === i) return;
-  p.inv.cur = i; p.equipT = 0.6; p.reloadT = 0; p.cycle = null; p.aiming = false; p.burstQ = 0; p.setVisibleGear();
+  p.inv.cur = i; p.equipT = 0.6; p.reloadT = 0; p.cycle = null; p.aiming = false; p.burstQ = 0; p.swing = null; p.setVisibleGear();
   Audio.mech('equip', null, p.inv.weapons[i].id, true);
 }
+// v22 근접 무기 들기: 총을 넣고(맨손 자리) 허리의 근접 무기를 꺼낸다 (4 · 무기 칸 · X)
+function drawMelee(p, say) {
+  if (!p.inv.melee) { if (say) HUD.toast('근접 무기가 없습니다'); return; }
+  if (p.inv.cur < 0) return;
+  p.inv.cur = -1; p.reloadT = 0; p.cycle = null; p.aiming = false; p.burstQ = 0; p.equipT = 0.35; p.swing = null; p.inspectT = 0; p.setVisibleGear();
+  Audio.melee('draw', p.inv.melee, null, true);
+}
+// J: 부스트 — 부스트가 낮으면 진통제(큰 것)부터
+function useBoost(p) { const id = p.inv.bestBoost(p.boost); if (!id) { HUD.toast('부스트 아이템이 없습니다 (에너지 드링크·진통제)'); return; } useConsumable(p, id); }
 function usePlayerHeal(p) {
   const id = p.inv.bestHeal(p.hp);
   if (!id) { HUD.toast(p.hp >= 100 ? '체력이 가득 찼습니다' : (p.hp >= 75 && (p.inv.count('bandage') || p.inv.count('firstaid')) ? '75 이상은 의료 키트만 회복됩니다' : '회복 아이템이 없습니다')); return; }
@@ -656,13 +728,17 @@ function beginHeal(c, id) {
 // ---------- 투척 ----------
 // G/투척 버튼 → 투척 준비(총을 내리고 수류탄을 쥠, 궤적 표시) → 사격 버튼을 누르면 핀 뽑기(카운트다운 시작) → 떼면 던짐
 //  수류탄은 핀을 뽑고 7초, 연막탄은 3초 뒤 터진다. 쥐고 있다가 시간이 다 되면 손에서 터진다
+//  v22: 화염병·충격 수류탄은 닿는 곳에서 바로 (쥐고 있어도 손에서 터지지 않음) · 떼면 팔을 휘둘러 THROW_REL 초 뒤 손을 떠남(06_combat.js queueThrow)
 const THROW_POWER = 17;
+const NADE_WORD = { frag: '폭발', smoke: '연막', zonegren: '자기장', flash: '섬광' };
 const _tpo = new THREE.Vector3(), _tpd = new THREE.Vector3();
 function throwOrigin(p, o, d) { G.camera.getWorldDirection(d); p.eye(o); o.addScaledVector(d, 0.5); return o; }
+const throwPower = (type) => THROW_POWER * ((ITEMS[type] && ITEMS[type].power) || 1);
 function enterThrow(p, type) {
-  if (!type) { type = p.inv.throwSel; if (!p.inv.count(type)) type = type === 'frag' ? 'smoke' : 'frag'; }
+  if (!type) type = p.inv.throwPick();
   if (!p.inv.count(type)) { HUD.toast('투척 무기가 없습니다'); return false; }
-  if (p.knocked || p.veh || p.mode !== 'ground') return false;
+  if (p.knocked || p.veh || p.mode !== 'ground' || p.nadeQ) return false;
+  p.swing = null;
   if (p.heal) p.heal = null;
   if (p.revive) cancelRevive(p);
   if (p.recall) Recall.cancel(p);
@@ -679,8 +755,9 @@ function updateThrow(p, dt) {
   if (!p.inv.count(tm.type)) { p.throwMode = null; return; }
   if (!tm.armed) { if (!Input.fire) tm.armed = true; return; }
   if (!tm.pin) { if (Input.fire) { tm.pin = true; tm.cook = 0; Audio.pin(); } return; }
+  const D = ITEMS[tm.type], cook = !D.impact;
   tm.cook += dt;
-  const left = FUSE[tm.type] - tm.cook;
+  const left = FUSE[tm.type] - (cook ? tm.cook : 0);
   if (left <= 0) { // 너무 오래 쥐고 있었다
     p.chest(_tpo); _tpd.set(Math.sin(p.yaw), 0, Math.cos(p.yaw));
     const pr = throwItem(p, tm.type, _tpo, _tpd, 0.5, 0); if (pr) pr.inHand = true; p.throwMode = null;
@@ -688,15 +765,17 @@ function updateThrow(p, dt) {
     return;
   }
   if (!Input.fire) {
-    throwOrigin(p, _tpo, _tpd);
-    const pr = throwItem(p, tm.type, _tpo, _tpd, THROW_POWER, left);
-    if (pr) { G.myNade = pr; p.throwAnim = 0.35; Audio.spoon(); HUD.toast(`${ITEMS[tm.type].name} 투척 — ${left.toFixed(1)}초 뒤 ${tm.type === 'frag' ? '폭발' : '연막'}`); }
+    G.camera.getWorldDirection(_tpd);
+    queueThrow(p, tm.type, _tpd, throwPower(tm.type), left);   // 팔을 휘두르다 손을 떠남
+    Audio.spoon();
+    HUD.toast(cook ? `${D.name} 투척 — ${left.toFixed(1)}초 뒤 ${NADE_WORD[tm.type] || '폭발'}` : `${D.name} 투척`);
     p.throwMode = null; p.firedThisPress = true;
   }
 }
 // 궤적 미리보기: 실제 투척물과 같은 물리로 첫 충돌 지점까지 (튕겨 굴러가는 것은 제외)
 const ThrowViz = (() => {
-  const MAXP = 160; let pts = null, ring = null, dot = null, scene = null;
+  const MAXP = 160; let pts = null, ring = null, dot = null, scene = null, area = null;
+  const RING_COL = { frag: 0xff8a3d, impact: 0xffb03d, molotov: 0xff5a1a, zonegren: 0x5ab4ff, flash: 0xffffff, smoke: 0xe8eef2 }, AREA_R = { molotov: 3.6, zonegren: 5.5 };
   function init(sc) {
     scene = sc;
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXP * 3), 3));
@@ -705,6 +784,9 @@ const ThrowViz = (() => {
     ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.5, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a3d, transparent: true, opacity: 0.95, depthTest: false, depthWrite: false }));
     ring.renderOrder = 999; ring.visible = false; sc.add(ring);
     dot = new THREE.Mesh(new THREE.CircleGeometry(0.12, 16).rotateX(-Math.PI / 2), ring.material); dot.renderOrder = 999; ring.add(dot);
+    // v22 화염병·자기장 수류탄: 번질 범위를 얇은 원으로
+    area = new THREE.Mesh(new THREE.RingGeometry(0.965, 1, 56).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a3d, transparent: true, opacity: 0.6, depthTest: false, depthWrite: false }));
+    area.renderOrder = 999; area.visible = false; sc.add(area);
   }
   function predict(o, d, power, arr) {
     let x = o.x, y = o.y, z = o.z, vx = d.x * power, vy = d.y * power + 3.2, vz = d.z * power, n = 0, acc = 0;
@@ -724,27 +806,66 @@ const ThrowViz = (() => {
   function update(p) {
     if (!pts) return;
     const on = !!(p && p.alive && p.throwMode && p.mode === 'ground' && !p.veh && G.state === 'play');
-    pts.visible = ring.visible = on; if (!on) return;
+    pts.visible = ring.visible = on; if (area) area.visible = false; if (!on) return;
     throwOrigin(p, _tpo, _tpd);
-    const arr = pts.geometry.attributes.position.array, r = predict(_tpo, _tpd, THROW_POWER, arr);
+    const ty = p.throwMode.type, arr = pts.geometry.attributes.position.array, r = predict(_tpo, _tpd, throwPower(ty), arr);
     pts.geometry.setDrawRange(1, Math.max(0, r.n - 1)); pts.geometry.attributes.position.needsUpdate = true;
     ring.position.set(r.x, r.y + 0.04, r.z); ring.visible = r.up;
-    const col = p.throwMode.type === 'frag' ? 0xff8a3d : 0xe8eef2; if (ring.material.color.getHex() !== col) ring.material.color.setHex(col);
+    const col = RING_COL[ty] || 0xff8a3d; if (ring.material.color.getHex() !== col) ring.material.color.setHex(col);
     ring.scale.setScalar(1 + Math.sin(G.time * 6) * 0.08);
+    if (area && AREA_R[ty] && r.up) { area.visible = true; area.position.set(r.x, r.y + 0.05, r.z); area.scale.setScalar(AREA_R[ty]); if (area.material.color.getHex() !== col) area.material.color.setHex(col); }
   }
   return { init, update, predict };
 })();
+// 줍기 목록 순서 (v22): 바라보는 방향·거리 순 (팀원 리콜 카드는 맨 앞) · 상자 안 물건은 상자 자리로 묶고, 안에서는 주워야 할 것(노란색) → 종류 순
+const LOOT_ORDER = { weapon: 0, melee: 1, ammo: 2, vest: 3, helmet: 4, bag: 5, att: 6, heal: 7, boost: 8, throw: 9, gold: 10, card: -1 };
+let _lootList = [];
 function updateNearbyLoot(p) {
   itemsNear(p.pos.x, p.pos.z, 2.6, _near);
   const list = _near.filter(it => Math.abs(it.y - p.pos.y) < 1.6 && (it.id !== 'rcard' || Recall.canTake(p, it)));   // 다른 팀 리콜 카드는 목록에 없음
-  // 바라보는 방향에 가까운 순서 (팀원 리콜 카드는 맨 앞 — 시체 소지품에 묻히지 않게)
   const yaw = p.yaw;
-  list.sort((a, b) => {
-    const sa = Math.abs(angleDiff(yaw, Math.atan2(a.x - p.pos.x, a.z - p.pos.z))) + Math.hypot(a.x - p.pos.x, a.z - p.pos.z) * 0.3 - (a.id === 'rcard' ? 9 : 0);
-    const sb = Math.abs(angleDiff(yaw, Math.atan2(b.x - p.pos.x, b.z - p.pos.z))) + Math.hypot(b.x - p.pos.x, b.z - p.pos.z) * 0.3 - (b.id === 'rcard' ? 9 : 0);
-    return sa - sb;
-  });
-  HUD.setLoot(list.slice(0, 6));
+  for (const it of list) {
+    it._want = lootWant(p, it);
+    it._g = Math.abs(angleDiff(yaw, Math.atan2(it.x - p.pos.x, it.z - p.pos.z))) + Math.hypot(it.x - p.pos.x, it.z - p.pos.z) * 0.3 - (it.id === 'rcard' ? 9 : 0) - (it.bx ? 0.4 : 0);
+    it._o = (it._want ? 0 : 20) + (LOOT_ORDER[ITEMS[it.id].type] || 0);
+  }
+  list.sort((a, b) => a._g - b._g || a._o - b._o || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));   // 같은 상자 물건은 자리가 같아 _g 가 같다 → 안에서는 _o 순
+  // 상자는 한데 모은다 (같은 상자 물건이 흩어지지 않게: 처음 나온 자리에 전부)
+  const out = [], seen = new Set();
+  for (const it of list) {
+    if (!it.bx) { out.push(it); continue; }
+    if (seen.has(it.bx)) continue; seen.add(it.bx);
+    for (const o of list) if (o.bx === it.bx) out.push(o);
+  }
+  _lootList = out;
+  HUD.setLoot(out.length > 40 ? out.slice(0, 40) : out);   // 화면 목록은 앞의 몇 개만, 가방 창은 전부 (10_hud.js setLoot)
+}
+// ---------- v22 자동 줍기 (설정 · 기본 켬) ----------
+//  가까이(2m · 상자는 2.4m) 가면 05_items.js autoWant 규칙대로 하나씩 줍는다 — 좋은 총부터, 벽 너머는 안 줍는다
+//  쏘기·조준·던지기·넘기·부활·리콜 중에는 쉬고, 주운 것은 모아서 한 줄로 알린다
+const _apE = new THREE.Vector3();
+let autoT = 0, autoMsg = new Map(), autoMsgT = 0;   // 알림: 이름 → 개수 (같은 것은 합침)
+function autoPickup(p, dt) {
+  if (autoMsg.size && (autoMsgT -= dt) <= 0) { HUD.toast('자동 줍기 · ' + [...autoMsg].map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join(', '), 'ok'); autoMsg = new Map(); }
+  if (SETTINGS.autoPick === false) return;
+  autoT -= dt; if (autoT > 0) return; autoT = 0.12;
+  if (p.knocked || p.veh || p.vault || p.throwMode || p.nadeQ || p.fireHold || p.aiming || p.revive || p.recall || p.mode !== 'ground' || p.inWater || HUD.modalOpen()) return;
+  let best = null, bs = -1e9, bn = 0;
+  for (const it of _lootList) {
+    if (!it.alive || (it.autoNo && G.time < it.autoNo)) continue;
+    if (Math.hypot(it.x - p.pos.x, it.z - p.pos.z) > (it.bx ? 2.4 : 2.0)) continue;
+    const n = autoWant(p, it); if (n <= 0) continue;
+    const s = autoRank(it) - Math.hypot(it.x - p.pos.x, it.z - p.pos.z); if (s > bs) { bs = s; best = it; bn = n; }
+  }
+  if (!best) return;
+  if (!best.bx) { p.eye(_apE); if (!losClear(_apE.x, _apE.y, _apE.z, best.x, best.y + 0.25, best.z)) { best.autoNo = G.time + 1.5; return; } }
+  const d = ITEMS[best.id], before = best.count, r = pickupItem(p, best, G.scene, { max: bn, auto: true });
+  if (!r.ok) { best.autoNo = G.time + 4; return; }
+  autoT = 0.2;
+  const got = best.alive ? before - best.count : before;
+  const nm = d.type === 'gold' || d.type === 'card' ? r.msg : d.short || d.name; autoMsg.set(nm, (autoMsg.get(nm) || 0) + (d.type === 'gold' || d.type === 'card' ? 1 : Math.max(1, got))); autoMsgT = 0.8;
+  if (d.type === 'weapon' && p.weapon && p.weapon.mag === 0) startReload(p);
+  HUD.refreshInventory();
 }
 function doPickup(p, it) {
   if (p.knocked || !p.alive) return;
@@ -757,6 +878,8 @@ function doPickup(p, it) {
 // 공용: 재장전/회복/장착 타이머 (플레이어·봇)
 function updateCharTimers(c, dt) {
   if (c.punch) updatePunch(c, dt);
+  if (c.swing) updateSwing(c, dt);   // v22 근접 무기
+  if (c.nadeQ) updateNadeQ(c, dt);   // v22 던지는 중 (손을 떠나기 전)
   if (!c.alive) { c.lean = c.leanA = 0; return; }
   // 기울이기: 목표(방향 × 벽에 막힌 비율)를 부드럽게 따라간다 — 기절·차량·낙하·엎드림에서는 0 으로
   { const lt = c.knocked || c.veh || c.mode !== 'ground' || c.stance === 'prone' ? 0 : (c.lean || 0) * (c.leanCap == null ? 1 : c.leanCap); c.leanA += (lt - c.leanA) * Math.min(1, dt * 11); if (!lt && Math.abs(c.leanA) < 0.003) c.leanA = 0; }

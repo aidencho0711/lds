@@ -1759,3 +1759,43 @@ body.touch #islandBar { top: calc(env(safe-area-inset-top, 0px) + 38px); } body.
   #chatBox { top: calc(52px + var(--sat)); padding: 6px; gap: 5px; }
   .pb-chat .chat-log { max-height: 64px; }
 }
+
+/* ===== v22 투척·근접 무기·시체 상자·자동 줍기·모바일 그림 버튼 ===== */
+/* 모바일 버튼: 글자 대신 그림 (10_touch.js TOUCH_ICONS) */
+.tbtn svg.ti { width: 54%; height: 54%; display: block; pointer-events: none; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.55)); }
+.tbtn.fire svg.ti { width: 50%; height: 50%; }
+.tbtn.lean svg.ti, #tb_mode svg.ti { width: 58%; height: 58%; }
+.tbtn.ed { overflow: visible; }
+.tbtn.ed svg.ti { width: 50%; height: 50%; }
+.tbtn.ed .ed-lbl { position: absolute; left: 50%; bottom: -15px; transform: translateX(-50%); font-size: 9px; font-weight: 600; white-space: nowrap; color: var(--sand); text-shadow: 0 1px 2px #000; pointer-events: none; }
+.hbtn svg.ti { display: none; width: 19px; height: 19px; pointer-events: none; }
+body.touch #hbBag svg.ti { display: block; }
+body.touch #hbBag .hb-txt { display: none; }
+#dropPanel .btn svg.ti { display: none; width: 26px; height: 26px; vertical-align: middle; pointer-events: none; }
+body.touch #dropPanel .btn svg.ti { display: inline-block; }
+body.touch #dropPanel .btn .bt-txt { display: none; }
+body.touch #dropPanel .btn { min-width: 64px; min-height: 48px; display: inline-grid; place-items: center; }
+/* 빠른 선택(회복·투척): 모바일은 그림 + 개수만 */
+body.touch #qpop .qn, body.touch #qpop .qx { display: none; }
+body.touch #qpop .qi { width: 58px; min-height: 54px; justify-content: center; }
+body.touch #qpop .qi .ico { width: 40px; height: 40px; }
+/* 줍기 목록: 주워야 할 것(자동 줍기 대상·더 좋은 장비)은 노란색 · 상자 이름 줄 */
+.loot.want { border-color: #f2c94c; background: rgba(242, 201, 76, 0.17); color: #ffe68a; }
+.loot.want .lt { color: #ffe68a; font-weight: 600; }
+.loot.want.focus { box-shadow: inset 0 0 0 1px #f2c94c; }
+.loot.inbox { margin-left: 6px; }
+.loot .micro svg.ti { display: block; width: 17px; height: 17px; color: var(--amber); }
+.loot.more { justify-content: center; font-size: 0.7rem; color: var(--dim); }
+.loot-hd { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; color: #e6d7a8; padding: 2px 7px; border-left: 3px solid #8a9a5a; background: rgba(13, 17, 19, 0.55); border-radius: 2px; }
+.loot-hd.air { border-left-color: #e2662a; color: #ffc89a; }
+.irow.want { border-color: #f2c94c; background: rgba(242, 201, 76, 0.1); }
+.irow.want .nm { color: #ffe68a; }
+/* 근접 무기 칸 */
+#wsSec { gap: 6px; }
+#wsSec .ws-slot.melee { width: 74px; }
+.wslot.melee .wm { color: #c8d0d6; border-color: rgba(200, 208, 214, 0.45); }
+/* 섬광탄(화면이 하얗게) · 불바다 안(주황 테두리) */
+#flashFx { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 20; }
+#fireVignette { position: absolute; inset: 0; box-shadow: inset 0 0 120px 34px rgba(255, 110, 30, 0.6); opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+.ws-e svg.ti { width: 46px; height: 26px; display: block; opacity: 0.7; }
+#wsSec .ws-e svg.ti { width: 34px; height: 20px; }

@@ -16,27 +16,70 @@
   };
   for (const ev of ['pointerup', 'touchend', 'click']) document.addEventListener(ev, go, { capture: true, passive: true });
 })();
+// v22 모바일 버튼: 글자 대신 그림 (icon = 아래 TOUCH_ICONS 이름 · label 은 길게 누름 안내·읽어 주기·배치 편집기에만)
 const TOUCH_BTNS = [
-  { id: 'fire', label: '사격', hold: 'fire', size: 84, cls: 'fire', def: { ax: 'r', ay: 'b', x: 66, y: 122 } },
-  { id: 'aim', label: '조준', hold: 'aim', size: 54, def: { ax: 'r', ay: 'b', x: 147, y: 169 } },
-  { id: 'jump', label: '점프', tap: 'jump', size: 54, def: { ax: 'r', ay: 'b', x: 43, y: 43 } },
-  { id: 'crouch', label: '앉기', tap: 'crouch', size: 54, def: { ax: 'r', ay: 'b', x: 107, y: 43 } },
-  { id: 'prone', label: '엎드', tap: 'prone', size: 54, def: { ax: 'r', ay: 'b', x: 171, y: 43 } },
-  { id: 'reload', label: '장전', tap: 'reload', size: 54, def: { ax: 'r', ay: 'b', x: 147, y: 107 } },
+  { id: 'fire', label: '사격', icon: 'fire', hold: 'fire', size: 84, cls: 'fire', def: { ax: 'r', ay: 'b', x: 66, y: 122 } },
+  { id: 'aim', label: '조준', icon: 'aim', hold: 'aim', size: 54, def: { ax: 'r', ay: 'b', x: 147, y: 169 } },
+  { id: 'jump', label: '점프', icon: 'jump', tap: 'jump', size: 54, def: { ax: 'r', ay: 'b', x: 43, y: 43 } },
+  { id: 'crouch', label: '앉기', icon: 'crouch', tap: 'crouch', size: 54, def: { ax: 'r', ay: 'b', x: 107, y: 43 } },
+  { id: 'prone', label: '엎드리기', icon: 'prone', tap: 'prone', size: 54, def: { ax: 'r', ay: 'b', x: 171, y: 43 } },
+  { id: 'reload', label: '장전', icon: 'reload', tap: 'reload', size: 54, def: { ax: 'r', ay: 'b', x: 147, y: 107 } },
   // (v21) '무기' 교체 버튼은 없앰 — HP 바 위 무기 실루엣을 눌러 바꾼다 (10_hud.js touchWeapons)
-  { id: 'interact', label: '줍기', tap: 'interact', size: 54, cls: 'interact', def: { ax: 'r', ay: 'b', x: 213, y: 143 } },
-  { id: 'mode', label: '모드', tap: 'fireMode', size: 44, def: { ax: 'r', ay: 'b', x: 213, y: 205 } },
-  { id: 'sprint', label: '달리기', hold: 'sprint', size: 54, def: { ax: 'l', ay: 't', x: 39, y: 73 } },
-  { id: 'heal', label: '회복', menu: 'heal', size: 54, def: { ax: 'l', ay: 't', x: 39, y: 133 } },
-  { id: 'throw', label: '투척', menu: 'throw', size: 54, def: { ax: 'l', ay: 't', x: 39, y: 193 } },
-  { id: 'fire2', label: '사격', hold: 'fire', size: 54, cls: 'fire', def: { ax: 'l', ay: 't', x: 39, y: 253 } },
-  { id: 'ping', label: '핑', tap: 'ping', size: 44, cls: 'ping', def: { ax: 'l', ay: 't', x: 39, y: 312 } },
-  { id: 'seat', label: '좌석', tap: 'seat', size: 48, cls: 'seat', def: { ax: 'r', ay: 'b', x: 275, y: 143 } },
+  { id: 'interact', label: '줍기', icon: 'pickup', tap: 'interact', size: 54, cls: 'interact', def: { ax: 'r', ay: 'b', x: 213, y: 143 } },
+  { id: 'mode', label: '사격 모드', icon: 'mode_auto', tap: 'fireMode', size: 44, def: { ax: 'r', ay: 'b', x: 213, y: 205 } },
+  { id: 'sprint', label: '달리기', icon: 'sprint', hold: 'sprint', size: 54, def: { ax: 'l', ay: 't', x: 39, y: 73 } },
+  { id: 'heal', label: '회복', icon: 'heal', menu: 'heal', size: 54, def: { ax: 'l', ay: 't', x: 39, y: 133 } },
+  { id: 'throw', label: '투척', icon: 'throw', menu: 'throw', size: 54, def: { ax: 'l', ay: 't', x: 39, y: 193 } },
+  { id: 'fire2', label: '사격', icon: 'fire', hold: 'fire', size: 54, cls: 'fire', def: { ax: 'l', ay: 't', x: 39, y: 253 } },
+  { id: 'ping', label: '핑', icon: 'ping', tap: 'ping', size: 44, cls: 'ping', def: { ax: 'l', ay: 't', x: 39, y: 312 } },
+  { id: 'seat', label: '좌석', icon: 'seat', tap: 'seat', size: 48, cls: 'seat', def: { ax: 'r', ay: 'b', x: 275, y: 143 } },
   // 기울이기: 누르면 그쪽으로 기울고 다시 누르면 바로 섬 (반대쪽을 누르면 바꿔 기울임)
-  { id: 'leanL', label: '◀기울', hold: 'leanL', size: 46, cls: 'lean', def: { ax: 'l', ay: 'b', x: 62, y: 214 } },
-  { id: 'leanR', label: '기울▶', hold: 'leanR', size: 46, cls: 'lean', def: { ax: 'l', ay: 'b', x: 238, y: 214 } },
+  { id: 'leanL', label: '왼쪽 기울이기', icon: 'leanL', hold: 'leanL', size: 46, cls: 'lean', def: { ax: 'l', ay: 'b', x: 62, y: 214 } },
+  { id: 'leanR', label: '오른쪽 기울이기', icon: 'leanR', hold: 'leanR', size: 46, cls: 'lean', def: { ax: 'l', ay: 'b', x: 238, y: 214 } },
   { id: 'stick', label: '이동', kind: 'stick', size: 112, def: { ax: 'l', ay: 'b', x: 150, y: 120 } },
 ];
+// 버튼 그림 (24×24, 선 = 글자색) — 모두 자체 디자인
+const _bul = (x, y = 5, s = 1) => `<path d="M${x} ${y}c${1.3 * s} ${1.1 * s} ${1.9 * s} ${2.6 * s} ${1.9 * s} ${4.3 * s}V${y + 12 * s}h${-3.8 * s}V${y + 4.3 * s}c0-${1.7 * s} ${0.6 * s}-${3.2 * s} ${1.9 * s}-${4.3 * s}z" fill="currentColor" stroke="none"/><path d="M${x - 1.9 * s} ${y + 13 * s}h${3.8 * s}v${1.6 * s}h${-3.8 * s}z" fill="currentColor" stroke="none"/>`;
+const _car = '<path d="M2.5 16.5v-3.2l2.4-4.8h9.7l2.4 4.8v3.2z"/><circle cx="6.3" cy="17.3" r="1.7" fill="currentColor" stroke="none"/><circle cx="13.2" cy="17.3" r="1.7" fill="currentColor" stroke="none"/>';
+const _lean = '<circle cx="8.6" cy="5" r="2.3" fill="currentColor" stroke="none"/><path d="M9.6 8.4l3.2 6.6M12.8 15l-2.4 6M12.8 15l3.8 5.6M10.9 10.9l4.6 1.1"/><path d="M5.6 3.2L2.4 6l3.2 2.8"/>';
+const TOUCH_ICONS = {
+  fire: `<g transform="rotate(35 12 12)">${_bul(12, 2.5, 1.25)}</g>`,
+  aim: '<circle cx="12" cy="12" r="7.5"/><path d="M12 1.8v5.4M12 16.8v5.4M1.8 12h5.4M16.8 12h5.4"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
+  jump: '<path d="M12 2.8l6.2 6.6h-3.9v5.8H9.7V9.4H5.8z" fill="currentColor" stroke="none"/><path d="M4 20h16"/>',
+  vault: '<rect x="8.8" y="14.2" width="6.4" height="6.2" rx=".6" fill="currentColor" stroke="none"/><path d="M2.8 17.5C3.8 9.5 8.6 5.2 12.6 5.2c3.7 0 6.4 2.4 7.6 6"/><path d="M22 7.6l-1.6 4.2-4.1-1.7"/>',
+  climb: '<path d="M3 20.5h8.5v-8.2H21"/><path d="M16 9.5V2.8M12.8 6l3.2-3.2L19.2 6"/>',
+  crouch: '<circle cx="13.2" cy="4.6" r="2.3" fill="currentColor" stroke="none"/><path d="M12.6 8.2L10 13.4l5.4 1.2V21M10 13.4L7.8 21M11.8 9.8l4.4 1.8"/>',
+  prone: '<circle cx="4.8" cy="12.6" r="2.3" fill="currentColor" stroke="none"/><path d="M8 14.2l12.4 1.6M10.6 14.6l2.2-3.4 4.2.4M2.5 19.2h19"/>',
+  reload: '<path d="M20 11.5a8 8 0 1 0-2.4 5.9"/><path d="M20.4 4.2v7.2h-7.2"/><rect x="10.1" y="8.6" width="3.8" height="7" rx=".7" fill="currentColor" stroke="none"/>',
+  pickup: '<path d="M12 2.8v10.4M7.4 8.8l4.6 4.6 4.6-4.6"/><path d="M4 13.8v6h16v-6"/>',
+  board: _car + '<path d="M22 2.6l-4.6 4.6M17.2 3.2v4.2h4.2"/>',
+  exit: _car + '<path d="M17.4 7.2L22 2.6M18 2.6h4v4"/>',
+  revive: '<path d="M12 20.4s-7.4-4.6-7.4-10.4a4.2 4.2 0 0 1 7.4-2.7A4.2 4.2 0 0 1 19.4 10c0 5.8-7.4 10.4-7.4 10.4z"/><path d="M12 9.2v6.4M8.8 12.4h6.4"/>',
+  recall: '<rect x="2.8" y="9.2" width="12.4" height="10" rx="1.6"/><path d="M6 13.2h6M6 16h4"/><path d="M17.6 8.2a4.2 4.2 0 0 1 0 6.2M20.2 5.6a8 8 0 0 1 0 11.4"/>',
+  cancel: '<circle cx="12" cy="12" r="9"/><path d="M8.4 8.4l7.2 7.2M15.6 8.4l-7.2 7.2"/>',
+  mode_single: _bul(12, 3.5),
+  mode_burst: _bul(6.5, 3.5) + _bul(12, 3.5) + _bul(17.5, 3.5),
+  mode_auto: _bul(7, 1.5, 0.8) + _bul(12, 1.5, 0.8) + _bul(17, 1.5, 0.8) + '<path d="M4 18.2h16M6.5 21.2h11"/>',
+  mode_slow: _bul(8.5, 3.5) + _bul(15.5, 3.5),
+  sprint: '<circle cx="14.6" cy="3.9" r="2.3" fill="currentColor" stroke="none"/><path d="M13.4 7.6L10.9 13l4.1 2.6-1.6 5.2M10.9 13l-3.6 6.6M13 8.6l3.6 3 3.2-1M13.2 8L8.9 9.6l-1.6 3.1"/>',
+  heal: '<path d="M9.4 3.2h5.2v6.2h6.2v5.2h-6.2v6.2H9.4v-6.2H3.2V9.4h6.2z" fill="currentColor" stroke="none"/>',
+  throw: '<ellipse cx="10.6" cy="14.6" rx="5.6" ry="6.6" fill="currentColor" stroke="none"/><path d="M8.2 7.4h5l1.1-2.2H7.2z" fill="currentColor" stroke="none"/><path d="M13.6 6.2c2.6-.6 4.6.4 5.2 3.1"/><circle cx="17.8" cy="4.2" r="2.1"/>',
+  pin: '<circle cx="8.6" cy="15" r="5.2"/><path d="M12.4 11.2L20 3.6M15.6 3.6H20V8"/>',
+  toss: '<path d="M3.5 20C5.5 11 12.4 6.6 19.6 7.4" stroke-dasharray="2.6 2.4"/><circle cx="19.2" cy="7.2" r="2.8" fill="currentColor" stroke="none"/>',
+  slash: '<path d="M4.6 19.4L15.8 8.2l3-.8-.8 3L6.8 21.6z" fill="currentColor" stroke="none"/><path d="M5.4 7.2a9.6 9.6 0 0 1 7.6-4.6M3.2 11.4a9.6 9.6 0 0 1 .8-2.2" stroke-dasharray="2 2"/>',
+  fist: '<path d="M7.2 11.2V8.6a1.6 1.6 0 0 1 3.2 0v2.2M10.4 10.6V7.6a1.6 1.6 0 0 1 3.2 0v3M13.6 10.6V8.2a1.6 1.6 0 0 1 3.2 0v3.2M16.8 11a1.6 1.6 0 0 1 3.2 0v3.2c0 4-3 7-7 7h-1.4c-3 0-5.4-2.4-5.4-5.4v-3.6a1.6 1.6 0 0 1 3.2 0"/>',
+  ping: '<path d="M12 21.2s-6.6-6.4-6.6-11.4a6.6 6.6 0 0 1 13.2 0c0 5-6.6 11.4-6.6 11.4z"/><circle cx="12" cy="9.8" r="2.5" fill="currentColor" stroke="none"/>',
+  seat: '<path d="M7.6 3.2h3.2l1.2 9.4h6.6l1.4 5.8h-3.1l-1-3.2H9.6z" fill="currentColor" stroke="none"/><path d="M4.6 21h14.8"/>',
+  leanL: _lean,
+  leanR: `<g transform="translate(24 0) scale(-1 1)">${_lean}</g>`,
+  bag: '<path d="M8 6.2V4.6A1.6 1.6 0 0 1 9.6 3h4.8A1.6 1.6 0 0 1 16 4.6v1.6"/><rect x="4.8" y="6.2" width="14.4" height="15" rx="3.2"/><path d="M8.6 13h6.8v4.4H8.6zM4.8 11h14.4"/>',
+  chute: '<path d="M2.6 11.2a9.4 7.2 0 0 1 18.8 0z" fill="currentColor" stroke="none"/><path d="M3.6 11.2l8.4 9 8.4-9M8.8 11.2l3.2 9 3.2-9"/>',
+  skydive: '<path d="M3 4.6h18l-3.2 2.2H6.2z" fill="currentColor" stroke="none"/><path d="M12 9v11M7.6 15.6L12 20l4.4-4.4"/>',
+  // 빈 무기 칸: 총 윤곽선
+  rifle: '<path d="M1.6 10.2h4.2l1.2-1.2h9.4l.8-1.4h2.4V9h2.8v1.6h-2.8l-.6 1.4h-3.2l-1.2 4.6h-2.6l.8-4.6H8.4l-1.2 2.4H4.4l.6-2.4H1.6z" stroke-width="1.4"/>',
+  pistol: '<path d="M4.6 7.4h14v3.2h-2.2l-1 1.6h-3.2l-1.4 5.4H7.4l1.2-5.4H4.6z" stroke-width="1.5"/>',
+};
+const touchIcon = (name) => `<svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TOUCH_ICONS[name] || ''}</svg>`;
 // 모바일에서 위치·크기를 바꿀 수 있는 HUD 창·버튼 (사각형). 저장 방식은 원형 버튼과 같다(가까운 모서리 + 중심까지 거리)
 const TOUCH_PANELS = [
   { id: 'bag', label: '가방', el: 'hbBag', w: 50, h: 28, btn: true, def: { ax: 'l', ay: 't', x: 35, y: 22 } },
@@ -128,14 +171,30 @@ const Touch = (() => {
   }
   function stickR() { const d = TOUCH_BTNS.find((b) => b.id === 'stick'); return place(d).size / 2; }
 
+  // v22 그림 버튼: 그림이 바뀔 때만 다시 그린다 (매 프레임 부름)
+  function setIcon(el, name, label) {
+    if (!el) return;
+    if (el.dataset.ic !== name) { el.dataset.ic = name; el.innerHTML = touchIcon(name); }
+    if (label && el._lbl !== label) { el._lbl = label; el.setAttribute('aria-label', label); el.title = label; }
+  }
+  // v22: 버튼(무기 칸 등)을 누른 채 끌어도 화면이 돈다 — 손가락(pointerId)마다 따로
+  function dragLook(el) {
+    el.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') return; el._lp = e.pointerId; lookStart(e); try { el.setPointerCapture(e.pointerId); } catch (_) {} });
+    el.addEventListener('pointermove', (e) => { if (e.pointerId === el._lp) lookMove(e); });
+    const end = (e) => { if (e.pointerId === el._lp) { el._lp = null; lookEnd(e); } };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
+  }
   function setup() {
     const box = $('tbtns');
     for (const def of TOUCH_BTNS) {
       if (def.kind === 'stick') continue;
-      const b = document.createElement('button'); b.className = 'tbtn' + (def.cls ? ' ' + def.cls : ''); b.id = 'tb_' + def.id; b.textContent = def.label;
+      const b = document.createElement('button'); b.className = 'tbtn' + (def.cls ? ' ' + def.cls : ''); b.id = 'tb_' + def.id; setIcon(b, def.icon || def.id, def.label);
       if (def.hold) b.dataset.hold = def.hold; if (def.tap) b.dataset.tap = def.tap;
       box.appendChild(b); bindBtn(b, def);
     }
+    // 가방·강하·낙하산 버튼도 그림으로 (메뉴는 글자 그대로)
+    const bag = $('hbBag'); if (bag) bag.insertAdjacentHTML('afterbegin', touchIcon('bag'));
+    for (const [id, ic] of [['jumpBtn', 'skydive'], ['chuteBtn', 'chute']]) { const e = $(id); if (e) e.insertAdjacentHTML('afterbegin', touchIcon(ic)); }
     const stick = $('stick'), knob = $('stickKnob'), zone = $('touchLayer');
     zone.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse') return;
@@ -177,11 +236,13 @@ const Touch = (() => {
     if (window.visualViewport) window.visualViewport.addEventListener('resize', apply);
   }
   // 버튼: 누르고 있는 동안 유지되는 입력(사격) + 토글(조준·달리기) + 단발
+  //  v22: 모든 버튼 — 누른 채 끌면 화면(조준점)이 따라간다 (예전엔 사격 버튼만). 손가락마다 따로 기억하므로 여러 손가락이 함께 돌려도 튀지 않음
   function bindBtn(b, def) {
     const hold = def.hold, tap = def.tap;
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault(); e.stopPropagation(); Audio.init(); try { b.setPointerCapture(e.pointerId); } catch (_) {} b.classList.add('down');
-      if (hold === 'fire') { Input.fire = true; fireLookId = e.pointerId; lookStart(e); }
+      b._lp = e.pointerId; lookStart(e);
+      if (hold === 'fire') { Input.fire = true; fireLookId = e.pointerId; }
       else if (hold === 'sprint') { Input.touchSprintBtn = !Input.touchSprintBtn; b.classList.toggle('active', Input.touchSprintBtn); }
       else if (hold === 'aim') { Input.aimToggle = !Input.aimToggle; b.classList.toggle('active', Input.aimToggle); }
       else if (hold === 'leanL' || hold === 'leanR') { const s = hold === 'leanR' ? 1 : -1; Input.touchLean = Input.touchLean === s ? 0 : s; syncLean(); }
@@ -189,11 +250,12 @@ const Touch = (() => {
       if (def.menu) HUD.quick(def.menu, b); // 회복·투척: 버튼 위에 아이템 선택 (진행 중이면 취소)
       if (def.id === 'ping') Input.pingDown = true; // 길게 누르기 = 모여
     });
-    b.addEventListener('pointermove', (e) => {
-      // 사격 버튼을 누른 채 끌면 조준점이 따라간다
-      if (hold === 'fire' && e.pointerId === fireLookId) lookMove(e);
-    });
-    const up = (e) => { b.classList.remove('down'); if (def.id === 'ping') Input.pingDown = false; if (hold === 'fire' && e.pointerId === fireLookId) { Input.fire = false; fireLookId = null; lookEnd(e); } };
+    b.addEventListener('pointermove', (e) => { if (e.pointerId === b._lp) lookMove(e); });
+    const up = (e) => {
+      b.classList.remove('down'); if (def.id === 'ping') Input.pingDown = false;
+      if (e.pointerId === b._lp) { b._lp = null; lookEnd(e); }
+      if (hold === 'fire' && e.pointerId === fireLookId) { Input.fire = false; fireLookId = null; }
+    };
     b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
   }
   function syncLean() { for (const [id, s] of [['tb_leanL', -1], ['tb_leanR', 1]]) { const e = document.getElementById(id); if (e) e.classList.toggle('active', Input.touchLean === s); } }
@@ -215,7 +277,8 @@ const Touch = (() => {
     const st = $('edStage'); st.innerHTML = '';
     for (const def of TOUCH_BTNS) {
       const el = document.createElement('div'); el.className = 'tbtn ed' + (def.cls ? ' ' + def.cls : '') + (def.kind === 'stick' ? ' stick' : ''); el.id = 'ed_' + def.id;
-      el.textContent = def.label; el.dataset.id = def.id;
+      if (def.icon) el.innerHTML = touchIcon(def.icon) + `<small class="ed-lbl">${def.label}</small>`; else el.textContent = def.label;   // 편집기: 그림 + 작은 이름
+      el.dataset.id = def.id;
       styleBtn(el, def, place(def, draft));
       el.addEventListener('pointerdown', (e) => {
         e.preventDefault(); e.stopPropagation(); select(def.id);
@@ -300,6 +363,6 @@ const Touch = (() => {
     $('layoutEditor').hidden = true; $('tbtns').style.visibility = ''; $('stick').style.visibility = ''; document.body.classList.remove('editing'); G.paused = prevPaused && G.state === 'play' && !$('pausePanel').hidden;
     apply(); if (G.applySettings) G.applySettings('btnScale');
   }
-  return { setup, apply, openEditor, setupEditor, resetToggles, place, placeRect };
+  return { setup, apply, openEditor, setupEditor, resetToggles, place, placeRect, setIcon, dragLook, icon: touchIcon };
 })();
 function setupTouch() { Touch.setup(); Touch.setupEditor(); }

@@ -52,6 +52,8 @@ const ITEMS = {
   firstaid: { type: 'heal', name: '구급상자', heal: 75, cap: 75, time: 6, w: 10, color: 0xd04040 },
   medkit: { type: 'heal', name: '의료 키트', heal: 100, cap: 100, time: 8, w: 20, color: 0xe8e8e8 },
   drink: { type: 'boost', name: '에너지 드링크', boost: 40, time: 3, w: 4, color: 0x40a0e0 },
+  // v22 진통제: 에너지 드링크의 상위 — 부스트 60 (먹는 데 6초)
+  pills: { type: 'boost', name: '진통제', boost: 60, time: 6, w: 10, color: 0xe8e4dc },
   // ----- 장비 -----
   vest1: { type: 'vest', name: '방탄조끼 Lv1', lvl: 1, red: 0.3, dur: 200, color: 0x6a6f55 },
   vest2: { type: 'vest', name: '방탄조끼 Lv2', lvl: 2, red: 0.4, dur: 220, color: 0x4a5a45 },
@@ -73,8 +75,22 @@ const ITEMS = {
   extmag: { type: 'att', slot: 'mag', name: '대용량 탄창', magMul: 1.4, w: 5, color: 0x505030 },
   grip: { type: 'att', slot: 'grip', name: '수직 손잡이', spreadMul: 0.8, w: 5, color: 0x4a4a4a },
   // ----- 투척 -----
-  frag: { type: 'throw', name: '세열 수류탄', w: 15, color: 0x3d5a30 },
-  smoke: { type: 'throw', name: '연막탄', w: 12, color: 0x8a8a8a },
+  //  fuse: 핀을 뽑은 뒤 터지기까지(초) · impact: 처음 닿는 곳에서 바로 터짐(쥐고 있어도 손에서 터지지 않음, fuse = 최대 비행 시간)
+  //  power: 던지는 힘 배율 (화염병은 무거워 덜 날아감) · short: 짧은 이름(빠른 선택·HUD)
+  frag: { type: 'throw', name: '세열 수류탄', short: '수류탄', w: 15, fuse: 7, color: 0x3d5a30 },
+  smoke: { type: 'throw', name: '연막탄', short: '연막탄', w: 12, fuse: 3, color: 0x8a8a8a },
+  // v22: 화염병(깨지면 9초 동안 불바다) · 자기장 수류탄(10초 동안 작은 자기장) · 섬광탄(보고 있으면 눈이 멂) · 충격 수류탄(닿으면 바로 터짐, 세열보다 약함)
+  molotov: { type: 'throw', name: '화염병', short: '화염병', w: 14, fuse: 8, impact: true, power: 0.88, color: 0xc0602a },
+  zonegren: { type: 'throw', name: '자기장 수류탄', short: '자기장', w: 14, fuse: 2.5, color: 0x3a8ad8 },
+  flash: { type: 'throw', name: '섬광탄', short: '섬광탄', w: 10, fuse: 2.2, color: 0x9aa0a4 },
+  impact: { type: 'throw', name: '충격 수류탄', short: '충격탄', w: 13, fuse: 6, impact: true, color: 0xd88a2a },
+  // ----- v22 근접 무기: 하나만 든다 (전용 칸 · 가방 무게 없음). 총을 넣으면(맨손 자리) 이 무기를 든다 -----
+  //  style: 휘두르는 동작 — stab 찌르기 · slash 대각선 베기(번갈아 되베기) · bash 크게 가로 휘두르기 · chop 머리 위에서 내려찍기
+  //  dmg: 몸통 피해(머리는 1.5배) · reach: 닿는 거리(m) · wind/strike/rec: 젖히기·휘두르기·되돌리기(초) · arc: 맞는 부채꼴 반각(도)
+  knife: { type: 'melee', name: '식칼', style: 'stab', dmg: 36, reach: 1.85, wind: 0.1, strike: 0.08, rec: 0.24, arc: 28, w: 0, color: 0xb8bcc0 },
+  machete: { type: 'melee', name: '마체테', style: 'slash', dmg: 52, reach: 2.25, wind: 0.17, strike: 0.11, rec: 0.3, arc: 46, w: 0, color: 0x6a6e70 },
+  pan: { type: 'melee', name: '프라이팬', style: 'bash', dmg: 66, reach: 2.1, wind: 0.25, strike: 0.13, rec: 0.36, arc: 52, w: 0, color: 0x2a2a2c },
+  crowbar: { type: 'melee', name: '쇠지렛대', style: 'chop', dmg: 58, reach: 2.2, wind: 0.23, strike: 0.12, rec: 0.33, arc: 34, w: 0, color: 0xa02a22 },
   // ----- 상점 재화: 줍는 즉시 계정에 들어감(가방 무게 없음). count = 골드 탄피 양 -----
   gold: { type: 'gold', name: '골드 탄피 주머니', w: 0, color: 0xd8b04a },
   // ----- 리콜 카드 (08_recall.js): 탈락한 팀원이 떨어뜨림 · 그 팀만 주울 수 있음 · 가방 무게 없음 (inst = {who, team, t}) -----
@@ -84,6 +100,11 @@ const AMMO_NAMES = { a556: '5.56', a762: '7.62', a9: '9mm', a12: '12G', a300: '.
 // 탄피 모델 종류 (배출·손에 든 탄)
 const CASE_KIND = { a556: '556', a762: '762', a9: '9', a12: 'hull', a300: '300', a45: '45', a50: '50' };
 for (const id in ITEMS) { const d = ITEMS[id]; if (d.type === 'weapon') d.auto = d.modes.includes('auto') || d.modes.includes('slow'); }
+// v22 투척 무기 순서 (T 로 바꾸기·빠른 선택) · 근접 무기
+const THROWS = ['frag', 'impact', 'molotov', 'zonegren', 'flash', 'smoke'];
+const MELEES = ['knife', 'machete', 'pan', 'crowbar'];
+// 아이콘이 가로로 긴 것 (총·근접 무기)
+const wideItem = (id) => !!ITEMS[id] && (ITEMS[id].type === 'weapon' || ITEMS[id].type === 'melee');
 // 사격 모드
 const MODE_NAMES = { auto: '연사', single: '단발', burst: '3점사', slow: '저속 연사' };
 // 점사 발수는 총마다 다름 (Vector 2점사)
@@ -101,7 +122,14 @@ class Inventory {
     this.gear = { helmet: null, vest: null, bag: null };
     this.items = {}; // id -> 수량 (탄약/회복/투척/여분 부착물)
     this.throwSel = 'frag';
+    this.melee = null; // v22 근접 무기 id (하나만 · 총을 넣으면 든다)
   }
+  // 가진 투척 무기 중 다음 것 (없으면 지금 것)
+  nextThrow(from) { const k = THROWS.indexOf(from || this.throwSel); for (let i = 1; i <= THROWS.length; i++) { const id = THROWS[(k + i) % THROWS.length]; if (this.count(id)) return id; } return from || this.throwSel; }
+  // 고른 투척 무기가 없으면 가진 것 중 첫 번째
+  throwPick() { return this.count(this.throwSel) ? this.throwSel : THROWS.find((id) => this.count(id)) || this.throwSel; }
+  // 부스트: 부스트가 낮으면 진통제(큰 것)부터, 아니면 드링크부터
+  bestBoost(boost) { const a = boost < 45 ? ['pills', 'drink'] : ['drink', 'pills']; return a.find((id) => this.count(id)) || null; }
   current() { return this.cur >= 0 ? this.weapons[this.cur] : null; }
   capacity() { return G.training ? 9999 : this.gear.bag ? ITEMS[this.gear.bag.id].cap : BASE_CAP; } // 훈련장은 무게 제한 없음
   weight() { let s = 0; for (const id in this.items) s += (ITEMS[id].w || 1) * this.items[id]; return s; }
@@ -156,15 +184,17 @@ function itemsNear(x, z, r, out) {
 }
 // 바닥 아이템: 정밀 모델 + 접지 그림자 (Models.ground가 지오메트리 공유)
 // 메시는 플레이어 근처에 처음 들어올 때 만든다(itemMesh) → 대형 맵의 수천 개 아이템도 가볍게
-function spawnItem(scene, id, count, x, y, z, inst, uid) {
-  const it = { id, count, inst: inst || null, x, y, z, ry: Math.random() * TAU, alive: true, mesh: null, scene };
+// bx (v22): 상자 key — 시체 상자·보급 상자 안의 물건 (바닥 모델 없이 상자 하나로 보이고, 줍기 목록에 상자 이름으로 묶인다)
+function spawnItem(scene, id, count, x, y, z, inst, uid, bx) {
+  const it = { id, count, inst: inst || null, x, y, z, ry: Math.random() * TAU, alive: true, mesh: null, scene, bx: bx || null };
   GROUND.push(it); gridPush(itemGrid, itemCell(x, z), it);
+  if (bx) Crates.track(it);
   if (G.net) Net.itemAdded(it, uid); // 같이 하기: 번호를 붙이고 다른 기기에 알림
   if (id === 'rcard') Recall.track(it);
   return it;
 }
 function itemMesh(it) {
-  if (it.mesh || !it.alive) return it.mesh;
+  if (it.mesh || !it.alive || it.bx) return it.mesh;
   it.mesh = Models.ground(it.id, it.inst && it.inst.att);
   it.mesh.position.set(it.x, it.y + 0.004, it.z); it.mesh.rotation.y = it.ry; it.mesh.visible = false;
   it.scene.add(it.mesh);
@@ -175,10 +205,12 @@ function removeItem(it) {
   if (G.net) Net.itemRemoved(it);
   it.alive = false; if (it.mesh && it.mesh.parent) it.mesh.parent.remove(it.mesh);
   const l = itemGrid[itemCell(it.x, it.z)]; const k = l.indexOf(it); if (k >= 0) l.splice(k, 1);
+  if (it.bx) Crates.untrack(it);
 }
 function itemLabel(it) {
   const d = ITEMS[it.id];
   if (d.type === 'weapon') return d.name + (it.inst && it.inst.mag ? ` (${it.inst.mag}발)` : '');
+  if (d.type === 'melee') return d.name;
   if (d.type === 'vest' || d.type === 'helmet') return d.name + (it.inst ? ` ${Math.round(it.inst.dur / d.dur * 100)}%` : '');
   if (d.type === 'gold') return `${d.name} (+${it.count})`;
   if (d.type === 'card') return `${d.name} · ${Recall.cardName(it)}`;
@@ -186,13 +218,57 @@ function itemLabel(it) {
   return d.name;
 }
 
+// ---------- 상자 (v22): 시체 상자 · 보급 상자 ----------
+//  상자 안 물건도 평범한 바닥 아이템(GROUND)이다: it.bx = 상자 key, 위치 = 상자 자리. 물건마다 바닥 모델을 만들지 않고 상자 모델 하나만 보인다
+//  key 'd<캐릭터 id>_<목숨>_<번호>' = 시체 상자(여기서 모델을 만듦 · 이름은 그 캐릭터) · 'a<번호>' = 보급 상자(모델은 08_airdrop.js)
+//  같이 하기: 물건을 알릴 때 key 도 같이 보내므로(10_net.js gadd) 다른 기기에도 같은 자리에 같은 상자가 생긴다
+//  다 비운 시체 상자는 뚜껑이 열린 채 남는다
+const Crates = (() => {
+  let scene = null, map = new Map(), seq = 0;
+  function dispose() { for (const b of map.values()) if (b.mesh && b.mesh.parent) b.mesh.parent.remove(b.mesh); map = new Map(); }
+  function init(sc) { dispose(); scene = sc; }
+  const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+  function ensure(key, x, y, z) {
+    let b = map.get(key); if (b) return b;
+    const dead = key[0] === 'd';
+    b = { key, dead, x, y, z, items: new Set(), mesh: null, lid: null, name: dead ? '' : '보급 상자', open: 0 };
+    if (dead) {
+      const cid = parseInt(key.slice(1), 10), ch = CHARS.find((c) => c.id === cid);
+      b.name = ch ? ch.name : '';
+      if (scene && Models.deathCrate) {
+        const m = Models.deathCrate(); m.position.set(x, y, z); m.rotation.y = (hash(key) % 628) / 100; scene.add(m);
+        b.mesh = m; b.lid = m.userData.lid;
+      }
+    }
+    map.set(key, b); return b;
+  }
+  function track(it) { const b = ensure(it.bx, it.x, it.y, it.z); b.items.add(it); it.box = b; }
+  function untrack(it) { const b = it.box; if (b) b.items.delete(it); }
+  // 시체 상자 key: 같은 캐릭터가 리콜로 다시 죽어도 겹치지 않게 목숨·번호를 붙인다
+  function newKey(c) { return 'd' + c.id + '_' + (c.life || 0) + '_' + (seq++); }
+  // 매 0.25초 (11_game.js): 멀면 숨기고, 다 비우면 뚜껑을 연다
+  function update(cam, far, dt) {
+    for (const b of map.values()) {
+      if (!b.mesh) continue;
+      const d = Math.hypot(b.x - cam.x, b.z - cam.z); b.mesh.visible = d < far;
+      if (b.lid && !b.items.size && b.open < 1) { b.open = Math.min(1, b.open + dt * 3); b.lid.rotation.x = -1.9 * smoothstep01(b.open); }
+    }
+  }
+  function label(b) { return b.dead ? `시체 상자${b.name ? ' · ' + b.name : ''}` : b.name; }
+  return { init, dispose, ensure, track, untrack, newKey, update, label, get map() { return map; } };
+})();
+
 // 루팅 테이블 (지역 등급별)
-const LOOT = { // 무기 비중: 무기마다 탄약 2묶음이 같이 생기므로 탄약 단독 비중은 낮춘다
-  low: [['weapon', 26], ['ammo', 18], ['heal', 20], ['vest', 8], ['helmet', 8], ['bag', 7], ['att', 8], ['throw', 6], ['none', 5]],
-  mid: [['weapon', 28], ['ammo', 17], ['heal', 18], ['vest', 9], ['helmet', 9], ['bag', 7], ['att', 10], ['throw', 8], ['none', 3]],
-  high: [['weapon', 29], ['ammo', 15], ['heal', 18], ['vest', 10], ['helmet', 10], ['bag', 7], ['att', 11], ['throw', 9], ['none', 2]],
-  top: [['weapon', 30], ['ammo', 14], ['heal', 18], ['vest', 11], ['helmet', 10], ['bag', 7], ['att', 12], ['throw', 10], ['none', 2]],
+const LOOT = { // 무기 비중: 무기마다 탄약 2묶음이 같이 생기므로 탄약 단독 비중은 낮춘다 · v22 근접 무기(melee)
+  low: [['weapon', 26], ['ammo', 18], ['heal', 20], ['vest', 8], ['helmet', 8], ['bag', 7], ['att', 8], ['throw', 7], ['melee', 4], ['none', 4]],
+  mid: [['weapon', 28], ['ammo', 17], ['heal', 18], ['vest', 9], ['helmet', 9], ['bag', 7], ['att', 10], ['throw', 9], ['melee', 3], ['none', 2]],
+  high: [['weapon', 29], ['ammo', 15], ['heal', 18], ['vest', 10], ['helmet', 10], ['bag', 7], ['att', 11], ['throw', 10], ['melee', 2], ['none', 2]],
+  top: [['weapon', 30], ['ammo', 14], ['heal', 18], ['vest', 11], ['helmet', 10], ['bag', 7], ['att', 12], ['throw', 11], ['melee', 2], ['none', 2]],
 };
+// v22 투척 무기·회복·근접 무기 비중
+const THROW_TABLE = [['frag', 34], ['smoke', 19], ['impact', 14], ['molotov', 15], ['flash', 10], ['zonegren', 8]];
+const HEAL_TABLE = [['bandage', 42], ['firstaid', 27], ['medkit', 7], ['drink', 16], ['pills', 8]];
+const MELEE_TABLE = [['knife', 30], ['machete', 24], ['pan', 26], ['crowbar', 20]];
 const LVL_TABLE = { low: [[1, 70], [2, 26], [3, 4]], mid: [[1, 50], [2, 40], [3, 10]], high: [[1, 35], [2, 48], [3, 17]], top: [[1, 20], [2, 50], [3, 30]] };
 const WEAPON_TABLE = { // 지역 등급별 무기 비중 (v16: 10종 추가 — 흔한 총은 낮은 등급, 강한 총은 높은 등급에 많이)
   low: [['p19', 22], ['vk9', 18], ['s686', 12], ['s12k', 8], ['s1897', 10], ['m416', 8], ['akm', 7], ['m16a4', 6], ['mini14', 4], ['asm', 2], ['tommy', 8], ['bizon', 7], ['vector', 4], ['win94', 6], ['deagle', 6], ['kar98k', 2], ['beryl', 1.5], ['dp28', 1]],
@@ -212,12 +288,13 @@ function populateLoot(scene) {
       const am = ITEMS[id].ammo; spawnItem(scene, am, ITEMS[am].stack, jx + 0.55, s.y, jz + 0.2);
       spawnItem(scene, am, ITEMS[am].stack, jx + 0.4, s.y, jz - 0.45);
     } else if (kind === 'ammo') { const am = pick(['a556', 'a556', 'a762', 'a762', 'a9', 'a9', 'a12', 'a45']); spawnItem(scene, am, ITEMS[am].stack, jx, s.y, jz); }
-    else if (kind === 'heal') { const h = weightedPick([['bandage', 45], ['firstaid', 28], ['medkit', 7], ['drink', 20]]); spawnItem(scene, h, h === 'bandage' ? 5 : 1, jx, s.y, jz); }
+    else if (kind === 'heal') { const h = weightedPick(HEAL_TABLE); spawnItem(scene, h, h === 'bandage' ? 5 : 1, jx, s.y, jz); }
+    else if (kind === 'melee') { const m = weightedPick(MELEE_TABLE); spawnItem(scene, m, 1, jx, s.y, jz); }
     else if (kind === 'vest' || kind === 'helmet' || kind === 'bag') {
       const lv = weightedPick(LVL_TABLE[s.tier]); const id = (kind === 'helmet' ? 'helm' : kind) + lv;
       spawnItem(scene, id, 1, jx, s.y, jz, kind === 'bag' ? { id } : { id, dur: ITEMS[id].dur });
     } else if (kind === 'att') { const a = weightedPick([['reddot', 16], ['holo', 13], ['x2', 11], ['x3', 8], ['x4', 7], ['x6', s.tier === 'low' ? 2 : 5], ['comp', 16], ['extmag', 14], ['grip', 11]]); spawnItem(scene, a, 1, jx, s.y, jz); }
-    else if (kind === 'throw') { const t = Math.random() < 0.65 ? 'frag' : 'smoke'; spawnItem(scene, t, 1, jx, s.y, jz); }
+    else if (kind === 'throw') { const t = weightedPick(THROW_TABLE); spawnItem(scene, t, 1, jx, s.y, jz); }
   }
   // 골드 탄피 주머니: 작은 맵 8개 · 대형 맵 48개 (훈련장·데스매치 맵에는 없음)
   if (W.lootSpots.length && !(MAPS[SETTINGS.map] && (MAPS[SETTINGS.map].training || MAPS[SETTINGS.map].arena))) {
@@ -233,16 +310,18 @@ function pickupKind(id) {
   if (d.type === 'weapon') return d.cls === 'PISTOL' ? 'pistol' : 'gun';
   if (d.type === 'ammo') return id === 'a12' ? 'shell' : 'ammo';
   if (d.type === 'heal') return id === 'bandage' ? 'cloth' : id === 'medkit' ? 'medkit' : 'kit';
-  if (d.type === 'boost') return 'can';
+  if (d.type === 'boost') return id === 'pills' ? 'pills' : 'can';
   if (d.type === 'gold') return 'ammo';
   if (d.type === 'vest') return 'armor';
+  if (id === 'molotov') return 'bottle';
+  if (d.type === 'melee') return id === 'pan' ? 'pan' : 'blade';
   return { helmet: 'helmet', bag: 'bag', att: 'att', throw: 'nade' }[d.type] || 'att';
 }
 // 반환: {ok, msg}. 성공하면 허리를 굽혀 줍는 동작 + 물건별 소리(봇은 가까이 있으면 들린다)
 function pickupItem(c, it, scene, opts = {}) {
   const id = it.id, drop = !!it.drop, r = pickupItemRaw(c, it, scene, opts);
   if (r.ok) {
-    c.pickT = PICK_T;
+    if (!(opts.auto && c.pickT > PICK_T * 0.4)) c.pickT = PICK_T;   // 자동 줍기로 여러 개를 연달아 주우면 허리를 한 번만 굽힌다
     if (c.isPlayer) { c.lootN = (c.lootN || 0) + 1; if (drop) c.dropN = (c.dropN || 0) + 1; }
     if (c.isPlayer || (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 22)) Audio.pickup(pickupKind(id), c.pos, c.isPlayer);
   }
@@ -283,6 +362,14 @@ function pickupItemRaw(c, it, scene, opts = {}) {
     c.setVisibleGear();
     return { ok: true, msg: d.name + ' 획득' };
   }
+  if (d.type === 'melee') {
+    // v22 근접 무기는 하나만: 이미 있으면 바꿔 들고 헌 것은 발밑에 버림. 총을 들고 있지 않으면 바로 든다
+    const old = inv.melee; inv.melee = it.id; removeItem(it);
+    if (old) dropAt(old, 1);
+    if (!c.weapon) { c.equipT = Math.max(c.equipT, 0.35); c.swing = null; if (c.isPlayer) setTimeout(() => Audio.melee('draw', it.id, null, true), 120); }
+    c.setVisibleGear();
+    return { ok: true, msg: d.name + (old ? ` 획득 (${ITEMS[old].name} 버림)` : ' 획득') };
+  }
   if (d.type === 'vest' || d.type === 'helmet' || d.type === 'bag') {
     const old = inv.gear[d.type];
     if (old && d.type === 'bag' && ITEMS[old.id].cap > d.cap && inv.weight() > d.cap) return { ok: false, msg: '가방을 바꾸면 소지품이 넘칩니다' };
@@ -303,8 +390,8 @@ function pickupItemRaw(c, it, scene, opts = {}) {
       }
     }
   }
-  // 소모품/탄약/여분 부착물
-  const n = inv.add(it.id, it.count);
+  // 소모품/탄약/여분 부착물 (opts.max: 이만큼만 — 자동 줍기)
+  const n = inv.add(it.id, opts.max !== undefined ? Math.min(it.count, opts.max) : it.count);
   if (n <= 0) return { ok: false, msg: '가방 공간이 부족합니다' };
   it.count -= n;
   if (it.count <= 0) removeItem(it); else if (G.net) Net.itemCount(it);
@@ -318,6 +405,8 @@ function dropFromInventory(c, scene, what) {
     spawnItem(scene, wi.id, 1, x, y, z, wi);
     if (inv.cur === what.weapon) { inv.cur = inv.weapons.findIndex(Boolean); c.cycle = null; }   // 버린 총의 볼트·펌프 동작이 다른 총으로 이어지지 않게 (장전은 아래 reloadT = 0이 끊음)
     c.reloadT = 0;
+  } else if (what.melee) {
+    if (!inv.melee) return; spawnItem(scene, inv.melee, 1, x, y, z); inv.melee = null; c.swing = null;
   } else if (what.gear) {
     const g = inv.gear[what.gear]; if (!g) return;
     if (what.gear === 'bag' && inv.weight() > BASE_CAP) return { ok: false, msg: '가방을 벗기 전에 짐을 줄이세요' };
@@ -333,6 +422,41 @@ function dropFromInventory(c, scene, what) {
   }
   c.setVisibleGear();
   return { ok: true };
+}
+// ---------- 자동 줍기 규칙 (v22 · 09_player.js autoPickup 이 쓴다) ----------
+//  총: 총이 하나도 없을 때(주무기 칸이 비면 주무기, 아무 총도 없으면 권총도) · 탄: 가진 총에 맞는 것만 (총을 바꾸면 줍는 탄도 바뀜)
+//  투척 무기: 종류마다 2개 · 근접 무기: 없으면 1개 · 회복: 붕대 5 · 드링크 2 · 구급상자 3 · 의료 키트 3 · 진통제 3
+const AUTO_KEEP = { bandage: 5, drink: 2, firstaid: 3, medkit: 3, pills: 3 }, AUTO_THROW = 2;
+const AUTO_AMMO = { a556: 180, a762: 150, a9: 150, a45: 120, a12: 40, a300: 30, a50: 20 };
+// 몇 개 주울지 (0 = 안 주움)
+function autoWant(c, it) {
+  const inv = c.inv, d = ITEMS[it.id]; if (!d) return 0;
+  switch (d.type) {
+    case 'weapon': if (d.rocket) return 0; if (d.slot === 'secondary') return inv.weapons.some(Boolean) ? 0 : 1; return inv.weapons[0] || inv.weapons[1] ? 0 : 1;
+    case 'ammo': return inv.weapons.some((w) => w && ITEMS[w.id].ammo === it.id) ? Math.max(0, (AUTO_AMMO[it.id] || 60) - inv.count(it.id)) : 0;
+    case 'throw': return Math.max(0, AUTO_THROW - inv.count(it.id));
+    case 'melee': return inv.melee ? 0 : 1;
+    case 'heal': case 'boost': return Math.max(0, (AUTO_KEEP[it.id] || 0) - inv.count(it.id));
+    case 'gold': return it.count;
+    case 'card': return Recall.canTake(c, it) ? 1 : 0;
+  }
+  return 0;
+}
+// 줍는 순서 (클수록 먼저): 총(좋은 총부터) > 리콜 카드·골드 > 근접 무기 > 탄 > 회복 > 투척
+function autoRank(it) { const d = ITEMS[it.id]; return d.type === 'weapon' ? 100 + weaponScore(it.inst || newWeapon(it.id)) : { card: 90, gold: 85, melee: 60, ammo: 50, heal: 40, boost: 38, throw: 30 }[d.type] || 0; }
+// 노란색 표시 = 주워야 할 것: 자동으로 줍는 것 + 지금보다 좋은 장비 (헬멧·조끼·가방 레벨 · 빈 주무기 칸 · 더 좋은 총 · 비어 있는 부착물 자리 · 더 높은 배율)
+function lootWant(c, it) {
+  const inv = c.inv, d = ITEMS[it.id]; if (!d) return false;
+  if (autoWant(c, it) > 0 && (d.type === 'weapon' || d.type === 'melee' || d.type === 'gold' || d.type === 'card' || inv.room(it.id) > 0)) return true;
+  if (d.type === 'vest' || d.type === 'helmet') { const g = inv.gear[d.type]; return !g || d.lvl > ITEMS[g.id].lvl; }
+  if (d.type === 'bag') { const g = inv.gear.bag; return !g || d.lvl > ITEMS[g.id].lvl; }
+  if (d.type === 'weapon' && !d.rocket) {
+    if (d.slot === 'secondary') return !inv.weapons[2];
+    const a = inv.weapons[0], b = inv.weapons[1]; if (!a || !b) return !((a || b) && (a || b).id === it.id);
+    return weaponScore(it.inst || newWeapon(it.id)) > Math.min(weaponScore(a), weaponScore(b)) + 10;
+  }
+  if (d.type === 'att') return inv.weapons.some((w) => w && attFits(it.id, w.id) && (!w.att[d.slot] || (d.slot === 'scope' && ITEMS[w.att.scope].zoom < d.zoom)));
+  return false;
 }
 function attachFromBag(c, attId) {
   const inv = c.inv, d = ITEMS[attId];

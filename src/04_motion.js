@@ -270,7 +270,108 @@ const PICK_T = 0.5;
 const HOLD_POSE = {   // [손바닥 쪽, 위아래, 앞뒤, rx, ry, rz, 크기] (손 로컬)
   bandage: [0.02, -0.01, 0.0, 0, 0, Math.PI / 2, 1.2], firstaid: [0.045, -0.01, 0.0, 0, 0, Math.PI / 2, 0.95], medkit: [0.055, -0.01, 0.0, 0, 0, Math.PI / 2, 0.85],
   drink: [0.035, -0.005, 0.0, Math.PI / 2, 0, 0, 1.15], frag: [0.035, -0.005, 0.0, 0, 0, 0, 1.15], smoke: [0.035, -0.005, 0.0, 0, 0, 0, 1.1],
+  // v22: 투척물 4종 · 진통제 · 근접 무기(모델이 손 좌표계 그대로라 회전 없음)
+  molotov: [0.035, -0.005, -0.075, Math.PI / 2, 0, 0, 1.0], zonegren: [0.035, -0.005, 0.0, 0, 0, 0, 1.1], flash: [0.035, -0.005, 0.0, 0, 0, 0, 1.1], impact: [0.035, -0.005, 0.0, 0, 0, 0, 1.15],
+  pills: [0.03, -0.005, -0.01, Math.PI / 2, 0, 0, 1.15],
+  knife: [0, 0, 0, 0, 0, 0, 1], machete: [0, 0, 0, 0, 0, 0, 1], pan: [0, 0, 0, 0, 0, 0, 1], crowbar: [0, 0, 0, 0, 0, 0, 1],
 };
+// v22 허리에 찬 근접 무기 (엉덩이 뼈 로컬: x 왼쪽, y 위, z 앞) [x, y, z, rx, ry, rz] — 날이 아래·조금 뒤로
+const SHEATH = { knife: [0.175, -0.06, -0.05, 1.85, 0, 0.12], machete: [0.18, -0.05, -0.07, 1.82, 0, 0.16], crowbar: [0.19, 0.04, -0.09, 1.72, 0, 0.12], pan: [-0.13, -0.02, -0.16, 1.68, 0, -0.18] };
+function setSheath(r, id) {
+  id = id || ''; if (r.meleeKey === id) return; r.meleeKey = id;
+  while (r.meleeHip.children.length) r.meleeHip.remove(r.meleeHip.children[0]);
+  if (!id) return;
+  const o = Models.display(id), P = SHEATH[id] || SHEATH.knife;
+  o.position.set(P[0], P[1], P[2]); o.rotation.set(P[3], P[4], P[5]); o.traverse((m) => { if (m.isMesh) m.castShadow = r.shadow; });
+  r.meleeHip.add(o);
+}
+// ---------- v22 던지기 · 근접 무기 키프레임 ----------
+//  한 줄 = [u, 손(x,y,z), 방향 A(x,y,z), 방향 B(x,y,z), 허리 비틀기, 숙이기, 골반 높이, 골반 앞뒤, 왼손(x,y,z), 오른팔꿈치가 향할 점(x,y,z)]
+//   좌표는 가슴 뼈 로컬(x 왼쪽, y 위, z 앞) · 비틀기 + = 왼쪽으로 돎(오른손으로 칠 때) · 숙이기 + = 앞으로
+//   던지기: A = 손가락 방향, B = 손바닥 방향 / 근접 무기: A = 날(손잡이→끝) 방향, B = 때리는 쪽(날·팬 바닥·갈고리)
+//  u 사이는 Catmull-Rom 으로 이어 부드러운 호를 그린다 (휘두르는 구간은 짧아서 빠르게)
+function kfSample(K, u, out) {
+  let i = 0; while (i < K.length - 2 && u > K[i + 1][0]) i++;
+  const P0 = K[Math.max(0, i - 1)], P1 = K[i], P2 = K[i + 1], P3 = K[Math.min(K.length - 1, i + 2)];
+  const t = clamp((u - P1[0]) / Math.max(1e-5, P2[0] - P1[0]), 0, 1), t2 = t * t, t3 = t2 * t;
+  for (let k = 1; k < P1.length; k++) { const a = P0[k], b = P1[k], c = P2[k], d = P3[k]; out[k - 1] = 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (3 * b - a - 3 * c + d) * t3); }
+  return out;
+}
+const kfAt = (u, row) => [u].concat(row.slice(1));
+//                 u   손                    날·손가락            때리는 쪽·손바닥      비틀  숙임   골반y  골반z   왼손                  팔꿈치
+const TH_HOLD = [0, -0.06, 0.02, 0.3, 0.2, 0.6, 0.8, 0.8, 0, -0.2, -0.1, 0, 0, 0, 0.04, 0.02, 0.3, -0.55, -0.2, -0.1];
+const TH_WIND = [0, -0.3, 0.36, -0.2, 0.1, 0.8, -0.4, 0.1, 0.2, 0.95, -0.55, -0.12, -0.02, -0.05, 0.16, 0.26, 0.5, -0.62, 0.18, -0.12];
+const TH_KF = [TH_WIND,
+  [0.14, -0.24, 0.5, 0.06, 0.1, 0.9, 0.3, 0, 0.3, 0.95, -0.32, -0.02, -0.03, 0, 0.18, 0.18, 0.42, -0.55, 0.32, 0.05],
+  [0.28, -0.1, 0.4, 0.48, 0, 0.3, 1, 0, -0.6, 0.8, 0.25, 0.15, -0.06, 0.06, 0.24, -0.05, 0.25, -0.48, 0.3, 0.25],
+  [0.45, 0.12, 0.05, 0.5, 0.1, -0.6, 0.8, 0.3, -0.7, -0.6, 0.5, 0.32, -0.07, 0.08, 0.27, -0.18, 0.08, -0.38, -0.1, 0.22],
+  [0.7, 0.2, -0.22, 0.3, 0.2, -0.9, 0.3, 0.4, -0.3, -0.8, 0.4, 0.25, -0.05, 0.06, 0.22, -0.28, 0.06, -0.35, -0.3, 0.1],
+  [1, 0, -0.3, 0.18, 0, -1, 0.2, 0.6, 0, -0.8, 0.05, 0.05, -0.01, 0.01, 0.14, -0.35, 0.05, -0.45, -0.35, 0]];
+const MEL_READY = [0, -0.2, -0.12, 0.25, -0.05, 0.6, 0.8, 0, -0.8, 0.6, -0.12, 0.05, 0, 0, 0.15, 0.05, 0.25, -0.5, -0.35, -0.05];
+const PAN_READY = [0, -0.22, -0.16, 0.2, -0.1, 0.85, 0.5, 0.2, -0.5, 0.85, -0.15, 0.05, 0, 0, 0.15, 0.03, 0.25, -0.5, -0.4, -0.05];
+const CROW_READY = [0, -0.2, -0.1, 0.2, -0.1, 0.9, 0.35, 0, -0.35, 0.9, -0.12, 0.05, 0, 0, 0.15, 0.05, 0.25, -0.5, -0.35, -0.05];
+const MEL_RUN = [0, -0.22, -0.34, 0.08, 0, -0.3, 1, 0, -1, -0.3, 0, 0.1, 0, 0, 0.2, -0.3, 0.05, -0.4, -0.5, -0.1];
+const MEL_KF = {
+  // 식칼 찌르기: 옆구리로 당겼다가(젖히기) 어깨를 틀어 넣으며 곧게 찌르고 잠깐 멈춤
+  stab: [MEL_READY,
+    [0.24, -0.23, -0.02, 0.03, 0, 0.12, 1, 0, -1, 0.12, -0.35, -0.02, -0.01, -0.03, 0.2, 0.12, 0.36, -0.55, -0.1, -0.25],
+    [0.43, -0.06, 0.12, 0.6, 0.04, 0.04, 1, 0, -1, 0.04, 0.32, 0.15, -0.05, 0.08, 0.24, -0.05, 0.1, -0.4, -0.2, 0.25],
+    [0.56, -0.07, 0.1, 0.57, 0.04, 0.04, 1, 0, -1, 0.04, 0.3, 0.14, -0.05, 0.07, 0.24, -0.06, 0.1, -0.4, -0.22, 0.22], kfAt(1, MEL_READY)],
+  // 마체테: 오른 어깨 위로 크게 젖혀 왼쪽 아래로 대각선 베기 (몸통 전체를 틀어 넣음)
+  slash: [MEL_READY,
+    [0.29, -0.34, 0.44, -0.02, -0.3, 0.6, -0.74, 0.45, 0.1, 0.9, -0.55, -0.1, -0.01, -0.04, 0.22, 0.2, 0.4, -0.6, 0.3, -0.2],
+    [0.39, -0.12, 0.3, 0.5, 0.25, 0.75, 0.6, 0.7, -0.4, 0.6, -0.05, 0.1, -0.04, 0.05, 0.25, 0, 0.2, -0.5, 0.15, 0.2],
+    [0.48, 0.18, -0.22, 0.42, 0.85, -0.25, 0.45, 0.4, -0.85, 0.3, 0.5, 0.3, -0.07, 0.08, 0.28, -0.15, -0.05, -0.2, -0.3, 0.25],
+    [0.62, 0.24, -0.3, 0.3, 0.8, -0.5, 0.2, 0.3, -0.9, 0, 0.52, 0.28, -0.06, 0.07, 0.27, -0.2, -0.05, -0.15, -0.35, 0.2], kfAt(1, MEL_READY)],
+  // 마체테 되베기: 왼쪽 아래에서 오른쪽 위로 걷어 올림
+  slashB: [MEL_READY,
+    [0.29, 0.22, -0.18, 0.3, 0.8, -0.35, 0.45, -0.6, 0.5, 0.6, 0.45, 0.2, -0.04, 0.02, 0.3, -0.1, 0.05, -0.15, -0.35, 0.3],
+    [0.39, -0.08, 0.12, 0.55, 0.1, 0.6, 0.8, -0.8, 0.4, 0.4, 0.05, 0.12, -0.05, 0.06, 0.25, 0, 0.15, -0.45, -0.05, 0.25],
+    [0.48, -0.38, 0.36, 0.3, -0.75, 0.55, 0.35, -0.5, 0.6, -0.4, -0.45, 0.02, -0.03, 0.04, 0.22, 0.1, 0.3, -0.65, 0.2, 0],
+    [0.62, -0.42, 0.38, 0.18, -0.8, 0.5, 0.1, -0.4, 0.7, -0.5, -0.5, 0, -0.02, 0.03, 0.2, 0.1, 0.3, -0.68, 0.22, -0.05], kfAt(1, MEL_READY)],
+  // 프라이팬: 오른쪽 뒤로 크게 젖혔다가 머리 높이로 가로 휘두르기 (왼팔은 반대로 당김)
+  bash: [PAN_READY,
+    [0.34, -0.46, 0.22, -0.1, -0.75, 0.45, -0.45, 0.4, 0.1, 0.9, -0.75, -0.05, -0.03, -0.05, 0.18, 0.2, 0.45, -0.65, 0.05, -0.2],
+    [0.44, -0.15, 0.24, 0.55, -0.1, 0.35, 0.93, 0.95, 0.1, 0.1, -0.05, 0.08, -0.05, 0.06, 0.25, 0.05, 0.2, -0.5, 0.1, 0.25],
+    [0.51, 0.32, 0.16, 0.38, 0.8, 0.3, 0.5, 0.55, 0.1, -0.8, 0.62, 0.18, -0.07, 0.08, 0.28, -0.12, -0.08, -0.15, 0.05, 0.3],
+    [0.66, 0.38, 0.05, 0.22, 0.9, 0.1, 0, 0.2, 0, -1, 0.68, 0.2, -0.06, 0.06, 0.27, -0.18, -0.08, -0.12, -0.05, 0.25], kfAt(1, PAN_READY)],
+  // 쇠지렛대: 머리 위 뒤로 젖혀(허리를 뒤로) 체중을 실어 내려찍기
+  chop: [CROW_READY,
+    [0.33, -0.14, 0.62, -0.08, 0.05, 0.35, -0.94, 0, 1, 0.2, -0.25, -0.22, 0, -0.04, 0.12, 0.45, 0.15, -0.55, 0.55, -0.05],
+    [0.42, -0.08, 0.5, 0.42, 0, 0.85, 0.5, 0, 0.5, 0.85, -0.05, 0.05, -0.03, 0.04, 0.15, 0.25, 0.3, -0.5, 0.45, 0.15],
+    [0.51, -0.06, -0.08, 0.55, 0, -0.55, 0.83, 0, -0.85, -0.5, 0.12, 0.4, -0.09, 0.09, 0.2, -0.1, 0.2, -0.4, 0, 0.3],
+    [0.66, -0.05, -0.2, 0.45, 0, -0.8, 0.6, 0, -0.6, -0.8, 0.12, 0.42, -0.08, 0.08, 0.2, -0.15, 0.18, -0.4, -0.1, 0.25], kfAt(1, CROW_READY)],
+};
+const MEL_TIP = { knife: 0.27, machete: 0.47, pan: 0.4, crowbar: 0.42 };   // 휘두르기 자국: 날 끝까지 거리(손잡이 가운데부터)
+// 무기를 쥔 오른손 방향: B = 날 방향(엄지 쪽) · E = 때리는 쪽(손가락 쪽) → 손바닥 = (-E) × B
+const _bq1 = new THREE.Vector3(), _bq2 = new THREE.Vector3(), _bq3 = new THREE.Vector3();
+function bladeQuat(out, B, E) {
+  _bq1.copy(B).normalize(); _bq2.copy(E).addScaledVector(_bq1, -E.dot(_bq1)); if (_bq2.lengthSq() < 1e-6) _bq2.set(0, -1, 0); _bq2.normalize();
+  _bq3.copy(_bq2).negate().cross(_bq1);
+  return handQuat(out, _bq2, _bq3, -1);
+}
+// 지금 동작: 던지기(a.nade) 또는 근접 무기(들고 있음·휘두르기) → { kind, w, v(19) } · 없으면 null
+const _kv = new Array(19).fill(0), _kv2 = new Array(19).fill(0);
+function actPose(c, a, tm, sw, busy, dt) {
+  if (a.nade > 0.01) {
+    const thr = c.throwAnim > 0 ? clamp(1 - c.throwAnim / THROW_ANIM, 0, 1) : 0;
+    a.wind = lerp(a.wind || 0, tm && tm.pin ? 1 : 0, clamp(dt * 9, 0, 1));
+    if (thr > 0) kfSample(TH_KF, thr, _kv);
+    else { const k = smoothstep01(clamp(a.wind, 0, 1)); for (let i = 0; i < 19; i++) _kv[i] = lerp(TH_HOLD[i + 1], TH_WIND[i + 1], k); }
+    return { kind: 'throw', w: a.nade, v: _kv, thr };
+  }
+  const mw = (a.mel || 0) * (1 - busy) * (1 - a.prone) * (1 - (a.swim || 0)) * (1 - Math.max(a.fall, a.chute, a.air || 0));
+  if (mw < 0.01 || !a.melId) return null;
+  const st = ITEMS[a.melId].style, ready = st === 'bash' ? PAN_READY : st === 'chop' ? CROW_READY : MEL_READY;
+  if (sw) kfSample(MEL_KF[st === 'slash' && sw.side < 0 ? 'slashB' : st], clamp(sw.t / sw.total, 0, 1), _kv);
+  else {
+    // 달리기: 손을 허리 옆으로 내리고 걸음에 맞춰 흔든다
+    const rk = smoothstep01(clamp(a.sprint || 0, 0, 1)), sg = Math.sin(a.phase) * 0.14 * rk;
+    for (let i = 0; i < 19; i++) _kv[i] = lerp(ready[i + 1], MEL_RUN[i + 1], rk);
+    _kv[2] += sg; _kv[1] += Math.abs(sg) * 0.3;
+  }
+  return { kind: 'melee', w: mw, v: _kv, sw };
+}
 let _rollGeo = null;
 function heldModel(id) {
   if (id !== 'bandage') return Models.display(id);
@@ -322,6 +423,9 @@ function animateChar(c, dt) {
   const tm = c.throwMode, nadeOn = c.alive && !c.knocked && (!!tm || c.throwAnim > 0);
   a.nade = lerp(a.nade || 0, nadeOn ? 1 : 0, clamp(dt * 12, 0, 1)); if (tm) a.nadeId = tm.type;
   const rv = c.revive && c.revive.tgt; a.rev = lerp(a.rev || 0, rv ? 1 : 0, clamp(dt * 6, 0, 1));
+  // v22 근접 무기: 들고 있음(a.mel) · 휘두르는 중(sw)
+  const md = c.alive && !c.knocked && c.mode === 'ground' && !c.veh ? c.melee : null, sw = md && c.swing && c.swing.id === md ? c.swing : null;
+  a.mel = lerp(a.mel || 0, md && c.equipT <= 0.15 ? 1 : 0, clamp(dt * 10, 0, 1)); if (md) a.melId = md;
   const busy = Math.max(a.heal, a.nade, climb ? Math.min(1, vk * 2) : 0, rk, a.rev);   // 총을 내려놓는 동작
   a.crouch = lerp(a.crouch, c.stance === 'crouch' ? 1 : 0, k);
   a.prone = lerp(a.prone, c.stance === 'prone' ? 1 : 0, clamp(dt * 6, 0, 1));
@@ -329,7 +433,7 @@ function animateChar(c, dt) {
   a.armed = lerp(a.armed, hasGun && c.equipT <= 0 ? 1 : 0, k);
   const armed = a.armed * (1 - busy);
   // 주먹 가드: 맨손으로 지르는 중이거나 방금 쳤을 때 (달리기 시작하면 내림)
-  const pu = c.punch, guardOn = !hasGun && c.alive && !c.knocked && (!!pu || (G.time - (c.punchT || -99) < PUNCH.guardT && !c.sprint));
+  const pu = c.punch, guardOn = !hasGun && !md && c.alive && !c.knocked && (!!pu || (G.time - (c.punchT || -99) < PUNCH.guardT && !c.sprint));
   a.guard = lerp(a.guard || 0, guardOn ? 1 : 0, clamp(dt * 12, 0, 1));
   a.knock = lerp(a.knock || 0, c.knocked ? 1 : 0, k);
   a.aim = lerp(a.aim, c.aiming ? 1 : 0, k);
@@ -352,7 +456,8 @@ function animateChar(c, dt) {
   const mv = sp > 0.6;
   let targetYaw = c.yaw;
   if (!c.isPlayer || !(c.aiming || c.fireHold || c.firstPerson)) { if (mv && !c.aiming && !c.combatFacing && !(a.ready > 0.5 && c.isPlayer)) targetYaw = Math.atan2(c.vel.x, c.vel.z); }
-  if (pu || a.guard > 0.5) targetYaw = c.yaw;   // 주먹·가드: 치는 쪽을 본다
+  if (pu || a.guard > 0.5 || sw || (md && (c.fireHold || G.time - (c.swingT || -99) < 1.4))) targetYaw = c.yaw;   // 주먹·가드·근접 무기: 치는 쪽을 본다
+  if (c.nadeQ || (tm && tm.pin) || c.throwAnim > 0) targetYaw = c.yaw;   // 던질 때도 던지는 쪽으로
   if (rv) targetYaw = Math.atan2(rv.pos.x - c.pos.x, rv.pos.z - c.pos.z);
   if (V) targetYaw = Math.atan2(V.dx, V.dz); else if (c.rollT > 0) targetYaw = c.rollYaw;
   c.bodyYaw += angleDiff(c.bodyYaw, targetYaw) * clamp(dt * (a.prone > 0.5 ? 4 : V || c.rollT > 0 ? 20 : 11), 0, 1);
@@ -384,6 +489,14 @@ function animateChar(c, dt) {
   r.head.rotation.set(-pitch * 0.25 * (1 - a.prone) - a.prone * 0.55 + a.aim * 0.08, look * 0.55, -a.aim * 0.12 * armed);
   // 기울이기: 발은 그대로 두고 허리·가슴을 옆으로 꺾는다(머리는 반대로 조금 세워 눈이 수평에 가깝게)
   if (c.leanA) { const lk = c.leanA * (1 - a.prone); r.hips.rotation.z += lk * 0.06; r.spine.rotation.z += lk * 0.27; r.chest.rotation.z += lk * 0.2; r.head.rotation.z -= lk * 0.17; }
+  // v22 던지기·근접 무기: 허리를 틀고 숙이며 골반을 낮춰 체중을 싣는다 (머리·목은 반대로 돌려 겨눈 쪽을 그대로 본다)
+  const act = c.alive ? actPose(c, a, tm, sw, busy, dt) : null;
+  if (act) {
+    const v = act.v, bw = act.w * (1 - a.prone);
+    r.spine.rotation.y += v[9] * 0.6 * bw; r.chest.rotation.y += v[9] * 0.4 * bw; r.neck.rotation.y -= v[9] * 0.55 * bw; r.head.rotation.y -= v[9] * 0.35 * bw;
+    r.spine.rotation.x += v[10] * 0.6 * bw; r.chest.rotation.x += v[10] * 0.4 * bw; r.neck.rotation.x -= v[10] * 0.5 * bw;
+    r.hips.position.y += v[11] * bw; r.hips.position.z += v[12] * bw; r.hips.rotation.y += v[9] * 0.25 * bw;
+  }
   // ----- 몸 전체 회전: 엎드림 / 자유낙하 / 사망 / 구르기 / 넘기 기울임 -----
   const fallP = a.fall * (Math.PI * 0.46 + 0.5 * clamp((-c.vel.y - 36) / 12, 0, 1));
   let bx = a.prone * Math.PI / 2 + fallP, by = a.prone * 0.12, bz = 0;
@@ -506,10 +619,12 @@ function animateChar(c, dt) {
       const an = T * 8.5; chestPt(r, -0.02 + Math.cos(an) * 0.055, -0.12 + Math.sin(an) * 0.05, 0.27 + Math.sin(an) * 0.02, _t1); chestPt(r, -0.45, -0.3, -0.05, _t3);
       handQuat(_hq, chestDir(r, 0.6, -0.2, 0.6, _t4), chestDir(r, 0.2, 0.3 * Math.sin(an), -1, _t5), -1);
       ik(r.armR, _t1, _t3, _hq, w, 'hold');
-    } else if (id === 'drink') {
-      const up = sstep(0, 0.22, hu) * (1 - sstep(0.88, 1, hu));
+    } else if (id === 'drink' || id === 'pills') {
+      // 드링크: 캔을 입에 대고 마신다 · 진통제(v22): 병을 흔들어(앞 20%) 입에 털어 넣는다
+      const pl = id === 'pills', up = pl ? sstep(0.25, 0.4, hu) * (1 - sstep(0.62, 0.8, hu)) : sstep(0, 0.22, hu) * (1 - sstep(0.88, 1, hu));
       r.neck.rotation.x -= 0.25 * up * w; r.head.rotation.x -= 0.3 * up * w; r.root.updateMatrixWorld(true);
       _t1.set(-0.025, -0.09, 0.115).applyMatrix4(r.head.matrixWorld); chestPt(r, -0.12, -0.08, 0.3, _t2); _t1.lerp(_t2, 1 - up);
+      if (pl && hu < 0.25) _t1.y += Math.sin(T * 26) * 0.02 * w;   // 약병 흔들기
       chestPt(r, -0.4, -0.25, -0.1, _t3); handQuat(_hq, chestDir(r, 0.95, 0.1, 0.25, _t4), chestDir(r, 0, 0, -1, _t5), -1);
       ik(r.armR, _t1, _t3, _hq, w, 'hold');
       chestPt(r, 0.14, -0.4, 0.06, _t1); chestPt(r, 0.5, -0.3, -0.1, _t3); ik(r.armL, _t1, _t3, null, w * 0.6, 'relax');
@@ -522,21 +637,29 @@ function animateChar(c, dt) {
       ik(r.armR, _t1, _t3, _hq, w, 'pinch');
     }
   }
-  // 투척: 가슴 앞에 쥠 → 핀을 뽑으면 머리 뒤로 젖힘 → 놓으면 앞으로 휘두름
-  if (a.nade > 0.01) {
-    const w = a.nade, thr = c.throwAnim > 0 ? 1 - c.throwAnim / 0.35 : 0, wind = tm && tm.pin ? 1 : 0;
-    a.wind = lerp(a.wind || 0, wind, clamp(dt * 10, 0, 1));
-    const W0 = [-0.06, 0.0, 0.3], W1 = [-0.24, 0.34, -0.12], W2 = [-0.08, 0.28, 0.5], W3 = [-0.02, -0.18, 0.42];
-    let p = W0.map((v, i) => lerp(v, W1[i], a.wind));
-    if (thr > 0) p = thr < 0.5 ? W1.map((v, i) => lerp(v, W2[i], sstep(0, 0.5, thr))) : W2.map((v, i) => lerp(v, W3[i], sstep(0.5, 1, thr)));
-    chestPt(r, p[0], p[1], p[2], _t1); chestPt(r, -0.55, -0.2 + a.wind * 0.4, -0.1, _t3);
-    handQuat(_hq, chestDir(r, 0.2, 0.6 - a.wind * 0.3, 0.8, _t4), chestDir(r, 0.8, 0, -0.2, _t5), -1);
-    ik(r.armR, _t1, _t3, _hq, w, thr > 0.4 ? 'open' : 'hold');
-    // 왼손: 핀 뽑기(쥔 손으로) → 앞으로 뻗어 겨냥
-    const lw = Math.max(a.wind, thr > 0 ? 1 - thr : 0);
-    chestPt(r, lerp(0.02, 0.16, lw), lerp(0.02, 0.22, lw), lerp(0.3, 0.46, lw), _t1); chestPt(r, 0.55, -0.3, 0, _t3);
-    ik(r.armL, _t1, _t3, null, w, lw > 0.5 ? 'open' : 'pinch');
-    r.spine.rotation.y += (thr > 0 ? 0.35 * (1 - thr) - 0.25 * thr : -0.32 * a.wind) * w;
+  // v22 투척·근접 무기 (actPose 키프레임): 오른손 = 손 자리·방향, 왼손 = 균형(던질 땐 겨누는 손 → 당겨 붙임)
+  //  투척: 가슴 앞에 쥠 → 핀을 뽑으면 머리 뒤로 크게 젖히고 왼팔로 겨눔 → 놓으면 어깨 위로 채찍처럼 휘둘러 몸 반대쪽 아래까지
+  if (act && act.w > 0.01) {
+    const v = act.v, w = act.w, thr = act.kind === 'throw';
+    r.root.updateMatrixWorld(true);
+    if (thr) handQuat(_hq, chestDir(r, v[3], v[4], v[5], _t4), chestDir(r, v[6], v[7], v[8], _t5), -1);
+    else bladeQuat(_hq, chestDir(r, v[3], v[4], v[5], _t4), chestDir(r, v[6], v[7], v[8], _t5));
+    chestPt(r, v[0], v[1], v[2], _t1); _t2.copy(PALM.R).applyQuaternion(_hq); _t1.sub(_t2);
+    chestPt(r, v[16], v[17], v[18], _t3);
+    ik(r.armR, _t1, _t3, _hq, w, thr ? (act.thr > 0.3 ? 'open' : 'hold') : null);
+    if (!thr && fine) setFist(r.armR, w);
+    chestPt(r, v[13], v[14], v[15], _t1); chestPt(r, 0.55, -0.3, thr ? 0 : -0.05, _t3);
+    ik(r.armL, _t1, _t3, null, w * (thr ? 1 : 0.85), thr ? (a.wind > 0.5 || (act.thr > 0 && act.thr < 0.3) ? 'open' : 'pinch') : 'fist');
+    // 휘두르기 자국: 날 끝·뿌리 (휘두르는 구간만 · 가까이)
+    const s2 = act.sw;
+    if (s2 && G.scene && !(c.isPlayer && VM.active) && (c.isPlayer || camD < 28)) {
+      const D = ITEMS[s2.id], u = s2.t;
+      if (u > D.wind * 0.85 && u < D.wind + D.strike * 1.35) {
+        r.armR.hold.updateWorldMatrix(true, false);
+        _t4.set(0, 0, MEL_TIP[s2.id] || 0.3).applyMatrix4(r.armR.hold.matrixWorld); _t5.set(0, 0, 0.08).applyMatrix4(r.armR.hold.matrixWorld);
+        FX.trail('c' + c.id, G.scene, _t4, _t5);
+      }
+    }
   }
   // 넘기: 왼손을 장애물 위에 짚음 / 오르기: 두 손으로 턱을 잡고 끌어올림
   if (V) {
@@ -601,11 +724,18 @@ function animateChar(c, dt) {
     const e = clamp(c.equipT / 0.6, 0, 1), w = Math.sin(Math.PI * e) * (1 - a.prone);
     chestPt(r, -0.16, 0.32, -0.12, _t1); chestPt(r, -0.5, 0.3, 0.1, _t3); ik(r.armR, _t1, _t3, null, w, 'claw');
   }
+  // v22 근접 무기 꺼내기: 허리(프라이팬은 오른쪽 뒤)로 손을 뻗었다 올림
+  if (md && c.equipT > 0 && c.alive && busy < 0.3 && a.fall < 0.1 && a.chute < 0.1) {
+    const e = clamp(c.equipT / 0.35, 0, 1), w = Math.sin(Math.PI * e) * (1 - a.prone), bk = ITEMS[md].style === 'bash';
+    chestPt(r, bk ? -0.16 : 0.1, -0.44, bk ? -0.14 : 0.02, _t1); chestPt(r, -0.5, -0.2, 0.1, _t3); ik(r.armR, _t1, _t3, null, w, 'claw');
+  }
   // ----- 손에 든 물건 -----
   const near = c.isPlayer || camD < 40;
   if (near) {
-    const hid = a.heal > 0.3 ? a.healId : null, nid = a.nade > 0.3 && (c.throwAnim <= 0 || c.throwAnim > 0.2) ? (a.nadeId || 'frag') : null;
-    setHeld(c, nid || (hid === 'bandage' || hid === 'drink' ? hid : null), !nid && (hid === 'firstaid' || hid === 'medkit') ? hid : null);
+    const hid = a.heal > 0.3 ? a.healId : null, nid = a.nade > 0.3 && (c.throwAnim <= 0 || c.throwAnim > THROW_ANIM * (1 - 0.28)) ? (a.nadeId || 'frag') : null;
+    const mid = !nid && !hid && md && a.mel > 0.3 ? md : null;   // v22 근접 무기는 오른손에
+    setHeld(c, nid || (hid === 'bandage' || hid === 'drink' || hid === 'pills' ? hid : null) || mid, !nid && (hid === 'firstaid' || hid === 'medkit') ? hid : null);
+    setSheath(r, c.alive && c.inv.melee && !mid ? c.inv.melee : null);   // 손에 없으면 허리에
   } else if (r.heldKey && r.heldKey !== '|') setHeld(c, null, null);
   // ----- 낙하산 -----
   r.chute.visible = a.chute > 0.05; r.chute.scale.set(Math.max(0.05, a.chute), Math.max(0.05, Math.min(1, a.chute * 1.3)), Math.max(0.05, a.chute));

@@ -728,12 +728,12 @@ async function generateWorld(mapId, scene, progress) {
         { lz: -5.6, ids: guns(['AR', 'SMG', 'PISTOL']), title: '총기 ① 돌격·기관단총·권총', sub: '탄창 가득 · 가져가면 잠시 뒤 다시 놓임', wide: true },
         { lz: -1.8, ids: guns(['DMR', 'SR', 'SG', 'LMG', 'RL']), title: '총기 ② 저격·산탄·기관총·로켓', sub: '지정사수·저격·산탄·경기관총·판처파우스트 · 볼트·레버·펌프식은 한 발씩', wide: true },
         { lz: 2.0, ids: ['reddot', 'holo', 'x2', 'x3', 'x4', 'x6', 'comp', 'extmag', 'grip', 'a556', 'a762', 'a9', 'a12', 'a300', 'a45', 'a50'], title: '부착물 · 탄약', sub: '훈련장에서는 쏜 만큼 탄약이 자동으로 채워짐' },
-        { lz: 5.8, ids: ['bandage', 'firstaid', 'medkit', 'drink', 'frag', 'smoke', 'helm1', 'helm2', 'helm3', 'vest1', 'vest2', 'vest3', 'bag1', 'bag2', 'bag3'], title: '회복 · 투척 · 방어구', sub: '수류탄은 북쪽 벽 너머 더미에게 연습' },
+        { lz: 5.8, ids: ['bandage', 'firstaid', 'medkit', 'drink', 'pills', 'frag', 'impact', 'molotov', 'zonegren', 'flash', 'smoke', 'knife', 'machete', 'pan', 'crowbar', 'helm1', 'helm2', 'helm3', 'vest1', 'vest2', 'vest3', 'bag1', 'bag2', 'bag3'], title: '회복 · 투척 · 근접 무기 · 방어구', sub: '투척 무기는 북쪽 벽 너머 더미에게 연습 · 근접 무기는 하나만' },
       ];
       for (const R0 of rows) {
-        const n = R0.ids.length, gap = 3.0, x0 = -(n - 1) * gap / 2;
+        const n = R0.ids.length, gap = Math.min(3.0, 50 / n), x0 = -(n - 1) * gap / 2;   // v22: 물건이 많은 줄은 촘촘하게 (탁자가 바닥 밖으로 나가지 않게)
         F.box(x0 - 1.1, 0.12, R0.lz - 0.5, -x0 + 1.1, 0.86, R0.lz + 0.5, TABLE);
-        R0.ids.forEach((id, i) => { const d = ITEMS[id]; T.spots.push({ id, count: d.type === 'ammo' ? d.stack : ({ bandage: 5, firstaid: 3, medkit: 1, drink: 3, frag: 3, smoke: 3 }[id] || 1), x: cx + x0 + i * gap, y: y + 0.87, z: cz + R0.lz }); });
+        R0.ids.forEach((id, i) => { const d = ITEMS[id]; T.spots.push({ id, count: d.type === 'ammo' ? d.stack : ({ bandage: 5, firstaid: 3, medkit: 1, drink: 3, pills: 3, frag: 3, smoke: 3, impact: 3, molotov: 3, zonegren: 3, flash: 3 }[id] || 1), x: cx + x0 + i * gap, y: y + 0.87, z: cz + R0.lz }); });
         sign(cx, y + 2.7, cz + R0.lz - 0.55, Math.PI, R0.title, R0.sub, R0.wide ? 5.6 : 4.2, 1.15);
       }
       sign(cx, y + 3.15, cz - 9.75, Math.PI, '무기고', '총을 고른 뒤 북쪽 사격선으로', 5, 1.2);

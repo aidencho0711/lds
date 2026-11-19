@@ -106,6 +106,10 @@ const Models = (() => {
     med: (c, w, h) => { c.fillStyle = '#353b29'; c.fillRect(0, 0, w, h); c.strokeStyle = '#d8d2bc'; c.lineWidth = 4; c.strokeRect(8, 8, w - 16, h - 16); c.fillStyle = '#2d7a4b'; c.beginPath(); c.arc(h * 0.5, h * 0.5, h * 0.3, 0, TAU); c.fill(); c.fillStyle = '#f4f2ea'; const a = h * 0.06, b = h * 0.19; c.fillRect(h * 0.5 - a, h * 0.5 - b, a * 2, b * 2); c.fillRect(h * 0.5 - b, h * 0.5 - a, b * 2, a * 2); txt(c, 'MED KIT', w * 0.62, h * 0.38, 56, '#ece6d2', 800); txt(c, 'TRAUMA · FIELD', w * 0.62, h * 0.66, 28, '#c8c2ae'); },
     can: (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0d1a3a'); g.addColorStop(1, '#16306c'); c.fillStyle = g; c.fillRect(0, 0, w, h); for (const ox of [0, w / 2]) { c.fillStyle = '#f5c518'; c.beginPath(); c.moveTo(ox + w * 0.1, h * 0.12); c.lineTo(ox + w * 0.18, h * 0.12); c.lineTo(ox + w * 0.14, h * 0.45); c.lineTo(ox + w * 0.2, h * 0.45); c.lineTo(ox + w * 0.09, h * 0.88); c.lineTo(ox + w * 0.12, h * 0.55); c.lineTo(ox + w * 0.06, h * 0.55); c.closePath(); c.fill(); txt(c, 'VOLT', ox + w * 0.34, h * 0.45, 58, '#ffffff', 800); txt(c, 'RUSH', ox + w * 0.34, h * 0.68, 34, '#f5c518', 800); } c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(0, h * 0.06, w, 3); c.fillRect(0, h * 0.93, w, 3); },
     smoke: (c, w, h) => { c.fillStyle = '#d9dcd2'; c.fillRect(0, 0, w, h); c.fillStyle = '#2e6b3a'; c.fillRect(0, 0, w, h * 0.25); c.fillRect(0, h * 0.75, w, h * 0.25); for (const ox of [0, w / 2]) txt(c, 'SMOKE · GREEN', ox + w / 4, h / 2, 34, '#1d2a1f', 800); },
+    // v22 자기장 수류탄: 남색 바탕 + 하늘색 번개 + FIELD · 진통제 병 라벨 · 시체 상자 앞면 스텐실 (모두 자체 디자인)
+    zone: (c, w, h) => { c.fillStyle = '#16233e'; c.fillRect(0, 0, w, h); c.fillStyle = '#6fd2ff'; c.fillRect(0, h * 0.1, w, h * 0.08); c.fillRect(0, h * 0.82, w, h * 0.08); for (const ox of [0, w / 2]) { c.beginPath(); c.moveTo(ox + w * 0.1, h * 0.3); c.lineTo(ox + w * 0.16, h * 0.3); c.lineTo(ox + w * 0.13, h * 0.5); c.lineTo(ox + w * 0.18, h * 0.5); c.lineTo(ox + w * 0.09, h * 0.72); c.lineTo(ox + w * 0.11, h * 0.56); c.lineTo(ox + w * 0.07, h * 0.56); c.closePath(); c.fill(); txt(c, 'FIELD', ox + w * 0.33, h * 0.5, 44, '#dff4ff', 800); } },
+    pills: (c, w, h) => { c.fillStyle = '#f4f1ea'; c.fillRect(0, 0, w, h); c.fillStyle = '#c8322a'; c.fillRect(0, h * 0.14, w, h * 0.12); for (const ox of [0, w / 2]) { c.fillStyle = '#c8322a'; const cx = ox + w * 0.1, cy = h * 0.56, a = h * 0.05, b = h * 0.15; c.fillRect(cx - a, cy - b, a * 2, b * 2); c.fillRect(cx - b, cy - a, b * 2, a * 2); txt(c, 'PAIN', ox + w * 0.3, h * 0.47, 40, '#2a2420', 800); txt(c, 'RELIEF', ox + w * 0.3, h * 0.66, 30, '#2a2420', 700); } c.fillStyle = '#c8322a'; c.fillRect(0, h * 0.84, w, h * 0.05); },
+    kia: (c, w, h) => { c.fillStyle = '#46502f'; c.fillRect(0, 0, w, h); c.fillStyle = '#d8a21e'; c.fillRect(0, h * 0.12, w, h * 0.1); c.fillRect(0, h * 0.78, w, h * 0.1); txt(c, 'K.I.A.', w / 2, h * 0.5, 92, '#e7dfc2', 800); c.globalAlpha = 0.25; c.fillStyle = '#000'; for (let i = 0; i < 40; i++) c.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 6, 1 + Math.random() * 2); c.globalAlpha = 1; },
     patch3: (c, w, h) => { c.fillStyle = '#2b2c26'; c.fillRect(0, 0, w, h); c.strokeStyle = '#8a8470'; c.lineWidth = 4; c.strokeRect(5, 5, w - 10, h - 10); txt(c, 'ARMOR III', w / 2, h / 2, 46, '#d6d0b8', 800); },
     patch1: (c, w, h) => { c.fillStyle = '#20262e'; c.fillRect(0, 0, w, h); txt(c, 'ARMOR', w / 2, h / 2, 54, '#cfd6de', 800); },
     // 리콜 카드 인쇄면(투명 바탕): 안테나 그림 + RECALL + 일련번호
@@ -503,6 +507,88 @@ const Models = (() => {
       A(g, BX(0.014, 0.08, 0.005), M('gunmetal', 0x6a6c66), 0, 0.08, 0.032);
       A(g, TOR(0.011, 0.0018, 6, 16), M('metal', 0xa8a8a2), 0.018, 0.125, 0, 0, Math.PI / 2, 0);
     },
+    // ----- v22 투척 무기 -----
+    // 화염병: 짙은 녹색 유리병 + 목에 꽂은 천 심지(끝이 그을림)
+    molotov(g) {
+      const gl = M('metal', 0x2f4a26), cl = M('cloth', 0xd6ccb2);
+      A(g, CY(0.033, 0.031, 0.12, 18, 'y'), gl, 0, 0.06, 0);
+      const sh = SPH(0.033, 18, 8, 0, Math.PI / 2); A(g, sh, gl, 0, 0.12, 0);
+      A(g, CY(0.012, 0.015, 0.06, 12, 'y'), gl, 0, 0.168, 0);
+      A(g, CY(0.0145, 0.0145, 0.008, 12, 'y'), gl, 0, 0.198, 0);
+      A(g, CY(0.035, 0.035, 0.05, 18, 'y', true), M('paper', 0xc9b98e), 0, 0.07, 0);   // 종이 띠
+      A(g, CY(0.011, 0.013, 0.05, 8, 'y'), cl, 0, 0.215, 0); A(g, BX(0.02, 0.06, 0.004), cl, 0.012, 0.2, 0.012, 0.2, 0.5, 0.3);
+      A(g, SPH(0.012, 8, 6), M('cloth', 0x2a1a10), 0, 0.243, 0);
+    },
+    // 자기장 수류탄: 남색 원통 + 하늘색 띠 2개 + 위 신관·손잡이·고리
+    zonegren(g) {
+      A(g, CY(0.029, 0.029, 0.1, 18, 'y'), M('anod', 0x22314e), 0, 0.05, 0);
+      A(g, CY(0.0295, 0.0295, 0.05, 18, 'y', true), MT(ctex('lbl:zone', 512, 128, LABELS.zone)), 0, 0.052, 0);
+      for (const y of [0.012, 0.094]) A(g, CY(0.031, 0.031, 0.008, 18, 'y'), M('polymer', 0x6fd2ff), 0, y, 0);
+      A(g, CY(0.012, 0.014, 0.022, 12, 'y'), M('gunmetal', 0x5a5c58), 0, 0.111, 0);
+      A(g, BX(0.014, 0.075, 0.005), M('gunmetal', 0x6a6c66), 0, 0.075, 0.031);
+      A(g, TOR(0.011, 0.0018, 6, 16), M('metal', 0xa8a8a2), 0.018, 0.118, 0, 0, Math.PI / 2, 0);
+    },
+    // 섬광탄: 회색 원통에 구멍 두 줄 + 위 신관
+    flash(g) {
+      A(g, CY(0.026, 0.026, 0.105, 16, 'y'), M('gunmetal', 0x8a8e90), 0, 0.0525, 0);
+      for (let r = 0; r < 2; r++) for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + r * 0.5, y = 0.035 + r * 0.04; A(g, BX(0.012, 0.016, 0.004), M('polymer', 0x101010), Math.sin(a) * 0.0262, y, Math.cos(a) * 0.0262, 0, a, 0); }
+      A(g, CY(0.0262, 0.0262, 0.008, 16, 'y'), M('polymer', 0xd8d8d0), 0, 0.012, 0);
+      A(g, CY(0.011, 0.013, 0.02, 12, 'y'), M('gunmetal', 0x5a5c58), 0, 0.115, 0);
+      A(g, BX(0.014, 0.08, 0.005), M('gunmetal', 0x6a6c66), 0, 0.078, 0.028);
+      A(g, TOR(0.011, 0.0018, 6, 16), M('metal', 0xa8a8a2), 0.018, 0.12, 0, 0, Math.PI / 2, 0);
+    },
+    // 충격 수류탄: 세열보다 작은 몸통 + 주황 띠 + 위의 둥근 충격 신관(주황)
+    impact(g) {
+      const s = SPH(0.027, 16, 12); s.scale(1, 1.08, 1); A(g, s, M('polymer', 0x4d3a28), 0, 0.03, 0);
+      A(g, TOR(0.0272, 0.0035, 6, 20), M('polymer', 0xd88a2a), 0, 0.03, 0, Math.PI / 2, 0, 0);
+      A(g, CY(0.012, 0.014, 0.016, 12, 'y'), M('gunmetal', 0x5a5c58), 0, 0.066, 0);
+      A(g, SPH(0.014, 12, 8, 0, Math.PI / 2), M('polymer', 0xe0902a), 0, 0.074, 0);
+      A(g, BX(0.012, 0.055, 0.005), M('gunmetal', 0x6a6c66), 0, 0.045, 0.029, 0.15, 0, 0);
+      A(g, TOR(0.01, 0.0017, 6, 16), M('metal', 0xa8a8a2), 0.017, 0.07, 0, 0, Math.PI / 2, 0);
+    },
+    // 진통제: 흰 약병 + 라벨 + 주황 뚜껑
+    pills(g) {
+      A(g, CY(0.026, 0.026, 0.07, 18, 'y'), M('polymer', 0xf2efe8), 0, 0.035, 0);
+      A(g, CY(0.0265, 0.0265, 0.05, 18, 'y', true), MT(ctex('lbl:pills', 512, 128, LABELS.pills)), 0, 0.034, 0);
+      A(g, CY(0.022, 0.024, 0.006, 16, 'y'), M('polymer', 0xe8e4dc), 0, 0.073, 0);
+      A(g, CY(0.0285, 0.0285, 0.022, 18, 'y'), M('polymer', 0xe0742a), 0, 0.086, 0);
+      for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; A(g, BX(0.003, 0.02, 0.003), M('polymer', 0xc8621e), Math.sin(a) * 0.0285, 0.086, Math.cos(a) * 0.0285, 0, a, 0); }
+    },
+    // ----- v22 근접 무기: 손 좌표계 그대로 — 손잡이 가운데 = 원점, 날은 +z, 날(때리는 쪽)은 -y, 두께는 x -----
+    knife(g) {
+      const st = M('metal', 0xc9cdd1), wd = M('wood', 0x3a2416), br = M('brass', 0xc9a24a);
+      A(g, RB(0.021, 0.03, 0.115, 0.009), wd, 0, -0.004, -0.002);
+      for (const z of [-0.035, 0, 0.033]) A(g, CY(0.0035, 0.0035, 0.0225, 8, 'x'), br, 0, -0.004, z);
+      A(g, BX(0.018, 0.036, 0.012), st, 0, -0.006, 0.061);
+      A(g, PF([[0.066, 0.012], [0.2, 0.01], [0.262, 0.002], [0.272, -0.002], [0.24, -0.014], [0.17, -0.025], [0.1, -0.029], [0.066, -0.029]], 0.003, 0.0006), st);
+    },
+    machete(g) {
+      const bl = M('gunmetal', 0x5a5e62), ed = M('metal', 0xd6dade), rb = M('rubber', 0x151515);
+      A(g, RB(0.026, 0.034, 0.13, 0.011), rb, 0, -0.004, 0);
+      for (let i = 0; i < 5; i++) A(g, BX(0.0275, 0.036, 0.006), M('rubber', 0x222222), 0, -0.004, -0.048 + i * 0.024);
+      A(g, BX(0.028, 0.052, 0.008), rb, 0, -0.008, 0.069); A(g, BX(0.022, 0.018, 0.016), rb, 0, -0.022, -0.068, 0.5, 0, 0);
+      A(g, PF([[0.072, 0.016], [0.36, 0.019], [0.445, 0.014], [0.478, -0.004], [0.455, -0.026], [0.32, -0.04], [0.16, -0.036], [0.072, -0.026]], 0.0034, 0.0007), bl);
+      A(g, PF([[0.08, -0.021], [0.32, -0.031], [0.44, -0.021], [0.472, -0.006], [0.452, -0.027], [0.32, -0.041], [0.16, -0.037], [0.08, -0.027]], 0.0042, 0.0006), ed);
+    },
+    pan(g) {
+      const ir = M('gunmetal', 0x2c2d2f), ns = M('polymer', 0x1b1b1d), hd = M('polymer', 0x161616);
+      A(g, CY(0.0105, 0.0125, 0.19, 10, 'z'), hd, 0, 0.004, 0.015);
+      A(g, TOR(0.009, 0.003, 6, 12), hd, 0, 0.004, -0.088, 0, Math.PI / 2, 0);
+      A(g, BX(0.022, 0.012, 0.04), ir, 0, 0.006, 0.125);
+      A(g, CY(0.142, 0.128, 0.042, 30, 'y'), ir, 0, -0.008, 0.268);
+      A(g, CY(0.13, 0.13, 0.003, 30, 'y'), ns, 0, 0.0145, 0.268);
+      A(g, TOR(0.137, 0.0055, 6, 30), ir, 0, 0.013, 0.268, Math.PI / 2, 0, 0);
+      for (const x of [-0.01, 0.01]) A(g, SPH(0.004, 6, 4), M('metal', 0x8a8c8e), x, 0.009, 0.142);
+    },
+    crowbar(g) {
+      const rd = M('polymer', 0xa3241c), st = M('metal', 0x9a9ea2);
+      A(g, CY(0.0105, 0.0105, 0.52, 6, 'z'), rd, 0, 0, 0.12);
+      A(g, CY(0.0105, 0.0105, 0.08, 6, 'z'), st, 0, 0, -0.175);
+      A(g, BX(0.026, 0.008, 0.045), st, 0, -0.004, -0.232, 0.25, 0, 0);
+      const hk = TOR(0.045, 0.0105, 6, 14, Math.PI); hk.rotateZ(Math.PI / 2); hk.rotateY(Math.PI / 2); A(g, hk, rd, 0, -0.045, 0.38);
+      A(g, BX(0.024, 0.01, 0.045), st, 0, -0.09, 0.362, -0.12, 0, 0);
+      A(g, BX(0.008, 0.012, 0.03), M('gunmetal', 0x2a2c2e), 0, -0.09, 0.345);
+    },
   };
   function buildDisplay(id, att) {
     const d = ITEMS[id];
@@ -523,6 +609,10 @@ const Models = (() => {
     frag: (o) => { o.rotation.z = 1.35; },
     smoke: (o) => { o.rotation.z = Math.PI / 2; },
     drink: (o) => { o.rotation.z = Math.PI / 2; },
+    // v22: 원통형 투척물·약병은 눕히고, 칼·쇠지렛대는 날 옆면이 바닥에 닿게 (프라이팬은 그대로 평평)
+    molotov: (o) => { o.rotation.z = Math.PI / 2; }, zonegren: (o) => { o.rotation.z = Math.PI / 2; }, flash: (o) => { o.rotation.z = Math.PI / 2; }, pills: (o) => { o.rotation.z = Math.PI / 2; },
+    impact: (o) => { o.rotation.z = 1.35; },
+    melee: (o) => { o.rotation.z = Math.PI / 2; }, pan: () => {},
   };
   const attKey = (att) => att ? [att.scope, att.muzzle, att.mag, att.grip].map((x) => x || '').join(',') : '';
   const _box = new THREE.Box3(), _c = new THREE.Vector3(), _s = new THREE.Vector3();
@@ -542,7 +632,8 @@ const Models = (() => {
 
   // ---------- 아이콘 ----------
   let iconScene = null, iconCam = null, iconRT = null;
-  const VIEW = { gold: [0.7, 0.9, 1.1], weapon: [-1, 0.14, -0.05], att: [-1, 0.42, 0.4], ammo: [0.75, 0.9, 1.1], heal: [0.65, 1.0, 1.0], boost: [0.6, 0.35, 1.0], vest: [0.4, 0.22, 1], helmet: [0.85, 0.45, 1], bag: [0.6, 0.3, 1], throw: [0.7, 0.55, 1], bandage: [0.25, 1.4, 0.6], firstaid: [0.5, 0.9, 1], card: [0.2, 1.5, 0.75] };
+  const VIEW = { gold: [0.7, 0.9, 1.1], weapon: [-1, 0.14, -0.05], att: [-1, 0.42, 0.4], ammo: [0.75, 0.9, 1.1], heal: [0.65, 1.0, 1.0], boost: [0.6, 0.35, 1.0], vest: [0.4, 0.22, 1], helmet: [0.85, 0.45, 1], bag: [0.6, 0.3, 1], throw: [0.7, 0.55, 1], bandage: [0.25, 1.4, 0.6], firstaid: [0.5, 0.9, 1], card: [0.2, 1.5, 0.75],
+    melee: [-1, 0.32, -0.04], pan: [-0.35, 1, -0.08], molotov: [0.7, 0.4, 1], pills: [0.6, 0.45, 1] };
   function setupIcon() {
     iconScene = new THREE.Scene();
     iconScene.add(new THREE.HemisphereLight(0xe2ebf3, 0x2a2622, 0.6));
@@ -633,7 +724,7 @@ const Models = (() => {
       return (ITEMS[id].type === 'weapon' && ICON[iconKey(id, null)]) || '';
     }
     try {
-      const d = ITEMS[id], wide = d.type === 'weapon';
+      const d = ITEMS[id], wide = wideItem(id);
       ICON[key] = renderIcon(buildDisplay(id, att), wide ? 320 : 160, wide ? 128 : 160, VIEW[id] || VIEW[d.type] || VIEW.ammo);
     } catch (e) { console.warn('아이콘 렌더 실패', id, e); ICON[key] = ''; }
     return ICON[key];
@@ -646,7 +737,7 @@ const Models = (() => {
     if (ICON[key] !== undefined) { finish(key, e, ICON[key]); return; }
     inflight.set(key, e);
     try {
-      const d = ITEMS[e.id], wide = d.type === 'weapon';
+      const d = ITEMS[e.id], wide = wideItem(e.id);
       renderIconAsync(buildDisplay(e.id, e.att), wide ? 320 : 160, wide ? 128 : 160, VIEW[e.id] || VIEW[d.type] || VIEW.ammo, (url) => finish(key, e, url));
     } catch (er) { console.warn('아이콘 렌더 실패', e.id, er); finish(key, e, ''); }
   }
@@ -690,6 +781,29 @@ const Models = (() => {
       A(g, RB(0.28, 0.012, 0.16, 0.01), bk, 0.3, 0.834, 0.25);
     });
   }
+  // v22 시체 상자: 올리브색 금속 사물함 (앞면 K.I.A. 스텐실 · 양옆 손잡이 · 모서리 보강) — 뚜껑은 따로(userData.lid, 뒤 모서리 경첩) · 다 비우면 열림
+  function deathCrate() {
+    const out = new THREE.Group();
+    out.add(cluster('dcrate', (g) => {
+      const od = M('anod', 0x46502f), dk = M('anod', 0x2c321f), st = M('gunmetal', 0x3a3d3a);
+      A(g, RB(0.84, 0.34, 0.46, 0.025, 0.008), od, 0, 0.17, 0);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) A(g, RB(0.06, 0.35, 0.06, 0.01, 0.004), dk, sx * 0.405, 0.172, sz * 0.205);
+      A(g, BX(0.85, 0.03, 0.47), dk, 0, 0.02, 0);
+      for (const sx of [-1, 1]) { A(g, BX(0.012, 0.035, 0.16), st, sx * 0.43, 0.24, 0); A(g, BX(0.03, 0.012, 0.16), st, sx * 0.44, 0.26, 0); }
+      A(g, PL(0.42, 0.21), MT(ctex('lbl:kia', 384, 192, LABELS.kia)), 0, 0.17, 0.2315);
+      for (const sx of [-0.25, 0.25]) A(g, BX(0.05, 0.05, 0.016), st, sx, 0.3, 0.235);
+      A(g, PL(1.15, 0.8), CLS.shadow, 0, 0.004, 0, -Math.PI / 2);
+    }));
+    const lid = new THREE.Group(); lid.position.set(0, 0.34, -0.23); out.add(lid);
+    const lm = cluster('dcrate:lid', (g) => {
+      const od = M('anod', 0x4c5634), dk = M('anod', 0x2c321f);
+      A(g, RB(0.86, 0.05, 0.47, 0.02, 0.008), od, 0, 0.025, 0.23);
+      for (const x of [-0.25, 0, 0.25]) A(g, BX(0.06, 0.012, 0.44), dk, x, 0.052, 0.23);
+      A(g, BX(0.2, 0.02, 0.02), M('gunmetal', 0x3a3d3a), 0, 0.03, 0.465);
+    });
+    lid.add(lm); out.userData.lid = lid;
+    return out;
+  }
   function canopy() {
     return cluster('canopy', (g) => {
       const n = 12, cols = [0xd65a1e, 0xe9e2cf];
@@ -699,6 +813,6 @@ const Models = (() => {
   }
   const scopeInfo = (id) => SC[id] || null;
   const kit = { A, BX, CY, RB, PF, SPH, TOR, PL, rail, trigger, magPts, tube, flip, M, cart };
-  return { init, buildGun, ground, display: buildDisplay, icon, iconKey, prewarm, pump, idle, hand, sleeve, casing, scopeInfo, cluster, M, crate, canopy, kit, _render: renderIcon, get env() { return ENV; }, GUNS, CLS };
+  return { init, buildGun, ground, display: buildDisplay, icon, iconKey, prewarm, pump, idle, hand, sleeve, casing, scopeInfo, cluster, M, crate, deathCrate, canopy, kit, _render: renderIcon, get env() { return ENV; }, GUNS, CLS };
 })();
 function buildGunMesh(id, att, skin) { return Models.buildGun(id, att, skin); }

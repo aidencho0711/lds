@@ -59,7 +59,8 @@ class Brain {
   perceive() {
     const c = this.c, d = this.d; c.eye(_e);
     for (const [o, r] of this.aware) { r.visible = false; if (!o.alive) this.aware.delete(o); }
-    for (const o of CHARS) {
+    const blind = c.blindT > G.time;   // v22 섬광탄: 눈이 먼 동안은 아무것도 못 본다 (소리는 들림)
+    if (!blind) for (const o of CHARS) {
       if (o === c || !o.alive || o.mode !== 'ground' || o.team === c.team) continue;
       const dx = o.pos.x - c.pos.x, dz = o.pos.z - c.pos.z, dist = Math.hypot(dx, dz);
       let range = d.view * (o.stance === 'prone' ? 0.5 : o.stance === 'crouch' ? 0.8 : 1);
@@ -267,11 +268,12 @@ class Brain {
       }
       case 'ammo': return inv.weapons.some(w => w && ITEMS[w.id].ammo === it.id) && inv.count(it.id) < 150 && inv.room(it.id) > 5 ? 30 : 0;
       case 'heal': return inv.healCount() < 9 && inv.room(it.id) > 0 ? 22 : 0;
-      case 'boost': return inv.count('drink') < 2 && inv.room(it.id) > 0 ? 8 : 0;
+      case 'boost': return inv.count(it.id) < 2 && inv.room(it.id) > 0 ? (it.id === 'pills' ? 10 : 8) : 0;
+      case 'melee': return inv.melee ? 0 : this.usableWeapons().length ? 8 : 30;   // v22 근접 무기 (맨손이면 꽤 원함)
       case 'vest': case 'helmet': { const g = inv.gear[d.type]; return !g ? 45 : (d.lvl > ITEMS[g.id].lvl ? 32 : 0); }
       case 'bag': { const g = inv.gear.bag; return !g ? 26 : (d.lvl > ITEMS[g.id].lvl ? 20 : 0); }
       case 'att': return inv.weapons.some(w => w && attFits(it.id, w.id) && (!w.att[d.slot] || (d.slot === 'scope' && ITEMS[w.att.scope].zoom < d.zoom))) ? 12 : 0;
-      case 'throw': return (it.id === 'frag' ? inv.count('frag') < 2 : inv.count('smoke') < 1) && inv.room(it.id) > 0 ? 9 : 0;
+      case 'throw': return inv.count(it.id) < (it.id === 'frag' ? 2 : 1) && inv.room(it.id) > 0 ? (it.id === 'flash' ? 4 : 9) : 0;
       case 'card': return Recall.canTake(this.c, it) && Recall.useful(it) ? 70 : 0;   // 팀원 리콜 카드
     }
     return 0;
@@ -423,7 +425,8 @@ class Brain {
     // 최근에 본 적 → 수색 / 무기 상황 따라 판단
     if (tgt && G.time - tr.last < 2.5 && usable && !lootPhase && !cautious) {
       if (this.state === 'COVER' && this.coverT < 3) return;
-      if (c.inv.count('frag') && Math.random() < d.grenade && this.grenadeCd <= 0 && tr.dist > 10 && tr.dist < 32) { this.throwAt(tr); }
+      const nt = this.grenadeCd <= 0 ? this.nadePick(tr.dist) : null;
+      if (nt && Math.random() < d.grenade) this.throwAt(tr, nt);
       this.investigate = { x: tr.x, z: tr.z, t: G.time };
     }
     if (this.state === 'RETREAT' && this.stateT < (usable ? 4 : 2.5)) return;
@@ -473,7 +476,7 @@ class Brain {
     }
     const ivOk = this.investigate && (!pm || this.investigate.kind === 'order' || Math.hypot(this.investigate.x - pm.pos.x, this.investigate.z - pm.pos.z) < 35);
     if (ivOk && G.time - this.investigate.t < 14 && (usable || this.investigate.kind === 'crate') && !cautious) { this.setState('MOVE'); return; }
-    if (c.boost < 40 && c.inv.count('drink') && !tgt && c.hp < 100 && Math.random() < 0.3) this.startBoost();
+    if (c.boost < 40 && (c.inv.count('drink') || c.inv.count('pills')) && !tgt && c.hp < 100 && Math.random() < 0.3) this.startBoost();
     if (recovering) {
       // 회복할 게 없으면 바로 옆(12m) 물건만 줍고, 아니면 최근 본 적을 피해 엄폐한 채 버틴다
       if (this.state === 'LOOT' && this.lootTarget && this.lootTarget.alive && this.stateT < 8) return;
@@ -628,23 +631,31 @@ class Brain {
     const c = this.c, id = c.inv.bestHeal(c.hp); if (!id || c.heal) return;
     beginHeal(c, id);
   }
-  startBoost() { const c = this.c; if (c.heal) return; beginHeal(c, 'drink'); }
-  throwAt(tr) {
-    const c = this.c; c.eye(_e);
+  startBoost() { const c = this.c, id = c.inv.bestBoost(c.boost); if (c.heal || !id) return; beginHeal(c, id); }
+  // v22 던질 투척 무기 고르기 (가진 것 중 거리에 맞는 것을 무작위로): 세열 10~32m · 충격·화염병·자기장 6~26m
+  nadePick(dist) {
+    const inv = this.c.inv, ok = [];
+    if (inv.count('frag') && dist > 10 && dist < 32) ok.push('frag', 'frag');
+    for (const id of ['impact', 'molotov', 'zonegren']) if (inv.count(id) && dist > 6 && dist < 26) ok.push(id);
+    return ok.length ? pick(ok) : null;
+  }
+  // 던지기: 0.45초 젖혀 겨눈 뒤(보임) 팔을 휘둘러 던진다 (06_combat.js queueThrow)
+  throwAt(tr, type = 'frag') {
+    const c = this.c; if (c.nadeQ || !c.inv.count(type)) return;
     const dx = tr.x - c.pos.x, dz = tr.z - c.pos.z, dist = Math.hypot(dx, dz);
     const power = clamp(Math.sqrt(dist * GRAVITY * 0.9) * 0.82, 8, 22);
     _d.set(dx / dist * 0.8, 0.45, dz / dist * 0.8).normalize();
-    // 수류탄 신관 7초: 봇은 핀을 뽑고 잠시 쥐었다가(쿠킹) 던진 것으로 친다 — 숙련도에 따라 남은 시간 2.6~5.8초
-    const left = this.d.key === 'extreme' ? rnd(2.0, 2.8) : this.d.key === 'hard' ? rnd(2.6, 3.6) : this.d.key === 'easy' ? rnd(4.8, 5.8) : rnd(3.4, 4.6);
+    // 수류탄 신관 7초: 봇은 핀을 뽑고 잠시 쥐었다가(쿠킹) 던진 것으로 친다 — 숙련도에 따라 남은 시간 2.6~5.8초 (+ 젖히고 휘두르는 0.6초)
+    const left = (type === 'frag' ? (this.d.key === 'extreme' ? rnd(2.0, 2.8) : this.d.key === 'hard' ? rnd(2.6, 3.6) : this.d.key === 'easy' ? rnd(4.8, 5.8) : rnd(3.4, 4.6)) : FUSE[type]) + 0.6;
     if (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 20) Audio.pin(c.pos, false);
-    if (throwItem(c, 'frag', _e, _d, power, left)) this.grenadeCd = 8;
+    queueThrow(c, type, _d, power, left, 0.45); this.grenadeCd = 8;
   }
   throwSmoke(x, z) {
-    const c = this.c; c.eye(_e);
+    const c = this.c; if (c.nadeQ || !c.inv.count('smoke')) return;
     const dx = x - c.pos.x, dz = z - c.pos.z, dist = Math.max(3, Math.hypot(dx, dz));
     const power = clamp(Math.sqrt(dist * GRAVITY * 0.9) * 0.82, 6, 20);
     _d.set(dx / dist * 0.8, 0.45, dz / dist * 0.8).normalize();
-    throwItem(c, 'smoke', _e, _d, power, rnd(1.4, 2.0));
+    queueThrow(c, 'smoke', _d, power, rnd(1.4, 2.0) + 0.5, 0.35);
   }
   // 엄폐 지점 탐색: 위협 방향에서 시야가 막히는 근처 지점
   findCover(threat) {
@@ -1005,6 +1016,13 @@ class Brain {
         break;
       }
     }
+    // v22 불바다·자기장 수류탄 안이면 바깥쪽으로 뛰어 빠져나간다 (회복도 멈춤)
+    const hz = Hazard.list.length ? Hazard.inside(c.pos.x, c.pos.y, c.pos.z, 0.6) : null;
+    if (hz) {
+      let ax = c.pos.x - hz.x, az = c.pos.z - hz.z; const L = Math.hypot(ax, az);
+      if (L < 0.05) { ax = Math.sin(c.yaw + Math.PI); az = Math.cos(c.yaw + Math.PI); } else { ax /= L; az /= L; }
+      if (Nav.isFree(c.pos.x + ax * 1.2, c.pos.z + az * 1.2)) { wish = [ax, az]; speed = 6; wantStance = 'stand'; if (c.heal) c.heal = null; }
+    }
     // 자세 (엎드리기/앉기)
     if (c.stance !== wantStance && !c.inWater) {
       if (wantStance !== 'stand' || Nav.isFree(c.pos.x, c.pos.z) || c.stance === 'prone') c.stance = wantStance;
@@ -1074,10 +1092,12 @@ class Brain {
   combat(dt, tgt, tr) {
     const c = this.c, d = this.d;
     if (!c.weapon || (c.weapon.mag === 0 && c.inv.count(ITEMS[c.weapon.id].ammo) === 0)) {
-      // 맨손: 붙어서 주먹
+      // 맨손: 붙어서 주먹 · v22 근접 무기가 있으면 꺼내 휘두른다 (쓸 총이 하나도 없을 때)
+      if (c.weapon && c.inv.melee && !this.usableWeapons().length) { c.inv.cur = -1; c.equipT = 0.35; c.reloadT = 0; c.cycle = null; c.setVisibleGear(); }
       if (!tr.visible) return;
       this.faceToward(tgt.pos.x, tgt.pos.y + 1.2, tgt.pos.z, dt, 8);
-      if (tr.dist < 1.8) { _d.set(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch)); melee(c, _d); }
+      const reach = c.melee ? ITEMS[c.melee].reach - 0.2 : 1.8;
+      if (tr.dist < reach) { _d.set(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch)); melee(c, _d); }
       return;
     }
     // 추적 시간이 길수록 조준 안정

@@ -96,6 +96,7 @@ const DEFAULT_SETTINGS = {
   online: true,             // v21: 온라인 매칭 (출격 옆 버튼, 기본 켬) — 끄면 AI 와 바로 시작 (10_mm.js)
   arena: 'random',          // v22: 데스매치·대결 아레나 (무작위 · 컨테이너 야드 · 녹슨 공장 · 모래 사원 · 골목 마을)
   watchOk: true,            // v22: 친구가 내 경기를 관전할 수 있음 (10_watch.js · 설정 '친구 · 관전')
+  autoPick: true,           // v22: 자동 줍기 (09_player.js autoPickup)
 };
 let SETTINGS = Object.assign({}, DEFAULT_SETTINGS, store.get('settings', {}));
 delete SETTINGS.outfit;   // v14: 옛 복장 번호는 창고 장착 정보(look)로 대체

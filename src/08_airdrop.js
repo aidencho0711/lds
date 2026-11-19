@@ -4,7 +4,7 @@
 //  AWM·MG3·SLR·AMR·판처파우스트(v21, 45%로 덤)는 여기서만 나온다. 지도/미니맵에 위치 표시, 봇도 보고 찾아간다(판처파우스트는 봇이 줍지 않음).
 // ============================================================
 const Airdrop = (() => {
-  let scene = null, list = [], planes = [], lastKey = '', smokeTex = null;
+  let scene = null, list = [], planes = [], lastKey = '', smokeTex = null, seq = 0;
   const FALL = 6.5, ALT = 210, PLANE_SPEED = 72;
   function tex() {
     if (smokeTex) return smokeTex;
@@ -59,9 +59,10 @@ const Airdrop = (() => {
     const i0 = clamp(Math.floor((b.x0 + HALF) / CG), 0, CGN - 1), i1 = clamp(Math.floor((b.x1 + HALF) / CG), 0, CGN - 1), j0 = clamp(Math.floor((b.z0 + HALF) / CG), 0, CGN - 1), j1 = clamp(Math.floor((b.z1 + HALF) / CG), 0, CGN - 1);
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) gridPush(W.grid, j * CGN + i, b);
     // 내용물: 보급 전용 무기 1정 + 맞는 탄 + 장비·조준경·회복 (파티원 기기는 방장이 만든 것을 받는다)
+    //  v22: 상자 위에 올려 두지 않고 상자 안에 (bx = 'a<번호>' — 줍기 목록에 '보급 상자'로 묶여 보인다)
     if (d.remote) { addSmoke(d); return; }
-    const top = d.gy + 0.845, spots = [[-0.35, -0.2], [0.05, -0.22], [0.38, -0.2], [-0.35, 0.2], [0.05, 0.22], [0.38, 0.2], [-0.1, 0.0], [0.25, 0.0]];
-    let k = 0; const put = (id, n, inst) => { const [ox, oz] = spots[k++ % spots.length]; const it = spawnItem(scene, id, n, d.x + ox, top, d.z + oz, inst); it.drop = 1; d.items.push(it); };
+    const key = 'a' + (seq++) + '_' + Math.round(d.x) + '_' + Math.round(d.z), y0 = d.gy + 0.3;
+    const put = (id, n, inst) => { const it = spawnItem(scene, id, n, d.x, y0, d.z, inst, undefined, key); it.drop = 1; d.items.push(it); };
     const gun = weightedPick([['awm', 22], ['amr', 14], ['groza', 22], ['mg3', 20], ['slr', 22]]);   // v20: AMR · Groza 추가
     put(gun, 1, newWeapon(gun, ITEMS[gun].mag));
     const am = ITEMS[gun].ammo; for (let i = 0; i < (gun === 'mg3' ? 3 : 2); i++) put(am, ITEMS[am].stack);
@@ -71,6 +72,8 @@ const Airdrop = (() => {
     put(Math.random() < 0.55 ? 'medkit' : 'firstaid', 1);
     if (gun === 'slr' && Math.random() < 0.5) put('extmag', 1);
     if (Math.random() < 0.45) put('pzf', 1, newWeapon('pzf', 1));   // v21: 판처파우스트 (보급상자에서만, 45%)
+    if (Math.random() < 0.6) put(Math.random() < 0.5 ? 'pills' : 'drink', Math.random() < 0.5 ? 2 : 1);   // v22 부스트
+    if (Math.random() < 0.45) put(weightedPick([['molotov', 40], ['impact', 30], ['zonegren', 30]]), 1);   // v22 투척 무기
     if (Math.random() < 0.5 && !G.training) put('gold', Math.round(rnd(40, 80)));
     addSmoke(d);
   }

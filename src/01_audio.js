@@ -376,11 +376,18 @@ const Audio = (() => {
     pk_bag: (o, b) => { swish(o, b, 0, 0.25, 400, 1100, 0.45); thunk(o, b, 0.15, 110, 0.1, 0.6); zipper(o, b, 0.24, 0.3, 2300, 0.24); },
     pk_att: (o, b) => { swish(o, b, 0, 0.1, 900, 1600, 0.2); metal(o, b, 0.07, [3200, 5200], 0.04, 0.55); thunk(o, b, 0.07, 260, 0.04, 0.35); metal(o, b, 0.14, [2600, 4400], 0.05, 0.4); },
     pk_nade: (o, b) => { swish(o, b, 0, 0.12, 700, 1400, 0.25); thunk(o, b, 0.08, 180, 0.06, 0.55); metal(o, b, 0.08, [3000, 4800, 7200], 0.07, 0.45); metal(o, b, 0.16, [5200, 7900], 0.04, 0.2); },
+    // v22: 칼·마체테·쇠지렛대(금속 울림) · 프라이팬(낮은 쇳소리) · 진통제(알약 달그락) · 화염병(유리 쨍 + 출렁)
+    pk_blade: (o, b) => { swish(o, b, 0, 0.14, 700, 1500, 0.3); thunk(o, b, 0.08, 240, 0.04, 0.3); metal(o, b, 0.08, [2800, 4600, 6900], 0.22, 0.5); },
+    pk_pan: (o, b) => { swish(o, b, 0, 0.14, 500, 1200, 0.3); thunk(o, b, 0.1, 150, 0.12, 0.7); metal(o, b, 0.1, [690, 1130, 1870, 2610], 0.38, 0.55); },
+    pk_pills: (o, b) => { swish(o, b, 0, 0.1, 800, 1500, 0.2); for (let i = 0; i < 9; i++) thunk(o, b, 0.05 + i * 0.017 + Math.random() * 0.01, 900 + Math.random() * 700, 0.015, 0.28); },
+    pk_bottle: (o, b) => { swish(o, b, 0, 0.12, 700, 1400, 0.22); metal(o, b, 0.08, [2100, 3500, 5200], 0.12, 0.45); nz(o, b, 0.1, 0.28, 'lowpass', 600, 300, 2, 0.25, 0.04); },
     // 회복: 붕대(찢고 감기) / 구급상자(지퍼·테이프) / 의료 키트(걸쇠·주사) / 음료(따기·마시기)
     heal_bandage: (o, b) => { crinkle(o, b, 0, 0.18, 0.4); velcro(o, b, 0.22, 0.28, 0.36); for (let i = 0; i < 3; i++) swish(o, b, 0.65 + i * 0.42, 0.3, 700, 1500, 0.32); },
     heal_kit: (o, b) => { zipper(o, b, 0, 0.42, 2400, 0.3); swish(o, b, 0.5, 0.3, 600, 1300, 0.35); crinkle(o, b, 0.8, 0.3, 0.3); velcro(o, b, 1.25, 0.25, 0.3); },
     heal_medkit: (o, b) => { metal(o, b, 0, [2000, 3400], 0.04, 0.55); metal(o, b, 0.07, [2100, 3500], 0.04, 0.5); thunk(o, b, 0.16, 140, 0.1, 0.7); swish(o, b, 0.3, 0.35, 500, 1200, 0.35); metal(o, b, 0.9, [4200, 6900], 0.03, 0.35); nz(o, b, 0.95, 0.4, 'highpass', 5000, 5000, 0.7, 0.12, 0.05); },
     heal_drink: (o, b) => { metal(o, b, 0, [1900, 3300], 0.03, 0.6); nz(o, b, 0.012, 0.03, 'highpass', 2500, 2500, 0.7, 0.6, 0.0005); nz(o, b, 0.02, 0.7, 'highpass', 4200, 6000, 0.7, 0.22, 0.01); for (const t of [0.95, 1.38, 1.8]) gulp(o, b, t, 0.55); },
+    // v22 진통제: 뚜껑 돌려 열기 → 흔들기(달그락) → 털어 넣고 삼키기
+    heal_pills: (o, b) => { scrape(o, b, 0, 0.18, 1800, 2600, 0.25); thunk(o, b, 0.2, 700, 0.02, 0.45); for (let i = 0; i < 16; i++) thunk(o, b, 0.35 + i * 0.055 + Math.random() * 0.02, 1000 + Math.random() * 700, 0.014, 0.22); swish(o, b, 1.6, 0.2, 700, 1300, 0.25); gulp(o, b, 2.05, 0.5); },
     heal_done: (o, b) => { swish(o, b, 0, 0.2, 600, 1300, 0.3); thunk(o, b, 0.12, 180, 0.05, 0.35); },
     // 넘기·착지
     vault: (o, b) => { swish(o, b, 0, 0.3, 400, 1400, 0.5); thunk(o, b, 0.09, 170, 0.06, 0.6); nz(o, b, 0.09, 0.012, 'highpass', 2200, 2200, 0.8, 0.35, 0.0005); swish(o, b, 0.22, 0.2, 900, 600, 0.25); },
@@ -391,7 +398,7 @@ const Audio = (() => {
     spoon: (o, b) => { swish(o, b, 0, 0.22, 500, 1600, 0.45); metal(o, b, 0.03, [2400, 4700, 6900], 0.18, 0.45); },
     nadeBounce: (o, b) => { thunk(o, b, 0, 240, 0.05, 0.7); metal(o, b, 0, [1700, 2900, 4300], 0.06, 0.45); },
   };
-  const MECH_SEC = { heal_bandage: 1.9, heal_kit: 1.7, heal_medkit: 1.45, heal_drink: 2.05, vault: 0.5, land: 0.3, roll: 0.55, pin: 0.25, spoon: 0.35, pk_armor: 0.55, pk_bag: 0.6, pk_gun: 0.4, pk_cloth: 0.32, pk_kit: 0.36, pk_medkit: 0.36, pk_can: 0.36 };
+  const MECH_SEC = { heal_bandage: 1.9, heal_kit: 1.7, heal_medkit: 1.45, heal_drink: 2.05, heal_pills: 2.4, vault: 0.5, land: 0.3, roll: 0.55, pin: 0.25, spoon: 0.35, pk_armor: 0.55, pk_bag: 0.6, pk_gun: 0.4, pk_cloth: 0.32, pk_kit: 0.36, pk_medkit: 0.36, pk_can: 0.36, pk_blade: 0.4, pk_pan: 0.55, pk_pills: 0.3, pk_bottle: 0.4 };
   Object.assign(MECH, SFX);
   async function renderBank() {
     if (!(window.OfflineAudioContext || window.webkitOfflineAudioContext)) return;
@@ -507,6 +514,68 @@ const Audio = (() => {
       const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.55, t + 0.055); g.gain.exponentialRampToValueAtTime(0.001, t + 0.17);
       src.connect(f); f.connect(g); g.connect(out); src.start(t, Math.random()); src.stop(t + 0.2);
     },
+    // v22 근접 무기: swing = 휘두르는 바람(무거울수록 낮고 길게) · hit = 사람 맞음(칼: 베는 소리 · 팬: 쾅 울림 · 쇠지렛대: 둔탁 + 쇳소리) · wall = 벽·차에 맞음 · draw = 꺼내기
+    melee(kind, id, pos, own) {
+      if (!ctx) return;
+      const st = (ITEMS[id] && ITEMS[id].style) || 'stab', heavy = st === 'bash' || st === 'chop', range = kind === 'swing' || kind === 'draw' ? 26 : 50;
+      if ((!own && pos && geom(pos).d > range) || !voice(0.5)) return;
+      const out = spatial(own ? null : pos, kind === 'hit' ? 0.7 : kind === 'wall' ? 0.55 : own ? 0.3 : 0.38, range); if (!out) return;
+      const t = ctx.currentTime, j = 0.92 + Math.random() * 0.16;
+      if (kind === 'swing') {
+        const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.playbackRate.value = j;
+        const f = ctx.createBiquadFilter(), g = ctx.createGain(), f0 = heavy ? 300 : st === 'slash' ? 520 : 700, f1 = heavy ? 1100 : st === 'slash' ? 2200 : 2600, du = heavy ? 0.32 : st === 'slash' ? 0.24 : 0.16;
+        f.type = 'bandpass'; f.Q.value = 1.4; f.frequency.setValueAtTime(f0 * j, t); f.frequency.exponentialRampToValueAtTime(f1 * j, t + du * 0.45); f.frequency.exponentialRampToValueAtTime(f0 * 1.2 * j, t + du);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(heavy ? 0.75 : 0.6, t + du * 0.4); g.gain.exponentialRampToValueAtTime(0.001, t + du);
+        src.connect(f); f.connect(g); g.connect(out); src.start(t, Math.random()); src.stop(t + du + 0.05);
+        if (st === 'slash' || st === 'stab') tone(out, t + du * 0.3, du * 0.6, 'sine', 5200 * j, 4800 * j, 0.025);   // 날 바람 소리
+        return;
+      }
+      if (kind === 'draw') {
+        if (st === 'bash') { tone(out, t, 0.08, 'sine', 180, 120, 0.4); noise(out, t, 0.06, 'bandpass', 1200, 2, 0.25); }
+        else { const src = ctx.createBufferSource(); src.buffer = noiseBuf; const f = ctx.createBiquadFilter(), g = ctx.createGain(); f.type = 'bandpass'; f.Q.value = 6; f.frequency.setValueAtTime(3200, t); f.frequency.linearRampToValueAtTime(5200, t + 0.2); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.35, t + 0.05); g.gain.exponentialRampToValueAtTime(0.001, t + 0.22); src.connect(f); f.connect(g); g.connect(out); src.start(t, Math.random()); src.stop(t + 0.25); tone(out, t + 0.2, 0.5, 'sine', 4700, 4650, 0.05); }
+        return;
+      }
+      if (kind === 'hit') {
+        tone(out, t, 0.14, 'sine', (heavy ? 95 : 120) * j, 48, heavy ? 1.1 : 0.8); noise(out, t, 0.09, 'lowpass', 1100 * j, 0.9, 0.9);
+        if (st === 'bash') { for (const [f, a, d] of [[310, 0.5, 0.9], [742, 0.3, 0.7], [1210, 0.2, 0.5], [1890, 0.12, 0.35]]) tone(out, t, d, 'sine', f * j, f * j * 0.995, a); }   // 프라이팬: 쾅 울림
+        else if (st === 'chop') { for (const [f, a] of [[1450, 0.12], [2380, 0.08]]) tone(out, t + 0.005, 0.25, 'sine', f * j, f * j, a); }
+        else { noise(out, t, 0.12, 'highpass', 2600 * j, 0.8, 0.5); noise(out, t + 0.02, 0.15, 'bandpass', 900 * j, 1.5, 0.35); }   // 베는 소리
+        return;
+      }
+      // wall: 벽·차량
+      noise(out, t, 0.05, 'highpass', 3000, 0.8, 0.6);
+      if (st === 'bash') { for (const [f, a, d] of [[260, 0.4, 0.7], [640, 0.25, 0.5], [1100, 0.15, 0.4]]) tone(out, t, d, 'sine', f * j, f * j, a); }
+      else for (const [f, a, d] of [[2900, 0.18, 0.35], [4600, 0.1, 0.25], [6900, 0.06, 0.2]]) tone(out, t, d, 'sine', f * j, f * j, a);
+    },
+    // v22 섬광탄: 아주 큰 '팡' (높은 터짐 + 짧은 쿵) · earRing: 가까이서 맞으면 귀 울림(삐—)
+    flashbang(pos) {
+      if (!ctx || !voice(1.2)) return;
+      const r = geom(pos), delay = Math.min(r.d / 343, 1.5), out = chain(1.5 / (1 + r.d / 25), r.pan, clamp(14000 / (1 + r.d / 70), 500, 14000), clamp(0.5 + r.d / 150, 0.5, 1.3), false), t = ctx.currentTime + delay;
+      noise(out, t, 0.06, 'highpass', 2500, 0.6, 1.3); noise(out, t, 0.3, 'bandpass', 1800, 0.6, 0.8); tone(out, t, 0.25, 'sine', 140, 50, 1.0); noise(out, t + 0.04, 1.2, 'lowpass', 500, 0.7, 0.35);
+    },
+    earRing(dur, k) {
+      if (!ctx) return; const t = ctx.currentTime, g = ctx.createGain(), o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 3300 + Math.random() * 300;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.09 * k, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0005, t + dur + 0.4); o.connect(g); g.connect(sfxBus); o.start(t); o.stop(t + dur + 0.5);
+    },
+    // v22 화염병: 유리 깨짐 + 확 붙는 불 / 불타는 소리(0.45초마다 탁탁 + 낮은 우르르)
+    molotov(pos) {
+      if (!ctx || !voice(1)) return; const out = spatial(pos, 0.8, 90); if (!out) return; const t = ctx.currentTime;
+      noise(out, t, 0.08, 'highpass', 3500, 0.7, 0.9); for (let i = 0; i < 7; i++) tone(out, t + Math.random() * 0.12, 0.08 + Math.random() * 0.1, 'sine', 2500 + Math.random() * 4500, 2400 + Math.random() * 4000, 0.06);
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; const f = ctx.createBiquadFilter(), g = ctx.createGain(); f.type = 'lowpass'; f.frequency.setValueAtTime(300, t + 0.05); f.frequency.exponentialRampToValueAtTime(2200, t + 0.5); g.gain.setValueAtTime(0.0001, t + 0.05); g.gain.linearRampToValueAtTime(0.7, t + 0.35); g.gain.exponentialRampToValueAtTime(0.001, t + 1.1); src.connect(f); f.connect(g); g.connect(out); src.start(t + 0.05, Math.random()); src.stop(t + 1.2);
+    },
+    fireLoop(h) {
+      if (!ctx || geom(h).d > 45 || !voice(0.5)) return; const out = spatial(h, 0.45, 45); if (!out) return; const t = ctx.currentTime;
+      noise(out, t, 0.5, 'lowpass', 420, 0.7, 0.45); for (let i = 0; i < 4; i++) noise(out, t + Math.random() * 0.4, 0.015, 'highpass', 2500 + Math.random() * 3000, 1, 0.35 * Math.random());
+    },
+    // v22 자기장 수류탄: 터질 때 전기 '지직' / 켜진 동안 웅 소리 + 가끔 튀는 소리
+    zoneBurst(pos) {
+      if (!ctx || !voice(0.8)) return; const out = spatial(pos, 0.75, 80); if (!out) return; const t = ctx.currentTime;
+      tone(out, t, 0.5, 'sawtooth', 220, 60, 0.35); tone(out, t, 0.3, 'square', 1400, 300, 0.12); for (let i = 0; i < 8; i++) noise(out, t + Math.random() * 0.4, 0.02, 'highpass', 3000, 1, 0.4);
+    },
+    zoneField(h) {
+      if (!ctx || geom(h).d > 38 || !voice(0.55)) return; const out = spatial(h, 0.3, 38); if (!out) return; const t = ctx.currentTime;
+      tone(out, t, 0.52, 'sawtooth', 118, 118, 0.18); tone(out, t, 0.52, 'sine', 236, 236, 0.1); if (Math.random() < 0.6) noise(out, t + Math.random() * 0.4, 0.03, 'highpass', 2800, 1, 0.35);
+    },
     hitmarker() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.06, 'square', 1800, 1500, 0.08); },
     headshot() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.09, 'square', 2600, 2200, 0.09); },
     hurt() { if (!ctx || !throttle('hurt', 0.12)) return; const t = ctx.currentTime; noise(sfxBus, t, 0.18, 'lowpass', 400, 1, 0.5); },
@@ -587,7 +656,7 @@ const Audio = (() => {
     // 회복: phase 'start'(아이템별) / 'done'
     heal(id, phase, pos, own = true) {
       if (!ctx) return;
-      const name = phase === 'done' ? 'heal_done' : 'heal_' + ({ bandage: 'bandage', firstaid: 'kit', medkit: 'medkit', drink: 'drink' }[id] || 'kit');
+      const name = phase === 'done' ? 'heal_done' : 'heal_' + ({ bandage: 'bandage', firstaid: 'kit', medkit: 'medkit', drink: 'drink', pills: 'pills' }[id] || 'kit');
       if (!playBuf(name, own ? null : pos, own ? 0.55 : 0.5, { own, range: 18, ref: 3, send: 0.06, room: listener.indoor > 0.5, jitter: 0.04 }) && own) { const t = ctx.currentTime; noise(sfxBus, t, 0.3, 'bandpass', 2400, 1, 0.12); }
     },
     vault(pos, own = true) { if (!ctx) return; playBuf('vault', own ? null : pos, own ? 0.55 : 0.5, { own, range: 25, ref: 3, send: 0.05 }); },

@@ -250,7 +250,7 @@ const Net = (() => {
       case 'rkt': { const c = charById(e.c); if (c && !mine(c) && G.scene) { const p = new THREE.Vector3(e.p[0], e.p[1], e.p[2]), D = new THREE.Vector3(e.v[0], e.v[1], e.v[2]); spawnRocket(c, p, D, p, ITEMS.pzf, true); backblast(p.clone().addScaledVector(D, -1.1), D); Audio.rocket('launch', p, false); c.lastShotT = G.time; } break; }   // 판처파우스트: 보이기·소리만
       case 'pu': remotePunch(e); break;
       case 'rc': Recall.onNet(e, from); break;   // 리콜: 등록 요청(→방장)·승인(방장→모두)·단말기 작동·거절
-      case 'gadd': { if (N.items.has(e.u)) break; N.applying++; spawnItem(G.scene, e.i, e.n, e.x, e.y, e.z, e.in || null, e.u); N.applying--; break; }
+      case 'gadd': { if (N.items.has(e.u)) break; N.applying++; spawnItem(G.scene, e.i, e.n, e.x, e.y, e.z, e.in || null, e.u, e.bx || null); N.applying--; break; }
       case 'gdel': { const it = N.items.get(e.u); if (it && it.alive) { N.applying++; removeItem(it); N.applying--; } break; }
       case 'gcnt': { const it = N.items.get(e.u); if (it) it.count = e.n; break; }
       case 'vhit': { const v = N.vehs[e.n]; if (v && !vehRemote(v)) Veh.damage(v, e.d, e.a >= 0 ? charById(e.a) : null, e.c); break; }
@@ -292,7 +292,7 @@ const Net = (() => {
   // 시작 아이템·차량 목록 (불일치할 때만)
   function sendLoot(p) {
     if (!p) return;
-    const L = []; for (const it of GROUND) if (it.alive) L.push([it.u, it.id, it.count, r2(it.x), r2(it.y), r2(it.z), it.inst || 0]);
+    const L = []; for (const it of GROUND) if (it.alive) L.push([it.u, it.id, it.count, r2(it.x), r2(it.y), r2(it.z), it.inst || 0, it.bx || 0]);
     sendBig(p, 'loot', L);
     const V = N.vehs.map((v) => [v.nid, v.type, r2(v.pos.x), r2(v.pos.z), r3(v.yaw)]);
     sendTo(p, { e: [{ k: 'vehs', l: V }] }, true);
@@ -302,7 +302,7 @@ const Net = (() => {
     if (e.i === 0) { lootBuf = []; N.applying++; for (const it of GROUND.slice()) if (it.alive) removeItem(it); N.applying--; N.items.clear(); }
     if (!lootBuf) return;
     N.applying++;
-    for (const a of e.l) spawnItem(G.scene, a[1], a[2], a[3], a[4], a[5], a[6] || null, a[0]);
+    for (const a of e.l) spawnItem(G.scene, a[1], a[2], a[3], a[4], a[5], a[6] || null, a[0], a[7] || null);
     N.applying--;
     if (e.i + e.l.length >= e.n) lootBuf = null;
   }
@@ -323,7 +323,8 @@ const Net = (() => {
     if (c.lean < 0) f |= FL.leanL; else if (c.lean > 0) f |= FL.leanR;   // 기울이기
     if (c.mode === 'fall') f |= FL.fall; else if (c.mode === 'chute') f |= FL.chute; else if (c.mode === 'plane') f |= FL.plane;
     const w = c.weapon, a = w && w.att;
-    const wk = w && c.equipT <= 0.25 ? [w.id, a.scope || '', a.muzzle || '', a.mag || '', a.grip || ''].join('.') : '';
+    // v22 근접 무기: 총을 들었으면 6번째 칸에(허리에 찬 모습) · 총이 없으면 'm.<id>' (손에 듦)
+    const wk = w && c.equipT <= 0.25 ? [w.id, a.scope || '', a.muzzle || '', a.mag || '', a.grip || '', c.inv.melee || ''].join('.') : c.inv.melee ? 'm.' + c.inv.melee : '';
     const g = c.inv.gear, gk = (g.helmet ? ITEMS[g.helmet.id].lvl : 0) * 100 + (g.vest ? ITEMS[g.vest.id].lvl : 0) * 10 + (g.bag ? ITEMS[g.bag.id].lvl : 0);
     const x = c.heal ? c.heal.id : c.throwMode ? c.throwMode.type : 0;
     return [c.id, r2(c.pos.x), r2(c.pos.y), r2(c.pos.z), r3(c.yaw), r3(c.pitch), f, Math.round(c.hp * 10) / 10, wk, gk, c.veh && c.veh.nid !== undefined ? c.veh.nid : -1, c.seat || 0, c.life || 0, x, c.kills, c.knocks || 0];
@@ -355,7 +356,10 @@ const Net = (() => {
     if (a[8] !== n.wk) {
       n.wk = a[8]; const inv = c.inv;
       inv.weapons = [null, null, null]; inv.cur = -1;
-      if (a[8]) { const [id, sc, mz, mg, gp] = a[8].split('.'); if (ITEMS[id]) { const wi = newWeapon(id, ITEMS[id].mag); wi.att = { scope: sc || null, muzzle: mz || null, mag: mg || null, grip: gp || null }; inv.weapons[0] = wi; inv.cur = 0; } }
+      const isMel = (id) => !!id && !!ITEMS[id] && ITEMS[id].type === 'melee';
+      inv.melee = null;
+      if (a[8] && a[8].startsWith('m.')) { const id = a[8].slice(2); inv.melee = isMel(id) ? id : null; }   // 근접 무기를 손에 듦
+      else if (a[8]) { const [id, sc, mz, mg, gp, ml] = a[8].split('.'); if (ITEMS[id]) { const wi = newWeapon(id, ITEMS[id].mag); wi.att = { scope: sc || null, muzzle: mz || null, mag: mg || null, grip: gp || null }; inv.weapons[0] = wi; inv.cur = 0; } inv.melee = isMel(ml) ? ml : null; }
       c.equipT = 0; c.setVisibleGear();
     }
     if (a[9] !== n.gk) {
@@ -434,7 +438,7 @@ const Net = (() => {
   // applyDamage(남의 캐릭터) → 주인에게 보냄. 내 화면에는 바로 맞힘 표시
   function remoteHit(t, dmg, part, attacker, cause, hx, hy, hz) {
     ev({ k: 'hit', v: t.id, d: r2(dmg), p: part, a: attacker ? attacker.id : -1, c: cause, h: hx !== undefined ? [r2(hx), r2(hy), r2(hz)] : undefined }, ownerOf(t));
-    if (attacker && attacker.isPlayer && attacker !== t && cause !== 'zone') { HUD.hitmarker(part === 'head', false); part === 'head' ? Audio.headshot() : Audio.hitmarker(); }
+    if (attacker && attacker.isPlayer && attacker !== t && cause !== 'zone' && hmOk(attacker, cause, false)) { HUD.hitmarker(part === 'head', false); part === 'head' ? Audio.headshot() : Audio.hitmarker(); }
     if (t.brain) t.brain.onDamaged(attacker, cause);
     t.anim.flinch = Math.min(1, t.anim.flinch + dmg / 40); t.anim.flinchDir = Math.random() < 0.5 ? -1 : 1;
     return dmg;
@@ -508,16 +512,23 @@ const Net = (() => {
   function remoteThrow(e) {
     const c = charById(e.c); if (!c || !G.scene) return;
     const pr = { type: e.t, owner: c, x: e.p[0], y: e.p[1], z: e.p[2], vx: e.v[0], vy: e.v[1], vz: e.v[2], t: 0, fuse: e.f, mesh: FX.grenadeMesh(e.t), remote: true };
-    PROJ.push(pr); c.throwAnim = 0.35;
+    PROJ.push(pr); c.throwAnim = THROW_ANIM - THROW_REL;   // 손을 떠나는 순간부터 (v22 던지는 동작)
     if (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 25) Audio.spoon(c.pos, false);
   }
 
   // 주먹: 지르기 동작·휘두르는 소리만 (맞힘 소리는 받은 쪽에서 판정만 따로, 피해는 때린 쪽 기기가 'hit'으로 보냄)
-  function sendPunch(c, side) { if (mine(c)) ev({ k: 'pu', c: c.id, s: side }); }
+  // v22: w = 근접 무기 id (있으면 그 무기로 휘두르는 동작)
+  function sendPunch(c, side, w) { if (mine(c)) ev({ k: 'pu', c: c.id, s: side, w: w || undefined }); }
   function remotePunch(e) {
     const c = charById(e.c); if (!c || mine(c) || !c.alive || c.knocked) return;
-    const pt = c.pitch || 0, cp = Math.cos(pt);
-    c.punch = { t: 0, side: e.s > 0 ? 1 : -1, hit: false, dx: Math.sin(c.yaw) * cp, dy: Math.sin(pt), dz: Math.cos(c.yaw) * cp, remote: true };
+    const pt = c.pitch || 0, cp = Math.cos(pt), dx = Math.sin(c.yaw) * cp, dy = Math.sin(pt), dz = Math.cos(c.yaw) * cp;
+    if (e.w && ITEMS[e.w] && ITEMS[e.w].type === 'melee') {
+      const D = ITEMS[e.w]; if (!c.inv.weapons[c.inv.cur]) c.inv.melee = e.w;
+      c.swing = { id: e.w, t: 0, total: meleeTotal(D), hitAt: D.wind + D.strike * 0.6, hit: false, dx, dy, dz, side: e.s > 0 ? 1 : -1, remote: true };
+      c.swingSide = c.swing.side; c.swingT = c.punchT = G.time;
+      return;
+    }
+    c.punch = { t: 0, side: e.s > 0 ? 1 : -1, hit: false, dx, dy, dz, remote: true };
     c.punchSide = c.punch.side; c.punchT = G.time;
     Audio.punch(c.pos, 'swing', false);
   }
@@ -526,7 +537,7 @@ const Net = (() => {
   function itemAdded(it, uid) {
     if (uid !== undefined && uid !== null) it.u = uid;
     else if (N.quiet) it.u = N.seq++;
-    else { it.u = N.uidBase + N.uidN++; if (!N.applying) ev({ k: 'gadd', u: it.u, i: it.id, n: it.count, x: r2(it.x), y: r2(it.y), z: r2(it.z), in: it.inst || undefined }); }
+    else { it.u = N.uidBase + N.uidN++; if (!N.applying) ev({ k: 'gadd', u: it.u, i: it.id, n: it.count, x: r2(it.x), y: r2(it.y), z: r2(it.z), in: it.inst || undefined, bx: it.bx || undefined }); }   // bx: v22 시체·보급 상자
     N.items.set(it.u, it);
   }
   function itemRemoved(it) { if (!N.applying && !N.quiet) ev({ k: 'gdel', u: it.u }); }

@@ -253,6 +253,7 @@
   </section>
 
   <!-- 경기 HUD -->
+  <div id="flashFx"></div><!-- v22 섬광탄: HUD 투명도와 상관없이 화면 전체 -->
   <section id="hud" hidden>
     <div id="compass"><div id="compassStrip"></div><div class="compass-tick"></div></div>
     <div id="topRight">
@@ -305,6 +306,8 @@
     <canvas id="reticle" hidden></canvas>
     <div id="breath" hidden><i></i><span>Shift 숨 참기</span></div>
     <div id="zoneVignette"></div>
+    <div id="fireVignette"></div>
+
     <div id="progress" hidden><div class="prog-ring"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" class="bg"/><circle cx="20" cy="20" r="17" class="fg" id="progArc"/></svg></div><span id="progLabel">재장전</span></div>
     <div id="bottom">
       <div id="wsSec" class="ws-row"></div>
@@ -318,11 +321,11 @@
     <div id="lootList"></div>
     <div id="dropPanel" hidden>
       <div id="dropInfo"></div>
-      <button class="btn amber" id="jumpBtn">강하 <kbd>F</kbd></button>
-      <button class="btn amber" id="chuteBtn" hidden>낙하산 <kbd>F</kbd></button>
+      <button class="btn amber" id="jumpBtn" aria-label="강하"><span class="bt-txt">강하 <kbd>F</kbd></span></button>
+      <button class="btn amber" id="chuteBtn" hidden aria-label="낙하산"><span class="bt-txt">낙하산 <kbd>F</kbd></span></button>
     </div>
     <div id="hudButtons">
-      <button class="hbtn" id="hbBag" data-tap="inventory" title="인벤토리 (Tab)">가방</button>
+      <button class="hbtn" id="hbBag" data-tap="inventory" title="인벤토리 (Tab)" aria-label="가방"><span class="hb-txt">가방</span></button>
       <button class="hbtn" id="hbMenu" data-tap="pause" title="메뉴 (Esc)">메뉴</button>
       <button class="hbtn" id="hbChat" type="button" title="문자 (Enter)" hidden>💬</button>
     </div>
