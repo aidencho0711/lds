@@ -1152,6 +1152,22 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .ti-d { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ti-d b { font-size: 0.84rem; } .ti-d small { font-size: 0.7rem; color: var(--dim); }
 .ti-none { flex: 1; padding: 4px 8px; color: var(--dim); font-weight: 700; }
+/* v22 파티 입장·퇴장 연출 고르기 (계정 정보 → 입장 연출 탭, 10_partyfx.js) */
+.ent-row .ent-name { flex: none; min-width: 112px; text-align: center; }
+.ent-nm { display: inline-block; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.02em; color: var(--ec); text-shadow: 0 0 10px var(--ec), 0 0 2px rgba(0, 0, 0, 0.85); }
+.ent-auto { display: inline-block; padding: 2px 12px; border: 1px solid var(--line); border-radius: 4px; font-weight: 800; color: var(--sand); }
+.ent-prev { flex: none; }
+@media (max-width: 640px) { .ent-row .ent-name { min-width: 86px; } .ent-nm { font-size: 0.86rem; } }
+/* 입장·퇴장 순간 캐릭터 위(가리면 발아래)에 뜨는 이름 띠 */
+.ent-ban { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 10px; white-space: nowrap; will-change: transform, opacity; }
+.ent-ban b { font-size: 1.55rem; font-weight: 900; letter-spacing: 0.08em; color: #fff; text-shadow: 0 0 6px var(--ec), 0 0 18px var(--ec), 0 0 34px var(--ec), 0 2px 2px rgba(0, 0, 0, 0.6); animation: ent-ban-b 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.ent-ban i { width: 46px; height: 2px; background: linear-gradient(90deg, transparent, var(--ec)); box-shadow: 0 0 8px var(--ec); position: relative; animation: ent-ban-i 0.55s 0.12s ease-out both; }
+.ent-ban i:last-child { background: linear-gradient(270deg, transparent, var(--ec)); }
+.ent-ban i::after { content: ''; position: absolute; top: -3px; width: 8px; height: 8px; background: var(--ec); transform: rotate(45deg); box-shadow: 0 0 8px var(--ec); }
+.ent-ban i:first-child::after { right: -4px; } .ent-ban i:last-child::after { left: -4px; }
+@keyframes ent-ban-b { from { opacity: 0; transform: scale(1.7); filter: blur(5px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes ent-ban-i { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: none; } }
+@media (max-height: 500px) { .ent-ban b { font-size: 1.15rem; } .ent-ban i { width: 30px; } }
 .prof-acct { display: flex; flex-direction: column; gap: 6px; padding: 10px 4px; }
 /* v21 비밀번호 변경: 입력 셋 + 버튼 (좁은 화면은 한 줄씩) */
 .pw-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

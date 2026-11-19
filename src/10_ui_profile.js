@@ -281,6 +281,8 @@ const Prof = (() => {
       }
       B.appendChild(L);
       B.appendChild(el('p', 'micro', '단 칭호는 로비에서 내 캐릭터 아래에 표시되고, 파티원 화면에도 보입니다. 칭호를 얻으면 같은 주제의 테두리도 해금됩니다.'));
+    } else if (tab === 'ent' && typeof PartyFx !== 'undefined') {
+      PartyFx.profTab(B);   // 파티 입장·퇴장 연출 고르기 (10_partyfx.js)
     } else if (tab === 'acct') {
       const left = Math.max(0, (STATS.nameT || 0) + NAME_GAP - Date.now());
       const box = document.createElement('div'); box.className = 'prof-acct';

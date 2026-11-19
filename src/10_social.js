@@ -249,7 +249,7 @@ const Party = (() => {
   const has = (uid) => !!P && P.members.some((m) => m.uid === uid);
   const canInvite = () => !!Cloud.user && (!P || (isLeader() && size() < PARTY_MAX));
   const uuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'p' + Math.random().toString(16).slice(2) + Date.now().toString(16));
-  function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, hc: Rank.hcOk() ? 1 : 0, look: myLook(), st: G.state === 'lobby' ? 'lobby' : 'game' }; }
+  function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, hc: Rank.hcOk() ? 1 : 0, look: myLook(), st: G.state === 'lobby' ? 'lobby' : 'game', ent: typeof PartyFx !== 'undefined' ? PartyFx.mineList() : null }; }   // ent: 파티 입장·퇴장 연출 (10_partyfx.js)
   function shared() { const o = {}; for (const k of SHARED) o[k] = SETTINGS[k]; return o; }
 
   // ---------- 채널 ----------
@@ -397,7 +397,7 @@ const Party = (() => {
       const sh = JSON.stringify(shared());
       if (sh !== lastShared || now - pushT > 15000) pushState();
     }
-    const mi = memberInfo(), key = JSON.stringify([mi.lv, mi.hc, mi.st, mi.look, mi.name]);
+    const mi = memberInfo(), key = JSON.stringify([mi.lv, mi.hc, mi.st, mi.look, mi.name, mi.ent]);
     if (key !== lastMine) {
       lastMine = key;
       if (isLeader()) { const i = P.members.findIndex((x) => x.uid === me()); if (i >= 0) { P.members[i] = mi; pushState(); } }

@@ -806,6 +806,42 @@ const Audio = (() => {
       else if (kind === 'nuke') { noise(out, t, 0.18, 'bandpass', 1200, 0.8, 0.12); for (let i = 0; i < 4; i++) noise(out, t + 0.04 + i * 0.03, 0.01, 'highpass', 4500, 1, 0.08); }
     },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
+    // v22 파티 입장·퇴장 연출 (10_partyfx.js): 동작마다 그 순간(착지·번개·불기둥 …)에 맞춘 소리 · kind = 동작 이름, 'bye' = 작별 몸짓
+    partyFx(kind) {
+      if (!ctx || !voice(2)) return; const t = ctx.currentTime, o = sfxBus;
+      const boom = (t0, k = 1) => { tone(o, t0, 0.7, 'sine', 95, 32, 0.42 * k); noise(o, t0, 0.8, 'lowpass', 340, 0.8, 0.34 * k); noise(o, t0 + 0.02, 0.5, 'highpass', 3200, 0.7, 0.08 * k); };
+      const whoosh = (t0, d, f0, f1, g = 0.22) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; const f = ctx.createBiquadFilter(), gn = ctx.createGain(); f.type = 'bandpass'; f.Q.value = 0.9; f.frequency.setValueAtTime(f0, t0); f.frequency.exponentialRampToValueAtTime(f1, t0 + d); gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(g, t0 + d * 0.7); gn.gain.exponentialRampToValueAtTime(0.001, t0 + d); s.connect(f); f.connect(gn); gn.connect(o); s.start(t0, Math.random()); s.stop(t0 + d + 0.05); };
+      const chord = (t0, fs, d, type = 'sine', g = 0.05, gap = 0) => fs.forEach((f, i) => tone(o, t0 + i * gap, d, type, f, f * 1.002, g));
+      const pad = (t0, fs, d, g = 0.05) => fs.forEach((f) => { const os = ctx.createOscillator(), gn = ctx.createGain(); os.type = 'sine'; os.frequency.value = f; gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(g, t0 + d * 0.4); gn.gain.exponentialRampToValueAtTime(0.001, t0 + d); os.connect(gn); gn.connect(o); os.start(t0); os.stop(t0 + d + 0.05); });
+      const thunder = (t0, k = 1) => { noise(o, t0, 0.12, 'highpass', 1800, 0.6, 0.45 * k); tone(o, t0, 0.12, 'square', 3200, 300, 0.05 * k); noise(o, t0 + 0.05, 1.6, 'lowpass', 180, 0.7, 0.4 * k); tone(o, t0 + 0.03, 1.0, 'sine', 70, 30, 0.25 * k); };
+      const fire = (t0, d, g = 0.25) => { whoosh(t0, d, 300, 1400, g); for (let i = 0; i < 6; i++) noise(o, t0 + Math.random() * d, 0.03, 'highpass', 2500 + Math.random() * 2500, 1, 0.08); };
+      const glit = (t0, n) => { for (let i = 0; i < n; i++) tone(o, t0 + i * 0.06 + Math.random() * 0.03, 0.035, 'square', 300 + Math.random() * 1800, 150 + Math.random() * 600, 0.035); };
+      switch (kind) {
+        case 'meteor': tone(o, t, 0.5, 'sine', 2200, 260, 0.06); whoosh(t, 0.5, 600, 3000, 0.3); boom(t + 0.5, 1.1); chord(t + 0.55, [1318, 1760, 2637], 0.9, 'sine', 0.03, 0.03); break;
+        case 'launch': tone(o, t + 0.3, 0.65, 'sine', 180, 900, 0.08); tone(o, t + 0.3, 0.65, 'sawtooth', 90, 360, 0.025); whoosh(t + 0.95, 0.7, 500, 4000, 0.32); chord(t + 0.95, [1760, 2637, 3520], 0.6, 'sine', 0.03, 0.04); break;
+        case 'spinfall': pad(t, [523, 659, 784, 1046], 1.6, 0.04); whoosh(t + 0.2, 1.2, 400, 2400, 0.2); boom(t + 1.38, 1.2); chord(t + 1.4, [1046, 1318, 1568, 2093], 1.4, 'triangle', 0.05, 0.02); chord(t + 2.75, [784, 988, 1175, 1568], 0.9, 'triangle', 0.06, 0.09); break;
+        case 'spinOut': chord(t + 0.6, [784, 988, 1175], 0.6, 'sine', 0.04, 0.06); whoosh(t + 1.55, 1.0, 400, 3600, 0.26); pad(t + 1.55, [1046, 1318, 1568, 2093], 1.2, 0.035); chord(t + 2.45, [2093, 2637, 3136, 4186], 0.8, 'sine', 0.03, 0.03); break;
+        case 'descend': pad(t, [392, 494, 587, 784], 2.6, 0.045); chord(t + 0.3, [1568, 2093, 2349, 3136], 2.2, 'sine', 0.018, 0.45); chord(t + 2.25, [784, 988, 1175, 1568], 1.6, 'sine', 0.04, 0.05); break;
+        case 'ascend': pad(t + 0.4, [392, 494, 587, 784, 988], 2.6, 0.04); chord(t + 1.1, [1568, 2093, 2637, 3136], 2.0, 'sine', 0.02, 0.35); chord(t + 2.75, [2093, 2637, 3136], 0.9, 'sine', 0.03, 0.03); break;
+        case 'emerge': tone(o, t, 2.4, 'sawtooth', 48, 62, 0.06); noise(o, t, 2.4, 'lowpass', 160, 0.8, 0.22); whoosh(t + 0.7, 1.5, 200, 900, 0.18); boom(t + 2.45, 0.9); tone(o, t + 2.45, 0.6, 'sawtooth', 110, 55, 0.06); break;
+        case 'sink': tone(o, t, 2.4, 'sawtooth', 62, 44, 0.06); noise(o, t, 2.2, 'lowpass', 160, 0.8, 0.2); whoosh(t + 0.8, 1.5, 900, 180, 0.2); boom(t + 2.35, 0.6); break;
+        case 'podium': chord(t, [523, 659, 784, 1046], 0.5, 'sawtooth', 0.025, 0.11); chord(t + 0.5, [1046, 1318, 1568], 1.2, 'triangle', 0.06); for (const tt of [0.6, 0.75, 1.4, 1.55]) { noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); noise(o, t + tt, 0.8, 'highpass', 5000, 0.7, 0.05); } whoosh(t + 0.5, 1.8, 900, 1500, 0.1); for (const tt of [2.4, 2.75, 3.1]) tone(o, t + tt, 0.25, 'triangle', 1568, 1568, 0.05); break;
+        case 'bowOut': chord(t + 0.7, [1046, 784, 659, 523], 0.5, 'triangle', 0.04, 0.12); for (const tt of [1.65, 1.7]) noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); chord(t + 2.35, [1568, 2093, 2637], 0.7, 'sine', 0.035, 0.04); break;
+        case 'rez': for (let i = 0; i < 12; i++) tone(o, t + 0.1 + i * 0.075, 0.05, 'square', 400 + i * 160, 400 + i * 160, 0.022); tone(o, t + 1.0, 0.5, 'sine', 1318, 1318, 0.05); chord(t + 1.55, [659, 880, 1318], 0.7, 'triangle', 0.04, 0.05); break;
+        case 'derez': chord(t + 0.7, [659, 880, 1318], 0.5, 'triangle', 0.035, 0.05); for (let i = 0; i < 10; i++) tone(o, t + 1.75 + i * 0.07, 0.05, 'square', 2000 - i * 150, 2000 - i * 150, 0.022); break;
+        case 'glitchIn': tone(o, t, 1.5, 'sawtooth', 120, 120, 0.05); tone(o, t, 1.5, 'sine', 240, 240, 0.04); glit(t + 0.15, 14); noise(o, t + 1.3, 0.08, 'highpass', 3000, 1, 0.2); tone(o, t + 1.32, 0.3, 'sine', 880, 880, 0.04); break;
+        case 'noclip': glit(t + 1.1, 9); whoosh(t + 1.3, 0.7, 1200, 150, 0.22); tone(o, t + 1.3, 0.7, 'sine', 500, 60, 0.08); break;
+        case 'strikeIn': thunder(t + 0.02, 0.6); thunder(t + 0.18, 0.8); thunder(t + 0.3, 1.1); for (const tt of [2.0, 2.45, 2.9]) noise(o, t + tt, 0.08, 'highpass', 2600, 0.8, 0.12); break;
+        case 'strikeOut': thunder(t + 0.75, 0.5); thunder(t + 0.98, 1.2); break;
+        case 'slam': whoosh(t, 0.42, 300, 1800, 0.28); fire(t, 0.42, 0.15); boom(t + 0.42, 1.4); noise(o, t + 0.45, 1.6, 'lowpass', 120, 0.7, 0.3); fire(t + 0.5, 1.0, 0.12); break;
+        case 'slamOut': boom(t + 0.62, 1.0); fire(t + 0.66, 1.4, 0.3); break;
+        case 'fireStep': fire(t, 1.3, 0.32); boom(t + 0.05, 0.6); tone(o, t + 2.1, 0.12, 'sine', 160, 60, 0.3); noise(o, t + 2.1, 0.1, 'lowpass', 800, 0.8, 0.3); break;
+        case 'burnOut': fire(t + 0.85, 1.4, 0.3); whoosh(t + 1.5, 0.6, 600, 3000, 0.15); break;
+        case 'orbForm': for (let i = 0; i < 5; i++) tone(o, t + i * 0.12, 1.3, 'sine', 300 + i * 90, 900 + i * 220, 0.025); chord(t + 1.4, [988, 1318, 1976, 2637], 1.6, 'sine', 0.04, 0.03); break;
+        case 'orbOut': chord(t + 0.6, [988, 1318, 1976], 0.8, 'sine', 0.03, 0.05); for (let i = 0; i < 5; i++) tone(o, t + 1.0 + i * 0.1, 1.2, 'sine', 1200 + i * 200, 400 + i * 80, 0.025); break;
+        case 'bye': chord(t + 0.4, [1318, 1568, 2093], 0.9, 'sine', 0.035, 0.07); noise(o, t + 0.42, 0.5, 'highpass', 4500, 0.8, 0.05); break;
+      }
+    },
     engine(id, pos, type, rpm, load, own, skid) {
       if (!ctx) return;
       const P = ENG[type]; if (!P) return;

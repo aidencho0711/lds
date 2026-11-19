@@ -101,15 +101,18 @@ const Lobby = {
   // 듀오·스쿼드: 캐릭터 옆에 팀원을 세워 둔다 (오른쪽·뒤 — 왼쪽 패널에 가리지 않게)
   // looks: 파티원 외형 {eq, body, gun, sg} (있으면 그 외형으로, 없으면 기본 옷 + 무작위 얼굴)
   //  파티원은 자기가 로비에서 들고 있는 총(sg)을 장착한 스킨으로 든다 — 울트라레어면 빛 띠·부속품과 함께 나타남
-  // infos: 파티원 [{name, pf}] — 캐릭터 아래 이름·칭호 표시용 (10_ui_profile.js lobbyTags). 프로필만 바뀌면 캐릭터는 다시 만들지 않는다
+  // infos: 파티원 [{uid, name, pf, ent}] — 캐릭터 아래 이름·칭호 표시용 (10_ui_profile.js lobbyTags). 프로필만 바뀌면 캐릭터는 다시 만들지 않는다
+  //  v22 파티 입장·퇴장 연출(10_partyfx.js): 들어온 사람은 그 자리에서 등장, 나간 사람의 리그는 넘겨서 퇴장 동작 뒤 치움 · 파티원 자리는 uid 마다 고정
   setTeam(n, looks, infos) {
     this.mateInfo = infos || [];
-    const key = n + '|' + (looks ? JSON.stringify(looks.map((l) => Object.assign({}, l, { pf: undefined }))) : '');
-    if (this.teamN === key) return; this.teamN = key;
-    for (const m of this.mates) { this.scene.remove(m.root); m.skel.dispose(); }
+    const FX = typeof PartyFx !== 'undefined' ? PartyFx : null, gone = FX ? FX.team(this, infos) : null;
+    const key = n + '|' + (infos || []).map((f) => (f && f.uid) || '').join(',') + '|' + (looks ? JSON.stringify(looks.map((l) => Object.assign({}, l, { pf: undefined }))) : '');
+    if (this.teamN === key) { if (FX) FX.bound(this); return; } this.teamN = key;
+    for (const m of this.mates) { if (!(gone && m.uid && FX.ghost(this, m, gone.get(m.uid)))) { this.scene.remove(m.root); m.skel.dispose(); } }
     this.mates = [];
     const spots = [[1.3, -0.5, -0.25], [2.45, -1.25, -0.45], [-1.05, -1.55, 0.35]], rng = mulberry32(4242);
     for (let i = 0; i < n - 1 && i < spots.length; i++) {
+      const uid = (infos && infos[i] && infos[i].uid) || null, si = FX ? FX.spot(uid, i, spots.length) : i;
       const pl = looks && looks[i], body = Body.randomBody(rng), rig = buildRig(pl ? Body.makeLook(pl.eq, pl.body) : Body.makeLook(null, body));
       const gid = pl && pl.sg && ITEMS[pl.sg] && ITEMS[pl.sg].type === 'weapon' ? pl.sg : (['akm', 'aug', 'mini14'][i] || 'm416');
       const sk = pl && pl.gun && pl.gun[gid] && typeof GSKINS !== 'undefined' && GSKINS[pl.gun[gid]] && GSKINS[pl.gun[gid]].gun === gid ? pl.gun[gid] : null, att = {};
@@ -117,9 +120,12 @@ const Lobby = {
       rig.gunObj = buildGunMesh(gid, att, sk); rig.gunMount.add(rig.gunObj); rig.matesSkin = sk;
       if (sk) GunSkin.draw(rig.gunObj, 0.55, null, true);
       rig.setGear(2, i === 1 ? 0 : 2, i === 2 ? 3 : 2);
-      rig.root.position.set(spots[i][0], 0, spots[i][1]); rig.baseYaw = spots[i][2]; rig.ph = i * 1.7 + 0.6;
+      // 가운데 받침(반지름 2.2 · 높이 0.2) 위 자리는 받침 윗면에 세운다 (예전엔 발이 받침 속 20cm 에 묻혔음)
+      const pd = Math.hypot(spots[si][0], spots[si][1]), py = pd < 2.2 ? 0.2 : Math.max(0, 2.4 - pd);
+      rig.root.position.set(spots[si][0], py, spots[si][1]); rig.baseYaw = spots[si][2]; rig.ph = si * 1.7 + 0.6; rig.uid = uid;
       this.scene.add(rig.root); this.mates.push(rig);
     }
+    if (FX) FX.bound(this);
   },
   pose(r, t, yaw) { poseLobby(r, t, yaw); },
   applyTime() {
@@ -177,6 +183,7 @@ const Lobby = {
     if (typeof Prof !== 'undefined') Prof.lobbyTags(this);   // 캐릭터 아래 칭호 (지난 프레임 카메라 기준 — 카메라는 천천히 움직임)
     if (sc) {
       for (const m of this.mates) m.root.visible = false;
+      if (typeof PartyFx !== 'undefined') PartyFx.update(dt, this);   // 진열 중에는 입장·퇴장 연출을 모두 멈추고 치움
       sc.obj.rotation.y = 0.7 + (t - sc.t0) * 0.32; if (sc.obj.userData.efxP) VehFx.showroom(sc.obj.userData.efxP, dt);
       // 왼쪽 창이 가리지 않는 영역의 가운데에 오도록 카메라를 옆으로 민다 (창 오른쪽 끝은 0.5초마다 다시 잼)
       if (!(sc.fracT > t)) { const P = document.querySelector('.lb-left'), rr = P ? P.getBoundingClientRect().right : 0; sc.frac = clamp(rr / Math.max(1, window.innerWidth), 0, 0.7); sc.fracT = t + 0.5; }
@@ -192,10 +199,12 @@ const Lobby = {
     const yaw = lerp(0.35 + Math.sin(t * 0.25) * 0.15, 0.25 + Math.sin(t * 0.32) * 0.65, this.fk);
     this.pose(r, t, yaw); OutfitFx.update(r, dt);   // EXCLUSIVE 옷 효과 (08_outfitfx.js)
     for (const m of this.mates) { m.root.visible = this.fk < 0.5; if (m.root.visible) { this.pose(m, t + m.ph, m.baseYaw + Math.sin((t + m.ph) * 0.21) * 0.12); OutfitFx.update(m, dt); } }
+    if (typeof PartyFx !== 'undefined') PartyFx.update(dt, this);   // 파티 입장·퇴장 연출: 쉬는 자세 위에 동작을 덮어 쓰고 효과를 진행 (10_partyfx.js)
     // 캐릭터를 화면 가운데에 (왼쪽 패널은 배경 위에 겹친다)
     const a = t * 0.08, f = smoothstep01(this.fk);
     this.cam.position.set(lerp(Math.sin(a) * 0.5 + 0.2, -0.55, f), lerp(1.45 + Math.sin(t * 0.3) * 0.05, 1.32, f), lerp(4.9 + Math.cos(a) * 0.2, 3.05, f));
     this.cam.lookAt(lerp(0.05, -0.62, f), lerp(1.02, 1.05, f), 0);
+    if (typeof PartyFx !== 'undefined') PartyFx.cam(this.cam, dt);   // 착지 충격 흔들림
   },
 };
 
@@ -858,7 +867,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };
