@@ -77,6 +77,7 @@ const Cloud = (() => {
   function refreshUi() {
     if (G.state === 'lobby') { HUD.renderLobby(); if (G.applySettings) G.applySettings('view'); if (Lobby.setLook) { Lobby.setLook(SETTINGS.look); Lobby.teamN = 0; } }
     render();
+    try { Rank.settle(); } catch (e) { console.warn(e); }   // v23 랭크 개편: 4000 RP 넘던 기록 → 보상·안내 (기록을 다 불러온 뒤에만 — 10_rank.js)
   }
 
   // ---------- 동기화 ----------
@@ -242,15 +243,14 @@ const Cloud = (() => {
   // ---------- 공개 API ----------
   async function init() {
     render();
-    if (!enabled) return;
     // 이전에 로그인했던 기기만 시작할 때 SDK를 불러 세션 복원 (게스트는 로그인 창을 열 때 불러옴)
-    if (!store.get('account', null)) return;
+    if (!enabled || !store.get('account', null)) { try { Rank.settle(); } catch (e) { console.warn(e); } return; }   // 게스트 기록도 v23 개편 정리
     status = 'restoring'; render();
     try {
       await loadSdk();
       const { data } = await sb.auth.getSession();
       if (data && data.session && data.session.user) await afterLogin(data.session.user, false);
-      else { store.set('account', null); restoreGuest(); status = 'idle'; render(); }
+      else { store.set('account', null); restoreGuest(); status = 'idle'; render(); try { Rank.settle(); } catch (e) { console.warn(e); } }
     } catch (e) { status = 'error'; lastErr = msgOf(e); render(); }
   }
   async function signUp(id, pw, pw2) {

@@ -85,7 +85,7 @@ const Ladder = (() => {
   // ---------- 화면 ----------
   function valueHTML(k, r) {
     if (k === 'lv') { const L = levelFromXp(r.xp || 0); return `<span class="lad-lv"><b>Lv ${L.lv}</b><small>${fmt(r.xp)} XP</small></span>`; }
-    const T = k === 'tier' ? Rank.tierOf(r.rp || 0) : Rank.hcTierOf(r.hrp || 0), rp = k === 'tier' ? r.rp : r.hrp;
+    const T = k === 'tier' ? Rank.tierOf(r.rp || 0, r.sg) : Rank.hcTierOf(r.hrp || 0), rp = k === 'tier' ? r.rp : r.hrp;
     return `<span class="lad-tier"><img src="${Rank.embOf(T, 64)}" alt=""><span><b>${esc(T.label)}</b><small>${fmt(rp)} RP</small></span></span>`;
   }
   // 목록 속 다른 사람의 사진·테두리·칭호: 1위 보상은 그 랭킹의 지금 1위만 (회수된 것은 기본으로)

@@ -61,7 +61,7 @@ const Prof = (() => {
   //  kind: base · tier(t = RANK_TIERS 번호, 최고 도달 티어 이상이면 해금) · title(그 칭호를 얻으면 해금)
   const FR = [
     { id: 'none', name: '기본', kind: 'base', desc: '처음부터' },
-    ...['iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'legend', 'eternal'].map((id, t) => ({ id, name: '', kind: 'tier', t, desc: '' })),
+    ...['iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'legend', 'eternal', 'nova', 'celestial', 'eclipse', 'zenith'].map((id, t) => ({ id, name: '', kind: 'tier', t, desc: '' })),   // v23: 상위 티어 4종 (pfx — 새 효과 테두리)
     { id: 'collector', name: '수집가', kind: 'title', title: 'collector', desc: '칭호 「수집가」' },
     { id: 'wargod', name: '전쟁의 신', kind: 'title', title: 'wargod', desc: '칭호 「전쟁의 신」' },
     // 하드코어 랭크 상위 3티어 (최고 도달 기준) · 베타 테스터
@@ -118,9 +118,53 @@ const Prof = (() => {
     + `<rect x="15" y="-15.5" width="34" height="12" rx="2" fill="#0c3a16" stroke="#8dff9a" stroke-width="1.3"/><text x="29" y="-6.2" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="9" fill="#c4ffbe" letter-spacing=".7">EXIT</text><path d="M39.5 -9.5h5.5m-2.2 -2.6 2.6 2.6-2.6 2.6" fill="none" stroke="#c4ffbe" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`
     + `<path d="M14 62h36l-4 6 4 6H14l4-6z" fill="#2a2208" stroke="#f4e07a" stroke-width="1.1"/><text x="32" y="71.3" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="8.4" fill="#fff3b0" letter-spacing=".5">12 / 12</text>`;
   const ORN_FX = { br_escape: '<i class="pf-scan"></i>', br_all: '<i class="pf-rays br"></i>', champ_lv: '<i class="pf-rays lv"></i>', champ_tier: '<i class="pf-rays"></i><i class="pf-orb"></i><i class="pf-orb b"></i>', champ_hc: '<i class="pf-rays hc"></i>', eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
+  // ---------- v23 상위 티어 테두리 (노바 · 셀레스티얼 · 이클립스 · 제니스) — 기존 테두리와 다른 새 효과 묶음 'pfx' ----------
+  //  뒤: 천천히 도는 색 후광(px-aura) · 영문 이름이 새겨져 도는 고리(px-sig — 작은 크기에선 숨김)
+  //  사진 위: 비스듬히 훑고 지나가는 빛(px-sheen) / 고리 위: 금속 고리를 따라 도는 반사광(px-glint)
+  //  앞: 꼬리 달린 혜성 둘(px-orbit — 바깥은 시계 방향, 안쪽은 반대) · 번갈아 반짝이는 별 넷(px-spk) · 장식 선을 따라 흐르는 빛(px-flow)
+  //  장식(관·날개·아래 장식)의 그라데이션은 index.html 전역 defs(pxg-*) · 글자 고리 경로는 #pxc
+  const f1 = (v) => v.toFixed(1);
+  // 끝이 뾰족한 수정 조각: (x,y)에서 a 방향으로 길이 L, 반폭 w
+  const shard = (x, y, a, L, w, fill, edge = '#e9fbff') => {
+    const c = Math.cos(a), s = Math.sin(a), nx = -s, ny = c, p = (k, m) => `${f1(x + c * L * k + nx * w * m)} ${f1(y + s * L * k + ny * w * m)}`;
+    return `<path d="M${p(0, 1)}L${p(0.62, 0.9)}L${p(1, 0)}L${p(0.62, -0.9)}L${p(0, -1)}z" fill="${fill}" stroke="${edge}" stroke-width=".7"/>`;
+  };
+  // 깃털(잎) 모양: 밑동 (x,y)에서 a 방향으로 L, 폭 w
+  const leaf = (x, y, a, L, w, fill, edge) => {
+    const tx = x + Math.cos(a) * L, ty = y + Math.sin(a) * L, mx = (x + tx) / 2, my = (y + ty) / 2, nx = -Math.sin(a), ny = Math.cos(a);
+    return `<path d="M${f1(x)} ${f1(y)}Q${f1(mx + nx * w)} ${f1(my + ny * w)} ${f1(tx)} ${f1(ty)}Q${f1(mx - nx * w * 0.4)} ${f1(my - ny * w * 0.4)} ${f1(x)} ${f1(y)}z" fill="${fill}" stroke="${edge}" stroke-width=".6"/>`;
+  };
+  const mirror = (s) => `${s}<g transform="translate(64 0) scale(-1 1)">${s}</g>`;   // 왼쪽 그림을 오른쪽에도
+  const flow = (d) => `<path class="px-flow" d="${d}"/>`;
+  const gemD = (x, y, r, fill) => `<path d="M${f1(x)} ${f1(y - r)}l${f1(r * 0.8)} ${f1(r)}-${f1(r * 0.8)} ${f1(r)}-${f1(r * 0.8)}-${f1(r)}z" fill="${fill}" stroke="#fff" stroke-width=".7"/>`;
+  const star4 = (x, y, r, fill) => `<path d="M${f1(x)} ${f1(y - r)}l${f1(r * 0.25)} ${f1(r * 0.75)} ${f1(r * 0.75)} ${f1(r * 0.25)}-${f1(r * 0.75)} ${f1(r * 0.25)}-${f1(r * 0.25)} ${f1(r * 0.75)}-${f1(r * 0.25)}-${f1(r * 0.75)}-${f1(r * 0.75)}-${f1(r * 0.25)} ${f1(r * 0.75)}-${f1(r * 0.25)}z" fill="${fill}"/>`;
+  // 노바: 수정 조각 관 + 양옆 수정 칼날 + 아래 보석
+  ORN.nova = shard(25, 6, -Math.PI / 2 - 0.5, 14, 2.6, 'url(#pxg-nova)') + shard(39, 6, -Math.PI / 2 + 0.5, 14, 2.6, 'url(#pxg-nova)') + shard(32, 4, -Math.PI / 2, 20, 3.5, 'url(#pxg-nova)')
+    + mirror(shard(5, 21, -2.5, 21, 2.7, 'url(#pxg-nova)') + shard(3, 28, -2.95, 19, 2.5, 'url(#pxg-nova)') + shard(4, 36, 2.8, 14, 2.2, 'url(#pxg-nova)') + flow('M5 21l-17-12M3 28l-18-4'))
+    + flow('M32 4V-15M25 6l-6.5-12M39 6l6.5-12') + gemD(32, 4, 4, '#bff3ff') + gemD(32, 64, 4.2, '#8fe3ff') + star4(32, 64, 2.2, '#fff');
+  // 셀레스티얼: 금빛 후광 + 여섯 깃 천사 날개(두 겹) + 아래 별
+  ORN.celestial = mirror(Array.from({ length: 6 }, (_, i) => leaf(6 - i * 0.2, 19 + i * 3, -2.2 - i * 0.24, 26 - i * 2, 5.2, i % 2 ? 'url(#pxg-cel)' : '#fffdf3', '#a8780a')).join('')
+      + Array.from({ length: 4 }, (_, i) => leaf(5, 33 + i * 3, 2.75 + i * 0.16, 16 - i * 1.6, 4, '#fff6dc', '#a8780a')).join('') + flow('M6 19l-15-14M5 28l-19-6'))
+    + `<ellipse cx="32" cy="-7" rx="16" ry="4.4" fill="none" stroke="#fff6d0" stroke-width="5" opacity=".35"/><ellipse cx="32" cy="-7" rx="16" ry="4.4" fill="none" stroke="url(#pxg-cel)" stroke-width="2.4"/>`
+    + `<ellipse class="px-flow" cx="32" cy="-7" rx="16" ry="4.4"/>` + gemD(32, 1, 4, '#a9d8ff') + star4(32, 65, 6, '#fffbe8') + star4(32, 65, 2.6, '#ffd76a');
+  // 이클립스: 위에 검은 태양(코로나 가시 + 다이아몬드 반지 섬광) + 양옆 흑요석 불꽃 칼날 + 아래 가시
+  ORN.eclipse = Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2 + 0.1, L = i % 2 ? 5 : 8.5, x = 32 + Math.cos(a) * 6.5, y = -5 + Math.sin(a) * 6.5; return shard(x, y, a, L, 1.7, '#ff4a1e', 'none') + shard(x, y, a, L * 0.55, 1.1, '#ffd27a', 'none'); }).join('')
+    + mirror(shard(5, 22, -2.45, 21, 2.8, 'url(#pxg-ecl)', '#ff5a2a') + shard(3, 29, -2.9, 20, 2.6, 'url(#pxg-ecl)', '#ff5a2a') + shard(4, 37, 2.75, 15, 2.3, 'url(#pxg-ecl)', '#ff5a2a') + flow('M5 22l-16-13M3 29l-19-5'))
+    + `<circle cx="32" cy="-5" r="7" fill="#050102" stroke="#ffcf6a" stroke-width="1.2"/>` + star4(37.2, -9.6, 4.4, '#fffaf0')
+    + shard(32, 61, Math.PI / 2, 13, 2.6, 'url(#pxg-ecl)', '#ff5a2a') + shard(26, 60, Math.PI / 2 + 0.5, 9, 2, 'url(#pxg-ecl)', '#ff5a2a') + shard(38, 60, Math.PI / 2 - 0.5, 9, 2, 'url(#pxg-ecl)', '#ff5a2a') + gemD(32, 60, 3.4, '#ff3b1f');
+  // 제니스: 무지개 후광 + 보석 박힌 큰 왕관 + 무지개 칼날·금빛 깃털 이중 날개 + 아래 ZENITH 명판
+  ORN.zenith = mirror(shard(4, 24, -2.55, 25, 2.8, 'url(#pxg-prism)', '#ffffff') + shard(2, 31, -2.95, 22, 2.6, 'url(#pxg-prism)', '#ffffff')
+      + Array.from({ length: 5 }, (_, i) => leaf(6, 22 + i * 3.2, -2.35 - i * 0.26, 21 - i * 2.2, 3, i % 2 ? '#fffdf3' : 'url(#pxg-zen)', '#9a6a08')).join('') + flow('M4 24l-19-14M2 31l-21-4'))
+    + `<circle cx="32" cy="-5" r="12" fill="none" stroke="url(#pxg-prism)" stroke-width="2.2"/>`
+    + `<path d="M18 5l-3-14 8 6 9-12 9 12 8-6-3 14z" fill="url(#pxg-zen)" stroke="#7a4e05" stroke-width="1"/>` + flow('M18 5l-3-14 8 6 9-12 9 12 8-6-3 14z')
+    + `<circle cx="15" cy="-9" r="1.9" fill="#fff"/><circle cx="32" cy="-15" r="2.2" fill="#fff"/><circle cx="49" cy="-9" r="1.9" fill="#fff"/>` + gemD(32, 0, 3.8, '#ff9bf0') + gemD(23.5, 1.5, 2.4, '#7fe0ff') + gemD(40.5, 1.5, 2.4, '#7fe0ff')
+    + `<path d="M15 62h34l-4 5.5 4 5.5H15l4-5.5z" fill="#2a1060" stroke="#ffd76a" stroke-width="1.1"/><text x="32" y="69.6" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="7" fill="#fff3c4" letter-spacing=".9">ZENITH</text>`;
+  const PXF = {};
+  for (const id of ['nova', 'celestial', 'eclipse', 'zenith']) { const en = RANK_TIERS.find((T) => T.id === id).en, n = Math.max(3, Math.round(50 / (en.length + 3))); PXF[id] = `<i class="px-aura"></i><i class="px-sig"><svg viewBox="0 0 100 100" aria-hidden="true"><text><textPath href="#pxc">${(en + ' ✦ ').repeat(n)}</textPath></text></svg></i>`; }
+  const PX_TOP = '<i class="px-glint"></i><i class="px-orbit"><b></b></i><i class="px-orbit b"><b></b></i><i class="px-spk s1"></i><i class="px-spk s2"></i><i class="px-spk s3"></i><i class="px-spk s4"></i>';
   function frameHTML(fr, av, size = 44, extra = '') {
-    const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id];
-    return `<span class="pf fr-${f.id}${extra ? ' ' + extra : ''}" style="--s:${size}px">${ORN_FX[f.id] || ''}<span class="pf-av">${avatarSVG(av)}</span><span class="pf-ring"></span>${f.id === 'grandmaster' ? '<span class="pf-spk"><svg viewBox="-16 -16 96 96">' + o + '</svg></span>' : o ? `<span class="pf-orn"><svg viewBox="-16 -16 96 96">${o}</svg></span>` : ''}</span>`;
+    const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id], px = PXF[f.id];
+    return `<span class="pf fr-${f.id}${px ? ' pfx' : ''}${size < 46 ? ' pf-sm' : ''}${extra ? ' ' + extra : ''}" style="--s:${size}px">${px || ORN_FX[f.id] || ''}<span class="pf-av">${avatarSVG(av)}</span>${px ? '<i class="px-sheen"></i>' : ''}<span class="pf-ring"></span>${f.id === 'grandmaster' ? '<span class="pf-spk"><svg viewBox="-16 -16 96 96">' + o + '</svg></span>' : o ? `<span class="pf-orn"><svg viewBox="-16 -16 96 96">${o}</svg></span>` : ''}${px ? PX_TOP : ''}</span>`;
   }
 
   // ---------- 칭호 ----------
@@ -131,12 +175,12 @@ const Prof = (() => {
     for (const id of STATS.gskins || []) if (typeof GSKINS !== 'undefined' && GSKINS[id] && (GSKINS[id].rar === 5 || GSKINS[id].rar === 7)) n++;   // 엡실론도 셈
     return n;
   };
-  const peakT = () => Rank.tierOf(Math.max(Rank.state.peak || 0, Rank.state.rp || 0)).t;
+  const peakT = () => Rank.peakTier().t;   // v23: 통과한 승급전 수까지 따져서
   const placedOk = () => Rank.placed();
   const TI = [
     { id: 'collector', name: '수집가', desc: '울트라레어 스킨 3종 이상 보유', prog: () => `${Math.min(3, ultraOwned())} / 3`, ok: () => ultraOwned() >= 3, fr: 'collector' },
     { id: 'wargod', name: '전쟁의 신', desc: '승률 20% 초과 (10판 이상)', prog: () => STATS.matches ? `${(STATS.wins / STATS.matches * 100).toFixed(1)}% · ${STATS.matches}판` : '0판', ok: () => STATS.matches >= 10 && STATS.wins / STATS.matches > 0.2, fr: 'wargod' },
-    ...[6, 7, 8, 9].map((t) => ({ id: 'tier_' + RANK_TIERS[t].id, name: RANK_TIERS[t].name, desc: `랭크 ${RANK_TIERS[t].name} 도달`, prog: () => placedOk() ? `최고 ${RANK_TIERS[peakT()].name}` : '배치고사 전', ok: () => placedOk() && peakT() >= t, fr: RANK_TIERS[t].id, tier: t })),
+    ...[6, 7, 8, 9, 10, 11, 12, 13].map((t) => ({ id: 'tier_' + RANK_TIERS[t].id, name: RANK_TIERS[t].name, desc: RANK_TIERS[t].sup ? `랭크 ${RANK_TIERS[t].name} 도달 — 승급전 통과 (전용 테두리 함께)` : `랭크 ${RANK_TIERS[t].name} 도달`, prog: () => placedOk() ? `최고 ${RANK_TIERS[peakT()].name}` : '배치고사 전', ok: () => placedOk() && peakT() >= t, fr: RANK_TIERS[t].id, tier: t })),
     // 하드코어 랭크 상위 3티어 (최고 도달) — 칭호와 같은 이름의 테두리
     ...[2, 3, 4].map((t) => ({ id: 'hc_' + HC_TIERS[t].id, name: HC_TIERS[t].name, desc: `하드코어 랭크 ${HC_TIERS[t].name} 도달`, prog: () => hcPeakT() >= 0 ? `최고 ${HC_TIERS[hcPeakT()].name}` : Rank.hcOk() ? '하드코어 기록 없음' : '하드코어 잠김 (일반 랭크 다이아 4 필요)', ok: () => hcPeakT() >= t, fr: 'hc_' + HC_TIERS[t].id, hc: t })),
     { id: 'beta', name: '베타 테스터', desc: '개발자가 부여한 베타 테스터 (사진·테두리·테스터 등급 총 스킨 함께)', prog: () => '개발자에게 부여받아야 함', ok: () => Eco.isBeta(), fr: 'beta' },

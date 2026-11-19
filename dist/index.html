@@ -1804,6 +1804,132 @@ body.touch #qpop .qi .ico { width: 40px; height: 40px; }
 #fireVignette { position: absolute; inset: 0; box-shadow: inset 0 0 120px 34px rgba(255, 110, 30, 0.6); opacity: 0; transition: opacity 0.25s; pointer-events: none; }
 .ws-e svg.ti { width: 46px; height: 26px; display: block; opacity: 0.7; }
 #wsSec .ws-e svg.ti { width: 34px; height: 20px; }
+
+/* ============================================================
+   v23 랭크 개편 — 상위 티어(노바 · 셀레스티얼 · 이클립스 · 제니스) · 승급전 · 티어 승급 컷신 · 개편 안내 · 새 테두리·칭호
+   ============================================================ */
+/* 티어 승급 컷신 (10_rankfx.js): 모든 창 위 */
+.tc-layer { position: fixed; inset: 0; z-index: 40; cursor: pointer; touch-action: none; background: transparent; }
+#tcCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.tc-skip { position: absolute; right: calc(16px + var(--sar)); top: calc(12px + var(--sat)); appearance: none; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(0, 0, 0, 0.35); color: #fff; border-radius: 999px; padding: 6px 14px; font-size: 0.8rem; cursor: pointer; z-index: 1; }
+/* 승급전 연속 성공 칸 */
+.rk-pips { display: flex; gap: 5px; align-items: center; }
+.rk-pips i { width: 15px; height: 15px; transform: rotate(45deg) scale(0.78); border: 1.5px solid rgba(255, 220, 150, 0.55); background: rgba(0, 0, 0, 0.35); }
+.rk-pips i.on { background: linear-gradient(135deg, #fff6d0, #ffc94a 55%, #c27a10); border-color: #fff3c4; box-shadow: 0 0 8px rgba(255, 210, 110, 0.85); }
+.rk-pips i.x { background: rgba(229, 72, 77, 0.35); border-color: var(--red); }
+.rk-pips.sm { display: inline-flex; gap: 3px; margin-right: 6px; vertical-align: -1px; }
+.rk-pips.sm i { width: 9px; height: 9px; border-width: 1px; }
+.res-ranked.series { border-color: rgba(255, 215, 120, 0.55); background: linear-gradient(90deg, rgba(255, 200, 90, 0.1), rgba(160, 100, 255, 0.06)); }
+.res-ranked.series.fail { border-color: rgba(229, 72, 77, 0.45); background: rgba(229, 72, 77, 0.06); }
+.res-ranked.series .rp-delta { font-size: 2rem; }
+.rank-card.series { border-color: rgba(255, 215, 120, 0.6); }
+.rank-card.series .bar i { background: linear-gradient(90deg, #c27a10, #ffd76a, #fff6d0); }
+.rank-card.sup { border-color: rgba(255, 255, 255, 0.3); }
+.rank-card.sup img { animation: rankGlow 2.4s ease-in-out infinite; }
+.rank-card.sup-nova .bar i { background: linear-gradient(90deg, #1d5fb8, #5fd8ff, #ffffff); }
+.rank-card.sup-celestial .bar i { background: linear-gradient(90deg, #a8780a, #f3d98b, #fffdf3); }
+.rank-card.sup-eclipse .bar i { background: linear-gradient(90deg, #5a0a10, #ff4a2e, #ffcf6a); }
+.rank-card.sup-zenith .bar i { background: linear-gradient(90deg, #ff9be8, #a99bff, #7fe0ff, #fff08a); }
+.rank-card.sup-nova b { background: linear-gradient(90deg, #ffffff, #8fe3ff, #ffffff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rank-card.sup-celestial b { background: linear-gradient(90deg, #fffdf3, #f3d98b, #fffdf3); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rank-card.sup-eclipse b { background: linear-gradient(90deg, #ffcf6a, #ff4a2e, #ffcf6a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* 티어표: 상위 티어 줄 */
+.tier-grid .tier-sep { grid-column: 1 / -1; margin: 6px 0 0; padding: 7px 10px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; color: #fff3c4; text-align: center; border-top: 1px solid rgba(255, 220, 150, 0.35);
+  background: linear-gradient(90deg, rgba(120, 200, 255, 0), rgba(120, 200, 255, 0.12), rgba(255, 220, 140, 0.14), rgba(255, 90, 50, 0.12), rgba(200, 160, 255, 0.12), rgba(200, 160, 255, 0)); }
+.tier-grid .tier-sup { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tier-grid .tier.sup { position: relative; overflow: hidden; border-color: rgba(255, 255, 255, 0.22); background: radial-gradient(ellipse at 50% 30%, var(--tg, rgba(255, 255, 255, 0.08)), rgba(0, 0, 0, 0) 70%), rgba(255, 255, 255, 0.02); }
+.tier-grid .tier.sup img { width: 96px; height: 96px; }
+.tier-grid .tier.sup-nova { --tg: rgba(95, 216, 255, 0.2); } .tier-grid .tier.sup-celestial { --tg: rgba(255, 220, 140, 0.2); } .tier-grid .tier.sup-eclipse { --tg: rgba(255, 74, 46, 0.2); } .tier-grid .tier.sup-zenith { --tg: rgba(200, 170, 255, 0.24); }
+.tier-grid .tier.sup::after { content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.12), transparent); animation: tierSheen 4.5s ease-in-out infinite; pointer-events: none; }
+@keyframes tierSheen { 0%, 60% { transform: translateX(0); } 100% { transform: translateX(450%); } }
+.tier .tier-ser { display: block; margin-top: 2px; font-size: 0.64rem; font-weight: 700; color: #ffd76a; }
+@media (max-height: 520px), (max-width: 860px) { .tier-grid .tier.sup img { width: 60px; height: 60px; } .tier-grid .tier-sup { gap: 4px; } }
+/* 개편 안내 창 */
+#rkCutPanel { z-index: 28; }
+.menu.rkcut-box { width: min(460px, 100%); text-align: center; gap: 8px; border-color: rgba(255, 220, 150, 0.45); background: linear-gradient(180deg, rgba(40, 26, 70, 0.96), rgba(14, 16, 20, 0.97)); }
+.rkc-h { margin: 0; font-family: var(--f-display); font-size: 1.35rem; letter-spacing: 0.03em; background: linear-gradient(90deg, #8fe3ff, #fff3c4, #ff8a5a, #c9a6ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rkc-tiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.rkc-tier { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.rkc-tier img { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6)); }
+.rkc-tier b { font-size: 0.72rem; color: #fff3c4; }
+.rkc-rp { margin: 2px 0 0; display: flex; align-items: baseline; justify-content: center; gap: 8px; flex-wrap: wrap; font-family: var(--f-display); font-size: 1.2rem; }
+.rkc-rp s { color: var(--dim); } .rkc-rp b { color: var(--amber); } .rkc-rp small { width: 100%; font-family: var(--f-body); font-size: 0.72rem; color: #c9a6ff; }
+.rkc-gh { margin-top: 4px; }
+.rkc-gifts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.rkc-gift { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 6px; border: 1px solid var(--rc); border-radius: 6px; background: radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--rc) 28%, transparent), rgba(0, 0, 0, 0.25) 75%); box-shadow: 0 0 14px color-mix(in srgb, var(--rc) 45%, transparent); }
+.rkc-gift .rkc-ico { display: grid; place-items: center; width: 100%; height: 54px; }
+.rkc-gift .rkc-ico img, .rkc-gift .rkc-ico svg { max-width: 100%; max-height: 54px; }
+.rkc-gift b { font-size: 0.74rem; line-height: 1.2; } .rkc-gift small { font-size: 0.64rem; color: var(--rc); }
+
+/* ---------- 상위 티어 테두리 (pfx) — 기존 테두리와 다른 새 효과 ---------- */
+.fr-nova { --rg: conic-gradient(from 0deg, #ffffff, #8fe3ff 12%, #1d5fb8 25%, #8fe3ff 37%, #ffffff 50%, #8fe3ff 62%, #1d5fb8 75%, #8fe3ff 87%, #ffffff); --w: calc(var(--s) * 0.13); --gl: rgba(120, 215, 255, 0.95); --p1: #ffffff; --p2: #5fd8ff; --p3: #1d5fb8; --pt: rgba(150, 230, 255, 0.95); }
+.fr-celestial { --rg: conic-gradient(from 0deg, #fffdf3, #f3d98b 12%, #a8780a 25%, #f3d98b 37%, #fffdf3 50%, #f3d98b 62%, #a8780a 75%, #f3d98b 87%, #fffdf3); --w: calc(var(--s) * 0.13); --gl: rgba(255, 225, 150, 0.95); --p1: #fffdf3; --p2: #ffe39a; --p3: #a9d8ff; --pt: rgba(255, 236, 170, 0.95); }
+.fr-eclipse { --rg: conic-gradient(from 0deg, #2a0306, #ff4a2e 9%, #ffcf6a 14%, #ff4a2e 19%, #2a0306 32%, #0c0103 50%, #2a0306 68%, #ff4a2e 81%, #ffcf6a 86%, #ff4a2e 91%, #2a0306); --w: calc(var(--s) * 0.135); --gl: rgba(255, 70, 30, 0.95); --p1: #ffcf6a; --p2: #ff4a2e; --p3: #3a0508; --pt: rgba(255, 120, 60, 0.95); }
+.fr-zenith { --rg: conic-gradient(from 0deg, #ffffff, #ffd76a 8%, #ff9be8 17%, #a99bff 26%, #7fe0ff 35%, #fff08a 44%, #ffd76a 52%, #ffffff 60%, #ffd76a 68%, #ff9be8 77%, #7fe0ff 88%, #ffffff); --w: calc(var(--s) * 0.14); --gl: rgba(255, 236, 170, 1); --p1: #ffffff; --p2: #ffd76a; --p3: #a99bff; --pt: rgba(255, 240, 190, 1); }
+.pfx .pf-ring { animation: pfSpin 7s linear infinite; }
+.pfx::after { box-shadow: 0 0 calc(var(--s) * 0.2) var(--gl), 0 0 calc(var(--s) * 0.06) rgba(255, 255, 255, 0.8); animation: pfPulse 2.6s ease-in-out infinite; }
+.pfx .pf-orn { animation: pfFloat 2.4s ease-in-out infinite; }
+/* 뒤: 도는 색 후광 */
+.px-aura { position: absolute; inset: -36%; border-radius: 50%; z-index: 0; opacity: 0.7; background: conic-gradient(from 0deg, var(--p1), var(--p2), var(--p3), var(--p2), var(--p1), var(--p2), var(--p3), var(--p2), var(--p1));
+  -webkit-mask: radial-gradient(closest-side, transparent 50%, #000 62%, rgba(0, 0, 0, 0.3) 80%, transparent 100%); mask: radial-gradient(closest-side, transparent 50%, #000 62%, rgba(0, 0, 0, 0.3) 80%, transparent 100%);
+  animation: pfSpin 9s linear infinite reverse, pxAura 3s ease-in-out infinite; }
+@keyframes pxAura { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.9; } }
+.fr-zenith .px-aura { animation: pfSpin 9s linear infinite reverse, pxAura 3s ease-in-out infinite, pfHue 7s linear infinite; }
+/* 뒤: 영문 이름이 새겨진 고리 */
+.px-sig { position: absolute; inset: -16%; z-index: 0; animation: pfSpin 26s linear infinite; }
+.px-sig svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.px-sig text { font-family: 'Saira Condensed', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 7.4px; letter-spacing: 1.4px; fill: var(--p2); opacity: 0.85; }
+.pf-sm .px-sig { display: none; }
+/* 사진 위를 훑는 빛 */
+.px-sheen { position: absolute; inset: 11%; border-radius: 50%; overflow: hidden; z-index: 1; }
+.px-sheen::before { content: ''; position: absolute; top: -25%; bottom: -25%; left: -70%; width: 45%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.5), transparent); animation: pxSheen 3.6s ease-in-out infinite; }
+@keyframes pxSheen { 0%, 55% { transform: translateX(0) rotate(12deg); } 100% { transform: translateX(420%) rotate(12deg); } }
+/* 고리 위를 도는 반사광 */
+.px-glint { position: absolute; inset: 3%; border-radius: 50%; z-index: 3; mix-blend-mode: screen;
+  background: conic-gradient(from 0deg, transparent 0 292deg, rgba(255, 255, 255, 0) 292deg, rgba(255, 255, 255, 0.95) 336deg, rgba(255, 255, 255, 0) 352deg, transparent 352deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--w)), #000 calc(100% - var(--w) + 0.6px)); mask: radial-gradient(farthest-side, transparent calc(100% - var(--w)), #000 calc(100% - var(--w) + 0.6px));
+  animation: pfSpin 2.4s linear infinite; }
+/* 꼬리 달린 혜성 (바깥: 시계 방향 / 안쪽 b: 반대) */
+.px-orbit { position: absolute; inset: -10%; z-index: 4; animation: pfSpin 3.2s linear infinite; }
+.px-orbit::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 225deg, var(--pt) 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); }
+.px-orbit b { position: absolute; top: -4%; left: 50%; width: 11%; height: 11%; margin-left: -5.5%; border-radius: 50%; background: radial-gradient(circle, #fff 0 28%, var(--p2) 52%, transparent 72%); }
+.px-orbit.b { inset: 2%; animation-duration: 4.8s; animation-direction: reverse; }
+.px-orbit.b::before { background: conic-gradient(from 0deg, var(--pt) 0deg, transparent 135deg 360deg); }
+.px-orbit.b b { width: 8%; height: 8%; margin-left: -4%; top: -3%; }
+.pf-sm .px-orbit.b { display: none; }
+/* 번갈아 반짝이는 별 */
+.px-spk { position: absolute; z-index: 5; width: 15%; height: 15%; opacity: 0; background: radial-gradient(circle, #fff 0 18%, var(--p2) 42%, transparent 70%);
+  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%); animation: pxTw 2.4s ease-in-out infinite; }
+.px-spk.s1 { top: -8%; left: 76%; } .px-spk.s2 { top: 72%; left: -9%; animation-delay: 0.6s; } .px-spk.s3 { top: 86%; left: 82%; width: 11%; height: 11%; animation-delay: 1.2s; } .px-spk.s4 { top: 10%; left: -6%; width: 10%; height: 10%; animation-delay: 1.8s; }
+@keyframes pxTw { 0%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); } 35% { opacity: 1; transform: scale(1) rotate(45deg); } 65% { opacity: 0.15; transform: scale(0.45) rotate(90deg); } }
+/* 장식 선을 따라 흐르는 빛 */
+.px-flow { fill: none; stroke: #ffffff; stroke-width: 1.1; stroke-linecap: round; stroke-dasharray: 2.2 12; opacity: 0.9; animation: pxFlow 1.6s linear infinite; }
+.fr-eclipse .px-flow { stroke: #ffcf6a; } .fr-celestial .px-flow { stroke: #fffbe8; }
+@keyframes pxFlow { to { stroke-dashoffset: -28.4; } }
+@media (prefers-reduced-motion: reduce) { .pfx *, .pfx::after, .px-flow { animation: none !important; } .px-spk { opacity: 0.8; } }
+/* ---------- 상위 티어 칭호: 빛나는 띠 + 지나가는 반사광 ---------- */
+.ttl-tier_nova, .ttl-tier_celestial, .ttl-tier_eclipse, .ttl-tier_zenith { position: relative; overflow: hidden; }
+.ttl-tier_nova::after, .ttl-tier_celestial::after, .ttl-tier_eclipse::after, .ttl-tier_zenith::after { content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.7), transparent); animation: ttlShine 3.4s ease-in-out infinite; pointer-events: none; }
+@keyframes ttlShine { 0%, 50% { transform: translateX(0); } 100% { transform: translateX(560%); } }
+.ttl-tier_nova { background: linear-gradient(90deg, rgba(8, 30, 70, 0), #0b2f6e 12%, #1d6fd0 38%, #5fd8ff 50%, #1d6fd0 62%, #0b2f6e 88%, rgba(8, 30, 70, 0)); border-color: rgba(160, 235, 255, 0.95); text-shadow: 0 0 6px rgba(120, 220, 255, 0.95), 0 1px 2px rgba(0, 0, 0, 0.7); }
+.ttl-tier_nova::before { content: '✦'; color: #dff7ff; }
+.ttl-tier_celestial { background: linear-gradient(90deg, rgba(120, 90, 20, 0), #7a5410 12%, #c9962e 38%, #f6dc94 50%, #c9962e 62%, #7a5410 88%, rgba(120, 90, 20, 0)); border-color: rgba(255, 243, 196, 0.95); color: #fffdf3; text-shadow: 0 0 6px rgba(255, 220, 130, 0.95), 0 1px 2px rgba(60, 40, 0, 0.85); }
+.ttl-tier_celestial::before { content: '☾'; color: #fffbe8; }
+.ttl-tier_eclipse { background: linear-gradient(90deg, rgba(20, 0, 0, 0), #120204 10%, #5a0a10 32%, #d8301c 50%, #5a0a10 68%, #120204 90%, rgba(20, 0, 0, 0)); border-color: rgba(255, 140, 80, 0.95); text-shadow: 0 0 7px rgba(255, 90, 40, 0.95), 0 1px 2px rgba(0, 0, 0, 0.8); }
+.ttl-tier_eclipse::before { content: '●'; color: #120204; text-shadow: 0 0 5px #ffcf6a, 0 0 2px #ff4a2e; }
+.ttl-tier_zenith { background: linear-gradient(90deg, rgba(40, 20, 80, 0), #2a1060 8%, #6a3ac0 26%, #d9a441 44%, #ffe9a8 50%, #d9a441 56%, #6a3ac0 74%, #2a1060 92%, rgba(40, 20, 80, 0)); background-size: 200% 100%; animation: ttlFlow 5s linear infinite;
+  border-image: linear-gradient(90deg, #ff9be8, #a99bff, #7fe0ff, #fff08a, #ff9be8) 1; text-shadow: 0 0 8px rgba(255, 230, 160, 1), 0 1px 2px rgba(0, 0, 0, 0.85); }
+.ttl-tier_zenith::before { content: '♛'; color: #fff3c4; }
+@media (prefers-reduced-motion: reduce) { .ttl-tier_nova::after, .ttl-tier_celestial::after, .ttl-tier_eclipse::after, .ttl-tier_zenith::after, .ttl-tier_zenith, .tier-grid .tier.sup::after { animation: none; } }
+.dev-sup { border-color: rgba(255, 215, 120, 0.7) !important; color: #fff3c4; }
+/* 개편 안내 창: 가로 휴대폰처럼 낮은 화면에서는 두 칸 (왼쪽 티어·RP·설명 / 오른쪽 보상·확인) */
+@media (max-height: 520px) {
+  .menu.rkcut-box { width: min(860px, 100%); display: grid; grid-template-columns: 1.15fr 1fr; grid-template-areas: "ey ey" "h h" "tiers gh" "rp gifts" "txt gifts" "txt ok"; column-gap: 16px; row-gap: 4px; align-items: start; padding: 12px 16px; }
+  .rkcut-box > .eyebrow:first-child { grid-area: ey; } .rkc-h { grid-area: h; font-size: 1.15rem; } .rkc-tiers { grid-area: tiers; } .rkc-rp { grid-area: rp; font-size: 1.05rem; }
+  #rkCutText { grid-area: txt; margin: 0; } .rkc-gh { grid-area: gh; margin-top: 0; align-self: end; } .rkc-gifts { grid-area: gifts; } #rkCutOk { grid-area: ok; }
+  .rkc-tier img { width: 46px; height: 46px; } .rkc-gift { padding: 6px 4px; } .rkc-gift .rkc-ico { height: 40px; } .rkc-gift .rkc-ico img, .rkc-gift .rkc-ico svg { max-height: 40px; }
+}
 </style>
 <div id="app">
   <canvas id="gl"></canvas>
@@ -1972,6 +2098,20 @@ body.touch #qpop .qi .ico { width: 40px; height: 40px; }
       <p class="rn-names"><s id="rnOld"></s> → <b id="rnNew"></b></p>
       <p class="micro" id="rnText"></p>
       <button class="btn amber" type="button" id="rnOk">확인</button>
+    </div>
+  </section>
+
+  <!-- v23 랭크 개편 안내 (4000 RP 넘던 계정이 다시 들어왔을 때 한 번 — 10_rankfx.js) -->
+  <section id="rkCutPanel" class="overlay" hidden>
+    <div class="menu rkcut-box" role="alertdialog" aria-labelledby="rkCutTitle">
+      <div class="eyebrow">랭크 개편 안내</div>
+      <h2 class="rkc-h" id="rkCutTitle">이터널 위에 새 티어가 열렸습니다</h2>
+      <div class="rkc-tiers" id="rkCutTiers"></div>
+      <p class="rkc-rp"><s id="rkCutFrom"></s><span>→</span><b id="rkCutTo"></b><small>이터널 1 · 승급전 대기</small></p>
+      <p class="micro" id="rkCutText"></p>
+      <div class="eyebrow rkc-gh">보상 — 가지고 있지 않던 최상위 스킨 3종</div>
+      <div class="rkc-gifts" id="rkCutGifts"></div>
+      <button class="btn amber" type="button" id="rkCutOk">확인</button>
     </div>
   </section>
 
@@ -2195,8 +2335,17 @@ body.touch #qpop .qi .ico { width: 40px; height: 40px; }
     <div class="cs-text" id="csText"><span id="csRar"></span><b id="csName"></b></div>
     <button class="cs-skip" type="button" id="csSkip">건너뛰기 ›</button>
   </section>
+  <!-- v23 티어 승급 컷신 (10_rankfx.js — 글자까지 캔버스에 그림 · 누르면 이름 장면으로 → 한 번 더 누르면 닫힘) -->
+  <section id="tcLayer" class="tc-layer" hidden><canvas id="tcCanvas"></canvas><button class="tc-skip" type="button" id="tcSkip">건너뛰기 ›</button></section>
   <svg class="svg-defs" width="0" height="0" aria-hidden="true">
     <defs>
+      <!-- v23 상위 티어 테두리 장식 (10_ui_profile.js ORN.nova·celestial·eclipse·zenith) · 글자 고리 경로 -->
+      <linearGradient id="pxg-nova" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#8fe3ff"/><stop offset="1" stop-color="#0d3c84"/></linearGradient>
+      <linearGradient id="pxg-cel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf3"/><stop offset=".5" stop-color="#f3d98b"/><stop offset="1" stop-color="#a8780a"/></linearGradient>
+      <linearGradient id="pxg-ecl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9a6a"/><stop offset=".4" stop-color="#5a0a10"/><stop offset="1" stop-color="#0a0204"/></linearGradient>
+      <linearGradient id="pxg-zen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#ffe08a"/><stop offset="1" stop-color="#9a6a08"/></linearGradient>
+      <linearGradient id="pxg-prism" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9be8"/><stop offset=".3" stop-color="#a99bff"/><stop offset=".55" stop-color="#7fe0ff"/><stop offset=".8" stop-color="#fff08a"/><stop offset="1" stop-color="#ffb36b"/></linearGradient>
+      <path id="pxc" d="M50 6a44 44 0 1 1 0 88a44 44 0 1 1 0-88"/>
       <linearGradient id="g-gold" x1="0" x2="1"><stop offset="0" stop-color="#8a5e12"/><stop offset=".45" stop-color="#ffd66b"/><stop offset="1" stop-color="#9c6a14"/></linearGradient>
       <linearGradient id="g-coin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fe6ff"/><stop offset=".5" stop-color="#2a8ac0"/><stop offset="1" stop-color="#11506f"/></linearGradient>
       <linearGradient id="g-gcoin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb08a"/><stop offset=".5" stop-color="#d8402a"/><stop offset="1" stop-color="#6e1610"/></linearGradient>
@@ -2313,7 +2462,7 @@ body.touch #qpop .qi .ico { width: 40px; height: 40px; }
         <div><span>처치</span><b id="resKills">0</b></div><div><span>생존 시간</span><b id="resTime">0:00</b></div>
         <div><span>가한 피해</span><b id="resDmg">0</b></div><div><span>획득 경험치</span><b id="resXp">+0</b></div>
       </div>
-      <div class="res-ranked" id="resRanked" hidden><img id="resEmb" alt=""><div class="rr-info"><div class="eyebrow" id="resRkKicker">랭크</div><b id="resRkLabel"></b><div class="bar"><i id="resRkBar"></i></div><span class="micro" id="resRkSub"></span></div><b class="rp-delta" id="resRkDelta"></b></div>
+      <div class="res-ranked" id="resRanked" hidden><img id="resEmb" alt=""><div class="rr-info"><div class="eyebrow" id="resRkKicker">랭크</div><b id="resRkLabel"></b><div class="bar"><i id="resRkBar"></i></div><div class="rk-pips" id="resRkPips" hidden></div><span class="micro" id="resRkSub"></span></div><b class="rp-delta" id="resRkDelta"></b></div>
       <p class="micro" id="resNote"></p>
       <div class="row"><button class="btn amber" data-ui="again">다시 플레이</button><button class="btn" data-ui="lobby">로비로</button></div>
     </div>
@@ -3255,6 +3404,19 @@ const Audio = (() => {
       }
       else if (ph === 'show') { [784, 988, 1175].forEach((f, i) => tone(sfxBus, t + i * 0.09, 0.45, 'triangle', f, f, 0.09)); }
       else if (ph === 'small') { [880, 1318].forEach((f, i) => tone(sfxBus, t + i * 0.08, 0.25, 'triangle', f, f, 0.1)); }
+    },
+    // v23 티어 승급 컷신 (10_rankfx.js): gather(낮게 차오르는 울림) · crack(금 가는 소리) · shatter(깨짐 + 충격) · reveal(빛기둥 화음) · title(이름 — 금관 같은 화음)
+    //  sup: 상위 티어(노바~제니스) — 더 낮고 길게, 화음 한 음 더
+    rankUp(ph, sup) {
+      if (!ctx) return; const t = ctx.currentTime, k = sup ? 1 : 0;
+      if (ph === 'gather') { noise(sfxBus, t, 1.9 + k * 0.4, 'lowpass', 120, 0.7, 0.3); tone(sfxBus, t, 1.9 + k * 0.4, 'sine', 46, 92, 0.26); tone(sfxBus, t + 0.3, 1.5 + k * 0.4, 'triangle', 220, 440, 0.04); noise(sfxBus, t + 0.4, 1.5 + k * 0.4, 'bandpass', 900, 2.5, 0.06); }
+      else if (ph === 'crack') { for (let i = 0; i < 7; i++) noise(sfxBus, t + i * 0.07 + Math.random() * 0.03, 0.05, 'highpass', 3000 + Math.random() * 3000, 1, 0.09); tone(sfxBus, t, 0.6, 'sine', 1760, 1700, 0.03); }
+      else if (ph === 'shatter') {
+        noise(sfxBus, t, 0.5, 'bandpass', 2600, 0.6, 0.55); noise(sfxBus, t, 1.6, 'highpass', 6000, 0.8, 0.2); tone(sfxBus, t, 0.8, 'sine', 70, 28, 0.6); noise(sfxBus, t, 0.9, 'lowpass', 200, 0.8, 0.45);
+        for (let i = 0; i < 12; i++) { const f = 2500 + Math.random() * 4500; tone(sfxBus, t + 0.04 + i * 0.045 + Math.random() * 0.03, 0.22, 'sine', f, f * 0.97, 0.03); }
+      }
+      else if (ph === 'reveal') { const base = sup ? 196 : 262; [1, 1.25, 1.5, 2, 2.5, 3].slice(0, 4 + k * 2).forEach((m, i) => tone(sfxBus, t + i * 0.09, 2.6, 'triangle', base * m, base * m * 1.003, 0.1)); noise(sfxBus, t, 2.2, 'highpass', 7000, 0.7, 0.1); tone(sfxBus, t, 2.4, 'sine', base / 2, base / 2, 0.16); }
+      else if (ph === 'title') { const base = sup ? 392 : 523; [1, 1.26, 1.5].concat(sup ? [2] : []).forEach((m) => { tone(sfxBus, t, 1.6, 'sawtooth', base * m / 2, base * m / 2, 0.025); tone(sfxBus, t, 1.8, 'triangle', base * m, base * m, 0.07); }); [2, 2.52, 3].forEach((m, i) => tone(sfxBus, t + 0.25 + i * 0.12, 0.9, 'sine', base * m, base * m, 0.04)); }
     },
     // 총기 스킨(울트라레어) 효과음: draw(빛 띠가 올라가며 나타남) · holster(내려가며 사라짐) · shot(종류별로 총성에 얹는 소리) · hit(맞힘) · kill(처치)
     //  lite: 슈퍼레어(약한 효과) — 작게, 처치도 맞힘 소리 정도로
@@ -22985,6 +23147,16 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v22', d: '2026-11-20', t: '랭크 개편 — 이터널 위 상위 티어 4종 · 승급전 · 티어 승급 컷신', items: [
+    '이터널 위에 격이 다른 상위 티어 4종: 노바 → 셀레스티얼 → 이클립스 → 제니스 · 단계는 5 → 4 → 3 → 2 → 1, 한 단계 200 RP (노바 5 = 4,000 RP)',
+    '승급전: 티어 끝(이터널 1 · 노바 1 · 셀레스티얼 1 · 이클립스 1)에 닿으면 RP가 멈추고 승급전이 열림 — 칼덴 섬 · 아이언리지 10위 안, 키나루 · 크리스마스 섬 13위 안, 노르덴 17위 안이면 1회 성공',
+    '연속 성공 3번 → 노바, 3번 → 셀레스티얼, 4번 → 이클립스, 5번 → 제니스 · 한 번이라도 실패하면 연속 기록이 0부터 (RP는 깎이지 않음) · 승급전 봇은 95%가 익스트림',
+    '상위 티어는 봇의 60~88%가 익스트림 · 한 번 오른 상위 티어 밑으로는 떨어지지 않음 · 제니스 1부터는 상한 없이 RP만 쌓임',
+    '티어 승급 컷신: 티어가 오르면 이전 엠블럼이 빛을 모으며 금이 가고 산산조각 난 뒤, 빛기둥 속에서 새 엠블럼이 나타남 (상위 티어는 이름이 새겨진 인장 고리 · 혜성 · 더 긴 연출) — 화면을 누르면 건너뜀',
+    '상위 티어 4종의 새 엠블럼(별빛 인장 · 수정 날개 · 천사 날개 · 검은 태양 · 무지개 왕관)과 전용 칭호 · 전용 테두리 — 테두리는 도는 색 후광 · 이름이 새겨진 고리 · 고리를 도는 반사광 · 혜성 · 반짝이는 별 · 사진 위를 훑는 빛이 들어간 새 효과',
+    '로비 랭크 카드 · 결과 화면에 승급전 연속 성공 칸 · 티어표에 상위 티어 줄 추가',
+    '기존에 4,000 RP를 넘던 기록은 4,000 RP(이터널 1 · 승급전 대기)로 조정 — 그 계정은 다시 들어오면 안내 창과 함께 가지고 있지 않던 최상위 스킨(엡실론 · EXCLUSIVE, 테스터 제외) 3종을 받음',
+  ] },
   { v: 'v22', d: '2026-11-20', t: '투척 무기 4종 · 근접 무기 · 시체 상자 · 자동 줍기 · 진통제 · 모바일 그림 버튼', items: [
     '새 투척 무기 4종: 화염병(닿는 곳에 9초 동안 불바다 · 차량도 탐) · 자기장 수류탄(10초 동안 작은 자기장 — 안에 있으면 방어구와 상관없이 피해) · 섬광탄(터지는 쪽을 보고 있으면 최대 5초 동안 눈이 멂 · 봇도 그동안 못 봄) · 충격 수류탄(닿으면 바로 터짐, 세열보다 약함)',
     '던지는 동작을 새로 만듦 — 핀을 뽑으면 팔을 머리 뒤로 크게 젖히고 반대 팔로 겨눴다가, 놓으면 어깨 위로 채찍처럼 휘둘러 몸 반대쪽 아래까지 (허리 비틀기·체중 이동 · 1인칭도) · 봇도 던지기 전에 젖히는 동작이 보임',
@@ -23375,6 +23547,7 @@ const Cloud = (() => {
   function refreshUi() {
     if (G.state === 'lobby') { HUD.renderLobby(); if (G.applySettings) G.applySettings('view'); if (Lobby.setLook) { Lobby.setLook(SETTINGS.look); Lobby.teamN = 0; } }
     render();
+    try { Rank.settle(); } catch (e) { console.warn(e); }   // v23 랭크 개편: 4000 RP 넘던 기록 → 보상·안내 (기록을 다 불러온 뒤에만 — 10_rank.js)
   }
 
   // ---------- 동기화 ----------
@@ -23540,15 +23713,14 @@ const Cloud = (() => {
   // ---------- 공개 API ----------
   async function init() {
     render();
-    if (!enabled) return;
     // 이전에 로그인했던 기기만 시작할 때 SDK를 불러 세션 복원 (게스트는 로그인 창을 열 때 불러옴)
-    if (!store.get('account', null)) return;
+    if (!enabled || !store.get('account', null)) { try { Rank.settle(); } catch (e) { console.warn(e); } return; }   // 게스트 기록도 v23 개편 정리
     status = 'restoring'; render();
     try {
       await loadSdk();
       const { data } = await sb.auth.getSession();
       if (data && data.session && data.session.user) await afterLogin(data.session.user, false);
-      else { store.set('account', null); restoreGuest(); status = 'idle'; render(); }
+      else { store.set('account', null); restoreGuest(); status = 'idle'; render(); try { Rank.settle(); } catch (e) { console.warn(e); } }
     } catch (e) { status = 'error'; lastErr = msgOf(e); render(); }
   }
   async function signUp(id, pw, pw2) {
@@ -23848,11 +24020,12 @@ const Dev = (() => {
     const st = h('span', 'acc-on ' + (on.on ? on.st === 'game' ? 'game' : 'on' : 'off'), (on.on ? '● ' : '○ ') + onlineText(on) + (on.on || !lastT(x, u) ? '' : ` · 마지막 접속 ${agoT(lastT(x, u))}`));
     nm.appendChild(st); hd.appendChild(nm);
     // 티어: 엠블럼 + 이름 (레벨 3 미만 = 잠김, 배치 3판 전 = 배치고사)
-    const ti = Rank.tierOf(R.rp), lock = L.lv < 3, plc = !lock && (D.d ? (R.placed || 0) < 3 : !u.rp);
+    const RV = x.rank ? Rank.viewOf(R) : { now: Rank.tierOf(R.rp), peak: Rank.tierOf(R.peak) }, ti = RV.now, lock = L.lv < 3,   // v23: 개편 전 기록은 4000 RP 로 잘라서
+    plc = !lock && (D.d ? (R.placed || 0) < 3 : !u.rp);
     const tierBox = h('div', 'acc-dtier');
     const em = h('img', ''); em.alt = ''; em.src = lock ? Rank.emblem(-2, 0, 96) : plc ? Rank.emblem(-1, 0, 96) : Rank.emblem(ti.t, ti.div, 96); tierBox.appendChild(em);
     const tl = h('div', ''); tl.appendChild(h('b', '', lock ? '랭크 잠김' : plc ? '배치고사' : ti.label));
-    tl.appendChild(h('small', '', lock ? '레벨 3부터' : plc ? `${R.placed || 0} / 3 완료` : `${R.rp} RP` + (R.peak > R.rp ? ` · 최고 ${Rank.tierOf(R.peak).label}` : '')));
+    tl.appendChild(h('small', '', lock ? '레벨 3부터' : plc ? `${R.placed || 0} / 3 완료` : `${R.rp} RP` + (R.peak > R.rp ? ` · 최고 ${RV.peak.label}` : '') + (ti.series ? ` · 승급전 ${R.ss || 0}/${SUP.need[ti.sg] || 3}` : '')));
     tierBox.appendChild(tl); hd.appendChild(tierBox);
     // 하드코어 티어 (일반 랭크 최고 다이아 4 이상이면 자격 · 한 판이라도 했으면 티어)
     const HC = R.hc || null, hcOk = (R.peak || 0) >= HC_MIN_PEAK;
@@ -23992,6 +24165,10 @@ const Dev = (() => {
     // 표시
     r = sec('표시');
     tg(r, 'stats', 'FPS·좌표 표시', false);
+    // v23 티어 승급 컷신 다시 보기 (10_rankfx.js) — 그 티어로 오를 때 나오는 장면. 상위 티어(노바~제니스)는 승급전 통과 장면
+    r = sec('티어 승급 컷신', '누르면 그 티어로 오르는 컷신을 바로 봅니다 (기록은 바뀌지 않음). 화면을 누르면 이름 장면으로, 한 번 더 누르면 닫힘');
+    for (let t = 1; t < RANK_TIERS.length; t++) { const b = btn(r, `→ ${RANK_TIERS[t].name}`, () => { close(); setTimeout(() => RankFx.demo(t), 120); return ''; }); if (RANK_TIERS[t].sup) b.classList.add('dev-sup'); }
+    btn(r, '개편 안내 미리보기', () => { close(); RankFx.cutNotice({ from: 6600, got: [{ k: 'gskin', id: 'e_m416_divine', rar: 7 }, { k: 'vskin', id: 'uaz_sleigh', rar: 8 }, { k: 'skin', id: 'top_x_frost', rar: 8 }], preview: 1 }); return ''; });
     // 관전 (v22 · 10_watch.js): 경기 중인 모든 계정 — 로비 채널 접속 표시(pl) 기준, 친구가 아니어도 볼 수 있다 (서버가 관리자인지 확인)
     const ws = h('div', 'dev-sec'); ws.appendChild(h('div', 'dev-h', '관전'));
     ws.appendChild(h('div', 'dev-note', '지금 경기 중인 모든 계정의 화면을 봅니다 (친구가 아니어도 · 로그인한 계정만 · 로비에서만). 보는 동안 상대 화면 위에 「이름(운영자) 관전 중」이 보입니다. 서버 함수 supabase/spectate.sql 필요'));
@@ -24869,6 +25046,25 @@ const Eco = (() => {
   const bpTitle = (id) => (E().bpt || []).includes(id);
   // 데스매치 한 판 끝 (10_dm.js)
   function bpDm(kills, win) { const X = BP.xp; bpLast = bpAdd(X.dm + Math.min(X.killMax, kills || 0) * X.dmKill + (win ? X.dmWin : 0)); return bpLast; }
+  // ---------- v23 랭크 개편 보상 (10_rank.js settle) ----------
+  //  가지고 있지 않은 최상위 등급 스킨(엡실론 · EXCLUSIVE — 옷·총기·차량, 테스터 제외) n종을 무작위로. 모자라면 울트라레어, 그래도 모자라면 골드 탄피 3,000씩
+  //  seed: 계정마다 고정 → 두 기기에서 동시에 받아도 같은 스킨이라 합쳐도 늘지 않는다.  돌려주는 값: 지급 카드 목록 (give 결과)
+  function grantTop(n, seed) {
+    E();
+    let h = 2166136261; for (const ch of String(seed || '')) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+    const R = mulberry32(h), got = [];
+    const pool = (rars) => {
+      const out = [];
+      for (const id of Object.keys(Body.SKINS)) { const d = Body.SKINS[id]; if (rars.includes(d.rar) && !/_basic$/.test(id) && !owns(id)) out.push({ k: 'skin', id, rar: d.rar }); }
+      for (const id of Object.keys(GSKINS)) { const d = GSKINS[id]; if (rars.includes(d.rar) && !d.tester && !ownsGun(id)) out.push({ k: 'gskin', id, rar: d.rar }); }
+      for (const id of Object.keys(VSKINS)) { const d = VSKINS[id]; if (rars.includes(d.rar) && !ownsVeh(id)) out.push({ k: 'vskin', id, rar: d.rar }); }
+      return out;
+    };
+    for (const rars of [[7, 8], [5]]) { const P = pool(rars); while (got.length < n && P.length) got.push(give(P.splice(Math.floor(R() * P.length), 1)[0])); }
+    while (got.length < n) got.push(give({ k: 'gold', n: 3000, rar: 8 }));
+    changed('grant');
+    return got;
+  }
   // ---------- 개발자 계정 (10_dev.js) ----------
   // 모든 옷·차량·총기 스킨을 기록에 넣는다 (이미 있으면 그대로). 넣은 개수
   function devGrantAll() {
@@ -24882,7 +25078,7 @@ const Eco = (() => {
   function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; else if (kind === 'bp') bpAdd(n, true); changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, brClaim, grant, flushGrants, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, grantTop, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, brClaim, grant, flushGrants, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();
 
@@ -26312,7 +26508,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
         if (lock && !lock.leader) { showLobbyNote('파티 설정은 방장만 바꿀 수 있습니다'); return; }
         if (v !== 'normal' && !Rank.unlocked()) { showLobbyNote(`랭크전은 레벨 3부터 할 수 있습니다 (현재 레벨 ${levelFromXp(STATS.xp).lv})`); return; }
         if (v !== 'normal' && lock && !lock.rankOk) { showLobbyNote(`파티원 중 레벨 3 미만이 있어 랭크전을 할 수 없습니다 (${lock.lowNames.join(', ')})`); return; }
-        if (v === 'hardcore' && !Rank.hcOk()) { showLobbyNote(`하드코어 랭크전은 일반 랭크 최고 기록이 다이아 4 이상이어야 합니다 (내 최고 ${Rank.placed() ? Rank.tierOf(Rank.state.peak || 0).label : '배치고사 전'})`); return; }
+        if (v === 'hardcore' && !Rank.hcOk()) { showLobbyNote(`하드코어 랭크전은 일반 랭크 최고 기록이 다이아 4 이상이어야 합니다 (내 최고 ${Rank.placed() ? Rank.peakTier().label : '배치고사 전'})`); return; }
         if (v === 'hardcore' && lock && !lock.hcOk) { showLobbyNote(`파티원 중 다이아 4를 찍어 보지 못한 사람이 있어 하드코어를 할 수 없습니다 (${lock.hcLow.join(', ')})`); return; }
         if (v !== 'normal' && dm) { SETTINGS.game = 'br'; showLobbyNote('랭크전은 배틀로얄만 있습니다 — 배틀로얄로 바꿨습니다'); }
         SETTINGS.queue = v; saveSettings(); renderLobby(); if (lock) Party.settingsChanged();
@@ -26335,13 +26531,19 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
         (pm && pm.length > DTS * 2 ? ` · ⚠ ${DTS * 2}명까지 가능 (지금 ${pm.length}명)` : '');
     } else if (dm) $('cfgNote').textContent = `${GT.name}: 4 대 4 고정(빈자리는 봇) · 먼저 ${DM_RULES.killTarget}킬 · 최대 ${DM_RULES.timeLimit / 60}분 · 봇 난이도·시간대·시점만 적용`;
     else if (hc) $('cfgNote').textContent = `하드코어 랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 전원 익스트림 · 스토커 4부터 시작 · 일반 랭크보다 RP가 크게 깎입니다`;
-    else if (ranked) $('cfgNote').textContent = `랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 고정 · 봇 난이도는 ${Rank.placed() ? '현재 티어' : '배치고사 기준(혼합)'}에 맞춰 자동 설정`;
-    // 랭크 카드 (랭크·하드코어 대기열에서만)
+    else if (ranked) {
+      const se = Rank.series();   // v23 승급전 중이면 이 맵의 성공 순위
+      $('cfgNote').textContent = se ? `랭크 승급전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 · 익스트림 봇 95% · ${MAPS[SETTINGS.map].name.replace(/\s*\(.*\)$/, '')} ${se.lim}위 안이면 1회 성공 (연속 ${se.n} / ${se.need}) · 다른 맵: 칼덴·아이언리지 10위 · 키나루·크리스마스 13위 · 노르덴 17위`
+        : `랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 고정 · 봇 난이도는 ${Rank.placed() ? '현재 티어' : '배치고사 기준(혼합)'}에 맞춰 자동 설정`;
+    }
+    // 랭크 카드 (랭크·하드코어 대기열에서만) — v23 승급전이면 연속 성공 칸(●)
     const rs = hc ? Rank.hcStatus() : Rank.status(), rc0 = $('rankCard');
     rc0.hidden = !ranked;
-    $('rankEmb').src = rs.emb; $('rankLabel').textContent = rs.label; $('rankSub').textContent = rs.sub;
-    $('rankBar').style.width = rs.kind === 'ranked' ? (rs.tier.top ? 100 : rs.tier.into) + '%' : rs.kind === 'placement' ? (Rank.state.placed / 3 * 100) + '%' : (levelFromXp(STATS.xp).lv >= 2 ? 50 : 0) + '%';
-    rc0.className = 'rank-card' + (hc ? ' hc' : '') + (rs.kind === 'locked' ? ' locked' : '') + (rs.kind === 'ranked' && rs.tier.t >= (hc ? 3 : 8) ? ' glow' : '') + (rs.kind === 'ranked' && !hc && rs.tier.t === 9 ? ' tier-top' : '');
+    $('rankEmb').src = rs.emb; $('rankLabel').textContent = rs.label;
+    if (rs.series) $('rankSub').innerHTML = `<span class="rk-pips sm">${pipsHTML(rs.series.n, rs.series.need)}</span>${rs.sub}`; else $('rankSub').textContent = rs.sub;
+    $('rankBar').style.width = rs.kind === 'ranked' ? (rs.series ? rs.series.n / rs.series.need * 100 : rs.tier.pct) + '%' : rs.kind === 'placement' ? (Rank.state.placed / 3 * 100) + '%' : (levelFromXp(STATS.xp).lv >= 2 ? 50 : 0) + '%';
+    rc0.className = 'rank-card' + (hc ? ' hc' : '') + (rs.kind === 'locked' ? ' locked' : '') + (rs.kind === 'ranked' && rs.tier.t >= (hc ? 3 : 8) ? ' glow' : '') + (rs.kind === 'ranked' && !hc && rs.tier.t >= 9 ? ' tier-top' : '')
+      + (rs.series ? ' series' : '') + (rs.kind === 'ranked' && !hc && rs.tier.sup ? ' sup sup-' + RANK_TIERS[rs.tier.t].id : '');
     // 맵 카드 (왼쪽 아래)
     const nb = ranked ? Rank.botCount(SETTINGS.map) : SETTINGS.bots, total = nb + 1, mins = Math.round(matchMinutes()), nTeams = Math.ceil(total / TS);
     const viewKo = SETTINGS.view === 'fpp' ? '1인칭' : '3인칭';
@@ -26407,6 +26609,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: 'v23 랭크 개편', title: '이터널 위 상위 티어 4종 — 노바 · 셀레스티얼 · 이클립스 · 제니스 · 승급전 · 티어 승급 컷신 · 전용 칭호와 테두리 (티어표 보기)', img: () => rankBanner, act: () => G.ui('ranks') },
     { tag: '새 이벤트', title: `백룸 완전 탈출 — THE BACKROOMS 를 12가지 방법으로 모두 탈출하면 골드 탄피 ${BR_EVENT.gold12.toLocaleString()} + 칭호·테두리 ‘${BR_EVENT.title12}’ + 사진 ‘Level 0’ (계정마다 1번)`, img: () => EvBR.banner('all'), act: () => EvBR.open() },
     { tag: 'v22 새 아레나', title: '데스매치·대결 아레나 3곳 추가 — 녹슨 공장 · 모래 사원 · 골목 마을 (72×72m, 맵 선택에서 고르거나 무작위)', img: () => LOBBY_ART.factory || LOBBY_ART.arena, act: () => G.ui('mapPick') },
     { tag: 'v22 새 맵', title: '크리스마스 섬(1.5km) — 눈 덮인 섬 · 북극성 광장 큰 트리 · 산타 공방 · 얼어붙은 호수 · 모든 맵의 집 외형 개편 (맵 선택)', img: () => LOBBY_ART.xmas || LOBBY_ART.kalden, act: () => G.ui('mapPick') },
@@ -26423,12 +26626,12 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     { tag: '신규 모드', title: '듀오·스쿼드 — 기절·부활, 핑(Y)으로 팀원 지휘', img: () => LOBBY_ART.kalden, act: () => G.ui('matchCfg') },
     { tag: '업데이트', title: '차량 5종 출격 — 말부터 오토바이까지', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
     { tag: '대형 맵', title: '8×8km 노르덴 — 봇 99명과 출격', img: () => LOBBY_ART.norden, act: () => G.ui('mapPick') },
-    { tag: '랭크전', title: '배치고사 3판 · 아이언부터 이터널까지', img: () => rankBanner, act: () => G.ui('ranks') },
+    { tag: '랭크전', title: '배치고사 3판 · 아이언부터 제니스까지', img: () => rankBanner, act: () => G.ui('ranks') },
   ];
   function makeRankBanner() {
     const c = document.createElement('canvas'); c.width = 720; c.height = 240; const g = c.getContext('2d');
     const gr = g.createLinearGradient(0, 0, 720, 240); gr.addColorStop(0, '#1a1230'); gr.addColorStop(1, '#3a2363'); g.fillStyle = gr; g.fillRect(0, 0, 720, 240);
-    const tiers = [1, 3, 5, 7, 9]; let n = 0;
+    const tiers = [9, 10, 11, 12, 13]; let n = 0;   // v23: 이터널 + 상위 티어 4종
     tiers.forEach((t, i) => { const im = new Image(); im.onload = () => { const s = 96 + i * 14; g.drawImage(im, 60 + i * 130 - s / 2 + 30, 112 - s / 2, s, s); if (++n === tiers.length) { rankBanner = c.toDataURL('image/jpeg', 0.85); showNews(); } }; im.src = Rank.emblem(t, 1, 160); });
   }
   function showNews() {
@@ -26462,22 +26665,32 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   }
   let noteT = null;
   function showLobbyNote(msg) { const n = $('lbNote'); n.hidden = false; n.textContent = msg; clearTimeout(noteT); noteT = setTimeout(() => { n.hidden = true; }, 3500); }
-  // 티어표
+  // 승급전 연속 성공 칸: 채운 칸 n / 전체 need (fail: 이번에 실패한 칸을 빨갛게)
+  const pipsHTML = (n, need, fail) => Array.from({ length: need }, (_, i) => `<i class="${i < n ? 'on' : fail && i === n ? 'x' : ''}"></i>`).join('');
+  // 티어표 — v23: 이터널 위 상위 티어 4종은 따로 (승급전 · 단계 5→1 · 200 RP)
   function renderRanks() {
-    const g = $('tierGrid'); g.innerHTML = ''; const cur = Rank.placed() ? Rank.tierOf(Rank.state.rp) : null;
+    const g = $('tierGrid'); g.innerHTML = ''; const cur = Rank.placed() ? Rank.mine() : null;
+    let sg = null;
     RANK_TIERS.forEach((T, t) => {
-      const d = h('div', 'tier' + (cur && cur.t === t ? ' me' : '')), im = h('img'); im.src = Rank.emblem(t, cur && cur.t === t ? cur.div : 1, 160); im.alt = '';
-      d.appendChild(im); d.appendChild(h('b', '', T.name)); d.appendChild(h('span', '', t === 9 ? '3600 RP 이상' : `${t * 400}–${t * 400 + 399} RP`));
+      if (T.sup && !sg) { g.appendChild(h('div', 'tier-sep', '상위 티어 — 이터널 1(4000 RP)에서 승급전을 통과해야 오를 수 있는, 격이 다른 티어')); sg = h('div', 'tier-sup'); g.appendChild(sg); }
+      const d = h('div', 'tier' + (cur && cur.t === t ? ' me' : '') + (T.sup ? ' sup sup-' + T.id : '')), im = h('img'); im.src = Rank.emblem(t, cur && cur.t === t ? cur.div : T.sup ? 5 : 1, 160); im.alt = '';
+      const b0 = T.sup ? SUP.base + (t - SUP.t0) * SUP.span : 0;
+      d.appendChild(im); d.appendChild(h('b', '', T.name));
+      d.appendChild(h('span', '', !T.sup ? (t === 9 ? '3600–4000 RP' : `${t * 400}–${t * 400 + 399} RP`) : t === RANK_TIERS.length - 1 ? `${b0} RP 이상` : `${b0}–${b0 + SUP.span} RP`));
+      if (T.sup) d.appendChild(h('span', 'tier-ser', `승급전 ${SUP.need[t - SUP.t0]}연속`));
       const mx = Rank.mixOf(t); if (mx && mx[3]) d.appendChild(h('span', 'tier-ext', `익스트림 봇 ${mx[3]}%`));
-      g.appendChild(d);
+      (T.sup ? sg : g).appendChild(d);
     });
     const ul = $('rankRules'); ul.innerHTML = '';
-    const st = Rank.state;
+    const st = Rank.state, se = Rank.series();
     [`레벨 3부터 참여할 수 있습니다. 처음 3판은 배치고사이며, 결과에 따라 시작 티어가 정해집니다(최대 플래티넘 1).`,
-      `각 티어는 4 → 3 → 2 → 1 단계로 올라갑니다. 한 단계는 100 RP, 한 티어는 400 RP입니다.`,
+      `아이언~이터널은 4 → 3 → 2 → 1 단계로 올라갑니다. 한 단계는 100 RP, 한 티어는 400 RP입니다.`,
       `RP는 순위(상위일수록 크게), 우승, 처치, 가한 피해로 오르고, 하위권이면 내려갑니다. 높은 티어일수록 오르기 어렵습니다.`,
-      `봇 수는 고정(기본 맵·키나루 74명, 노르덴 99명)이고 봇 난이도는 티어가 높을수록 어려워집니다. 골드부터 익스트림 봇(어려움보다 조준·반응·무빙·판단이 한 단계 위)이 섞이고, 이터널은 절반이 익스트림입니다. 경기 도중 나가면 패배 처리와 추가 감점이 있습니다.`,
-      Rank.placed() ? `현재 ${Rank.tierOf(st.rp).label} · ${st.rp} RP · 최고 ${Rank.tierOf(st.peak).label} · 랭크 ${st.games}판 ${st.wins}승` : `배치고사 ${st.placed} / 3 진행`].forEach((t) => ul.appendChild(h('li', '', t)));
+      `상위 티어(노바 · 셀레스티얼 · 이클립스 · 제니스)는 5 → 4 → 3 → 2 → 1 단계, 한 단계 200 RP입니다. 티어 끝(이터널 1 · 노바 1 · 셀레스티얼 1 · 이클립스 1)에 닿으면 RP가 멈추고 승급전이 열립니다.`,
+      `승급전: 칼덴 섬 · 아이언리지는 10위 안, 키나루 · 크리스마스 섬은 13위 안, 노르덴은 17위 안이면 1회 성공. 연속 성공 ${SUP.need.join(' → ')}번(노바 → 셀레스티얼 → 이클립스 → 제니스)이면 다음 티어 5단계로 오릅니다. 한 번이라도 실패하면 연속 기록은 0부터 — RP는 깎이지 않습니다. 승급전 봇은 95%가 익스트림입니다.`,
+      `한 번 오른 상위 티어 밑으로는 떨어지지 않습니다. 제니스 1부터는 상한 없이 RP만 쌓입니다. 상위 티어에 오르면 그 티어의 칭호와 전용 테두리를 얻습니다.`,
+      `봇 수는 고정(기본 맵·키나루 74명, 노르덴 99명)이고 봇 난이도는 티어가 높을수록 어려워집니다. 골드부터 익스트림 봇(어려움보다 조준·반응·무빙·판단이 한 단계 위)이 섞이고, 이터널은 절반, 상위 티어는 60~88%가 익스트림입니다. 경기 도중 나가면 패배 처리와 추가 감점이 있습니다(승급전이면 실패).`,
+      Rank.placed() ? `현재 ${cur.label}${se ? ` · 승급전 연속 ${se.n} / ${se.need}` : ''} · ${st.rp} RP · 최고 ${Rank.peakTier().label} · 랭크 ${st.games}판 ${st.wins}승` : `배치고사 ${st.placed} / 3 진행`].forEach((t) => ul.appendChild(h('li', '', t)));
     // 하드코어 티어표
     const hg = $('hcGrid'); if (!hg) return; hg.innerHTML = '';
     const ok = Rank.hcOk(), H = Rank.hc, hcur = ok ? Rank.hcTierOf(H.rp) : null, PERK = ['', '', '칭호·테두리', '칭호·테두리', '칭호·테두리'];
@@ -26491,7 +26704,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     [`일반 랭크에서 최고 다이아 4 이상을 찍어 본 사람만 참여할 수 있습니다 (파티면 파티원 모두). 배치고사 없이 스토커 4부터 시작합니다.`,
       `티어는 스토커 · 헌터 · 슬레이어 · 리퍼 · 오버로드 5종, 각 4 → 3 → 2 → 1 단계(한 단계 100 RP). 오버로드 1부터는 RP만 쌓입니다.`,
       `봇은 전원 익스트림. 일반 랭크보다 티어 세금과 하위권·탈주 감점이 큽니다. 슬레이어 · 리퍼 · 오버로드에 오르면 그 티어의 칭호와 테두리를 얻습니다(최고 기록 기준, 계정 정보에서 장착).`,
-      ok ? `현재 ${hcur.label} · ${H.rp} RP · 최고 ${Rank.hcTierOf(H.peak || 0).label} · 하드코어 ${H.games || 0}판 ${H.wins || 0}승` : `잠김 — 일반 랭크 최고 ${Rank.placed() ? Rank.tierOf(st.peak || 0).label : '배치고사 전'}`].forEach((t) => hl.appendChild(h('li', '', t)));
+      ok ? `현재 ${hcur.label} · ${H.rp} RP · 최고 ${Rank.hcTierOf(H.peak || 0).label} · 하드코어 ${H.games || 0}판 ${H.wins || 0}승` : `잠김 — 일반 랭크 최고 ${Rank.placed() ? Rank.peakTier().label : '배치고사 전'}`].forEach((t) => hl.appendChild(h('li', '', t)));
   }
   function showResult(win, p, total) {
     $('resultPanel').hidden = false; releaseLock();
@@ -26509,21 +26722,36 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     { const B = Eco.bpLast; if (B && B.xp) note = `배틀패스 +${B.xp}` + (B.lv > B.lv0 ? ` (${B.lv}단계 달성 · 보상 지급)` : '') + ' · ' + note; }
     $('resNote').textContent = note;
     // 랭크 결과
-    const R = G.rankResult, box = $('resRanked'); box.hidden = !R; box.classList.remove('promo');
+    const R = G.rankResult, box = $('resRanked'); box.hidden = !R; box.classList.remove('promo', 'series', 'ok', 'fail');
+    const pips = $('resRkPips'); if (pips) pips.hidden = true;
     if (R) {
       const dEl = $('resRkDelta'); dEl.className = 'rp-delta';
       if (R.placement) {
         if (R.revealed) { const a = R.after; $('resEmb').src = Rank.emblem(a.t, a.div, 160); $('resRkKicker').textContent = '배치고사 완료'; $('resRkLabel').textContent = a.label; $('resRkSub').textContent = `시작 티어가 정해졌습니다 · ${a.rp} RP`; $('resRkBar').style.width = (a.top ? 100 : a.into) + '%'; dEl.textContent = ''; void box.offsetWidth; box.classList.add('promo'); }
         else { $('resEmb').src = Rank.emblem(-1, 0, 160); $('resRkKicker').textContent = '배치고사'; $('resRkLabel').textContent = `${R.step} / 3 완료`; $('resRkSub').textContent = `이번 판 점수 ${R.score} · ${3 - R.step}판 남음`; $('resRkBar').style.width = (R.step / 3 * 100) + '%'; dEl.textContent = ''; }
+      } else if (R.series) {
+        // v23 승급전: 연속 성공 칸 · 통과하면 새 티어 + 컷신
+        const a = R.after, b = R.before, mp = MAPS[R.map] ? MAPS[R.map].name.replace(/\s*\(.*\)$/, '') : '이 맵', bar = $('resRkBar');
+        $('resEmb').src = Rank.embOf(a, 160); box.classList.add('series', R.ok ? 'ok' : 'fail');
+        $('resRkKicker').textContent = R.passed ? '승급전 통과 · 티어 승급!' : R.ok ? `승급전 성공 · ${R.streak} / ${R.need}` : '승급전 실패';
+        $('resRkLabel').textContent = R.passed ? a.label : `${b.label} · 승급전`;
+        $('resRkSub').textContent = R.passed ? `${RANK_TIERS[a.t].name} 5단계부터 · 0 / ${SUP.div} RP` : `${mp} ${R.lim}위 안 · 이번 #${place} → ${R.ok ? `성공 (${R.need - R.streak}번 더 연속이면 ${RANK_TIERS[b.t + 1].name})` : '실패 — 연속 기록이 0부터 (RP는 그대로)'}`;
+        if (pips) { pips.hidden = R.passed; pips.innerHTML = pipsHTML(R.streak, R.need, !R.ok); }
+        dEl.textContent = R.ok ? '✓' : '✕'; dEl.classList.add(R.ok ? 'up' : 'down');
+        bar.style.transition = 'none'; bar.style.width = (R.passed ? 0 : (R.ok ? R.streak - 1 : 0) / R.need * 100) + '%'; void bar.offsetWidth; bar.style.transition = 'width 1.2s ease-out'; bar.style.width = (R.passed ? a.pct : R.streak / R.need * 100) + '%';
+        if (R.passed) { void box.offsetWidth; box.classList.add('promo'); }
       } else {
         const a = R.after; $('resEmb').src = Rank.embOf(a, 160);
-        $('resRkKicker').textContent = (R.hc ? '하드코어 · ' : '') + (R.tierUp ? '티어 승급!' : R.promoted ? '승급' : R.demoted ? '강등' : '랭크');
-        $('resRkLabel').textContent = a.label; $('resRkSub').textContent = a.top ? `${a.rp} RP` : `${a.into} / 100 RP · 총 ${a.rp} RP`;
+        $('resRkKicker').textContent = (R.hc ? '하드코어 · ' : '') + (R.tierUp ? '티어 승급!' : R.seriesStart ? '승급전 시작!' : R.promoted ? '승급' : R.demoted ? '강등' : R.guard ? '강등 보호' : '랭크');
+        $('resRkLabel').textContent = a.label + (a.series ? ' · 승급전' : '');
+        $('resRkSub').textContent = a.series ? `${RANK_TIERS[a.t + 1].name} 승급전 — 맵마다 정한 순위 안에 ${SUP.need[a.sg]}번 연속으로 들면 승급 · 총 ${a.rp} RP` : a.top ? `${a.rp} RP` : `${a.into} / ${a.need} RP · 총 ${a.rp} RP` + (R.guard ? ' · 상위 티어 밑으로는 떨어지지 않습니다' : '');
         dEl.textContent = (R.delta >= 0 ? '+' : '') + R.delta; dEl.classList.add(R.delta >= 0 ? 'up' : 'down');
         // 막대: 이전 값에서 새 값으로
-        const bar = $('resRkBar'); bar.style.transition = 'none'; bar.style.width = (R.promoted || R.demoted ? (R.promoted ? 0 : 100) : (R.before.top ? 100 : R.before.into)) + '%'; void bar.offsetWidth; bar.style.transition = 'width 1.2s ease-out'; bar.style.width = (a.top ? 100 : a.into) + '%';
-        if (R.promoted) { void box.offsetWidth; box.classList.add('promo'); }
+        const bar = $('resRkBar'); bar.style.transition = 'none'; bar.style.width = (R.promoted || R.demoted ? (R.promoted ? 0 : 100) : (R.before.pct != null ? R.before.pct : R.before.into)) + '%'; void bar.offsetWidth; bar.style.transition = 'width 1.2s ease-out'; bar.style.width = (a.pct != null ? a.pct : a.into) + '%';
+        if (R.promoted || R.seriesStart) { void box.offsetWidth; box.classList.add('promo'); }
       }
+      // v23 티어가 바뀌면 컷신 (결과 화면 위로 — 끝나면 결과 화면 그대로)
+      if (R.tierUp && !R.placement && R.before && R.after) setTimeout(() => { if (G.state === 'result' && !$('resultPanel').hidden) RankFx.play(R.before, R.after, { series: !!R.series }); }, 650);
     }
   }
   return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
@@ -27521,9 +27749,15 @@ const Net = (() => {
 
 // ---------- 10_rank.js ----------
 // ============================================================
-// 10_rank.js — 랭크전: 배치고사 3판 → 10티어 × 4단계(4→1), RP, 티어 엠블럼(캔버스로 직접 그림)
-//  티어: 아이언 · 브론즈 · 실버 · 골드 · 플래티넘 · 다이아 · 마스터 · 그랜드마스터 · 레전드 · 이터널
-//  한 단계 = 100 RP, 한 티어 = 400 RP. 이터널 1부터는 상한 없이 RP만 쌓인다
+// 10_rank.js — 랭크전: 배치고사 3판 → 10티어 × 4단계(4→1) + 상위 티어 4종 × 5단계(5→1), RP, 티어 엠블럼(캔버스로 직접 그림)
+//  티어: 아이언 · 브론즈 · 실버 · 골드 · 플래티넘 · 다이아 · 마스터 · 그랜드마스터 · 레전드 · 이터널  (한 단계 100 RP, 한 티어 400 RP · 이터널 = 3600~4000)
+//  v23 상위 티어: 노바 · 셀레스티얼 · 이클립스 · 제니스 — 이터널 아래 티어들과 격이 다른 티어. 한 단계 200 RP, 한 티어 1000 RP (노바 5 = 4000 RP)
+//   · 티어 끝(이터널 1 = 4000 · 노바 1 = 5000 · 셀레스티얼 1 = 6000 · 이클립스 1 = 7000)에 닿으면 RP가 멈추고 '승급전'
+//   · 승급전: 맵마다 정한 순위 안에 들면 1회 성공(SERIES_TOP) — 연속으로 3 → 3 → 4 → 5번 성공하면 다음 티어 5단계
+//     실패하면 연속 기록이 0부터 · 승급전 동안 RP는 그대로 · 봇 95% 익스트림
+//   · 한 번 오른 상위 티어 밑으로는 떨어지지 않는다(강등 보호). 제니스 1부터는 상한 없이 RP만 쌓인다
+//   · 저장: S.sg = 통과한 승급전 수(0~4) · S.ss = 지금 승급전 연속 성공 · S.cv = 개편 뒤 기록 표식
+//     S.cv 가 없는 옛 기록은 4000 RP를 넘으면 4000(이터널 1 · 승급전 대기)으로 내리고 S.cut 에 남긴다 → 최상위 스킨 3종 + 안내 (settle)
 // ============================================================
 const RANK_TIERS = [
   { id: 'iron', name: '아이언', c: ['#c3c8cd', '#80868c', '#3d4246'], glow: null },
@@ -27536,8 +27770,18 @@ const RANK_TIERS = [
   { id: 'grandmaster', name: '그랜드마스터', c: ['#ffe2d6', '#e8384a', '#5d0712'], glow: 'rgba(255,80,60,0.6)' },
   { id: 'legend', name: '레전드', c: ['#fffdf2', '#ffd36b', '#9a6a08'], glow: 'rgba(255,230,140,0.7)' },
   { id: 'eternal', name: '이터널', c: ['#ffffff', '#c58cff', '#2b1060'], glow: 'rgba(200,160,255,0.8)' },
+  // v23 상위 티어 (sup) — en: 영문 이름(컷신 글자) · ac: 빛 색
+  { id: 'nova', name: '노바', en: 'NOVA', c: ['#ffffff', '#8fe3ff', '#0b2f6e'], glow: 'rgba(120,215,255,0.85)', ac: '#5fd8ff', sup: true },
+  { id: 'celestial', name: '셀레스티얼', en: 'CELESTIAL', c: ['#fffaf0', '#f3d98b', '#6e4c0c'], glow: 'rgba(255,225,150,0.9)', ac: '#ffe39a', sup: true },
+  { id: 'eclipse', name: '이클립스', en: 'ECLIPSE', c: ['#ffe3d6', '#ff4a2e', '#22030a'], glow: 'rgba(255,80,40,0.9)', ac: '#ff5a2a', sup: true },
+  { id: 'zenith', name: '제니스', en: 'ZENITH', c: ['#ffffff', '#ffd76a', '#2a1060'], glow: 'rgba(255,240,200,0.95)', ac: '#ffe6a0', sup: true },
 ];
-const ROMAN = ['', 'I', 'II', 'III', 'IV'];
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
+// 상위 티어: t0 첫 번호 · base 노바 5 시작 RP · span 한 티어 · div 한 단계 · need 승급전 연속 성공 수(이터널→노바, 노바→셀레스티얼, …) · mix 승급전 봇 비율
+const SUP = { t0: 10, base: 4000, span: 1000, div: 200, need: [3, 3, 4, 5], mix: [0, 0, 5, 95] };
+// 승급전 1회 성공 순위 (이 순위 안) — 맵마다. 목록에 없는 맵은 10위
+const SERIES_TOP = { kalden: 10, ironridge: 10, kinaru: 13, xmas: 13, norden: 17 };
+const seriesTop = (map) => SERIES_TOP[map] || 10;
 // 하드코어 랭크전 티어 (다이아 4 이상을 찍어 본 사람만): 방패·날개 대신 각진 흑철 휘장 · 갈라진 틈에서 빛이 샌다
 //  스토커 → 헌터 → 슬레이어 → 리퍼 → 오버로드. 단계는 4→1 동일, 오버로드 1부터 상한 없이 RP
 const HC_TIERS = [
@@ -27550,36 +27794,81 @@ const HC_TIERS = [
 const HC_MIN_PEAK = 2000;   // 다이아 4 = 2000 RP
 
 const Rank = (() => {
-  let S = Object.assign({ rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }, store.get('rank', {}));
+  const S0 = () => ({ rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [], sg: 0, ss: 0 });   // cv 는 norm 이 붙인다 (옛 기록과 구분)
+  let S = Object.assign(S0(), store.get('rank', {}));
   const save = () => { store.set('rank', S); dataSaved('rank'); };
   const unlocked = () => levelFromXp(STATS.xp).lv >= 3;
   const placed = () => S.placed >= 3;
-  function tierOf(rp) {
-    rp = Math.max(0, Math.floor(rp));
-    const t = Math.min(9, Math.floor(rp / 400)), inT = rp - t * 400;
-    const div = t === 9 ? Math.max(1, 4 - Math.floor(inT / 100)) : 4 - Math.floor(inT / 100);
-    const top = t === 9 && div === 1, base = t * 400 + (4 - div) * 100;
-    return { t, div, rp, name: RANK_TIERS[t].name, label: `${RANK_TIERS[t].name} ${div}`, into: top ? rp - base : rp - base, need: top ? null : 100, top };
+  // 통과한 승급전 수(sg)별 RP 상한(그 티어 끝 — 승급전 대기)과 하한(강등 보호)
+  const capOf = (sg) => (sg >= 4 ? Infinity : SUP.base + sg * SUP.span);
+  const floorOf = (sg) => (sg > 0 ? SUP.base + (sg - 1) * SUP.span : 0);
+  // 기록 정리 + v23 개편 이전 기록(cv 없음) 옮기기: 4000 RP 넘으면 4000으로 (S.cut — 보상·안내는 settle)
+  function norm() {
+    if (!Array.isArray(S.history)) S.history = [];
+    if (!Array.isArray(S.placements)) S.placements = [];
+    S.rp = Math.max(0, Math.floor(+S.rp || 0)); S.sg = clamp(Math.floor(+S.sg || 0), 0, 4); S.ss = Math.max(0, Math.floor(+S.ss || 0));
+    if (!S.cv) {
+      if (S.rp > SUP.base) S.cut = { from: S.rp, peak: Math.floor(+S.peak || 0), at: Date.now() };
+      S.sg = 0; S.ss = 0; S.cv = 1;
+    }
+    const cap = capOf(S.sg), fl = floorOf(S.sg);
+    if (S.rp > cap) S.rp = cap; if (S.rp < fl) S.rp = fl;
+    S.peak = Math.min(Math.max(+S.peak || 0, S.rp), cap);
+  }
+  norm(); store.set('rank', S);
+  // RP만 알 때(다른 계정 — 랭킹 서버가 sg 를 안 줄 때) 통과한 승급전 수 짐작: 티어 끝 RP 는 '승급전 대기'로 본다
+  const sgGuess = (rp) => (rp > SUP.base ? Math.min(4, Math.ceil((rp - SUP.base) / SUP.span)) : 0);
+  function mk(t, div, rp, into, need, top, series, sg) {
+    const T = RANK_TIERS[t];
+    return { t, div, rp, sg, name: T.name, label: `${T.name} ${div}`, into, need, top, series, sup: !!T.sup, pct: top ? 100 : clamp(into / need * 100, 0, 100) };
+  }
+  // RP(+통과한 승급전 수) → 티어. series: 티어 끝에서 승급전 중 · pct: 막대 % · sup: 상위 티어
+  function tierOf(rp, sg) {
+    rp = Math.max(0, Math.floor(+rp || 0));
+    sg = sg === undefined || sg === null ? sgGuess(rp) : clamp(Math.floor(+sg || 0), 0, 4);
+    rp = clamp(rp, floorOf(sg), capOf(sg));
+    if (sg === 0) {
+      const t = Math.min(9, Math.floor(rp / 400)), div = Math.max(1, 4 - Math.floor((rp - t * 400) / 100)), base = t * 400 + (4 - div) * 100;
+      return mk(t, div, rp, Math.min(100, rp - base), 100, false, rp >= SUP.base, 0);
+    }
+    const k = Math.min(sg - 1, Math.floor((rp - SUP.base) / SUP.span)), t = SUP.t0 + k, b0 = SUP.base + k * SUP.span, last = t === RANK_TIERS.length - 1;
+    const div = Math.max(1, 5 - Math.floor((rp - b0) / SUP.div)), base = b0 + (5 - div) * SUP.div, top = last && div === 1;
+    return mk(t, div, rp, top ? rp - base : Math.min(SUP.div, rp - base), top ? null : SUP.div, top, !last && k === sg - 1 && rp >= b0 + SUP.span, sg);
+  }
+  const mine = () => tierOf(S.rp, S.sg);
+  const peakTier = () => tierOf(Math.max(S.peak || 0, S.rp || 0), S.sg);
+  // 다른 계정의 랭크 기록(서버 원본) → 지금·최고 티어. 개편 전 기록(cv 없음)은 4000 RP 로 잘라서 본다
+  function viewOf(R) {
+    R = R && typeof R === 'object' ? R : {};
+    const cut = (v) => (R.cv ? +v || 0 : Math.min(+v || 0, SUP.base)), sg = R.cv ? +R.sg || 0 : 0, rp = cut(R.rp);
+    return { rp, now: tierOf(rp, sg), peak: tierOf(Math.max(rp, cut(R.peak)), sg) };
+  }
+  const ord = (x) => x.t * 10 + (10 - x.div);   // 티어·단계 순서 (단계는 5·4→1)
+  // 승급전 정보 (승급전 중이 아니면 null)
+  function series() {
+    const ti = mine(); if (!placed() || !ti.series) return null;
+    return { n: S.ss, need: SUP.need[S.sg], next: ti.t + 1, from: ti, lim: seriesTop(SETTINGS.map) };
   }
   // ---------- 점수 ----------
   // 배치고사 1판 점수: 순위(상위일수록 크게) + 우승 + 처치 + 가한 피해
   function placementScore(r) { const p = (r.place - 1) / Math.max(1, r.total - 1); return 50 * (1 - p) ** 2 + (r.win ? 30 : 0) + Math.min(r.kills, 10) * 8 + Math.min(r.dmg, 1500) / 50; }
-  // 배치 후 1판 RP 변화: 순위 곡선 + 우승 + 처치 + 피해 − 티어 세금(높을수록 오르기 어렵다)
+  // 배치 후 1판 RP 변화: 순위 곡선 + 우승 + 처치 + 피해 − 티어 세금(높을수록 오르기 어렵다 · 상위 티어는 더)
   function rpDelta(r, t) {
     const p = (r.place - 1) / Math.max(1, r.total - 1);
     let d = 50 * (1 - p) ** 2 - 18 + (r.win ? 23 : 0) + Math.min(r.kills, 10) * 6 + Math.min(r.dmg, 1500) / 100 - t * 2.5;
     if (r.quit) d = Math.min(d, -25) - 10; // 탈주 패널티
     return Math.round(clamp(d, -45, 140));
   }
-  // 티어별 봇 난이도 비율 [쉬움, 보통, 어려움, 익스트림] — 골드부터 익스트림이 섞이고 이터널은 절반이 익스트림
-  const MIX = [[70, 30, 0, 0], [55, 40, 5, 0], [40, 50, 10, 0], [25, 55, 18, 2], [15, 50, 30, 5], [8, 45, 37, 10], [3, 35, 45, 17], [0, 25, 50, 25], [0, 15, 50, 35], [0, 5, 45, 50]];
+  // 티어별 봇 난이도 비율 [쉬움, 보통, 어려움, 익스트림] — 골드부터 익스트림이 섞이고 이터널은 절반, 상위 티어는 60~88% (승급전 95% — SUP.mix)
+  const MIX = [[70, 30, 0, 0], [55, 40, 5, 0], [40, 50, 10, 0], [25, 55, 18, 2], [15, 50, 30, 5], [8, 45, 37, 10], [3, 35, 45, 17], [0, 25, 50, 25], [0, 15, 50, 35], [0, 5, 45, 50],
+    [0, 0, 40, 60], [0, 0, 30, 70], [0, 0, 20, 80], [0, 0, 12, 88]];
   function botDifficulty() {
     if (!placed()) return pick(['easy', 'normal', 'normal', 'hard']);
-    const m = MIX[tierOf(S.rp).t]; return weightedPick([['easy', m[0]], ['normal', m[1]], ['hard', m[2]], ['extreme', m[3]]]);
+    const ti = mine(), m = ti.series ? SUP.mix : MIX[ti.t]; return weightedPick([['easy', m[0]], ['normal', m[1]], ['hard', m[2]], ['extreme', m[3]]]);
   }
   const mixOf = (t) => MIX[t];
   function botCount(mapId) { return mapMaxBots(mapId); }   // 랭크전: 맵 최대 인원 (기본 75명 · 노르덴 100명)
-  // 경기 결과 반영 → 결과 화면용 요약
+  // 경기 결과 반영 → 결과 화면용 요약.  r.map: 경기한 맵 (승급전 성공 순위)
   function apply(r) {
     S.games++; if (r.win) S.wins++;
     if (!placed()) {
@@ -27588,19 +27877,41 @@ const Rank = (() => {
       if (S.placed >= 3) {
         const sum = S.placements.reduce((a, b) => a + b, 0);
         S.rp = clamp(Math.round(sum * 3.5), 0, 1999); S.peak = Math.max(S.peak, S.rp);
-        out.revealed = true; out.after = tierOf(S.rp);
+        out.revealed = true; out.after = mine();
       }
       S.history.unshift({ placement: true, place: r.place, total: r.total, kills: r.kills });
       S.history = S.history.slice(0, 10); save(); return out;
     }
-    const before = tierOf(S.rp), delta = rpDelta(r, before.t);
-    S.rp = Math.max(0, S.rp + delta); S.peak = Math.max(S.peak, S.rp);
-    const after = tierOf(S.rp);
-    const rank = (x) => x.t * 4 + (4 - x.div);
+    const before = mine();
+    // 승급전: RP 그대로, 순위 안이면 연속 성공 +1 (다 채우면 다음 티어 5단계) / 밖이거나 탈주면 연속 기록 0
+    if (before.series) {
+      const need = SUP.need[S.sg], lim = seriesTop(r.map), ok = !r.quit && r.place <= lim;
+      S.ss = ok ? S.ss + 1 : 0;
+      const passed = ok && S.ss >= need;
+      if (passed) { S.sg++; S.ss = 0; }
+      const after = mine();
+      S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta: 0, rp: S.rp, ser: ok ? 1 : -1 });
+      S.history = S.history.slice(0, 10); save();
+      return { placement: false, series: true, ok, streak: passed ? need : S.ss, need, lim, map: r.map, passed, delta: 0, before, after, promoted: passed, demoted: false, tierUp: passed };
+    }
+    const raw = rpDelta(r, before.t), rp = clamp(S.rp + raw, floorOf(S.sg), capOf(S.sg)), delta = rp - S.rp;
+    S.rp = rp; S.peak = Math.max(S.peak, S.rp);
+    const after = mine();
     S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta, rp: S.rp });
     S.history = S.history.slice(0, 10); save();
-    return { placement: false, delta, before, after, promoted: rank(after) > rank(before), demoted: rank(after) < rank(before), tierUp: after.t > before.t };
+    return { placement: false, delta, raw, before, after, promoted: ord(after) > ord(before), demoted: ord(after) < ord(before), tierUp: after.t > before.t,
+      seriesStart: after.series, guard: delta > raw };   // seriesStart: 이번 판으로 티어 끝에 닿아 승급전 시작 · guard: 강등 보호로 덜 깎임
   }
+  // ---------- v23 개편: 4000 RP 넘던 계정 → 4000 + 가지지 않은 최상위 스킨 3종 + 안내 창 ----------
+  //  계정 기록을 다 불러온 뒤에만 지급한다 (불러오는 중에 기기 기록에 넣으면 서버 기록에 덮인다). 지급 결과는 S.cut.got 에 남아 두 번 들어가지 않는다
+  function settle() {
+    const C = S.cut; if (!C || typeof C !== 'object') return false;
+    if (typeof Cloud !== 'undefined' && store.get('account', null) && !(Cloud.user && (Cloud.status === 'online' || Cloud.status === 'syncing'))) return false;   // 로그인 계정이면 서버 기록을 다 불러온(online) 뒤에만
+    if (!Array.isArray(C.got)) { C.got = Eco.grantTop(3, 'cut:' + ((typeof Cloud !== 'undefined' && Cloud.uid) || 'guest')); save(); }
+    if (!C.seen && typeof RankFx !== 'undefined') RankFx.cutNotice(C);
+    return true;
+  }
+  function cutSeen() { if (S.cut && !S.cut.seen) { S.cut.seen = 1; save(); } }
 
   // ---------- 엠블럼 ----------
   const cache = {};
@@ -27701,6 +28012,162 @@ const Rank = (() => {
     g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.55)'; g.strokeText(label, cx, y - h * 0.05); g.fillStyle = '#fff'; g.fillText(label, cx, y - h * 0.05);
     g.restore();
   }
+  // ---------- v23 상위 티어 엠블럼 — 방패 대신 '별빛 인장'(뾰족한 별 모양 금속판) + 궤도 고리 + 티어별 날개·문양·머리 장식 · 단계는 각진 명판 ----------
+  //  노바: 백청색 별의 폭발(수정 칼날 날개 · 렌즈 빛) · 셀레스티얼: 천상의 금빛(여섯 깃 날개 · 후광 · 초승달)
+  //  이클립스: 일식(흑요석 판 · 검은 태양과 코로나 불꽃 · 다이아몬드 반지 섬광) · 제니스: 정점(무지개 고리 · 금빛 왕관 · 이중 날개 · 큰 보석)
+  function seal(g, cx, cy, R, n, k, rot = -Math.PI / 2) { const p = []; for (let i = 0; i < n * 2; i++) { const a = rot + i * Math.PI / n, r = i % 2 ? R * k : R; p.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } poly(g, p); }
+  function orbitRing(g, cx, cy, rx, ry, rot, col, lw, a0 = 0, a1 = TAU) { g.save(); g.translate(cx, cy); g.rotate(rot); g.beginPath(); g.ellipse(0, 0, rx, ry, 0, a0, a1); g.strokeStyle = col; g.lineWidth = lw; g.stroke(); g.restore(); }
+  const onEllipse = (cx, cy, rx, ry, rot, th) => [cx + Math.cos(rot) * rx * Math.cos(th) - Math.sin(rot) * ry * Math.sin(th), cy + Math.sin(rot) * rx * Math.cos(th) + Math.cos(rot) * ry * Math.sin(th)];
+  function orb(g, x, y, r, col) { g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = rad(g, x, y, 0, r * 3, [[0, '#ffffff'], [0.25, col], [1, 'rgba(0,0,0,0)']]); g.fillRect(x - r * 3, y - r * 3, r * 6, r * 6); g.restore(); }
+  // 수정 칼날 날개: 끝이 뾰족한 긴 마름모를 부채꼴로 (side -1 왼쪽 / 1 오른쪽)
+  function blades(g, cx, cy, side, n, len, cols, spread = 1, lift = 0, alpha = 1) {
+    g.save(); g.translate(cx, cy); g.scale(side, 1); g.globalAlpha = alpha;
+    for (let i = n - 1; i >= 0; i--) {
+      const k = i / Math.max(1, n - 1), a = (-0.9 + k * 1.25) * spread - lift, L = len * (1 - k * 0.42), w = len * 0.075 * (1.15 - k * 0.3);
+      g.save(); g.rotate(a);
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(L * 0.3, -w); g.lineTo(L, 0); g.lineTo(L * 0.3, w * 0.7); g.closePath();
+      g.fillStyle = lin(g, 0, 0, L, 0, [[0, cols[2]], [0.55, cols[1]], [1, cols[0]]]); g.fill();
+      g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 0.9; g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineWidth = 1; g.beginPath(); g.moveTo(L * 0.06, 0); g.lineTo(L * 0.97, 0); g.stroke();   // 가운데 날 선
+      g.restore();
+    }
+    g.restore();
+  }
+  // 긴 별빛 가시 (짝수 번째는 짧게)
+  function spikes(g, cx, cy, n, r0, r1, w, col, rot = 0, alt = 0.55) {
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < n; i++) {
+      const a = rot + i * TAU / n, L = i % 2 ? r1 * alt : r1, ww = i % 2 ? w * 0.6 : w, px = -Math.sin(a) * ww, py = Math.cos(a) * ww, x0 = cx + Math.cos(a) * r0, y0 = cy + Math.sin(a) * r0;
+      g.beginPath(); g.moveTo(x0 + px, y0 + py); g.lineTo(cx + Math.cos(a) * L, cy + Math.sin(a) * L); g.lineTo(x0 - px, y0 - py); g.closePath();
+      g.fillStyle = lin(g, x0, y0, cx + Math.cos(a) * L, cy + Math.sin(a) * L, [[0, col], [1, 'rgba(255,255,255,0)']]); g.fill();
+    }
+    g.restore();
+  }
+  // 코로나 불꽃 (이클립스): 원 둘레에서 휘어 나오는 불꽃 혀 (시드 고정)
+  function corona(g, cx, cy, r, n, len, seed) {
+    const R = mulberry32(seed); g.save(); g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < n; i++) {
+      const a = i * TAU / n + R() * 0.2, L = len * (0.55 + R() * 0.6), bend = (R() - 0.5) * 0.9, w = r * 0.16;
+      g.save(); g.translate(cx + Math.cos(a) * r * 0.92, cy + Math.sin(a) * r * 0.92); g.rotate(a + Math.PI / 2);
+      g.beginPath(); g.moveTo(-w, 0); g.quadraticCurveTo(-w * 0.3 + bend * L * 0.5, -L * 0.6, bend * L * 0.6, -L); g.quadraticCurveTo(w * 0.4 + bend * L * 0.3, -L * 0.5, w, 0); g.closePath();
+      g.fillStyle = lin(g, 0, 0, 0, -L, [[0, 'rgba(255,240,200,0.95)'], [0.25, 'rgba(255,150,60,0.85)'], [0.6, 'rgba(255,50,30,0.55)'], [1, 'rgba(120,0,0,0)']]); g.fill();
+      g.restore();
+    }
+    g.restore();
+  }
+  // 별 가루 (시드 고정)
+  function dust(g, cx, cy, r0, r1, n, col, seed) {
+    const R = mulberry32(seed); g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = col;
+    for (let i = 0; i < n; i++) { const a = R() * TAU, r = r0 + (r1 - r0) * Math.sqrt(R()), s = 0.5 + R() * 1.4; g.globalAlpha = 0.35 + R() * 0.65; g.beginPath(); g.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, s, 0, TAU); g.fill(); }
+    g.restore();
+  }
+  // 단계 명판: 양 끝이 뾰족한 각진 판 + 끝 보석 + 로마 숫자
+  function plaque(g, cx, y, w, label, cols, edge, gemC) {
+    g.save(); const h = 30, pts = (d) => [[cx - w / 2 + d, y - h / 2 + d], [cx + w / 2 - d, y - h / 2 + d], [cx + w / 2 + 12 - d * 1.7, y], [cx + w / 2 - d, y + h / 2 - d], [cx - w / 2 + d, y + h / 2 - d], [cx - w / 2 - 12 + d * 1.7, y]];
+    poly(g, pts(0)); g.fillStyle = lin(g, 0, y - h / 2, 0, y + h / 2, [[0, cols[0]], [0.5, cols[1]], [1, cols[2]]]); g.fill(); g.lineWidth = 2.5; g.strokeStyle = edge; g.stroke();
+    poly(g, pts(4)); g.lineWidth = 1; g.strokeStyle = 'rgba(255,255,255,0.45)'; g.stroke();
+    if (gemC) for (const s of [-1, 1]) gem(g, cx + s * (w / 2 + 3), y, 6, gemC, 4);
+    g.font = '900 23px "Saira Condensed","Arial Narrow",Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 3.5; g.strokeStyle = 'rgba(0,0,0,0.65)'; g.strokeText(label, cx, y + 1); g.shadowColor = edge; g.shadowBlur = 8; g.fillStyle = '#fff'; g.fillText(label, cx, y + 1);
+    g.restore();
+  }
+  function drawSup(g, t, div) {
+    const T = RANK_TIERS[t], k = t - SUP.t0, cx = 128, cy = 118, SR = k === 3 ? 66 : 62, FR = SR * 0.64;
+    const ga = (a) => T.glow.replace(/[\d.]+\)$/, a + ')');
+    // ① 뒤 빛 · 빛줄기 · 별 가루
+    g.fillStyle = rad(g, cx, cy, 4, 128, [[0, ga(0.95)], [0.45, ga(0.32)], [1, ga(0)]]); g.fillRect(0, 0, 256, 256);
+    if (k === 0) spikes(g, cx, cy, 16, 18, 128, 5, 'rgba(210,245,255,0.95)', Math.PI / 16, 0.6);
+    if (k === 1) rays(g, cx, cy, 28, 126, 20, 'rgba(255,236,180,0.75)', 0.05);
+    if (k === 2) { g.fillStyle = rad(g, cx, cy, SR * 0.8, 124, [[0, 'rgba(255,60,20,0.5)'], [1, 'rgba(0,0,0,0)']]); g.fillRect(0, 0, 256, 256); corona(g, cx, cy, SR * 0.98, 28, 46, 77); }
+    if (k === 3) { g.save(); g.globalAlpha = 0.75; g.lineWidth = 8; g.strokeStyle = prism(g, cx, cy); g.beginPath(); g.arc(cx, cy, 110, 0, TAU); g.stroke(); g.globalAlpha = 0.35; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, 122, 0, TAU); g.stroke(); g.restore(); spikes(g, cx, cy, 24, 22, 128, 4.5, 'rgba(255,240,190,0.95)', 0, 0.58); }
+    dust(g, cx, cy, 66, 124, 36 + k * 14, '#ffffff', 300 + k * 11);
+    // ② 궤도 고리 — 뒤쪽 반 (인장 뒤로 지나감)
+    const ORB = [[[110, 25, -0.3]], [[102, 22, 0.42], [102, 22, -0.42]], [], [[114, 24, -0.26], [100, 30, 0.5]]][k];
+    const oc = ['rgba(140,225,255,0.85)', 'rgba(255,226,150,0.85)', '', 'rgba(255,236,170,0.9)'][k];
+    for (const [rx, ry, rot] of ORB) orbitRing(g, cx, cy, rx, ry, rot, oc, 2.2, Math.PI, TAU);
+    // ③ 날개
+    if (k === 0) for (const s of [-1, 1]) blades(g, cx + s * 30, cy - 8, s, 6, 98, ['#ffffff', '#86e0ff', '#0d3c84'], 0.95, 0.2);
+    if (k === 1) for (const s of [-1, 1]) { wing(g, cx + s * 34, cy + 18, s, 66, 8, ['#ffffff', '#f6e2a8', '#b48a2a'], 0.7, -0.8); wing(g, cx + s * 38, cy - 14, s, 106, 12, ['#ffffff', '#fff1c8', '#c7962c'], 1.05, 0.15); }
+    if (k === 2) { g.save(); g.shadowColor = 'rgba(255,70,30,0.9)'; g.shadowBlur = 10; for (const s of [-1, 1]) blades(g, cx + s * 32, cy - 4, s, 5, 102, ['#ff9a6a', '#5a0a10', '#0a0204'], 0.9, 0.35); g.restore(); }
+    if (k === 3) for (const s of [-1, 1]) { blades(g, cx + s * 30, cy, s, 6, 116, ['#ffffff', '#c9a6ff', '#4b1f8f'], 1.0, 0.02, 0.92); wing(g, cx + s * 40, cy - 16, s, 106, 12, ['#ffffff', '#ffe08a', '#a8780a'], 1.05, 0.25); }
+    // ④ 인장 본체 (뾰족한 별 모양 금속판)
+    const NP = [8, 12, 16, 12][k], KK = [0.8, 0.88, 0.88, 0.86][k];
+    seal(g, cx, cy, SR, NP, KK);
+    g.save(); g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 12; g.shadowOffsetY = 4;
+    g.fillStyle = [lin(g, 0, cy - SR, 0, cy + SR, [[0, '#ffffff'], [0.3, '#d2ecff'], [0.58, '#5f86b4'], [0.82, '#e9f8ff'], [1, '#7aa2cc']]), lin(g, 0, cy - SR, 0, cy + SR, metalStops(['#fffbe8', '#f0c95a', '#7a5410'])),
+      lin(g, 0, cy - SR, 0, cy + SR, [[0, '#6a5050'], [0.35, '#1c0d0f'], [0.7, '#070203'], [1, '#4a1410']]), lin(g, 0, cy - SR, 0, cy + SR, metalStops(['#ffffff', '#ffd76a', '#8a5a06']))][k];
+    g.fill(); g.restore();
+    g.lineWidth = 3; g.strokeStyle = k === 2 ? lin(g, 0, cy - SR, 0, cy + SR, [[0, '#ffcf6a'], [0.5, '#ff3b1f'], [1, '#ffcf6a']]) : k === 3 ? prism(g, cx, cy) : k === 1 ? '#fff3c4' : '#e2f8ff'; g.stroke();
+    for (let i = 0; i < NP; i++) { const a = -Math.PI / 2 + i * TAU / NP; sparkle(g, cx + Math.cos(a) * (SR - 3), cy + Math.sin(a) * (SR - 3), 2.6, 'rgba(255,255,255,0.9)'); }
+    // ⑤ 안쪽 면 + 별밭
+    g.save(); g.beginPath(); g.arc(cx, cy, FR, 0, TAU);
+    g.fillStyle = [rad(g, cx, cy, 2, FR, [[0, '#9fe8ff'], [0.35, '#1d5fb8'], [1, '#04102e']]), rad(g, cx - 8, cy - 10, 2, FR, [[0, '#ffffff'], [0.45, '#d2ebff'], [1, '#5a86c8']]),
+      rad(g, cx, cy, 2, FR, [[0, '#3a0a0c'], [0.6, '#120204'], [1, '#2a0606']]), rad(g, cx, cy, 2, FR, [[0, '#ffffff'], [0.5, '#7a4ad0'], [1, '#1a0840']])][k];
+    g.fill(); g.clip();
+    if (k === 3) { g.globalAlpha = 0.5; g.fillStyle = prism(g, cx, cy); g.fillRect(cx - FR, cy - FR, FR * 2, FR * 2); g.globalAlpha = 1; }
+    if (k !== 1) dust(g, cx, cy, 0, FR, 26, '#ffffff', 900 + k);
+    g.restore();
+    g.lineWidth = 4; g.strokeStyle = [lin(g, 0, cy - FR, 0, cy + FR, [[0, '#ffffff'], [0.5, '#7aa2cc'], [1, '#e9f8ff']]), lin(g, 0, cy - FR, 0, cy + FR, metalStops(['#fffbe8', '#d9aa3a', '#7a5410'])), '#ff5a2a', lin(g, 0, cy - FR, 0, cy + FR, metalStops(['#ffffff', '#ffd76a', '#8a5a06']))][k];
+    g.beginPath(); g.arc(cx, cy, FR, 0, TAU); g.stroke();
+    g.lineWidth = 1.2; g.strokeStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.arc(cx, cy, FR - 4.5, 0, TAU); g.stroke();
+    // 위쪽 반사
+    g.save(); seal(g, cx, cy, SR, NP, KK); g.clip(); g.globalAlpha = k === 2 ? 0.12 : 0.22; g.fillStyle = '#fff'; g.beginPath(); g.ellipse(cx - 16, cy - SR * 0.55, SR * 0.72, SR * 0.24, -0.35, 0, TAU); g.fill(); g.restore();
+    // ⑥ 가운데 문양
+    if (k === 0) {   // 폭발하는 별 + 렌즈 빛
+      g.save(); g.shadowColor = '#8fe3ff'; g.shadowBlur = 18;
+      g.fillStyle = rad(g, cx, cy, 2, 36, [[0, '#ffffff'], [0.4, '#dff7ff'], [1, '#49c6ff']]); star(g, cx, cy, 36, 8, 0.32); g.fill();
+      g.fillStyle = '#ffffff'; star(g, cx, cy, 20, 4, 0.28); g.fill(); g.restore();
+      g.save(); g.globalCompositeOperation = 'lighter';
+      g.fillStyle = lin(g, cx - 74, 0, cx + 74, 0, [[0, 'rgba(120,220,255,0)'], [0.5, 'rgba(255,255,255,0.95)'], [1, 'rgba(120,220,255,0)']]); g.fillRect(cx - 74, cy - 1.6, 148, 3.2);
+      g.fillStyle = lin(g, 0, cy - 46, 0, cy + 46, [[0, 'rgba(120,220,255,0)'], [0.5, 'rgba(255,255,255,0.9)'], [1, 'rgba(120,220,255,0)']]); g.fillRect(cx - 1.3, cy - 46, 2.6, 92);
+      g.fillStyle = rad(g, cx, cy, 0, 15, [[0, 'rgba(255,255,255,1)'], [1, 'rgba(255,255,255,0)']]); g.fillRect(cx - 15, cy - 15, 30, 30); g.restore();
+    } else if (k === 1) {   // 초승달 + 별
+      g.save(); g.beginPath(); g.arc(cx - 2, cy + 2, 30, 0, TAU); g.clip();
+      g.beginPath(); g.arc(cx - 2, cy + 2, 30, 0, TAU); g.arc(cx + 12, cy - 6, 26, 0, TAU);
+      g.fillStyle = lin(g, cx - 32, cy - 28, cx + 8, cy + 32, [[0, '#fffbe8'], [0.5, '#f3c95a'], [1, '#a8780a']]); g.fill('evenodd'); g.restore();
+      g.save(); g.shadowColor = 'rgba(255,210,110,0.95)'; g.shadowBlur = 10; g.strokeStyle = 'rgba(122,84,16,0.6)'; g.lineWidth = 1.2; g.beginPath(); g.arc(cx - 2, cy + 2, 30, 0.75, 4.95); g.stroke(); g.restore();
+      g.save(); g.shadowColor = '#fff'; g.shadowBlur = 10; sparkle(g, cx + 12, cy - 6, 15, '#ffffff'); sparkle(g, cx + 22, cy + 14, 6, '#fffbe0'); sparkle(g, cx + 2, cy - 22, 5, '#fffbe0'); g.restore();
+    } else if (k === 2) {   // 검은 태양 + 코로나 + 다이아몬드 반지 섬광
+      corona(g, cx, cy, 27, 20, 20, 91);
+      g.fillStyle = rad(g, cx - 6, cy - 6, 2, 30, [[0, '#1c0b0b'], [1, '#000000']]); g.beginPath(); g.arc(cx, cy, 27, 0, TAU); g.fill();
+      g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,205,150,0.95)'; g.lineWidth = 2.6; g.shadowColor = '#ff6a2a'; g.shadowBlur = 14; g.beginPath(); g.arc(cx, cy, 28, 0, TAU); g.stroke(); g.restore();
+      const fa = -0.75, fx = cx + Math.cos(fa) * 28, fy = cy + Math.sin(fa) * 28;
+      g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = rad(g, fx, fy, 0, 18, [[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,220,170,0.8)'], [1, 'rgba(255,120,40,0)']]); g.fillRect(fx - 18, fy - 18, 36, 36); g.restore();
+      sparkle(g, fx, fy, 14, 'rgba(255,255,255,0.95)');
+    } else {   // 금빛 팔각 별 + 큰 보석
+      g.save(); g.shadowColor = 'rgba(255,230,150,0.9)'; g.shadowBlur = 14;
+      g.fillStyle = lin(g, 0, cy - 42, 0, cy + 42, [[0, '#ffffff'], [0.45, '#ffe08a'], [1, '#b8860b']]); star(g, cx, cy, 42, 8, 0.5); g.fill(); g.restore();
+      g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 1.5; star(g, cx, cy, 42, 8, 0.5); g.stroke();
+      gem(g, cx, cy, 21, ['#ffffff', '#ffb8f4', '#5a1ea8'], 8);
+      sparkle(g, cx - 7, cy - 9, 8, 'rgba(255,255,255,0.95)');
+    }
+    // ⑦ 궤도 고리 — 앞쪽 반 + 빛 구슬
+    for (const [rx, ry, rot] of ORB) { orbitRing(g, cx, cy, rx, ry, rot, oc, 2.4, 0, Math.PI); for (const th of [0.55, 2.35]) { const [x, y] = onEllipse(cx, cy, rx, ry, rot, th); orb(g, x, y, 3.2, oc); } }
+    // ⑧ 머리 장식
+    const ty = cy - SR;
+    if (k === 0) {   // 수정 조각 관
+      const C = ['#ffffff', '#86e0ff', '#0d3c84'];
+      spike(g, cx - 11, ty + 8, -Math.PI / 2 - 0.45, 30, 12, C); spike(g, cx + 11, ty + 8, -Math.PI / 2 + 0.45, 30, 12, C); spike(g, cx, ty + 6, -Math.PI / 2, 44, 16, C);
+      gem(g, cx, ty + 4, 8, ['#ffffff', '#8fe3ff', '#0b2f6e'], 4);
+    } else if (k === 1) {   // 금빛 후광
+      const hy = ty - 14;
+      g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,230,160,0.55)'; g.lineWidth = 9; g.beginPath(); g.ellipse(cx, hy, 37, 9, 0, 0, TAU); g.stroke(); g.restore();
+      g.strokeStyle = lin(g, cx - 37, 0, cx + 37, 0, [[0, '#a8780a'], [0.5, '#fffbe0'], [1, '#a8780a']]); g.lineWidth = 3.6; g.beginPath(); g.ellipse(cx, hy, 37, 9, 0, 0, TAU); g.stroke();
+      gem(g, cx, ty + 2, 9, ['#ffffff', '#a9d8ff', '#2a5a9a'], 4);
+    } else if (k === 2) {   // 흑요석 가시 관
+      g.save(); g.shadowColor = 'rgba(255,60,30,0.85)'; g.shadowBlur = 8;
+      for (let i = -3; i <= 3; i++) { const a = -Math.PI / 2 + i * 0.28, L = 40 - Math.abs(i) * 6; spike(g, cx + i * 9, ty + 9 + Math.abs(i) * 3, a, L, 13 - Math.abs(i), ['#ff9a6a', '#3a0508', '#0a0102']); }
+      g.restore(); gem(g, cx, ty + 6, 9, ['#ffe0c0', '#ff3b1f', '#4a0505'], 4);
+    } else {   // 무지개 후광 + 큰 왕관
+      g.save(); g.globalAlpha = 0.9; g.strokeStyle = prism(g, cx, ty - 20); g.lineWidth = 4; g.beginPath(); g.arc(cx, ty - 20, 31, 0, TAU); g.stroke(); g.restore();
+      crown(g, cx, ty - 12, 84, 42, ['#ffffff', '#ffe08a', '#9a6a08'], ['#ffffff', '#ff9bf0', '#7a2ac0']);
+    }
+    // ⑨ 반짝임
+    for (const [x, y, r] of [[cx + 52, cy - 56, 7], [cx - 56, cy + 30, 5], [cx + 34, cy + 56, 4], [cx - 40, cy - 64, 5], [cx + 70, cy + 12, 3.5], [cx - 72, cy - 20, 3.5]].slice(0, 3 + k)) sparkle(g, x, y, r + k, 'rgba(255,255,255,0.95)');
+    // ⑩ 단계 명판
+    if (div) plaque(g, cx, 224, 70 + k * 6, ROMAN[div], [['#3a86e0', '#0d2f6e', '#061633'], ['#fff2c8', '#c9962e', '#6e4c0c'], ['#3a1012', '#14040a', '#060102'], ['#5a34a8', '#2a1060', '#120630']][k],
+      ['#8fe3ff', '#fff3c4', '#ff5a2a', '#ffd76a'][k], [['#ffffff', '#8fe3ff', '#0b2f6e'], ['#ffffff', '#a9d8ff', '#2a5a9a'], ['#ffe0c0', '#ff3b1f', '#4a0505'], ['#ffffff', '#ff9bf0', '#7a2ac0']][k]);
+  }
   // 티어별 엠블럼. t=-1: 배치 전(물음표), t=-2: 잠김
   function draw(t, div, S = 256) {
     const cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d');
@@ -27713,6 +28180,7 @@ const Rank = (() => {
       else { g.fillStyle = '#c9ced3'; g.fillRect(cx - 22, cy - 4, 44, 36); g.lineWidth = 8; g.strokeStyle = '#c9ced3'; g.beginPath(); g.arc(cx, cy - 6, 15, Math.PI, 0); g.stroke(); }
       return cv;
     }
+    if (RANK_TIERS[t].sup) { drawSup(g, t, div); return cv; }   // v23 상위 티어
     const T = RANK_TIERS[t], c = T.c;
     // 뒤 배경 효과
     if (T.glow) { g.fillStyle = rad(g, cx, cy, 10, 125, [[0, T.glow], [1, 'rgba(0,0,0,0)']]); g.fillRect(0, 0, 256, 256); }
@@ -27771,6 +28239,8 @@ const Rank = (() => {
     if (!cache[key]) { try { cache[key] = draw(t, div, size).toDataURL('image/png'); } catch (e) { cache[key] = ''; } }
     return cache[key];
   }
+  // 컷신용: 티어(tierOf · hcTierOf 결과) → 그 크기의 캔버스 (캐시 없이 새로)
+  const embCanvas = (x, size = 512) => (x.hc ? drawHc(x.t, x.div, size) : draw(x.t, x.div, size));
   // ---------- 하드코어 랭크전 ----------
   //  참가: 일반 랭크 최고 기록이 다이아 4(2000 RP) 이상. 배치고사 없이 스토커 4(0 RP)부터
   //  봇은 전원 익스트림, 티어 세금·감점이 일반 랭크보다 크다. 기록은 S.hc (랭크 기록과 같이 서버에 저장)
@@ -27782,7 +28252,7 @@ const Rank = (() => {
     const t = Math.min(4, Math.floor(rp / 400)), inT = rp - t * 400;
     const div = t === 4 ? Math.max(1, 4 - Math.floor(inT / 100)) : 4 - Math.floor(inT / 100);
     const top = t === 4 && div === 1, base = t * 400 + (4 - div) * 100;
-    return { hc: true, t, div, rp, name: HC_TIERS[t].name, label: `${HC_TIERS[t].name} ${div}`, into: rp - base, need: top ? null : 100, top };
+    return { hc: true, t, div, rp, name: HC_TIERS[t].name, label: `${HC_TIERS[t].name} ${div}`, into: rp - base, need: top ? null : 100, top, pct: top ? 100 : rp - base };
   }
   function rpDeltaHc(r, t) {
     const p = (r.place - 1) / Math.max(1, r.total - 1);
@@ -27898,20 +28368,379 @@ const Rank = (() => {
   }
   const embOf = (x, size) => x.hc ? hcEmblem(x.t, x.div, size) : emblem(x.t, x.div, size);   // tierOf / hcTierOf 결과 → 엠블럼
   function hcStatus() {
-    if (!hcOk()) return { kind: 'locked', hc: true, emb: emblem(-2, 0), label: '하드코어 잠김', sub: `일반 랭크 최고 다이아 4 이상 (현재 최고 ${placed() ? tierOf(S.peak || 0).label : '배치 전'})` };
+    if (!hcOk()) return { kind: 'locked', hc: true, emb: emblem(-2, 0), label: '하드코어 잠김', sub: `일반 랭크 최고 다이아 4 이상 (현재 최고 ${placed() ? peakTier().label : '배치 전'})` };
     const H = hcS(), ti = hcTierOf(H.rp);
     return { kind: 'ranked', hc: true, emb: hcEmblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${H.rp} RP` : `${ti.into} / 100 RP`, tier: ti };
   }
-  // 현재 상태의 엠블럼/라벨
+  // 현재 상태의 엠블럼/라벨 (승급전 중이면 series: { n 연속 성공, need, next 다음 티어 번호 })
   function status() {
     if (!unlocked()) return { kind: 'locked', emb: emblem(-2, 0), label: '랭크 잠김', sub: `레벨 3부터 (현재 레벨 ${levelFromXp(STATS.xp).lv})` };
     if (!placed()) return { kind: 'placement', emb: emblem(-1, 0), label: '배치고사', sub: `${S.placed} / 3 완료` };
-    const ti = tierOf(S.rp);
-    return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${S.rp} RP` : `${ti.into} / 100 RP`, tier: ti };
+    const ti = mine();
+    if (ti.series) { const need = SUP.need[S.sg]; return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: `${ti.label} · 승급전`, sub: `연속 성공 ${S.ss} / ${need} → ${RANK_TIERS[ti.t + 1].name} 5`, tier: ti, series: { n: S.ss, need, next: ti.t + 1 } }; }
+    return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${S.rp} RP` : `${ti.into} / ${ti.need} RP`, tier: ti };
   }
-  return { get state() { return S; }, get hc() { return hcS(); }, hcOk, hcTierOf, applyHc, hcEmblem, hcStatus, embOf, rpDeltaHc, unlocked, placed, tierOf, apply, botDifficulty, botCount, mixOf, emblem, status, placementScore, rpDelta, reset() { S = { rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }; save(); }, _set(o) { Object.assign(S, o); save(); },
-    // 계정 전환: 통째로 바꿔 끼움 (저장 알림 없이)
-    replace(o) { S = Object.assign({ rp: 0, placed: 0, placements: [], games: 0, wins: 0, peak: 0, history: [] }, o || {}); store.set('rank', S); } };
+  return { get state() { return S; }, get hc() { return hcS(); }, hcOk, hcTierOf, applyHc, hcEmblem, hcStatus, embOf, embCanvas, rpDeltaHc, unlocked, placed, tierOf, mine, peakTier, viewOf, series, settle, cutSeen, ord, apply, botDifficulty, botCount, mixOf, emblem, status, placementScore, rpDelta,
+    reset() { S = S0(); norm(); save(); }, _set(o) { Object.assign(S, o); norm(); save(); },
+    // 계정 전환: 통째로 바꿔 끼움 (저장 알림 없이) — 개편 전 기록이면 norm 이 옮긴다
+    replace(o) { S = Object.assign(S0(), o || {}); norm(); store.set('rank', S); } };
+})();
+
+// ---------- 10_rankfx.js ----------
+// ============================================================
+// 10_rankfx.js — v23 티어 승급 컷신 · 랭크 개편 안내 창
+//  · 컷신(RankFx.play): 화면 전체를 덮는 2D 캔버스. 글자까지 캔버스에 그려서 시각 t 하나로 장면이 정해진다(frame(t))
+//    ① 모임(0 ~ 1.5초): 화면이 어두워지며 이전 엠블럼이 떠오르고, 새 티어 색의 빛이 소용돌이치며 모여듦 · 고리가 좁혀 옴
+//       엠블럼이 달아오르며 떨리고 빛나는 금이 퍼짐
+//    ② 깨짐: 번쩍임 · 충격파 두 겹 · 엠블럼이 유리처럼 조각나 흩어짐 · 화면 흔들림
+//    ③ 상승: 위에서 내리꽂는 빛기둥 · 뒤에서 도는 빛살 · 새 엠블럼이 튀어나왔다 자리 잡음 · 빛 입자 폭발 · 엠블럼 위를 훑는 빛
+//       상위 티어(노바~제니스)는 더 길게 + 영문 이름이 새겨진 인장 고리가 돌고, 혜성 셋이 엠블럼 둘레를 돈다
+//    ④ 이름: 'TIER UP' · 티어 이름(글자 간격이 좁혀지며) · 영문/단계 · 다음 목표
+//  · 화면을 누르면 이름 장면으로 건너뛰고, 한 번 더 누르면 닫힘 (건너뛰기 버튼은 바로 닫기)
+//  · 개편 안내(RankFx.cutNotice): 4000 RP 넘던 계정이 다시 들어오면 — 바뀐 RP · 새 티어 4종 · 받은 최상위 스킨 3종 (10_rank.js settle)
+//  · 개발자 도구에서 티어마다 컷신을 다시 볼 수 있다 (RankFx.demo)
+// ============================================================
+const RankFx = (() => {
+  let cv = null, g = null, W = 0, H = 0, DPR = 1, raf = 0, tStart = 0, A = null, active = false, cue = 0, onDone = null;
+  const hex2 = (h) => { h = String(h).replace('#', ''); if (h.length === 3) h = h.split('').map((c) => c + c).join(''); const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const rgba = (c, a) => { const [r, gg, b] = Array.isArray(c) ? c : hex2(c); return `rgba(${r | 0},${gg | 0},${b | 0},${clamp(a, 0, 1).toFixed(3)})`; };
+  const mixc = (a, b, k) => { const p = Array.isArray(a) ? a : hex2(a), q = Array.isArray(b) ? b : hex2(b); return [lerp(p[0], q[0], k), lerp(p[1], q[1], k), lerp(p[2], q[2], k)]; };
+  const seg = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const eOut = (x) => 1 - (1 - x) ** 3, eInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2), eBack = (x) => 1 + 2.9 * (x - 1) ** 3 + 1.9 * (x - 1) ** 2;
+  const FD = '"Saira Condensed","IBM Plex Sans KR","Arial Narrow",sans-serif', FB = '"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif';
+  const OY = -0.04;   // 엠블럼 몸통 가운데 (그림 가운데보다 조금 위 — 금·조각의 중심)
+  const ell = (cx, cy, rx, ry, rot, th) => [cx + Math.cos(rot) * rx * Math.cos(th) - Math.sin(rot) * ry * Math.sin(th), cy + Math.sin(rot) * rx * Math.cos(th) + Math.cos(rot) * ry * Math.sin(th)];
+  const EN = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'LEGEND', 'ETERNAL'], HC_EN = ['STALKER', 'HUNTER', 'SLAYER', 'REAPER', 'OVERLORD'];   // 컷신 영문 줄
+  function tinfo(x) {
+    const T = x.hc ? HC_TIERS[x.t] : RANK_TIERS[x.t];
+    return { T, c: T.c, ac: T.ac || T.ln || T.c[1], name: T.name, en: T.en || (x.hc ? HC_EN : EN)[x.t] || '', sup: !!T.sup, hc: !!x.hc };
+  }
+
+  // ---------- 장면 준비 ----------
+  function build(from, to, opt) {
+    const a = tinfo(from), b = tinfo(to), sup = b.sup;
+    const Tm = sup ? { crack: 1.2, shatter: 1.9, reveal: 2.05, settle: 2.9, title: 3.6, dur: 8.4 } : { crack: 0.9, shatter: 1.5, reveal: 1.65, settle: 2.45, title: 3.0, dur: 6.6 };
+    const R = mulberry32(((to.t + 1) * 7919 + (from.t + 3) * 31 + (to.hc ? 5 : 0)) >>> 0);
+    // 조각: 몸통 가운데에서 뻗는 9갈래 + 고리 3겹 (꼭짓점을 흔들어 불규칙하게)
+    const NA = 9, RR = [0, 0.16, 0.34, 0.8], ang = [];
+    for (let i = 0; i < NA; i++) ang.push((i + (R() - 0.5) * 0.6) / NA * TAU);
+    const rj = RR.map((r, j) => ang.map(() => (j === 0 ? 0 : j === RR.length - 1 ? r : r * (0.8 + R() * 0.4))));
+    const P2 = (a2, r) => [Math.cos(a2) * r, Math.sin(a2) * r + OY];
+    const shards = [];
+    for (let j = 0; j < RR.length - 1; j++) for (let i = 0; i < NA; i++) {
+      const i2 = (i + 1) % NA, a1 = ang[i], a2 = i + 1 < NA ? ang[i + 1] : ang[0] + TAU, am = (a1 + a2) / 2, P = [];
+      if (j === 0) P.push([0, OY]); else P.push(P2(a1, rj[j][i]), P2(am, (rj[j][i] + rj[j][i2]) / 2), P2(a2, rj[j][i2]));
+      P.push(P2(a2, rj[j + 1][i2]), P2(am, (rj[j + 1][i] + rj[j + 1][i2]) / 2), P2(a1, rj[j + 1][i]));
+      const c0 = P.reduce((s, p) => s + p[0], 0) / P.length, c1 = P.reduce((s, p) => s + p[1], 0) / P.length, d = Math.hypot(c0, c1 - OY) || 0.01, sp = 0.7 + R() * 1.3 + (0.8 - d);
+      shards.push({ P: P.map(([x, y]) => [x - c0, y - c1]), c: [c0, c1], v: [(c0 / d) * sp + (R() - 0.5) * 0.5, ((c1 - OY) / d) * sp + (R() - 0.5) * 0.5 - 0.3], w: (R() - 0.5) * 7, life: 0.9 + R() * 0.7, edge: d < 0.42 });
+    }
+    // 금: 갈래마다 가운데에서 바깥으로 (조각 경계를 따라 → 정확히 그 자리가 깨진다) + 고리를 따라 일부
+    const cracks = [];
+    for (let i = 0; i < NA; i++) cracks.push({ d: i / NA * 0.45 + R() * 0.1, pts: [[0, OY], P2(ang[i], rj[1][i]), P2(ang[i] + (R() - 0.5) * 0.08, rj[2][i]), P2(ang[i] + (R() - 0.5) * 0.1, 0.46)] });
+    for (let j = 1; j <= 2; j++) for (let i = 0; i < NA; i++) if (R() < 0.6) { const i2 = (i + 1) % NA, a1 = ang[i], a2 = i + 1 < NA ? ang[i + 1] : ang[0] + TAU; cracks.push({ d: 0.45 + R() * 0.5, pts: [P2(a1, rj[j][i]), P2((a1 + a2) / 2, (rj[j][i] + rj[j][i2]) / 2), P2(a2, rj[j][i2])] }); }
+    for (const C of cracks) { C.total = 0; for (let j = 1; j < C.pts.length; j++) C.total += Math.hypot(C.pts[j][0] - C.pts[j - 1][0], C.pts[j][1] - C.pts[j - 1][1]); }
+    // 입자: 모이는 빛 · 터지는 빛 · 떠오르는 불티
+    const gath = [], NG = sup ? 170 : 120;
+    for (let i = 0; i < NG; i++) gath.push({ a: R() * TAU, r0: 0.55 + R() * 0.6, t0: 0.12 + R() * (Tm.shatter - 0.7), du: 0.5 + R() * 0.5, sp: (R() < 0.5 ? -1 : 1) * (1.2 + R() * 1.6), sz: 0.8 + R() * 1.8, col: R() < 0.3 ? '#ffffff' : b.ac });
+    const burst = [], NB = sup ? 260 : 170;
+    for (let i = 0; i < NB; i++) { const q = R(); burst.push({ a: R() * TAU, s: 0.7 + R() ** 1.6 * 3.4, life: 1.0 + R() * 1.8, sz: 1 + R() * 3.2, col: q < 0.35 ? '#ffffff' : q < 0.62 ? b.ac : b.c[R() < 0.5 ? 0 : 1], spk: R() < 0.22, d: R() * 0.12 }); }
+    const embers = []; for (let i = 0; i < 46; i++) embers.push({ x: R(), sp: 0.04 + R() * 0.08, ph: R() * 10, f: 0.5 + R() * 1.4, sz: 0.6 + R() * 1.8, off: R() });
+    // 글자
+    const top = !to.hc && to.t === RANK_TIERS.length - 1;
+    const kick = opt.series ? '승급전 통과  ·  TIER UP' : to.hc ? 'HARDCORE  ·  TIER UP' : 'TIER UP';
+    const line3 = `${b.en}  ${ROMAN[to.div] || ''}`.trim();
+    const sub = sup ? (top ? '최고 티어 — 제니스 1부터 RP가 끝없이 쌓입니다' : `${b.name} 1에서 다음 승급전 — ${SUP.need[to.t - SUP.t0 + 1]}연속 성공`)
+      : `${a.name} ${from.div}  →  ${b.name} ${to.div}`;
+    const sweeps = sup ? [Tm.settle, Tm.title + 1.3, Tm.title + 3.1] : [Tm.settle, Tm.title + 1.6];
+    const sh = document.createElement('canvas'); sh.width = sh.height = 256;
+    return { from, to, a, b, sup, Tm, shards, cracks, gath, burst, embers, sweeps, sh, txt: { kick, name: b.name, line3, sub },
+      imgA: Rank.embCanvas(from, 512), imgB: Rank.embCanvas(to, 512) };
+  }
+
+  // ---------- 그리기 ----------
+  function star4(x, y, r, col) { g.fillStyle = col; g.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr = i % 2 ? r * 0.2 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); g.fill(); }
+  function drawCracks(ex, ey, S2, t) {
+    const X = A, Tm = X.Tm; g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
+    for (const C of X.cracks) {
+      const ts = Tm.crack + C.d * (Tm.shatter - Tm.crack) * 0.8, f = seg(t, ts, ts + 0.3); if (f <= 0) continue;
+      const L = C.total * f; let acc = 0;
+      g.beginPath(); g.moveTo(ex + C.pts[0][0] * S2, ey + C.pts[0][1] * S2);
+      for (let j = 1; j < C.pts.length; j++) {
+        const [x0, y0] = C.pts[j - 1], [x1, y1] = C.pts[j], sl = Math.hypot(x1 - x0, y1 - y0);
+        if (acc + sl >= L) { const q = (L - acc) / sl; g.lineTo(ex + (x0 + (x1 - x0) * q) * S2, ey + (y0 + (y1 - y0) * q) * S2); break; }
+        acc += sl; g.lineTo(ex + x1 * S2, ey + y1 * S2);
+      }
+      g.strokeStyle = rgba(X.b.ac, 0.4); g.lineWidth = Math.max(4, S2 * 0.022); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = Math.max(1.4, S2 * 0.006); g.stroke();
+    }
+    g.restore();
+  }
+  // 엠블럼 위를 훑는 빛: 비스듬한 흰 띠를 엠블럼 모양으로 잘라(destination-in) 더해 그림
+  function shine(cx, cy, S2, p) {
+    const X = A, c = X.sh, s = c.width, h = c.getContext('2d');
+    h.globalCompositeOperation = 'source-over'; h.clearRect(0, 0, s, s);
+    const x = lerp(-0.45, 1.45, eInOut(p)) * s, gr = h.createLinearGradient(x - s * 0.16, 0, x + s * 0.16, s * 0.12);
+    gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    h.fillStyle = gr; h.fillRect(0, 0, s, s);
+    h.globalCompositeOperation = 'destination-in'; h.drawImage(X.imgB, 0, 0, s, s);
+    g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.85; g.drawImage(c, cx - S2 / 2, cy - S2 / 2, S2, S2); g.restore();
+  }
+  // 상위 티어: 영문 이름이 새겨진 인장 고리 (눈금 고리는 시계 방향, 글자 띠는 반대로)
+  function sigil(cx, cy, E, t, al) {
+    const X = A, k = al * seg(t, X.Tm.reveal + 0.2, X.Tm.reveal + 1.0); if (k <= 0) return;
+    const r1 = E * 0.55, r2 = E * 0.64, rot = t * 0.16, rr = (r1 + r2) / 2;
+    g.save(); g.globalCompositeOperation = 'lighter'; g.translate(cx, cy);
+    g.strokeStyle = rgba(X.b.ac, 0.6 * k); g.lineWidth = 1.4;
+    g.beginPath(); g.arc(0, 0, r1, 0, TAU); g.stroke(); g.beginPath(); g.arc(0, 0, r2, 0, TAU); g.stroke();
+    g.save(); g.rotate(rot); g.beginPath();
+    for (let i = 0; i < 72; i++) { const a = i * TAU / 72, l = i % 6 ? 0.18 : 0.45; g.moveTo(Math.cos(a) * r2, Math.sin(a) * r2); g.lineTo(Math.cos(a) * (r2 + (r2 - r1) * l), Math.sin(a) * (r2 + (r2 - r1) * l)); }
+    g.stroke(); g.restore();
+    // 글자는 위쪽 호에만 (아래로 가면 거꾸로 읽히고 이름 글자와 겹침) — 천천히 좌우로 흔들림
+    const fs = Math.max(8, (r2 - r1) * 0.66), span = Math.PI * 1.05, unit = `${X.b.en} · `, n = Math.floor(span * rr / (fs * 0.66)), txt = unit.repeat(Math.max(0, Math.floor((n + 3) / unit.length) - 1)) + X.b.en, step = span / txt.length, a0 = -Math.PI / 2 - span / 2 + Math.sin(t * 0.5) * 0.08;
+    g.font = `700 ${fs.toFixed(1)}px ${FD}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = rgba('#ffffff', 0.8 * k);
+    for (let i = 0; i < txt.length; i++) { g.save(); g.rotate(a0 + (i + 0.5) * step + Math.PI / 2); g.translate(0, -rr); g.fillText(txt[i], 0, 0); g.restore(); }
+    g.restore();
+  }
+  // 상위 티어: 엠블럼 둘레를 도는 혜성 셋 (꼬리 = 지나온 자리의 작은 빛)
+  function comets(cx, cy, E, t, al, front) {
+    const X = A, k = al * seg(t, X.Tm.reveal + 0.3, X.Tm.reveal + 1.2); if (k <= 0) return;
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for (let j = 0; j < 3; j++) {
+      const rx = E * (0.8 + j * 0.07), ry = E * (0.17 + j * 0.07), rot = -0.38 + j * 0.62, th0 = t * (1.3 - j * 0.22) + j * 2.1;
+      if (!front) { g.strokeStyle = rgba(X.b.ac, 0.16 * k); g.lineWidth = 1; g.save(); g.translate(cx, cy); g.rotate(rot); g.beginPath(); g.ellipse(0, 0, rx, ry, 0, 0, TAU); g.stroke(); g.restore(); }
+      for (let q = 0; q < 16; q++) {
+        const th = th0 - q * 0.045, inFront = Math.sin(th) > 0; if (inFront !== !!front) continue;
+        const [x, y] = ell(cx, cy, rx, ry, rot, th), f = 1 - q / 16;
+        g.fillStyle = rgba(q ? X.b.ac : '#ffffff', k * f * (q ? 0.6 : 1)); g.beginPath(); g.arc(x, y, (q ? 2.6 : 4) * (0.4 + 0.6 * f) * Math.max(1, E / 260), 0, TAU); g.fill();
+      }
+    }
+    g.restore();
+  }
+  function text(t, out = 1) {
+    const X = A, Tm = X.Tm, k1 = seg(t, Tm.title, Tm.title + 0.5); if (k1 <= 0) return;
+    const base = Math.min(W, H), L = layout(), cx = W / 2;
+    const fk = Math.max(11, base * 0.034), fn = Math.max(26, base * (W >= H ? 0.11 : 0.12)), fe = Math.max(12, base * 0.04), fs = Math.max(11, base * 0.03);
+    const yK = L.eb + Math.max(18, base * 0.1), yN = yK + fk * 0.8 + fn * 0.62, yE = yN + fn * 0.62 + fe * 0.75, yS = yE + fe * 0.8 + fs * 0.85;
+    const k2 = seg(t, Tm.title + 0.15, Tm.title + 0.8), k3 = seg(t, Tm.title + 0.55, Tm.title + 1.1), sp = 'letterSpacing' in g;
+    g.save(); g.globalAlpha = out; g.textAlign = 'center'; g.textBaseline = 'middle';
+    // 머리말 + 양옆으로 뻗는 선
+    g.font = `800 ${fk.toFixed(1)}px ${FD}`; if (sp) g.letterSpacing = `${(fk * 0.32).toFixed(1)}px`;
+    const yk = yK + (1 - eOut(k1)) * 10; g.fillStyle = rgba(X.b.ac, k1); g.fillText(X.txt.kick, cx, yk);
+    const tw = g.measureText(X.txt.kick).width / 2 + 14, lw = base * 0.2 * eOut(k1);
+    for (const s of [-1, 1]) { const lg = g.createLinearGradient(cx + s * tw, 0, cx + s * (tw + lw), 0); lg.addColorStop(0, rgba(X.b.ac, 0.9 * k1)); lg.addColorStop(1, rgba(X.b.ac, 0)); g.fillStyle = lg; g.fillRect(Math.min(cx + s * tw, cx + s * (tw + lw)), yk - 1, lw, 2); }
+    // 티어 이름: 커졌다가 줄어들며 글자 간격이 좁혀짐
+    if (k2 > 0) {
+      const e = eOut(k2), sc = lerp(1.35, 1, e);
+      g.save(); g.translate(cx, yN); g.scale(sc, sc); g.font = `800 ${fn.toFixed(1)}px ${FD}`; if (sp) g.letterSpacing = `${(fn * lerp(0.55, 0.1, e)).toFixed(1)}px`;
+      g.globalAlpha = k2 * out; g.shadowColor = rgba(X.b.ac, 0.95); g.shadowBlur = fn * 0.5;
+      const gr = g.createLinearGradient(0, -fn / 2, 0, fn / 2); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.55, X.b.c[0]); gr.addColorStop(1, X.b.c[1]);
+      g.fillStyle = gr; g.fillText(X.txt.name, 0, 0); g.shadowBlur = 0; g.lineWidth = Math.max(1, fn * 0.025); g.strokeStyle = 'rgba(0,0,0,0.35)'; g.strokeText(X.txt.name, 0, 0);
+      g.restore();
+    }
+    if (k3 > 0) {
+      g.globalAlpha = k3 * out; g.font = `700 ${fe.toFixed(1)}px ${FD}`; if (sp) g.letterSpacing = `${(fe * 0.3).toFixed(1)}px`; g.fillStyle = '#ffffff'; g.fillText(X.txt.line3, cx, yE);
+      g.font = `600 ${fs.toFixed(1)}px ${FB}`; if (sp) g.letterSpacing = '0px'; g.fillStyle = 'rgba(232,238,246,0.86)'; g.fillText(X.txt.sub, cx, yS);
+    }
+    const k4 = seg(t, Tm.title + 1.4, Tm.title + 1.8), yT = Math.max(yS + fs * 2.2, H - Math.max(16, base * 0.045));
+    if (k4 > 0 && yT < H - 6) { g.globalAlpha = k4 * out * (0.45 + 0.3 * Math.sin(t * 3.2)); g.font = `600 ${Math.max(10, base * 0.026).toFixed(1)}px ${FB}`; if (sp) g.letterSpacing = '0px'; g.fillStyle = '#ffffff'; g.fillText('화면을 눌러 계속', cx, yT); }
+    g.restore();
+  }
+  // 화면 배치: 가로 화면은 엠블럼을 위쪽 가운데, 세로 화면은 조금 크게
+  function layout() {
+    const land = W >= H, cy = H * 0.36, E = land ? Math.min(H * 0.5, W * 0.4) : Math.min(W * 0.62, H * 0.34);
+    return { cx: W / 2, cy, E, eb: cy + E / 2, MX: Math.max(W, H) };
+  }
+  function frame(t) {
+    const X = A; if (!X || !g) return;
+    const Tm = X.Tm, { cx, cy, E, MX } = layout();
+    g.setTransform(DPR, 0, 0, DPR, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, W, H);
+    const fin = seg(t, 0, 0.45), out = 1 - seg(t, Tm.dur, Tm.dur + 0.45);
+    g.globalAlpha = out;
+    // 배경: 어둠 + 이전 티어 색에서 새 티어 색으로 바뀌는 큰 빛
+    g.fillStyle = `rgba(3,4,9,${(0.94 * fin).toFixed(3)})`; g.fillRect(0, 0, W, H);
+    const bg = mixc(X.a.c[2], X.b.c[1], seg(t, Tm.shatter - 0.2, Tm.reveal + 0.5)), gr = g.createRadialGradient(cx, cy, 0, cx, cy, MX * 0.75);
+    gr.addColorStop(0, rgba(bg, 0.5 * fin)); gr.addColorStop(0.5, rgba(mixc(bg, [0, 0, 0], 0.65), 0.3 * fin)); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    // 화면 흔들림 (금 가는 동안 약하게 · 깨지는 순간 크게 → 줄어듦)
+    const ds = t - Tm.shatter, shk = (ds >= 0 ? Math.min(W, H) * 0.035 * Math.exp(-ds * 5.5) : 0) + (t > Tm.crack && t < Tm.shatter ? 2.5 * seg(t, Tm.crack, Tm.shatter) : 0);
+    g.save(); g.translate(Math.sin(t * 97.3) * Math.cos(t * 41.1) * shk, Math.cos(t * 83.7) * Math.sin(t * 57.9) * shk);
+    const rv = seg(t, Tm.reveal, Tm.reveal + 0.6);
+    // ③ 뒤에서 도는 빛살 (한 경로로 모아 한 번에)
+    if (rv > 0) {
+      g.save(); g.globalCompositeOperation = 'lighter'; const n = X.sup ? 18 : 14, rot = t * 0.22, L0 = MX * 0.8;
+      const rg = g.createRadialGradient(cx, cy, E * 0.15, cx, cy, L0); rg.addColorStop(0, rgba(X.b.ac, 0.24 * rv)); rg.addColorStop(0.6, rgba(X.b.ac, 0.06 * rv)); rg.addColorStop(1, rgba(X.b.ac, 0));
+      g.beginPath();
+      for (let i = 0; i < n; i++) { const a = rot + i * TAU / n, w = TAU / n * 0.16, L = L0 * (i % 2 ? 0.62 : 1); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a - w) * L, cy + Math.sin(a - w) * L); g.lineTo(cx + Math.cos(a + w) * L, cy + Math.sin(a + w) * L); g.closePath(); }
+      g.fillStyle = rg; g.fill(); g.restore();
+    }
+    // ③ 빛기둥
+    const pl = seg(t, Tm.reveal - 0.08, Tm.reveal + 0.2) * (1 - seg(t, Tm.reveal + 0.8, Tm.title + 0.7));
+    if (pl > 0) {
+      g.save(); g.globalCompositeOperation = 'lighter'; const pw = E * (0.2 + 0.28 * pl), lg = g.createLinearGradient(cx - pw, 0, cx + pw, 0);
+      lg.addColorStop(0, rgba(X.b.ac, 0)); lg.addColorStop(0.36, rgba(X.b.ac, 0.45 * pl)); lg.addColorStop(0.5, rgba('#ffffff', 0.92 * pl)); lg.addColorStop(0.64, rgba(X.b.ac, 0.45 * pl)); lg.addColorStop(1, rgba(X.b.ac, 0));
+      g.fillStyle = lg; g.fillRect(cx - pw, -40, pw * 2, cy + 40 + E * 0.1);
+      const vg = g.createLinearGradient(0, cy, 0, H); vg.addColorStop(0, rgba(X.b.ac, 0.35 * pl)); vg.addColorStop(1, rgba(X.b.ac, 0)); g.fillStyle = vg; g.fillRect(cx - pw * 0.35, cy, pw * 0.7, H - cy);
+      g.restore();
+    }
+    // ① 모이는 빛 + 좁혀 오는 고리
+    if (t < Tm.shatter + 0.05) {
+      g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+      for (const p of X.gath) {
+        const k = seg(t, p.t0, p.t0 + p.du); if (k <= 0 || k >= 1) continue;
+        const e = k * k, r = p.r0 * MX * (1 - e) + E * 0.06 * e, a = p.a + p.sp * e, r2 = r + MX * 0.05 * (1 - e) + 6, a2 = a - p.sp * 0.05;
+        g.strokeStyle = rgba(p.col, Math.sin(k * Math.PI) * 0.9); g.lineWidth = p.sz; g.beginPath(); g.moveTo(cx + Math.cos(a2) * r2, cy + Math.sin(a2) * r2); g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); g.stroke();
+      }
+      for (const [d0, lw] of [[0, 2.5], [0.35, 1.4]]) { const k = seg(t, 0.2 + d0, Tm.shatter); if (k <= 0) continue; g.strokeStyle = rgba(X.b.ac, 0.7 * k); g.lineWidth = lw; g.beginPath(); g.arc(cx, cy, lerp(MX * 0.62, E * 0.5, eInOut(k)), 0, TAU); g.stroke(); }
+      g.restore();
+    }
+    // ① 이전 엠블럼: 떠오름 → 달아오르며 떨림 → 금
+    if (t < Tm.shatter) {
+      const k = eOut(seg(t, 0, 0.6)), jit = seg(t, Tm.crack, Tm.shatter) ** 2 * E * 0.025, S2 = E * lerp(0.82, 1, k);
+      const ex = cx + Math.sin(t * 71) * jit, ey = cy + Math.sin(t * 2.2) * E * 0.012 + Math.cos(t * 63) * jit;
+      const hg = g.createRadialGradient(ex, ey, 0, ex, ey, S2 * 0.75); hg.addColorStop(0, rgba(X.a.c[1], 0.45 * k)); hg.addColorStop(1, rgba(X.a.c[1], 0)); g.fillStyle = hg; g.fillRect(ex - S2, ey - S2, S2 * 2, S2 * 2);
+      g.save(); g.globalAlpha *= k; g.drawImage(X.imgA, ex - S2 / 2, ey - S2 / 2, S2, S2); g.restore();
+      const hot = seg(t, Tm.crack - 0.25, Tm.shatter); if (hot > 0) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha *= hot * 0.6; g.drawImage(X.imgA, ex - S2 / 2, ey - S2 / 2, S2, S2); g.restore(); }
+      if (t > Tm.crack) drawCracks(ex, ey, S2, t);
+    }
+    // ② 조각
+    if (ds >= 0 && ds < 1.8) {
+      for (const s of X.shards) {
+        const al = 1 - seg(ds, s.life * 0.45, s.life); if (al <= 0) continue;
+        const k = (1 - Math.exp(-2.6 * ds)) / 2.6 * 1.7, px = cx + (s.c[0] + s.v[0] * k) * E, py = cy + (s.c[1] + s.v[1] * k) * E + 0.55 * E * ds * ds, sc = 1 - 0.3 * seg(ds, 0, s.life);
+        g.save(); g.translate(px, py); g.rotate(s.w * k); g.scale(sc, sc);
+        g.beginPath(); s.P.forEach(([x, y], j) => (j ? g.lineTo(x * E, y * E) : g.moveTo(x * E, y * E))); g.closePath();
+        g.save(); g.clip(); g.globalAlpha *= al; g.drawImage(X.imgA, (-0.5 - s.c[0]) * E, (-0.5 - s.c[1]) * E, E, E);
+        g.globalCompositeOperation = 'lighter'; g.globalAlpha *= Math.exp(-ds * 3) * 0.8; g.drawImage(X.imgA, (-0.5 - s.c[0]) * E, (-0.5 - s.c[1]) * E, E, E); g.restore();
+        if (s.edge) { g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(X.b.ac, 0.85 * al); g.lineWidth = 1.5; g.stroke(); }
+        g.restore();
+      }
+    }
+    // ② 번쩍임 + 충격파
+    if (ds >= 0) {
+      for (const [d0, w0] of [[0, 22], [0.12, 9]]) {
+        const p = seg(ds, d0, d0 + 0.75); if (p <= 0 || p >= 1) continue;
+        g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(mixc('#ffffff', X.b.ac, p), 1 - p); g.lineWidth = w0 * (1 - p) + 1; g.beginPath(); g.arc(cx, cy, E * 0.3 + eOut(p) * MX * 0.75, 0, TAU); g.stroke(); g.restore();
+      }
+    }
+    // ③ 새 엠블럼
+    if (t >= Tm.reveal) {
+      const dr = t - Tm.reveal, s = 0.25 + 0.75 * eBack(seg(dr, 0, 0.6)), S2 = E * s * (1 + 0.012 * Math.sin(t * 2.4)), al = seg(dr, 0, 0.15);
+      const hg = g.createRadialGradient(cx, cy, 0, cx, cy, E * 0.95); hg.addColorStop(0, rgba(X.b.c[1], 0.55 * al)); hg.addColorStop(0.5, rgba(X.b.ac, 0.18 * al)); hg.addColorStop(1, rgba(X.b.ac, 0));
+      g.fillStyle = hg; g.fillRect(cx - E, cy - E, E * 2, E * 2);
+      if (X.sup) { sigil(cx, cy, E, t, al); comets(cx, cy, E, t, al, false); }
+      g.save(); g.globalAlpha *= al; g.drawImage(X.imgB, cx - S2 / 2, cy - S2 / 2, S2, S2); g.restore();
+      const hot = Math.exp(-dr * 2.6); if (hot > 0.02) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha *= hot; g.drawImage(X.imgB, cx - S2 / 2, cy - S2 / 2, S2, S2); g.restore(); }
+      for (const ts of X.sweeps) { const p = seg(t, ts, ts + 0.75); if (p > 0 && p < 1) shine(cx, cy, S2, p); }
+      if (X.sup) comets(cx, cy, E, t, al, true);
+      // 터지는 빛 + 떠오르는 불티
+      g.save(); g.globalCompositeOperation = 'lighter';
+      for (const p of X.burst) {
+        const d = dr - p.d; if (d <= 0 || d > p.life) continue;
+        const k = (1 - Math.exp(-2.4 * d)) / 2.4, r = p.s * E * k * 1.1 + E * 0.15, x = cx + Math.cos(p.a) * r, y = cy + Math.sin(p.a) * r + E * 0.18 * d * d, a = 1 - d / p.life, z = Math.max(1, E / 260);
+        if (p.spk) star4(x, y, p.sz * 2.4 * z * (0.6 + 0.4 * Math.sin(d * 14 + p.a * 5)), rgba(p.col, a));
+        else { g.fillStyle = rgba(p.col, a); g.beginPath(); g.arc(x, y, p.sz * z * (0.5 + 0.5 * a), 0, TAU); g.fill(); }
+      }
+      for (const e of X.embers) { const y = H * 1.05 - ((t * e.sp * H + e.off * H * 1.2) % (H * 1.2)), x = e.x * W + Math.sin(t * e.f + e.ph) * 14; g.fillStyle = rgba(X.b.ac, 0.55 * rv * (0.3 + 0.7 * Math.sin(t * 3 + e.ph) ** 2)); g.beginPath(); g.arc(x, y, e.sz, 0, TAU); g.fill(); }
+      g.restore();
+    }
+    // ② 번쩍임 (흔들림과 무관하게 화면 전체)
+    g.restore();
+    if (ds >= 0) { const fk = Math.exp(-ds * 6.5); if (fk > 0.01) { g.fillStyle = rgba('#ffffff', 0.85 * fk * out); g.fillRect(0, 0, W, H); } }
+    // ④ 글자
+    text(t, out);
+    g.globalAlpha = 1;
+  }
+
+  // ---------- 재생 ----------
+  function size() {
+    if (!cv) return;
+    DPR = Math.min(window.devicePixelRatio || 1, 2); W = window.innerWidth; H = window.innerHeight;
+    // 아주 큰 화면에서는 해상도를 낮춤 (픽셀 수 약 330만 이하)
+    const px = W * H * DPR * DPR; if (px > 3.3e6) DPR = Math.max(1, Math.sqrt(3.3e6 / (W * H)));
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  }
+  const CUES = (X) => [[0, 'gather'], [X.Tm.crack, 'crack'], [X.Tm.shatter, 'shatter'], [X.Tm.reveal, 'reveal'], [X.Tm.title, 'title']];
+  function sound(t) {
+    const C = CUES(A);
+    while (cue < C.length && t >= C[cue][0]) { const ph = C[cue][1]; cue++; if (t - C[cue - 1][0] < 0.35 || ph === 'title') try { if (Audio.rankUp) Audio.rankUp(ph, A.sup); } catch (e) { /* 소리 없이 */ } }
+  }
+  function loop() {
+    if (!active) return;
+    const t = (performance.now() - tStart) / 1000;
+    sound(t); frame(t);
+    if (t >= A.Tm.dur + 0.45) { close(); return; }
+    raf = requestAnimationFrame(loop);
+  }
+  // from·to: tierOf / hcTierOf 결과 · opt.series: 승급전 통과 · done: 끝나면
+  function play(from, to, opt = {}, done) {
+    if (active) close(true);
+    const L = $('tcLayer'); cv = $('tcCanvas'); if (!L || !cv) { if (done) done(); return false; }
+    g = cv.getContext('2d'); size();
+    try { A = build(from, to, opt); } catch (e) { console.warn(e); if (done) done(); return false; }
+    onDone = done || null; active = true; cue = 0; tStart = performance.now();
+    L.hidden = false; L.classList.toggle('sup', A.sup);
+    try { Audio.init(); } catch (e) { /* 소리 없이 */ }
+    cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
+    return true;
+  }
+  // 누르면: 이름 장면 전이면 그리로 건너뛰고, 이름이 나온 뒤면 닫기
+  function tap() {
+    if (!active) return;
+    const t = (performance.now() - tStart) / 1000;
+    if (t < A.Tm.title) { tStart = performance.now() - A.Tm.title * 1000; cue = CUES(A).length - 1; }
+    else close();
+  }
+  function close(silent) {
+    if (!active && !A) return;
+    active = false; cancelAnimationFrame(raf);
+    const L = $('tcLayer'); if (L) L.hidden = true;
+    if (g) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); }
+    A = null; const f = onDone; onDone = null;
+    if (f && !silent) try { f(); } catch (e) { console.warn(e); }
+  }
+  // 개발자 도구: t번째 티어로 오르는 컷신 (상위 티어는 승급전 통과로)
+  function demo(t) {
+    t = clamp(t | 0, 1, RANK_TIERS.length - 1);
+    const sup = !!RANK_TIERS[t].sup, mk = (tt, div) => ({ t: tt, div, label: `${RANK_TIERS[tt].name} ${div}` });
+    return play(mk(t - 1, 1), mk(t, sup ? 5 : 4), { series: sup });
+  }
+  // 테스트용: 그 순간 한 장면만 그림 (requestAnimationFrame 없이)
+  function still(from, to, opt, t) {
+    cv = $('tcCanvas'); g = cv.getContext('2d'); $('tcLayer').hidden = false; size(); A = build(from, to, opt || {}); active = false; frame(t); return cv;
+  }
+
+  // ---------- 개편 안내 창 ----------
+  let pend = null, pendT = null;
+  function cutNotice(C) { if (!C || C.seen) return; pend = C; showCut(); }
+  function showCut() {
+    const C = pend; if (!C) return; clearTimeout(pendT);
+    const P = $('rkCutPanel'); if (!P) return;
+    const busy = G.state !== 'lobby' || active || (typeof Watch !== 'undefined' && Watch.viewing && Watch.viewing()) || ($('rnPanel') && !$('rnPanel').hidden);
+    if (busy) { pendT = setTimeout(showCut, 1500); return; }
+    pend = null;
+    $('rkCutFrom').textContent = `${(C.from || 0).toLocaleString()} RP`;
+    $('rkCutTo').textContent = `${SUP.base.toLocaleString()} RP`;
+    $('rkCutText').textContent = `이터널 위에 격이 다른 상위 티어 4개(노바 · 셀레스티얼 · 이클립스 · 제니스)가 생기면서, 4,000 RP를 넘던 기록은 4,000 RP(이터널 1 · 승급전 대기)로 조정됐습니다. 다음 랭크전부터 노바 승급전이 시작됩니다 — 맵마다 정해진 순위 안에 ${SUP.need[0]}번 연속으로 들면 노바 5로 오릅니다.`;
+    const tr = $('rkCutTiers'); tr.innerHTML = '';
+    for (let t = SUP.t0; t < RANK_TIERS.length; t++) { const d = document.createElement('div'); d.className = 'rkc-tier'; d.innerHTML = `<img alt="" src="${Rank.emblem(t, 5, 128)}"><b>${RANK_TIERS[t].name}</b>`; tr.appendChild(d); }
+    const gl = $('rkCutGifts'); gl.innerHTML = '';
+    const KIND = { skin: '옷', gskin: '총기 스킨', vskin: '차량 스킨', gold: '재화' };
+    for (const o of C.got || []) {
+      const r = rarOf(o.rar), d = document.createElement('div'); d.className = 'rkc-gift'; d.style.setProperty('--rc', r.color);
+      d.innerHTML = `<span class="rkc-ico">${Shop.itemIcon(o)}</span><b>${esc(Shop.itemName(o))}</b><small>${esc(o.k === 'gold' ? '이미 모두 가진 등급이라 골드 탄피로' : `${r.name} · ${KIND[o.k] || ''}`)}</small>`;
+      gl.appendChild(d);
+    }
+    try { Shop.pump(); } catch (e) { /* 그림은 나중에 */ }
+    P.hidden = false;
+    try { Audio.gacha && Audio.gacha('open', 5); } catch (e) { /* 소리 없이 */ }
+  }
+  function setup() {
+    const L = $('tcLayer'); if (L) L.addEventListener('pointerdown', (e) => { if (e.target.id === 'tcSkip') return; e.preventDefault(); tap(); });
+    const sk = $('tcSkip'); if (sk) sk.addEventListener('click', (e) => { e.stopPropagation(); close(); });
+    const ok = $('rkCutOk'); if (ok) ok.addEventListener('click', () => { Audio.ui(); $('rkCutPanel').hidden = true; Rank.cutSeen(); });
+    window.addEventListener('resize', () => { if (active) size(); });
+  }
+  return { play, demo, still, frame, tap, close, cutNotice, setup, get active() { return active; } };
 })();
 
 // ---------- 10_ranking.js ----------
@@ -28002,7 +28831,7 @@ const Ladder = (() => {
   // ---------- 화면 ----------
   function valueHTML(k, r) {
     if (k === 'lv') { const L = levelFromXp(r.xp || 0); return `<span class="lad-lv"><b>Lv ${L.lv}</b><small>${fmt(r.xp)} XP</small></span>`; }
-    const T = k === 'tier' ? Rank.tierOf(r.rp || 0) : Rank.hcTierOf(r.hrp || 0), rp = k === 'tier' ? r.rp : r.hrp;
+    const T = k === 'tier' ? Rank.tierOf(r.rp || 0, r.sg) : Rank.hcTierOf(r.hrp || 0), rp = k === 'tier' ? r.rp : r.hrp;
     return `<span class="lad-tier"><img src="${Rank.embOf(T, 64)}" alt=""><span><b>${esc(T.label)}</b><small>${fmt(rp)} RP</small></span></span>`;
   }
   // 목록 속 다른 사람의 사진·테두리·칭호: 1위 보상은 그 랭킹의 지금 1위만 (회수된 것은 기본으로)
@@ -30121,7 +30950,7 @@ const Prof = (() => {
   //  kind: base · tier(t = RANK_TIERS 번호, 최고 도달 티어 이상이면 해금) · title(그 칭호를 얻으면 해금)
   const FR = [
     { id: 'none', name: '기본', kind: 'base', desc: '처음부터' },
-    ...['iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'legend', 'eternal'].map((id, t) => ({ id, name: '', kind: 'tier', t, desc: '' })),
+    ...['iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'legend', 'eternal', 'nova', 'celestial', 'eclipse', 'zenith'].map((id, t) => ({ id, name: '', kind: 'tier', t, desc: '' })),   // v23: 상위 티어 4종 (pfx — 새 효과 테두리)
     { id: 'collector', name: '수집가', kind: 'title', title: 'collector', desc: '칭호 「수집가」' },
     { id: 'wargod', name: '전쟁의 신', kind: 'title', title: 'wargod', desc: '칭호 「전쟁의 신」' },
     // 하드코어 랭크 상위 3티어 (최고 도달 기준) · 베타 테스터
@@ -30178,9 +31007,53 @@ const Prof = (() => {
     + `<rect x="15" y="-15.5" width="34" height="12" rx="2" fill="#0c3a16" stroke="#8dff9a" stroke-width="1.3"/><text x="29" y="-6.2" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="9" fill="#c4ffbe" letter-spacing=".7">EXIT</text><path d="M39.5 -9.5h5.5m-2.2 -2.6 2.6 2.6-2.6 2.6" fill="none" stroke="#c4ffbe" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`
     + `<path d="M14 62h36l-4 6 4 6H14l4-6z" fill="#2a2208" stroke="#f4e07a" stroke-width="1.1"/><text x="32" y="71.3" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="8.4" fill="#fff3b0" letter-spacing=".5">12 / 12</text>`;
   const ORN_FX = { br_escape: '<i class="pf-scan"></i>', br_all: '<i class="pf-rays br"></i>', champ_lv: '<i class="pf-rays lv"></i>', champ_tier: '<i class="pf-rays"></i><i class="pf-orb"></i><i class="pf-orb b"></i>', champ_hc: '<i class="pf-rays hc"></i>', eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
+  // ---------- v23 상위 티어 테두리 (노바 · 셀레스티얼 · 이클립스 · 제니스) — 기존 테두리와 다른 새 효과 묶음 'pfx' ----------
+  //  뒤: 천천히 도는 색 후광(px-aura) · 영문 이름이 새겨져 도는 고리(px-sig — 작은 크기에선 숨김)
+  //  사진 위: 비스듬히 훑고 지나가는 빛(px-sheen) / 고리 위: 금속 고리를 따라 도는 반사광(px-glint)
+  //  앞: 꼬리 달린 혜성 둘(px-orbit — 바깥은 시계 방향, 안쪽은 반대) · 번갈아 반짝이는 별 넷(px-spk) · 장식 선을 따라 흐르는 빛(px-flow)
+  //  장식(관·날개·아래 장식)의 그라데이션은 index.html 전역 defs(pxg-*) · 글자 고리 경로는 #pxc
+  const f1 = (v) => v.toFixed(1);
+  // 끝이 뾰족한 수정 조각: (x,y)에서 a 방향으로 길이 L, 반폭 w
+  const shard = (x, y, a, L, w, fill, edge = '#e9fbff') => {
+    const c = Math.cos(a), s = Math.sin(a), nx = -s, ny = c, p = (k, m) => `${f1(x + c * L * k + nx * w * m)} ${f1(y + s * L * k + ny * w * m)}`;
+    return `<path d="M${p(0, 1)}L${p(0.62, 0.9)}L${p(1, 0)}L${p(0.62, -0.9)}L${p(0, -1)}z" fill="${fill}" stroke="${edge}" stroke-width=".7"/>`;
+  };
+  // 깃털(잎) 모양: 밑동 (x,y)에서 a 방향으로 L, 폭 w
+  const leaf = (x, y, a, L, w, fill, edge) => {
+    const tx = x + Math.cos(a) * L, ty = y + Math.sin(a) * L, mx = (x + tx) / 2, my = (y + ty) / 2, nx = -Math.sin(a), ny = Math.cos(a);
+    return `<path d="M${f1(x)} ${f1(y)}Q${f1(mx + nx * w)} ${f1(my + ny * w)} ${f1(tx)} ${f1(ty)}Q${f1(mx - nx * w * 0.4)} ${f1(my - ny * w * 0.4)} ${f1(x)} ${f1(y)}z" fill="${fill}" stroke="${edge}" stroke-width=".6"/>`;
+  };
+  const mirror = (s) => `${s}<g transform="translate(64 0) scale(-1 1)">${s}</g>`;   // 왼쪽 그림을 오른쪽에도
+  const flow = (d) => `<path class="px-flow" d="${d}"/>`;
+  const gemD = (x, y, r, fill) => `<path d="M${f1(x)} ${f1(y - r)}l${f1(r * 0.8)} ${f1(r)}-${f1(r * 0.8)} ${f1(r)}-${f1(r * 0.8)}-${f1(r)}z" fill="${fill}" stroke="#fff" stroke-width=".7"/>`;
+  const star4 = (x, y, r, fill) => `<path d="M${f1(x)} ${f1(y - r)}l${f1(r * 0.25)} ${f1(r * 0.75)} ${f1(r * 0.75)} ${f1(r * 0.25)}-${f1(r * 0.75)} ${f1(r * 0.25)}-${f1(r * 0.25)} ${f1(r * 0.75)}-${f1(r * 0.25)}-${f1(r * 0.75)}-${f1(r * 0.75)}-${f1(r * 0.25)} ${f1(r * 0.75)}-${f1(r * 0.25)}z" fill="${fill}"/>`;
+  // 노바: 수정 조각 관 + 양옆 수정 칼날 + 아래 보석
+  ORN.nova = shard(25, 6, -Math.PI / 2 - 0.5, 14, 2.6, 'url(#pxg-nova)') + shard(39, 6, -Math.PI / 2 + 0.5, 14, 2.6, 'url(#pxg-nova)') + shard(32, 4, -Math.PI / 2, 20, 3.5, 'url(#pxg-nova)')
+    + mirror(shard(5, 21, -2.5, 21, 2.7, 'url(#pxg-nova)') + shard(3, 28, -2.95, 19, 2.5, 'url(#pxg-nova)') + shard(4, 36, 2.8, 14, 2.2, 'url(#pxg-nova)') + flow('M5 21l-17-12M3 28l-18-4'))
+    + flow('M32 4V-15M25 6l-6.5-12M39 6l6.5-12') + gemD(32, 4, 4, '#bff3ff') + gemD(32, 64, 4.2, '#8fe3ff') + star4(32, 64, 2.2, '#fff');
+  // 셀레스티얼: 금빛 후광 + 여섯 깃 천사 날개(두 겹) + 아래 별
+  ORN.celestial = mirror(Array.from({ length: 6 }, (_, i) => leaf(6 - i * 0.2, 19 + i * 3, -2.2 - i * 0.24, 26 - i * 2, 5.2, i % 2 ? 'url(#pxg-cel)' : '#fffdf3', '#a8780a')).join('')
+      + Array.from({ length: 4 }, (_, i) => leaf(5, 33 + i * 3, 2.75 + i * 0.16, 16 - i * 1.6, 4, '#fff6dc', '#a8780a')).join('') + flow('M6 19l-15-14M5 28l-19-6'))
+    + `<ellipse cx="32" cy="-7" rx="16" ry="4.4" fill="none" stroke="#fff6d0" stroke-width="5" opacity=".35"/><ellipse cx="32" cy="-7" rx="16" ry="4.4" fill="none" stroke="url(#pxg-cel)" stroke-width="2.4"/>`
+    + `<ellipse class="px-flow" cx="32" cy="-7" rx="16" ry="4.4"/>` + gemD(32, 1, 4, '#a9d8ff') + star4(32, 65, 6, '#fffbe8') + star4(32, 65, 2.6, '#ffd76a');
+  // 이클립스: 위에 검은 태양(코로나 가시 + 다이아몬드 반지 섬광) + 양옆 흑요석 불꽃 칼날 + 아래 가시
+  ORN.eclipse = Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2 + 0.1, L = i % 2 ? 5 : 8.5, x = 32 + Math.cos(a) * 6.5, y = -5 + Math.sin(a) * 6.5; return shard(x, y, a, L, 1.7, '#ff4a1e', 'none') + shard(x, y, a, L * 0.55, 1.1, '#ffd27a', 'none'); }).join('')
+    + mirror(shard(5, 22, -2.45, 21, 2.8, 'url(#pxg-ecl)', '#ff5a2a') + shard(3, 29, -2.9, 20, 2.6, 'url(#pxg-ecl)', '#ff5a2a') + shard(4, 37, 2.75, 15, 2.3, 'url(#pxg-ecl)', '#ff5a2a') + flow('M5 22l-16-13M3 29l-19-5'))
+    + `<circle cx="32" cy="-5" r="7" fill="#050102" stroke="#ffcf6a" stroke-width="1.2"/>` + star4(37.2, -9.6, 4.4, '#fffaf0')
+    + shard(32, 61, Math.PI / 2, 13, 2.6, 'url(#pxg-ecl)', '#ff5a2a') + shard(26, 60, Math.PI / 2 + 0.5, 9, 2, 'url(#pxg-ecl)', '#ff5a2a') + shard(38, 60, Math.PI / 2 - 0.5, 9, 2, 'url(#pxg-ecl)', '#ff5a2a') + gemD(32, 60, 3.4, '#ff3b1f');
+  // 제니스: 무지개 후광 + 보석 박힌 큰 왕관 + 무지개 칼날·금빛 깃털 이중 날개 + 아래 ZENITH 명판
+  ORN.zenith = mirror(shard(4, 24, -2.55, 25, 2.8, 'url(#pxg-prism)', '#ffffff') + shard(2, 31, -2.95, 22, 2.6, 'url(#pxg-prism)', '#ffffff')
+      + Array.from({ length: 5 }, (_, i) => leaf(6, 22 + i * 3.2, -2.35 - i * 0.26, 21 - i * 2.2, 3, i % 2 ? '#fffdf3' : 'url(#pxg-zen)', '#9a6a08')).join('') + flow('M4 24l-19-14M2 31l-21-4'))
+    + `<circle cx="32" cy="-5" r="12" fill="none" stroke="url(#pxg-prism)" stroke-width="2.2"/>`
+    + `<path d="M18 5l-3-14 8 6 9-12 9 12 8-6-3 14z" fill="url(#pxg-zen)" stroke="#7a4e05" stroke-width="1"/>` + flow('M18 5l-3-14 8 6 9-12 9 12 8-6-3 14z')
+    + `<circle cx="15" cy="-9" r="1.9" fill="#fff"/><circle cx="32" cy="-15" r="2.2" fill="#fff"/><circle cx="49" cy="-9" r="1.9" fill="#fff"/>` + gemD(32, 0, 3.8, '#ff9bf0') + gemD(23.5, 1.5, 2.4, '#7fe0ff') + gemD(40.5, 1.5, 2.4, '#7fe0ff')
+    + `<path d="M15 62h34l-4 5.5 4 5.5H15l4-5.5z" fill="#2a1060" stroke="#ffd76a" stroke-width="1.1"/><text x="32" y="69.6" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="7" fill="#fff3c4" letter-spacing=".9">ZENITH</text>`;
+  const PXF = {};
+  for (const id of ['nova', 'celestial', 'eclipse', 'zenith']) { const en = RANK_TIERS.find((T) => T.id === id).en, n = Math.max(3, Math.round(50 / (en.length + 3))); PXF[id] = `<i class="px-aura"></i><i class="px-sig"><svg viewBox="0 0 100 100" aria-hidden="true"><text><textPath href="#pxc">${(en + ' ✦ ').repeat(n)}</textPath></text></svg></i>`; }
+  const PX_TOP = '<i class="px-glint"></i><i class="px-orbit"><b></b></i><i class="px-orbit b"><b></b></i><i class="px-spk s1"></i><i class="px-spk s2"></i><i class="px-spk s3"></i><i class="px-spk s4"></i>';
   function frameHTML(fr, av, size = 44, extra = '') {
-    const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id];
-    return `<span class="pf fr-${f.id}${extra ? ' ' + extra : ''}" style="--s:${size}px">${ORN_FX[f.id] || ''}<span class="pf-av">${avatarSVG(av)}</span><span class="pf-ring"></span>${f.id === 'grandmaster' ? '<span class="pf-spk"><svg viewBox="-16 -16 96 96">' + o + '</svg></span>' : o ? `<span class="pf-orn"><svg viewBox="-16 -16 96 96">${o}</svg></span>` : ''}</span>`;
+    const f = FR.find((x) => x.id === fr) || FR[0], o = ORN[f.id], px = PXF[f.id];
+    return `<span class="pf fr-${f.id}${px ? ' pfx' : ''}${size < 46 ? ' pf-sm' : ''}${extra ? ' ' + extra : ''}" style="--s:${size}px">${px || ORN_FX[f.id] || ''}<span class="pf-av">${avatarSVG(av)}</span>${px ? '<i class="px-sheen"></i>' : ''}<span class="pf-ring"></span>${f.id === 'grandmaster' ? '<span class="pf-spk"><svg viewBox="-16 -16 96 96">' + o + '</svg></span>' : o ? `<span class="pf-orn"><svg viewBox="-16 -16 96 96">${o}</svg></span>` : ''}${px ? PX_TOP : ''}</span>`;
   }
 
   // ---------- 칭호 ----------
@@ -30191,12 +31064,12 @@ const Prof = (() => {
     for (const id of STATS.gskins || []) if (typeof GSKINS !== 'undefined' && GSKINS[id] && (GSKINS[id].rar === 5 || GSKINS[id].rar === 7)) n++;   // 엡실론도 셈
     return n;
   };
-  const peakT = () => Rank.tierOf(Math.max(Rank.state.peak || 0, Rank.state.rp || 0)).t;
+  const peakT = () => Rank.peakTier().t;   // v23: 통과한 승급전 수까지 따져서
   const placedOk = () => Rank.placed();
   const TI = [
     { id: 'collector', name: '수집가', desc: '울트라레어 스킨 3종 이상 보유', prog: () => `${Math.min(3, ultraOwned())} / 3`, ok: () => ultraOwned() >= 3, fr: 'collector' },
     { id: 'wargod', name: '전쟁의 신', desc: '승률 20% 초과 (10판 이상)', prog: () => STATS.matches ? `${(STATS.wins / STATS.matches * 100).toFixed(1)}% · ${STATS.matches}판` : '0판', ok: () => STATS.matches >= 10 && STATS.wins / STATS.matches > 0.2, fr: 'wargod' },
-    ...[6, 7, 8, 9].map((t) => ({ id: 'tier_' + RANK_TIERS[t].id, name: RANK_TIERS[t].name, desc: `랭크 ${RANK_TIERS[t].name} 도달`, prog: () => placedOk() ? `최고 ${RANK_TIERS[peakT()].name}` : '배치고사 전', ok: () => placedOk() && peakT() >= t, fr: RANK_TIERS[t].id, tier: t })),
+    ...[6, 7, 8, 9, 10, 11, 12, 13].map((t) => ({ id: 'tier_' + RANK_TIERS[t].id, name: RANK_TIERS[t].name, desc: RANK_TIERS[t].sup ? `랭크 ${RANK_TIERS[t].name} 도달 — 승급전 통과 (전용 테두리 함께)` : `랭크 ${RANK_TIERS[t].name} 도달`, prog: () => placedOk() ? `최고 ${RANK_TIERS[peakT()].name}` : '배치고사 전', ok: () => placedOk() && peakT() >= t, fr: RANK_TIERS[t].id, tier: t })),
     // 하드코어 랭크 상위 3티어 (최고 도달) — 칭호와 같은 이름의 테두리
     ...[2, 3, 4].map((t) => ({ id: 'hc_' + HC_TIERS[t].id, name: HC_TIERS[t].name, desc: `하드코어 랭크 ${HC_TIERS[t].name} 도달`, prog: () => hcPeakT() >= 0 ? `최고 ${HC_TIERS[hcPeakT()].name}` : Rank.hcOk() ? '하드코어 기록 없음' : '하드코어 잠김 (일반 랭크 다이아 4 필요)', ok: () => hcPeakT() >= t, fr: 'hc_' + HC_TIERS[t].id, hc: t })),
     { id: 'beta', name: '베타 테스터', desc: '개발자가 부여한 베타 테스터 (사진·테두리·테스터 등급 총 스킨 함께)', prog: () => '개발자에게 부여받아야 함', ok: () => Eco.isBeta(), fr: 'beta' },
@@ -31548,7 +32421,7 @@ function endMatch() {
   G.lastXp = xp;
   STATS.matches++; STATS.kills += p.kills; STATS.xp += xp; if (win) STATS.wins++;
   STATS.best = Math.min(STATS.best || 99, place);
-  const rr = { place, total: G.teamSize > 1 ? nT : G.total, kills: p.kills, dmg: p.damageDealt, win, quit: !!G.quit };
+  const rr = { place, total: G.teamSize > 1 ? nT : G.total, kills: p.kills, dmg: p.damageDealt, win, quit: !!G.quit, map: SETTINGS.map };   // map: 승급전 성공 순위 (10_rank.js SERIES_TOP)
   G.rankResult = G.hc ? Rank.applyHc(rr) : G.ranked ? Rank.apply(rr) : null;
   STATS.recent.unshift({ rank: place, total: nT, kills: p.kills, time: Math.round(p.alive || win && !p.deathTime ? G.time : p.deathTime), map: SETTINGS.map, ranked: !!G.ranked, hc: G.hc ? 1 : 0, sq: G.teamSize, party: G.net ? 1 : 0, delta: G.rankResult && !G.rankResult.placement ? G.rankResult.delta : undefined });
   STATS.recent = STATS.recent.slice(0, 5);
@@ -31879,7 +32752,7 @@ function boot() {
   Lobby.init();
   setupInput($('gl'));
   setupTouch($('touch'));
-  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Chat.setup(); Watch.setup(); Shop.setup(); Pass.setup(); Ladder.setup(); Dev.setup(); Prof.setup(); Cloud.setup(); Cloud.init();
+  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Chat.setup(); Watch.setup(); Shop.setup(); Pass.setup(); Ladder.setup(); Dev.setup(); Prof.setup(); RankFx.setup(); Cloud.setup(); Cloud.init();
   $('rotateDismiss').addEventListener('click', () => { G.rotateDismissed = true; $('rotateHint').hidden = true; });
   G.onResize();
   document.addEventListener('pointerdown', () => { Audio.init(); if (G.state === 'lobby') Audio.music(true); }, { once: true });
@@ -31888,7 +32761,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

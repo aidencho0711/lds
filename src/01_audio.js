@@ -675,6 +675,19 @@ const Audio = (() => {
       else if (ph === 'show') { [784, 988, 1175].forEach((f, i) => tone(sfxBus, t + i * 0.09, 0.45, 'triangle', f, f, 0.09)); }
       else if (ph === 'small') { [880, 1318].forEach((f, i) => tone(sfxBus, t + i * 0.08, 0.25, 'triangle', f, f, 0.1)); }
     },
+    // v23 티어 승급 컷신 (10_rankfx.js): gather(낮게 차오르는 울림) · crack(금 가는 소리) · shatter(깨짐 + 충격) · reveal(빛기둥 화음) · title(이름 — 금관 같은 화음)
+    //  sup: 상위 티어(노바~제니스) — 더 낮고 길게, 화음 한 음 더
+    rankUp(ph, sup) {
+      if (!ctx) return; const t = ctx.currentTime, k = sup ? 1 : 0;
+      if (ph === 'gather') { noise(sfxBus, t, 1.9 + k * 0.4, 'lowpass', 120, 0.7, 0.3); tone(sfxBus, t, 1.9 + k * 0.4, 'sine', 46, 92, 0.26); tone(sfxBus, t + 0.3, 1.5 + k * 0.4, 'triangle', 220, 440, 0.04); noise(sfxBus, t + 0.4, 1.5 + k * 0.4, 'bandpass', 900, 2.5, 0.06); }
+      else if (ph === 'crack') { for (let i = 0; i < 7; i++) noise(sfxBus, t + i * 0.07 + Math.random() * 0.03, 0.05, 'highpass', 3000 + Math.random() * 3000, 1, 0.09); tone(sfxBus, t, 0.6, 'sine', 1760, 1700, 0.03); }
+      else if (ph === 'shatter') {
+        noise(sfxBus, t, 0.5, 'bandpass', 2600, 0.6, 0.55); noise(sfxBus, t, 1.6, 'highpass', 6000, 0.8, 0.2); tone(sfxBus, t, 0.8, 'sine', 70, 28, 0.6); noise(sfxBus, t, 0.9, 'lowpass', 200, 0.8, 0.45);
+        for (let i = 0; i < 12; i++) { const f = 2500 + Math.random() * 4500; tone(sfxBus, t + 0.04 + i * 0.045 + Math.random() * 0.03, 0.22, 'sine', f, f * 0.97, 0.03); }
+      }
+      else if (ph === 'reveal') { const base = sup ? 196 : 262; [1, 1.25, 1.5, 2, 2.5, 3].slice(0, 4 + k * 2).forEach((m, i) => tone(sfxBus, t + i * 0.09, 2.6, 'triangle', base * m, base * m * 1.003, 0.1)); noise(sfxBus, t, 2.2, 'highpass', 7000, 0.7, 0.1); tone(sfxBus, t, 2.4, 'sine', base / 2, base / 2, 0.16); }
+      else if (ph === 'title') { const base = sup ? 392 : 523; [1, 1.26, 1.5].concat(sup ? [2] : []).forEach((m) => { tone(sfxBus, t, 1.6, 'sawtooth', base * m / 2, base * m / 2, 0.025); tone(sfxBus, t, 1.8, 'triangle', base * m, base * m, 0.07); }); [2, 2.52, 3].forEach((m, i) => tone(sfxBus, t + 0.25 + i * 0.12, 0.9, 'sine', base * m, base * m, 0.04)); }
+    },
     // 총기 스킨(울트라레어) 효과음: draw(빛 띠가 올라가며 나타남) · holster(내려가며 사라짐) · shot(종류별로 총성에 얹는 소리) · hit(맞힘) · kill(처치)
     //  lite: 슈퍼레어(약한 효과) — 작게, 처치도 맞힘 소리 정도로
     skinFx(ph, kind, pos, own, lite) {

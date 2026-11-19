@@ -191,11 +191,12 @@ const Dev = (() => {
     const st = h('span', 'acc-on ' + (on.on ? on.st === 'game' ? 'game' : 'on' : 'off'), (on.on ? '● ' : '○ ') + onlineText(on) + (on.on || !lastT(x, u) ? '' : ` · 마지막 접속 ${agoT(lastT(x, u))}`));
     nm.appendChild(st); hd.appendChild(nm);
     // 티어: 엠블럼 + 이름 (레벨 3 미만 = 잠김, 배치 3판 전 = 배치고사)
-    const ti = Rank.tierOf(R.rp), lock = L.lv < 3, plc = !lock && (D.d ? (R.placed || 0) < 3 : !u.rp);
+    const RV = x.rank ? Rank.viewOf(R) : { now: Rank.tierOf(R.rp), peak: Rank.tierOf(R.peak) }, ti = RV.now, lock = L.lv < 3,   // v23: 개편 전 기록은 4000 RP 로 잘라서
+    plc = !lock && (D.d ? (R.placed || 0) < 3 : !u.rp);
     const tierBox = h('div', 'acc-dtier');
     const em = h('img', ''); em.alt = ''; em.src = lock ? Rank.emblem(-2, 0, 96) : plc ? Rank.emblem(-1, 0, 96) : Rank.emblem(ti.t, ti.div, 96); tierBox.appendChild(em);
     const tl = h('div', ''); tl.appendChild(h('b', '', lock ? '랭크 잠김' : plc ? '배치고사' : ti.label));
-    tl.appendChild(h('small', '', lock ? '레벨 3부터' : plc ? `${R.placed || 0} / 3 완료` : `${R.rp} RP` + (R.peak > R.rp ? ` · 최고 ${Rank.tierOf(R.peak).label}` : '')));
+    tl.appendChild(h('small', '', lock ? '레벨 3부터' : plc ? `${R.placed || 0} / 3 완료` : `${R.rp} RP` + (R.peak > R.rp ? ` · 최고 ${RV.peak.label}` : '') + (ti.series ? ` · 승급전 ${R.ss || 0}/${SUP.need[ti.sg] || 3}` : '')));
     tierBox.appendChild(tl); hd.appendChild(tierBox);
     // 하드코어 티어 (일반 랭크 최고 다이아 4 이상이면 자격 · 한 판이라도 했으면 티어)
     const HC = R.hc || null, hcOk = (R.peak || 0) >= HC_MIN_PEAK;
@@ -335,6 +336,10 @@ const Dev = (() => {
     // 표시
     r = sec('표시');
     tg(r, 'stats', 'FPS·좌표 표시', false);
+    // v23 티어 승급 컷신 다시 보기 (10_rankfx.js) — 그 티어로 오를 때 나오는 장면. 상위 티어(노바~제니스)는 승급전 통과 장면
+    r = sec('티어 승급 컷신', '누르면 그 티어로 오르는 컷신을 바로 봅니다 (기록은 바뀌지 않음). 화면을 누르면 이름 장면으로, 한 번 더 누르면 닫힘');
+    for (let t = 1; t < RANK_TIERS.length; t++) { const b = btn(r, `→ ${RANK_TIERS[t].name}`, () => { close(); setTimeout(() => RankFx.demo(t), 120); return ''; }); if (RANK_TIERS[t].sup) b.classList.add('dev-sup'); }
+    btn(r, '개편 안내 미리보기', () => { close(); RankFx.cutNotice({ from: 6600, got: [{ k: 'gskin', id: 'e_m416_divine', rar: 7 }, { k: 'vskin', id: 'uaz_sleigh', rar: 8 }, { k: 'skin', id: 'top_x_frost', rar: 8 }], preview: 1 }); return ''; });
     // 관전 (v22 · 10_watch.js): 경기 중인 모든 계정 — 로비 채널 접속 표시(pl) 기준, 친구가 아니어도 볼 수 있다 (서버가 관리자인지 확인)
     const ws = h('div', 'dev-sec'); ws.appendChild(h('div', 'dev-h', '관전'));
     ws.appendChild(h('div', 'dev-note', '지금 경기 중인 모든 계정의 화면을 봅니다 (친구가 아니어도 · 로그인한 계정만 · 로비에서만). 보는 동안 상대 화면 위에 「이름(운영자) 관전 중」이 보입니다. 서버 함수 supabase/spectate.sql 필요'));

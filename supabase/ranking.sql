@@ -8,6 +8,7 @@
 --  · 관리자(개발자) 계정은 개발자 도구로 기록을 바꿀 수 있으므로 랭킹에서 뺀다
 --  · 다른 사람의 계정 고유번호는 돌려주지 않는다 (아이디 · 순위 · 경험치/RP · 사진·테두리·칭호만)
 --  · 기록 값이 숫자가 아니어도(잘못 저장된 기록) 함수가 멈추지 않게 숫자만 읽는다
+--  · v22 랭크 개편: 랭크 티어 점수 = 개편 전 기록(rank.cv 없음)은 4000 으로 자른 RP + 통과한 승급전 수(rank.sg) × 0.5 · 행에 sg
 --  · schema.sql (· admin.sql) 다음에 실행. 여러 번 실행해도 안전
 -- ============================================================
 
@@ -35,7 +36,9 @@ begin
     with base as (
       select d.user_id, p.username, p.created_at,
         public.jnum(d.stats -> 'xp') as xp,
-        public.jnum(d.rank -> 'rp') as rp,
+        -- v22 랭크 개편: 개편 전 기록(rank.cv 없음)은 4000 RP 로 잘라서 (주인이 다시 들어오면 게임이 4000 으로 옮김 · 10_rank.js)
+        case when jsonb_typeof(d.rank) = 'object' and d.rank ? 'cv' then public.jnum(d.rank -> 'rp') else least(public.jnum(d.rank -> 'rp'), 4000) end as rp,
+        case when jsonb_typeof(d.rank) = 'object' and d.rank ? 'cv' then public.jnum(d.rank -> 'sg') else 0 end as sg,
         public.jnum(d.rank -> 'placed') as placed,
         public.jnum(d.rank -> 'hc' -> 'rp') as hrp,
         public.jnum(d.rank -> 'hc' -> 'games') as hgames,
@@ -44,7 +47,7 @@ begin
       join public.profiles p on p.id = d.user_id
       where not exists (select 1 from public.admins a where a.id = d.user_id)
     ), pick as (
-      select bs.*, case k when 'lv' then bs.xp when 'tier' then bs.rp else bs.hrp end as score
+      select bs.*, case k when 'lv' then bs.xp when 'tier' then bs.rp + bs.sg * 0.5 else bs.hrp end as score   -- 같은 RP 면 승급전을 통과한 쪽이 앞 (티어 끝 4000 등)
       from base bs
       where case k when 'lv' then bs.xp > 0 when 'tier' then bs.placed >= 3 else bs.hgames > 0 end
     ), ranked as (
@@ -52,7 +55,7 @@ begin
       from pick pk
     ), rowset as (
       select r.pos, r.n, r.user_id = me as mine,
-        jsonb_build_object('pos', r.pos, 'name', r.username, 'me', r.user_id = me, 'xp', floor(r.xp), 'rp', floor(r.rp), 'hrp', floor(r.hrp),
+        jsonb_build_object('pos', r.pos, 'name', r.username, 'me', r.user_id = me, 'xp', floor(r.xp), 'rp', floor(r.rp), 'sg', floor(r.sg), 'hrp', floor(r.hrp),
           'av', left(coalesce(r.prof ->> 'av', ''), 24), 'fr', left(coalesce(r.prof ->> 'fr', ''), 24), 'ti', left(coalesce(r.prof ->> 'ti', ''), 24)) as j
       from ranked r
     )

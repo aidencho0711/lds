@@ -451,6 +451,25 @@ const Eco = (() => {
   const bpTitle = (id) => (E().bpt || []).includes(id);
   // 데스매치 한 판 끝 (10_dm.js)
   function bpDm(kills, win) { const X = BP.xp; bpLast = bpAdd(X.dm + Math.min(X.killMax, kills || 0) * X.dmKill + (win ? X.dmWin : 0)); return bpLast; }
+  // ---------- v23 랭크 개편 보상 (10_rank.js settle) ----------
+  //  가지고 있지 않은 최상위 등급 스킨(엡실론 · EXCLUSIVE — 옷·총기·차량, 테스터 제외) n종을 무작위로. 모자라면 울트라레어, 그래도 모자라면 골드 탄피 3,000씩
+  //  seed: 계정마다 고정 → 두 기기에서 동시에 받아도 같은 스킨이라 합쳐도 늘지 않는다.  돌려주는 값: 지급 카드 목록 (give 결과)
+  function grantTop(n, seed) {
+    E();
+    let h = 2166136261; for (const ch of String(seed || '')) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+    const R = mulberry32(h), got = [];
+    const pool = (rars) => {
+      const out = [];
+      for (const id of Object.keys(Body.SKINS)) { const d = Body.SKINS[id]; if (rars.includes(d.rar) && !/_basic$/.test(id) && !owns(id)) out.push({ k: 'skin', id, rar: d.rar }); }
+      for (const id of Object.keys(GSKINS)) { const d = GSKINS[id]; if (rars.includes(d.rar) && !d.tester && !ownsGun(id)) out.push({ k: 'gskin', id, rar: d.rar }); }
+      for (const id of Object.keys(VSKINS)) { const d = VSKINS[id]; if (rars.includes(d.rar) && !ownsVeh(id)) out.push({ k: 'vskin', id, rar: d.rar }); }
+      return out;
+    };
+    for (const rars of [[7, 8], [5]]) { const P = pool(rars); while (got.length < n && P.length) got.push(give(P.splice(Math.floor(R() * P.length), 1)[0])); }
+    while (got.length < n) got.push(give({ k: 'gold', n: 3000, rar: 8 }));
+    changed('grant');
+    return got;
+  }
   // ---------- 개발자 계정 (10_dev.js) ----------
   // 모든 옷·차량·총기 스킨을 기록에 넣는다 (이미 있으면 그대로). 넣은 개수
   function devGrantAll() {
@@ -464,6 +483,6 @@ const Eco = (() => {
   function devAdd(kind, n) { const e = E(); if (kind === 'gold') e.gold += n; else if (kind === 'coin') e.coin += n; else if (kind === 'gcoin') e.gcoin += n; else if (kind === 'bp') bpAdd(n, true); changed('dev'); }
   function devAttend() { E().att.last = ''; changed('dev'); }
   function devQuests() { const e = E(), q = e.q; for (const id of q.ids) q.p[QUESTS[id].key] = QUESTS[id].goal; for (const id in WEEKLY) q.wp[WEEKLY[id].key] = WEEKLY[id].goal; changed('dev'); }
-  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, brClaim, grant, flushGrants, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
+  return { E, today, weekKey, evInfo, evClaim, evClaimable, owns, ownsVeh, ownsGun, isBeta, gskinsOwned, serialOf, ownedSkins, grantTop, devGrantAll, devAdd, devAttend, devQuests, pool, draw, pull, exchange, exchangeGun, gunPrice, attendInfo, attend, questList, questAdd, claim, claimBonus, claimable, matchEnd, found, brClaim, grant, flushGrants, bpInfo, bpBuy, bpAdd, bpTake, bpTitle, bpDm, get bpLast() { return bpLast; }, vlook, equipVeh, glook, equipGun, showGun, mergeStats, changed,
     on: (f) => listeners.push(f), get gold() { return E().gold; }, get coin() { return E().coin; }, get gcoin() { return E().gcoin; }, DEV };
 })();

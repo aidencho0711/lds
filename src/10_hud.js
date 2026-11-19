@@ -1133,7 +1133,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
         if (lock && !lock.leader) { showLobbyNote('파티 설정은 방장만 바꿀 수 있습니다'); return; }
         if (v !== 'normal' && !Rank.unlocked()) { showLobbyNote(`랭크전은 레벨 3부터 할 수 있습니다 (현재 레벨 ${levelFromXp(STATS.xp).lv})`); return; }
         if (v !== 'normal' && lock && !lock.rankOk) { showLobbyNote(`파티원 중 레벨 3 미만이 있어 랭크전을 할 수 없습니다 (${lock.lowNames.join(', ')})`); return; }
-        if (v === 'hardcore' && !Rank.hcOk()) { showLobbyNote(`하드코어 랭크전은 일반 랭크 최고 기록이 다이아 4 이상이어야 합니다 (내 최고 ${Rank.placed() ? Rank.tierOf(Rank.state.peak || 0).label : '배치고사 전'})`); return; }
+        if (v === 'hardcore' && !Rank.hcOk()) { showLobbyNote(`하드코어 랭크전은 일반 랭크 최고 기록이 다이아 4 이상이어야 합니다 (내 최고 ${Rank.placed() ? Rank.peakTier().label : '배치고사 전'})`); return; }
         if (v === 'hardcore' && lock && !lock.hcOk) { showLobbyNote(`파티원 중 다이아 4를 찍어 보지 못한 사람이 있어 하드코어를 할 수 없습니다 (${lock.hcLow.join(', ')})`); return; }
         if (v !== 'normal' && dm) { SETTINGS.game = 'br'; showLobbyNote('랭크전은 배틀로얄만 있습니다 — 배틀로얄로 바꿨습니다'); }
         SETTINGS.queue = v; saveSettings(); renderLobby(); if (lock) Party.settingsChanged();
@@ -1156,13 +1156,19 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
         (pm && pm.length > DTS * 2 ? ` · ⚠ ${DTS * 2}명까지 가능 (지금 ${pm.length}명)` : '');
     } else if (dm) $('cfgNote').textContent = `${GT.name}: 4 대 4 고정(빈자리는 봇) · 먼저 ${DM_RULES.killTarget}킬 · 최대 ${DM_RULES.timeLimit / 60}분 · 봇 난이도·시간대·시점만 적용`;
     else if (hc) $('cfgNote').textContent = `하드코어 랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 전원 익스트림 · 스토커 4부터 시작 · 일반 랭크보다 RP가 크게 깎입니다`;
-    else if (ranked) $('cfgNote').textContent = `랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 고정 · 봇 난이도는 ${Rank.placed() ? '현재 티어' : '배치고사 기준(혼합)'}에 맞춰 자동 설정`;
-    // 랭크 카드 (랭크·하드코어 대기열에서만)
+    else if (ranked) {
+      const se = Rank.series();   // v23 승급전 중이면 이 맵의 성공 순위
+      $('cfgNote').textContent = se ? `랭크 승급전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 · 익스트림 봇 95% · ${MAPS[SETTINGS.map].name.replace(/\s*\(.*\)$/, '')} ${se.lim}위 안이면 1회 성공 (연속 ${se.n} / ${se.need}) · 다른 맵: 칼덴·아이언리지 10위 · 키나루·크리스마스 13위 · 노르덴 17위`
+        : `랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 고정 · 봇 난이도는 ${Rank.placed() ? '현재 티어' : '배치고사 기준(혼합)'}에 맞춰 자동 설정`;
+    }
+    // 랭크 카드 (랭크·하드코어 대기열에서만) — v23 승급전이면 연속 성공 칸(●)
     const rs = hc ? Rank.hcStatus() : Rank.status(), rc0 = $('rankCard');
     rc0.hidden = !ranked;
-    $('rankEmb').src = rs.emb; $('rankLabel').textContent = rs.label; $('rankSub').textContent = rs.sub;
-    $('rankBar').style.width = rs.kind === 'ranked' ? (rs.tier.top ? 100 : rs.tier.into) + '%' : rs.kind === 'placement' ? (Rank.state.placed / 3 * 100) + '%' : (levelFromXp(STATS.xp).lv >= 2 ? 50 : 0) + '%';
-    rc0.className = 'rank-card' + (hc ? ' hc' : '') + (rs.kind === 'locked' ? ' locked' : '') + (rs.kind === 'ranked' && rs.tier.t >= (hc ? 3 : 8) ? ' glow' : '') + (rs.kind === 'ranked' && !hc && rs.tier.t === 9 ? ' tier-top' : '');
+    $('rankEmb').src = rs.emb; $('rankLabel').textContent = rs.label;
+    if (rs.series) $('rankSub').innerHTML = `<span class="rk-pips sm">${pipsHTML(rs.series.n, rs.series.need)}</span>${rs.sub}`; else $('rankSub').textContent = rs.sub;
+    $('rankBar').style.width = rs.kind === 'ranked' ? (rs.series ? rs.series.n / rs.series.need * 100 : rs.tier.pct) + '%' : rs.kind === 'placement' ? (Rank.state.placed / 3 * 100) + '%' : (levelFromXp(STATS.xp).lv >= 2 ? 50 : 0) + '%';
+    rc0.className = 'rank-card' + (hc ? ' hc' : '') + (rs.kind === 'locked' ? ' locked' : '') + (rs.kind === 'ranked' && rs.tier.t >= (hc ? 3 : 8) ? ' glow' : '') + (rs.kind === 'ranked' && !hc && rs.tier.t >= 9 ? ' tier-top' : '')
+      + (rs.series ? ' series' : '') + (rs.kind === 'ranked' && !hc && rs.tier.sup ? ' sup sup-' + RANK_TIERS[rs.tier.t].id : '');
     // 맵 카드 (왼쪽 아래)
     const nb = ranked ? Rank.botCount(SETTINGS.map) : SETTINGS.bots, total = nb + 1, mins = Math.round(matchMinutes()), nTeams = Math.ceil(total / TS);
     const viewKo = SETTINGS.view === 'fpp' ? '1인칭' : '3인칭';
@@ -1228,6 +1234,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   // 소식 카드: 6초마다 바뀜, 누르면 해당 화면으로
   let newsI = 0, newsT = null, rankBanner = null;
   const NEWS = [
+    { tag: 'v23 랭크 개편', title: '이터널 위 상위 티어 4종 — 노바 · 셀레스티얼 · 이클립스 · 제니스 · 승급전 · 티어 승급 컷신 · 전용 칭호와 테두리 (티어표 보기)', img: () => rankBanner, act: () => G.ui('ranks') },
     { tag: '새 이벤트', title: `백룸 완전 탈출 — THE BACKROOMS 를 12가지 방법으로 모두 탈출하면 골드 탄피 ${BR_EVENT.gold12.toLocaleString()} + 칭호·테두리 ‘${BR_EVENT.title12}’ + 사진 ‘Level 0’ (계정마다 1번)`, img: () => EvBR.banner('all'), act: () => EvBR.open() },
     { tag: 'v22 새 아레나', title: '데스매치·대결 아레나 3곳 추가 — 녹슨 공장 · 모래 사원 · 골목 마을 (72×72m, 맵 선택에서 고르거나 무작위)', img: () => LOBBY_ART.factory || LOBBY_ART.arena, act: () => G.ui('mapPick') },
     { tag: 'v22 새 맵', title: '크리스마스 섬(1.5km) — 눈 덮인 섬 · 북극성 광장 큰 트리 · 산타 공방 · 얼어붙은 호수 · 모든 맵의 집 외형 개편 (맵 선택)', img: () => LOBBY_ART.xmas || LOBBY_ART.kalden, act: () => G.ui('mapPick') },
@@ -1244,12 +1251,12 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     { tag: '신규 모드', title: '듀오·스쿼드 — 기절·부활, 핑(Y)으로 팀원 지휘', img: () => LOBBY_ART.kalden, act: () => G.ui('matchCfg') },
     { tag: '업데이트', title: '차량 5종 출격 — 말부터 오토바이까지', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
     { tag: '대형 맵', title: '8×8km 노르덴 — 봇 99명과 출격', img: () => LOBBY_ART.norden, act: () => G.ui('mapPick') },
-    { tag: '랭크전', title: '배치고사 3판 · 아이언부터 이터널까지', img: () => rankBanner, act: () => G.ui('ranks') },
+    { tag: '랭크전', title: '배치고사 3판 · 아이언부터 제니스까지', img: () => rankBanner, act: () => G.ui('ranks') },
   ];
   function makeRankBanner() {
     const c = document.createElement('canvas'); c.width = 720; c.height = 240; const g = c.getContext('2d');
     const gr = g.createLinearGradient(0, 0, 720, 240); gr.addColorStop(0, '#1a1230'); gr.addColorStop(1, '#3a2363'); g.fillStyle = gr; g.fillRect(0, 0, 720, 240);
-    const tiers = [1, 3, 5, 7, 9]; let n = 0;
+    const tiers = [9, 10, 11, 12, 13]; let n = 0;   // v23: 이터널 + 상위 티어 4종
     tiers.forEach((t, i) => { const im = new Image(); im.onload = () => { const s = 96 + i * 14; g.drawImage(im, 60 + i * 130 - s / 2 + 30, 112 - s / 2, s, s); if (++n === tiers.length) { rankBanner = c.toDataURL('image/jpeg', 0.85); showNews(); } }; im.src = Rank.emblem(t, 1, 160); });
   }
   function showNews() {
@@ -1283,22 +1290,32 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   }
   let noteT = null;
   function showLobbyNote(msg) { const n = $('lbNote'); n.hidden = false; n.textContent = msg; clearTimeout(noteT); noteT = setTimeout(() => { n.hidden = true; }, 3500); }
-  // 티어표
+  // 승급전 연속 성공 칸: 채운 칸 n / 전체 need (fail: 이번에 실패한 칸을 빨갛게)
+  const pipsHTML = (n, need, fail) => Array.from({ length: need }, (_, i) => `<i class="${i < n ? 'on' : fail && i === n ? 'x' : ''}"></i>`).join('');
+  // 티어표 — v23: 이터널 위 상위 티어 4종은 따로 (승급전 · 단계 5→1 · 200 RP)
   function renderRanks() {
-    const g = $('tierGrid'); g.innerHTML = ''; const cur = Rank.placed() ? Rank.tierOf(Rank.state.rp) : null;
+    const g = $('tierGrid'); g.innerHTML = ''; const cur = Rank.placed() ? Rank.mine() : null;
+    let sg = null;
     RANK_TIERS.forEach((T, t) => {
-      const d = h('div', 'tier' + (cur && cur.t === t ? ' me' : '')), im = h('img'); im.src = Rank.emblem(t, cur && cur.t === t ? cur.div : 1, 160); im.alt = '';
-      d.appendChild(im); d.appendChild(h('b', '', T.name)); d.appendChild(h('span', '', t === 9 ? '3600 RP 이상' : `${t * 400}–${t * 400 + 399} RP`));
+      if (T.sup && !sg) { g.appendChild(h('div', 'tier-sep', '상위 티어 — 이터널 1(4000 RP)에서 승급전을 통과해야 오를 수 있는, 격이 다른 티어')); sg = h('div', 'tier-sup'); g.appendChild(sg); }
+      const d = h('div', 'tier' + (cur && cur.t === t ? ' me' : '') + (T.sup ? ' sup sup-' + T.id : '')), im = h('img'); im.src = Rank.emblem(t, cur && cur.t === t ? cur.div : T.sup ? 5 : 1, 160); im.alt = '';
+      const b0 = T.sup ? SUP.base + (t - SUP.t0) * SUP.span : 0;
+      d.appendChild(im); d.appendChild(h('b', '', T.name));
+      d.appendChild(h('span', '', !T.sup ? (t === 9 ? '3600–4000 RP' : `${t * 400}–${t * 400 + 399} RP`) : t === RANK_TIERS.length - 1 ? `${b0} RP 이상` : `${b0}–${b0 + SUP.span} RP`));
+      if (T.sup) d.appendChild(h('span', 'tier-ser', `승급전 ${SUP.need[t - SUP.t0]}연속`));
       const mx = Rank.mixOf(t); if (mx && mx[3]) d.appendChild(h('span', 'tier-ext', `익스트림 봇 ${mx[3]}%`));
-      g.appendChild(d);
+      (T.sup ? sg : g).appendChild(d);
     });
     const ul = $('rankRules'); ul.innerHTML = '';
-    const st = Rank.state;
+    const st = Rank.state, se = Rank.series();
     [`레벨 3부터 참여할 수 있습니다. 처음 3판은 배치고사이며, 결과에 따라 시작 티어가 정해집니다(최대 플래티넘 1).`,
-      `각 티어는 4 → 3 → 2 → 1 단계로 올라갑니다. 한 단계는 100 RP, 한 티어는 400 RP입니다.`,
+      `아이언~이터널은 4 → 3 → 2 → 1 단계로 올라갑니다. 한 단계는 100 RP, 한 티어는 400 RP입니다.`,
       `RP는 순위(상위일수록 크게), 우승, 처치, 가한 피해로 오르고, 하위권이면 내려갑니다. 높은 티어일수록 오르기 어렵습니다.`,
-      `봇 수는 고정(기본 맵·키나루 74명, 노르덴 99명)이고 봇 난이도는 티어가 높을수록 어려워집니다. 골드부터 익스트림 봇(어려움보다 조준·반응·무빙·판단이 한 단계 위)이 섞이고, 이터널은 절반이 익스트림입니다. 경기 도중 나가면 패배 처리와 추가 감점이 있습니다.`,
-      Rank.placed() ? `현재 ${Rank.tierOf(st.rp).label} · ${st.rp} RP · 최고 ${Rank.tierOf(st.peak).label} · 랭크 ${st.games}판 ${st.wins}승` : `배치고사 ${st.placed} / 3 진행`].forEach((t) => ul.appendChild(h('li', '', t)));
+      `상위 티어(노바 · 셀레스티얼 · 이클립스 · 제니스)는 5 → 4 → 3 → 2 → 1 단계, 한 단계 200 RP입니다. 티어 끝(이터널 1 · 노바 1 · 셀레스티얼 1 · 이클립스 1)에 닿으면 RP가 멈추고 승급전이 열립니다.`,
+      `승급전: 칼덴 섬 · 아이언리지는 10위 안, 키나루 · 크리스마스 섬은 13위 안, 노르덴은 17위 안이면 1회 성공. 연속 성공 ${SUP.need.join(' → ')}번(노바 → 셀레스티얼 → 이클립스 → 제니스)이면 다음 티어 5단계로 오릅니다. 한 번이라도 실패하면 연속 기록은 0부터 — RP는 깎이지 않습니다. 승급전 봇은 95%가 익스트림입니다.`,
+      `한 번 오른 상위 티어 밑으로는 떨어지지 않습니다. 제니스 1부터는 상한 없이 RP만 쌓입니다. 상위 티어에 오르면 그 티어의 칭호와 전용 테두리를 얻습니다.`,
+      `봇 수는 고정(기본 맵·키나루 74명, 노르덴 99명)이고 봇 난이도는 티어가 높을수록 어려워집니다. 골드부터 익스트림 봇(어려움보다 조준·반응·무빙·판단이 한 단계 위)이 섞이고, 이터널은 절반, 상위 티어는 60~88%가 익스트림입니다. 경기 도중 나가면 패배 처리와 추가 감점이 있습니다(승급전이면 실패).`,
+      Rank.placed() ? `현재 ${cur.label}${se ? ` · 승급전 연속 ${se.n} / ${se.need}` : ''} · ${st.rp} RP · 최고 ${Rank.peakTier().label} · 랭크 ${st.games}판 ${st.wins}승` : `배치고사 ${st.placed} / 3 진행`].forEach((t) => ul.appendChild(h('li', '', t)));
     // 하드코어 티어표
     const hg = $('hcGrid'); if (!hg) return; hg.innerHTML = '';
     const ok = Rank.hcOk(), H = Rank.hc, hcur = ok ? Rank.hcTierOf(H.rp) : null, PERK = ['', '', '칭호·테두리', '칭호·테두리', '칭호·테두리'];
@@ -1312,7 +1329,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     [`일반 랭크에서 최고 다이아 4 이상을 찍어 본 사람만 참여할 수 있습니다 (파티면 파티원 모두). 배치고사 없이 스토커 4부터 시작합니다.`,
       `티어는 스토커 · 헌터 · 슬레이어 · 리퍼 · 오버로드 5종, 각 4 → 3 → 2 → 1 단계(한 단계 100 RP). 오버로드 1부터는 RP만 쌓입니다.`,
       `봇은 전원 익스트림. 일반 랭크보다 티어 세금과 하위권·탈주 감점이 큽니다. 슬레이어 · 리퍼 · 오버로드에 오르면 그 티어의 칭호와 테두리를 얻습니다(최고 기록 기준, 계정 정보에서 장착).`,
-      ok ? `현재 ${hcur.label} · ${H.rp} RP · 최고 ${Rank.hcTierOf(H.peak || 0).label} · 하드코어 ${H.games || 0}판 ${H.wins || 0}승` : `잠김 — 일반 랭크 최고 ${Rank.placed() ? Rank.tierOf(st.peak || 0).label : '배치고사 전'}`].forEach((t) => hl.appendChild(h('li', '', t)));
+      ok ? `현재 ${hcur.label} · ${H.rp} RP · 최고 ${Rank.hcTierOf(H.peak || 0).label} · 하드코어 ${H.games || 0}판 ${H.wins || 0}승` : `잠김 — 일반 랭크 최고 ${Rank.placed() ? Rank.peakTier().label : '배치고사 전'}`].forEach((t) => hl.appendChild(h('li', '', t)));
   }
   function showResult(win, p, total) {
     $('resultPanel').hidden = false; releaseLock();
@@ -1330,21 +1347,36 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     { const B = Eco.bpLast; if (B && B.xp) note = `배틀패스 +${B.xp}` + (B.lv > B.lv0 ? ` (${B.lv}단계 달성 · 보상 지급)` : '') + ' · ' + note; }
     $('resNote').textContent = note;
     // 랭크 결과
-    const R = G.rankResult, box = $('resRanked'); box.hidden = !R; box.classList.remove('promo');
+    const R = G.rankResult, box = $('resRanked'); box.hidden = !R; box.classList.remove('promo', 'series', 'ok', 'fail');
+    const pips = $('resRkPips'); if (pips) pips.hidden = true;
     if (R) {
       const dEl = $('resRkDelta'); dEl.className = 'rp-delta';
       if (R.placement) {
         if (R.revealed) { const a = R.after; $('resEmb').src = Rank.emblem(a.t, a.div, 160); $('resRkKicker').textContent = '배치고사 완료'; $('resRkLabel').textContent = a.label; $('resRkSub').textContent = `시작 티어가 정해졌습니다 · ${a.rp} RP`; $('resRkBar').style.width = (a.top ? 100 : a.into) + '%'; dEl.textContent = ''; void box.offsetWidth; box.classList.add('promo'); }
         else { $('resEmb').src = Rank.emblem(-1, 0, 160); $('resRkKicker').textContent = '배치고사'; $('resRkLabel').textContent = `${R.step} / 3 완료`; $('resRkSub').textContent = `이번 판 점수 ${R.score} · ${3 - R.step}판 남음`; $('resRkBar').style.width = (R.step / 3 * 100) + '%'; dEl.textContent = ''; }
+      } else if (R.series) {
+        // v23 승급전: 연속 성공 칸 · 통과하면 새 티어 + 컷신
+        const a = R.after, b = R.before, mp = MAPS[R.map] ? MAPS[R.map].name.replace(/\s*\(.*\)$/, '') : '이 맵', bar = $('resRkBar');
+        $('resEmb').src = Rank.embOf(a, 160); box.classList.add('series', R.ok ? 'ok' : 'fail');
+        $('resRkKicker').textContent = R.passed ? '승급전 통과 · 티어 승급!' : R.ok ? `승급전 성공 · ${R.streak} / ${R.need}` : '승급전 실패';
+        $('resRkLabel').textContent = R.passed ? a.label : `${b.label} · 승급전`;
+        $('resRkSub').textContent = R.passed ? `${RANK_TIERS[a.t].name} 5단계부터 · 0 / ${SUP.div} RP` : `${mp} ${R.lim}위 안 · 이번 #${place} → ${R.ok ? `성공 (${R.need - R.streak}번 더 연속이면 ${RANK_TIERS[b.t + 1].name})` : '실패 — 연속 기록이 0부터 (RP는 그대로)'}`;
+        if (pips) { pips.hidden = R.passed; pips.innerHTML = pipsHTML(R.streak, R.need, !R.ok); }
+        dEl.textContent = R.ok ? '✓' : '✕'; dEl.classList.add(R.ok ? 'up' : 'down');
+        bar.style.transition = 'none'; bar.style.width = (R.passed ? 0 : (R.ok ? R.streak - 1 : 0) / R.need * 100) + '%'; void bar.offsetWidth; bar.style.transition = 'width 1.2s ease-out'; bar.style.width = (R.passed ? a.pct : R.streak / R.need * 100) + '%';
+        if (R.passed) { void box.offsetWidth; box.classList.add('promo'); }
       } else {
         const a = R.after; $('resEmb').src = Rank.embOf(a, 160);
-        $('resRkKicker').textContent = (R.hc ? '하드코어 · ' : '') + (R.tierUp ? '티어 승급!' : R.promoted ? '승급' : R.demoted ? '강등' : '랭크');
-        $('resRkLabel').textContent = a.label; $('resRkSub').textContent = a.top ? `${a.rp} RP` : `${a.into} / 100 RP · 총 ${a.rp} RP`;
+        $('resRkKicker').textContent = (R.hc ? '하드코어 · ' : '') + (R.tierUp ? '티어 승급!' : R.seriesStart ? '승급전 시작!' : R.promoted ? '승급' : R.demoted ? '강등' : R.guard ? '강등 보호' : '랭크');
+        $('resRkLabel').textContent = a.label + (a.series ? ' · 승급전' : '');
+        $('resRkSub').textContent = a.series ? `${RANK_TIERS[a.t + 1].name} 승급전 — 맵마다 정한 순위 안에 ${SUP.need[a.sg]}번 연속으로 들면 승급 · 총 ${a.rp} RP` : a.top ? `${a.rp} RP` : `${a.into} / ${a.need} RP · 총 ${a.rp} RP` + (R.guard ? ' · 상위 티어 밑으로는 떨어지지 않습니다' : '');
         dEl.textContent = (R.delta >= 0 ? '+' : '') + R.delta; dEl.classList.add(R.delta >= 0 ? 'up' : 'down');
         // 막대: 이전 값에서 새 값으로
-        const bar = $('resRkBar'); bar.style.transition = 'none'; bar.style.width = (R.promoted || R.demoted ? (R.promoted ? 0 : 100) : (R.before.top ? 100 : R.before.into)) + '%'; void bar.offsetWidth; bar.style.transition = 'width 1.2s ease-out'; bar.style.width = (a.top ? 100 : a.into) + '%';
-        if (R.promoted) { void box.offsetWidth; box.classList.add('promo'); }
+        const bar = $('resRkBar'); bar.style.transition = 'none'; bar.style.width = (R.promoted || R.demoted ? (R.promoted ? 0 : 100) : (R.before.pct != null ? R.before.pct : R.before.into)) + '%'; void bar.offsetWidth; bar.style.transition = 'width 1.2s ease-out'; bar.style.width = (a.pct != null ? a.pct : a.into) + '%';
+        if (R.promoted || R.seriesStart) { void box.offsetWidth; box.classList.add('promo'); }
       }
+      // v23 티어가 바뀌면 컷신 (결과 화면 위로 — 끝나면 결과 화면 그대로)
+      if (R.tierUp && !R.placement && R.before && R.after) setTimeout(() => { if (G.state === 'result' && !$('resultPanel').hidden) RankFx.play(R.before, R.after, { series: !!R.series }); }, 650);
     }
   }
   return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };

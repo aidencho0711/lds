@@ -172,6 +172,20 @@
     </div>
   </section>
 
+  <!-- v23 랭크 개편 안내 (4000 RP 넘던 계정이 다시 들어왔을 때 한 번 — 10_rankfx.js) -->
+  <section id="rkCutPanel" class="overlay" hidden>
+    <div class="menu rkcut-box" role="alertdialog" aria-labelledby="rkCutTitle">
+      <div class="eyebrow">랭크 개편 안내</div>
+      <h2 class="rkc-h" id="rkCutTitle">이터널 위에 새 티어가 열렸습니다</h2>
+      <div class="rkc-tiers" id="rkCutTiers"></div>
+      <p class="rkc-rp"><s id="rkCutFrom"></s><span>→</span><b id="rkCutTo"></b><small>이터널 1 · 승급전 대기</small></p>
+      <p class="micro" id="rkCutText"></p>
+      <div class="eyebrow rkc-gh">보상 — 가지고 있지 않던 최상위 스킨 3종</div>
+      <div class="rkc-gifts" id="rkCutGifts"></div>
+      <button class="btn amber" type="button" id="rkCutOk">확인</button>
+    </div>
+  </section>
+
   <!-- 계정 정보: 전적 · 사진 · 테두리 · 칭호 · 계정(아이디 변경·저장·로그아웃) -->
   <section id="profPanel" class="overlay" hidden>
     <div class="menu prof">
@@ -392,8 +406,17 @@
     <div class="cs-text" id="csText"><span id="csRar"></span><b id="csName"></b></div>
     <button class="cs-skip" type="button" id="csSkip">건너뛰기 ›</button>
   </section>
+  <!-- v23 티어 승급 컷신 (10_rankfx.js — 글자까지 캔버스에 그림 · 누르면 이름 장면으로 → 한 번 더 누르면 닫힘) -->
+  <section id="tcLayer" class="tc-layer" hidden><canvas id="tcCanvas"></canvas><button class="tc-skip" type="button" id="tcSkip">건너뛰기 ›</button></section>
   <svg class="svg-defs" width="0" height="0" aria-hidden="true">
     <defs>
+      <!-- v23 상위 티어 테두리 장식 (10_ui_profile.js ORN.nova·celestial·eclipse·zenith) · 글자 고리 경로 -->
+      <linearGradient id="pxg-nova" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#8fe3ff"/><stop offset="1" stop-color="#0d3c84"/></linearGradient>
+      <linearGradient id="pxg-cel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf3"/><stop offset=".5" stop-color="#f3d98b"/><stop offset="1" stop-color="#a8780a"/></linearGradient>
+      <linearGradient id="pxg-ecl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9a6a"/><stop offset=".4" stop-color="#5a0a10"/><stop offset="1" stop-color="#0a0204"/></linearGradient>
+      <linearGradient id="pxg-zen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#ffe08a"/><stop offset="1" stop-color="#9a6a08"/></linearGradient>
+      <linearGradient id="pxg-prism" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9be8"/><stop offset=".3" stop-color="#a99bff"/><stop offset=".55" stop-color="#7fe0ff"/><stop offset=".8" stop-color="#fff08a"/><stop offset="1" stop-color="#ffb36b"/></linearGradient>
+      <path id="pxc" d="M50 6a44 44 0 1 1 0 88a44 44 0 1 1 0-88"/>
       <linearGradient id="g-gold" x1="0" x2="1"><stop offset="0" stop-color="#8a5e12"/><stop offset=".45" stop-color="#ffd66b"/><stop offset="1" stop-color="#9c6a14"/></linearGradient>
       <linearGradient id="g-coin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fe6ff"/><stop offset=".5" stop-color="#2a8ac0"/><stop offset="1" stop-color="#11506f"/></linearGradient>
       <linearGradient id="g-gcoin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb08a"/><stop offset=".5" stop-color="#d8402a"/><stop offset="1" stop-color="#6e1610"/></linearGradient>
@@ -510,7 +533,7 @@
         <div><span>처치</span><b id="resKills">0</b></div><div><span>생존 시간</span><b id="resTime">0:00</b></div>
         <div><span>가한 피해</span><b id="resDmg">0</b></div><div><span>획득 경험치</span><b id="resXp">+0</b></div>
       </div>
-      <div class="res-ranked" id="resRanked" hidden><img id="resEmb" alt=""><div class="rr-info"><div class="eyebrow" id="resRkKicker">랭크</div><b id="resRkLabel"></b><div class="bar"><i id="resRkBar"></i></div><span class="micro" id="resRkSub"></span></div><b class="rp-delta" id="resRkDelta"></b></div>
+      <div class="res-ranked" id="resRanked" hidden><img id="resEmb" alt=""><div class="rr-info"><div class="eyebrow" id="resRkKicker">랭크</div><b id="resRkLabel"></b><div class="bar"><i id="resRkBar"></i></div><div class="rk-pips" id="resRkPips" hidden></div><span class="micro" id="resRkSub"></span></div><b class="rp-delta" id="resRkDelta"></b></div>
       <p class="micro" id="resNote"></p>
       <div class="row"><button class="btn amber" data-ui="again">다시 플레이</button><button class="btn" data-ui="lobby">로비로</button></div>
     </div>
