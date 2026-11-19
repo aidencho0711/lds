@@ -16,6 +16,8 @@ function setupInput(canvas) {
   const inGame = () => G.state === 'play' && !G.paused && !HUD.modalOpen();
   window.addEventListener('keydown', (e) => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+    // 경기 중 문자 (10_chat.js): Enter 로 입력창 — 받을 파티원·관전자가 있을 때만
+    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && inGame() && Chat.openBox()) { e.preventDefault(); return; }
     Input.keys[e.code] = true;
     const a = KEYMAP[e.code];
     if (e.code === 'Tab') e.preventDefault();
@@ -52,7 +54,7 @@ function setupInput(canvas) {
   });
   document.addEventListener('pointerlockchange', () => {
     const was = Input.locked; Input.locked = document.pointerLockElement === canvas;
-    if (was && !Input.locked && G.state === 'play' && !G.paused && !HUD.modalOpen() && !G.suppressPause) G.pause(true);
+    if (was && !Input.locked && G.state === 'play' && !G.paused && !HUD.modalOpen() && !G.suppressPause) { if (Chat.typing()) Chat.closeBox(); else G.pause(true); }   // 문자를 쓰다 Esc → 입력창만 닫음
     G.suppressPause = false;
   });
   document.addEventListener('pointerlockerror', () => { Input.lockFailed = true; HUD.toast('마우스 고정이 지원되지 않아 클릭한 채 드래그로 시점을 돌립니다', 'info'); });

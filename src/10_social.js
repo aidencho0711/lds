@@ -7,6 +7,10 @@
 //    - 파티원이 사라지면(접속 끊김 5초) 방장이 뺀다. 방장이 사라지면 다음 순서 파티원이 방장
 //    - 경기 시작·경기 중 연결 신호(WebRTC)·중계도 이 채널로 (10_net.js)
 //  · 실시간 메시지는 무료 플랜 기준 프로젝트 전체 초당 100개 — 여기서는 상태가 바뀔 때만 보낸다
+//  · v22 친구 관전(10_watch.js): 접속 표시에 pl(지금 경기 화면 = 관전할 수 있음) · 관전 신호(spec·spof·span·spno·spx)는 Watch 로 넘김
+//  · v22 초대 예약: 게임 중인 친구에게 '초대 예약' → 내가 들고 있다가 그 친구가 로비로 돌아오면(접속 표시 'lobby') 초대를 보낸다
+//    (30분 지나면 지움) · 친구에게는 rsv 로 알려 경기 중에 토스트 · 로비로 돌아와 받은 초대 카드에 '예약해 둔 초대'
+//  · v22 파티 문자(10_chat.js): 파티 채널 {k:'chat'} — 로비 파티 막대·경기 중 화면 모두
 // ============================================================
 const PARTY_MAX = 4;
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
@@ -26,23 +30,24 @@ const Social = (() => {
     ch.subscribe((st) => { ok = st === 'SUBSCRIBED'; if (ok) { lastTrack = ''; track(); } render(); });
     refresh();
     clearInterval(pollT); pollT = setInterval(() => { if (G.state === 'lobby' && !document.hidden) refresh(); }, 30000);
-    clearInterval(statT); statT = setInterval(() => { track(); Party.tick(); expireInvites(); }, 1000);
+    clearInterval(statT); statT = setInterval(() => { track(); Party.tick(); expireInvites(); checkRsv(); }, 1000);
     render();
   }
   function stop(keepUi) {
     Party.leave(true);
     if (ch && sb()) { try { sb().removeChannel(ch); } catch (e) { /* */ } }
-    ch = null; ok = false; friends = []; online.clear(); invites = []; lastTrack = '';
+    ch = null; ok = false; friends = []; online.clear(); invites = []; lastTrack = ''; rsv.clear(); rsvIn.clear(); rsvSent.clear();
     clearInterval(pollT); clearInterval(statT);
-    if (!keepUi) { $('friendPanel').hidden = true; render(); renderInvites(); }
+    if (!keepUi) { Watch.stopAll(); $('friendPanel').hidden = true; render(); renderInvites(); }
   }
+  // pl: 지금 경기 화면(관전할 수 있음) — 결과 화면·불러오는 중은 0
   function myStatus() {
-    return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, st: G.state === 'lobby' || G.state === 'loading' && !G.netLoading ? (G.state === 'lobby' ? 'lobby' : 'game') : 'game', pid: Party.id(), pn: Party.size() };
+    return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, st: G.state === 'lobby' || G.state === 'loading' && !G.netLoading ? (G.state === 'lobby' ? 'lobby' : 'game') : 'game', pid: Party.id(), pn: Party.size(), pl: G.state === 'play' ? 1 : 0 };
   }
   // 상태가 바뀌었을 때만 presence 갱신 (초당 제한이 있다)
   function track(force) {
     if (!ch || !ok) return;
-    const s = myStatus(), k = JSON.stringify([s.name, s.lv, s.st, s.pid, s.pn]);
+    const s = myStatus(), k = JSON.stringify([s.name, s.lv, s.st, s.pid, s.pn, s.pl]);
     if (!force && k === lastTrack) return; lastTrack = k;
     ch.track(s).catch(() => { lastTrack = ''; });
   }
@@ -59,17 +64,67 @@ const Social = (() => {
   }
   function onMsg(m) {
     if (!m || m.to !== me() || !m.from) return;
+    if (m.k === 'spec' || m.k === 'spof' || m.k === 'span' || m.k === 'spno' || m.k === 'spx') { Watch.onLobby(m); return; }   // 친구 관전 신호 (10_watch.js)
     if (m.k === 'inv') {
       if (G.state !== 'lobby') { send(m.from.uid, 'invno', { why: 'busy' }); return; }
       if (Party.id() === m.pid) return;
+      const was = rsvIn.has(m.from.uid); rsvIn.delete(m.from.uid);
       invites = invites.filter((v) => v.from.uid !== m.from.uid);
-      invites.push({ from: m.from, pid: m.pid, t: Date.now() });
+      invites.push({ from: m.from, pid: m.pid, t: Date.now(), rsv: was });
       Audio.init(); Audio.ui && Audio.ui();
       renderInvites(); render();
-    } else if (m.k === 'invno') HUD.lobbyNote(`${m.from.name}님이 ${m.why === 'busy' ? '게임 중이라 초대를 받지 못했습니다' : m.why === 'full' ? '— 파티가 가득 찼습니다' : '초대를 거절했습니다'}`);
+    } else if (m.k === 'invno') {
+      // 예약해 둔 초대를 보냈는데 그새 다시 경기에 들어감 → 다시 예약 (조용히)
+      const s = rsvSent.get(m.from.uid);
+      if (m.why === 'busy' && s && Date.now() - s.t < 60000) { rsvSent.delete(m.from.uid); rsv.set(m.from.uid, { t: s.t0, name: m.from.name }); render(); return; }
+      HUD.lobbyNote(`${m.from.name}님이 ${m.why === 'busy' ? '게임 중이라 초대를 받지 못했습니다' : m.why === 'full' ? '— 파티가 가득 찼습니다' : '초대를 거절했습니다'}`);
+    }
     else if (m.k === 'fr') { refresh(); HUD.lobbyNote(m.what === 'accepted' ? `${m.from.name}님과 친구가 되었습니다` : `${m.from.name}님이 친구 요청을 보냈습니다`); }
+    else if (m.k === 'rsv') {   // 친구가 나에게 초대를 예약함 (나는 경기 중)
+      if (!friends.some((f) => f.id === m.from.uid && f.status === 'accepted')) return;
+      rsvIn.set(m.from.uid, { from: m.from, t: Date.now() });
+      const msg = `${m.from.name}님이 파티 초대를 예약했습니다 — 경기를 마치고 로비로 돌아가면 초대가 옵니다`;
+      if (G.state === 'lobby') HUD.lobbyNote(msg); else HUD.toast(msg, 'info');
+    } else if (m.k === 'rsvx') rsvIn.delete(m.from.uid);
   }
   function expireInvites() { const n = invites.length; invites = invites.filter((v) => Date.now() - v.t < 45000); if (invites.length !== n) { renderInvites(); render(); } }
+
+  // ---------- 초대 예약 (게임 중인 친구) ----------
+  const RSV_MS = 30 * 60e3;
+  const rsv = new Map();       // 친구 uid → { t, name }  내가 건 예약
+  const rsvIn = new Map();     // 보낸 사람 uid → { from, t }  나에게 걸린 예약
+  const rsvSent = new Map();   // 예약으로 막 보낸 초대 uid → { t, t0 } (그새 다시 경기에 들어가 거절되면 다시 예약)
+  function reserve(f) {
+    if (!Party.canInvite()) { HUD.lobbyNote(Party.id() && !Party.isLeader() ? '방장만 초대할 수 있습니다' : `파티는 ${PARTY_MAX}명까지입니다`); return; }
+    rsv.set(f.id, { t: Date.now(), name: f.username });
+    send(f.id, 'rsv', {});
+    setMsg(`${f.username}님이 경기를 마치고 로비로 돌아오면 파티 초대를 보냅니다 (30분 동안)`, true);
+    HUD.lobbyNote(`${f.username}님에게 파티 초대를 예약했습니다`);
+    render();
+  }
+  function unreserve(f) {
+    if (!rsv.delete(f.id)) return;
+    send(f.id, 'rsvx', {});
+    setMsg(`${f.username}님 초대 예약을 취소했습니다`, true);
+    render();
+  }
+  // 1초마다: 예약한 친구가 로비로 돌아왔으면 초대를 보낸다
+  function checkRsv() {
+    if (!rsv.size) return;
+    const t = Date.now(); let ch2 = false;
+    for (const [uid, r] of [...rsv]) {
+      const f = friends.find((x) => x.id === uid && x.status === 'accepted');
+      if (t - r.t > RSV_MS || !f || Party.has(uid)) { rsv.delete(uid); ch2 = true; continue; }
+      const o = online.get(uid); if (!o || o.st !== 'lobby') continue;
+      rsv.delete(uid); ch2 = true;
+      if (!Party.canInvite()) { HUD.lobbyNote(`${r.name}님이 로비로 돌아왔지만 지금은 초대할 수 없습니다 (방장만 · ${PARTY_MAX}명까지)`); continue; }
+      rsvSent.set(uid, { t, t0: r.t });
+      Party.invite(f, o);
+      setTimeout(() => HUD.lobbyNote(`${r.name}님이 경기를 마쳐 예약한 파티 초대를 보냈습니다`), 700);   // 파티를 새로 만들면 초대 알림이 조금 늦게 뜨므로 그 뒤에
+    }
+    for (const [uid, s] of [...rsvSent]) if (t - s.t > 60000) rsvSent.delete(uid);
+    if (ch2) render();
+  }
 
   // ---------- 친구 (DB) ----------
   async function refresh() {
@@ -103,7 +158,7 @@ const Social = (() => {
 
   // ---------- 화면 ----------
   function setMsg(t, good) { const m = $('friendMsg'); if (!m) return; m.textContent = t; m.className = 'acct-msg' + (good ? ' ok' : ' bad'); }
-  const statusText = (o) => !o ? '오프라인' : o.st === 'game' ? '게임 중' : o.pid && o.pn > 1 ? `로비 · 파티 ${o.pn}/${PARTY_MAX}` : '로비';
+  const statusText = (o, uid) => !o ? '오프라인' : o.st === 'game' ? (rsv.has(uid) ? '게임 중 · 초대 예약됨' : '게임 중') : o.pid && o.pn > 1 ? `로비 · 파티 ${o.pn}/${PARTY_MAX}` : '로비';
   function badgeCount() { return friends.filter((f) => f.status === 'pending' && f.incoming).length + invites.length; }
   function render() {
     const btn = $('friendBtn'); if (!btn) return;
@@ -125,10 +180,18 @@ const Social = (() => {
     sec(`친구 ${acc.length}`, acc, (f) => {
       const o = online.get(f.id), r = el('div', 'fr-row' + (o ? ' on' : ''));
       r.appendChild(el('i', 'fr-dot' + (o ? (o.st === 'game' ? ' game' : ' on') : ''))); r.appendChild(el('b', 'fr-name', f.username));
-      r.appendChild(el('span', 'fr-lv', 'Lv ' + (o && o.lv ? o.lv : lvOf(f.xp)))); r.appendChild(el('span', 'fr-st', statusText(o)));
+      r.appendChild(el('span', 'fr-lv', 'Lv ' + (o && o.lv ? o.lv : lvOf(f.xp)))); r.appendChild(el('span', 'fr-st', statusText(o, f.id)));
       const inParty = Party.has(f.id);
+      // 관전: 지금 경기 화면에 있는 친구 (새 버전만 pl 을 알린다)
+      if (o && o.pl) { const w = el('button', 'btn sm', '관전'); w.type = 'button'; w.title = '친구의 경기 화면을 봅니다'; w.onclick = () => Watch.open(f.id, f.username); r.appendChild(w); }
       if (inParty) r.appendChild(el('span', 'fr-tag', '파티원'));
-      else {
+      else if (o && o.st === 'game') {
+        // 게임 중: 초대 예약 — 로비로 돌아오면 그때 초대가 간다
+        const R = rsv.has(f.id), iv = el('button', 'btn sm' + (R ? ' ghost' : ' amber'), R ? '예약 취소' : '초대 예약'); iv.type = 'button';
+        iv.disabled = !R && !Party.canInvite();
+        iv.title = R ? '예약한 초대를 취소합니다' : !Party.canInvite() ? (Party.id() && !Party.isLeader() ? '방장만 초대할 수 있습니다' : '파티가 가득 찼습니다') : '경기를 마치고 로비로 돌아오면 파티에 초대합니다';
+        iv.onclick = () => (R ? unreserve(f) : reserve(f)); r.appendChild(iv);
+      } else {
         const iv = el('button', 'btn amber sm', '초대'); iv.type = 'button';
         iv.disabled = !o || o.st === 'game' || !Party.canInvite();
         iv.title = !o ? '접속 중일 때만 초대할 수 있습니다' : o.st === 'game' ? '게임 중입니다' : !Party.canInvite() ? (Party.id() && !Party.isLeader() ? '방장만 초대할 수 있습니다' : '파티가 가득 찼습니다') : '파티에 초대';
@@ -150,7 +213,7 @@ const Social = (() => {
     const box = $('inviteBox'); if (!box) return; box.innerHTML = '';
     for (const v of invites.slice(-2)) {
       const c = el('div', 'invite-card');
-      c.appendChild(el('div', 'iv-t', `${v.from.name}님이 파티에 초대했습니다`));
+      c.appendChild(el('div', 'iv-t', v.rsv ? `${v.from.name}님이 예약해 둔 파티 초대가 왔습니다` : `${v.from.name}님이 파티에 초대했습니다`));
       c.appendChild(el('div', 'micro', `Lv ${v.from.lv || '-'} · 수락하면 ${v.from.name}님이 방장인 파티에 들어갑니다`));
       const row = el('div', 'iv-b');
       const a = el('button', 'btn amber sm', '수락'); a.type = 'button'; a.onclick = () => { invites = invites.filter((x) => x !== v); renderInvites(); render(); Party.accept(v); };
@@ -171,7 +234,7 @@ const Social = (() => {
     G.onAuth = (on) => { if (on) start(); else stop(); };
     render();
   }
-  return { setup, start, stop, send, refresh, render, track, openPanel, get online() { return online; }, get friends() { return friends; }, get connected() { return ok; }, get invites() { return invites; } };
+  return { setup, start, stop, send, refresh, render, track, openPanel, reserve, unreserve, get online() { return online; }, get friends() { return friends; }, get connected() { return ok; }, get invites() { return invites; }, get rsv() { return rsv; }, get rsvIn() { return rsvIn; } };
 })();
 
 const Party = (() => {
@@ -296,6 +359,7 @@ const Party = (() => {
       case 'full': if (m.to === me()) { close(); P = null; joining = null; restoreOwn(); HUD.lobbyNote('파티가 가득 찼습니다'); renderAll(); } break;
       case 'start': if (P && m.cfg && m.cfg.humans.some((x) => x.uid === me())) { MM.partyGone(); Net.join(m.cfg); } break;
       case 'mm': if (P && m.from === P.leader) MM.onParty(m); break;   // 방장이 온라인 매칭 중 (10_mm.js)
+      case 'chat': Chat.onParty(m); break;   // 파티 문자 (10_chat.js) — 로비·경기 중 모두
       default: if (Net.onParty) Net.onParty(m);
     }
   }
@@ -383,20 +447,26 @@ const Party = (() => {
     const bar = $('partyBar'); if (!bar) return;
     const show = !!Cloud.user && !!P && G.state === 'lobby';
     bar.hidden = !show; if (!show) return;
-    bar.innerHTML = '';
+    // 파티원 줄만 다시 그린다 — 아래 문자 칸(10_chat.js)은 같은 요소를 계속 써서 입력하던 글자가 지워지지 않게
+    let rows = bar.querySelector('.pb-rows');
+    if (!rows) { bar.innerHTML = ''; rows = el('div', 'pb-rows'); bar.appendChild(rows); bar.appendChild(Chat.partyEl()); }
+    rows.innerHTML = '';
     const hd = el('div', 'pb-head'); hd.appendChild(el('b', '', `파티 ${P.members.length}/${PARTY_MAX}`));
-    const lv = el('button', 'btn sm ghost', '나가기'); lv.type = 'button'; lv.onclick = () => leave(); hd.appendChild(lv); bar.appendChild(hd);
+    const lv = el('button', 'btn sm ghost', '나가기'); lv.type = 'button'; lv.onclick = () => leave(); hd.appendChild(lv); rows.appendChild(hd);
     for (const m of P.members) {
       const o = Social.online.get(m.uid), r = el('div', 'pb-row' + (m.uid === P.leader ? ' lead' : '') + (m.uid === me() ? ' me' : ''));
       r.appendChild(el('i', 'pb-crown', m.uid === P.leader ? '♛' : ''));
       r.appendChild(el('b', 'pb-name', m.name + (m.uid === me() ? ' (나)' : '')));
       r.appendChild(el('span', 'pb-lv', 'Lv ' + (m.lv || 1)));
       r.appendChild(el('span', 'pb-st' + (m.st !== 'lobby' ? ' game' : ''), m.st !== 'lobby' ? '게임 중' : absent.has(m.uid) && m.uid !== me() ? '연결 확인 중' : '대기'));
+      // 관전: 경기 화면에 있는 파티원 (내가 로비에 있을 때)
+      if (m.uid !== me() && o && o.pl) { const w = el('button', 'btn sm', '관전'); w.type = 'button'; w.title = '파티원의 경기 화면을 봅니다'; w.onclick = () => Watch.open(m.uid, m.name); r.appendChild(w); }
       if (isLeader() && m.uid !== me()) { const k = el('button', 'btn sm ghost', '내보내기'); k.type = 'button'; k.onclick = () => kick(m.uid); r.appendChild(k); }
-      void o; bar.appendChild(r);
+      rows.appendChild(r);
     }
-    if (isLeader() && P.members.length < PARTY_MAX) { const add = el('button', 'pb-add', '+ 친구 초대'); add.type = 'button'; add.onclick = () => Social.openPanel(); bar.appendChild(add); }
-    else if (!isLeader()) bar.appendChild(el('p', 'micro', '모드·맵·출격은 방장이 정합니다'));
+    if (isLeader() && P.members.length < PARTY_MAX) { const add = el('button', 'pb-add', '+ 친구 초대'); add.type = 'button'; add.onclick = () => Social.openPanel(); rows.appendChild(add); }
+    else if (!isLeader()) rows.appendChild(el('p', 'micro', '모드·맵·출격은 방장이 정합니다'));
+    Chat.renderParty();
   }
   function renderAll() { render(); Social.render(); if (G.state === 'lobby') HUD.renderLobby(); }
   return { create, invite, accept, leave, kick, tryStart, lockInfo, settingsChanged, decoratePlay, render, tick, onOnline, send, id, size, has, canInvite, isLeader,

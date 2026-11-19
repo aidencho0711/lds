@@ -7,6 +7,7 @@
 //    재화·레벨·출석·미션 / 경기: 무적 · 무한 탄약 · 총 지급(부착물·탄약 포함) · 장비 풀세트 · 차량 소환
 //    · 지도 눌러 순간이동 · 자기장 멈춤 / 다음 단계 · 적 모두 탈락 / FPS·좌표 표시
 //  · 같이 하기(파티) 경기에서는 경기 치트가 꺼진다 (다른 사람의 경기에 영향을 주지 않게)
+//  · v22 관전: 경기 중인 모든 계정 목록 → 누르면 그 계정의 화면을 본다 (10_watch.js · 서버 supabase/spectate.sql 이 관리자인지 확인)
 //  · 켜고 끄는 값은 이 기기에만 저장(서버로 가지 않음)
 //  · 한계: 재화·판정이 모두 기기에서 돌아가는 구조라 서버가 지켜 주는 권한이 아니다. 아이디는 먼저 가입한 사람이 가진다
 // ============================================================
@@ -304,6 +305,11 @@ const Dev = (() => {
     // 표시
     r = sec('표시');
     tg(r, 'stats', 'FPS·좌표 표시', false);
+    // 관전 (v22 · 10_watch.js): 경기 중인 모든 계정 — 로비 채널 접속 표시(pl) 기준, 친구가 아니어도 볼 수 있다 (서버가 관리자인지 확인)
+    const ws = h('div', 'dev-sec'); ws.appendChild(h('div', 'dev-h', '관전'));
+    ws.appendChild(h('div', 'dev-note', '지금 경기 중인 모든 계정의 화면을 봅니다 (친구가 아니어도 · 로그인한 계정만 · 로비에서만). 보는 동안 상대 화면 위에 「이름(운영자) 관전 중」이 보입니다. 서버 함수 supabase/spectate.sql 필요'));
+    const wl = h('div', 'dev-row'); wl.id = 'devWatch'; ws.appendChild(wl); box.appendChild(ws);
+    Watch.devList(wl);
     // 계정 관리 (서버)
     const as = h('div', 'dev-sec'); as.appendChild(h('div', 'dev-h', '계정 관리'));
     as.appendChild(h('div', 'dev-note', '모든 계정 목록 · 골드 탄피 지급 · 기록 초기화(전적·레벨·재화·스킨·랭크) · 계정 삭제(되돌릴 수 없음). 서버 함수 supabase/admin.sql 필요'));

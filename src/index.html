@@ -184,6 +184,23 @@
     </div>
   </section>
 
+  <!-- v22 친구 관전 화면 (10_watch.js): 친구의 경기 화면(영상) · 정보 · 문자 -->
+  <section id="watchView" hidden>
+    <video id="wvVideo" playsinline autoplay muted></video>
+    <div class="wv-top">
+      <div class="wv-who"><span class="wv-eye">👁</span><b id="wvName"></b><span id="wvMode"></span></div>
+      <button class="btn sm" type="button" id="wvSound">🔇 소리 켜기</button>
+      <button class="btn sm danger" type="button" id="wvClose">나가기</button>
+    </div>
+    <div id="wvInfo" class="wv-info"></div>
+    <div id="wvMsg" class="wv-msg" role="status" hidden></div>
+    <div class="wv-chat">
+      <div id="wvLog" class="chat-log"></div>
+      <div id="wvQuick" class="chat-quick"></div>
+      <form id="wvForm" class="chat-form" autocomplete="off"><input id="wvInput" maxlength="80" enterkeyhint="send" placeholder="친구에게 문자 (80자)"><button class="btn amber sm" type="submit">보내기</button></form>
+    </div>
+  </section>
+
   <!-- 경기 설정 (로비 상단 아이콘) -->
   <section id="matchCfgPanel" class="overlay" hidden>
     <div class="menu wide cfg-menu">
@@ -258,6 +275,13 @@
     <div id="knockHud" hidden><b id="knockTxt">기절</b><div class="kbar"><i id="knockBar"></i></div><span class="micro">출혈로 체력이 줄어듭니다 · 기어서 엄폐하세요</span></div>
     <div id="specBar" hidden><span id="specName">관전 중</span><button class="btn" type="button" data-ui="specNext">다음 팀원 <kbd>F</kbd></button><button class="btn danger" type="button" data-ui="quit">로비로</button></div>
     <div id="toasts"></div>
+    <!-- v22 친구 관전 표시 (10_watch.js) · 문자 (10_chat.js) -->
+    <button id="watchTag" type="button" hidden><b></b><small></small></button>
+    <div id="chatLog" class="chat-log" aria-live="polite"></div>
+    <div id="chatBox" hidden>
+      <div id="chatQuick" class="chat-quick"></div>
+      <form id="chatForm" class="chat-form" autocomplete="off"><input id="chatInput" maxlength="80" enterkeyhint="send" placeholder="파티원·관전자에게 문자 (80자)"><button class="btn amber sm" type="submit">보내기</button><button class="btn sm ghost" type="button" id="chatX" aria-label="닫기">✕</button></form>
+    </div>
     <div id="crosshair"><i class="ch t"></i><i class="ch b"></i><i class="ch l"></i><i class="ch r"></i><svg class="sg" width="320" height="320" viewBox="-160 -160 320 320" aria-hidden="true"><path class="sgo"/><path class="sgi"/></svg><i class="dot"></i></div>
     <canvas id="sndCv" aria-hidden="true"></canvas>
     <div id="dummyTags"></div>
@@ -290,6 +314,7 @@
     <div id="hudButtons">
       <button class="hbtn" id="hbBag" data-tap="inventory" title="인벤토리 (Tab)">가방</button>
       <button class="hbtn" id="hbMenu" data-tap="pause" title="메뉴 (Esc)">메뉴</button>
+      <button class="hbtn" id="hbChat" type="button" title="문자 (Enter)" hidden>💬</button>
     </div>
     <!-- 터치 조작 -->
     <div id="touch" hidden>

@@ -1697,7 +1697,66 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 .itag-diff { padding: 1px 8px; border-radius: 3px; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.04em; color: #fff; white-space: nowrap; background: rgba(70, 120, 190, 0.92); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); }
 .itag-diff.d-easy { background: rgba(64, 150, 88, 0.92); } .itag-diff.d-hard { background: rgba(206, 118, 36, 0.94); } .itag-diff.d-extreme { background: rgba(186, 34, 34, 0.95); }
 body.island #mini, body.island .mini-info, body.island #counters, body.island #zoneInfo { visibility: hidden; }
-body.touch #islandBar { top: calc(env(safe-area-inset-top, 0px) + 38px); } body.touch #islandBar span { font-size: 1.6rem; }</style>
+body.touch #islandBar { top: calc(env(safe-area-inset-top, 0px) + 38px); } body.touch #islandBar span { font-size: 1.6rem; }
+/* ---------- v22 친구 관전 (10_watch.js) · 문자 (10_chat.js) ---------- */
+#watchView { position: absolute; inset: 0; z-index: 22; background: #050607; overflow: hidden; }
+#watchView[hidden] { display: none; }
+#wvVideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.wv-top { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 8px; padding: calc(8px + var(--sat)) calc(12px + var(--sar)) 14px calc(12px + var(--sal)); background: linear-gradient(rgba(5, 6, 7, 0.88), rgba(5, 6, 7, 0)); }
+.wv-who { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden; white-space: nowrap; }
+.wv-who b { font-size: 1rem; flex: none; }
+.wv-who span { font-size: 0.78rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
+.wv-who .wv-eye { color: #8fc7ff; font-size: 0.95rem; flex: none; overflow: visible; }
+.wv-msg { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%); width: min(440px, 88vw); text-align: center; background: var(--panel); border: 1px solid var(--line-2); border-radius: 6px; padding: 14px 16px; font-size: 0.9rem; line-height: 1.55; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.wv-msg[hidden] { display: none; }
+.wv-msg p { margin: 0; }
+.wv-msg .spin { width: 22px; height: 22px; border: 2px solid var(--line-2); border-top-color: var(--amber); border-radius: 50%; animation: wvSpin 0.9s linear infinite; }
+@keyframes wvSpin { to { transform: rotate(360deg); } }
+.wv-info { position: absolute; left: calc(12px + var(--sal)); top: calc(46px + var(--sat)); max-width: calc(100vw - 24px); font-family: var(--f-display); font-size: 0.86rem; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 3px 9px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wv-info:empty { display: none; }
+.wv-chat { position: absolute; left: calc(12px + var(--sal)); bottom: calc(10px + var(--sab)); width: min(420px, calc(100vw - 24px)); display: flex; flex-direction: column; gap: 6px; }
+/* 문자 줄 (경기 화면 · 관전 화면 · 파티 막대) */
+.chat-log { display: flex; flex-direction: column; gap: 2px; font-size: 0.8rem; }
+.chat-log .cl { align-self: flex-start; max-width: 100%; background: rgba(10, 12, 12, 0.7); border-radius: 3px; padding: 2px 8px; line-height: 1.45; overflow-wrap: anywhere; animation: kfIn 0.2s; -webkit-user-select: text; user-select: text; }
+.chat-log .cl b { color: var(--amber); margin-right: 6px; font-weight: 600; }
+.chat-log .cl small { color: var(--dim); font-size: 0.68rem; }
+.chat-log .cl.k-w b { color: #8fc7ff; } .chat-log .cl.k-me b { color: var(--green); }
+.chat-log .cl.k-sys { color: var(--dim); font-style: italic; background: rgba(10, 12, 12, 0.5); }
+.chat-quick { display: flex; flex-wrap: wrap; gap: 5px; }
+.chat-quick button { appearance: none; border: 1px solid var(--line-2); background: rgba(13, 17, 19, 0.85); color: var(--sand); border-radius: 999px; padding: 4px 11px; font: inherit; font-size: 0.78rem; cursor: pointer; pointer-events: auto; }
+.chat-quick button:hover { border-color: var(--amber); }
+.chat-quick button:active { background: rgba(240, 164, 58, 0.25); }
+.chat-form { display: flex; gap: 6px; }
+.chat-form input { flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--sand); background: rgba(13, 17, 19, 0.9); border: 1px solid var(--line-2); border-radius: 4px; padding: 5px 9px; pointer-events: auto; -webkit-user-select: text; user-select: text; }
+.chat-form input:focus { outline: none; border-color: var(--amber); }
+#chatLog { position: absolute; left: calc(12px + var(--sal)); top: 44%; width: min(380px, 46vw); pointer-events: none; transform: scale(var(--hud-s)); transform-origin: left center; z-index: 5; }
+#chatLog.open .cl { background: rgba(10, 12, 12, 0.85); }
+#chatBox { position: absolute; left: 50%; top: calc(64px + var(--sat)); transform: translateX(-50%); width: min(460px, 92vw); display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 6px; z-index: 8; pointer-events: auto; }
+#chatBox[hidden] { display: none; }
+#hbChat { font-size: 0.85rem; padding: 3px 9px; }
+#watchTag { position: absolute; left: 50%; top: calc(38px + var(--sat)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; background: rgba(10, 12, 12, 0.8); border: 1px solid rgba(143, 199, 255, 0.55); border-radius: 999px; padding: 2px 14px 3px; color: #cfe6ff; font: inherit; line-height: 1.25; cursor: pointer; z-index: 6; pointer-events: auto; }
+#watchTag[hidden] { display: none; }
+#watchTag b { font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+#watchTag small { font-size: 0.62rem; color: var(--dim); white-space: nowrap; }
+#watchTag.sure { border-color: var(--amber); } #watchTag.sure small { color: var(--amber); }
+/* 파티 막대 문자 칸 */
+.pb-rows { display: flex; flex-direction: column; gap: 4px; }
+.pb-chat { display: flex; flex-direction: column; gap: 5px; margin-top: 2px; border-top: 1px solid var(--line); padding-top: 6px; }
+.pb-chat .chat-log { font-size: 0.74rem; max-height: 96px; overflow-y: auto; }
+.pb-chat .chat-log .cl { background: rgba(255, 255, 255, 0.04); }
+.pb-chat .chat-form input { padding: 3px 7px; }
+.pb-chat .chat-form .btn { padding: 3px 8px; }
+@media (max-height: 520px), (max-width: 860px) {
+  .wv-top { padding-bottom: 8px; } .wv-who span { font-size: 0.7rem; }
+  .wv-info { top: calc(40px + var(--sat)); font-size: 0.76rem; }
+  .wv-chat { width: min(360px, calc(100vw - 24px)); gap: 4px; } .wv-chat .chat-log { font-size: 0.74rem; }
+  .chat-quick button { padding: 3px 9px; font-size: 0.72rem; flex: none; }
+  .chat-quick { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .chat-quick::-webkit-scrollbar { display: none; }   /* 휴대폰: 빠른 문구는 한 줄(옆으로 밀기) */
+  #chatLog { top: 40%; width: min(300px, 42vw); } #chatLog .cl { font-size: 0.72rem; }
+  #chatBox { top: calc(52px + var(--sat)); padding: 6px; gap: 5px; }
+  .pb-chat .chat-log { max-height: 64px; }
+}
+</style>
 <div id="app">
   <canvas id="gl"></canvas>
 
@@ -1880,6 +1939,23 @@ body.touch #islandBar { top: calc(env(safe-area-inset-top, 0px) + 38px); } body.
     </div>
   </section>
 
+  <!-- v22 친구 관전 화면 (10_watch.js): 친구의 경기 화면(영상) · 정보 · 문자 -->
+  <section id="watchView" hidden>
+    <video id="wvVideo" playsinline autoplay muted></video>
+    <div class="wv-top">
+      <div class="wv-who"><span class="wv-eye">👁</span><b id="wvName"></b><span id="wvMode"></span></div>
+      <button class="btn sm" type="button" id="wvSound">🔇 소리 켜기</button>
+      <button class="btn sm danger" type="button" id="wvClose">나가기</button>
+    </div>
+    <div id="wvInfo" class="wv-info"></div>
+    <div id="wvMsg" class="wv-msg" role="status" hidden></div>
+    <div class="wv-chat">
+      <div id="wvLog" class="chat-log"></div>
+      <div id="wvQuick" class="chat-quick"></div>
+      <form id="wvForm" class="chat-form" autocomplete="off"><input id="wvInput" maxlength="80" enterkeyhint="send" placeholder="친구에게 문자 (80자)"><button class="btn amber sm" type="submit">보내기</button></form>
+    </div>
+  </section>
+
   <!-- 경기 설정 (로비 상단 아이콘) -->
   <section id="matchCfgPanel" class="overlay" hidden>
     <div class="menu wide cfg-menu">
@@ -1954,6 +2030,13 @@ body.touch #islandBar { top: calc(env(safe-area-inset-top, 0px) + 38px); } body.
     <div id="knockHud" hidden><b id="knockTxt">기절</b><div class="kbar"><i id="knockBar"></i></div><span class="micro">출혈로 체력이 줄어듭니다 · 기어서 엄폐하세요</span></div>
     <div id="specBar" hidden><span id="specName">관전 중</span><button class="btn" type="button" data-ui="specNext">다음 팀원 <kbd>F</kbd></button><button class="btn danger" type="button" data-ui="quit">로비로</button></div>
     <div id="toasts"></div>
+    <!-- v22 친구 관전 표시 (10_watch.js) · 문자 (10_chat.js) -->
+    <button id="watchTag" type="button" hidden><b></b><small></small></button>
+    <div id="chatLog" class="chat-log" aria-live="polite"></div>
+    <div id="chatBox" hidden>
+      <div id="chatQuick" class="chat-quick"></div>
+      <form id="chatForm" class="chat-form" autocomplete="off"><input id="chatInput" maxlength="80" enterkeyhint="send" placeholder="파티원·관전자에게 문자 (80자)"><button class="btn amber sm" type="submit">보내기</button><button class="btn sm ghost" type="button" id="chatX" aria-label="닫기">✕</button></form>
+    </div>
     <div id="crosshair"><i class="ch t"></i><i class="ch b"></i><i class="ch l"></i><i class="ch r"></i><svg class="sg" width="320" height="320" viewBox="-160 -160 320 320" aria-hidden="true"><path class="sgo"/><path class="sgi"/></svg><i class="dot"></i></div>
     <canvas id="sndCv" aria-hidden="true"></canvas>
     <div id="dummyTags"></div>
@@ -1986,6 +2069,7 @@ body.touch #islandBar { top: calc(env(safe-area-inset-top, 0px) + 38px); } body.
     <div id="hudButtons">
       <button class="hbtn" id="hbBag" data-tap="inventory" title="인벤토리 (Tab)">가방</button>
       <button class="hbtn" id="hbMenu" data-tap="pause" title="메뉴 (Esc)">메뉴</button>
+      <button class="hbtn" id="hbChat" type="button" title="문자 (Enter)" hidden>💬</button>
     </div>
     <!-- 터치 조작 -->
     <div id="touch" hidden>
@@ -2318,6 +2402,7 @@ const DEFAULT_SETTINGS = {
   fps: 0, showFps: false,   // v20: 프레임 제한(30·60·120, 0 = 제한 없음 — 화면 주사율까지) · FPS 표시
   online: true,             // v21: 온라인 매칭 (출격 옆 버튼, 기본 켬) — 끄면 AI 와 바로 시작 (10_mm.js)
   arena: 'random',          // v22: 데스매치·대결 아레나 (무작위 · 컨테이너 야드 · 녹슨 공장 · 모래 사원 · 골목 마을)
+  watchOk: true,            // v22: 친구가 내 경기를 관전할 수 있음 (10_watch.js · 설정 '친구 · 관전')
 };
 let SETTINGS = Object.assign({}, DEFAULT_SETTINGS, store.get('settings', {}));
 delete SETTINGS.outfit;   // v14: 옛 복장 번호는 창고 장착 정보(look)로 대체
@@ -2442,7 +2527,7 @@ const myLook = () => ({ eq: SETTINGS.look || null, body: SETTINGS.body || null, 
 //  · 마스터 리미터(컴프레서)로 연사 시 클리핑 방지, 동시 재생 수 제한
 // ============================================================
 const Audio = (() => {
-  let ctx = null, master, comp, sfxBus, musicBus, outIn, roomIn, noiseBuf;
+  let ctx = null, master, comp, sfxBus, musicBus, outIn, roomIn, noiseBuf, limNode = null, tapDest = null;   // tapDest: 친구 관전으로 보내는 소리 (10_watch.js)
   let active = 0, ambient = null, music = null, bankReady = false;
   const MAX_VOICES = 48, bank = {}, lastPlay = {};
   const listener = { x: 0, y: 0, z: 0, yaw: 0, indoor: 0 };
@@ -2458,7 +2543,7 @@ const Audio = (() => {
     comp.threshold.value = -9; comp.knee.value = 10; comp.ratio.value = 3.5; comp.attack.value = 0.006; comp.release.value = 0.22;
     const lim = ctx.createDynamicsCompressor();
     lim.threshold.value = -2; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.09;
-    comp.connect(master); master.connect(lim); lim.connect(ctx.destination);
+    comp.connect(master); master.connect(lim); lim.connect(ctx.destination); limNode = lim;
     sfxBus = ctx.createGain(); sfxBus.connect(comp);
     musicBus = ctx.createGain(); musicBus.connect(master);
     const outVerb = ctx.createConvolver(); outVerb.buffer = impulse(2.6, 'out');
@@ -2891,6 +2976,9 @@ const Audio = (() => {
   const api = {
     init, applyVolumes, setListener,
     get ready() { return !!ctx; }, get bankReady() { return bankReady; }, get _bank() { return bank; },
+    // 친구 관전(10_watch.js): 내가 듣는 소리(리미터 뒤)를 갈래로 떼어 영상과 함께 보낸다 — 관전자가 있을 때만 붙인다
+    stream() { if (!ctx || !limNode || !ctx.createMediaStreamDestination) return null; if (!tapDest) { tapDest = ctx.createMediaStreamDestination(); limNode.connect(tapDest); } return tapDest.stream; },
+    streamStop() { if (!tapDest) return; try { limNode.disconnect(tapDest); } catch (e) { /* 이미 끊김 */ } tapDest = null; },
     // weapon: 무기 id (또는 예전 방식의 계열 이름)
     gunshot(pos, weapon, isOwn, indoor) {
       if (!ctx) return;
@@ -21172,6 +21260,8 @@ function setupInput(canvas) {
   const inGame = () => G.state === 'play' && !G.paused && !HUD.modalOpen();
   window.addEventListener('keydown', (e) => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+    // 경기 중 문자 (10_chat.js): Enter 로 입력창 — 받을 파티원·관전자가 있을 때만
+    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && inGame() && Chat.openBox()) { e.preventDefault(); return; }
     Input.keys[e.code] = true;
     const a = KEYMAP[e.code];
     if (e.code === 'Tab') e.preventDefault();
@@ -21208,7 +21298,7 @@ function setupInput(canvas) {
   });
   document.addEventListener('pointerlockchange', () => {
     const was = Input.locked; Input.locked = document.pointerLockElement === canvas;
-    if (was && !Input.locked && G.state === 'play' && !G.paused && !HUD.modalOpen() && !G.suppressPause) G.pause(true);
+    if (was && !Input.locked && G.state === 'play' && !G.paused && !HUD.modalOpen() && !G.suppressPause) { if (Chat.typing()) Chat.closeBox(); else G.pause(true); }   // 문자를 쓰다 Esc → 입력창만 닫음
     G.suppressPause = false;
   });
   document.addEventListener('pointerlockerror', () => { Input.lockFailed = true; HUD.toast('마우스 고정이 지원되지 않아 클릭한 채 드래그로 시점을 돌립니다', 'info'); });
@@ -21952,6 +22042,14 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v22', d: '2026-11-19', t: '친구 관전 · 관전하며 문자 · 초대 예약 · 경기 중 파티 문자', items: [
+    '친구 관전: 친구가 경기 중이면 친구 목록(또는 파티 막대)의 「관전」으로 그 친구의 경기 화면을 실시간으로 봄 (소리 포함) · 체력·처치·생존 수·들고 있는 총도 보임 · 경기가 끝나면 기다렸다가 다음 경기도 이어서 봄',
+    '관전하면서 친구에게 문자 — 빠른 문구(힘내! · 나이스! · 뒤 조심! …) 또는 직접 입력, 친구가 경기 중에 답장할 수 있음',
+    '내 경기를 누가 보면 화면 위에 「👁 이름 관전 중」 — 두 번 누르면 이번 경기는 친구 관전을 끝냄 · 설정 → 친구 · 관전에서 아예 끌 수 있음 (친구 관전은 3명까지, 친구만 볼 수 있음) · 운영자가 문제 확인을 위해 볼 때도 「이름(운영자) 관전 중」으로 보임',
+    '초대 예약: 게임 중인 친구에게 「초대 예약」 — 그 친구가 경기를 마치고 로비로 돌아오면 파티 초대가 저절로 감 (30분 동안 · 친구에게는 경기 중에 알림)',
+    '파티 문자: 파티원끼리 로비(파티 막대 아래)와 경기 중 모두 문자를 주고받음 — PC 는 Enter, 모바일은 왼쪽 위 💬 버튼과 빠른 문구(도와줘! · 적 발견! · 여기로 와 …) · 한 사람은 로비, 한 사람은 경기 중이어도 됨',
+    '관전 화면은 기기끼리 바로 연결해서 보냄 — 일부 모바일·회사·학교 망에서는 연결되지 않을 수 있음',
+  ] },
   { v: 'v22', d: '2026-11-19', t: '백룸 이벤트: 계정마다 1번 · 12가지 탈출 이벤트', items: [
     'THE BACKROOMS 탈출 이벤트: 엘리베이터가 아니어도 — 백룸의 12가지 탈출 방법 중 아무거나로 탈출 1회 → 골드 탄피 30,000 + 칭호·테두리 「백룸 탈출자」 + 사진 「스마일러」',
     '새 이벤트 「백룸 완전 탈출」: 12가지 방법을 모두 탈출하면 골드 탄피 150,000 + 새 칭호·테두리 「백룸 정복자」(초록 비상등 · EXIT 표지) + 새 사진 「Level 0」(노란 벽지 복도)',
@@ -22089,6 +22187,146 @@ const ChangeLog = (() => {
     dot();
   }
   return { init, open, close, latest: () => CHANGELOG[0] };
+})();
+
+// ---------- 10_chat.js ----------
+// ============================================================
+// 10_chat.js — 문자: 파티원끼리(로비·경기 중 모두) · 경기 중인 나 ↔ 내 관전자 (v22)
+//  · 파티 문자: 파티 채널('ld-party-<id>' — 경기 중에도 열려 있음, 10_social.js)로 {k:'chat'}
+//    로비 = 파티 막대 아래 문자 줄·입력 · 경기 중 = 화면 왼쪽 문자 줄 (10초 뒤 사라짐, 입력창을 열면 다시 보임)
+//  · 관전 문자: 관전 연결(WebRTC 데이터 채널, 10_watch.js)로 — 내 화면에 '👁 이름: …', 보는 쪽 화면에 내 답장
+//  · 경기 중 입력: PC 는 Enter 로 열고 Enter 로 보냄(Esc 닫기) · 모바일은 왼쪽 위 💬 버튼 → 빠른 문구 또는 입력
+//    받을 사람(파티원·관전자)이 있을 때만 💬 가 보인다 · 경기 중에 쓴 문자는 파티원과 내 관전자 모두에게 간다
+//  · 80자 · 1초에 1개 · 10초에 5개까지 (실시간 서버 한도를 아끼고 도배를 막는다) · 받는 쪽도 한 사람이 10초에 8개를 넘기면 버린다
+//  · 글자는 textContent 로만 넣는다 (HTML 로 해석하지 않음)
+// ============================================================
+const CHAT_QUICK = ['도와줘!', '적 발견!', '여기로 와', '기다려', '고마워', 'GG'];
+const Chat = (() => {
+  const MAXLEN = 80;
+  let log = [], sent = [], boxOpen = false, lastKey = '', pbEl = null, pbKey = '';
+  const rx = new Map();
+  const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+
+  // ---------- 글자 다듬기 · 도배 막기 ----------
+  // 제어 문자(U+0000–001F · 007F–009F) · 폭 없는 문자(200B–200F) · 줄·방향 바꾸기 문자(2028–202E · 2060–2069) · BOM(FEFF) 은 지운다 — 글자 코드로 걸러 정규식에 특수 문자를 넣지 않음
+  const badCh = (c) => c < 0x20 || (c >= 0x7f && c <= 0x9f) || (c >= 0x200b && c <= 0x200f) || (c >= 0x2028 && c <= 0x202e) || (c >= 0x2060 && c <= 0x2069) || c === 0xfeff;
+  const clean = (t) => { let s = ''; for (const ch of String(t == null ? '' : t)) if (!badCh(ch.codePointAt(0))) s += ch; return Array.from(s.replace(/\s+/g, ' ').trim()).slice(0, MAXLEN).join(''); };
+  function allow(uid) {
+    const t = Date.now(), a = (rx.get(uid) || []).filter((x) => t - x < 10000);
+    if (a.length >= 8) { rx.set(uid, a); return false; }
+    a.push(t); rx.set(uid, a); return true;
+  }
+  function wait() {
+    const t = Date.now(); sent = sent.filter((x) => t - x < 10000);
+    if (sent.length >= 5) return '잠시 뒤에 보내 주세요 (10초에 5개까지)';
+    if (sent.length && t - sent[sent.length - 1] < 1000) return '조금 천천히 보내 주세요';
+    return '';
+  }
+  const mark = () => { sent.push(Date.now()); };
+
+  // ---------- 보내기 ----------
+  const partyOn = () => !!Party.state && Party.size() > 1;
+  const canOpen = () => G.state === 'play' && (partyOn() || Watch.viewerCount() > 0);
+  // 내가 쓴 문자: 파티원(파티 채널) + 경기 중이면 내 관전자(관전 연결)
+  function say(text) {
+    const t = clean(text); if (!t) return false;
+    const play = G.state === 'play', toParty = partyOn(), toWatch = play && Watch.viewerCount() > 0;
+    if (!toParty && !toWatch) { sys('문자를 받을 파티원이나 관전자가 없습니다'); return false; }
+    const w = wait(); if (w) { sys(w); return false; }
+    mark();
+    if (toParty) Party.send('chat', { n: Cloud.name, t });
+    if (toWatch) Watch.sendChat(t);
+    add({ kind: 'me', n: '나', t, pid: Party.id(), to: [toParty ? '파티' : '', toWatch ? '관전자' : ''].filter(Boolean).join('·') });
+    return true;
+  }
+  // 파티 채널로 받은 문자 (Party.onMsg) — 지금 파티원이 보낸 것만
+  function onParty(m) {
+    if (!m || !m.from || !Party.has(m.from)) return;
+    const t = clean(m.t); if (!t || !allow(m.from)) return;
+    const mem = Party.members().find((x) => x.uid === m.from);
+    add({ kind: 'p', n: (mem && mem.name) || clean(m.n) || '파티원', t, pid: Party.id() });
+    try { Audio.ui(); } catch (e) { /* */ }
+  }
+  function sys(t) { const L = log[log.length - 1]; if (L && L.kind === 'sys' && L.t === t && Date.now() - L.at < 5000) return; add({ kind: 'sys', n: '', t, pid: Party.id() }); }   // 같은 안내를 연달아 쌓지 않음
+  function add(e) { e.at = Date.now(); log.push(e); if (log.length > 60) log.shift(); render(); }
+
+  // ---------- 그리기 ----------
+  // 한 줄: kind p(파티) · w(관전자) · me(나) · sys(안내)
+  function line(e) {
+    const d = h('div', 'cl k-' + (e.kind || 'p'));
+    if (e.kind !== 'sys') d.appendChild(h('b', '', (e.kind === 'w' ? '👁 ' : '') + (e.n || '?')));
+    d.appendChild(document.createTextNode(e.t));
+    if (e.kind === 'me' && e.to) d.appendChild(h('small', '', ' → ' + e.to));
+    return d;
+  }
+  // 경기 화면: 10초 안의 줄만 (입력창을 열면 최근 8줄)
+  function renderHud() {
+    const box = $('chatLog'); if (!box) return;
+    const t = Date.now(), small = window.innerHeight < 500, list = G.state !== 'play' ? [] : boxOpen ? log.slice(small ? -5 : -8) : log.filter((e) => t - e.at < 10000).slice(small ? -3 : -5);   // 휴대폰(가로 화면)은 줄 수를 줄인다
+    const key = list.map((e) => e.at + e.t).join('|') + (boxOpen ? '1' : '0');
+    if (key === lastKey) return; lastKey = key;
+    box.innerHTML = ''; for (const e of list) box.appendChild(line(e));
+    box.classList.toggle('open', boxOpen);
+  }
+  // 로비 파티 막대: 이 파티의 문자 (파티원·나) — 막대를 다시 그려도 입력하던 글자가 지워지지 않게 같은 요소를 계속 쓴다
+  function partyEl() {
+    if (!pbEl) {
+      pbEl = h('div', 'pb-chat');
+      const lg = h('div', 'chat-log'); lg.id = 'pbLog'; pbEl.appendChild(lg);
+      const f = h('form', 'chat-form'); f.autocomplete = 'off';
+      const i = h('input'); i.id = 'pbInput'; i.maxLength = MAXLEN; i.placeholder = '파티원에게 문자'; i.setAttribute('enterkeyhint', 'send');
+      const b = h('button', 'btn amber sm', '보내기'); b.type = 'submit';
+      f.append(i, b);
+      f.addEventListener('submit', (e) => { e.preventDefault(); if (say(i.value)) i.value = ''; });
+      i.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); i.blur(); } });
+      pbEl.appendChild(f);
+    }
+    pbKey = ''; renderParty();
+    return pbEl;
+  }
+  function renderParty() {
+    if (!pbEl) return;
+    const pid = Party.id(), list = log.filter((e) => e.pid && e.pid === pid && (e.kind === 'p' || e.kind === 'me' || e.kind === 'sys')).slice(-4);
+    const key = pid + list.map((e) => e.at + e.t).join('|');
+    if (key === pbKey) return; pbKey = key;
+    const lg = pbEl.querySelector('#pbLog'); lg.innerHTML = '';
+    if (!list.length) lg.appendChild(h('div', 'cl k-sys', '파티원끼리 문자를 주고받을 수 있습니다 (경기 중에도)'));
+    for (const e of list) lg.appendChild(line(e));
+    lg.scrollTop = lg.scrollHeight;
+  }
+  function render() { renderHud(); renderParty(); }
+
+  // ---------- 경기 중 입력창 (#chatBox) ----------
+  function openBox(focus = true) {
+    if (!canOpen()) return false;
+    boxOpen = true; $('chatBox').hidden = false; lastKey = ''; renderHud();
+    if (focus) setTimeout(() => { try { $('chatInput').focus(); } catch (e) { /* */ } }, 0);
+    return true;
+  }
+  function closeBox() {
+    if (!boxOpen) return;
+    boxOpen = false; $('chatBox').hidden = true;
+    const i = $('chatInput'); try { i.blur(); } catch (e) { /* */ }
+    lastKey = ''; renderHud();
+  }
+  const typing = () => !!document.activeElement && document.activeElement.id === 'chatInput';
+  function tick() {
+    const b = $('hbChat'), can = canOpen();
+    if (b && b.hidden === can) b.hidden = !can;
+    if (boxOpen && !can) closeBox();
+    renderHud();
+  }
+  function setup() {
+    const q = $('chatQuick');
+    for (const t of CHAT_QUICK) { const b = h('button', '', t); b.type = 'button'; b.addEventListener('pointerdown', (e) => e.stopPropagation()); b.onclick = () => { if (say(t)) closeBox(); }; q.appendChild(b); }
+    $('chatForm').addEventListener('submit', (e) => { e.preventDefault(); const i = $('chatInput'); if (!clean(i.value)) { closeBox(); return; } if (say(i.value)) { i.value = ''; closeBox(); } });
+    $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); closeBox(); } });
+    $('chatX').addEventListener('click', () => closeBox());
+    for (const id of ['chatBox', 'hbChat']) $(id).addEventListener('pointerdown', (e) => e.stopPropagation());   // 화면 터치(시점 돌리기)로 넘어가지 않게
+    $('hbChat').addEventListener('click', () => { Audio.ui(); if (boxOpen) closeBox(); else openBox(!IS_TOUCH); });   // 모바일은 빠른 문구부터 (자판은 입력칸을 누르면)
+    setInterval(tick, 1000);
+  }
+  return { setup, say, onParty, add, sys, line, clean, allow, wait, mark, openBox, closeBox, typing, canOpen, partyEl, renderParty, get log() { return log; }, get open() { return boxOpen; } };
 })();
 
 // ---------- 10_cloud.js ----------
@@ -22415,6 +22653,7 @@ const playerName = () => (Cloud.user && Cloud.name) || '나';
 //    재화·레벨·출석·미션 / 경기: 무적 · 무한 탄약 · 총 지급(부착물·탄약 포함) · 장비 풀세트 · 차량 소환
 //    · 지도 눌러 순간이동 · 자기장 멈춤 / 다음 단계 · 적 모두 탈락 / FPS·좌표 표시
 //  · 같이 하기(파티) 경기에서는 경기 치트가 꺼진다 (다른 사람의 경기에 영향을 주지 않게)
+//  · v22 관전: 경기 중인 모든 계정 목록 → 누르면 그 계정의 화면을 본다 (10_watch.js · 서버 supabase/spectate.sql 이 관리자인지 확인)
 //  · 켜고 끄는 값은 이 기기에만 저장(서버로 가지 않음)
 //  · 한계: 재화·판정이 모두 기기에서 돌아가는 구조라 서버가 지켜 주는 권한이 아니다. 아이디는 먼저 가입한 사람이 가진다
 // ============================================================
@@ -22712,6 +22951,11 @@ const Dev = (() => {
     // 표시
     r = sec('표시');
     tg(r, 'stats', 'FPS·좌표 표시', false);
+    // 관전 (v22 · 10_watch.js): 경기 중인 모든 계정 — 로비 채널 접속 표시(pl) 기준, 친구가 아니어도 볼 수 있다 (서버가 관리자인지 확인)
+    const ws = h('div', 'dev-sec'); ws.appendChild(h('div', 'dev-h', '관전'));
+    ws.appendChild(h('div', 'dev-note', '지금 경기 중인 모든 계정의 화면을 봅니다 (친구가 아니어도 · 로그인한 계정만 · 로비에서만). 보는 동안 상대 화면 위에 「이름(운영자) 관전 중」이 보입니다. 서버 함수 supabase/spectate.sql 필요'));
+    const wl = h('div', 'dev-row'); wl.id = 'devWatch'; ws.appendChild(wl); box.appendChild(ws);
+    Watch.devList(wl);
     // 계정 관리 (서버)
     const as = h('div', 'dev-sec'); as.appendChild(h('div', 'dev-h', '계정 관리'));
     as.appendChild(h('div', 'dev-note', '모든 계정 목록 · 골드 탄피 지급 · 기록 초기화(전적·레벨·재화·스킨·랭크) · 계정 삭제(되돌릴 수 없음). 서버 함수 supabase/admin.sql 필요'));
@@ -24694,6 +24938,8 @@ const HUD = (() => {
     ['view', '시점', 'seg', [['tpp', '3인칭'], ['fpp', '1인칭']]],
     ['difficulty', '봇 난이도', 'seg', [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움'], ['extreme', '익스트림'], ['mixed', '혼합']]],
     ['bots', '봇 수', 'range', [8, 48, 1]],
+    ['_h', '친구 · 관전'],
+    ['watchOk', '친구가 내 경기 관전', 'seg', [[true, '허용'], [false, '끔']]],   // v22 (10_watch.js) — 꺼도 운영자는 볼 수 있음(화면 위 표시는 그대로)
     ['_h', '화면 · 모바일 조작'],
     ['btnScale', '모바일 버튼 전체 크기', 'range', [0.7, 1.5, 0.05]],
     ['_layout', '모바일 버튼 위치·크기 편집'],
@@ -27584,6 +27830,10 @@ const Pass = (() => {
 //    - 파티원이 사라지면(접속 끊김 5초) 방장이 뺀다. 방장이 사라지면 다음 순서 파티원이 방장
 //    - 경기 시작·경기 중 연결 신호(WebRTC)·중계도 이 채널로 (10_net.js)
 //  · 실시간 메시지는 무료 플랜 기준 프로젝트 전체 초당 100개 — 여기서는 상태가 바뀔 때만 보낸다
+//  · v22 친구 관전(10_watch.js): 접속 표시에 pl(지금 경기 화면 = 관전할 수 있음) · 관전 신호(spec·spof·span·spno·spx)는 Watch 로 넘김
+//  · v22 초대 예약: 게임 중인 친구에게 '초대 예약' → 내가 들고 있다가 그 친구가 로비로 돌아오면(접속 표시 'lobby') 초대를 보낸다
+//    (30분 지나면 지움) · 친구에게는 rsv 로 알려 경기 중에 토스트 · 로비로 돌아와 받은 초대 카드에 '예약해 둔 초대'
+//  · v22 파티 문자(10_chat.js): 파티 채널 {k:'chat'} — 로비 파티 막대·경기 중 화면 모두
 // ============================================================
 const PARTY_MAX = 4;
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
@@ -27603,23 +27853,24 @@ const Social = (() => {
     ch.subscribe((st) => { ok = st === 'SUBSCRIBED'; if (ok) { lastTrack = ''; track(); } render(); });
     refresh();
     clearInterval(pollT); pollT = setInterval(() => { if (G.state === 'lobby' && !document.hidden) refresh(); }, 30000);
-    clearInterval(statT); statT = setInterval(() => { track(); Party.tick(); expireInvites(); }, 1000);
+    clearInterval(statT); statT = setInterval(() => { track(); Party.tick(); expireInvites(); checkRsv(); }, 1000);
     render();
   }
   function stop(keepUi) {
     Party.leave(true);
     if (ch && sb()) { try { sb().removeChannel(ch); } catch (e) { /* */ } }
-    ch = null; ok = false; friends = []; online.clear(); invites = []; lastTrack = '';
+    ch = null; ok = false; friends = []; online.clear(); invites = []; lastTrack = ''; rsv.clear(); rsvIn.clear(); rsvSent.clear();
     clearInterval(pollT); clearInterval(statT);
-    if (!keepUi) { $('friendPanel').hidden = true; render(); renderInvites(); }
+    if (!keepUi) { Watch.stopAll(); $('friendPanel').hidden = true; render(); renderInvites(); }
   }
+  // pl: 지금 경기 화면(관전할 수 있음) — 결과 화면·불러오는 중은 0
   function myStatus() {
-    return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, st: G.state === 'lobby' || G.state === 'loading' && !G.netLoading ? (G.state === 'lobby' ? 'lobby' : 'game') : 'game', pid: Party.id(), pn: Party.size() };
+    return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, st: G.state === 'lobby' || G.state === 'loading' && !G.netLoading ? (G.state === 'lobby' ? 'lobby' : 'game') : 'game', pid: Party.id(), pn: Party.size(), pl: G.state === 'play' ? 1 : 0 };
   }
   // 상태가 바뀌었을 때만 presence 갱신 (초당 제한이 있다)
   function track(force) {
     if (!ch || !ok) return;
-    const s = myStatus(), k = JSON.stringify([s.name, s.lv, s.st, s.pid, s.pn]);
+    const s = myStatus(), k = JSON.stringify([s.name, s.lv, s.st, s.pid, s.pn, s.pl]);
     if (!force && k === lastTrack) return; lastTrack = k;
     ch.track(s).catch(() => { lastTrack = ''; });
   }
@@ -27636,17 +27887,67 @@ const Social = (() => {
   }
   function onMsg(m) {
     if (!m || m.to !== me() || !m.from) return;
+    if (m.k === 'spec' || m.k === 'spof' || m.k === 'span' || m.k === 'spno' || m.k === 'spx') { Watch.onLobby(m); return; }   // 친구 관전 신호 (10_watch.js)
     if (m.k === 'inv') {
       if (G.state !== 'lobby') { send(m.from.uid, 'invno', { why: 'busy' }); return; }
       if (Party.id() === m.pid) return;
+      const was = rsvIn.has(m.from.uid); rsvIn.delete(m.from.uid);
       invites = invites.filter((v) => v.from.uid !== m.from.uid);
-      invites.push({ from: m.from, pid: m.pid, t: Date.now() });
+      invites.push({ from: m.from, pid: m.pid, t: Date.now(), rsv: was });
       Audio.init(); Audio.ui && Audio.ui();
       renderInvites(); render();
-    } else if (m.k === 'invno') HUD.lobbyNote(`${m.from.name}님이 ${m.why === 'busy' ? '게임 중이라 초대를 받지 못했습니다' : m.why === 'full' ? '— 파티가 가득 찼습니다' : '초대를 거절했습니다'}`);
+    } else if (m.k === 'invno') {
+      // 예약해 둔 초대를 보냈는데 그새 다시 경기에 들어감 → 다시 예약 (조용히)
+      const s = rsvSent.get(m.from.uid);
+      if (m.why === 'busy' && s && Date.now() - s.t < 60000) { rsvSent.delete(m.from.uid); rsv.set(m.from.uid, { t: s.t0, name: m.from.name }); render(); return; }
+      HUD.lobbyNote(`${m.from.name}님이 ${m.why === 'busy' ? '게임 중이라 초대를 받지 못했습니다' : m.why === 'full' ? '— 파티가 가득 찼습니다' : '초대를 거절했습니다'}`);
+    }
     else if (m.k === 'fr') { refresh(); HUD.lobbyNote(m.what === 'accepted' ? `${m.from.name}님과 친구가 되었습니다` : `${m.from.name}님이 친구 요청을 보냈습니다`); }
+    else if (m.k === 'rsv') {   // 친구가 나에게 초대를 예약함 (나는 경기 중)
+      if (!friends.some((f) => f.id === m.from.uid && f.status === 'accepted')) return;
+      rsvIn.set(m.from.uid, { from: m.from, t: Date.now() });
+      const msg = `${m.from.name}님이 파티 초대를 예약했습니다 — 경기를 마치고 로비로 돌아가면 초대가 옵니다`;
+      if (G.state === 'lobby') HUD.lobbyNote(msg); else HUD.toast(msg, 'info');
+    } else if (m.k === 'rsvx') rsvIn.delete(m.from.uid);
   }
   function expireInvites() { const n = invites.length; invites = invites.filter((v) => Date.now() - v.t < 45000); if (invites.length !== n) { renderInvites(); render(); } }
+
+  // ---------- 초대 예약 (게임 중인 친구) ----------
+  const RSV_MS = 30 * 60e3;
+  const rsv = new Map();       // 친구 uid → { t, name }  내가 건 예약
+  const rsvIn = new Map();     // 보낸 사람 uid → { from, t }  나에게 걸린 예약
+  const rsvSent = new Map();   // 예약으로 막 보낸 초대 uid → { t, t0 } (그새 다시 경기에 들어가 거절되면 다시 예약)
+  function reserve(f) {
+    if (!Party.canInvite()) { HUD.lobbyNote(Party.id() && !Party.isLeader() ? '방장만 초대할 수 있습니다' : `파티는 ${PARTY_MAX}명까지입니다`); return; }
+    rsv.set(f.id, { t: Date.now(), name: f.username });
+    send(f.id, 'rsv', {});
+    setMsg(`${f.username}님이 경기를 마치고 로비로 돌아오면 파티 초대를 보냅니다 (30분 동안)`, true);
+    HUD.lobbyNote(`${f.username}님에게 파티 초대를 예약했습니다`);
+    render();
+  }
+  function unreserve(f) {
+    if (!rsv.delete(f.id)) return;
+    send(f.id, 'rsvx', {});
+    setMsg(`${f.username}님 초대 예약을 취소했습니다`, true);
+    render();
+  }
+  // 1초마다: 예약한 친구가 로비로 돌아왔으면 초대를 보낸다
+  function checkRsv() {
+    if (!rsv.size) return;
+    const t = Date.now(); let ch2 = false;
+    for (const [uid, r] of [...rsv]) {
+      const f = friends.find((x) => x.id === uid && x.status === 'accepted');
+      if (t - r.t > RSV_MS || !f || Party.has(uid)) { rsv.delete(uid); ch2 = true; continue; }
+      const o = online.get(uid); if (!o || o.st !== 'lobby') continue;
+      rsv.delete(uid); ch2 = true;
+      if (!Party.canInvite()) { HUD.lobbyNote(`${r.name}님이 로비로 돌아왔지만 지금은 초대할 수 없습니다 (방장만 · ${PARTY_MAX}명까지)`); continue; }
+      rsvSent.set(uid, { t, t0: r.t });
+      Party.invite(f, o);
+      setTimeout(() => HUD.lobbyNote(`${r.name}님이 경기를 마쳐 예약한 파티 초대를 보냈습니다`), 700);   // 파티를 새로 만들면 초대 알림이 조금 늦게 뜨므로 그 뒤에
+    }
+    for (const [uid, s] of [...rsvSent]) if (t - s.t > 60000) rsvSent.delete(uid);
+    if (ch2) render();
+  }
 
   // ---------- 친구 (DB) ----------
   async function refresh() {
@@ -27680,7 +27981,7 @@ const Social = (() => {
 
   // ---------- 화면 ----------
   function setMsg(t, good) { const m = $('friendMsg'); if (!m) return; m.textContent = t; m.className = 'acct-msg' + (good ? ' ok' : ' bad'); }
-  const statusText = (o) => !o ? '오프라인' : o.st === 'game' ? '게임 중' : o.pid && o.pn > 1 ? `로비 · 파티 ${o.pn}/${PARTY_MAX}` : '로비';
+  const statusText = (o, uid) => !o ? '오프라인' : o.st === 'game' ? (rsv.has(uid) ? '게임 중 · 초대 예약됨' : '게임 중') : o.pid && o.pn > 1 ? `로비 · 파티 ${o.pn}/${PARTY_MAX}` : '로비';
   function badgeCount() { return friends.filter((f) => f.status === 'pending' && f.incoming).length + invites.length; }
   function render() {
     const btn = $('friendBtn'); if (!btn) return;
@@ -27702,10 +28003,18 @@ const Social = (() => {
     sec(`친구 ${acc.length}`, acc, (f) => {
       const o = online.get(f.id), r = el('div', 'fr-row' + (o ? ' on' : ''));
       r.appendChild(el('i', 'fr-dot' + (o ? (o.st === 'game' ? ' game' : ' on') : ''))); r.appendChild(el('b', 'fr-name', f.username));
-      r.appendChild(el('span', 'fr-lv', 'Lv ' + (o && o.lv ? o.lv : lvOf(f.xp)))); r.appendChild(el('span', 'fr-st', statusText(o)));
+      r.appendChild(el('span', 'fr-lv', 'Lv ' + (o && o.lv ? o.lv : lvOf(f.xp)))); r.appendChild(el('span', 'fr-st', statusText(o, f.id)));
       const inParty = Party.has(f.id);
+      // 관전: 지금 경기 화면에 있는 친구 (새 버전만 pl 을 알린다)
+      if (o && o.pl) { const w = el('button', 'btn sm', '관전'); w.type = 'button'; w.title = '친구의 경기 화면을 봅니다'; w.onclick = () => Watch.open(f.id, f.username); r.appendChild(w); }
       if (inParty) r.appendChild(el('span', 'fr-tag', '파티원'));
-      else {
+      else if (o && o.st === 'game') {
+        // 게임 중: 초대 예약 — 로비로 돌아오면 그때 초대가 간다
+        const R = rsv.has(f.id), iv = el('button', 'btn sm' + (R ? ' ghost' : ' amber'), R ? '예약 취소' : '초대 예약'); iv.type = 'button';
+        iv.disabled = !R && !Party.canInvite();
+        iv.title = R ? '예약한 초대를 취소합니다' : !Party.canInvite() ? (Party.id() && !Party.isLeader() ? '방장만 초대할 수 있습니다' : '파티가 가득 찼습니다') : '경기를 마치고 로비로 돌아오면 파티에 초대합니다';
+        iv.onclick = () => (R ? unreserve(f) : reserve(f)); r.appendChild(iv);
+      } else {
         const iv = el('button', 'btn amber sm', '초대'); iv.type = 'button';
         iv.disabled = !o || o.st === 'game' || !Party.canInvite();
         iv.title = !o ? '접속 중일 때만 초대할 수 있습니다' : o.st === 'game' ? '게임 중입니다' : !Party.canInvite() ? (Party.id() && !Party.isLeader() ? '방장만 초대할 수 있습니다' : '파티가 가득 찼습니다') : '파티에 초대';
@@ -27727,7 +28036,7 @@ const Social = (() => {
     const box = $('inviteBox'); if (!box) return; box.innerHTML = '';
     for (const v of invites.slice(-2)) {
       const c = el('div', 'invite-card');
-      c.appendChild(el('div', 'iv-t', `${v.from.name}님이 파티에 초대했습니다`));
+      c.appendChild(el('div', 'iv-t', v.rsv ? `${v.from.name}님이 예약해 둔 파티 초대가 왔습니다` : `${v.from.name}님이 파티에 초대했습니다`));
       c.appendChild(el('div', 'micro', `Lv ${v.from.lv || '-'} · 수락하면 ${v.from.name}님이 방장인 파티에 들어갑니다`));
       const row = el('div', 'iv-b');
       const a = el('button', 'btn amber sm', '수락'); a.type = 'button'; a.onclick = () => { invites = invites.filter((x) => x !== v); renderInvites(); render(); Party.accept(v); };
@@ -27748,7 +28057,7 @@ const Social = (() => {
     G.onAuth = (on) => { if (on) start(); else stop(); };
     render();
   }
-  return { setup, start, stop, send, refresh, render, track, openPanel, get online() { return online; }, get friends() { return friends; }, get connected() { return ok; }, get invites() { return invites; } };
+  return { setup, start, stop, send, refresh, render, track, openPanel, reserve, unreserve, get online() { return online; }, get friends() { return friends; }, get connected() { return ok; }, get invites() { return invites; }, get rsv() { return rsv; }, get rsvIn() { return rsvIn; } };
 })();
 
 const Party = (() => {
@@ -27873,6 +28182,7 @@ const Party = (() => {
       case 'full': if (m.to === me()) { close(); P = null; joining = null; restoreOwn(); HUD.lobbyNote('파티가 가득 찼습니다'); renderAll(); } break;
       case 'start': if (P && m.cfg && m.cfg.humans.some((x) => x.uid === me())) { MM.partyGone(); Net.join(m.cfg); } break;
       case 'mm': if (P && m.from === P.leader) MM.onParty(m); break;   // 방장이 온라인 매칭 중 (10_mm.js)
+      case 'chat': Chat.onParty(m); break;   // 파티 문자 (10_chat.js) — 로비·경기 중 모두
       default: if (Net.onParty) Net.onParty(m);
     }
   }
@@ -27960,20 +28270,26 @@ const Party = (() => {
     const bar = $('partyBar'); if (!bar) return;
     const show = !!Cloud.user && !!P && G.state === 'lobby';
     bar.hidden = !show; if (!show) return;
-    bar.innerHTML = '';
+    // 파티원 줄만 다시 그린다 — 아래 문자 칸(10_chat.js)은 같은 요소를 계속 써서 입력하던 글자가 지워지지 않게
+    let rows = bar.querySelector('.pb-rows');
+    if (!rows) { bar.innerHTML = ''; rows = el('div', 'pb-rows'); bar.appendChild(rows); bar.appendChild(Chat.partyEl()); }
+    rows.innerHTML = '';
     const hd = el('div', 'pb-head'); hd.appendChild(el('b', '', `파티 ${P.members.length}/${PARTY_MAX}`));
-    const lv = el('button', 'btn sm ghost', '나가기'); lv.type = 'button'; lv.onclick = () => leave(); hd.appendChild(lv); bar.appendChild(hd);
+    const lv = el('button', 'btn sm ghost', '나가기'); lv.type = 'button'; lv.onclick = () => leave(); hd.appendChild(lv); rows.appendChild(hd);
     for (const m of P.members) {
       const o = Social.online.get(m.uid), r = el('div', 'pb-row' + (m.uid === P.leader ? ' lead' : '') + (m.uid === me() ? ' me' : ''));
       r.appendChild(el('i', 'pb-crown', m.uid === P.leader ? '♛' : ''));
       r.appendChild(el('b', 'pb-name', m.name + (m.uid === me() ? ' (나)' : '')));
       r.appendChild(el('span', 'pb-lv', 'Lv ' + (m.lv || 1)));
       r.appendChild(el('span', 'pb-st' + (m.st !== 'lobby' ? ' game' : ''), m.st !== 'lobby' ? '게임 중' : absent.has(m.uid) && m.uid !== me() ? '연결 확인 중' : '대기'));
+      // 관전: 경기 화면에 있는 파티원 (내가 로비에 있을 때)
+      if (m.uid !== me() && o && o.pl) { const w = el('button', 'btn sm', '관전'); w.type = 'button'; w.title = '파티원의 경기 화면을 봅니다'; w.onclick = () => Watch.open(m.uid, m.name); r.appendChild(w); }
       if (isLeader() && m.uid !== me()) { const k = el('button', 'btn sm ghost', '내보내기'); k.type = 'button'; k.onclick = () => kick(m.uid); r.appendChild(k); }
-      void o; bar.appendChild(r);
+      rows.appendChild(r);
     }
-    if (isLeader() && P.members.length < PARTY_MAX) { const add = el('button', 'pb-add', '+ 친구 초대'); add.type = 'button'; add.onclick = () => Social.openPanel(); bar.appendChild(add); }
-    else if (!isLeader()) bar.appendChild(el('p', 'micro', '모드·맵·출격은 방장이 정합니다'));
+    if (isLeader() && P.members.length < PARTY_MAX) { const add = el('button', 'pb-add', '+ 친구 초대'); add.type = 'button'; add.onclick = () => Social.openPanel(); rows.appendChild(add); }
+    else if (!isLeader()) rows.appendChild(el('p', 'micro', '모드·맵·출격은 방장이 정합니다'));
+    Chat.renderParty();
   }
   function renderAll() { render(); Social.render(); if (G.state === 'lobby') HUD.renderLobby(); }
   return { create, invite, accept, leave, kick, tryStart, lockInfo, settingsChanged, decoratePlay, render, tick, onOnline, send, id, size, has, canInvite, isLeader,
@@ -28896,6 +29212,489 @@ const Prof = (() => {
     renderChip();
   }
   return { AV, FR, TI, my, set, refresh: changed, open, close, render, renderChip, setup, lobbyTags, frameHTML, avatarSVG, titleHTML, titleName, ultraOwned, earned: () => TI.filter((t) => t.ok()).map((t) => t.id) };
+})();
+
+// ---------- 10_watch.js ----------
+// ============================================================
+// 10_watch.js — 친구 관전: 경기 중인 친구의 화면을 영상으로 보기 · 관전하면서 문자 (v22)
+//  · 보는 쪽: 친구 목록·파티 막대의 '관전' · 개발자 메뉴 '관전'(관리자: 경기 중인 모든 계정, 친구가 아니어도)
+//    1) 서버에 관전표 — spec_ask(상대, 이번에 만든 1회용 공개 키) (supabase/spectate.sql: 친구·관리자만)
+//    2) 로비 채널로 상대에게 '보고 싶다'(spec)
+//    3) 상대가 보낸 연결 정보(spof)를 내 키로 풀어 WebRTC 로 연결 → 영상·소리·정보·문자
+//  · 보내는 쪽(경기 중인 사람)
+//    · 로비 채널의 보낸 사람 이름은 꾸밀 수 있으므로 서버로 확인(spec_check) — 2분 안에 그 사람이 '나를 보려고' 만든 표가 있어야 한다
+//    · 연결 정보(SDP, IP 주소 포함)는 그 표의 공개 키로만 풀리게 잠가서(ECDH P-256 + AES-GCM) 보낸다
+//      → 로비 채널의 다른 접속자는 읽을 수 없고, 표를 만든 바로 그 기기만 연결된다 (답장도 같은 열쇠로 잠가 와야 받아 준다)
+//    · 게임 화면(캔버스)을 영상으로 담는다(captureStream) — 관전자가 있을 때만. 540p·24fps·1.2Mbps (그래픽 '낮음'이면 360p·15fps·0.6Mbps)
+//    · 친구 관전자는 3명까지(관리자는 따로) · 화면 위 '👁 ○○ 관전 중' — 두 번 누르면 이번 경기는 친구 관전을 끝냄
+//    · 설정 '친구가 내 경기 관전'을 끄면 친구는 볼 수 없다 (관리자는 볼 수 있고, 표시는 그대로 보인다)
+//  · 영상·정보·문자는 기기끼리 직접(WebRTC). 실시간 서버(Supabase)로는 신호 메시지 몇 개만 → 무료 플랜 실시간 한도를 쓰지 않는다
+//    직접 연결이 안 되는 망(일부 모바일·회사 망)에서는 관전할 수 없다 (중계 서버 없음 — NET_ICE 는 STUN 만)
+//  · 경기가 끝나면 보는 쪽은 '다음 경기를 기다리는 중' → 친구가 다시 경기에 들어가면(접속 표시 pl) 저절로 이어서 본다
+//  · 로비 채널 메시지: spec(보고 싶다) · spof(잠긴 연결 정보) · span(잠긴 답장) · spno(안 됨 + 까닭) · spx(연결 전 취소)
+//    관전 연결 메시지(데이터 채널): hi(경기 정보) · i(초당 2번 상태) · c(문자 줄) · end(끝) / 보는 쪽 → chat · bye
+// ============================================================
+const WATCH_MAX = 3;   // 친구 관전자 최대 (관리자는 세지 않음)
+const WATCH_QUICK = ['힘내!', '나이스!', '뒤 조심!', '자기장 조심', 'ㅋㅋㅋ', 'GG'];
+const Watch = (() => {
+  const sb = () => Cloud.client();
+  const me = () => Cloud.uid;
+  const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+  const now = () => performance.now();
+  const srvMissing = (e) => !!e && (e.code === 'PGRST202' || /could not find|does not exist|spec_ask|spec_check/i.test(String(e.message || '')));
+  const errText = (e) => String((e && (e.message || e.code)) || e || '');
+
+  // ---------- 잠금 (WebCrypto: ECDH P-256 → AES-GCM 256) ----------
+  const te = new TextEncoder(), td = new TextDecoder(), EC = { name: 'ECDH', namedCurve: 'P-256' };
+  const b64 = (buf) => { const a = new Uint8Array(buf); let s = ''; for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
+  const unb64 = (s) => Uint8Array.from(atob(String(s || '')), (c) => c.charCodeAt(0));
+  const supported = () => !!(window.RTCPeerConnection && window.crypto && crypto.subtle && window.isSecureContext !== false);
+  async function newKeys() { const kp = await crypto.subtle.generateKey(EC, false, ['deriveKey']); return { kp, pub: b64(await crypto.subtle.exportKey('raw', kp.publicKey)) }; }
+  async function derive(priv, pubB64) {
+    const pub = await crypto.subtle.importKey('raw', unb64(pubB64), EC, false, []);
+    return crypto.subtle.deriveKey({ name: 'ECDH', public: pub }, priv, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function seal(key, obj) { const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, te.encode(JSON.stringify(obj))); return { iv: b64(iv), ct: b64(ct) }; }
+  async function unseal(key, box) { const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(box.iv) }, key, unb64(box.ct)); return JSON.parse(td.decode(pt)); }
+  // ICE 후보를 다 모은 뒤 한 번에 보낸다 (로비 채널은 접속자 모두가 받으므로 메시지 수를 줄인다)
+  function gathered(pc, ms = 3000) {
+    return new Promise((res) => {
+      if (pc.iceGatheringState === 'complete') { res(); return; }
+      const t = setTimeout(done, ms);
+      function chk() { if (pc.iceGatheringState === 'complete') done(); }
+      function done() { clearTimeout(t); pc.removeEventListener('icegatheringstatechange', chk); res(); }
+      pc.addEventListener('icegatheringstatechange', chk);
+    });
+  }
+  const desc = (pc) => ({ type: pc.localDescription.type, sdp: pc.localDescription.sdp });
+  const label = (name, adm) => (adm ? `${name}(운영자)` : name);
+
+  // ============================================================
+  // 보내는 쪽: 경기 중인 나를 보는 사람들
+  // ============================================================
+  const viewers = new Map();   // uid → { uid, name, admin, pc, dc, key, open, t0, oid }
+  let cap = null, stopped = false, oidN = 0, tagSure = 0, tagT = null;
+  const playing = () => G.state === 'play' && !!G.scene;
+  const friendN = () => { let n = 0; for (const v of viewers.values()) if (!v.admin) n++; return n; };
+  const openViewers = () => [...viewers.values()].filter((v) => v.open);
+
+  // 화면 담기 (관전자가 있을 때만) — 같은 영상 트랙을 모든 관전자 연결이 함께 쓴다
+  function capStart() {
+    if (cap) return cap;
+    const cv = G.renderer && G.renderer.domElement; if (!cv || !cv.captureStream) return null;
+    const low = SETTINGS.quality === 'low';
+    let stream; try { stream = cv.captureStream(low ? 15 : 24); } catch (e) { console.warn('화면 담기 실패', e); return null; }
+    const vt = stream.getVideoTracks()[0]; if (!vt) return null;
+    try { vt.contentHint = 'motion'; } catch (e) { /* */ }
+    let at = null; try { const as = Audio.stream(); at = as && as.getAudioTracks()[0]; if (at) stream.addTrack(at); } catch (e) { at = null; }
+    cap = { stream, vt, at, low };
+    return cap;
+  }
+  function capStop() {
+    if (!cap) return; const c = cap; cap = null;
+    try { c.vt.stop(); } catch (e) { /* */ }
+    if (c.at) { try { c.at.stop(); } catch (e) { /* */ } Audio.streamStop(); }
+  }
+  function encOf(c) {
+    const cv = G.renderer.domElement, H = cv.height || 540;
+    return { maxBitrate: c.low ? 600000 : 1200000, maxFramerate: c.low ? 15 : 24, scaleResolutionDownBy: Math.max(1, H / (c.low ? 360 : 540)) };
+  }
+  function addTracks(pc, c) {
+    const enc = encOf(c);
+    try { pc.addTransceiver(c.vt, { direction: 'sendonly', streams: [c.stream], sendEncodings: [enc] }); }
+    catch (e) { pc.addTrack(c.vt, c.stream); }
+    if (c.at) { try { pc.addTransceiver(c.at, { direction: 'sendonly', streams: [c.stream] }); } catch (e) { pc.addTrack(c.at, c.stream); } }
+  }
+  // 연결이 정해진 뒤 화질 한도를 한 번 더 (addTransceiver 의 sendEncodings 를 무시하는 브라우저)
+  function applyEnc(v) {
+    if (!cap || !v.pc) return;
+    const s = v.pc.getSenders().find((x) => x.track === cap.vt); if (!s || !s.getParameters) return;
+    try { const P = s.getParameters(); if (!P.encodings || !P.encodings.length) P.encodings = [{}]; Object.assign(P.encodings[0], encOf(cap)); const r = s.setParameters(P); if (r && r.catch) r.catch(() => {}); } catch (e) { /* */ }
+  }
+  function dcSend(dc, o) { if (!dc || dc.readyState !== 'open') return; try { if (dc.bufferedAmount < 256e3) dc.send(JSON.stringify(o)); } catch (e) { /* */ } }
+  function matchInfo() {
+    const gt = GAME_TYPES[SETTINGS.game] || {}, mp = W && MAPS[W.mapId];
+    const mode = G.training ? '훈련장' : gt.name || '배틀로얄', sq = !G.training && !G.dm && TEAM_MODES[SETTINGS.squad] ? TEAM_MODES[SETTINGS.squad].name : '';
+    return { k: 'hi', n: Cloud.name, mode: [mode, sq].filter(Boolean).join(' · '), map: mp && !G.training ? mp.name : '', party: !!G.net };
+  }
+  function info() {
+    const p = G.player; if (!p) return { k: 'i' };
+    const w = p.weapon && ITEMS[p.weapon.id], vc = G.viewChar ? G.viewChar() : p;
+    const o = { k: 'i', hp: p.alive && !p.knocked ? Math.round(p.hp) : 0, kn: p.knocked ? 1 : 0, al: p.alive ? 1 : 0, kl: p.kills || 0, w: w ? w.name : '', ps: G.paused && !G.net ? 1 : 0 };
+    if (G.dm && G.dm.score) o.sc = [G.dm.score[0] | 0, G.dm.score[1] | 0];
+    else if (!G.training) o.left = CHARS.filter((c) => c.alive).length;
+    if (vc && vc !== p) o.sp = vc.name;
+    if (G.island) o.isl = 1; else if (p.mode === 'plane') o.air = 1;
+    return o;
+  }
+
+  // 보고 싶다는 요청 (로비 채널, 보낸 사람 = 꾸밀 수 있음 → 서버로 확인)
+  const askT = new Map(); let askN = [];
+  async function onAsk(from) {
+    const uid = from && from.uid; if (!uid || uid === me()) return;
+    // 요청이 쏟아지면 버린다 (한 사람 1.5초에 1번 · 모두 합쳐 10초에 12번) — 요청마다 서버 확인을 부르므로
+    const tn = Date.now(); if (tn - (askT.get(uid) || 0) < 1500) return; askT.set(uid, tn);
+    askN = askN.filter((x) => tn - x < 10000); if (askN.length >= 12) return; askN.push(tn);
+    const no = (why) => { Social.send(uid, 'spno', { why }); };
+    if (G.state === 'loading' || (G.state === 'play' && !G.scene)) { no('notyet'); return; }
+    if (!playing()) { no('lobby'); return; }
+    if (!supported() || !sb()) { no('err'); return; }
+    let t = null;
+    try { const { data, error } = await sb().rpc('spec_check', { p_viewer: uid }); if (error) throw error; t = data; }
+    catch (e) { no(srvMissing(e) ? 'srv' : 'err'); return; }
+    if (!t || !t.pk) { no('verify'); return; }
+    if (!playing()) { no('lobby'); return; }
+    const adm = !!t.admin;
+    if (!adm && SETTINGS.watchOk === false) { no('off'); return; }
+    if (!adm && stopped) { no('stop'); return; }
+    const old = viewers.get(uid); if (old) drop(old, 'again');
+    if (!adm && friendN() >= WATCH_MAX) { no('full'); return; }
+    const c = capStart(); if (!c) { no('err'); return; }
+    const v = { uid, name: String(t.name || (from && from.name) || '?'), admin: adm, pc: null, dc: null, key: null, open: false, t0: now(), oid: ++oidN };
+    viewers.set(uid, v);
+    try {
+      const keys = await newKeys(); v.key = await derive(keys.kp.privateKey, t.pk);
+      const pc = v.pc = new RTCPeerConnection({ iceServers: NET_ICE });
+      addTracks(pc, c);
+      const dc = v.dc = pc.createDataChannel('w', { ordered: true });
+      dc.onopen = () => {
+        if (viewers.get(uid) !== v) return;
+        v.open = true; dcSend(dc, matchInfo()); dcSend(dc, info()); renderTag();
+        HUD.toast(`👁 ${label(v.name, v.admin)}님이 내 경기를 관전합니다`, 'info');
+      };
+      dc.onmessage = (e) => fromViewer(v, e.data);
+      dc.onclose = () => { if (viewers.get(uid) === v) drop(v, 'gone'); };
+      pc.onconnectionstatechange = () => { if (viewers.get(uid) !== v) return; const s = pc.connectionState; if (s === 'failed' || s === 'closed') drop(v, 'gone'); };
+      await pc.setLocalDescription(await pc.createOffer());
+      await gathered(pc);
+      if (viewers.get(uid) !== v) return;
+      Social.send(uid, 'spof', { o: v.oid, pub: keys.pub, box: await seal(v.key, desc(pc)) });
+    } catch (e) { console.warn('관전 보내기 실패', e); if (viewers.get(uid) === v) drop(v, 'err'); no('err'); }
+  }
+  // 보는 쪽 답장 — 같은 열쇠로 잠겨 있어야 받는다 (꾸민 답장은 풀리지 않음 → 무시)
+  async function onAnswer(from, m) {
+    const v = viewers.get(from.uid); if (!v || !v.pc || !v.key || m.o !== v.oid || !m.box) return;
+    let d; try { d = await unseal(v.key, m.box); } catch (e) { return; }
+    if (viewers.get(from.uid) !== v || !d || d.type !== 'answer' || v.pc.signalingState !== 'have-local-offer') return;
+    try { await v.pc.setRemoteDescription(d); applyEnc(v); } catch (e) { console.warn('관전 연결 실패', e); drop(v, 'err'); }
+  }
+  // why: 'over' 경기 끝 · 'stop' 내가 끝냄 · 'gone' 연결 끊김 · 'bye' 보는 쪽이 나감 · 'again' 다시 연결 · 'err'
+  function drop(v, why) {
+    if (viewers.get(v.uid) === v) viewers.delete(v.uid);
+    const wasOpen = v.open; v.open = false;
+    if (v.dc && v.dc.readyState === 'open' && (why === 'over' || why === 'stop')) dcSend(v.dc, { k: 'end', why });
+    const pc = v.pc; v.pc = null; v.dc = null;
+    setTimeout(() => { try { if (pc) pc.close(); } catch (e) { /* */ } }, why === 'over' || why === 'stop' ? 300 : 0);   // 'end' 가 먼저 가도록
+    if (wasOpen && (why === 'bye' || why === 'gone')) HUD.toast(`👁 ${label(v.name, v.admin)}님이 관전을 마쳤습니다`, 'info');
+    if (!viewers.size) capStop();
+    renderTag();
+  }
+  function fromViewer(v, data) {
+    let m; try { m = JSON.parse(data); } catch (e) { return; }
+    if (!m || viewers.get(v.uid) !== v) return;
+    if (m.k === 'chat') {
+      const t = Chat.clean(m.t); if (!t || !Chat.allow(v.uid)) return;
+      const n = label(v.name, v.admin);
+      Chat.add({ kind: 'w', n, t });
+      for (const o of viewers.values()) if (o !== v && o.open) dcSend(o.dc, { k: 'c', s: 'w', n, t });   // 다른 관전자도 보게
+    } else if (m.k === 'bye') drop(v, 'bye');
+  }
+  // 경기 중 내가 쓴 문자 → 관전자에게 (10_chat.js)
+  function sendChat(t) { for (const v of viewers.values()) if (v.open) dcSend(v.dc, { k: 'c', s: 'p', n: Cloud.name, t }); }
+  const viewerCount = () => openViewers().length;
+
+  // 화면 위 표시 '👁 ○○ 관전 중' — 두 번 누르면 이번 경기는 친구 관전 끝 (관리자 관전은 계속, 표시도 그대로)
+  function renderTag() {
+    const el = $('watchTag'); if (!el) return;
+    const list = openViewers(), show = list.length > 0 && G.state === 'play';
+    el.hidden = !show; if (!show) return;
+    const nm = list.map((v) => label(v.name, v.admin)), friends = list.some((v) => !v.admin);
+    el.querySelector('b').textContent = '👁 ' + (nm.length > 2 ? `${nm.length}명` : nm.join(', ')) + ' 관전 중';
+    el.querySelector('small').textContent = !friends ? '운영자가 보는 중' : tagSure ? '한 번 더 누르면 이번 경기 친구 관전을 끝냅니다' : '두 번 누르면 관전 끝내기';
+    el.classList.toggle('sure', !!tagSure && friends);
+  }
+  function tagClick(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (!openViewers().some((v) => !v.admin)) return;
+    if (!tagSure) { tagSure = 1; renderTag(); clearTimeout(tagT); tagT = setTimeout(() => { tagSure = 0; renderTag(); }, 3000); return; }
+    tagSure = 0; clearTimeout(tagT); stopped = true;
+    for (const v of [...viewers.values()]) if (!v.admin) drop(v, 'stop');
+    HUD.toast('이번 경기는 친구 관전을 끝냈습니다 (다음 경기부터 다시 볼 수 있음)', 'info');
+    renderTag();
+  }
+  function sendTick() {
+    if (!playing()) {
+      if (viewers.size) for (const v of [...viewers.values()]) drop(v, 'over');
+      stopped = false; tagSure = 0;
+      return;
+    }
+    if (!viewers.size) return;
+    const i = info(), t = now();
+    for (const v of [...viewers.values()]) {
+      if (v.open) dcSend(v.dc, i);
+      else if (t - v.t0 > 20000) drop(v, 'err');   // 20초 안에 연결이 안 됨
+    }
+  }
+
+  // ============================================================
+  // 보는 쪽
+  // ============================================================
+  // V.st: ask(서버에 표) · offer(상대 답 기다림) · conn(연결 중) · live(보는 중) · wait(다음 경기 기다림) · err
+  let V = null, myLog = [];
+  const viewing = () => !!V;
+  function open(uid, name) {
+    if (!Cloud.user) { HUD.lobbyNote('관전은 로그인한 뒤 할 수 있습니다'); Cloud.open(); return; }
+    if (G.state !== 'lobby') { HUD.lobbyNote('관전은 로비에서만 할 수 있습니다'); return; }
+    if (!supported()) { HUD.lobbyNote('이 브라우저에서는 관전을 할 수 없습니다'); return; }
+    if (uid === me()) return;
+    if (V) close(true);
+    V = { uid, name: String(name || '친구'), st: 'ask', why: '', msg: '', t0: now(), tries: 0, info: null, hi: null, seenOff: false, retryAt: 0, askT: 0, pc: null, dc: null, keys: null, key: null, oid: 0, admin: false };
+    myLog = [];
+    $('friendPanel').hidden = true; $('devPanel').hidden = true;
+    $('watchView').hidden = false; $('wvInput').value = '';
+    Audio.init(); Audio.music(false);
+    renderQuick(); render(); renderLog();
+    ask();
+  }
+  function clearPc(v) {
+    const pc = v.pc; v.pc = null; v.dc = null; v.key = null; v.oid = 0;
+    if (pc) { try { pc.close(); } catch (e) { /* */ } }
+  }
+  function close(quiet) {
+    const v = V; if (!v) return; V = null;
+    if (v.dc && v.dc.readyState === 'open') dcSend(v.dc, { k: 'bye' });
+    else if (v.st === 'offer' || v.st === 'conn') Social.send(v.uid, 'spx', {});   // 연결 전이면 상대가 준비한 것을 치우게
+    const pc = v.pc; v.pc = null; v.dc = null; setTimeout(() => { try { if (pc) pc.close(); } catch (e) { /* */ } }, 250);
+    const vid = $('wvVideo'); if (vid) { try { vid.pause(); } catch (e) { /* */ } vid.srcObject = null; }
+    $('watchView').hidden = true;
+    try { const i = $('wvInput'); if (i) i.blur(); } catch (e) { /* */ }
+    if (G.state === 'lobby') Audio.music(true);
+    if (!quiet) { HUD.renderLobby(); Social.render(); }
+  }
+  async function ask() {
+    const v = V; if (!v) return;
+    clearPc(v);
+    v.st = 'ask'; v.t0 = now(); v.tries++; v.msg = ''; render();
+    try {
+      v.keys = await newKeys();
+      const { data, error } = await sb().rpc('spec_ask', { p_target: v.uid, p_pk: v.keys.pub });
+      if (V !== v) return;
+      if (error) throw error;
+      v.admin = !!(data && data.admin);
+      if (!Social.send(v.uid, 'spec', {})) { fail(v, '실시간 서버에 연결되어 있지 않습니다 — 잠시 뒤 다시 시도해 주세요'); return; }
+      v.st = 'offer'; v.askT = now(); render();
+    } catch (e) {
+      if (V !== v) return;
+      const m = errText(e);
+      if (srvMissing(e)) fail(v, Cloud.admin ? '서버 설정 필요: Supabase SQL Editor 에서 supabase/spectate.sql 을 실행해 주세요' : '관전 서버를 준비하는 중입니다 — 나중에 다시 시도해 주세요');
+      else if (/\bdeny\b/.test(m)) fail(v, '친구만 관전할 수 있습니다 (친구 목록에서 수락된 친구)');
+      else if (/\bauth\b/.test(m)) fail(v, '로그인이 필요합니다');
+      else fail(v, '관전을 시작하지 못했습니다 — ' + Cloud.msgOf(e));
+    }
+  }
+  function fail(v, msg) { clearPc(v); v.st = 'err'; v.msg = msg; detach(); render(); }
+  // why: lobby(경기 중 아님) · loading(경기 불러오는 중) · over(경기 끝) · stop(친구가 이번 경기 관전을 끝냄) · gone(연결 끊김) · noans(응답 없음)
+  function toWait(v, why) {
+    clearPc(v); detach();
+    v.st = 'wait'; v.why = why; v.msg = '';
+    v.seenOff = !(why === 'stop' || why === 'over');   // 끝난(또는 관전을 끝낸) 경기를 다시 요청하지 않게: 한 번 '경기 밖'을 본 뒤에 다시
+    if (why === 'gone' && v.tries >= 3) { fail(v, `${v.name}님과 연결이 여러 번 끊겼습니다`); return; }
+    v.retryAt = now() + (why === 'loading' ? 3000 : why === 'noans' ? 2500 : 1500);
+    render();
+  }
+  // 상대가 잠가 보낸 연결 정보 (내 키로 풀리지 않으면 다른 사람이 꾸민 것 → 무시)
+  async function onOffer(from, m) {
+    const v = V; if (!v || from.uid !== v.uid || v.st !== 'offer' || !v.keys || !m || !m.pub || !m.box) return;
+    let key, d;
+    try { key = await derive(v.keys.kp.privateKey, m.pub); d = await unseal(key, m.box); } catch (e) { return; }
+    if (V !== v || v.st !== 'offer' || !d || d.type !== 'offer') return;
+    v.st = 'conn'; v.key = key; v.oid = m.o; v.t0 = now(); render();
+    try {
+      const pc = v.pc = new RTCPeerConnection({ iceServers: NET_ICE });
+      pc.ontrack = (e) => { if (V === v && v.pc === pc) attach(e.streams && e.streams[0] ? e.streams[0] : new MediaStream([e.track])); };
+      pc.ondatachannel = (e) => {
+        if (V !== v || v.pc !== pc) return;
+        const dc = v.dc = e.channel;
+        dc.onmessage = (ev) => fromHost(v, ev.data);
+        dc.onclose = () => { if (V === v && v.dc === dc && (v.st === 'live' || v.st === 'conn')) toWait(v, 'gone'); };
+      };
+      pc.onconnectionstatechange = () => {
+        if (V !== v || v.pc !== pc) return;
+        const s = pc.connectionState;
+        if (s === 'connected') { if (v.st !== 'live') { v.st = 'live'; v.tries = 0; render(); } }
+        else if (s === 'failed') fail(v, '기기끼리 직접 연결이 안 되어 관전할 수 없습니다 (일부 모바일·회사·학교 망은 바로 연결되지 않습니다)');
+      };
+      await pc.setRemoteDescription(d);
+      await pc.setLocalDescription(await pc.createAnswer());
+      await gathered(pc);
+      if (V !== v || v.pc !== pc) return;
+      Social.send(v.uid, 'span', { o: v.oid, box: await seal(key, desc(pc)) });
+    } catch (e) { console.warn('관전 연결 실패', e); if (V === v) fail(v, '연결을 만들지 못했습니다 — 다시 시도해 주세요'); }
+  }
+  function onNo(from, m) {
+    const v = V; if (!v || from.uid !== v.uid || !(v.st === 'offer' || v.st === 'ask')) return;
+    const why = m && m.why, n = v.name;
+    if (why === 'lobby' || why === 'notyet') { toWait(v, why === 'notyet' ? 'loading' : 'lobby'); return; }
+    if (why === 'stop') { toWait(v, 'stop'); return; }
+    fail(v, ({ off: `${n}님이 친구 관전을 꺼 두었습니다 (설정 → 친구가 내 경기 관전)`, full: `${n}님의 경기를 이미 ${WATCH_MAX}명이 보고 있습니다`, verify: '관전 확인에 실패했습니다 — 다시 시도해 주세요',
+      srv: '관전 서버를 준비하는 중입니다 — 나중에 다시 시도해 주세요', err: `${n}님의 기기에서 관전을 시작하지 못했습니다` })[why] || '관전할 수 없습니다');
+  }
+  function fromHost(v, data) {
+    let m; try { m = JSON.parse(data); } catch (e) { return; }
+    if (!m || V !== v) return;
+    if (m.k === 'i') { v.info = m; renderInfo(); }
+    else if (m.k === 'hi') { v.hi = m; if (m.n) v.name = String(m.n); render(); }
+    else if (m.k === 'c') { const t = Chat.clean(m.t); if (t) addLog({ kind: m.s === 'w' ? 'w' : 'p', n: Chat.clean(m.n) || '?', t }); }
+    else if (m.k === 'end') toWait(v, m.why === 'stop' ? 'stop' : 'over');
+  }
+  // 영상
+  function attach(stream) {
+    const vid = $('wvVideo'); if (!vid || vid.srcObject === stream) return;
+    vid.srcObject = stream; vid.muted = true;
+    const p = vid.play(); if (p && p.catch) p.catch(() => {});
+    // 소리: 관전 버튼을 누른 뒤라 대개 켤 수 있다 — 막히면 '소리 켜기' 버튼
+    setTimeout(() => { if (V && vid.srcObject === stream && !V.mute) sound(true); }, 50);
+  }
+  function detach() { const vid = $('wvVideo'); if (vid && vid.srcObject) { try { vid.pause(); } catch (e) { /* */ } vid.srcObject = null; } }
+  // on: 소리 켜기. user: 사람이 버튼으로 고름(끄면 다시 연결돼도 끈 채로)
+  function sound(on, user) {
+    const vid = $('wvVideo'), v = V; if (!vid || !v) return;
+    if (user) v.mute = !on;
+    vid.muted = !on;
+    if (on) { const p = vid.play(); if (p && p.catch) p.catch(() => { if (V !== v) return; vid.muted = true; renderSound(); }); }   // 자동 재생이 막힘 → '소리 켜기' 버튼
+    renderSound();
+  }
+  function renderSound() { const b = $('wvSound'); if (!b || !V) return; const vid = $('wvVideo'); const on = vid && !vid.muted; b.textContent = on ? '🔊 소리 끄기' : '🔇 소리 켜기'; }
+  function viewTick() {
+    const v = V; if (!v) return;
+    if (G.state !== 'lobby') { close(true); return; }   // 내가 경기를 시작함 (파티 출격 등)
+    const o = Social.online.get(v.uid), t = now();
+    if (!o || !o.pl) v.seenOff = true;
+    if (v.st === 'wait') {
+      if (o && o.pl && v.seenOff && t >= v.retryAt) { ask(); return; }
+      const w2 = !o ? 'offline' : !o.pl ? 'out' : '';
+      if (w2 !== v.why2) { v.why2 = w2; render(); }
+    } else if (v.st === 'offer' && t - v.askT > 9000) {
+      if (v.tries < 3 && o && o.pl) toWait(v, 'noans');
+      else fail(v, `${v.name}님의 응답이 없습니다 — 예전 버전의 게임이거나 연결이 끊겼을 수 있습니다`);
+    } else if (v.st === 'conn' && t - v.t0 > 16000) fail(v, '기기끼리 직접 연결이 안 되어 관전할 수 없습니다 (일부 모바일·회사·학교 망은 바로 연결되지 않습니다)');
+    else if (v.st === 'live' && (!o || !o.pl)) toWait(v, o ? 'over' : 'gone');
+  }
+  // 로비 채널로 온 관전 메시지 (Social.onMsg 가 넘김)
+  function onLobby(m) {
+    const from = m.from; if (!from || !from.uid) return;
+    if (m.k === 'spec') onAsk(from);
+    else if (m.k === 'spof') onOffer(from, m);
+    else if (m.k === 'span') onAnswer(from, m);
+    else if (m.k === 'spno') onNo(from, m);
+    else if (m.k === 'spx') { const v = viewers.get(from.uid); if (v && !v.open) drop(v, 'bye'); }
+  }
+
+  // ---------- 보는 쪽 화면 (#watchView) ----------
+  function render() {
+    const v = V; if (!v) return;
+    const hi = v.hi || {};
+    $('wvName').textContent = v.name;
+    $('wvMode').textContent = [v.admin ? '운영자 관전' : '관전 중', hi.mode, hi.map].filter(Boolean).join(' · ');
+    const box = $('wvMsg'); box.innerHTML = '';
+    let txt = '', spin = false, retry = false;
+    if (v.st === 'ask' || v.st === 'offer') { txt = `${v.name}님에게 관전을 요청하는 중…`; spin = true; }
+    else if (v.st === 'conn') { txt = '화면을 연결하는 중…'; spin = true; }
+    else if (v.st === 'live') txt = '';
+    else if (v.st === 'err') { txt = v.msg || '관전할 수 없습니다'; retry = true; }
+    else if (v.st === 'wait') {
+      spin = true;
+      txt = v.why2 === 'offline' ? `${v.name}님이 접속해 있지 않습니다 — 다시 들어와 경기를 시작하면 이어서 봅니다`
+        : v.why === 'stop' ? `${v.name}님이 이번 경기의 관전을 끝냈습니다 — 다음 경기가 시작되면 이어서 봅니다`
+          : v.why === 'over' ? `${v.name}님의 경기가 끝났습니다 — 다음 경기가 시작되면 이어서 봅니다`
+            : v.why === 'gone' ? `${v.name}님과 연결이 끊겼습니다 — 다시 연결하는 중…`
+              : v.why === 'loading' ? `${v.name}님이 경기를 불러오는 중입니다…`
+                : v.why === 'noans' ? `${v.name}님의 응답을 기다리는 중…`
+                  : `${v.name}님은 지금 경기 중이 아닙니다 — 경기가 시작되면 바로 보여 드립니다`;
+    }
+    box.hidden = !txt;
+    if (txt) {
+      if (spin) box.appendChild(h('i', 'spin'));
+      box.appendChild(h('p', '', txt));
+      if (retry) { const b = h('button', 'btn amber sm', '다시 시도'); b.type = 'button'; b.onclick = () => { Audio.ui(); if (V) { V.tries = 0; ask(); } }; box.appendChild(b); }
+    }
+    $('watchView').classList.toggle('live', v.st === 'live');
+    renderInfo(); renderSound();
+  }
+  function renderInfo() {
+    const el = $('wvInfo'); if (!el) return;
+    const v = V, i = v && v.st === 'live' ? v.info : null;
+    if (!i || i.hp === undefined) { el.textContent = ''; return; }
+    const parts = [];
+    if (i.ps) parts.push('일시 정지');
+    if (i.isl) parts.push('스타트 섬'); else if (i.air) parts.push('수송기');
+    if (!i.al) parts.push(i.sp ? `탈락 — 팀원 ${i.sp} 관전 중` : '탈락');
+    else if (i.kn) parts.push('기절');
+    else parts.push(`체력 ${i.hp}`);
+    parts.push(`처치 ${i.kl}`);
+    if (i.sc) parts.push(`점수 ${i.sc[0]} : ${i.sc[1]}`); else if (i.left !== undefined) parts.push(`생존 ${i.left}`);
+    if (i.w && i.al) parts.push(i.w);
+    el.textContent = parts.join(' · ');
+  }
+  function addLog(e) {
+    const L = myLog[myLog.length - 1]; if (e.kind === 'sys' && L && L.kind === 'sys' && L.t === e.t && Date.now() - L.at < 5000) return;   // 같은 안내를 연달아 쌓지 않음
+    e.at = Date.now(); myLog.push(e); if (myLog.length > 30) myLog.shift(); renderLog();
+  }
+  function renderLog() {
+    const box = $('wvLog'); if (!box) return; box.innerHTML = '';
+    for (const e of myLog.slice(-6)) box.appendChild(Chat.line(e));
+  }
+  function renderQuick() {
+    const q = $('wvQuick'); if (!q || q.childElementCount) return;
+    for (const t of WATCH_QUICK) { const b = h('button', '', t); b.type = 'button'; b.onclick = () => say(t); q.appendChild(b); }
+  }
+  // 관전하면서 친구에게 문자 (관전 연결로 — 연결되어 있을 때만)
+  function say(text) {
+    const v = V; if (!v) return false;
+    const t = Chat.clean(text); if (!t) return false;
+    if (v.st !== 'live' || !v.dc || v.dc.readyState !== 'open') { addLog({ kind: 'sys', n: '', t: '화면이 연결된 뒤에 문자를 보낼 수 있습니다' }); return false; }
+    const wait = Chat.wait(); if (wait) { addLog({ kind: 'sys', n: '', t: wait }); return false; }
+    Chat.mark(); dcSend(v.dc, { k: 'chat', t }); addLog({ kind: 'me', n: '나', t });
+    return true;
+  }
+
+  // ---------- 개발자 메뉴: 경기 중인 모든 계정 (관리자) ----------
+  let devKey = '';
+  function devList(box) {
+    if (!box) return;
+    const list = [...Social.online.values()].filter((o) => o && o.uid && o.uid !== me() && o.pl).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    devKey = JSON.stringify([G.state, list.map((o) => [o.uid, o.name, o.lv, o.pn])]);
+    box.innerHTML = '';
+    if (!Social.connected) { box.appendChild(h('div', 'dev-note', '실시간 서버에 연결 중…')); return; }
+    if (!list.length) { box.appendChild(h('div', 'dev-note', '지금 경기 중인 계정이 없습니다 (로그인한 계정만 보입니다)')); return; }
+    for (const o of list) {
+      const b = h('button', 'btn', `👁 ${o.name || '?'} · Lv ${o.lv || 1}${o.pn > 1 ? ` · 파티 ${o.pn}명` : ''}`); b.type = 'button';
+      b.disabled = G.state !== 'lobby'; if (b.disabled) b.title = '로비에서만 관전할 수 있습니다';
+      b.onclick = () => { Audio.ui(); open(o.uid, o.name); };
+      box.appendChild(b);
+    }
+  }
+  function devTick() {
+    const box = $('devWatch'); if (!box || $('devPanel').hidden) return;
+    const list = [...Social.online.values()].filter((o) => o && o.uid && o.uid !== me() && o.pl);
+    const k = JSON.stringify([G.state, list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))).map((o) => [o.uid, o.name, o.lv, o.pn])]);
+    if (k !== devKey) devList(box);
+  }
+
+  // ---------- 시작 ----------
+  function setup() {
+    const tag = $('watchTag'); if (tag) { tag.addEventListener('pointerdown', (e) => e.stopPropagation()); tag.addEventListener('click', tagClick); }
+    $('wvClose').addEventListener('click', () => { Audio.ui(); close(); });
+    $('wvSound').addEventListener('click', () => { const vid = $('wvVideo'); sound(!!(vid && vid.muted), true); });
+    $('wvForm').addEventListener('submit', (e) => { e.preventDefault(); const i = $('wvInput'); if (say(i.value)) i.value = ''; });
+    $('wvInput').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); e.target.blur(); } });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && V && !(e.target && e.target.tagName === 'INPUT')) close(); });   // Esc = 관전 나가기
+    setInterval(() => { try { sendTick(); viewTick(); devTick(); } catch (e) { console.warn('관전', e); } }, 500);
+  }
+  // 로그아웃: 모두 끊기
+  function stopAll() { for (const v of [...viewers.values()]) drop(v, 'stop'); if (V) close(true); }
+  return { setup, open, close, onLobby, sendChat, viewerCount, viewing, renderTag, devList, stopAll,
+    get viewers() { return viewers; }, get view() { return V; }, get cap() { return cap; }, _say: say, _info: info };
 })();
 
 // ---------- 10_winter.js ----------
@@ -29823,7 +30622,7 @@ function loop(ts) {
     if (G.state === 'lobby' || G.state === 'loading') {
       GunSkin.update(dt);   // 총기 스킨: 빛 애니메이션·꺼내기 효과 (경기 중에는 G.update와 함께 — 멈추면 같이 멈춤)
       if (Cutscene.active) { Cutscene.update(dt); Cutscene.render(G.renderer); }
-      else { Lobby.update(dt); G.renderer.render(Lobby.scene, Lobby.cam); }
+      else if (!Watch.viewing()) { Lobby.update(dt); G.renderer.render(Lobby.scene, Lobby.cam); }   // 친구 관전 화면이 덮고 있으면 로비 3D 는 그리지 않음
       Models.pump(5); Shop.pump();
     }
     else if (G.scene) {
@@ -29852,7 +30651,7 @@ function boot() {
   Lobby.init();
   setupInput($('gl'));
   setupTouch($('touch'));
-  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Shop.setup(); Pass.setup(); Ladder.setup(); Dev.setup(); Prof.setup(); Cloud.setup(); Cloud.init();
+  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Chat.setup(); Watch.setup(); Shop.setup(); Pass.setup(); Ladder.setup(); Dev.setup(); Prof.setup(); Cloud.setup(); Cloud.init();
   $('rotateDismiss').addEventListener('click', () => { G.rotateDismissed = true; $('rotateHint').hidden = true; });
   G.onResize();
   document.addEventListener('pointerdown', () => { Audio.init(); if (G.state === 'lobby') Audio.music(true); }, { once: true });
@@ -29861,7 +30660,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

@@ -8,7 +8,7 @@
 //  · 마스터 리미터(컴프레서)로 연사 시 클리핑 방지, 동시 재생 수 제한
 // ============================================================
 const Audio = (() => {
-  let ctx = null, master, comp, sfxBus, musicBus, outIn, roomIn, noiseBuf;
+  let ctx = null, master, comp, sfxBus, musicBus, outIn, roomIn, noiseBuf, limNode = null, tapDest = null;   // tapDest: 친구 관전으로 보내는 소리 (10_watch.js)
   let active = 0, ambient = null, music = null, bankReady = false;
   const MAX_VOICES = 48, bank = {}, lastPlay = {};
   const listener = { x: 0, y: 0, z: 0, yaw: 0, indoor: 0 };
@@ -24,7 +24,7 @@ const Audio = (() => {
     comp.threshold.value = -9; comp.knee.value = 10; comp.ratio.value = 3.5; comp.attack.value = 0.006; comp.release.value = 0.22;
     const lim = ctx.createDynamicsCompressor();
     lim.threshold.value = -2; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.09;
-    comp.connect(master); master.connect(lim); lim.connect(ctx.destination);
+    comp.connect(master); master.connect(lim); lim.connect(ctx.destination); limNode = lim;
     sfxBus = ctx.createGain(); sfxBus.connect(comp);
     musicBus = ctx.createGain(); musicBus.connect(master);
     const outVerb = ctx.createConvolver(); outVerb.buffer = impulse(2.6, 'out');
@@ -457,6 +457,9 @@ const Audio = (() => {
   const api = {
     init, applyVolumes, setListener,
     get ready() { return !!ctx; }, get bankReady() { return bankReady; }, get _bank() { return bank; },
+    // 친구 관전(10_watch.js): 내가 듣는 소리(리미터 뒤)를 갈래로 떼어 영상과 함께 보낸다 — 관전자가 있을 때만 붙인다
+    stream() { if (!ctx || !limNode || !ctx.createMediaStreamDestination) return null; if (!tapDest) { tapDest = ctx.createMediaStreamDestination(); limNode.connect(tapDest); } return tapDest.stream; },
+    streamStop() { if (!tapDest) return; try { limNode.disconnect(tapDest); } catch (e) { /* 이미 끊김 */ } tapDest = null; },
     // weapon: 무기 id (또는 예전 방식의 계열 이름)
     gunshot(pos, weapon, isOwn, indoor) {
       if (!ctx) return;
