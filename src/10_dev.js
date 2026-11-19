@@ -111,9 +111,10 @@ const Dev = (() => {
 
   // ---------- 계정 관리 (서버 함수 — supabase/admin.sql) ----------
   //  목록(최근 저장 순·이름 검색) · 골드 탄피 지급 · 기록 초기화 · 계정 삭제. 초기화·삭제는 두 번 눌러야 실행
-  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '', sel: '', det: {} };
+  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '', sel: '', det: {}, rn: {} };
   const rpcErr = (e) => { const m = String((e && e.message) || e || ''); return e && e.code === 'PGRST202' || /could not find|does not exist/i.test(m) ? '서버 설정 필요: Supabase SQL Editor에서 supabase/admin.sql 을 실행해 주세요' : /not admin/i.test(m) ? '관리자로 등록되지 않은 계정입니다 (이 계정이 있는 상태에서 admin.sql 을 실행해야 등록됨)' : Cloud.msgOf(e); };
-  const RES = { denied: '관리자만 할 수 있습니다', self: '자기 계정은 지울 수 없습니다', admin: '다른 관리자 계정은 지울 수 없습니다', notfound: '없는 계정입니다', amount: '지급 양이 올바르지 않습니다 (1 ~ 1,000,000)' };
+  const RES = { denied: '관리자만 할 수 있습니다', self: '자기 계정은 지울 수 없습니다', admin: '다른 관리자 계정은 지울 수 없습니다', notfound: '없는 계정입니다', amount: '지급 양이 올바르지 않습니다 (1 ~ 1,000,000)',
+    invalid: '아이디는 2~10자, 한글·영문·숫자·밑줄(_)만 쓸 수 있습니다', taken: '이미 사용 중인 아이디입니다', same: '지금 아이디와 같습니다', reserved: "'개발자'는 관리자 계정만 쓸 수 있습니다" };
   async function accLoad() {
     const sb = Cloud.client(); if (!sb || !Cloud.user) { ACC.err = '로그인이 필요합니다'; renderAcc(); return; }
     ACC.busy = true; ACC.err = ''; renderAcc();
@@ -121,13 +122,40 @@ const Dev = (() => {
     catch (e) { ACC.err = rpcErr(e); ACC.list = null; }
     ACC.busy = false; renderAcc();
   }
+  // 돌려주는 값: 서버 함수의 답('ok' 등) · 실패하면 null
   async function accDo(fn, args, okMsg) {
-    const sb = Cloud.client(); if (!sb) return;
+    const sb = Cloud.client(); if (!sb) return null;
     ACC.busy = true; ACC.msg = '처리 중…'; renderAcc();
-    try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; ACC.msg = data === 'ok' ? okMsg : RES[data] || `실패: ${data}`; }
+    let res = null;
+    try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; res = data; ACC.msg = data === 'ok' ? okMsg : RES[data] || `실패: ${data}`; }
     catch (e) { ACC.msg = rpcErr(e); }
     ACC.busy = false; ACC.det = {}; await accLoad();
     const su = ACC.sel && ACC.list && ACC.list.find((x) => x.id === ACC.sel); if (su) detLoad(su);   // 펼쳐 둔 상세도 새로
+    return res;
+  }
+  // 아이디 강제 변경 (서버 함수 admin_rename — admin.sql v22): 로그인 아이디(내부 이메일)도 같이 바뀐다 → 그 사람은 다음 로그인부터 새 아이디 + 원래 비밀번호
+  //  두 번 눌러야 실행 · 접속 중이면 로비 채널로 알림(rn) → 그 기기가 서버에서 다시 읽고 창으로 알려 줌 (10_cloud.js)
+  function renameRow(u) {
+    const rb = h('div', 'acc-rn'), k = 'rn' + u.id;
+    rb.appendChild(h('span', 'acc-meta', '아이디 강제 변경'));
+    const inp = h('input', 'dev-sel'); inp.placeholder = '새 아이디 (2~10자)'; inp.maxLength = 10; inp.value = ACC.rn[u.id] || ''; inp.spellcheck = false; inp.autocomplete = 'off';
+    inp.oninput = () => { ACC.rn[u.id] = inp.value; if (ACC.sure === k) { ACC.sure = ''; go.textContent = '바꾸기'; } };
+    const go = h('button', 'btn sm amber', ACC.sure === k ? '정말 바꾸기?' : '바꾸기'); go.type = 'button'; go.disabled = ACC.busy;
+    inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); go.click(); } });
+    go.onclick = () => {
+      const nm = String(inp.value || '').normalize('NFC').trim(), bad = Cloud.checkId(nm);
+      if (bad || nm === u.username) { ACC.sure = ''; ACC.msg = bad || RES.same; renderAcc(); return; }
+      if (ACC.sure !== k) { ACC.sure = k; clearTimeout(ACC.sureT); ACC.sureT = setTimeout(() => { ACC.sure = ''; renderAcc(); }, 3000); renderAcc(); return; }
+      ACC.sure = ''; clearTimeout(ACC.sureT);
+      const old = u.username, id = u.id;
+      accDo('admin_rename', { p_id: id, p_name: nm }, `${old} → ${nm} 으로 아이디를 바꿨습니다 — 다음 로그인부터 '${nm}' + 원래 비밀번호 (접속 중이면 바로 알림)`).then((r) => {
+        if (r !== 'ok') return;
+        delete ACC.rn[id];
+        if (id === Cloud.uid) Cloud.refreshName(); else Social.send(id, 'rn', {});
+      });
+    };
+    rb.append(inp, go);
+    return rb;
   }
   // ---------- 계정 상세 (목록에서 계정을 누르면 그 아래에 펼침) ----------
   //  서버 함수 admin_get 이 있으면 전체 기록(stats·rank)까지, 없으면(옛 admin.sql) 목록 값만 보여 준다
@@ -183,6 +211,7 @@ const Dev = (() => {
       const btn = h('button', 'btn sm ' + (isB ? 'danger' : 'amber'), isB ? '베타 테스터 회수' : '베타 테스터 칭호 부여'); btn.type = 'button'; btn.disabled = ACC.busy;
       btn.onclick = () => accDo('admin_beta', { p_id: u.id, p_on: !isB }, isB ? `${u.username}님의 베타 테스터 칭호를 회수했습니다` : `${u.username}님에게 베타 테스터 칭호를 부여했습니다 — 사진·테두리·칭호·테스터 총 스킨(접속 중이면 다음 저장 때)`).then(() => { if (u.id === Cloud.uid) Cloud.pushNow(); });   // 내 계정이면 바로 합쳐 받기
       bb.appendChild(btn); box.appendChild(bb);
+      box.appendChild(renameRow(u));
     }
     // 레벨 막대
     const lvb = h('div', 'acc-dlv'); lvb.appendChild(h('b', '', `Lv ${L.lv}`));
@@ -210,7 +239,7 @@ const Dev = (() => {
     }
     // 계정
     const ac = h('div', 'acc-meta acc-dacc');
-    ac.textContent = `가입 ${fmtT(u.created_at || x.created_at, 1)} · 마지막 저장 ${fmtT(u.updated_at)}` + (x.last_sign_in_at ? ` · 마지막 로그인 ${fmtT(x.last_sign_in_at)}` : '') + (x.name_changed_at ? ` · 아이디 변경 ${fmtT(x.name_changed_at)}` : '') + ` · 고유번호 ${String(u.id).slice(0, 8)}`;
+    ac.textContent = `가입 ${fmtT(u.created_at || x.created_at, 1)} · 마지막 저장 ${fmtT(u.updated_at)}` + (x.last_sign_in_at ? ` · 마지막 로그인 ${fmtT(x.last_sign_in_at)}` : '') + (x.name_changed_at ? ` · 아이디 변경 ${fmtT(x.name_changed_at)}${x.name_forced_at && x.name_forced_at >= x.name_changed_at ? '(운영자)' : ''}` : '') + ` · 고유번호 ${String(u.id).slice(0, 8)}`;
     box.appendChild(ac);
     if (D.old) box.appendChild(h('div', 'dev-note', '재화·스킨·최근 경기·랭크 상세는 Supabase SQL Editor에서 supabase/admin.sql 을 다시 실행하면 보입니다'));
     return box;

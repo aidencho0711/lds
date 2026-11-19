@@ -794,12 +794,14 @@ const FrameGate = {
   },
 };
 // FPS 표시: 실제로 그린 프레임 수 (0.5초마다 갱신, 경기 중에만 · 개발자 통계가 켜져 있으면 그쪽에 이미 나오므로 숨김)
-const FpsBox = { n: 0, t0: 0, el: null,
+//  last: 최근 0.5초 FPS — 친구 관전이 해상도를 올린 뒤 FPS 가 떨어지는지 본다 (10_watch.js)
+const FpsBox = { n: 0, t0: 0, el: null, last: 0,
   tick(t) {
     if (!this.t0) { this.t0 = t; this.n = 0; return; }   // 시작 프레임은 세지 않음 (간격 수 = 프레임 수)
     this.n++; if (t - this.t0 < 500) return;
+    this.last = Math.round(this.n * 1000 / (t - this.t0));
     const el = this.el || (this.el = $('fpsBox')), dev = $('devStats'), show = !!SETTINGS.showFps && G.state === 'play' && !(dev && !dev.hidden);
-    if (el) { el.hidden = !show; if (show) el.textContent = Math.round(this.n * 1000 / (t - this.t0)) + ' FPS' + (SETTINGS.fps ? ' / ' + SETTINGS.fps : ''); }
+    if (el) { el.hidden = !show; if (show) el.textContent = this.last + ' FPS' + (SETTINGS.fps ? ' / ' + SETTINGS.fps : ''); }
     this.n = 0; this.t0 = t;
   } };
 let _last = performance.now();

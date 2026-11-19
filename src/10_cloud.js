@@ -139,8 +139,8 @@ const Cloud = (() => {
   // 로그인 직후: 게스트 기록 보관 → 서버 기록 불러오기(없으면 이 기기 기록 올리기)
   async function afterLogin(u, fresh) {
     user = u;
-    let prof = null;
-    try { const r = await sb.from('profiles').select('username').eq('id', u.id).maybeSingle(); prof = r.data; } catch (e) { /* 프로필 조회 실패해도 진행 */ }
+    const prev = store.get('account', null);
+    const prof = await profOf(u.id);   // 조회 실패해도 진행
     name = (prof && prof.username) || (u.user_metadata && u.user_metadata.username) || '플레이어';
     if (!store.get('guestBackup', null)) store.set('guestBackup', { stats: STATS, rank: Rank.state, settings: SETTINGS });
     let row = null;
@@ -164,7 +164,51 @@ const Cloud = (() => {
     Dev.onLogin();   // 개발자 계정이면 모든 스킨 지급 (10_dev.js)
     refreshUi();
     if (G.onAuth) try { G.onAuth(true); } catch (e) { console.warn(e); } // 친구·파티 연결
+    if (prev && prev.id === u.id && prev.name && prof && prof.username && prev.name !== prof.username) renamed(prev.name, name, prof);   // 이 기기가 모르는 사이에 아이디가 바뀜
     return note;
+  }
+
+  // ---------- 아이디가 다른 곳에서 바뀜 (v22: 운영자 강제 변경 — admin.sql admin_rename · 다른 기기에서 본인 변경) ----------
+  //  프로필: 아이디 + 바꾼 시각. name_forced_at(운영자가 바꾼 시각)이 본인 변경(name_changed_at)보다 늦지 않으면 운영자 변경
+  //  (서버에 그 칸이 아직 없으면 아이디만 읽는다)
+  async function profOf(id) {
+    try {
+      let r = await sb.from('profiles').select('username, name_changed_at, name_forced_at').eq('id', id).maybeSingle();
+      if (r.error) r = await sb.from('profiles').select('username').eq('id', id).maybeSingle();
+      return r.data || null;
+    } catch (e) { return null; }
+  }
+  // 세션을 새로 받아 둔다 — 로그인 아이디(내부 이메일)가 바뀌었으므로 (비밀번호 변경이 옛 이메일로 다시 로그인해 확인하다 실패하지 않게)
+  async function freshUser() { try { const r = await sb.auth.refreshSession(); if (r && r.data && r.data.user && user && r.data.user.id === user.id) user = r.data.user; } catch (e) { /* 다음 자동 갱신 때 */ } }
+  let rnPend = null, rnT = null, rnAt = 0;
+  function renamed(old, nm, p) {
+    const forced = !!(p && p.name_forced_at && (!p.name_changed_at || new Date(p.name_forced_at) >= new Date(p.name_changed_at)));
+    freshUser();
+    rnPend = { old, nm, forced, toasted: false };
+    showRenamed();
+  }
+  // 로비에서 창으로 알림 (경기 중·관전 화면이면 알림만 띄우고 로비로 돌아오면 창)
+  function showRenamed() {
+    const R = rnPend; if (!R) return;
+    clearTimeout(rnT);
+    if (G.state !== 'lobby' || Watch.viewing()) {
+      if (!R.toasted) { R.toasted = true; HUD.toast(`${R.forced ? '운영자가 ' : ''}아이디를 '${R.nm}'(으)로 바꿨습니다 — 다음 로그인부터 새 아이디`, 'info'); }
+      rnT = setTimeout(showRenamed, 1500); return;
+    }
+    rnPend = null;
+    $('rnTitle').textContent = R.forced ? '운영자가 아이디를 바꿨습니다' : '아이디가 바뀌었습니다';
+    $('rnOld').textContent = R.old; $('rnNew').textContent = R.nm;
+    $('rnText').textContent = (R.forced ? '' : '다른 기기에서 아이디를 바꿨습니다. ') + `다음에 로그인할 때는 새 아이디 '${R.nm}'와 원래 비밀번호를 쓰세요. 이 기기는 지금 로그인된 그대로입니다.`;
+    $('rnPanel').hidden = false;
+  }
+  // 운영자가 바꿨다는 신호(로비 채널 rn — 누구나 보낼 수 있으므로 서버에서 다시 읽어 보기만 함 · 3초에 한 번)
+  async function refreshName() {
+    if (!sb || !user || Date.now() - rnAt < 3000) return false; rnAt = Date.now();
+    const p = await profOf(user.id);
+    if (!p || !p.username || p.username === name || !user) return false;
+    const old = name; name = p.username; store.set('account', { id: user.id, name });
+    refreshUi(); renamed(old, name, p);
+    return true;
   }
 
   // 관리자(개발자) 여부: 서버의 관리자 목록(supabase/admin.sql 의 public.admins — 계정 고유번호)으로 판단
@@ -281,7 +325,7 @@ const Cloud = (() => {
     if (r.startsWith('wait:')) { const t = Number(r.slice(5)) * 1000, h = Math.ceil((t - Date.now()) / 36e5); throw new Error(`아이디는 3일에 한 번 바꿀 수 있습니다 (${h > 24 ? Math.floor(h / 24) + '일 ' + (h % 24) + '시간' : h + '시간'} 뒤 가능)`); }
     if (r !== 'ok') throw new Error('바꾸지 못했습니다: ' + r);
     name = nm; store.set('account', { id: user.id, name });
-    refreshUi();
+    refreshUi(); freshUser();
     return name;
   }
   function open() { if (!enabled) return; if (user && typeof Prof !== 'undefined') { Prof.open(); return; } $('acctPanel').hidden = false; $('acctMsg').textContent = ''; $('acctMsg').className = 'acct-msg'; render(); if (!user) { loadSdk().catch(() => {}); setTimeout(() => $('acctId').focus(), 50); } }
@@ -303,9 +347,10 @@ const Cloud = (() => {
     });
     $('acctLogout').addEventListener('click', async () => { await signOut(); close(); HUD.lobbyNote('로그아웃했습니다 — 이 기기의 게스트 기록으로 돌아왔습니다'); });
     $('acctSyncNow').addEventListener('click', async () => { const ok = await pushNow(); render(); if (ok) msg('저장했습니다', true); });
+    $('rnOk').addEventListener('click', () => { Audio.ui(); $('rnPanel').hidden = true; });
     render();
   }
-  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
+  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, refreshName, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
     get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get admin() { return admin; }, get status() { return status; }, get lastError() { return lastErr; } };
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'

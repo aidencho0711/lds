@@ -8,7 +8,8 @@
 //    · 로비 채널의 보낸 사람 이름은 꾸밀 수 있으므로 서버로 확인(spec_check) — 2분 안에 그 사람이 '나를 보려고' 만든 표가 있어야 한다
 //    · 연결 정보(SDP, IP 주소 포함)는 그 표의 공개 키로만 풀리게 잠가서(ECDH P-256 + AES-GCM) 보낸다
 //      → 로비 채널의 다른 접속자는 읽을 수 없고, 표를 만든 바로 그 기기만 연결된다 (답장도 같은 열쇠로 잠가 와야 받아 준다)
-//    · 게임 화면(캔버스)을 영상으로 담는다(captureStream) — 관전자가 있을 때만. 540p·24fps·1.2Mbps (그래픽 '낮음'이면 360p·15fps·0.6Mbps)
+//    · 게임 화면(캔버스)을 영상으로 담는다(captureStream) — 관전자가 있을 때만. 720p·30fps·최대 3.6Mbps 쯤 (그래픽 '낮음' 480p·24fps · 엑스트라 1080p)
+//      화면이 작은 휴대폰은 관전자가 있는 동안 그리는 해상도를 조금 올린다(FPS 가 떨어지면 되돌림) — 아래 '관전 화질'
 //    · 친구 관전자는 3명까지(관리자는 따로) · 화면 위 '👁 ○○ 관전 중' — 두 번 누르면 이번 경기는 친구 관전을 끝냄
 //    · 설정 '친구가 내 경기 관전'을 끄면 친구는 볼 수 없다 (관리자는 볼 수 있고, 표시는 그대로 보인다)
 //  · 영상·정보·문자는 기기끼리 직접(WebRTC). 실시간 서버(Supabase)로는 신호 메시지 몇 개만 → 무료 플랜 실시간 한도를 쓰지 않는다
@@ -65,34 +66,86 @@ const Watch = (() => {
   function capStart() {
     if (cap) return cap;
     const cv = G.renderer && G.renderer.domElement; if (!cv || !cv.captureStream) return null;
-    const low = SETTINGS.quality === 'low';
-    let stream; try { stream = cv.captureStream(low ? 15 : 24); } catch (e) { console.warn('화면 담기 실패', e); return null; }
+    let stream; try { stream = cv.captureStream(SETTINGS.quality === 'low' ? 24 : 30); } catch (e) { console.warn('화면 담기 실패', e); return null; }
     const vt = stream.getVideoTracks()[0]; if (!vt) return null;
     try { vt.contentHint = 'motion'; } catch (e) { /* */ }
     let at = null; try { const as = Audio.stream(); at = as && as.getAudioTracks()[0]; if (at) stream.addTrack(at); } catch (e) { at = null; }
-    cap = { stream, vt, at, low };
+    cap = { stream, vt, at };
     return cap;
   }
   function capStop() {
     if (!cap) return; const c = cap; cap = null;
     try { c.vt.stop(); } catch (e) { /* */ }
     if (c.at) { try { c.at.stop(); } catch (e) { /* */ } Audio.streamStop(); }
+    keepRes();   // 관전용으로 올린 해상도를 되돌림
   }
-  function encOf(c) {
-    const cv = G.renderer.domElement, H = cv.height || 540;
-    return { maxBitrate: c.low ? 600000 : 1200000, maxFramerate: c.low ? 15 : 24, scaleResolutionDownBy: Math.max(1, H / (c.low ? 360 : 540)) };
+  // ---------- 관전 화질 (v22 고침 — 예전 540p·24fps·1.2Mbps, 그래픽 '낮음'은 360p·15fps·0.6Mbps 라 너무 흐렸다) ----------
+  //  · 보내는 높이: 그래픽 낮음 480p · 보통·높음 720p · 엑스트라 1080p (캔버스가 더 작으면 캔버스 그대로)
+  //    관전자가 3명 이상이면 한 단계 낮춤 — 연결마다 따로 압축한다(관전자 수만큼 인코더)
+  //  · 비트레이트 = 보내는 화소 × fps × 0.13 (1 ~ 8 Mbps). 비트가 모자라면 풀·나무가 뭉개지고 브라우저가 해상도를 스스로 더 낮춘다
+  //  · 해상도를 지킨다 (degradationPreference 'maintain-resolution' — 망·기기가 버거우면 대신 fps 를 낮춤)
+  //    브라우저 기본은 300kbps 로 시작하며 화면을 320×180 으로 줄여 보내고 몇십 초에 걸쳐 한 단계씩 키운다
+  //    (시험: 1600×900 화면이 20초 뒤에도 640×360) → 처음부터 정한 해상도로. 그 설정을 모르는 브라우저를 위해 시작 비트레이트도 올림(withStart)
+  const WQ = [{ h: 360, f: 24 }, { h: 480, f: 24 }, { h: 720, f: 30 }, { h: 1080, f: 30 }];
+  function tier() { const q = SETTINGS.quality; return WQ[Math.max(0, (q === 'low' ? 1 : q === 'extra' ? 3 : 2) - (viewers.size >= 3 ? 1 : 0))]; }
+  function encOf() {
+    const cv = G.renderer.domElement, H = cv.height || 540, Wd = cv.width || 960, T = tier(), s = Math.max(1, H / T.h), px = (Wd / s) * (H / s);
+    return { maxBitrate: Math.round(Math.min(8e6, Math.max(1e6, px * T.f * 0.13))), maxFramerate: T.f, scaleResolutionDownBy: s };
   }
   function addTracks(pc, c) {
-    const enc = encOf(c);
-    try { pc.addTransceiver(c.vt, { direction: 'sendonly', streams: [c.stream], sendEncodings: [enc] }); }
+    try { pc.addTransceiver(c.vt, { direction: 'sendonly', streams: [c.stream], sendEncodings: [encOf()] }); }
     catch (e) { pc.addTrack(c.vt, c.stream); }
     if (c.at) { try { pc.addTransceiver(c.at, { direction: 'sendonly', streams: [c.stream] }); } catch (e) { pc.addTrack(c.at, c.stream); } }
   }
-  // 연결이 정해진 뒤 화질 한도를 한 번 더 (addTransceiver 의 sendEncodings 를 무시하는 브라우저)
+  // 연결이 정해진 뒤 화질 한도를 한 번 더 (addTransceiver 의 sendEncodings 를 무시하는 브라우저) · 화면 크기·관전자 수가 바뀔 때도
   function applyEnc(v) {
     if (!cap || !v.pc) return;
     const s = v.pc.getSenders().find((x) => x.track === cap.vt); if (!s || !s.getParameters) return;
-    try { const P = s.getParameters(); if (!P.encodings || !P.encodings.length) P.encodings = [{}]; Object.assign(P.encodings[0], encOf(cap)); const r = s.setParameters(P); if (r && r.catch) r.catch(() => {}); } catch (e) { /* */ }
+    try {
+      const P = s.getParameters(), e = encOf(); if (!P.encodings || !P.encodings.length) P.encodings = [{}];
+      Object.assign(P.encodings[0], e); P.degradationPreference = 'maintain-resolution';
+      const r = s.setParameters(P); if (r && r.catch) r.catch(() => {});
+    } catch (e) { /* */ }
+  }
+  // 시작 비트레이트 — 보는 쪽 답장(SDP)의 영상 코덱에 x-google-start-bitrate (Chrome 계열만 읽고 다른 브라우저는 무시)
+  function withStart(sdp, kbps) {
+    try {
+      const L = String(sdp).split('\r\n'), pts = new Set(), fm = new Set(); let vid = false;
+      for (const l of L) { if (l.startsWith('m=')) vid = l.startsWith('m=video'); else if (vid) { const m = /^a=rtpmap:(\d+) (VP8|VP9|H264|AV1)\//i.exec(l); if (m) pts.add(m[1]); } }
+      vid = false; for (const l of L) { if (l.startsWith('m=')) vid = l.startsWith('m=video'); else if (vid) { const m = /^a=fmtp:(\d+) /.exec(l); if (m && pts.has(m[1])) fm.add(m[1]); } }
+      const out = []; vid = false;
+      for (const l of L) {
+        if (l.startsWith('m=')) vid = l.startsWith('m=video');
+        const f = vid && /^a=fmtp:(\d+) /.exec(l), r = vid && /^a=rtpmap:(\d+) /.exec(l);
+        out.push(f && pts.has(f[1]) && !/x-google-start-bitrate/.test(l) ? l + ';x-google-start-bitrate=' + kbps : l);
+        if (r && pts.has(r[1]) && !fm.has(r[1])) out.push(`a=fmtp:${r[1]} x-google-start-bitrate=${kbps}`);   // fmtp 줄이 없는 코덱(VP8)
+      }
+      return out.join('\r\n');
+    } catch (e) { return sdp; }
+  }
+  // 화면이 작은 기기(휴대폰 '낮음' = 330p 쯤): 관전자가 있는 동안 그리는 배율을 올린다 (최대 1.4배 · 기기 배율까지 · 보낼 높이까지)
+  //  올린 뒤 FPS 가 올리기 전의 85% 와 50 아래로 1.5초 떨어지면 되돌리고, 이번 경기는 다시 올리지 않는다
+  const RB = { no: false, on: false, t: 0, base: 0, low: 0, fps: [], key: '' };
+  function wantPr() {
+    const base = QUALITY[SETTINGS.quality].pr, ih = window.innerHeight || 1, T = tier();
+    if (!cap || RB.no || ih * base >= T.h * 0.9) return base;
+    return Math.max(base, Math.min(window.devicePixelRatio || 1, base * 1.4, T.h / ih));
+  }
+  function keepRes() {
+    const r = G.renderer; if (!r || !r.getPixelRatio) return;
+    const f = FpsBox.last || 0, base = QUALITY[SETTINGS.quality].pr;
+    if (!RB.on && f) { RB.fps.push(f); if (RB.fps.length > 4) RB.fps.shift(); }   // 올리기 전 FPS (최근 2초)
+    if (!cap && !RB.on) { RB.key = ''; return; }   // 관전자가 없고 올려 둔 것도 없으면 손대지 않음
+    if (RB.on && now() - RB.t > 2000 && RB.base && f && f < Math.min(RB.base * 0.85, 50)) { if (++RB.low >= 3) RB.no = true; }
+    else if (RB.on) RB.low = 0;
+    const want = wantPr(), up = want > base + 0.01;
+    if (up && !RB.on) { RB.base = RB.fps.length ? RB.fps.reduce((a, b) => a + b, 0) / RB.fps.length : 0; RB.t = now(); RB.low = 0; }
+    if (Math.abs(r.getPixelRatio() - want) > 0.01) { r.setPixelRatio(want); G.onResize(); }
+    RB.on = up;
+    // 캔버스 크기 · 관전자 수 · 그래픽 설정이 바뀌면 화질 한도를 다시
+    const cv = r.domElement, k = [cv.width, cv.height, viewers.size, SETTINGS.quality].join();
+    if (cap && k !== RB.key) { RB.key = k; for (const v of viewers.values()) applyEnc(v); }
+    if (!cap) RB.key = '';
   }
   function dcSend(dc, o) { if (!dc || dc.readyState !== 'open') return; try { if (dc.bufferedAmount < 256e3) dc.send(JSON.stringify(o)); } catch (e) { /* */ } }
   function matchInfo() {
@@ -159,7 +212,12 @@ const Watch = (() => {
     const v = viewers.get(from.uid); if (!v || !v.pc || !v.key || m.o !== v.oid || !m.box) return;
     let d; try { d = await unseal(v.key, m.box); } catch (e) { return; }
     if (viewers.get(from.uid) !== v || !d || d.type !== 'answer' || v.pc.signalingState !== 'have-local-offer') return;
-    try { await v.pc.setRemoteDescription(d); applyEnc(v); } catch (e) { console.warn('관전 연결 실패', e); drop(v, 'err'); }
+    const kb = Math.round(Math.min(2500, Math.max(800, encOf().maxBitrate * 0.6 / 1000)));
+    try {
+      try { await v.pc.setRemoteDescription({ type: 'answer', sdp: withStart(d.sdp, kb) }); }
+      catch (e) { if (v.pc && v.pc.signalingState === 'have-local-offer') await v.pc.setRemoteDescription(d); else throw e; }   // 고친 SDP 가 안 먹으면 받은 그대로
+      applyEnc(v);
+    } catch (e) { console.warn('관전 연결 실패', e); drop(v, 'err'); }
   }
   // why: 'over' 경기 끝 · 'stop' 내가 끝냄 · 'gone' 연결 끊김 · 'bye' 보는 쪽이 나감 · 'again' 다시 연결 · 'err'
   function drop(v, why) {
@@ -208,9 +266,10 @@ const Watch = (() => {
   function sendTick() {
     if (!playing()) {
       if (viewers.size) for (const v of [...viewers.values()]) drop(v, 'over');
-      stopped = false; tagSure = 0;
+      stopped = false; tagSure = 0; RB.no = false; RB.fps = [];
       return;
     }
+    keepRes();
     if (!viewers.size) return;
     const i = info(), t = now();
     for (const v of [...viewers.values()]) {

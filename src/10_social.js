@@ -86,6 +86,7 @@ const Social = (() => {
       const msg = `${m.from.name}님이 파티 초대를 예약했습니다 — 경기를 마치고 로비로 돌아가면 초대가 옵니다`;
       if (G.state === 'lobby') HUD.lobbyNote(msg); else HUD.toast(msg, 'info');
     } else if (m.k === 'rsvx') rsvIn.delete(m.from.uid);
+    else if (m.k === 'rn') Cloud.refreshName();   // 운영자가 내 아이디를 바꿈 (10_dev.js) — 서버에서 다시 읽어 확인만
   }
   function expireInvites() { const n = invites.length; invites = invites.filter((v) => Date.now() - v.t < 45000); if (invites.length !== n) { renderInvites(); render(); } }
 

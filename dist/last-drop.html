@@ -1285,6 +1285,12 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 /* 개발자 계정 상세: 베타 테스터 · 하드코어 */
 .acc-beta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acc-beta .ttl { font-size: 0.7rem; padding: 1px 12px; }
+/* v22 개발자 계정 상세: 아이디 강제 변경 · 바뀐 사람에게 보이는 안내 */
+.acc-rn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acc-rn .dev-sel { flex: 1 1 140px; max-width: 200px; height: 32px; }
+#rnPanel { z-index: 27; }   /* 개발자 메뉴(26) 등 다른 창보다 위 (관전 화면이 덮고 있으면 나올 때까지 기다림) */
+.menu.rn-box { width: min(340px, 100%); text-align: center; }
+.rn-names { margin: 4px 0 0; font-size: 1.15rem; } .rn-names s { color: var(--dim); } .rn-names b { color: var(--amber); }
 /* v20 테스터(베타 테스터 한정 컬렉션): 창고·무기 칸 전용 테두리 · 육각 β 번호 배지 · EXCLUSIVE 문구 */
 @keyframes betaEdge { 0%, 100% { box-shadow: 0 0 0 1px rgba(63, 245, 255, 0.55) inset, 0 0 10px rgba(63, 245, 255, 0.25); } 50% { box-shadow: 0 0 0 1px rgba(63, 245, 255, 0.95) inset, 0 0 18px rgba(63, 245, 255, 0.5); } }
 .wh-item.gun.tester { position: relative; border: 1px solid rgba(63, 245, 255, 0.6); border-left: 3px solid #3ff5ff; background: linear-gradient(135deg, rgba(10, 30, 36, 0.92), rgba(12, 14, 16, 0.92) 60%); animation: betaEdge 2.6s ease-in-out infinite; }
@@ -1914,6 +1920,16 @@ body.touch #islandBar { top: calc(env(safe-area-inset-top, 0px) + 38px); } body.
         <p class="micro" id="acctSync"></p>
         <div class="acct-btns"><button class="btn" type="button" id="acctSyncNow">지금 저장</button><button class="btn danger" type="button" id="acctLogout">로그아웃</button></div>
       </div>
+    </div>
+  </section>
+
+  <!-- 아이디가 바뀜 (운영자가 바꿨거나 다른 기기에서 바꿈) — 다음 로그인부터 새 아이디 -->
+  <section id="rnPanel" class="overlay" hidden>
+    <div class="menu rn-box" role="alertdialog" aria-labelledby="rnTitle">
+      <div class="eyebrow" id="rnTitle">아이디 변경</div>
+      <p class="rn-names"><s id="rnOld"></s> → <b id="rnNew"></b></p>
+      <p class="micro" id="rnText"></p>
+      <button class="btn amber" type="button" id="rnOk">확인</button>
     </div>
   </section>
 
@@ -22042,6 +22058,12 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v22', d: '2026-11-20', t: '관전 화질 높임 · 운영자 아이디 변경', items: [
+    '친구 관전 화질을 크게 높임 — 보통·높음 720p·30fps(예전 540p·24fps), 낮음 480p, 엑스트라 1080p · 비트레이트도 약 3배',
+    '관전을 시작하면 처음부터 선명하게 보임 (예전에는 320×180 같은 작은 화면으로 시작해 몇십 초에 걸쳐 조금씩 커졌음)',
+    '화면이 작은 휴대폰(그래픽 낮음·보통)은 누가 관전하는 동안만 화면 해상도를 조금 올려서 보냄 — 그 때문에 FPS 가 떨어지면 저절로 되돌림',
+    '운영자가 아이디를 바꿀 수 있게 됨 — 바뀐 계정은 다음 로그인부터 새 아이디와 원래 비밀번호로 로그인 (접속 중이면 바로, 아니면 다음에 게임을 열 때 안내 창이 뜸)',
+  ] },
   { v: 'v22', d: '2026-11-19', t: '백룸 이벤트: 연결하기 전 탈출도 인정', items: [
     '백룸을 계정과 연결하기 전에 탈출한 기록도 이제 셈 — 이벤트 창의 「백룸 들어가기」로 그 기기에서 백룸을 한 번 열면, 그 기기의 탈출 도감 기록이 처음 연결한 계정 한 곳에 한 번 옮겨짐 (그다음 이벤트 창에서 보상 받기)',
     '백룸 탈출 도감: 같은 계정에 연결된 기기라면 다른 기기에서 탈출한 방법까지 합쳐서 보임 (기기마다 따로 0/12 로 보이던 것 고침)',
@@ -22475,8 +22497,8 @@ const Cloud = (() => {
   // 로그인 직후: 게스트 기록 보관 → 서버 기록 불러오기(없으면 이 기기 기록 올리기)
   async function afterLogin(u, fresh) {
     user = u;
-    let prof = null;
-    try { const r = await sb.from('profiles').select('username').eq('id', u.id).maybeSingle(); prof = r.data; } catch (e) { /* 프로필 조회 실패해도 진행 */ }
+    const prev = store.get('account', null);
+    const prof = await profOf(u.id);   // 조회 실패해도 진행
     name = (prof && prof.username) || (u.user_metadata && u.user_metadata.username) || '플레이어';
     if (!store.get('guestBackup', null)) store.set('guestBackup', { stats: STATS, rank: Rank.state, settings: SETTINGS });
     let row = null;
@@ -22500,7 +22522,51 @@ const Cloud = (() => {
     Dev.onLogin();   // 개발자 계정이면 모든 스킨 지급 (10_dev.js)
     refreshUi();
     if (G.onAuth) try { G.onAuth(true); } catch (e) { console.warn(e); } // 친구·파티 연결
+    if (prev && prev.id === u.id && prev.name && prof && prof.username && prev.name !== prof.username) renamed(prev.name, name, prof);   // 이 기기가 모르는 사이에 아이디가 바뀜
     return note;
+  }
+
+  // ---------- 아이디가 다른 곳에서 바뀜 (v22: 운영자 강제 변경 — admin.sql admin_rename · 다른 기기에서 본인 변경) ----------
+  //  프로필: 아이디 + 바꾼 시각. name_forced_at(운영자가 바꾼 시각)이 본인 변경(name_changed_at)보다 늦지 않으면 운영자 변경
+  //  (서버에 그 칸이 아직 없으면 아이디만 읽는다)
+  async function profOf(id) {
+    try {
+      let r = await sb.from('profiles').select('username, name_changed_at, name_forced_at').eq('id', id).maybeSingle();
+      if (r.error) r = await sb.from('profiles').select('username').eq('id', id).maybeSingle();
+      return r.data || null;
+    } catch (e) { return null; }
+  }
+  // 세션을 새로 받아 둔다 — 로그인 아이디(내부 이메일)가 바뀌었으므로 (비밀번호 변경이 옛 이메일로 다시 로그인해 확인하다 실패하지 않게)
+  async function freshUser() { try { const r = await sb.auth.refreshSession(); if (r && r.data && r.data.user && user && r.data.user.id === user.id) user = r.data.user; } catch (e) { /* 다음 자동 갱신 때 */ } }
+  let rnPend = null, rnT = null, rnAt = 0;
+  function renamed(old, nm, p) {
+    const forced = !!(p && p.name_forced_at && (!p.name_changed_at || new Date(p.name_forced_at) >= new Date(p.name_changed_at)));
+    freshUser();
+    rnPend = { old, nm, forced, toasted: false };
+    showRenamed();
+  }
+  // 로비에서 창으로 알림 (경기 중·관전 화면이면 알림만 띄우고 로비로 돌아오면 창)
+  function showRenamed() {
+    const R = rnPend; if (!R) return;
+    clearTimeout(rnT);
+    if (G.state !== 'lobby' || Watch.viewing()) {
+      if (!R.toasted) { R.toasted = true; HUD.toast(`${R.forced ? '운영자가 ' : ''}아이디를 '${R.nm}'(으)로 바꿨습니다 — 다음 로그인부터 새 아이디`, 'info'); }
+      rnT = setTimeout(showRenamed, 1500); return;
+    }
+    rnPend = null;
+    $('rnTitle').textContent = R.forced ? '운영자가 아이디를 바꿨습니다' : '아이디가 바뀌었습니다';
+    $('rnOld').textContent = R.old; $('rnNew').textContent = R.nm;
+    $('rnText').textContent = (R.forced ? '' : '다른 기기에서 아이디를 바꿨습니다. ') + `다음에 로그인할 때는 새 아이디 '${R.nm}'와 원래 비밀번호를 쓰세요. 이 기기는 지금 로그인된 그대로입니다.`;
+    $('rnPanel').hidden = false;
+  }
+  // 운영자가 바꿨다는 신호(로비 채널 rn — 누구나 보낼 수 있으므로 서버에서 다시 읽어 보기만 함 · 3초에 한 번)
+  async function refreshName() {
+    if (!sb || !user || Date.now() - rnAt < 3000) return false; rnAt = Date.now();
+    const p = await profOf(user.id);
+    if (!p || !p.username || p.username === name || !user) return false;
+    const old = name; name = p.username; store.set('account', { id: user.id, name });
+    refreshUi(); renamed(old, name, p);
+    return true;
   }
 
   // 관리자(개발자) 여부: 서버의 관리자 목록(supabase/admin.sql 의 public.admins — 계정 고유번호)으로 판단
@@ -22617,7 +22683,7 @@ const Cloud = (() => {
     if (r.startsWith('wait:')) { const t = Number(r.slice(5)) * 1000, h = Math.ceil((t - Date.now()) / 36e5); throw new Error(`아이디는 3일에 한 번 바꿀 수 있습니다 (${h > 24 ? Math.floor(h / 24) + '일 ' + (h % 24) + '시간' : h + '시간'} 뒤 가능)`); }
     if (r !== 'ok') throw new Error('바꾸지 못했습니다: ' + r);
     name = nm; store.set('account', { id: user.id, name });
-    refreshUi();
+    refreshUi(); freshUser();
     return name;
   }
   function open() { if (!enabled) return; if (user && typeof Prof !== 'undefined') { Prof.open(); return; } $('acctPanel').hidden = false; $('acctMsg').textContent = ''; $('acctMsg').className = 'acct-msg'; render(); if (!user) { loadSdk().catch(() => {}); setTimeout(() => $('acctId').focus(), 50); } }
@@ -22639,9 +22705,10 @@ const Cloud = (() => {
     });
     $('acctLogout').addEventListener('click', async () => { await signOut(); close(); HUD.lobbyNote('로그아웃했습니다 — 이 기기의 게스트 기록으로 돌아왔습니다'); });
     $('acctSyncNow').addEventListener('click', async () => { const ok = await pushNow(); render(); if (ok) msg('저장했습니다', true); });
+    $('rnOk').addEventListener('click', () => { Audio.ui(); $('rnPanel').hidden = true; });
     render();
   }
-  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
+  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, refreshName, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
     get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get admin() { return admin; }, get status() { return status; }, get lastError() { return lastErr; } };
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'
@@ -22761,9 +22828,10 @@ const Dev = (() => {
 
   // ---------- 계정 관리 (서버 함수 — supabase/admin.sql) ----------
   //  목록(최근 저장 순·이름 검색) · 골드 탄피 지급 · 기록 초기화 · 계정 삭제. 초기화·삭제는 두 번 눌러야 실행
-  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '', sel: '', det: {} };
+  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '', sel: '', det: {}, rn: {} };
   const rpcErr = (e) => { const m = String((e && e.message) || e || ''); return e && e.code === 'PGRST202' || /could not find|does not exist/i.test(m) ? '서버 설정 필요: Supabase SQL Editor에서 supabase/admin.sql 을 실행해 주세요' : /not admin/i.test(m) ? '관리자로 등록되지 않은 계정입니다 (이 계정이 있는 상태에서 admin.sql 을 실행해야 등록됨)' : Cloud.msgOf(e); };
-  const RES = { denied: '관리자만 할 수 있습니다', self: '자기 계정은 지울 수 없습니다', admin: '다른 관리자 계정은 지울 수 없습니다', notfound: '없는 계정입니다', amount: '지급 양이 올바르지 않습니다 (1 ~ 1,000,000)' };
+  const RES = { denied: '관리자만 할 수 있습니다', self: '자기 계정은 지울 수 없습니다', admin: '다른 관리자 계정은 지울 수 없습니다', notfound: '없는 계정입니다', amount: '지급 양이 올바르지 않습니다 (1 ~ 1,000,000)',
+    invalid: '아이디는 2~10자, 한글·영문·숫자·밑줄(_)만 쓸 수 있습니다', taken: '이미 사용 중인 아이디입니다', same: '지금 아이디와 같습니다', reserved: "'개발자'는 관리자 계정만 쓸 수 있습니다" };
   async function accLoad() {
     const sb = Cloud.client(); if (!sb || !Cloud.user) { ACC.err = '로그인이 필요합니다'; renderAcc(); return; }
     ACC.busy = true; ACC.err = ''; renderAcc();
@@ -22771,13 +22839,40 @@ const Dev = (() => {
     catch (e) { ACC.err = rpcErr(e); ACC.list = null; }
     ACC.busy = false; renderAcc();
   }
+  // 돌려주는 값: 서버 함수의 답('ok' 등) · 실패하면 null
   async function accDo(fn, args, okMsg) {
-    const sb = Cloud.client(); if (!sb) return;
+    const sb = Cloud.client(); if (!sb) return null;
     ACC.busy = true; ACC.msg = '처리 중…'; renderAcc();
-    try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; ACC.msg = data === 'ok' ? okMsg : RES[data] || `실패: ${data}`; }
+    let res = null;
+    try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; res = data; ACC.msg = data === 'ok' ? okMsg : RES[data] || `실패: ${data}`; }
     catch (e) { ACC.msg = rpcErr(e); }
     ACC.busy = false; ACC.det = {}; await accLoad();
     const su = ACC.sel && ACC.list && ACC.list.find((x) => x.id === ACC.sel); if (su) detLoad(su);   // 펼쳐 둔 상세도 새로
+    return res;
+  }
+  // 아이디 강제 변경 (서버 함수 admin_rename — admin.sql v22): 로그인 아이디(내부 이메일)도 같이 바뀐다 → 그 사람은 다음 로그인부터 새 아이디 + 원래 비밀번호
+  //  두 번 눌러야 실행 · 접속 중이면 로비 채널로 알림(rn) → 그 기기가 서버에서 다시 읽고 창으로 알려 줌 (10_cloud.js)
+  function renameRow(u) {
+    const rb = h('div', 'acc-rn'), k = 'rn' + u.id;
+    rb.appendChild(h('span', 'acc-meta', '아이디 강제 변경'));
+    const inp = h('input', 'dev-sel'); inp.placeholder = '새 아이디 (2~10자)'; inp.maxLength = 10; inp.value = ACC.rn[u.id] || ''; inp.spellcheck = false; inp.autocomplete = 'off';
+    inp.oninput = () => { ACC.rn[u.id] = inp.value; if (ACC.sure === k) { ACC.sure = ''; go.textContent = '바꾸기'; } };
+    const go = h('button', 'btn sm amber', ACC.sure === k ? '정말 바꾸기?' : '바꾸기'); go.type = 'button'; go.disabled = ACC.busy;
+    inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); go.click(); } });
+    go.onclick = () => {
+      const nm = String(inp.value || '').normalize('NFC').trim(), bad = Cloud.checkId(nm);
+      if (bad || nm === u.username) { ACC.sure = ''; ACC.msg = bad || RES.same; renderAcc(); return; }
+      if (ACC.sure !== k) { ACC.sure = k; clearTimeout(ACC.sureT); ACC.sureT = setTimeout(() => { ACC.sure = ''; renderAcc(); }, 3000); renderAcc(); return; }
+      ACC.sure = ''; clearTimeout(ACC.sureT);
+      const old = u.username, id = u.id;
+      accDo('admin_rename', { p_id: id, p_name: nm }, `${old} → ${nm} 으로 아이디를 바꿨습니다 — 다음 로그인부터 '${nm}' + 원래 비밀번호 (접속 중이면 바로 알림)`).then((r) => {
+        if (r !== 'ok') return;
+        delete ACC.rn[id];
+        if (id === Cloud.uid) Cloud.refreshName(); else Social.send(id, 'rn', {});
+      });
+    };
+    rb.append(inp, go);
+    return rb;
   }
   // ---------- 계정 상세 (목록에서 계정을 누르면 그 아래에 펼침) ----------
   //  서버 함수 admin_get 이 있으면 전체 기록(stats·rank)까지, 없으면(옛 admin.sql) 목록 값만 보여 준다
@@ -22833,6 +22928,7 @@ const Dev = (() => {
       const btn = h('button', 'btn sm ' + (isB ? 'danger' : 'amber'), isB ? '베타 테스터 회수' : '베타 테스터 칭호 부여'); btn.type = 'button'; btn.disabled = ACC.busy;
       btn.onclick = () => accDo('admin_beta', { p_id: u.id, p_on: !isB }, isB ? `${u.username}님의 베타 테스터 칭호를 회수했습니다` : `${u.username}님에게 베타 테스터 칭호를 부여했습니다 — 사진·테두리·칭호·테스터 총 스킨(접속 중이면 다음 저장 때)`).then(() => { if (u.id === Cloud.uid) Cloud.pushNow(); });   // 내 계정이면 바로 합쳐 받기
       bb.appendChild(btn); box.appendChild(bb);
+      box.appendChild(renameRow(u));
     }
     // 레벨 막대
     const lvb = h('div', 'acc-dlv'); lvb.appendChild(h('b', '', `Lv ${L.lv}`));
@@ -22860,7 +22956,7 @@ const Dev = (() => {
     }
     // 계정
     const ac = h('div', 'acc-meta acc-dacc');
-    ac.textContent = `가입 ${fmtT(u.created_at || x.created_at, 1)} · 마지막 저장 ${fmtT(u.updated_at)}` + (x.last_sign_in_at ? ` · 마지막 로그인 ${fmtT(x.last_sign_in_at)}` : '') + (x.name_changed_at ? ` · 아이디 변경 ${fmtT(x.name_changed_at)}` : '') + ` · 고유번호 ${String(u.id).slice(0, 8)}`;
+    ac.textContent = `가입 ${fmtT(u.created_at || x.created_at, 1)} · 마지막 저장 ${fmtT(u.updated_at)}` + (x.last_sign_in_at ? ` · 마지막 로그인 ${fmtT(x.last_sign_in_at)}` : '') + (x.name_changed_at ? ` · 아이디 변경 ${fmtT(x.name_changed_at)}${x.name_forced_at && x.name_forced_at >= x.name_changed_at ? '(운영자)' : ''}` : '') + ` · 고유번호 ${String(u.id).slice(0, 8)}`;
     box.appendChild(ac);
     if (D.old) box.appendChild(h('div', 'dev-note', '재화·스킨·최근 경기·랭크 상세는 Supabase SQL Editor에서 supabase/admin.sql 을 다시 실행하면 보입니다'));
     return box;
@@ -24147,7 +24243,7 @@ const EvBR = (() => {
 const $ = (id) => document.getElementById(id);
 const HUD = (() => {
   let loot = [], focusIdx = 0, lastHp = 100, lastLootKey = '', toastQ = [];
-  const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes'];
+  const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes', 'rnPanel'];
   // 아이콘 칸 — 경기 중 처음 보는 부착물 조합은 기본 아이콘을 먼저 보여 주고 다 그려지면 바꾼다 (v22, 05_models.js idle)
   const ico = (id, att, cls = 'ico') => { const w = h('span', cls), im = h('img'); im.alt = ''; im.draggable = false; const src = Models.icon(id, att, (u) => { if (!u) return; im.src = u; if (!im.parentNode) w.appendChild(im); }); if (src) { im.src = src; w.appendChild(im); } return w; };
   const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
@@ -27913,6 +28009,7 @@ const Social = (() => {
       const msg = `${m.from.name}님이 파티 초대를 예약했습니다 — 경기를 마치고 로비로 돌아가면 초대가 옵니다`;
       if (G.state === 'lobby') HUD.lobbyNote(msg); else HUD.toast(msg, 'info');
     } else if (m.k === 'rsvx') rsvIn.delete(m.from.uid);
+    else if (m.k === 'rn') Cloud.refreshName();   // 운영자가 내 아이디를 바꿈 (10_dev.js) — 서버에서 다시 읽어 확인만
   }
   function expireInvites() { const n = invites.length; invites = invites.filter((v) => Date.now() - v.t < 45000); if (invites.length !== n) { renderInvites(); render(); } }
 
@@ -29229,7 +29326,8 @@ const Prof = (() => {
 //    · 로비 채널의 보낸 사람 이름은 꾸밀 수 있으므로 서버로 확인(spec_check) — 2분 안에 그 사람이 '나를 보려고' 만든 표가 있어야 한다
 //    · 연결 정보(SDP, IP 주소 포함)는 그 표의 공개 키로만 풀리게 잠가서(ECDH P-256 + AES-GCM) 보낸다
 //      → 로비 채널의 다른 접속자는 읽을 수 없고, 표를 만든 바로 그 기기만 연결된다 (답장도 같은 열쇠로 잠가 와야 받아 준다)
-//    · 게임 화면(캔버스)을 영상으로 담는다(captureStream) — 관전자가 있을 때만. 540p·24fps·1.2Mbps (그래픽 '낮음'이면 360p·15fps·0.6Mbps)
+//    · 게임 화면(캔버스)을 영상으로 담는다(captureStream) — 관전자가 있을 때만. 720p·30fps·최대 3.6Mbps 쯤 (그래픽 '낮음' 480p·24fps · 엑스트라 1080p)
+//      화면이 작은 휴대폰은 관전자가 있는 동안 그리는 해상도를 조금 올린다(FPS 가 떨어지면 되돌림) — 아래 '관전 화질'
 //    · 친구 관전자는 3명까지(관리자는 따로) · 화면 위 '👁 ○○ 관전 중' — 두 번 누르면 이번 경기는 친구 관전을 끝냄
 //    · 설정 '친구가 내 경기 관전'을 끄면 친구는 볼 수 없다 (관리자는 볼 수 있고, 표시는 그대로 보인다)
 //  · 영상·정보·문자는 기기끼리 직접(WebRTC). 실시간 서버(Supabase)로는 신호 메시지 몇 개만 → 무료 플랜 실시간 한도를 쓰지 않는다
@@ -29286,34 +29384,86 @@ const Watch = (() => {
   function capStart() {
     if (cap) return cap;
     const cv = G.renderer && G.renderer.domElement; if (!cv || !cv.captureStream) return null;
-    const low = SETTINGS.quality === 'low';
-    let stream; try { stream = cv.captureStream(low ? 15 : 24); } catch (e) { console.warn('화면 담기 실패', e); return null; }
+    let stream; try { stream = cv.captureStream(SETTINGS.quality === 'low' ? 24 : 30); } catch (e) { console.warn('화면 담기 실패', e); return null; }
     const vt = stream.getVideoTracks()[0]; if (!vt) return null;
     try { vt.contentHint = 'motion'; } catch (e) { /* */ }
     let at = null; try { const as = Audio.stream(); at = as && as.getAudioTracks()[0]; if (at) stream.addTrack(at); } catch (e) { at = null; }
-    cap = { stream, vt, at, low };
+    cap = { stream, vt, at };
     return cap;
   }
   function capStop() {
     if (!cap) return; const c = cap; cap = null;
     try { c.vt.stop(); } catch (e) { /* */ }
     if (c.at) { try { c.at.stop(); } catch (e) { /* */ } Audio.streamStop(); }
+    keepRes();   // 관전용으로 올린 해상도를 되돌림
   }
-  function encOf(c) {
-    const cv = G.renderer.domElement, H = cv.height || 540;
-    return { maxBitrate: c.low ? 600000 : 1200000, maxFramerate: c.low ? 15 : 24, scaleResolutionDownBy: Math.max(1, H / (c.low ? 360 : 540)) };
+  // ---------- 관전 화질 (v22 고침 — 예전 540p·24fps·1.2Mbps, 그래픽 '낮음'은 360p·15fps·0.6Mbps 라 너무 흐렸다) ----------
+  //  · 보내는 높이: 그래픽 낮음 480p · 보통·높음 720p · 엑스트라 1080p (캔버스가 더 작으면 캔버스 그대로)
+  //    관전자가 3명 이상이면 한 단계 낮춤 — 연결마다 따로 압축한다(관전자 수만큼 인코더)
+  //  · 비트레이트 = 보내는 화소 × fps × 0.13 (1 ~ 8 Mbps). 비트가 모자라면 풀·나무가 뭉개지고 브라우저가 해상도를 스스로 더 낮춘다
+  //  · 해상도를 지킨다 (degradationPreference 'maintain-resolution' — 망·기기가 버거우면 대신 fps 를 낮춤)
+  //    브라우저 기본은 300kbps 로 시작하며 화면을 320×180 으로 줄여 보내고 몇십 초에 걸쳐 한 단계씩 키운다
+  //    (시험: 1600×900 화면이 20초 뒤에도 640×360) → 처음부터 정한 해상도로. 그 설정을 모르는 브라우저를 위해 시작 비트레이트도 올림(withStart)
+  const WQ = [{ h: 360, f: 24 }, { h: 480, f: 24 }, { h: 720, f: 30 }, { h: 1080, f: 30 }];
+  function tier() { const q = SETTINGS.quality; return WQ[Math.max(0, (q === 'low' ? 1 : q === 'extra' ? 3 : 2) - (viewers.size >= 3 ? 1 : 0))]; }
+  function encOf() {
+    const cv = G.renderer.domElement, H = cv.height || 540, Wd = cv.width || 960, T = tier(), s = Math.max(1, H / T.h), px = (Wd / s) * (H / s);
+    return { maxBitrate: Math.round(Math.min(8e6, Math.max(1e6, px * T.f * 0.13))), maxFramerate: T.f, scaleResolutionDownBy: s };
   }
   function addTracks(pc, c) {
-    const enc = encOf(c);
-    try { pc.addTransceiver(c.vt, { direction: 'sendonly', streams: [c.stream], sendEncodings: [enc] }); }
+    try { pc.addTransceiver(c.vt, { direction: 'sendonly', streams: [c.stream], sendEncodings: [encOf()] }); }
     catch (e) { pc.addTrack(c.vt, c.stream); }
     if (c.at) { try { pc.addTransceiver(c.at, { direction: 'sendonly', streams: [c.stream] }); } catch (e) { pc.addTrack(c.at, c.stream); } }
   }
-  // 연결이 정해진 뒤 화질 한도를 한 번 더 (addTransceiver 의 sendEncodings 를 무시하는 브라우저)
+  // 연결이 정해진 뒤 화질 한도를 한 번 더 (addTransceiver 의 sendEncodings 를 무시하는 브라우저) · 화면 크기·관전자 수가 바뀔 때도
   function applyEnc(v) {
     if (!cap || !v.pc) return;
     const s = v.pc.getSenders().find((x) => x.track === cap.vt); if (!s || !s.getParameters) return;
-    try { const P = s.getParameters(); if (!P.encodings || !P.encodings.length) P.encodings = [{}]; Object.assign(P.encodings[0], encOf(cap)); const r = s.setParameters(P); if (r && r.catch) r.catch(() => {}); } catch (e) { /* */ }
+    try {
+      const P = s.getParameters(), e = encOf(); if (!P.encodings || !P.encodings.length) P.encodings = [{}];
+      Object.assign(P.encodings[0], e); P.degradationPreference = 'maintain-resolution';
+      const r = s.setParameters(P); if (r && r.catch) r.catch(() => {});
+    } catch (e) { /* */ }
+  }
+  // 시작 비트레이트 — 보는 쪽 답장(SDP)의 영상 코덱에 x-google-start-bitrate (Chrome 계열만 읽고 다른 브라우저는 무시)
+  function withStart(sdp, kbps) {
+    try {
+      const L = String(sdp).split('\r\n'), pts = new Set(), fm = new Set(); let vid = false;
+      for (const l of L) { if (l.startsWith('m=')) vid = l.startsWith('m=video'); else if (vid) { const m = /^a=rtpmap:(\d+) (VP8|VP9|H264|AV1)\//i.exec(l); if (m) pts.add(m[1]); } }
+      vid = false; for (const l of L) { if (l.startsWith('m=')) vid = l.startsWith('m=video'); else if (vid) { const m = /^a=fmtp:(\d+) /.exec(l); if (m && pts.has(m[1])) fm.add(m[1]); } }
+      const out = []; vid = false;
+      for (const l of L) {
+        if (l.startsWith('m=')) vid = l.startsWith('m=video');
+        const f = vid && /^a=fmtp:(\d+) /.exec(l), r = vid && /^a=rtpmap:(\d+) /.exec(l);
+        out.push(f && pts.has(f[1]) && !/x-google-start-bitrate/.test(l) ? l + ';x-google-start-bitrate=' + kbps : l);
+        if (r && pts.has(r[1]) && !fm.has(r[1])) out.push(`a=fmtp:${r[1]} x-google-start-bitrate=${kbps}`);   // fmtp 줄이 없는 코덱(VP8)
+      }
+      return out.join('\r\n');
+    } catch (e) { return sdp; }
+  }
+  // 화면이 작은 기기(휴대폰 '낮음' = 330p 쯤): 관전자가 있는 동안 그리는 배율을 올린다 (최대 1.4배 · 기기 배율까지 · 보낼 높이까지)
+  //  올린 뒤 FPS 가 올리기 전의 85% 와 50 아래로 1.5초 떨어지면 되돌리고, 이번 경기는 다시 올리지 않는다
+  const RB = { no: false, on: false, t: 0, base: 0, low: 0, fps: [], key: '' };
+  function wantPr() {
+    const base = QUALITY[SETTINGS.quality].pr, ih = window.innerHeight || 1, T = tier();
+    if (!cap || RB.no || ih * base >= T.h * 0.9) return base;
+    return Math.max(base, Math.min(window.devicePixelRatio || 1, base * 1.4, T.h / ih));
+  }
+  function keepRes() {
+    const r = G.renderer; if (!r || !r.getPixelRatio) return;
+    const f = FpsBox.last || 0, base = QUALITY[SETTINGS.quality].pr;
+    if (!RB.on && f) { RB.fps.push(f); if (RB.fps.length > 4) RB.fps.shift(); }   // 올리기 전 FPS (최근 2초)
+    if (!cap && !RB.on) { RB.key = ''; return; }   // 관전자가 없고 올려 둔 것도 없으면 손대지 않음
+    if (RB.on && now() - RB.t > 2000 && RB.base && f && f < Math.min(RB.base * 0.85, 50)) { if (++RB.low >= 3) RB.no = true; }
+    else if (RB.on) RB.low = 0;
+    const want = wantPr(), up = want > base + 0.01;
+    if (up && !RB.on) { RB.base = RB.fps.length ? RB.fps.reduce((a, b) => a + b, 0) / RB.fps.length : 0; RB.t = now(); RB.low = 0; }
+    if (Math.abs(r.getPixelRatio() - want) > 0.01) { r.setPixelRatio(want); G.onResize(); }
+    RB.on = up;
+    // 캔버스 크기 · 관전자 수 · 그래픽 설정이 바뀌면 화질 한도를 다시
+    const cv = r.domElement, k = [cv.width, cv.height, viewers.size, SETTINGS.quality].join();
+    if (cap && k !== RB.key) { RB.key = k; for (const v of viewers.values()) applyEnc(v); }
+    if (!cap) RB.key = '';
   }
   function dcSend(dc, o) { if (!dc || dc.readyState !== 'open') return; try { if (dc.bufferedAmount < 256e3) dc.send(JSON.stringify(o)); } catch (e) { /* */ } }
   function matchInfo() {
@@ -29380,7 +29530,12 @@ const Watch = (() => {
     const v = viewers.get(from.uid); if (!v || !v.pc || !v.key || m.o !== v.oid || !m.box) return;
     let d; try { d = await unseal(v.key, m.box); } catch (e) { return; }
     if (viewers.get(from.uid) !== v || !d || d.type !== 'answer' || v.pc.signalingState !== 'have-local-offer') return;
-    try { await v.pc.setRemoteDescription(d); applyEnc(v); } catch (e) { console.warn('관전 연결 실패', e); drop(v, 'err'); }
+    const kb = Math.round(Math.min(2500, Math.max(800, encOf().maxBitrate * 0.6 / 1000)));
+    try {
+      try { await v.pc.setRemoteDescription({ type: 'answer', sdp: withStart(d.sdp, kb) }); }
+      catch (e) { if (v.pc && v.pc.signalingState === 'have-local-offer') await v.pc.setRemoteDescription(d); else throw e; }   // 고친 SDP 가 안 먹으면 받은 그대로
+      applyEnc(v);
+    } catch (e) { console.warn('관전 연결 실패', e); drop(v, 'err'); }
   }
   // why: 'over' 경기 끝 · 'stop' 내가 끝냄 · 'gone' 연결 끊김 · 'bye' 보는 쪽이 나감 · 'again' 다시 연결 · 'err'
   function drop(v, why) {
@@ -29429,9 +29584,10 @@ const Watch = (() => {
   function sendTick() {
     if (!playing()) {
       if (viewers.size) for (const v of [...viewers.values()]) drop(v, 'over');
-      stopped = false; tagSure = 0;
+      stopped = false; tagSure = 0; RB.no = false; RB.fps = [];
       return;
     }
+    keepRes();
     if (!viewers.size) return;
     const i = info(), t = now();
     for (const v of [...viewers.values()]) {
@@ -30607,12 +30763,14 @@ const FrameGate = {
   },
 };
 // FPS 표시: 실제로 그린 프레임 수 (0.5초마다 갱신, 경기 중에만 · 개발자 통계가 켜져 있으면 그쪽에 이미 나오므로 숨김)
-const FpsBox = { n: 0, t0: 0, el: null,
+//  last: 최근 0.5초 FPS — 친구 관전이 해상도를 올린 뒤 FPS 가 떨어지는지 본다 (10_watch.js)
+const FpsBox = { n: 0, t0: 0, el: null, last: 0,
   tick(t) {
     if (!this.t0) { this.t0 = t; this.n = 0; return; }   // 시작 프레임은 세지 않음 (간격 수 = 프레임 수)
     this.n++; if (t - this.t0 < 500) return;
+    this.last = Math.round(this.n * 1000 / (t - this.t0));
     const el = this.el || (this.el = $('fpsBox')), dev = $('devStats'), show = !!SETTINGS.showFps && G.state === 'play' && !(dev && !dev.hidden);
-    if (el) { el.hidden = !show; if (show) el.textContent = Math.round(this.n * 1000 / (t - this.t0)) + ' FPS' + (SETTINGS.fps ? ' / ' + SETTINGS.fps : ''); }
+    if (el) { el.hidden = !show; if (show) el.textContent = this.last + ' FPS' + (SETTINGS.fps ? ' / ' + SETTINGS.fps : ''); }
     this.n = 0; this.t0 = t;
   } };
 let _last = performance.now();

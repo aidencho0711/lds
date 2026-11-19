@@ -162,6 +162,16 @@
     </div>
   </section>
 
+  <!-- 아이디가 바뀜 (운영자가 바꿨거나 다른 기기에서 바꿈) — 다음 로그인부터 새 아이디 -->
+  <section id="rnPanel" class="overlay" hidden>
+    <div class="menu rn-box" role="alertdialog" aria-labelledby="rnTitle">
+      <div class="eyebrow" id="rnTitle">아이디 변경</div>
+      <p class="rn-names"><s id="rnOld"></s> → <b id="rnNew"></b></p>
+      <p class="micro" id="rnText"></p>
+      <button class="btn amber" type="button" id="rnOk">확인</button>
+    </div>
+  </section>
+
   <!-- 계정 정보: 전적 · 사진 · 테두리 · 칭호 · 계정(아이디 변경·저장·로그아웃) -->
   <section id="profPanel" class="overlay" hidden>
     <div class="menu prof">

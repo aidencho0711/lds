@@ -1,6 +1,7 @@
 -- ============================================================
 -- Last Drop Royale — 개발자(관리자) 계정 관리 (v20, Supabase SQL Editor에서 한 번 실행)
 --  · 게임의 개발자 도구 → '계정 관리'가 부르는 함수: 계정 목록 · 계정 상세 · 골드 탄피 지급 · 베타 테스터 부여 · 기록 초기화 · 계정 삭제
+--    · 아이디 강제 변경 (v22, admin_rename)
 --  · 관리자 = public.admins 에 있는 계정. 이 파일을 실행할 때 아이디가 '개발자'인 계정을 관리자로 등록한다
 --    (아이디로 판단하지 않고 계정 고유번호로 등록 → 아이디를 바꿔도 관리자 유지, 다른 사람이 '개발자'를 가져가도 관리자가 아님)
 --  · 모든 함수는 관리자가 아니면 거부한다 (security definer + admins 검사)
@@ -13,6 +14,9 @@ create table if not exists public.admins (
 alter table public.admins enable row level security;   -- 정책 없음: API로는 아무도 못 읽음 (아래 함수만 사용)
 -- 관리자가 아직 하나도 없을 때만 아이디 '개발자' 계정을 등록 (v21: 다시 실행해도 지금 '개발자' 아이디를 가진 다른 계정이 관리자가 되지 않게)
 insert into public.admins (id) select id from public.profiles where lower(username) = lower('개발자') and not exists (select 1 from public.admins) on conflict do nothing;
+-- v22: 운영자가 아이디를 바꾼 시각 (admin_rename) — 게임이 그 사람에게 '운영자가 아이디를 바꿨습니다'로 알릴지 정한다
+--  본인만 읽을 수 있다 (profiles 는 'read own' 정책)
+alter table public.profiles add column if not exists name_forced_at timestamptz;
 
 create or replace function public.is_admin() returns boolean
 language sql security definer set search_path = '' stable as $$
@@ -46,7 +50,7 @@ language plpgsql security definer set search_path = '' as $$
 declare r jsonb;
 begin
   if not exists (select 1 from public.admins a where a.id = auth.uid()) then raise exception 'not admin'; end if;
-  select jsonb_build_object('id', p.id, 'username', p.username, 'created_at', p.created_at, 'name_changed_at', p.name_changed_at,
+  select jsonb_build_object('id', p.id, 'username', p.username, 'created_at', p.created_at, 'name_changed_at', p.name_changed_at, 'name_forced_at', p.name_forced_at,
       'updated_at', d.updated_at, 'last_sign_in_at', u.last_sign_in_at, 'admin', exists (select 1 from public.admins a2 where a2.id = p.id),
       'stats', coalesce(d.stats, '{}'::jsonb) - 'sync', 'rank', d.rank)
     into r
@@ -149,6 +153,42 @@ begin
   return 'ok';
 end; $$;
 
+-- v22: 아이디 강제 변경 (계정 관리 → 계정 상세 → '아이디 강제 변경')
+--  · 본인 변경(change_username)과 같은 규칙(2~10자 · 한글·영문·숫자·_ · 대소문자만 달라도 겹침)으로 표시 이름과 로그인 아이디(내부 이메일)를 같이 바꾼다
+--    → 그 사람은 다음 로그인부터 새 아이디 + 원래 비밀번호. 지금 로그인된 기기는 그대로 (게임이 바뀐 아이디를 창으로 알려 줌)
+--  · 3일에 한 번 제한을 받지 않고, 바꾼 뒤 3일 동안은 본인이 다시 바꿀 수 없다 (name_changed_at 을 지금으로)
+--  · '개발자' 같은 예약 아이디는 관리자 계정에만
+--  돌려주는 값: 'ok' · 'denied' · 'invalid' · 'notfound' · 'same'(지금과 같음) · 'reserved' · 'taken'
+create or replace function public.admin_rename(p_id uuid, p_name text) returns text
+language plpgsql security definer set search_path = '' as $$
+declare
+  nm  text := btrim(coalesce(p_name, ''));
+  cur text;
+  dom text;
+  em  text;
+begin
+  if not exists (select 1 from public.admins a where a.id = auth.uid()) then return 'denied'; end if;
+  if char_length(nm) < 2 or char_length(nm) > 10 or nm !~ '^[가-힣A-Za-z0-9_]+$' then return 'invalid'; end if;
+  select username into cur from public.profiles where id = p_id for update;
+  if cur is null then return 'notfound'; end if;
+  if cur = nm then return 'same'; end if;
+  if lower(nm) in ('개발자') and not exists (select 1 from public.admins where id = p_id) then return 'reserved'; end if;
+  if exists (select 1 from public.profiles where lower(username) = lower(nm) and id <> p_id) then return 'taken'; end if;
+  select split_part(email, '@', 2) into dom from auth.users where id = p_id;
+  if coalesce(dom, '') = '' then return 'notfound'; end if;
+  em := 'u' || encode(convert_to(lower(nm), 'UTF8'), 'hex') || '@' || dom;
+  if exists (select 1 from auth.users where lower(email) = lower(em) and id <> p_id) then return 'taken'; end if;
+  update public.profiles set username = nm, name_changed_at = now(), name_forced_at = now() where id = p_id;
+  update auth.users
+     set email = em,
+         raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('username', nm)
+   where id = p_id;
+  update auth.identities
+     set identity_data = coalesce(identity_data, '{}'::jsonb) || jsonb_build_object('email', em)
+   where user_id = p_id and provider = 'email';
+  return 'ok';
+end; $$;
+
 revoke execute on function public.is_admin() from public, anon;
 revoke execute on function public.admin_list(text) from public, anon;
 revoke execute on function public.admin_get(uuid) from public, anon;
@@ -157,6 +197,7 @@ revoke execute on function public.admin_reset(uuid) from public, anon;
 revoke execute on function public.admin_beta(uuid, boolean) from public, anon;
 revoke execute on function public.admin_delete(uuid) from public, anon;
 revoke execute on function public.change_username(text) from public, anon;
+revoke execute on function public.admin_rename(uuid, text) from public, anon;
 grant execute on function public.is_admin() to authenticated;
 grant execute on function public.admin_list(text) to authenticated;
 grant execute on function public.admin_get(uuid) to authenticated;
@@ -165,3 +206,4 @@ grant execute on function public.admin_reset(uuid) to authenticated;
 grant execute on function public.admin_beta(uuid, boolean) to authenticated;
 grant execute on function public.admin_delete(uuid) to authenticated;
 grant execute on function public.change_username(text) to authenticated;
+grant execute on function public.admin_rename(uuid, text) to authenticated;

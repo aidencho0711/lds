@@ -1282,6 +1282,12 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 /* 개발자 계정 상세: 베타 테스터 · 하드코어 */
 .acc-beta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acc-beta .ttl { font-size: 0.7rem; padding: 1px 12px; }
+/* v22 개발자 계정 상세: 아이디 강제 변경 · 바뀐 사람에게 보이는 안내 */
+.acc-rn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acc-rn .dev-sel { flex: 1 1 140px; max-width: 200px; height: 32px; }
+#rnPanel { z-index: 27; }   /* 개발자 메뉴(26) 등 다른 창보다 위 (관전 화면이 덮고 있으면 나올 때까지 기다림) */
+.menu.rn-box { width: min(340px, 100%); text-align: center; }
+.rn-names { margin: 4px 0 0; font-size: 1.15rem; } .rn-names s { color: var(--dim); } .rn-names b { color: var(--amber); }
 /* v20 테스터(베타 테스터 한정 컬렉션): 창고·무기 칸 전용 테두리 · 육각 β 번호 배지 · EXCLUSIVE 문구 */
 @keyframes betaEdge { 0%, 100% { box-shadow: 0 0 0 1px rgba(63, 245, 255, 0.55) inset, 0 0 10px rgba(63, 245, 255, 0.25); } 50% { box-shadow: 0 0 0 1px rgba(63, 245, 255, 0.95) inset, 0 0 18px rgba(63, 245, 255, 0.5); } }
 .wh-item.gun.tester { position: relative; border: 1px solid rgba(63, 245, 255, 0.6); border-left: 3px solid #3ff5ff; background: linear-gradient(135deg, rgba(10, 30, 36, 0.92), rgba(12, 14, 16, 0.92) 60%); animation: betaEdge 2.6s ease-in-out infinite; }
