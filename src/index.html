@@ -268,6 +268,17 @@
 
   <!-- 경기 HUD -->
   <div id="flashFx"></div><!-- v22 섬광탄: HUD 투명도와 상관없이 화면 전체 -->
+  <!-- v23 우승 축하 창 (10_victory.js): 동상 세우기 · 춤추기 · 즉시 결산 -->
+  <div id="victoryHud" hidden>
+    <div class="vh-banner"><svg class="vh-crown" viewBox="0 0 30 24" aria-hidden="true"><path fill="currentColor" d="M2 19h26L26 6l-6 6-5-10-5 10-6-6z"/><rect x="2" y="20.5" width="26" height="3" rx="1" fill="currentColor"/><circle cx="15" cy="2" r="1.8" fill="currentColor"/><circle cx="4" cy="5.6" r="1.6" fill="currentColor"/><circle cx="26" cy="5.6" r="1.6" fill="currentColor"/></svg><b id="vhTitle">최후의 1인</b><span id="vhSub"></span></div>
+    <div class="vh-btns">
+      <button type="button" id="vhStatue"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 21h16v2.4H4zM6.5 17.2h11v3H6.5z"/><circle cx="11" cy="4.6" r="2.2" fill="currentColor"/><path fill="currentColor" d="M8.6 7.6h4.8l.9 4.9-1.2.4-.5 3.6H9.4l-.5-3.6-1.2-.4zM14 8.3l3.3-6.1 1.5.8-3.4 6.2z"/></svg><span>동상 세우기</span><kbd>B</kbd></button>
+      <button type="button" id="vhDance"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 3v11.4A3.4 3.4 0 1 0 11 17.5V7.4h7V3z"/><path fill="currentColor" d="M19.5 10.5v6.2a2.2 2.2 0 1 0 1.5 2.1v-8.3z" opacity=".75"/></svg><span>춤추기</span><kbd>K</kbd></button>
+      <button type="button" id="vhSettle"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5l8.5 7L3 19zM12 5l8.5 7L12 19z"/></svg><span>즉시 결산</span><kbd>Enter</kbd></button>
+    </div>
+    <div class="vh-dances" id="vhDances" hidden></div>
+    <div class="vh-auto" id="vhAuto">2:00 뒤 자동 결산</div>
+  </div>
   <section id="hud" hidden>
     <div id="compass"><div id="compassStrip"></div><div class="compass-tick"></div></div>
     <div id="topRight">

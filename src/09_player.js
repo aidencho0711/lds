@@ -475,7 +475,7 @@ function updatePlayer(dt) {
     else if (!p.throwMode) { if (nx !== cur) { p.inv.throwSel = nx; HUD.toast(ITEMS[nx].name + ' 선택'); } else HUD.toast(p.inv.count(cur) ? ITEMS[cur].name + '만 있습니다' : '투척 무기가 없습니다'); }
   }
   if (Input.consume('throw')) { if (p.throwMode) exitThrow(p); else enterThrow(p); }
-  if (Input.consume('fireMode') && p.weapon) {
+  if (!G.victory && Input.consume('fireMode') && p.weapon) {   // v23 우승 축하 중 B 는 동상 세우기 (10_victory.js)
     if (cycleFireMode(p.weapon)) { p.burstQ = 0; Audio.mech('selector', null, p.weapon.id, true); HUD.toast('사격 모드: ' + modeName(p.weapon.id, fireMode(p.weapon))); }
     else HUD.toast(ITEMS[p.weapon.id].name + '은(는) ' + modeName(p.weapon.id, fireMode(p.weapon)) + '만 가능합니다');
   }

@@ -408,6 +408,7 @@ const bodyDir = (r, x, y, z, out) => out.set(x, y, z).applyQuaternion(worldQuat(
 
 function animateChar(c, dt) {
   if (c.veh) { Veh.animateRider(c, dt); return; }
+  if (c.dance && c.alive && !c.knocked && c.mode === 'ground') { Victory.pose(c, dt); return; }   // v23 우승 축하 춤 (10_victory.js)
   const a = c.anim, r = c.rig, T = G.time || 0;
   const camD = c.isPlayer || !G.camera ? 0 : Math.hypot(c.pos.x - G.camera.position.x, c.pos.z - G.camera.position.z);
   const fine = c.isPlayer || camD < 30;          // 손가락·발 디딤 등 세부
