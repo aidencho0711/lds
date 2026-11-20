@@ -57,6 +57,7 @@ function buildRig(look) {
         if (m) { m.traverse((o) => { if (o.isMesh) o.castShadow = this.shadow; }); grp.add(m); }
       }
       hat.visible = !h;
+      if (typeof OutfitFx !== 'undefined') this.ofx = OutfitFx.kindsOf(L, this.gearLv);   // EXCLUSIVE 헬멧·가방 효과는 그 장비를 썼을 때만
     },
     setShadow(on) {
       if (this.shadow === on) return; this.shadow = on;

@@ -206,10 +206,10 @@ const Gear = (() => {
       const j = [s * 0.084, 0.0, 0.03];
       put(g, ribbon([[s * front[0], front[1], front[2]], [s * (front[0] - 0.004), (front[1] + j[1]) / 2 + 0.01, (front[2] + j[2]) / 2 + 0.006], j], nHead, 0.016, 0.003, P.lo ? 4 : 8), P.strap);
       if (back) put(g, ribbon([[s * back[0], back[1], back[2]], [s * (back[0] - 0.002), (back[1] + j[1]) / 2, (back[2] + j[2]) / 2 - 0.004], j], nHead, 0.016, 0.003, P.lo ? 4 : 8), P.strap);
-      put(g, ribbon([j, [s * 0.066, -0.026, 0.054], [s * 0.03, -0.043, 0.07], [0, -0.047, 0.073]], nHead, 0.017, 0.003, P.lo ? 4 : 10), P.strap);
+      put(g, ribbon([j, [s * 0.066, -0.012, 0.038], [s * 0.03, -0.028, 0.047], [0, -0.032, 0.051]], nHead, 0.017, 0.003, P.lo ? 4 : 10), P.strap);
       if (!P.lo && s === 1) put(g, pillow(0.026, 0.018, 0.011, 0.35, 0, [2, 2, 1]), P.dark, j[0] + 0.004, j[1] - 0.004, j[2] + 0.004, 0, 0.5, 0);   // 버클
     }
-    if (cup) put(g, pillow(0.05, 0.02, 0.016, [0.5, 0.6, 0.6], [0, 0, 0.1], [3, 2, 2]), P.pad, 0, -0.048, 0.071, -0.75, 0, 0);   // 턱받이
+    if (cup) put(g, pillow(0.05, 0.02, 0.016, [0.5, 0.6, 0.6], [0, 0, 0.1], [3, 2, 2]), P.pad, 0, -0.034, 0.053, -0.95, 0, 0);   // 턱받이
   }
   // 헬멧 장식 (스킨): c·r = 껍데기, rim = 테두리, front = 코(빨간 빛) 자리 [x, y, z]
   function decoHelm(g, P, c, r, rim, front) {
@@ -221,11 +221,13 @@ const Gear = (() => {
       for (const [x, y, z, rr] of T) put(g, SPH(rr, P.lo ? 8 : 12, P.lo ? 6 : 9), P.tail, x, y, z);
       put(g, SPH(0.03, P.lo ? 8 : 12, P.lo ? 6 : 9), P.pom ? { cell: 'fleece', color: P.pom } : FUR, 0.074, ty - 0.03, -0.17);
     } else if (D === 'antlers') {
-      const ac = P.antler;
+      // 뿔: 굵기가 줄어드는 매끈한 가지 (마디마다 원뿔대 + 이음매 구) + 앞으로 뻗은 갈래 둘
+      const ac = P.antler, seg = P.lo ? 5 : 8;
       for (const s of [1, -1]) {
-        const bx = s * 0.05, by = ty - 0.018, bz = -0.01, beam = [[0, 0, 0, 0.016], [0.012, 0.032, -0.004, 0.014], [0.028, 0.062, -0.014, 0.012], [0.042, 0.09, -0.024, 0.0105], [0.052, 0.114, -0.036, 0.009], [0.058, 0.134, -0.048, 0.008]];
-        const chainA = (L) => { for (let i = 0; i < L.length - 1; i++) for (let k = 0; k < (P.lo ? 1 : 3); k++) { const u = k / (P.lo ? 1 : 3), a0 = L[i], a1 = L[i + 1], rr = lerp(a0[3], a1[3], u); put(g, SPH(rr, 7, 5), ac, bx + s * lerp(a0[0], a1[0], u), by + lerp(a0[1], a1[1], u), bz + lerp(a0[2], a1[2], u)); } const e = L[L.length - 1]; put(g, SPH(e[3], 7, 5), ac, bx + s * e[0], by + e[1], bz + e[2]); };
-        chainA(beam); for (const [k, dx, dy, dz] of [[1, 0.012, 0.062, 0.07], [3, 0.018, 0.066, 0.06]]) { const [x, y, z, rr] = beam[k]; chainA([[x, y, z, rr * 0.8], [x + dx, y + dy, z + dz, 0.006]]); }
+        const bx = s * 0.05, by = ty - 0.018, bz = -0.01, beam = [[0, 0, 0, 0.016], [0.012, 0.032, -0.004, 0.014], [0.028, 0.062, -0.014, 0.012], [0.042, 0.09, -0.024, 0.0105], [0.052, 0.114, -0.036, 0.009], [0.058, 0.134, -0.048, 0.007]];
+        const W = (L) => L.map(([x, y, z, rr]) => [bx + s * x, by + y, bz + z, rr]);
+        limb(g, ac, W(beam), seg);
+        for (const [k, dx, dy, dz] of [[1, 0.012, 0.062, 0.07], [3, 0.018, 0.066, 0.06]]) { const [x, y, z, rr] = beam[k]; limb(g, ac, W([[x, y, z, rr * 0.8], [x + dx * 0.5, y + dy * 0.55, z + dz * 0.45, rr * 0.6], [x + dx, y + dy, z + dz, 0.005]]), seg); }
       }
       put(g, SPH(0.017, 12, 9), { glow: 0xff2a2a }, front[0], front[1], front[2]);   // 빛나는 빨간 코
     } else if (D === 'lights') {
@@ -235,6 +237,16 @@ const Gear = (() => {
       for (let i = 0; i < L.length; i += 3) put(g, SPH(0.0075, 6, 5), { glow: cols[(i / 3) % cols.length] }, L[i][0], L[i][1] - 0.006, L[i][2]);
       put(g, star(0.03, 0.008), M('brass', 0xf2c84a), 0, ty + 0.03, -0.005);
     }
+  }
+  // 굵기가 줄어드는 가지(뿔): pts = [[x, y, z, r], ...] — 마디마다 원뿔대 + 이음매 구
+  function limb(g, m, pts, seg = 8) {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L = Math.hypot(dx, dy, dz) || 1e-4;
+      const o = put(g, new THREE.CylinderGeometry(b[3], a[3], L, seg, 1, true), m, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+      o.quaternion.setFromUnitVectors(new V3(0, 1, 0), new V3(dx / L, dy / L, dz / L));
+      put(g, SPH(a[3], seg, 5), m, a[0], a[1], a[2]);
+    }
+    const e = pts[pts.length - 1]; put(g, SPH(e[3], seg, 4), m, e[0], e[1], e[2]);
   }
   // 금빛 별 (트리 꼭대기)
   function star(R, t) {
@@ -495,7 +507,7 @@ const Gear = (() => {
   // 어깨끈: 가방 위 → 어깨 위 → 가슴 앞(패드) → 겨드랑이 아래로 웨빙 → 가방 아래 옆
   function packStraps(g, P, B, v, w, t) {
     const z0 = PZ[v], zs = PZS[v], lf = PLIFT[v];
-    if (P.item) { for (const s of [1, -1]) put(g, ribbon([[s * 0.085, B.top - 0.04, z0 + 0.004], [s * 0.1, B.top - 0.14, z0 + 0.03], [s * 0.12, B.cy - B.h / 2 + 0.03, z0 + 0.006]], () => [0, 0, 1], w, t, 8), P.strap); return; }
+    if (P.item) { for (const s of [1, -1]) put(g, ribbon([[s * 0.085, B.top - 0.04, z0 + 0.004], [s * 0.1, B.top - 0.14, z0 + 0.012], [s * 0.12, B.cy - B.h / 2 + 0.03, z0 + 0.006]], () => [0, 0, 1], w, t, 8), P.strap); return; }   // 바닥: 등판에 붙은 짧은 끈만
     for (const s of [1, -1]) {
       // 가방 위 → (조끼 어깨끈 위로) 어깨 → 가슴 앞(조끼 앞판 위)
       const ya = B.top - 0.05, mid = overShoulder(s * 0.1, PSO[v] + t / 2).reverse().filter((p) => (p[2] < 0 ? p[1] > ya + 0.03 : p[1] > 0.19));
@@ -638,7 +650,8 @@ const Gear = (() => {
     const b = DEF[kind][lvl] || DEF[kind][1], has = (k) => S && S[k] !== undefined;
     const mainHex = has('color') ? S.color : b.main, kd = (S && S.kind) || b.kind;
     const main = S && S.cell ? { cell: S.cell, color: has('color') ? S.color : 0xffffff } : M(kd, mainHex);
-    const sub = S && S.cell2 ? { cell: S.cell2, color: has('color2') ? S.color2 : 0xffffff } : has('color2') ? M(S.kind2 || 'cloth', S.color2) : S && S.cell ? { cell: S.cell, color: 0xd2d2d2 } : S ? M('cloth', shade(mainHex, 0.78)) : M('cloth', b.sub);
+    // 주머니·덮개: 따로 정하지 않으면 본 무늬를 조금 어둡게 (색을 물들이는 무늬 — 니트·데님 — 는 그 색을 어둡게)
+    const sub = S && S.cell2 ? { cell: S.cell2, color: has('color2') ? S.color2 : 0xffffff } : has('color2') ? M(S.kind2 || 'cloth', S.color2) : S && S.cell ? { cell: S.cell, color: has('color') ? shade(S.color, 0.8) : 0xd2d2d2 } : S ? M('cloth', shade(mainHex, 0.78)) : M('cloth', b.sub);
     const strapHex = has('strap') ? S.strap : b.strap, darkHex = has('dark') ? S.dark : b.dark;
     return {
       lo: !!lo, item: !!item, deco: S && S.deco || null,
@@ -698,6 +711,8 @@ const Gear = (() => {
   return {
     helmet: (l, skin, lo) => make(HELMETS, 'helmet', l, skin, lo),
     vest: (l, lo) => make(VESTS, 'vest', l, null, lo), vestArm,
+    // 상점·창고 썸네일: 끈을 뺀 모양 (slot 'helmet'·'pack')
+    thumb: (slot, l, skin) => (slot === 'pack' ? make(PACKS, 'pack', l, skin, false, 0, true) : make(HELMETS, 'helmet', l, skin, false, 0, true)),
     pack: (l, skin, lo, v) => make(PACKS, 'pack', l, skin, lo, v),
     item, packBack, vestBack: (v) => VBACK[v] || -0.123, canopy, shell, skinOf,
     build: { helmet: HELMETS, vest: VESTS, pack: PACKS },

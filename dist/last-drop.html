@@ -8608,6 +8608,7 @@ function buildRig(look) {
         if (m) { m.traverse((o) => { if (o.isMesh) o.castShadow = this.shadow; }); grp.add(m); }
       }
       hat.visible = !h;
+      if (typeof OutfitFx !== 'undefined') this.ofx = OutfitFx.kindsOf(L, this.gearLv);   // EXCLUSIVE 헬멧·가방 효과는 그 장비를 썼을 때만
     },
     setShadow(on) {
       if (this.shadow === on) return; this.shadow = on;
@@ -9824,6 +9825,52 @@ const RARITY = [
     hat_x_santa: { slot: 'hat', box: 'xmas', rar: 8, name: 'SANTA CLAUS 모자', desc: '금빛 방울 산타 모자 · 금빛 반짝임', kind: 'santa', color: 0xb8141e, pom: 0xf2c84a, fx: 'santa' },
     top_x_frost: { slot: 'top', box: 'xmas', rar: 8, name: 'FROST QUEEN 코트', desc: '서리 결정이 빛나는 코트 · 입으면 빛나는 얼음 결정과 찬 기운이 몸 둘레에 맴돎', kind: 'jacket', color: W, cell: 'xfrost', collar: 0xf4f8fb, collarCell: 'fleece', cuff: 0x9fd8f0, zip: 0x9fe8ff, ico: 'pt-xfrost', fx: 'frost' },
     bottom_x_frost: { slot: 'bottom', box: 'xmas', rar: 8, name: 'FROST QUEEN 바지', desc: '서리 결정이 빛나는 바지 · 얼음 결정', kind: 'jeans', color: W, cell: 'xfrost', belt: 0x1a2a3a, buckle: 0x9fe8ff, ico: 'pt-xfrost', fx: 'frost' },
+
+    // ---------- v23 헬멧·가방 스킨 (slot 'helmet'·'pack') ----------
+    //  경기에서 주운 헬멧·가방의 겉모습만 바뀐다 — 레벨마다 다른 모양(1 통풍 헬멧 · 2 커버+고글 · 3 헤드셋+야간 투시경 / 작은 데이팩 · 몰리 배낭 · 대형 배낭)은 그대로
+    //  필드(05_models_gear.js pal): color 본색 · cell 무늬 칸(옷 아틀라스 — 위장·니트·빛나는 선) · kind 본 재질(polymer·cloth·brass …) · color2 주머니·덮개
+    //   strap 끈 · dark 버클·레일 등 검은 부품(darkKind) · trim 테두리(trimKind) · lens 렌즈 · roll 침낭 말이 · ribbon 리본 · pom 방울
+    //   deco 장식: santa(흰 털 테·방울) · antlers(뿔·빨간 코) · lights(전구 줄) · bow(선물 리본) · frost(고드름·얼음 결정) · fx = EXCLUSIVE 몸 둘레 효과
+    // 배틀로얄 상자: 전장 위장
+    helm_br_wood: { slot: 'helmet', box: 'br', rar: 1, name: '산림 위장 헬멧', desc: '숲 무늬 위장 헬멧', cell: 'camoW', strap: 0x3b4129, dark: 0x23261c, trim: 0x2a2e20 },
+    pack_br_desert: { slot: 'pack', box: 'br', rar: 1, name: '사막 위장 가방', desc: '모래 무늬 배낭', cell: 'camoD', strap: 0x5a4a35, dark: 0x2a2218, roll: 0x8a7350 },
+    helm_br_urban: { slot: 'helmet', box: 'br', rar: 3, name: '도시 위장 헬멧', desc: '회색 도시 위장 무늬', cell: 'camoU', strap: 0x2a2c2f, dark: 0x16171a, lens: 0x3a6a8a },
+    pack_br_urban: { slot: 'pack', box: 'br', rar: 3, name: '도시 위장 가방', desc: '회색 도시 위장 무늬 배낭', cell: 'camoU', strap: 0x2a2c2f, dark: 0x16171a, roll: 0x3a3d40 },
+    helm_br_snow: { slot: 'helmet', box: 'br', rar: 4, name: '설원 위장 헬멧', desc: '눈밭 무늬 · 흰 끈', cell: 'camoS', strap: 0xd9dcde, dark: 0x8e9499, trim: 0xc9cdd0, lens: 0x9fd0e8 },
+    pack_br_snow: { slot: 'pack', box: 'br', rar: 4, name: '설원 위장 가방', desc: '눈밭 무늬 배낭 · 흰 끈', cell: 'camoS', strap: 0xd9dcde, dark: 0x8e9499, roll: 0xe8eaec },
+    helm_br_gold: { slot: 'helmet', box: 'br', rar: 5, name: '황금 전투 헬멧', desc: '금빛 광택 껍데기 · 검정 부품', kind: 'brass', color: 0xd9a93a, color2: 0x161616, strap: 0x161616, dark: 0x111111, trim: 0x111111, lens: 0xd9a93a, nvg: 0x111111, cup: 0x111111 },
+    pack_br_gold: { slot: 'pack', box: 'br', rar: 5, name: '황금 전투 가방', desc: '금빛 광택 배낭 · 검정 끈 · 금 버클', cell: 'gold', color2: 0x161616, strap: 0x111111, dark: 0xe8c45c, darkKind: 'brass', roll: 0x161616 },
+    // 스페셜 상자: 스트리트
+    helm_sp_white: { slot: 'helmet', box: 'sp', rar: 1, name: '화이트 헬멧', desc: '깨끗한 흰 껍데기 · 검정 끈', color: 0xe8e6e0, strap: 0x1e1f22, dark: 0x1e1f22, trim: 0x2a2b2e },
+    pack_sp_denim: { slot: 'pack', box: 'sp', rar: 1, name: '데님 가방', desc: '물 빠진 청 배낭 · 갈색 가죽 끈', cell: 'denim', color: 0x8ea8cc, strap: 0x5a3c26, dark: 0x3a2a1c, roll: 0x5a3c26 },
+    helm_sp_pink: { slot: 'helmet', box: 'sp', rar: 3, name: '핑크 스트릿 헬멧', desc: '검정 포인트 분홍 헬멧', color: 0xe86aa2, color2: 0x26262a, strap: 0x26262a, dark: 0x26262a, trim: 0x26262a, lens: 0xff8ad0 },
+    pack_sp_plaid: { slot: 'pack', box: 'sp', rar: 3, name: '체크 가방', desc: '빨강·검정 버펄로 체크 배낭', cell: 'plaid', color2: 0x1e1e20, strap: 0x1e1e20, dark: 0x111111, roll: 0x1e1e20 },
+    helm_sp_wave: { slot: 'helmet', box: 'sp', rar: 4, name: '네온 웨이브 헬멧', desc: '분홍 물결이 빛나는 헬멧', cell: 'glowP', strap: 0x1b151a, dark: 0x111111, lens: 0xff4fd0 },
+    pack_sp_wave: { slot: 'pack', box: 'sp', rar: 4, name: '네온 웨이브 가방', desc: '분홍 물결이 빛나는 배낭', cell: 'glowP', strap: 0x1b151a, dark: 0x111111, roll: 0x1b151a },
+    helm_sp_neon: { slot: 'helmet', box: 'sp', rar: 5, name: '네온 사이버 헬멧', desc: '회로처럼 빛나는 선', cell: 'glowC', strap: 0x111317, dark: 0x111317, lens: 0x46f2ff, nvg: 0x111317 },
+    pack_sp_neon: { slot: 'pack', box: 'sp', rar: 5, name: '네온 사이버 가방', desc: '회로처럼 빛나는 선이 흐르는 배낭', cell: 'glowC', strap: 0x111317, dark: 0x111317, roll: 0x111317 },
+    // 보급 상자: 엘리트
+    helm_sup_dig: { slot: 'helmet', box: 'sup', rar: 1, name: '디지털 위장 헬멧', desc: '픽셀 무늬 위장 헬멧', cell: 'camoDig', strap: 0x2e3023, dark: 0x1c1d16 },
+    pack_sup_dig: { slot: 'pack', box: 'sup', rar: 1, name: '디지털 위장 가방', desc: '픽셀 무늬 위장 배낭', cell: 'camoDig', strap: 0x2e3023, dark: 0x1c1d16, roll: 0x4b5134 },
+    helm_sup_tiger: { slot: 'helmet', box: 'sup', rar: 3, name: '타이거 스트라이프 헬멧', desc: '호랑이 줄무늬 위장', cell: 'camoTiger', strap: 0x2b2b21, dark: 0x1a1a14 },
+    pack_sup_tiger: { slot: 'pack', box: 'sup', rar: 3, name: '타이거 스트라이프 가방', desc: '호랑이 줄무늬 위장 배낭', cell: 'camoTiger', strap: 0x2b2b21, dark: 0x1a1a14, roll: 0x46503c },
+    helm_sup_red: { slot: 'helmet', box: 'sup', rar: 4, name: '레드 엘리트 헬멧', desc: '붉은 껍데기 · 금 테두리', color: 0x9b1c22, color2: 0x5a1014, strap: 0x1d1d1d, dark: 0x1d1d1d, trim: 0xd8b04a, trimKind: 'brass', lens: 0xd8b04a },
+    pack_sup_red: { slot: 'pack', box: 'sup', rar: 4, name: '레드 엘리트 가방', desc: '붉은 배낭 · 금 버클', color: 0x8a1a20, color2: 0x5e1216, strap: 0x1d1d1d, dark: 0xd8b04a, darkKind: 'brass', roll: 0x2a1012 },
+    helm_sup_chrome: { slot: 'helmet', box: 'sup', rar: 5, name: '크롬 강화 헬멧', desc: '육각 판에 주황 빛이 흐르는 헬멧', cell: 'glowO', strap: 0x1d2024, dark: 0x1d2024, lens: 0xff8a1e, nvg: 0x1d2024 },
+    pack_sup_chrome: { slot: 'pack', box: 'sup', rar: 5, name: '크롬 강화 가방', desc: '육각 판에 주황 빛이 흐르는 배낭', cell: 'glowO', strap: 0x1d2024, dark: 0x111214, roll: 0x1d2024 },
+    // 크리스마스 상자: 겨울 (EXCLUSIVE = 산타 헬멧 · 프로스트 가방)
+    helm_x_knit: { slot: 'helmet', box: 'xmas', rar: 0, name: '빨간 니트 헬멧', desc: '털실로 뜬 빨간 커버', cell: 'knit', color: 0xb3202c, strap: 0xf2f2ee, dark: 0x2a1012 },
+    pack_x_knit: { slot: 'pack', box: 'xmas', rar: 0, name: '초록 니트 가방', desc: '털실로 뜬 초록 배낭 · 빨간 끈', cell: 'knit', color: 0x245a34, strap: 0xb3202c, dark: 0x163a22, roll: 0xb3202c },
+    helm_x_snowflake: { slot: 'helmet', box: 'xmas', rar: 1, name: '눈꽃 헬멧', desc: '흰 눈꽃 띠 빨간 니트 커버', cell: 'xknit', strap: 0xf2efe6, dark: 0x7a1018 },
+    pack_x_gift: { slot: 'pack', box: 'xmas', rar: 1, name: '선물 포장 가방', desc: '금 리본을 두른 빨간 선물 상자', color: 0xc8202e, color2: 0xa8182a, strap: 0x2a7a3a, dark: 0x1a1a1a, deco: 'bow', ribbon: 0xe8c45a, roll: 0x2a7a3a },
+    helm_x_rudolph: { slot: 'helmet', box: 'xmas', rar: 3, name: '루돌프 헬멧', desc: '뿔 달린 갈색 헬멧 · 빛나는 빨간 코', kind: 'cloth', color: 0x7a5232, color2: 0x5e3e24, strap: 0xc8202e, dark: 0x2a1c12, deco: 'antlers' },
+    pack_x_candy: { slot: 'pack', box: 'xmas', rar: 3, name: '캔디 케인 가방', desc: '빨강·흰 사선 줄무늬 배낭', cell: 'xcandy', strap: 0xc8141e, dark: 0x1a1a1a, roll: 0xf4f0e8 },
+    helm_x_santa: { slot: 'helmet', box: 'xmas', rar: 4, name: '산타 헬멧', desc: '흰 털 테두리와 방울 꼬리', cell: 'knit', color: 0xc41a24, strap: 0xf4f2ee, dark: 0x2a1012, deco: 'santa' },
+    pack_x_sack: { slot: 'pack', box: 'xmas', rar: 4, name: '산타 선물 자루', desc: '흰 털 테 · 금 버클 붉은 자루', color: 0xb8141e, color2: 0x9a1018, strap: 0x141414, dark: 0xf2c84a, darkKind: 'brass', deco: 'santa', roll: 0xf4f2ee },
+    helm_x_lights: { slot: 'helmet', box: 'xmas', rar: 5, name: '트리 라이트 헬멧', desc: '색색 전구와 금빛 별이 빛나는 헬멧', cell: 'xlights', strap: 0x0e1a12, dark: 0x0e1a12, deco: 'lights' },
+    pack_x_lights: { slot: 'pack', box: 'xmas', rar: 5, name: '트리 라이트 가방', desc: '색색 전구 줄이 빛나는 배낭', cell: 'xlights', strap: 0x0e1a12, dark: 0x0e1a12, deco: 'lights', roll: 0x13281a },
+    helm_x_santa8: { slot: 'helmet', box: 'xmas', rar: 8, name: 'SANTA CLAUS 헬멧', desc: '금빛 방울 산타 헬멧 · 쓰면 금빛 반짝임과 눈송이가 몸 둘레를 돎', cell: 'knit', color: 0xb8141e, strap: 0xf6f4ee, dark: 0x1a1a1a, trim: 0xf2c84a, trimKind: 'brass', lens: 0xf2c84a, pom: 0xf2c84a, deco: 'santa', fx: 'santa' },
+    pack_x_frost8: { slot: 'pack', box: 'xmas', rar: 8, name: 'FROST QUEEN 가방', desc: '서리 결정이 빛나는 배낭 · 메면 얼음 결정과 찬 기운이 몸 둘레에 맴돎', cell: 'xfrost', strap: 0x1a2a3a, dark: 0x9fe8ff, darkKind: 'metal', deco: 'frost', roll: 0x9fd8f0, fx: 'frost' },
   };
   // 기본 옷도 레어도(기본)를 갖는다
   for (const k of ['top_basic', 'bottom_basic', 'shoes_basic', 'chute_basic']) Body.SKINS[k].rar = 0;
@@ -11685,10 +11732,10 @@ const Gear = (() => {
       const j = [s * 0.084, 0.0, 0.03];
       put(g, ribbon([[s * front[0], front[1], front[2]], [s * (front[0] - 0.004), (front[1] + j[1]) / 2 + 0.01, (front[2] + j[2]) / 2 + 0.006], j], nHead, 0.016, 0.003, P.lo ? 4 : 8), P.strap);
       if (back) put(g, ribbon([[s * back[0], back[1], back[2]], [s * (back[0] - 0.002), (back[1] + j[1]) / 2, (back[2] + j[2]) / 2 - 0.004], j], nHead, 0.016, 0.003, P.lo ? 4 : 8), P.strap);
-      put(g, ribbon([j, [s * 0.066, -0.026, 0.054], [s * 0.03, -0.043, 0.07], [0, -0.047, 0.073]], nHead, 0.017, 0.003, P.lo ? 4 : 10), P.strap);
+      put(g, ribbon([j, [s * 0.066, -0.012, 0.038], [s * 0.03, -0.028, 0.047], [0, -0.032, 0.051]], nHead, 0.017, 0.003, P.lo ? 4 : 10), P.strap);
       if (!P.lo && s === 1) put(g, pillow(0.026, 0.018, 0.011, 0.35, 0, [2, 2, 1]), P.dark, j[0] + 0.004, j[1] - 0.004, j[2] + 0.004, 0, 0.5, 0);   // 버클
     }
-    if (cup) put(g, pillow(0.05, 0.02, 0.016, [0.5, 0.6, 0.6], [0, 0, 0.1], [3, 2, 2]), P.pad, 0, -0.048, 0.071, -0.75, 0, 0);   // 턱받이
+    if (cup) put(g, pillow(0.05, 0.02, 0.016, [0.5, 0.6, 0.6], [0, 0, 0.1], [3, 2, 2]), P.pad, 0, -0.034, 0.053, -0.95, 0, 0);   // 턱받이
   }
   // 헬멧 장식 (스킨): c·r = 껍데기, rim = 테두리, front = 코(빨간 빛) 자리 [x, y, z]
   function decoHelm(g, P, c, r, rim, front) {
@@ -11700,11 +11747,13 @@ const Gear = (() => {
       for (const [x, y, z, rr] of T) put(g, SPH(rr, P.lo ? 8 : 12, P.lo ? 6 : 9), P.tail, x, y, z);
       put(g, SPH(0.03, P.lo ? 8 : 12, P.lo ? 6 : 9), P.pom ? { cell: 'fleece', color: P.pom } : FUR, 0.074, ty - 0.03, -0.17);
     } else if (D === 'antlers') {
-      const ac = P.antler;
+      // 뿔: 굵기가 줄어드는 매끈한 가지 (마디마다 원뿔대 + 이음매 구) + 앞으로 뻗은 갈래 둘
+      const ac = P.antler, seg = P.lo ? 5 : 8;
       for (const s of [1, -1]) {
-        const bx = s * 0.05, by = ty - 0.018, bz = -0.01, beam = [[0, 0, 0, 0.016], [0.012, 0.032, -0.004, 0.014], [0.028, 0.062, -0.014, 0.012], [0.042, 0.09, -0.024, 0.0105], [0.052, 0.114, -0.036, 0.009], [0.058, 0.134, -0.048, 0.008]];
-        const chainA = (L) => { for (let i = 0; i < L.length - 1; i++) for (let k = 0; k < (P.lo ? 1 : 3); k++) { const u = k / (P.lo ? 1 : 3), a0 = L[i], a1 = L[i + 1], rr = lerp(a0[3], a1[3], u); put(g, SPH(rr, 7, 5), ac, bx + s * lerp(a0[0], a1[0], u), by + lerp(a0[1], a1[1], u), bz + lerp(a0[2], a1[2], u)); } const e = L[L.length - 1]; put(g, SPH(e[3], 7, 5), ac, bx + s * e[0], by + e[1], bz + e[2]); };
-        chainA(beam); for (const [k, dx, dy, dz] of [[1, 0.012, 0.062, 0.07], [3, 0.018, 0.066, 0.06]]) { const [x, y, z, rr] = beam[k]; chainA([[x, y, z, rr * 0.8], [x + dx, y + dy, z + dz, 0.006]]); }
+        const bx = s * 0.05, by = ty - 0.018, bz = -0.01, beam = [[0, 0, 0, 0.016], [0.012, 0.032, -0.004, 0.014], [0.028, 0.062, -0.014, 0.012], [0.042, 0.09, -0.024, 0.0105], [0.052, 0.114, -0.036, 0.009], [0.058, 0.134, -0.048, 0.007]];
+        const W = (L) => L.map(([x, y, z, rr]) => [bx + s * x, by + y, bz + z, rr]);
+        limb(g, ac, W(beam), seg);
+        for (const [k, dx, dy, dz] of [[1, 0.012, 0.062, 0.07], [3, 0.018, 0.066, 0.06]]) { const [x, y, z, rr] = beam[k]; limb(g, ac, W([[x, y, z, rr * 0.8], [x + dx * 0.5, y + dy * 0.55, z + dz * 0.45, rr * 0.6], [x + dx, y + dy, z + dz, 0.005]]), seg); }
       }
       put(g, SPH(0.017, 12, 9), { glow: 0xff2a2a }, front[0], front[1], front[2]);   // 빛나는 빨간 코
     } else if (D === 'lights') {
@@ -11714,6 +11763,16 @@ const Gear = (() => {
       for (let i = 0; i < L.length; i += 3) put(g, SPH(0.0075, 6, 5), { glow: cols[(i / 3) % cols.length] }, L[i][0], L[i][1] - 0.006, L[i][2]);
       put(g, star(0.03, 0.008), M('brass', 0xf2c84a), 0, ty + 0.03, -0.005);
     }
+  }
+  // 굵기가 줄어드는 가지(뿔): pts = [[x, y, z, r], ...] — 마디마다 원뿔대 + 이음매 구
+  function limb(g, m, pts, seg = 8) {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L = Math.hypot(dx, dy, dz) || 1e-4;
+      const o = put(g, new THREE.CylinderGeometry(b[3], a[3], L, seg, 1, true), m, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+      o.quaternion.setFromUnitVectors(new V3(0, 1, 0), new V3(dx / L, dy / L, dz / L));
+      put(g, SPH(a[3], seg, 5), m, a[0], a[1], a[2]);
+    }
+    const e = pts[pts.length - 1]; put(g, SPH(e[3], seg, 4), m, e[0], e[1], e[2]);
   }
   // 금빛 별 (트리 꼭대기)
   function star(R, t) {
@@ -11974,7 +12033,7 @@ const Gear = (() => {
   // 어깨끈: 가방 위 → 어깨 위 → 가슴 앞(패드) → 겨드랑이 아래로 웨빙 → 가방 아래 옆
   function packStraps(g, P, B, v, w, t) {
     const z0 = PZ[v], zs = PZS[v], lf = PLIFT[v];
-    if (P.item) { for (const s of [1, -1]) put(g, ribbon([[s * 0.085, B.top - 0.04, z0 + 0.004], [s * 0.1, B.top - 0.14, z0 + 0.03], [s * 0.12, B.cy - B.h / 2 + 0.03, z0 + 0.006]], () => [0, 0, 1], w, t, 8), P.strap); return; }
+    if (P.item) { for (const s of [1, -1]) put(g, ribbon([[s * 0.085, B.top - 0.04, z0 + 0.004], [s * 0.1, B.top - 0.14, z0 + 0.012], [s * 0.12, B.cy - B.h / 2 + 0.03, z0 + 0.006]], () => [0, 0, 1], w, t, 8), P.strap); return; }   // 바닥: 등판에 붙은 짧은 끈만
     for (const s of [1, -1]) {
       // 가방 위 → (조끼 어깨끈 위로) 어깨 → 가슴 앞(조끼 앞판 위)
       const ya = B.top - 0.05, mid = overShoulder(s * 0.1, PSO[v] + t / 2).reverse().filter((p) => (p[2] < 0 ? p[1] > ya + 0.03 : p[1] > 0.19));
@@ -12117,7 +12176,8 @@ const Gear = (() => {
     const b = DEF[kind][lvl] || DEF[kind][1], has = (k) => S && S[k] !== undefined;
     const mainHex = has('color') ? S.color : b.main, kd = (S && S.kind) || b.kind;
     const main = S && S.cell ? { cell: S.cell, color: has('color') ? S.color : 0xffffff } : M(kd, mainHex);
-    const sub = S && S.cell2 ? { cell: S.cell2, color: has('color2') ? S.color2 : 0xffffff } : has('color2') ? M(S.kind2 || 'cloth', S.color2) : S && S.cell ? { cell: S.cell, color: 0xd2d2d2 } : S ? M('cloth', shade(mainHex, 0.78)) : M('cloth', b.sub);
+    // 주머니·덮개: 따로 정하지 않으면 본 무늬를 조금 어둡게 (색을 물들이는 무늬 — 니트·데님 — 는 그 색을 어둡게)
+    const sub = S && S.cell2 ? { cell: S.cell2, color: has('color2') ? S.color2 : 0xffffff } : has('color2') ? M(S.kind2 || 'cloth', S.color2) : S && S.cell ? { cell: S.cell, color: has('color') ? shade(S.color, 0.8) : 0xd2d2d2 } : S ? M('cloth', shade(mainHex, 0.78)) : M('cloth', b.sub);
     const strapHex = has('strap') ? S.strap : b.strap, darkHex = has('dark') ? S.dark : b.dark;
     return {
       lo: !!lo, item: !!item, deco: S && S.deco || null,
@@ -12177,6 +12237,8 @@ const Gear = (() => {
   return {
     helmet: (l, skin, lo) => make(HELMETS, 'helmet', l, skin, lo),
     vest: (l, lo) => make(VESTS, 'vest', l, null, lo), vestArm,
+    // 상점·창고 썸네일: 끈을 뺀 모양 (slot 'helmet'·'pack')
+    thumb: (slot, l, skin) => (slot === 'pack' ? make(PACKS, 'pack', l, skin, false, 0, true) : make(HELMETS, 'helmet', l, skin, false, 0, true)),
     pack: (l, skin, lo, v) => make(PACKS, 'pack', l, skin, lo, v),
     item, packBack, vestBack: (v) => VBACK[v] || -0.123, canopy, shell, skinOf,
     build: { helmet: HELMETS, vest: VESTS, pack: PACKS },
@@ -20974,6 +21036,9 @@ const BotSkin = (() => {
     eq.chute = pickRar(R, OUT.chute || [], rarPick(R, dk), 'chute_basic');
     const gun = {}; for (const g in GUN) { const s = pickRar(R, GUN[g], rarPick(R, dk), null); if (s) gun[g] = s; }
     const veh = {}; for (const t in VEH) { const s = pickRar(R, VEH[t], rarPick(R, dk), null); if (s) veh[t] = s; }
+    // v23 헬멧·가방 스킨: 위의 뽑기 순서 뒤에 붙여 기존 스킨 결과는 그대로 · 희귀 이상만 · 난이도가 높을수록 자주
+    const gp = [0.2, 0.35, 0.5, 0.65][KEYS.indexOf(dk)] || 0.3, gearPick = (sl) => (R() < gp ? pickRar(R, (OUT[sl] || []).filter((x) => x.rar >= 1), rarPick(R, dk), null) : null);
+    eq.helmet = gearPick('helmet'); eq.pack = gearPick('pack');
     return { look: Body.makeLook(eq, o.body), gun, veh };
   }
   // 난이도 하나 고르기 (하드코어 = 전원 익스트림, 랭크전 = 내 티어 비율, 아니면 설정. '섞어서'는 쉬움·보통·보통·어려움)
@@ -21386,10 +21451,14 @@ const OutfitFx = (() => {
       { rate: 3.5, emit(E, P, o, k) { const a = Math.random() * TAU, r = 0.15 + Math.random() * 0.2; _q.set(o.x + Math.cos(a) * r, o.y + 0.08, o.z + Math.sin(a) * r); E(P, _q, Math.cos(a) * 0.25, 0.05, Math.sin(a) * 0.25, 0xdff4ff, (0.16 + Math.random() * 0.1) * k, 1.3, { grow: 1.2, a: 0.22, drag: 1.2 }); } },
     ],
   };
-  // 입은 옷에서 효과 종류 (중복 없이)
-  function kindsOf(look) {
+  // 입은 옷에서 효과 종류 (중복 없이) — v23 헬멧·가방 스킨은 그 장비를 실제로 썼을 때만 (gear = [헬멧, 조끼, 가방] 레벨)
+  function kindsOf(look, gear) {
     if (!look || typeof Body === 'undefined') return [];
-    const out = new Set(); for (const sl of ['hat', 'top', 'bottom', 'shoes', 'gloves']) { const S = look[sl] && Body.SKINS[look[sl]]; if (S && S.fx && KIND[S.fx]) out.add(S.fx); }
+    const out = new Set();
+    for (const sl of ['hat', 'top', 'bottom', 'shoes', 'gloves', 'helmet', 'pack']) {
+      if ((sl === 'helmet' && !(gear && gear[0])) || (sl === 'pack' && !(gear && gear[2]))) continue;
+      const S = look[sl] && Body.SKINS[look[sl]]; if (S && S.fx && KIND[S.fx]) out.add(S.fx);
+    }
     return [...out];
   }
   const sceneOf = (o) => { while (o.parent) o = o.parent; return o.isScene ? o : null; };
@@ -23761,6 +23830,17 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-20', t: '헬멧·조끼·가방 레벨별 새 모양 · 헬멧·가방 스킨 · 자동 줍기 개선', items: [
+    '헬멧·조끼·가방을 레벨마다 모양이 확연히 다르게 새로 만듦 — 멀리서 이름을 보지 않아도 모양만으로 레벨을 알 수 있음 (멀리 있는 캐릭터의 간략 모델도 같은 특징)',
+    '헬멧: 1레벨 = 귀가 드러나는 작고 낮은 통풍 헬멧(위 능선 두 줄 · 통풍 구멍) · 2레벨 = 귀까지 덮는 천 커버 헬멧 + 고무 밴드 + 앞 위에 고글 · 3레벨 = 하이컷 헬멧 + 큰 귀덮개 헤드셋과 마이크 + 앞 위로 젖힌 쌍안 야간 투시경 + 옆 레일 + 뒤 균형추',
+    '조끼: 1레벨 = 몸에 붙는 얇은 소프트 조끼(주머니 없이 매끈) · 2레벨 = 판형 조끼 + 앞 탄창 주머니 3 + 어깨 위로 솟은 무전기 안테나 · 3레벨 = 두꺼운 중장 조끼 + 목 칼라 + 팔과 함께 움직이는 어깨 보호대 + 골반 보호대 + 주머니 가득',
+    '가방: 1레벨 = 등에 붙는 작은 데이팩 · 2레벨 = 옆 물병 주머니가 튀어나온 몰리 배낭 · 3레벨 = 어깨 위로 솟는 대형 배낭(앞에서도 보임) + 덮개 + 아래 침낭 말이 + 허리 벨트',
+    '어깨끈이 어깨 위에 딱 붙고 가방끈은 조끼 위로 지나감 · 가방은 조끼 두께만큼 뒤로 · 등에 멘 총은 가방 크기에 맞춰 붙음 · 바닥에 놓인 장비는 끈 없이 반듯하게',
+    '헬멧·가방 스킨 36종 — 크리스마스 상자(빨간·초록 니트 · 눈꽃 · 선물 포장 · 루돌프(뿔과 빛나는 빨간 코) · 캔디 케인 · 산타(흰 털 테와 방울) · 산타 선물 자루 · 트리 라이트(빛나는 전구 줄) · EXCLUSIVE SANTA CLAUS 헬멧 · FROST QUEEN 가방) · 배틀로얄 상자(산림·사막·도시·설원 위장 · 황금) · 스페셜 상자(화이트 · 데님 · 핑크 · 체크 · 네온 웨이브 · 네온 사이버) · 보급 상자(디지털 · 타이거 스트라이프 · 레드 엘리트 · 크롬 강화)',
+    '스킨은 경기에서 주운 헬멧·가방의 모든 레벨에 적용 (레벨 모양은 그대로, 색·무늬·장식만 바뀜) · EXCLUSIVE 는 쓰거나 메면 몸 둘레 효과',
+    '창고에 헬멧·가방 탭 — 1·2·3레벨로 바꿔 미리 보기 · 로비 캐릭터는 헬멧·가방 스킨을 끼면 3레벨 모습으로 · 상점 결과·확률 창에 3D 그림 · 봇도 난이도에 따라 헬멧·가방 스킨을 씀',
+    '자동 줍기: 두 번째 총도 줍고(들고 있는 총은 그대로 · 같은 총은 또 줍지 않음) · 헬멧·조끼·가방은 없거나 더 높은 레벨이면 바꿔 씀(같은 레벨은 내구도가 훨씬 많을 때) · 가진 총의 빈자리에 맞는 부착물을 바로 닮 · 내가 버린 물건은 다시 줍지 않음',
+  ] },
   { v: 'v23', d: '2026-11-20', t: '파티 입장·퇴장 연출 — 상위 티어 4종 · 어려운 칭호', items: [
     '상위 티어(노바·셀레스티얼·이클립스·제니스)나 따기 어려운 칭호(랭크 챔피언·하드코어 패왕·정점의 베테랑·이터널·오버로드·백룸 정복자·전쟁의 신)를 가진 사람이 파티에 들어오거나 나가면, 로비 파티 줄에서 그 캐릭터가 직접 움직이며 등장·퇴장 — 같은 파티 모두의 화면에 보임',
     '상위 티어 등장: 노바 = 유성처럼 떨어져 한 무릎 착지 · 셀레스티얼 = 금빛 빛기둥 속으로 천천히 내려와 두 손을 폄 · 이클립스 = 하늘이 어두워지고 검은 태양 아래 붉은 구멍에서 팔짱 낀 채 솟아오름 · 제니스 = 하늘의 별이 열리고 빛줄기 속을 돌며 내려와 충격파 · 승리의 주먹',
@@ -26974,6 +27054,9 @@ const HUD = (() => {
     gloves: (c) => `<path d="M7 21v-8L5 9.5 6.5 8 9 11V4h2v6h1V3h2v7h1V4h2v9c0 4-2 8-6 8z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/>`,
     chute: (c, k) => `<path d="M2 10c3-5.5 17-5.5 20 0l-1 1.2H3z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M8 5.6 7 11M16 5.6l1 5.4M12 4.8v6.4" stroke="${k || '#555'}" stroke-width="1.6"/><path d="M4 11.5l7.4 8.5M20 11.5l-7.4 8.5M12 11.5V20" stroke="#bbb" stroke-width="0.6"/><circle cx="12" cy="20.5" r="1.2" fill="#ddd"/>`,
     none: () => `<circle cx="12" cy="12" r="7.5" fill="none" stroke="#777" stroke-width="1.4" stroke-dasharray="3 2"/><path d="M7 17 17 7" stroke="#777" stroke-width="1.4"/>`,
+    // v23 헬멧·가방 (창고·상점은 3D 썸네일을 쓰고, 이것은 그림이 없을 때 대신)
+    helmet: (c, k) => `<path d="M4 15.5c0-6 3.6-10 8.4-10S20.6 9.5 20.6 15.5z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M3.4 15.5h17.8v2H3.4z" fill="${k || '#333'}"/><path d="M8 18.8 6.5 22M16.6 18.8l1.5 3.2" stroke="${k || '#333'}" stroke-width="1.2"/>`,
+    pack: (c, k) => `<path d="M6.5 7.5c0-2.6 2.4-4.5 5.5-4.5s5.5 1.9 5.5 4.5V20a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M8.5 13.5h7v5.5h-7z" fill="${k || 'rgba(0,0,0,.25)'}"/><path d="M9.5 5.5h5" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>`,
   };
   function ownedSkins() { return Eco.ownedSkins(); }
   function equipSkin(slot, id) {
@@ -26982,7 +27065,7 @@ const HUD = (() => {
   }
   // 무늬 옷은 SVG 패턴(index.html의 pt-*)으로 칠한다
   const skinFill = (S) => (S.ico ? `url(#${S.ico})` : hexs(S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888)));
-  let whVeh = 'sedan', whGun = null;
+  let whVeh = 'sedan', whGun = null, whLv = 3;   // whLv: 헬멧·가방 탭에서 미리 볼 레벨 (v23)
   function renderWarehouse() {
     const eq = Body.normEquip(SETTINGS.look), own = ownedSkins(), cats = $('whCats'), grid = $('whGrid');
     if (!cats || !grid) return;
@@ -26996,9 +27079,11 @@ const HUD = (() => {
       const b = h('button', 'wh-item' + (on ? ' on' : '') + (S && S.rar ? ' rar' : '')); b.type = 'button';
       if (R) b.style.setProperty('--rc', R.color);
       const ico = h('i', 'wh-ico');
-      ico.innerHTML = `<svg viewBox="0 0 24 24">${S ? SKIN_ICON[slot.id](skinFill(S), S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null) : SKIN_ICON.none()}</svg>`;
-      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : slot.name + ' 없음')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + slot.name + ' · ' + (on ? '장착 중' : S ? '장착하기' : '벗기')));
-      b.title = S ? `${S.name} — ${S.desc || ''}` : `${slot.name} 벗기`;
+      // v23 헬멧·가방: 그 레벨 모양의 3D 썸네일 · '없음' 대신 기본 모습
+      if (slot.gear) ico.appendChild(Shop.gearImgEl(slot.id, id, whLv));
+      else ico.innerHTML = `<svg viewBox="0 0 24 24">${S ? SKIN_ICON[slot.id](skinFill(S), S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null) : SKIN_ICON.none()}</svg>`;
+      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : slot.gear ? '기본 ' + slot.name : slot.name + ' 없음')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + slot.name + ' · ' + (on ? '장착 중' : S || slot.gear ? '장착하기' : '벗기')));
+      b.title = S ? `${S.name} — ${S.desc || ''}` + (slot.gear ? ' (경기에서 주운 모든 레벨의 ' + slot.name + '에 적용)' : '') : slot.gear ? `기본 ${slot.name} 모습` : `${slot.name} 벗기`;
       b.addEventListener('click', () => { if (!on) equipSkin(slot.id, id || null); });
       return b;
     };
@@ -27049,14 +27134,22 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     } else for (const slot of Body.SLOTS) {
       if (whCat !== 'all' && whCat !== slot.id) continue;
       const ids = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === slot.id && own.has(k)).sort((a, b) => (Body.SKINS[b].rar || 0) - (Body.SKINS[a].rar || 0));
+      // v23 헬멧·가방 탭: 1·2·3 레벨 중 무엇으로 미리 볼지 (로비 캐릭터도 그 레벨을 씀)
+      if (slot.gear && whCat === slot.id) {
+        const tabs = h('div', 'wh-vtabs');
+        for (const lv of [1, 2, 3]) { const b = h('button', whLv === lv ? 'on' : '', `${lv}레벨`); b.type = 'button'; b.addEventListener('click', () => { whLv = lv; renderWarehouse(); showcase(); Audio.init(); Audio.ui(); }); tabs.appendChild(b); }
+        grid.appendChild(tabs);
+      }
       if (slot.optional) grid.appendChild(card(slot, null));
       for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
-      if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자에서 얻을 수 있습니다.`));
+      if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자(크리스마스·배틀로얄·스페셜·보급)에서 얻을 수 있습니다.`));
     }
-    $('whCount').textContent = `옷 ${own.size}벌 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${Eco.gskinsOwned().length}종`;
+    const gearN = [...own].filter((k) => Body.SKINS[k] && (Body.SKINS[k].slot === 'helmet' || Body.SKINS[k].slot === 'pack')).length;
+    $('whCount').textContent = `옷 ${own.size - gearN}벌 · 헬멧·가방 스킨 ${gearN}종 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${Eco.gskinsOwned().length}종`;
   }
   // 창고 3D: 차량 분류면 장착한(없으면 기본) 차량을, 아니면 캐릭터
   function showcase() {
+    Lobby.gearView = (whCat === 'helmet' || whCat === 'pack') ? { k: whCat, lv: whLv } : null;   // v23 창고에서 헬멧·가방 보기
     if (lobbyTab !== 'custom') return;
     if (whCat === 'veh') { const vl = Eco.vlook(); Lobby.show({ kind: 'veh', type: whVeh, skin: vl[whVeh] }); }
     else if (whCat === 'gun') { const gun = whGun || Eco.showGun(); Lobby.show({ kind: 'gun', gun, skin: Eco.glook()[gun] || null }); }
@@ -30342,16 +30435,24 @@ const Shop = (() => {
   const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', TQ = [];
   const gkey = (gun, id) => 'gs:' + gun + ':' + (id || '');
   const gunThumb = (gun, id) => thumb(gkey(gun, id), () => buildGunMesh(gun, {}, id || null), 240, 104, [-1, 0.22, 0.12]);
-  function gunSrc(gun, id) { const k = gkey(gun, id); if (THUMB[k] !== undefined) return THUMB[k] || BLANK; if (!TQ.some((q) => q[0] === k)) TQ.push([k, gun, id]); return BLANK; }
+  // 대기열: [열쇠, 그리는 함수] — 총기 스킨·헬멧·가방 스킨 썸네일이 같이 쓴다
+  function queued(k, make) { if (THUMB[k] !== undefined) return THUMB[k] || BLANK; if (!TQ.some((q) => q[0] === k)) TQ.push([k, make]); return BLANK; }
+  const gunSrc = (gun, id) => queued(gkey(gun, id), () => gunThumb(gun, id));
   const gunImg = (gun, id) => `<img data-th="${gkey(gun, id)}" src="${gunSrc(gun, id)}" alt="">`;
   function gunImgEl(gun, id) { const im = document.createElement('img'); im.dataset.th = gkey(gun, id); im.src = gunSrc(gun, id); im.alt = ''; return im; }
-  function pump() { if (!TQ.length) return; const [k, gun, id] = TQ.shift(), src = gunThumb(gun, id) || BLANK; document.querySelectorAll(`img[data-th="${k}"]`).forEach((im) => { im.src = src; }); }
+  // v23 헬멧·가방 스킨 썸네일 (slot 'helmet'·'pack', id 없으면 기본 모습, lv = 보여 줄 레벨) — 가방은 등 쪽에서
+  const grKey = (slot, id, lv) => 'gr:' + slot + lv + ':' + (id || '');
+  const gearSrc = (slot, id, lv = 3) => queued(grKey(slot, id, lv), () => thumb(grKey(slot, id, lv), () => Gear.thumb(slot, lv, id), 200, 200, slot === 'pack' ? [-0.7, 0.32, -1] : [0.75, 0.38, 1]));
+  const gearImg = (slot, id, lv = 3) => `<img data-th="${grKey(slot, id, lv)}" src="${gearSrc(slot, id, lv)}" alt="">`;
+  function gearImgEl(slot, id, lv = 3) { const im = document.createElement('img'); im.dataset.th = grKey(slot, id, lv); im.src = gearSrc(slot, id, lv); im.alt = ''; return im; }
+  function pump() { if (!TQ.length) return; const [k, make] = TQ.shift(), src = make() || BLANK; document.querySelectorAll(`img[data-th="${k}"]`).forEach((im) => { im.src = src; }); }
   // ---------- 아이콘 ----------
-  const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산' };
+  const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산', helmet: '헬멧 스킨 · 모든 레벨', pack: '가방 스킨 · 모든 레벨' };
   const hexs = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
   function skinFill(S) { if (S.ico) return `url(#${S.ico})`; const c = S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888); return hexs(c); }
   function skinSvg(id) {
     const S = Body.SKINS[id]; if (!S) return '';
+    if (S.slot === 'helmet' || S.slot === 'pack') return gearImg(S.slot, id);
     const second = S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null;
     return `<svg viewBox="0 0 24 24">${HUD.skinIcon(S.slot, skinFill(S), second)}</svg>`;
   }
@@ -30361,6 +30462,7 @@ const Shop = (() => {
     if (o.k === 'gcoin') return gcoinIco();
     if (o.k === 'gskin') return gunImg(GSKINS[o.id].gun, o.id);
     if (o.k === 'vskin') { const src = vehThumb(o.id); return src ? `<img src="${src}" alt="">` : coinIco(); }
+    const S = Body.SKINS[o.id]; if (S && (S.slot === 'helmet' || S.slot === 'pack')) return gearImg(S.slot, o.id);   // v23 헬멧·가방: 3D 썸네일
     return skinSvg(o.id);
   }
   function itemName(o) {
@@ -30375,7 +30477,7 @@ const Shop = (() => {
     if (o.k === 'gold' || o.k === 'coin' || o.k === 'gcoin') return '재화';
     if (o.k === 'gskin') { const S = GSKINS[o.id], cls = ITEMS[S.gun].name.replace(GunSkin.short(S.gun), '').trim() || ITEMS[S.gun].name; return `총기 스킨 · ${cls}` + (S.xm ? ' · 대기·살펴보기·사격·처치 효과·킬 로그' : S.fx ? ' · 사격·교체 효과' + (S.parts ? ' · 부속품' : '') : S.lite ? ' · 약한 사격·맞힘 효과' : '') + (S.gun === 'pzf' ? ' · 로켓·폭발 모양' : ''); }
     if (o.k === 'vskin') { const V = VSKINS[o.id]; return `${VEH_SKIN_TYPES[V.veh]} 스킨 · ${VCLS_NAME[V.cls]}` + (V.rar === 8 ? ' · 움직이는 썰매·빛나는 코' : ''); }
-    const SK = Body.SKINS[o.id]; return (SLOT_NAME[SK.slot] || '') + (SK.fx ? ' · 입으면 몸 둘레 효과' : '');
+    const SK = Body.SKINS[o.id]; return (SLOT_NAME[SK.slot] || '') + (SK.fx ? (SK.slot === 'helmet' ? ' · 쓰면 몸 둘레 효과' : SK.slot === 'pack' ? ' · 메면 몸 둘레 효과' : ' · 입으면 몸 둘레 효과') : '');
   }
 
   // ---------- 상점 화면 ----------
@@ -30617,7 +30719,7 @@ const Shop = (() => {
   }
   // 경기가 시작되면 상점 창·컷신을 닫는다 (파티 방장이 시작하는 경우 등)
   function closeAll() { if (Cutscene.active) Cutscene.skip(); for (const id of ['gachaRes', 'oddsPanel']) { const e = $(id); if (e) e.hidden = true; } armed = null; }
-  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, gunThumb, gunImgEl, pump, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, gcoinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh, gun: selGun, ex: exSub }; } };
+  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, gunThumb, gunImgEl, gearImgEl, gearImg, pump, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, gcoinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh, gun: selGun, ex: exSub }; } };
 })();
 
 // ============================================================
@@ -33296,7 +33398,7 @@ const Lobby = {
       if (pl && pl.sg) { for (const s of ['x2', 'reddot']) if (attFits(s, gid)) { att.scope = s; break; } } else att.scope = i === 2 ? 'x4' : 'reddot';
       rig.gunObj = buildGunMesh(gid, att, sk); rig.gunMount.add(rig.gunObj); rig.matesSkin = sk;
       if (sk) GunSkin.draw(rig.gunObj, 0.55, null, true);
-      rig.setGear(2, i === 1 ? 0 : 2, i === 2 ? 3 : 2);
+      { const E = pl ? Body.normEquip(pl.eq) : {}; rig.setGear(E.helmet ? 3 : E.hat ? 0 : 2, i === 1 ? 0 : 2, E.pack || i === 2 ? 3 : 2); }   // v23 헬멧·가방 스킨이 있으면 3레벨로 보여 줌
       // 가운데 받침(반지름 2.2 · 높이 0.2) 위 자리는 받침 윗면에 세운다 (예전엔 발이 받침 속 20cm 에 묻혔음)
       const pd = Math.hypot(spots[si][0], spots[si][1]), py = pd < 2.2 ? 0.2 : Math.max(0, 2.4 - pd);
       rig.root.position.set(spots[si][0], py, spots[si][1]); rig.baseYaw = spots[si][2]; rig.ph = si * 1.7 + 0.6; rig.uid = uid;
@@ -33320,7 +33422,8 @@ const Lobby = {
     if (this.rig) { this.scene.remove(this.rig.root); this.rig.skel.dispose(); }
     const rig = buildRig(Body.makeLook(eq, SETTINGS.body)); this.rig = rig; this.scene.add(rig.root);
     this.setGun(false);
-    this.gear = [Body.normEquip(eq).hat ? 0 : 2, 2, 2]; rig.setGear(this.gear[0], this.gear[1], this.gear[2]);
+    // 헬멧: 헬멧 스킨이 있으면 3레벨(모자는 숨김), 모자만 있으면 맨머리에 모자 · 가방: 가방 스킨이 있으면 3레벨 (v23)
+    const E = Body.normEquip(eq); this.gear = [E.helmet ? 3 : E.hat ? 0 : 2, 2, E.pack ? 3 : 2]; rig.setGear(this.gear[0], this.gear[1], this.gear[2]);
     rig.root.position.set(0, 0.2, 0);
   },
   // 가운데 캐릭터가 드는 총: 마지막으로 스킨을 바꾼 총(+그 스킨). 바꾸면 울트라레어는 빛 띠와 함께 나타남
@@ -33369,18 +33472,20 @@ const Lobby = {
       this.cam.position.set(-off + 0.25 * s, 0.5 * s + 0.75, dist); this.cam.lookAt(-off, 0.2 * s + 0.35, 0);
       return;
     }
-    // 창고(옷 보기): 조끼·가방·헬멧을 벗겨 옷이 보이게
-    const g = this.focus ? [0, 0, 0] : (this.gear || [2, 2, 2]); r.setGear(g[0], g[1], g[2]);
+    // 창고(옷 보기): 조끼·가방·헬멧을 벗겨 옷이 보이게 — v23 헬멧·가방 탭이면 고른 레벨의 그 장비만 (가방은 등이 보이게 돌림, 헬멧은 머리 가까이)
+    const gv = this.focus ? this.gearView : null;
+    const g = this.focus ? (gv ? (gv.k === 'helmet' ? [gv.lv, 0, 0] : [0, 0, gv.lv]) : [0, 0, 0]) : (this.gear || [2, 2, 2]); r.setGear(g[0], g[1], g[2]);
     // 창고 탭: 카메라를 캐릭터 가까이(오른쪽에 크게), 캐릭터는 천천히 돌며 옷을 보여 줌
     this.fk = lerp(this.fk || 0, this.focus ? 1 : 0, clamp(dt * 4, 0, 1));
-    const yaw = lerp(0.35 + Math.sin(t * 0.25) * 0.15, 0.25 + Math.sin(t * 0.32) * 0.65, this.fk);
+    this.bk = lerp(this.bk || 0, gv && gv.k === 'pack' ? 1 : 0, clamp(dt * 3, 0, 1)); this.hk = lerp(this.hk || 0, gv && gv.k === 'helmet' ? 1 : 0, clamp(dt * 3, 0, 1));
+    const yaw = lerp(0.35 + Math.sin(t * 0.25) * 0.15, 0.25 + Math.sin(t * 0.32) * 0.65, this.fk) + this.bk * Math.PI * 0.85;
     this.pose(r, t, yaw); OutfitFx.update(r, dt);   // EXCLUSIVE 옷 효과 (08_outfitfx.js)
     for (const m of this.mates) { m.root.visible = this.fk < 0.5; if (m.root.visible) { this.pose(m, t + m.ph, m.baseYaw + Math.sin((t + m.ph) * 0.21) * 0.12); OutfitFx.update(m, dt); } }
     if (typeof PartyFx !== 'undefined') PartyFx.update(dt, this);   // 파티 입장·퇴장 연출: 쉬는 자세 위에 동작을 덮어 쓰고 효과를 진행 (10_partyfx.js)
     // 캐릭터를 화면 가운데에 (왼쪽 패널은 배경 위에 겹친다)
-    const a = t * 0.08, f = smoothstep01(this.fk);
-    this.cam.position.set(lerp(Math.sin(a) * 0.5 + 0.2, -0.55, f), lerp(1.45 + Math.sin(t * 0.3) * 0.05, 1.32, f), lerp(4.9 + Math.cos(a) * 0.2, 3.05, f));
-    this.cam.lookAt(lerp(0.05, -0.62, f), lerp(1.02, 1.05, f), 0);
+    const a = t * 0.08, f = smoothstep01(this.fk), hk = smoothstep01(this.hk || 0);
+    this.cam.position.set(lerp(Math.sin(a) * 0.5 + 0.2, lerp(-0.55, -0.3, hk), f), lerp(1.45 + Math.sin(t * 0.3) * 0.05, lerp(1.32, 1.62, hk), f), lerp(4.9 + Math.cos(a) * 0.2, lerp(3.05, 1.65, hk), f));
+    this.cam.lookAt(lerp(0.05, lerp(-0.62, -0.34, hk), f), lerp(1.02, lerp(1.05, 1.52, hk), f), 0);
     if (typeof PartyFx !== 'undefined') PartyFx.cam(this.cam, dt);   // 착지 충격 흔들림
   },
 };
