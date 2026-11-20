@@ -1058,6 +1058,29 @@ Three.js r128 기반, 서버 없이 브라우저에서 실행되는 싱글플레
   - 소리 `Audio.partyFx(동작 이름 | 'bye')` — 착지·번개·불기둥 순간에 맞춘 쿵·천둥·화음·지직
 - 검증(가짜 Supabase · 2인 파티, 두 기기 모두): 들어오기(다른 기기 = 파티원 자리 입장 · 들어온 기기 = 가운데 입장) · 나가기 · 내보내기 · 방장 나가기(작별 + 남은 기기 퇴장) · 다시 들어오기 · 1280×720 · 844×390 · 콘솔 오류 0
 
+### 헬멧·조끼·가방 레벨별 새 모양 · 헬멧·가방 스킨 · 자동 줍기 개선 (2026-11-20 · `05_models_gear.js` · `04_skins.js` · `05_items.js`)
+- **모양** (`Gear` — 헬멧 = 머리 뼈 로컬, 조끼·가방 = 가슴 뼈 로컬): 레벨마다 실루엣이 달라 멀리서도 레벨이 보이게
+  - 헬멧 `HELMETS[1..3](g, P)`: 1 낮은 통풍 헬멧(능선·통풍 구멍·옆이 매끈) · 2 귀까지 덮는 커버 헬멧 + 고무 밴드 + 고글 · 3 하이컷 + 헤드셋·마이크 + 젖힌 쌍안 투시경 + 레일 + 균형추
+  - 껍데기 `shell(c, r, rim)`(앞·뒤 반쪽마다 uv 0~1) · 껍데기 위 조각 `bendS(평평한 지오메트리, c, r, 방위각, 높이, 띄움)` · 테두리·밴드 `rimPts`·`ringPts` + `cord`/`ribbon`
+  - 조끼 `VESTS`: 몸통 단면 초타원(`tpt`, 재킷까지 덮는 크기)에 판을 감음 — `panel` = `pillow` → `cutTop`(팔 구멍·목 파임) → `bendT`(둘레 길이 표 `arcT`로 감기). 주머니는 `grpT`(몸통 위 한 자리), 몰리 `molle`
+  - 어깨끈은 실제 몸 단면(`SHP`, x = ±0.108 에서 잰 재킷 겉면)에서 법선으로 띄운 길 `overShoulder` — 조끼 끈 위로 가방 끈(`PSO`)
+  - 3레벨 어깨 보호대 `vestArm(lvl, 'L'|'R')`: 바인드 자세 가슴 로컬로 만든 뒤 `inv(바인드 sh) · 바인드 chest` 로 위팔 뼈 로컬에 옮겨 `B.shL/shR` 에 붙임 → 팔과 함께 움직임 (바닥 아이템은 몸통 쪽에 같이)
+  - 가방 `PACKS[1..3](g, P, v)`: `pillow`(둥근 모서리·부푼 면·위가 좁아짐) 몸통 · 등 쪽 면 위 조각 `onRear` · `v` = 함께 입은 조끼 레벨 → 가방을 조끼 등판 위로(`PZ`)·가슴 앞 끈을 조끼 앞판 위로(`PZS`)
+  - 등에 멘 총 거리 = `Gear.packBack(가방, 조끼)` / `Gear.vestBack(조끼)` (04_character.js)
+  - 멀리(LOD 1)는 `P.lo` 로 작은 부품을 뺀 모델 — `rig.setLod` 가 바뀌면 장비도 다시 붙임. 바닥 아이템·아이콘·썸네일은 `P.item`(턱끈·어깨끈 뺌) → `Gear.item` · `Gear.thumb`
+  - 꼭짓점(합친 뒤): 헬멧 1.1만~1.5만 · 조끼 0.7만~1.8만 · 가방 0.5만~1.1만, 간략은 각 0.15만~0.35만 (몸 정밀 메시 삼각형 1.66만과 비슷한 수준)
+- **스킨** (`Body.SLOTS` 에 `helmet`·`pack`, `optional`·`gear`): 경기에서 주운 그 장비 모든 레벨에 적용 — 모양은 그대로, `pal(kind, lvl, 스킨)` 이 역할별 재질을 바꿈
+  - 재질: `M(kind, color)` 정점 색 또는 `{ cell, color }` = 옷 아틀라스 무늬 칸(위장·니트·빛나는 선도 그대로 빛남 — `Body.cellUV` 로 uv 를 칸 안으로, `Body.rigidMaterial()`) · `{ glow }` = 스스로 빛나는 점
+  - 스킨 필드: `color`·`cell`·`kind`·`color2`·`cell2`·`strap`·`dark`(`darkKind`)·`trim`(`trimKind`)·`lens`·`nvg`·`cup`·`roll`·`ribbon`·`pom`·`deco`(santa·antlers·lights·bow·frost)·`fx`
+  - 상자: 배틀로얄·스페셜·보급 = 희귀·레어·초희귀·슈퍼레어마다 헬멧 + 가방, 크리스마스 = 기본·희귀·레어·초희귀·슈퍼레어·EXCLUSIVE(SANTA CLAUS 헬멧 fx santa · FROST QUEEN 가방 fx frost) — 확률표는 `Eco.pool` 이 옷처럼 자동으로
+  - EXCLUSIVE 효과는 그 장비를 실제로 썼을 때만 (`OutfitFx.kindsOf(look, gearLv)` — `setGear` 마다 다시)
+  - 창고: 헬멧·가방 탭(기본 = '기본 헬멧'·'기본 가방') · 1·2·3레벨 미리 보기(`whLv` → `Lobby.gearView` — 가방은 등이 보이게 돌고 헬멧은 머리 가까이) · 카드 그림 = `Shop.gearImgEl` 3D 썸네일(총 썸네일과 같은 대기열 `queued`/`pump`)
+  - 로비: 헬멧 스킨이 있으면 3레벨 헬멧(모자 숨김), 가방 스킨이 있으면 3레벨 가방 · 파티원도 같은 규칙
+  - 봇: `BotSkin.forBot` 의 기존 뽑기 뒤에 헬멧·가방(희귀 이상) — 같이 하기에서 다른 봇 스킨 결과는 그대로
+- **자동 줍기** (`autoWant` · `gearBetter` · `attFree`): 빈 주무기 칸이면 두 번째 총도(같은 총 제외 · `pickupItemRaw(opts.auto)` 는 이미 총이 있으면 손에 든 것을 그대로) · 헬멧·조끼·가방은 없거나 더 높은 레벨(내구도 25% 이상) 또는 같은 레벨에서 내구도 40%p 이상 많을 때 · 가진 총 빈자리에 맞는 부착물(배율 교체는 안 함)
+  - 내가 버린 물건(`dropFromInventory`)은 `autoNo = Infinity` — 내 자동 줍기는 다시 줍지 않음(손으로는 주울 수 있고 파티원의 자동 줍기는 주움)
+  - 노란색 표시(`lootWant`)도 같은 규칙
+
 ### 1인칭 줍기 동작 (2026-11-20 · `09_player.js` · `05_items.js`)
 - 줍기가 성공하면 `c.pickT = PICK_T(0.5초)` 와 함께 `c.pickId`(주운 물건 id)를 남김 → `updateCamera` 의 `pickTick` 이 1인칭일 때 `VM.pk = { u 진행, w 손이 내려간 정도, d 화면 숙임 }` 을 부드럽게 갱신
 - 화면: 진행에 따라 `sin(πu)` 만큼 아래로 숙이고(최대 0.16 rad) 눈높이를 5cm 낮춤 · 정조준 비율(`adsE`)만큼 줄여 조준 중에는 움직이지 않음

@@ -89,6 +89,52 @@ const RARITY = [
     hat_x_santa: { slot: 'hat', box: 'xmas', rar: 8, name: 'SANTA CLAUS 모자', desc: '금빛 방울 산타 모자 · 금빛 반짝임', kind: 'santa', color: 0xb8141e, pom: 0xf2c84a, fx: 'santa' },
     top_x_frost: { slot: 'top', box: 'xmas', rar: 8, name: 'FROST QUEEN 코트', desc: '서리 결정이 빛나는 코트 · 입으면 빛나는 얼음 결정과 찬 기운이 몸 둘레에 맴돎', kind: 'jacket', color: W, cell: 'xfrost', collar: 0xf4f8fb, collarCell: 'fleece', cuff: 0x9fd8f0, zip: 0x9fe8ff, ico: 'pt-xfrost', fx: 'frost' },
     bottom_x_frost: { slot: 'bottom', box: 'xmas', rar: 8, name: 'FROST QUEEN 바지', desc: '서리 결정이 빛나는 바지 · 얼음 결정', kind: 'jeans', color: W, cell: 'xfrost', belt: 0x1a2a3a, buckle: 0x9fe8ff, ico: 'pt-xfrost', fx: 'frost' },
+
+    // ---------- v23 헬멧·가방 스킨 (slot 'helmet'·'pack') ----------
+    //  경기에서 주운 헬멧·가방의 겉모습만 바뀐다 — 레벨마다 다른 모양(1 통풍 헬멧 · 2 커버+고글 · 3 헤드셋+야간 투시경 / 작은 데이팩 · 몰리 배낭 · 대형 배낭)은 그대로
+    //  필드(05_models_gear.js pal): color 본색 · cell 무늬 칸(옷 아틀라스 — 위장·니트·빛나는 선) · kind 본 재질(polymer·cloth·brass …) · color2 주머니·덮개
+    //   strap 끈 · dark 버클·레일 등 검은 부품(darkKind) · trim 테두리(trimKind) · lens 렌즈 · roll 침낭 말이 · ribbon 리본 · pom 방울
+    //   deco 장식: santa(흰 털 테·방울) · antlers(뿔·빨간 코) · lights(전구 줄) · bow(선물 리본) · frost(고드름·얼음 결정) · fx = EXCLUSIVE 몸 둘레 효과
+    // 배틀로얄 상자: 전장 위장
+    helm_br_wood: { slot: 'helmet', box: 'br', rar: 1, name: '산림 위장 헬멧', desc: '숲 무늬 위장 헬멧', cell: 'camoW', strap: 0x3b4129, dark: 0x23261c, trim: 0x2a2e20 },
+    pack_br_desert: { slot: 'pack', box: 'br', rar: 1, name: '사막 위장 가방', desc: '모래 무늬 배낭', cell: 'camoD', strap: 0x5a4a35, dark: 0x2a2218, roll: 0x8a7350 },
+    helm_br_urban: { slot: 'helmet', box: 'br', rar: 3, name: '도시 위장 헬멧', desc: '회색 도시 위장 무늬', cell: 'camoU', strap: 0x2a2c2f, dark: 0x16171a, lens: 0x3a6a8a },
+    pack_br_urban: { slot: 'pack', box: 'br', rar: 3, name: '도시 위장 가방', desc: '회색 도시 위장 무늬 배낭', cell: 'camoU', strap: 0x2a2c2f, dark: 0x16171a, roll: 0x3a3d40 },
+    helm_br_snow: { slot: 'helmet', box: 'br', rar: 4, name: '설원 위장 헬멧', desc: '눈밭 무늬 · 흰 끈', cell: 'camoS', strap: 0xd9dcde, dark: 0x8e9499, trim: 0xc9cdd0, lens: 0x9fd0e8 },
+    pack_br_snow: { slot: 'pack', box: 'br', rar: 4, name: '설원 위장 가방', desc: '눈밭 무늬 배낭 · 흰 끈', cell: 'camoS', strap: 0xd9dcde, dark: 0x8e9499, roll: 0xe8eaec },
+    helm_br_gold: { slot: 'helmet', box: 'br', rar: 5, name: '황금 전투 헬멧', desc: '금빛 광택 껍데기 · 검정 부품', kind: 'brass', color: 0xd9a93a, color2: 0x161616, strap: 0x161616, dark: 0x111111, trim: 0x111111, lens: 0xd9a93a, nvg: 0x111111, cup: 0x111111 },
+    pack_br_gold: { slot: 'pack', box: 'br', rar: 5, name: '황금 전투 가방', desc: '금빛 광택 배낭 · 검정 끈 · 금 버클', cell: 'gold', color2: 0x161616, strap: 0x111111, dark: 0xe8c45c, darkKind: 'brass', roll: 0x161616 },
+    // 스페셜 상자: 스트리트
+    helm_sp_white: { slot: 'helmet', box: 'sp', rar: 1, name: '화이트 헬멧', desc: '깨끗한 흰 껍데기 · 검정 끈', color: 0xe8e6e0, strap: 0x1e1f22, dark: 0x1e1f22, trim: 0x2a2b2e },
+    pack_sp_denim: { slot: 'pack', box: 'sp', rar: 1, name: '데님 가방', desc: '물 빠진 청 배낭 · 갈색 가죽 끈', cell: 'denim', color: 0x8ea8cc, strap: 0x5a3c26, dark: 0x3a2a1c, roll: 0x5a3c26 },
+    helm_sp_pink: { slot: 'helmet', box: 'sp', rar: 3, name: '핑크 스트릿 헬멧', desc: '검정 포인트 분홍 헬멧', color: 0xe86aa2, color2: 0x26262a, strap: 0x26262a, dark: 0x26262a, trim: 0x26262a, lens: 0xff8ad0 },
+    pack_sp_plaid: { slot: 'pack', box: 'sp', rar: 3, name: '체크 가방', desc: '빨강·검정 버펄로 체크 배낭', cell: 'plaid', color2: 0x1e1e20, strap: 0x1e1e20, dark: 0x111111, roll: 0x1e1e20 },
+    helm_sp_wave: { slot: 'helmet', box: 'sp', rar: 4, name: '네온 웨이브 헬멧', desc: '분홍 물결이 빛나는 헬멧', cell: 'glowP', strap: 0x1b151a, dark: 0x111111, lens: 0xff4fd0 },
+    pack_sp_wave: { slot: 'pack', box: 'sp', rar: 4, name: '네온 웨이브 가방', desc: '분홍 물결이 빛나는 배낭', cell: 'glowP', strap: 0x1b151a, dark: 0x111111, roll: 0x1b151a },
+    helm_sp_neon: { slot: 'helmet', box: 'sp', rar: 5, name: '네온 사이버 헬멧', desc: '회로처럼 빛나는 선', cell: 'glowC', strap: 0x111317, dark: 0x111317, lens: 0x46f2ff, nvg: 0x111317 },
+    pack_sp_neon: { slot: 'pack', box: 'sp', rar: 5, name: '네온 사이버 가방', desc: '회로처럼 빛나는 선이 흐르는 배낭', cell: 'glowC', strap: 0x111317, dark: 0x111317, roll: 0x111317 },
+    // 보급 상자: 엘리트
+    helm_sup_dig: { slot: 'helmet', box: 'sup', rar: 1, name: '디지털 위장 헬멧', desc: '픽셀 무늬 위장 헬멧', cell: 'camoDig', strap: 0x2e3023, dark: 0x1c1d16 },
+    pack_sup_dig: { slot: 'pack', box: 'sup', rar: 1, name: '디지털 위장 가방', desc: '픽셀 무늬 위장 배낭', cell: 'camoDig', strap: 0x2e3023, dark: 0x1c1d16, roll: 0x4b5134 },
+    helm_sup_tiger: { slot: 'helmet', box: 'sup', rar: 3, name: '타이거 스트라이프 헬멧', desc: '호랑이 줄무늬 위장', cell: 'camoTiger', strap: 0x2b2b21, dark: 0x1a1a14 },
+    pack_sup_tiger: { slot: 'pack', box: 'sup', rar: 3, name: '타이거 스트라이프 가방', desc: '호랑이 줄무늬 위장 배낭', cell: 'camoTiger', strap: 0x2b2b21, dark: 0x1a1a14, roll: 0x46503c },
+    helm_sup_red: { slot: 'helmet', box: 'sup', rar: 4, name: '레드 엘리트 헬멧', desc: '붉은 껍데기 · 금 테두리', color: 0x9b1c22, color2: 0x5a1014, strap: 0x1d1d1d, dark: 0x1d1d1d, trim: 0xd8b04a, trimKind: 'brass', lens: 0xd8b04a },
+    pack_sup_red: { slot: 'pack', box: 'sup', rar: 4, name: '레드 엘리트 가방', desc: '붉은 배낭 · 금 버클', color: 0x8a1a20, color2: 0x5e1216, strap: 0x1d1d1d, dark: 0xd8b04a, darkKind: 'brass', roll: 0x2a1012 },
+    helm_sup_chrome: { slot: 'helmet', box: 'sup', rar: 5, name: '크롬 강화 헬멧', desc: '육각 판에 주황 빛이 흐르는 헬멧', cell: 'glowO', strap: 0x1d2024, dark: 0x1d2024, lens: 0xff8a1e, nvg: 0x1d2024 },
+    pack_sup_chrome: { slot: 'pack', box: 'sup', rar: 5, name: '크롬 강화 가방', desc: '육각 판에 주황 빛이 흐르는 배낭', cell: 'glowO', strap: 0x1d2024, dark: 0x111214, roll: 0x1d2024 },
+    // 크리스마스 상자: 겨울 (EXCLUSIVE = 산타 헬멧 · 프로스트 가방)
+    helm_x_knit: { slot: 'helmet', box: 'xmas', rar: 0, name: '빨간 니트 헬멧', desc: '털실로 뜬 빨간 커버', cell: 'knit', color: 0xb3202c, strap: 0xf2f2ee, dark: 0x2a1012 },
+    pack_x_knit: { slot: 'pack', box: 'xmas', rar: 0, name: '초록 니트 가방', desc: '털실로 뜬 초록 배낭 · 빨간 끈', cell: 'knit', color: 0x245a34, strap: 0xb3202c, dark: 0x163a22, roll: 0xb3202c },
+    helm_x_snowflake: { slot: 'helmet', box: 'xmas', rar: 1, name: '눈꽃 헬멧', desc: '흰 눈꽃 띠 빨간 니트 커버', cell: 'xknit', strap: 0xf2efe6, dark: 0x7a1018 },
+    pack_x_gift: { slot: 'pack', box: 'xmas', rar: 1, name: '선물 포장 가방', desc: '금 리본을 두른 빨간 선물 상자', color: 0xc8202e, color2: 0xa8182a, strap: 0x2a7a3a, dark: 0x1a1a1a, deco: 'bow', ribbon: 0xe8c45a, roll: 0x2a7a3a },
+    helm_x_rudolph: { slot: 'helmet', box: 'xmas', rar: 3, name: '루돌프 헬멧', desc: '뿔 달린 갈색 헬멧 · 빛나는 빨간 코', kind: 'cloth', color: 0x6a4428, color2: 0x523420, strap: 0xc8202e, dark: 0x2a1c12, deco: 'antlers' },
+    pack_x_candy: { slot: 'pack', box: 'xmas', rar: 3, name: '캔디 케인 가방', desc: '빨강·흰 사선 줄무늬 배낭', cell: 'xcandy', strap: 0xc8141e, dark: 0x1a1a1a, roll: 0xf4f0e8 },
+    helm_x_santa: { slot: 'helmet', box: 'xmas', rar: 4, name: '산타 헬멧', desc: '흰 털 테두리와 방울 꼬리', cell: 'knit', color: 0xc41a24, strap: 0xf4f2ee, dark: 0x2a1012, deco: 'santa' },
+    pack_x_sack: { slot: 'pack', box: 'xmas', rar: 4, name: '산타 선물 자루', desc: '흰 털 테 · 금 버클 붉은 자루', color: 0xb8141e, color2: 0x9a1018, strap: 0x141414, dark: 0xf2c84a, darkKind: 'brass', deco: 'santa', roll: 0xf4f2ee },
+    helm_x_lights: { slot: 'helmet', box: 'xmas', rar: 5, name: '트리 라이트 헬멧', desc: '색색 전구와 금빛 별이 빛나는 헬멧', cell: 'xlights', strap: 0x0e1a12, dark: 0x0e1a12, deco: 'lights' },
+    pack_x_lights: { slot: 'pack', box: 'xmas', rar: 5, name: '트리 라이트 가방', desc: '색색 전구 줄이 빛나는 배낭', cell: 'xlights', strap: 0x0e1a12, dark: 0x0e1a12, deco: 'lights', roll: 0x13281a },
+    helm_x_santa8: { slot: 'helmet', box: 'xmas', rar: 8, name: 'SANTA CLAUS 헬멧', desc: '금빛 방울 산타 헬멧 · 쓰면 금빛 반짝임과 눈송이가 몸 둘레를 돎', cell: 'knit', color: 0xb8141e, strap: 0xf6f4ee, dark: 0x1a1a1a, trim: 0xf2c84a, trimKind: 'brass', lens: 0xf2c84a, pom: 0xf2c84a, deco: 'santa', fx: 'santa' },
+    pack_x_frost8: { slot: 'pack', box: 'xmas', rar: 8, name: 'FROST QUEEN 가방', desc: '서리 결정이 빛나는 배낭 · 메면 얼음 결정과 찬 기운이 몸 둘레에 맴돎', cell: 'xfrost', strap: 0x1a2a3a, dark: 0x9fe8ff, darkKind: 'metal', deco: 'frost', roll: 0x9fd8f0, fx: 'frost' },
   };
   // 기본 옷도 레어도(기본)를 갖는다
   for (const k of ['top_basic', 'bottom_basic', 'shoes_basic', 'chute_basic']) Body.SKINS[k].rar = 0;

@@ -187,16 +187,24 @@ const Shop = (() => {
   const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', TQ = [];
   const gkey = (gun, id) => 'gs:' + gun + ':' + (id || '');
   const gunThumb = (gun, id) => thumb(gkey(gun, id), () => buildGunMesh(gun, {}, id || null), 240, 104, [-1, 0.22, 0.12]);
-  function gunSrc(gun, id) { const k = gkey(gun, id); if (THUMB[k] !== undefined) return THUMB[k] || BLANK; if (!TQ.some((q) => q[0] === k)) TQ.push([k, gun, id]); return BLANK; }
+  // 대기열: [열쇠, 그리는 함수] — 총기 스킨·헬멧·가방 스킨 썸네일이 같이 쓴다
+  function queued(k, make) { if (THUMB[k] !== undefined) return THUMB[k] || BLANK; if (!TQ.some((q) => q[0] === k)) TQ.push([k, make]); return BLANK; }
+  const gunSrc = (gun, id) => queued(gkey(gun, id), () => gunThumb(gun, id));
   const gunImg = (gun, id) => `<img data-th="${gkey(gun, id)}" src="${gunSrc(gun, id)}" alt="">`;
   function gunImgEl(gun, id) { const im = document.createElement('img'); im.dataset.th = gkey(gun, id); im.src = gunSrc(gun, id); im.alt = ''; return im; }
-  function pump() { if (!TQ.length) return; const [k, gun, id] = TQ.shift(), src = gunThumb(gun, id) || BLANK; document.querySelectorAll(`img[data-th="${k}"]`).forEach((im) => { im.src = src; }); }
+  // v23 헬멧·가방 스킨 썸네일 (slot 'helmet'·'pack', id 없으면 기본 모습, lv = 보여 줄 레벨) — 가방은 등 쪽에서
+  const grKey = (slot, id, lv) => 'gr:' + slot + lv + ':' + (id || '');
+  const gearSrc = (slot, id, lv = 3) => queued(grKey(slot, id, lv), () => thumb(grKey(slot, id, lv), () => Gear.thumb(slot, lv, id), 200, 200, slot === 'pack' ? [-0.7, 0.32, -1] : [0.75, 0.38, 1]));
+  const gearImg = (slot, id, lv = 3) => `<img data-th="${grKey(slot, id, lv)}" src="${gearSrc(slot, id, lv)}" alt="">`;
+  function gearImgEl(slot, id, lv = 3) { const im = document.createElement('img'); im.dataset.th = grKey(slot, id, lv); im.src = gearSrc(slot, id, lv); im.alt = ''; return im; }
+  function pump() { if (!TQ.length) return; const [k, make] = TQ.shift(), src = make() || BLANK; document.querySelectorAll(`img[data-th="${k}"]`).forEach((im) => { im.src = src; }); }
   // ---------- 아이콘 ----------
-  const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산' };
+  const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산', helmet: '헬멧 스킨 · 모든 레벨', pack: '가방 스킨 · 모든 레벨' };
   const hexs = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
   function skinFill(S) { if (S.ico) return `url(#${S.ico})`; const c = S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888); return hexs(c); }
   function skinSvg(id) {
     const S = Body.SKINS[id]; if (!S) return '';
+    if (S.slot === 'helmet' || S.slot === 'pack') return gearImg(S.slot, id);
     const second = S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null;
     return `<svg viewBox="0 0 24 24">${HUD.skinIcon(S.slot, skinFill(S), second)}</svg>`;
   }
@@ -206,6 +214,7 @@ const Shop = (() => {
     if (o.k === 'gcoin') return gcoinIco();
     if (o.k === 'gskin') return gunImg(GSKINS[o.id].gun, o.id);
     if (o.k === 'vskin') { const src = vehThumb(o.id); return src ? `<img src="${src}" alt="">` : coinIco(); }
+    const S = Body.SKINS[o.id]; if (S && (S.slot === 'helmet' || S.slot === 'pack')) return gearImg(S.slot, o.id);   // v23 헬멧·가방: 3D 썸네일
     return skinSvg(o.id);
   }
   function itemName(o) {
@@ -220,7 +229,7 @@ const Shop = (() => {
     if (o.k === 'gold' || o.k === 'coin' || o.k === 'gcoin') return '재화';
     if (o.k === 'gskin') { const S = GSKINS[o.id], cls = ITEMS[S.gun].name.replace(GunSkin.short(S.gun), '').trim() || ITEMS[S.gun].name; return `총기 스킨 · ${cls}` + (S.xm ? ' · 대기·살펴보기·사격·처치 효과·킬 로그' : S.fx ? ' · 사격·교체 효과' + (S.parts ? ' · 부속품' : '') : S.lite ? ' · 약한 사격·맞힘 효과' : '') + (S.gun === 'pzf' ? ' · 로켓·폭발 모양' : ''); }
     if (o.k === 'vskin') { const V = VSKINS[o.id]; return `${VEH_SKIN_TYPES[V.veh]} 스킨 · ${VCLS_NAME[V.cls]}` + (V.rar === 8 ? ' · 움직이는 썰매·빛나는 코' : ''); }
-    const SK = Body.SKINS[o.id]; return (SLOT_NAME[SK.slot] || '') + (SK.fx ? ' · 입으면 몸 둘레 효과' : '');
+    const SK = Body.SKINS[o.id]; return (SLOT_NAME[SK.slot] || '') + (SK.fx ? (SK.slot === 'helmet' ? ' · 쓰면 몸 둘레 효과' : SK.slot === 'pack' ? ' · 메면 몸 둘레 효과' : ' · 입으면 몸 둘레 효과') : '');
   }
 
   // ---------- 상점 화면 ----------
@@ -462,7 +471,7 @@ const Shop = (() => {
   }
   // 경기가 시작되면 상점 창·컷신을 닫는다 (파티 방장이 시작하는 경우 등)
   function closeAll() { if (Cutscene.active) Cutscene.skip(); for (const id of ['gachaRes', 'oddsPanel']) { const e = $(id); if (e) e.hidden = true; } armed = null; }
-  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, gunThumb, gunImgEl, pump, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, gcoinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh, gun: selGun, ex: exSub }; } };
+  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, gunThumb, gunImgEl, gearImgEl, gearImg, pump, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, gcoinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh, gun: selGun, ex: exSub }; } };
 })();
 
 // ============================================================
