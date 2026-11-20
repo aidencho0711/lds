@@ -1350,7 +1350,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     $('resKicker').textContent = win ? (team ? '최후의 팀' : '최후의 1인') : (team ? '팀 탈락' : '탈락');
     $('resTitle').textContent = win ? (team ? (p.alive ? '우승! 팀이 마지막까지 살아남았습니다' : '팀 우승! 팀원이 끝까지 버텼습니다') : '우승! 마지막까지 살아남았습니다') : (place <= Math.max(2, Math.round(total / 5)) ? '아깝습니다. 상위권 생존' : '다음 강하에서 다시 도전하세요');
     $('resRank').textContent = '#' + place; $('resOf').textContent = '/ ' + total + (team ? '팀' : '');
-    $('resKills').textContent = p.kills; $('resTime').textContent = fmtTime(p.alive ? G.time : p.deathTime);
+    $('resKills').textContent = p.kills; $('resTime').textContent = fmtTime(p.alive ? G.matchT || G.time : p.deathTime);   // v23 우승 축하 시간은 빼고
     $('resDmg').textContent = Math.round(p.damageDealt); $('resXp').textContent = '+' + G.lastXp;
     let note = G.statsSaved ? '기록이 저장되었습니다.' : '이 브라우저에서는 기록이 저장되지 않았습니다 (게임은 계속 가능).';
     if (team) { const ms = G.teams[p.team].members; note = `팀 처치 ${ms.reduce((a, m) => a + m.kills, 0)} · 내가 기절시킴 ${p.knocks} · 부활시킴 ${p.revives} — ` + note; }

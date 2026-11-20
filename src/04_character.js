@@ -122,10 +122,10 @@ class Character {
     const r = this.rig, inv = this.inv;
     const lv = (g) => (g && ITEMS[g.id] && ITEMS[g.id].lvl) || (g ? 1 : 0);
     r.setGear(lv(inv.gear.helmet), lv(inv.gear.vest), lv(inv.gear.bag));
-    const w = this.weapon, sk = w ? this.skinOf(w.id) : null, gid = w && this.equipT <= 0.25 && !this.knocked ? w.id + '|' + [w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].join(',') + '|' + (sk || '') : null;
+    const w = this.dance ? null : this.weapon, sk = w ? this.skinOf(w.id) : null, gid = w && this.equipT <= 0.25 && !this.knocked ? w.id + '|' + [w.att.scope, w.att.muzzle, w.att.mag, w.att.grip].join(',') + '|' + (sk || '') : null;   // v23 춤추는 동안은 총을 등에
     // 등에 멘 주무기: 1번은 왼쪽 어깨 위로, 2번은 오른쪽 어깨 위로 비스듬히 (가방이 있으면 가방 위)
     for (let i = 0; i < 2; i++) {
-      const bw = inv.weapons[i], inHand = i === inv.cur && this.equipT <= 0.25 && !this.knocked;
+      const bw = inv.weapons[i], inHand = !this.dance && i === inv.cur && this.equipT <= 0.25 && !this.knocked;   // v23 춤추는 동안은 손의 총도 등에
       const bsk = bw ? this.skinOf(bw.id) : null, key = bw && !inHand ? bw.id + '|' + [bw.att.scope, bw.att.muzzle, bw.att.mag, bw.att.grip].join(',') + '|' + lv(inv.gear.bag) + lv(inv.gear.vest) + '|' + (bsk || '') : '';
       if (r.backKey[i] === key) continue;
       r.backKey[i] = key;

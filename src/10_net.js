@@ -284,6 +284,7 @@ const Net = (() => {
       case 'bye': peerLeft(from === N.me ? e.from : (e.uid || from), e.next); break;
       case 'isl': if (!N.host && G.island) Island.end(); break;   // 방장의 스타트 섬이 끝남 → 모두 수송기로
       case 'rjs': applyRj(e); break;   // v23 다시 들어옴: 방장이 보낸 지금 상태
+      case 'vic': Victory.onNet(e); break;   // v23 우승 축하: 파티원의 동상 세우기·춤
     }
   }
 

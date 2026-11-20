@@ -136,7 +136,7 @@ const Resume = (() => {
     let place, win = false;
     if (G.over) { win = !!G.win; place = win ? 1 : (T.place || aliveTeamCount() + (teamAlive(T) ? 0 : 1)); }
     else { const others = T.members.some((m) => m !== p && m.alive), n = aliveTeamCount() - (p.alive && !others ? 1 : 0); place = T.place || (others ? n : n + 1); }
-    const surv = p.alive || (win && !p.deathTime) ? G.time : p.deathTime || G.time;
+    const surv = p.alive || (win && !p.deathTime) ? G.matchT || G.time : p.deathTime || G.time;   // matchT: 우승이 정해진 시각 (v23 우승 축하 중에 떠나면 그 결과로)
     return { place, nT: G.teams.length, total: G.total, kills: p.kills, dmg: Math.round(p.damageDealt || 0), revives: p.revives || 0, heads: p.headshots || 0, drive: Math.round(p.driveM || 0), loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0,
       surv: Math.round(surv), ranked: G.ranked ? 1 : 0, hc: G.hc ? 1 : 0, ts: G.teamSize, party: G.netCfg ? 1 : 0, map: G.netCfg ? G.netCfg.s.map : SETTINGS.map, win: win ? 1 : 0, over: G.over ? 1 : 0 };   // 같이 하기: 창을 닫을 때 10_net.js 가 내 설정을 먼저 되돌려도 경기 맵으로
   }

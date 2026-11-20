@@ -824,6 +824,7 @@ function applyParts(gun, A) {
 // ---------- 피해 ----------
 function applyDamage(t, dmg, part, attacker, cause, hx, hy, hz) {
   if (!t.alive || t.mode === 'plane') return 0;
+  if (G.victory && G.player && t.team === G.player.team) return 0;   // v23 우승 축하 중: 우리 팀은 다치지 않음 (자기장·불 포함)
   if (G.island) { if (t.anim) { t.anim.flinch = Math.min(1, t.anim.flinch + 0.12); t.anim.flinchDir = Math.random() < 0.5 ? -1 : 1; } return 0; }   // 스타트 섬: 모든 피해 없음 (움찔하기만)
   if (t.isPlayer && Dev.cheat('god')) return 0;   // 개발자 도구: 무적 (같이 하기에선 꺼짐)
   if (sameTeam(attacker, t)) return 0; // 팀원 공격 없음 (총·주먹·수류탄·차량)

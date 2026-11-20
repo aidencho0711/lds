@@ -349,7 +349,7 @@ async function startMatch(cfg) {
   if (G.state === 'loading') return;
   const net = !!(cfg && G.net), rs = !net && cfg && cfg.resume ? cfg.resume : null, rj = net && G.net.rj ? G.net.rj : null;   // rj: 나갔다가 같이 하기 경기로 돌아옴
   if (!rs) Resume.fresh();   // 새 경기 — 답하지 않은 이어하기 창이 남아 있으면 그 경기는 포기로 기록
-  G.state = 'loading'; G.paused = false; G.over = false; G.training = false;
+  G.state = 'loading'; G.paused = false; G.over = false; G.training = false; G.matchT = 0; G.victory = null;
   document.body.classList.remove('training'); $('quitBtn').textContent = '경기 포기 (로비로)';
   Audio.music(false);
   $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
@@ -477,6 +477,7 @@ function planeIntro() {
 G.planeIntro = planeIntro;
 function disposeMatch() {
   Training.dispose(); DM.dispose(); Island.dispose(); G.bgSim = false; G.netCfg = null; G.rjHold = false;
+  Victory.reset();   // v23 우승 축하 창·춤 음악 정리
   if (!G.scene) return;
   Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose(); XmasFx.dispose();
   G.scene.traverse(o => { if (o.geometry && !o.isSprite) o.geometry.dispose(); });
@@ -500,7 +501,8 @@ G.onDeath = function (c, killer) {
   const p = G.player; if (!p || G.over || !G.teams) return;
   const mine = G.teams[p.team], team = G.teamSize > 1;
   if (!teamAlive(mine)) { G.over = true; G.endT = 2.2; G.win = false; Audio.lose(); HUD.toast(team ? '팀이 전멸했습니다' : '탈락했습니다', 'warn'); }
-  else if (aliveTeamCount() === 1) { G.over = true; G.endT = 1.5; G.win = true; Audio.win(); HUD.toast(team ? '최후의 팀!' : '최후의 1인!', 'ok'); }
+  // v23 우승: 살아 있으면 바로 결산하지 않고 축하(동상·춤·즉시 결산 — 10_victory.js). 죽어서 팀원이 이긴 거면 예전처럼 잠시 뒤 결과
+  else if (aliveTeamCount() === 1) { if (p.alive && !G.training) Victory.start(); else { G.over = true; G.endT = 1.5; G.win = true; G.matchT = G.time; Audio.win(); HUD.toast(team ? '최후의 팀!' : '최후의 1인!', 'ok'); } }
   else if (c === p) { HUD.toast('탈락했습니다 — 팀원을 관전합니다', 'warn'); G.spec = null; nextSpectate(); }
 };
 // 관전: 살아 있는 팀원 순환
@@ -534,7 +536,7 @@ function endMatch() {
   G.bgSim = !!(G.net && Net.isHost() && Net.othersPlaying());
   Resume.clear();   // 결과가 났으니 이어하기 저장은 지운다
   const r = recordBR({ place, nT, total: G.total, kills: p.kills, dmg: p.damageDealt || 0, revives: p.revives, heads: p.headshots || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0,
-    surv: p.alive || win && !p.deathTime ? G.time : p.deathTime || 0, ranked: G.ranked, hc: G.hc, ts: G.teamSize, party: !!G.net, map: SETTINGS.map, win, quit: !!G.quit });
+    surv: p.alive || win && !p.deathTime ? G.matchT || G.time : p.deathTime || 0, ranked: G.ranked, hc: G.hc, ts: G.teamSize, party: !!G.net, map: SETTINGS.map, win, quit: !!G.quit });   // matchT: 우승이 정해진 시각 (v23 우승 축하 시간은 빼고)
   for (const m of r.notes) HUD.toast(m, 'ok');
   HUD.showResult(win, p, nT);
 }
@@ -590,8 +592,8 @@ G.update = function (dt) {
     if (!overIsland(pl.ax + pl.dx * ahead, pl.az + pl.dz * ahead) && d > pl.len * 0.5) for (const c of left) { if (!Net.mine(c)) continue; if (c.isPlayer) HUD.toast('수송기가 섬을 벗어나 자동 강하합니다', 'warn'); jumpOut(c); }
     if (d > pl.len) { pl.active = false; pl.mesh.visible = false; Audio.plane(false); }
   }
-  // 플레이어 (같이 하기로 돌아오는 중이면 방장이 지금 상태를 보낼 때까지 그대로 — 10_resume.js)
-  if (p && p.alive && !G.over && !G.rjHold) {
+  // 플레이어 (v23 우승 축하 중에도 움직일 수 있다 · 같이 하기로 돌아오는 중이면 방장이 지금 상태를 보낼 때까지 그대로 — 10_resume.js)
+  if (p && p.alive && (!G.over || G.victory) && !G.rjHold) {
     const modal = HUD.modalOpen();
     if (p.mode === 'plane') {
       if (!modal || !$('mapPanel').hidden) { p.yaw -= Input.lookX * 0.0023 * SETTINGS.lookSens; p.pitch = clamp(p.pitch - Input.lookY * 0.0023 * SETTINGS.lookSens, -1.2, 0.6); }
@@ -607,6 +609,8 @@ G.update = function (dt) {
       if ((Input.consume('interact') || Input.consume('jump')) && p.mode === 'fall' && G.time - p.jumpT > 1) openChute(p);
       updateDrop(p, dt, sx, sz, clamp(mz, -1, 1));
       Audio.wind(p.mode === 'fall' ? 1 : 0.35);
+    } else if (p.dance && !p.veh) {
+      Victory.danceInput(dt, modal);   // v23 춤추는 중: 움직이거나 쏘면 멈춤, 끌면 카메라가 돎
     } else if (G.frozen && !p.veh) {
       // 대결 준비·라운드 사이: 둘러보기만 (움직이기·쏘기 없음)
       if (!modal) { p.yaw -= Input.lookX * 0.0023 * SETTINGS.lookSens; p.pitch = clamp(p.pitch - Input.lookY * 0.0023 * SETTINGS.lookSens, -1.3, 0.8); }
@@ -626,7 +630,7 @@ G.update = function (dt) {
     if (c.isPlayer || !c.alive) continue;
     const b = c.brain; if (!b) continue;
     if (G.island) { if (c.mode === 'ground') Island.bot(c, dt); continue; }   // 스타트 섬: 섬 안을 돌아다니기만
-    if (G.frozen && c.mode === 'ground') { stepPhysics(c, dt, 0, 0, 0, false); continue; }   // 대결 준비·라운드 사이: 봇도 멈춤
+    if ((G.frozen || c.dance) && c.mode === 'ground') { stepPhysics(c, dt, 0, 0, 0, false); continue; }   // 대결 준비·라운드 사이: 봇도 멈춤 · v23 우승 축하로 춤추는 팀원 봇
     if (c.mode === 'fall' || c.mode === 'chute') {
       const fp = b.followC || p;
       if (b.followJump && fp) { // 팀의 사람(플레이어·다른 기기 사람)을 따라 강하
@@ -711,7 +715,8 @@ G.update = function (dt) {
       if (G.spec && !G.spec.alive && !G.over) nextSpectate();
       const a = G.time * 0.25; G.camera.position.set(p.pos.x + Math.sin(a) * 8, p.pos.y + 5, p.pos.z + Math.cos(a) * 8); G.camera.lookAt(p.pos.x, p.pos.y + 0.5, p.pos.z);
       p.root.visible = corpseK(p) < 1; VM.active = false;
-    } else updateCamera(dt);
+    } else if (G.victory && Victory.camOn()) Victory.camera(dt);   // v23 춤·동상이 솟는 장면
+    else updateCamera(dt);
     ThrowViz.update(p);
     if (G.training) Training.hud(dt);
     if (G.dm) DM.hud(dt);
@@ -723,7 +728,8 @@ G.update = function (dt) {
   if (!bg) HUD.update(dt);
   if (G.net) Net.tick(dt);
   if (!bg) Resume.tick(dt);   // 이어하기: 5초마다 경기 상태 저장
-  if (G.over) { G.endT -= dt; if (G.endT <= 0 && G.state === 'play') { if (G.dm) DM.end(); else endMatch(); } }
+  if (G.victory) Victory.update(dt);   // v23 우승 축하: 동상·춤·자동 결산 (결산은 거기서)
+  else if (G.over) { G.endT -= dt; if (G.endT <= 0 && G.state === 'play') { if (G.dm) DM.end(); else endMatch(); } }
 };
 function footsteps(c, dt) {
   if (!c.alive || c.mode !== 'ground' || !c.onGround || c.veh) return;
@@ -765,7 +771,8 @@ G.ui = function (a) {
     case 'closeRanks': $('rankPanel').hidden = true; break;
     case 'quit': $('pausePanel').hidden = true; G.paused = false;
       if (G.training || G.dm || G.island) { toLobby(); break; }   // 스타트 섬(시작 전)에서 나가면 기록 없음
-      if (G.player && G.state === 'play' && !G.over) {
+      if (G.victory && G.state === 'play') Victory.settle(true);   // v23 우승 축하 중 나가기: 우승 기록은 남긴다
+      else if (G.player && G.state === 'play' && !G.over) {
         // 경기 중 나가기(관전 중 포함): 지금 살아 있는 팀 수를 순위로
         const p = G.player, T = G.teams[p.team]; G.quit = true;
         if (p.alive) { p.place = CHARS.filter(c => c.alive).length; p.deathTime = G.time; p.alive = false; p.knocked = false; }
@@ -892,7 +899,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };
