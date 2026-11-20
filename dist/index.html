@@ -1161,7 +1161,8 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .ent-row .ent-name { flex: none; min-width: 112px; text-align: center; }
 .ent-nm { display: inline-block; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.02em; color: var(--ec); text-shadow: 0 0 10px var(--ec), 0 0 2px rgba(0, 0, 0, 0.85); }
 .ent-auto { display: inline-block; padding: 2px 12px; border: 1px solid var(--line); border-radius: 4px; font-weight: 800; color: var(--sand); }
-.ent-prev { flex: none; }
+.ent-prev { flex: none; white-space: nowrap; }
+.ent-prevs { flex: none; display: flex; flex-direction: column; gap: 4px; }
 @media (max-width: 640px) { .ent-row .ent-name { min-width: 86px; } .ent-nm { font-size: 0.86rem; } }
 /* 입장·퇴장 순간 캐릭터 위(가리면 발아래)에 뜨는 이름 띠 */
 .ent-ban { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 10px; white-space: nowrap; will-change: transform, opacity; }
@@ -24206,6 +24207,10 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-20', t: '입장 연출 탭에 퇴장 미리 보기', items: [
+    '계정 정보 → 「입장 연출」: 연출마다 「입장 미리 보기」 옆에 「퇴장 미리 보기」 — 내 캐릭터가 그 퇴장 연출로 사라졌다가 빛과 함께 다시 나타남 (내 화면에서만)',
+    '연출마다 입장·퇴장이 어떤 모습인지 한 줄씩 적어 둠',
+  ] },
   { v: 'v23', d: '2026-11-20', t: '백룸 정복자 입장·퇴장 연출 새로 — 백룸 탈출 · 검은 손 · 노클립', items: [
     '입장: 등 뒤에 노란 백룸 복도가 보이는 문틈이 찢어지듯 열리고, 그 속에서 몸을 던져 빠져나와 네 발로 구름',
     '바로 뒤에서 커다란 검은 손이 문틈 밖까지 뻗어 나와 낚아채려다 허공을 움켜쥐고 더듬음 · 다른 손들은 문틀을 안쪽에서 움켜쥠 → 손이 끌려 들어가며 문틈이 닫히고, 뒤를 돌아본 뒤 이마의 땀을 훔침',
@@ -29781,6 +29786,10 @@ const PartyFx = (() => {
   function byeMot(g) { return { kind: 'bye', dur: 2.4, keys: [[0, 'stand'], [0.4, g, 0.4], [1.8, g], [2.1, 'stand', 0.3]],
     fx(a) { const E = a.E, gp = a.gp; sigil(gp, sigilTex(), 2.2, 2.2, E.c[0], 0.6, 0.1); ring(gp, E.c[0], 2.0, 0.6, 0.45); glow(hipsAt(a, 0.7).clone(), E.c[2], 2.4, 0.4, 0.45); label(E, gp, 0.3, 1.9);
       at(0.45, () => { const Q = P(); for (let i = 0; i < 40; i++) { const an = Math.random() * TAU, rr = rnd(0.2, 0.9); EM(Q, _a.set(gp.x + Math.cos(an) * rr, gp.y + 0.1, gp.z + Math.sin(an) * rr), 0, rnd(0.8, 2.2), 0, pk(E), rnd(0.03, 0.055), rnd(0.8, 1.4), { drag: 0.6, so: 0.5 }); } }); } }; }
+  // 퇴장 미리 보기 뒤 내 캐릭터가 다시 나타남: 빛 속에서 작게 → 원래 크기
+  MOT.back = { kind: 'in', dur: 1.0, keys: [[0, 'stand']], body(t, B) { B.s = Math.max(0.01, eout(seg(t, 0.05, 0.45))); B.vis = t > 0.05; },
+    fx(a) { const E = a.E, gp = a.gp; glow(hipsAt(a, 0.9).clone(), E.c[2], 2.4, 0.4); ring(gp, E.c[0], 1.6, 0.5);
+      at(0.05, () => { const Q = P(); for (let i = 0; i < 26; i++) { const an = Math.random() * TAU; EM(Q, hipsAt(a, rnd(0.2, 1.2)), Math.cos(an) * rnd(0.6, 1.6), rnd(0.2, 1.2), Math.sin(an) * rnd(0.6, 1.6), pk(E), rnd(0.025, 0.05), rnd(0.4, 0.8), { drag: 2, so: 0.5 }); } }); } };
   // 손목 자리 (s = -1 오른손 · +1 왼손)
   function hand0(a, out, s = -1) { const r = a.rig; return (s < 0 ? r.armR : r.armL).hand.getWorldPosition(out); }
 
@@ -29789,12 +29798,12 @@ const PartyFx = (() => {
   const GH = [];          // 퇴장 중인 유령 리그
   function rigOf(L, k, a) { return a.ghost || (k === 'me' ? L.rig : (L.mates || []).find((m) => m.uid === k)); }
   function play(L, k, E, dir, rig) {
-    const mo = E.mo[dir === 'in' ? 0 : dir === 'out' ? 1 : 2], M = dir === 'bye' ? byeMot(mo) : MOT[mo]; if (!M || !rig) return;
+    const mo = E.mo[dir === 'in' ? 0 : dir === 'out' ? 1 : 2], M = dir === 'back' ? MOT.back : dir === 'bye' ? byeMot(mo) : MOT[mo]; if (!M || !rig) return;
     const old = AN.get(k); if (old) stop(L, k, old);
     SC = L.scene; CAM = L.cam; LOB = L;
-    const p = rig.root.position, a = { k, E, M, dir, t: 0, rig, yaw: rig.baseYaw != null ? rig.baseYaw : 0.3, gp: { x: p.x, y: p.y, z: p.z, snow: p.y < 0.05 && typeof WINTER !== 'undefined' && WINTER.on() }, o: { t: 0 }, ghost: dir === 'out' ? rig : null, gunShown: false };
+    const p = rig.root.position, a = { k, E, M, dir, t: 0, rig, yaw: rig.baseYaw != null ? rig.baseYaw : 0.3, gp: { x: p.x, y: p.y, z: p.z, snow: p.y < 0.05 && typeof WINTER !== 'undefined' && WINTER.on() }, o: { t: 0 }, ghost: dir === 'out' && k !== 'me' ? rig : null, back: dir === 'out' && k === 'me', gunShown: false };
     AN.set(k, a); M.fx(a);
-    if (typeof Audio !== 'undefined' && Audio.partyFx) Audio.partyFx(dir === 'bye' ? 'bye' : mo);
+    if (typeof Audio !== 'undefined' && Audio.partyFx) Audio.partyFx(dir === 'bye' || dir === 'back' ? 'bye' : mo);
   }
   function stop(L, k, a) { const r = rigOf(L, k, a); if (r) { r.body.scale.set(1, 1, 1); r.gunMount.visible = true; } if (a.ghost) dropGhost(L, a.ghost); AN.delete(k); }
   function dropGhost(L, g) { const i = GH.indexOf(g); if (i >= 0) GH.splice(i, 1); if (g.root.parent) g.root.parent.remove(g.root); g.skel.dispose(); }
@@ -29864,7 +29873,7 @@ const PartyFx = (() => {
       if (!r || !r.root.parent) { AN.delete(k); if (a.ghost) dropGhost(L, a.ghost); continue; }
       if (a.ghost) { L.pose(r, L.t + (r.ph || 0), r.baseYaw || 0); r.root.visible = L.fk < 0.5; }
       drive(a, r, dt);
-      if (a.t >= a.M.dur) { stop(L, k, a); }
+      if (a.t >= a.M.dur) { stop(L, k, a); if (a.back) play(L, 'me', a.E, 'back', L.rig); }   // 퇴장 미리 보기: 사라진 내 캐릭터가 다시 나타남 (같은 프레임에 이어서 돌아 깜빡이지 않음)
     }
     tickFx(dt); tickEnv(dt, L); tickBan(dt);
     for (const [u] of SPOT) if (!(lastIds && lastIds.has(u)) && !GH.some((g) => g.uid === u)) SPOT.delete(u);
@@ -29883,7 +29892,8 @@ const PartyFx = (() => {
     const row = (key, title, sub, on, lock, onClick, prev) => {
       const b = document.createElement('div'); b.className = 'ti-row ent-row' + (on ? ' on' : '') + (lock ? ' lock' : ''); b.tabIndex = 0;
       b.innerHTML = `<span class="ent-name">${title}</span><span class="ti-d"><b>${sub[0]}</b><small>${sub[1]}</small></span>`;
-      b.onclick = onClick; if (prev) { const p = document.createElement('button'); p.type = 'button'; p.className = 'btn sm ghost ent-prev'; p.textContent = '미리 보기'; p.onclick = (e) => { e.stopPropagation(); prev(); }; b.appendChild(p); }
+      b.onclick = onClick;
+      if (prev) { const w = document.createElement('div'); w.className = 'ent-prevs'; for (const [t, d] of [['입장 미리 보기', 'in'], ['퇴장 미리 보기', 'out']]) { const p = document.createElement('button'); p.type = 'button'; p.className = 'btn sm ghost ent-prev'; p.textContent = t; p.onclick = (e) => { e.stopPropagation(); prev(d); }; w.appendChild(p); } b.appendChild(w); }
       L.appendChild(b);
     };
     const set = (v) => { if (typeof Prof !== 'undefined' && Prof.set) Prof.set('ent', v); else { STATS.prof = Object.assign({}, STATS.prof || {}, { ent: v }); saveStats(); } if (typeof Audio !== 'undefined') Audio.ui(); };
@@ -29894,17 +29904,19 @@ const PartyFx = (() => {
       const has = ok(E), T = tiOf(tiKey(E)), hex = '#' + E.c[0].toString(16).padStart(6, '0');
       const how = E.t != null ? `랭크 ${nameOf(E)} 도달 (최고 기록)` : (T && T.desc) || '';
       let pr = ''; try { pr = !has && T && T.prog ? '진행: ' + T.prog() : ''; } catch (e) { pr = ''; }
-      row(E.id, `<span class="ent-nm" style="--ec:${hex}">${nameOf(E)}</span>`, [`${MOVE[E.mo[0]] || ''}`, has ? (cur === E.id ? '사용 중' : '얻음 · 눌러서 고르기') + ' — ' + how : `잠김 — ${how}${pr ? ' · ' + pr : ''}`], cur === E.id, !has,
+      row(E.id, `<span class="ent-nm" style="--ec:${hex}">${nameOf(E)}</span>`, [`입장: ${MOVE[E.mo[0]] || ''}<br>퇴장: ${MOVE_OUT[E.mo[1]] || ''}`, has ? (cur === E.id ? '사용 중' : '얻음 · 눌러서 고르기') + ' — ' + how : `잠김 — ${how}${pr ? ' · ' + pr : ''}`], cur === E.id, !has,
         () => { if (!has) { HUD.lobbyNote(`아직 얻지 못했습니다 — ${how}`); return; } set(E.id); },
-        () => { if (typeof Prof !== 'undefined') Prof.close(); setTimeout(() => preview(E.id, 'in'), 120); });
+        (d) => { if (typeof Prof !== 'undefined') Prof.close(); setTimeout(() => preview(E.id, d), 120); });
     }
     B.appendChild(L);
-    const tail = document.createElement('p'); tail.className = 'micro'; tail.textContent = '미리 보기는 내 화면에서만 보입니다. 파티에 들어가거나 나가면 파티원 모두에게 보입니다.'; B.appendChild(tail);
+    const tail = document.createElement('p'); tail.className = 'micro'; tail.textContent = '미리 보기는 내 화면에서만 보입니다 (퇴장 미리 보기가 끝나면 캐릭터가 다시 나타남). 파티에 들어가거나 나가면 파티원 모두에게 보입니다.'; B.appendChild(tail);
   }
   const owned = () => ENT.filter(ok);
   // 연출 한 줄 설명 (계정 창)
   const MOVE = { podium: '금빛 조명 속 등장 · 두 팔 V · 색종이 · 왕관', spinfall: '하늘의 별 · 빛줄기 속을 돌며 강하 · 충격파 · 승리의 주먹', slam: '불꼬리 낙하 · 땅을 주먹으로 · 용암 균열', emerge: '일식 · 붉은 구멍에서 팔짱 낀 채 솟아오름', rez: '은빛 고리가 훑으며 나타나 경례 · 별 훈장',
-    descend: '금빛 빛기둥 속으로 천천히 강림 · 축복', meteor: '유성처럼 떨어져 한 무릎 착지 · 충격파', fireStep: '불기둥 속에서 등장 · 주먹을 손바닥에', orbForm: '보랏빛 구슬이 모여 몸이 빚어짐', escape: '백룸 복도 문틈에서 몸을 던져 탈출 · 발목을 낚아채려는 검은 손', strikeIn: '붉은 번개 세 줄기 · 힘자랑' };
+    descend: '금빛 빛기둥 속으로 천천히 강림 · 축복', meteor: '유성처럼 떨어져 한 무릎 착지 · 충격파', fireStep: '불기둥 속에서 등장 · 주먹을 손바닥에', orbForm: '보랏빛 구슬이 모여 몸이 빚어짐', escape: '백룸 복도 문틈에서 몸을 던져 탈출 · 낚아채려는 검은 손', strikeIn: '붉은 번개 세 줄기 · 힘자랑' };
+  const MOVE_OUT = { bowOut: '가슴에 손 얹고 인사 · 색종이 · 금빛으로 사라짐', spinOut: '경례 후 돌며 솟아올라 별로 흩어짐', slamOut: '땅을 내려쳐 솟은 불기둥에 삼켜짐', sink: '팔짱 낀 채 붉은 구멍 속으로 가라앉음', derez: '경례 후 위에서부터 훑어 사라짐',
+    ascend: '빛기둥을 타고 떠올라 빛으로', launch: '웅크렸다 하늘로 솟구침', burnOut: '팔짱 낀 채 불 소용돌이에 타 사라짐', orbOut: '보랏빛 구슬로 흩어지며 올라감', noclip: '바닥에 열린 백룸 구멍으로 떨어짐', strikeOut: '팔을 하늘로 뻗자 번개를 맞고 사라짐' };
 
   return { ENT, MOT, KP, mine, mineList, valid, ok, avail, nameOf, owned, team, ghost, bound, spot, update, cam, clear, preview, profTab, play, get anims() { return AN; }, get ghosts() { return GH; }, get live() { return LIVE.length; },
     _rigPose(r, name, t = 0) { evalKey(r, name, Object.assign(BB, B0), { t }); } };

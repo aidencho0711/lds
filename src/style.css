@@ -1156,7 +1156,8 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .ent-row .ent-name { flex: none; min-width: 112px; text-align: center; }
 .ent-nm { display: inline-block; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.02em; color: var(--ec); text-shadow: 0 0 10px var(--ec), 0 0 2px rgba(0, 0, 0, 0.85); }
 .ent-auto { display: inline-block; padding: 2px 12px; border: 1px solid var(--line); border-radius: 4px; font-weight: 800; color: var(--sand); }
-.ent-prev { flex: none; }
+.ent-prev { flex: none; white-space: nowrap; }
+.ent-prevs { flex: none; display: flex; flex-direction: column; gap: 4px; }
 @media (max-width: 640px) { .ent-row .ent-name { min-width: 86px; } .ent-nm { font-size: 0.86rem; } }
 /* 입장·퇴장 순간 캐릭터 위(가리면 발아래)에 뜨는 이름 띠 */
 .ent-ban { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 10px; white-space: nowrap; will-change: transform, opacity; }

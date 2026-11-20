@@ -1044,7 +1044,7 @@ Three.js r128 기반, 서버 없이 브라우저에서 실행되는 싱글플레
 ### 파티 입장·퇴장 연출 — 상위 티어 4종 · 어려운 칭호 (2026-11-20 · `10_partyfx.js` · `11_game.js` Lobby · `10_social.js` · `01_audio.js`)
 - **대상** (`PartyFx.ENT`, 자동 선택은 위에서부터): 랭크 챔피언 · 제니스 · 하드코어 패왕 · 이클립스 · 정점의 베테랑 · 셀레스티얼 · 노바 · 오버로드 · 이터널 · 백룸 정복자 · 전쟁의 신
   - 상위 티어 4종은 최고 도달(칭호 `tier_<id>` 의 `ok()` — 없으면 `Rank.peakTier()`), 칭호는 `Prof.TI` 조건 그대로 (랭킹 1위 칭호는 1위인 동안만)
-  - 내 설정 `STATS.prof.ent` = `'auto'` · `'off'` · 대상 id → `PartyFx.mine()` · 계정 정보 '입장 연출' 탭(`profTab`: 고르기 · 끄기 · 미리 보기)
+  - 내 설정 `STATS.prof.ent` = `'auto'` · `'off'` · 대상 id → `PartyFx.mine()` · 계정 정보 '입장 연출' 탭(`profTab`: 고르기 · 끄기 · 입장·퇴장 미리 보기 — 퇴장 미리 보기는 내 캐릭터로 `out` 동작을 유령 없이 돌린 뒤 `MOT.back` 으로 다시 나타남)
 - **전달**: `Party.memberInfo().ent = PartyFx.mineList()` (고른 것 + 가진 나머지, 4개까지) → `HUD.renderLobby` 가 `Lobby.setTeam(n, looks, infos)` 의 infos 에 `uid`·`ent` 를 넣음
   - 받는 기기는 `valid(list, name)` 으로 첫 번째 쓸 수 있는 것 — 랭킹 1위 칭호는 `Ladder.allowed` 로 확인하고, 그 기기의 랭킹 자료가 아직 1위를 모르면 다음 것(예: 제니스)
 - **로비 연동** (`Lobby.setTeam`): `PartyFx.team(L, infos)` 가 직전 uid 목록과 비교 → 들어온 사람은 새 리그가 만들어진 뒤 `bound` 에서 입장, 나간 사람의 리그는 치우지 않고 `ghost` 로 넘겨 퇴장 동작 뒤 치움
