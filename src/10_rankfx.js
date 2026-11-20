@@ -5,8 +5,9 @@
 //       엠블럼이 달아오르며 떨리고 빛나는 금이 퍼짐
 //    ② 깨짐: 번쩍임 · 충격파 두 겹 · 엠블럼이 유리처럼 조각나 흩어짐 · 화면 흔들림
 //    ③ 상승: 위에서 내리꽂는 빛기둥 · 뒤에서 도는 빛살 · 새 엠블럼이 튀어나왔다 자리 잡음 · 빛 입자 폭발 · 엠블럼 위를 훑는 빛
-//       상위 티어(노바~제니스)는 더 길게 + 영문 이름이 새겨진 인장 고리가 돌고, 혜성 셋이 엠블럼 둘레를 돈다
 //    ④ 이름: 'TIER UP' · 티어 이름(글자 간격이 좁혀지며) · 영문/단계 · 다음 목표
+//  · 상위 티어(노바 · 셀레스티얼 · 이클립스 · 제니스)로 오를 때는 티어마다 완전히 다른 장면 (10_rankfx_th.js RankTheme)
+//    — 초신성 · 천상의 문 · 개기일식 · 정점. 시간표(Tm)·장면(draw)·글자 모양(text)·소리(Audio.rankTheme)를 테마가 정함
 //  · 화면을 누르면 이름 장면으로 건너뛰고, 한 번 더 누르면 닫힘 (건너뛰기 버튼은 바로 닫기)
 //  · 개편 안내(RankFx.cutNotice): 4000 RP 넘던 계정이 다시 들어오면 — 바뀐 RP · 새 티어 4종 · 받은 최상위 스킨 3종 (10_rank.js settle)
 //  · 개발자 도구에서 티어마다 컷신을 다시 볼 수 있다 (RankFx.demo)
@@ -31,7 +32,8 @@ const RankFx = (() => {
   // ---------- 장면 준비 ----------
   function build(from, to, opt) {
     const a = tinfo(from), b = tinfo(to), sup = b.sup;
-    const Tm = sup ? { crack: 1.2, shatter: 1.9, reveal: 2.05, settle: 2.9, title: 3.6, dur: 8.4 } : { crack: 0.9, shatter: 1.5, reveal: 1.65, settle: 2.45, title: 3.0, dur: 6.6 };
+    const th = sup && !to.hc && typeof RankTheme !== 'undefined' ? RankTheme.get(RANK_TIERS[to.t].id) : null;   // 상위 티어: 티어마다 다른 장면
+    const Tm = th ? th.Tm : sup ? { crack: 1.2, shatter: 1.9, reveal: 2.05, settle: 2.9, title: 3.6, dur: 8.4 } : { crack: 0.9, shatter: 1.5, reveal: 1.65, settle: 2.45, title: 3.0, dur: 6.6 };
     const R = mulberry32(((to.t + 1) * 7919 + (from.t + 3) * 31 + (to.hc ? 5 : 0)) >>> 0);
     // 조각: 몸통 가운데에서 뻗는 9갈래 + 고리 3겹 (꼭짓점을 흔들어 불규칙하게)
     const NA = 9, RR = [0, 0.16, 0.34, 0.8], ang = [];
@@ -59,14 +61,16 @@ const RankFx = (() => {
     const embers = []; for (let i = 0; i < 46; i++) embers.push({ x: R(), sp: 0.04 + R() * 0.08, ph: R() * 10, f: 0.5 + R() * 1.4, sz: 0.6 + R() * 1.8, off: R() });
     // 글자
     const top = !to.hc && to.t === RANK_TIERS.length - 1;
-    const kick = opt.series ? '승급전 통과  ·  TIER UP' : to.hc ? 'HARDCORE  ·  TIER UP' : 'TIER UP';
+    const kick = th ? th.text.kick : opt.series ? '승급전 통과  ·  TIER UP' : to.hc ? 'HARDCORE  ·  TIER UP' : 'TIER UP';
     const line3 = `${b.en}  ${ROMAN[to.div] || ''}`.trim();
     const sub = sup ? (top ? '최고 티어 — 제니스 1부터 RP가 끝없이 쌓입니다' : `${b.name} 1에서 다음 승급전 — ${SUP.need[to.t - SUP.t0 + 1]}연속 성공`)
       : `${a.name} ${from.div}  →  ${b.name} ${to.div}`;
     const sweeps = sup ? [Tm.settle, Tm.title + 1.3, Tm.title + 3.1] : [Tm.settle, Tm.title + 1.6];
     const sh = document.createElement('canvas'); sh.width = sh.height = 256;
-    return { from, to, a, b, sup, Tm, shards, cracks, gath, burst, embers, sweeps, sh, txt: { kick, name: b.name, line3, sub },
+    const X = { from, to, a, b, sup, th, Tm, shards, cracks, gath, burst, embers, sweeps, sh, txt: { kick, name: b.name, line3, sub },
       imgA: Rank.embCanvas(from, 512), imgB: Rank.embCanvas(to, 512) };
+    if (th) X.td = th.build(X, R);   // 테마 입자·그림 (시드 고정)
+    return X;
   }
 
   // ---------- 그리기 ----------
@@ -134,18 +138,26 @@ const RankFx = (() => {
     const fk = Math.max(11, base * 0.034), fn = Math.max(26, base * (W >= H ? 0.11 : 0.12)), fe = Math.max(12, base * 0.04), fs = Math.max(11, base * 0.03);
     const yK = L.eb + Math.max(18, base * 0.1), yN = yK + fk * 0.8 + fn * 0.62, yE = yN + fn * 0.62 + fe * 0.75, yS = yE + fe * 0.8 + fs * 0.85;
     const k2 = seg(t, Tm.title + 0.15, Tm.title + 0.8), k3 = seg(t, Tm.title + 0.55, Tm.title + 1.1), sp = 'letterSpacing' in g;
+    const st = X.th ? X.th.text : null, kc = st ? st.glow : X.b.ac;   // 상위 티어 테마: 글자 색·효과
     g.save(); g.globalAlpha = out; g.textAlign = 'center'; g.textBaseline = 'middle';
+    // (테마) 글자 뒤 어두운 띠 — 밝은 구름·불 위에서도 읽히게
+    if (st) { const y0 = yK - fk * 1.4, y1 = yS + fs * 1.4, bg = g.createLinearGradient(0, y0 - 24, 0, y1 + 24); bg.addColorStop(0, 'rgba(0,0,0,0)'); bg.addColorStop(0.3, 'rgba(0,0,0,0.45)'); bg.addColorStop(0.7, 'rgba(0,0,0,0.45)'); bg.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = k1 * out; g.fillStyle = bg; g.fillRect(0, y0 - 24, W, y1 - y0 + 48); g.globalAlpha = out; }
     // 머리말 + 양옆으로 뻗는 선
     g.font = `800 ${fk.toFixed(1)}px ${FD}`; if (sp) g.letterSpacing = `${(fk * 0.32).toFixed(1)}px`;
-    const yk = yK + (1 - eOut(k1)) * 10; g.fillStyle = rgba(X.b.ac, k1); g.fillText(X.txt.kick, cx, yk);
+    const yk = yK + (1 - eOut(k1)) * 10; g.fillStyle = rgba(kc, k1); g.fillText(X.txt.kick, cx, yk);
     const tw = g.measureText(X.txt.kick).width / 2 + 14, lw = base * 0.2 * eOut(k1);
-    for (const s of [-1, 1]) { const lg = g.createLinearGradient(cx + s * tw, 0, cx + s * (tw + lw), 0); lg.addColorStop(0, rgba(X.b.ac, 0.9 * k1)); lg.addColorStop(1, rgba(X.b.ac, 0)); g.fillStyle = lg; g.fillRect(Math.min(cx + s * tw, cx + s * (tw + lw)), yk - 1, lw, 2); }
+    for (const s of [-1, 1]) { const lg = g.createLinearGradient(cx + s * tw, 0, cx + s * (tw + lw), 0); lg.addColorStop(0, rgba(kc, 0.9 * k1)); lg.addColorStop(1, rgba(kc, 0)); g.fillStyle = lg; g.fillRect(Math.min(cx + s * tw, cx + s * (tw + lw)), yk - 1, lw, 2); }
     // 티어 이름: 커졌다가 줄어들며 글자 간격이 좁혀짐
     if (k2 > 0) {
       const e = eOut(k2), sc = lerp(1.35, 1, e);
       g.save(); g.translate(cx, yN); g.scale(sc, sc); g.font = `800 ${fn.toFixed(1)}px ${FD}`; if (sp) g.letterSpacing = `${(fn * lerp(0.55, 0.1, e)).toFixed(1)}px`;
-      g.globalAlpha = k2 * out; g.shadowColor = rgba(X.b.ac, 0.95); g.shadowBlur = fn * 0.5;
-      const gr = g.createLinearGradient(0, -fn / 2, 0, fn / 2); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.55, X.b.c[0]); gr.addColorStop(1, X.b.c[1]);
+      // 노바: 빨강·파랑으로 어긋난 잔상 (빛이 갈라짐)
+      if (st && st.chroma) { const o = fn * (0.016 + 0.07 * (1 - e)); g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = k2 * out * 0.6; g.fillStyle = '#ff2a6a'; g.fillText(X.txt.name, -o, 0); g.fillStyle = '#2a8aff'; g.fillText(X.txt.name, o, 0); g.restore(); }
+      g.globalAlpha = k2 * out; g.shadowColor = rgba(kc, 0.95);
+      g.shadowBlur = fn * 0.5 * (st && st.flicker ? 0.7 + 0.45 * Math.abs(Math.sin(t * 23) * Math.sin(t * 7.7)) : 1);   // 이클립스: 불처럼 일렁이는 빛
+      let gr;
+      if (st && st.rainbow) { const w = g.measureText(X.txt.name).width / 2 + fn * 0.2; gr = g.createLinearGradient(-w, 0, w, 0); for (let i = 0; i <= 6; i++) gr.addColorStop(i / 6, `hsl(${((t * 70 + i * 52) % 360).toFixed(0)},100%,${i % 2 ? 86 : 76}%)`); }   // 제니스: 흐르는 무지개
+      else { const c3 = st ? st.grad : ['#ffffff', X.b.c[0], X.b.c[1]]; gr = g.createLinearGradient(0, -fn / 2, 0, fn / 2); gr.addColorStop(0, c3[0]); gr.addColorStop(0.55, c3[1]); gr.addColorStop(1, c3[2]); }
       g.fillStyle = gr; g.fillText(X.txt.name, 0, 0); g.shadowBlur = 0; g.lineWidth = Math.max(1, fn * 0.025); g.strokeStyle = 'rgba(0,0,0,0.35)'; g.strokeText(X.txt.name, 0, 0);
       g.restore();
     }
@@ -167,6 +179,8 @@ const RankFx = (() => {
     const Tm = X.Tm, { cx, cy, E, MX } = layout();
     g.setTransform(DPR, 0, 0, DPR, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, W, H);
     const fin = seg(t, 0, 0.45), out = 1 - seg(t, Tm.dur, Tm.dur + 0.45);
+    // 상위 티어: 테마 장면 (배경·엠블럼·효과 전부) + 글자
+    if (X.th) { RankTheme.draw(X, t, g, { W, H, cx, cy, E, MX, FO: out, shine }); text(t, out); g.globalAlpha = 1; return; }
     g.globalAlpha = out;
     // 배경: 어둠 + 이전 티어 색에서 새 티어 색으로 바뀌는 큰 빛
     g.fillStyle = `rgba(3,4,9,${(0.94 * fin).toFixed(3)})`; g.fillRect(0, 0, W, H);
@@ -263,21 +277,25 @@ const RankFx = (() => {
   }
 
   // ---------- 재생 ----------
+  let pxCap = 3.3e6, lastF = 0, slowN = 0;   // 느린 기기: 프레임이 계속 늦으면 그림 해상도를 낮춤 (pxCap)
   function size() {
     if (!cv) return;
     DPR = Math.min(window.devicePixelRatio || 1, 2); W = window.innerWidth; H = window.innerHeight;
-    // 아주 큰 화면에서는 해상도를 낮춤 (픽셀 수 약 330만 이하)
-    const px = W * H * DPR * DPR; if (px > 3.3e6) DPR = Math.max(1, Math.sqrt(3.3e6 / (W * H)));
+    // 아주 큰 화면에서는 해상도를 낮춤 (픽셀 수 약 330만 이하) · 느린 기기는 더 낮게
+    const px = W * H * DPR * DPR; if (px > pxCap) DPR = Math.max(pxCap < 3.3e6 ? 0.6 : 1, Math.sqrt(pxCap / (W * H)));
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
   }
-  const CUES = (X) => [[0, 'gather'], [X.Tm.crack, 'crack'], [X.Tm.shatter, 'shatter'], [X.Tm.reveal, 'reveal'], [X.Tm.title, 'title']];
+  const CUES = (X) => (X.th ? X.th.cues : [[0, 'gather'], [X.Tm.crack, 'crack'], [X.Tm.shatter, 'shatter'], [X.Tm.reveal, 'reveal'], [X.Tm.title, 'title']]);
   function sound(t) {
     const C = CUES(A);
-    while (cue < C.length && t >= C[cue][0]) { const ph = C[cue][1]; cue++; if (t - C[cue - 1][0] < 0.35 || ph === 'title') try { if (Audio.rankUp) Audio.rankUp(ph, A.sup); } catch (e) { /* 소리 없이 */ } }
+    while (cue < C.length && t >= C[cue][0]) { const ph = C[cue][1]; cue++; if (t - C[cue - 1][0] < 0.35 || ph === 'title') try { if (A.th && Audio.rankTheme) Audio.rankTheme(A.th.id, ph); else if (Audio.rankUp) Audio.rankUp(ph, A.sup); } catch (e) { /* 소리 없이 */ } }
   }
   function loop() {
     if (!active) return;
-    const t = (performance.now() - tStart) / 1000;
+    const now = performance.now(), t = (now - tStart) / 1000;
+    // 프레임 간격이 40ms(25fps)를 넘는 일이 이어지면 해상도를 낮춤 (두 번까지 — 150만 · 75만 픽셀)
+    if (lastF) { slowN = now - lastF > 40 ? slowN + 1 : Math.max(0, slowN - 1); if (slowN >= 8 && pxCap > 0.8e6) { pxCap = Math.min(pxCap, cv.width * cv.height) > 1.6e6 ? 1.5e6 : 0.75e6; slowN = 0; size(); } }
+    lastF = now;
     sound(t); frame(t);
     if (t >= A.Tm.dur + 0.45) { close(); return; }
     raf = requestAnimationFrame(loop);
@@ -286,7 +304,7 @@ const RankFx = (() => {
   function play(from, to, opt = {}, done) {
     if (active) close(true);
     const L = $('tcLayer'); cv = $('tcCanvas'); if (!L || !cv) { if (done) done(); return false; }
-    g = cv.getContext('2d'); size();
+    pxCap = 3.3e6; lastF = 0; slowN = 0; g = cv.getContext('2d'); size();
     try { A = build(from, to, opt); } catch (e) { console.warn(e); if (done) done(); return false; }
     onDone = done || null; active = true; cue = 0; tStart = performance.now();
     L.hidden = false; L.classList.toggle('sup', A.sup);

@@ -737,6 +737,45 @@ const Audio = (() => {
       else if (ph === 'reveal') { const base = sup ? 196 : 262; [1, 1.25, 1.5, 2, 2.5, 3].slice(0, 4 + k * 2).forEach((m, i) => tone(sfxBus, t + i * 0.09, 2.6, 'triangle', base * m, base * m * 1.003, 0.1)); noise(sfxBus, t, 2.2, 'highpass', 7000, 0.7, 0.1); tone(sfxBus, t, 2.4, 'sine', base / 2, base / 2, 0.16); }
       else if (ph === 'title') { const base = sup ? 392 : 523; [1, 1.26, 1.5].concat(sup ? [2] : []).forEach((m) => { tone(sfxBus, t, 1.6, 'sawtooth', base * m / 2, base * m / 2, 0.025); tone(sfxBus, t, 1.8, 'triangle', base * m, base * m, 0.07); }); [2, 2.52, 3].forEach((m, i) => tone(sfxBus, t + 0.25 + i * 0.12, 0.9, 'sine', base * m, base * m, 0.04)); }
     },
+    // v23 상위 티어 승급 컷신 (10_rankfx_th.js): 티어마다 다른 소리 — id = nova · celestial · eclipse · zenith, ph = 그 장면의 단계 (테마 cues)
+    rankTheme(id, ph) {
+      if (!ctx) return; const t = ctx.currentTime, o = sfxBus;
+      const whoosh = (t0, d, f0, f1, gn = 0.22, q = 0.9) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; const f = ctx.createBiquadFilter(), gg = ctx.createGain(); f.type = 'bandpass'; f.Q.value = q; f.frequency.setValueAtTime(f0, t0); f.frequency.exponentialRampToValueAtTime(f1, t0 + d); gg.gain.setValueAtTime(0.0001, t0); gg.gain.linearRampToValueAtTime(gn, t0 + d * 0.6); gg.gain.exponentialRampToValueAtTime(0.001, t0 + d); s.connect(f); f.connect(gg); gg.connect(o); s.start(t0, Math.random()); s.stop(t0 + d + 0.05); };
+      const pad = (t0, fs, d, gn = 0.05, type = 'sine', att = 0.4) => fs.forEach((f) => { const os = ctx.createOscillator(), gg = ctx.createGain(); os.type = type; os.frequency.value = f; gg.gain.setValueAtTime(0.0001, t0); gg.gain.linearRampToValueAtTime(gn, t0 + att); gg.gain.exponentialRampToValueAtTime(0.001, t0 + d); os.connect(gg); gg.connect(o); os.start(t0); os.stop(t0 + d + 0.05); });
+      const chord = (t0, fs, d, type = 'sine', gn = 0.05, gap = 0) => fs.forEach((f, i) => tone(o, t0 + i * gap, d, type, f, f * 1.002, gn));
+      const boom = (t0, k = 1) => { tone(o, t0, 1.1, 'sine', 80, 26, 0.5 * k); noise(o, t0, 1.2, 'lowpass', 260, 0.8, 0.42 * k); noise(o, t0, 0.5, 'highpass', 3500, 0.7, 0.1 * k); };
+      const bell = (t0, f, d = 2.4, gn = 0.05) => [[1, 1], [2.76, 0.5], [5.4, 0.25], [8.93, 0.12]].forEach(([m, a]) => tone(o, t0, d * (1.2 - m * 0.08), 'sine', f * m, f * m, gn * a));
+      const tink = (t0, n, lo = 2400, hi = 6500, gn = 0.03, gap = 0.04) => { for (let i = 0; i < n; i++) { const f = lo + Math.random() * (hi - lo); tone(o, t0 + i * gap + Math.random() * 0.03, 0.25, 'sine', f, f * 0.98, gn); } };
+      const thunder = (t0, k = 1) => { noise(o, t0, 0.12, 'highpass', 1800, 0.6, 0.4 * k); tone(o, t0, 0.12, 'square', 3200, 300, 0.04 * k); noise(o, t0 + 0.05, 1.6, 'lowpass', 180, 0.7, 0.38 * k); };
+      const crackle = (t0, d, n, gn = 0.07) => { for (let i = 0; i < n; i++) noise(o, t0 + Math.random() * d, 0.025, 'highpass', 2200 + Math.random() * 3000, 1, gn * (0.5 + Math.random())); };
+      switch (id + ':' + ph) {
+        // 노바: 우주의 낮은 울림 · 차오르는 바람 → 빨려드는 소리 → 초신성 폭발 + 수정이 부서지는 소리 → 맑은 화음
+        case 'nova:gather': tone(o, t, 2.4, 'sine', 42, 70, 0.22); noise(o, t, 2.3, 'lowpass', 150, 0.7, 0.2); whoosh(t + 0.2, 1.9, 300, 2600, 0.12); pad(t + 0.1, [880, 1320, 1760], 2.2, 0.012, 'sine', 1.2); break;
+        case 'nova:implode': tone(o, t, 1.05, 'sine', 600, 70, 0.1); tone(o, t, 1.05, 'triangle', 1200, 140, 0.035); whoosh(t, 1.05, 4000, 200, 0.3, 1.4); break;
+        case 'nova:boom': boom(t, 1.25); noise(o, t, 2.2, 'highpass', 5500, 0.7, 0.18); tink(t + 0.05, 16, 2600, 7000, 0.028, 0.035); tone(o, t, 2.4, 'sine', 55, 30, 0.3); break;
+        case 'nova:reveal': chord(t, [440, 554, 659, 880, 1109, 1319], 3.0, 'sine', 0.05, 0.06); pad(t, [220, 330], 3.2, 0.04, 'triangle', 0.3); whoosh(t, 2.0, 2000, 8000, 0.06); break;
+        case 'nova:title': chord(t, [659, 831, 988, 1319], 1.8, 'triangle', 0.06); chord(t, [330, 415, 494], 1.9, 'sawtooth', 0.02); tink(t + 0.1, 6, 3000, 5000, 0.02, 0.07); break;
+        // 셀레스티얼: 따뜻한 화음 → 하프처럼 오르는 음 → 종 · 성가대 같은 화음 → 내려앉는 바람 · 종
+        case 'celestial:gather': pad(t, [262, 330, 392, 523], 2.6, 0.035, 'sine', 1.0); whoosh(t, 2.4, 300, 900, 0.06, 0.6); break;
+        case 'celestial:lift': [523, 587, 659, 784, 880, 1047, 1175, 1319, 1568, 1760].forEach((f, i) => tone(o, t + i * 0.1, 0.9, 'triangle', f, f, 0.04)); break;
+        case 'celestial:gate': bell(t, 523, 3.2, 0.07); bell(t + 0.02, 784, 2.8, 0.04); pad(t, [262, 330, 392, 494, 659], 3.4, 0.03, 'sawtooth', 0.6); pad(t, [523, 659, 784], 3.2, 0.04, 'sine', 0.5); whoosh(t, 1.6, 600, 4000, 0.12); break;
+        case 'celestial:land': whoosh(t, 0.7, 2500, 400, 0.12); bell(t, 1047, 2.4, 0.04); chord(t + 0.05, [1319, 1568, 2093], 1.6, 'sine', 0.03, 0.05); break;
+        case 'celestial:title': chord(t, [523, 659, 784, 988], 2.0, 'triangle', 0.055); pad(t, [262, 392], 2.0, 0.035, 'sine', 0.2); bell(t + 0.1, 1568, 2.0, 0.025); break;
+        // 이클립스: 깊은 웅웅거림 → 타닥 타는 소리 → 개기일식의 묵직한 울림 · 불협화음 → 다이아몬드 링 '팅' · 솟아오름 → 착지 · 천둥
+        case 'eclipse:gather': tone(o, t, 3.0, 'sawtooth', 55, 52, 0.05); tone(o, t, 3.0, 'sawtooth', 55.8, 53, 0.045); noise(o, t, 2.8, 'lowpass', 120, 0.7, 0.2); whoosh(t + 0.3, 2.2, 200, 700, 0.08, 0.5); break;
+        case 'eclipse:burn': whoosh(t, 1.3, 300, 1500, 0.18); crackle(t, 1.3, 16, 0.06); break;
+        case 'eclipse:total': boom(t, 0.9); tone(o, t, 2.4, 'sine', 1244, 1244, 0.02); tone(o, t, 2.4, 'sine', 1318, 1318, 0.02); pad(t, [110, 131, 165], 2.4, 0.04, 'sawtooth', 0.15); break;
+        case 'eclipse:diamond': tone(o, t, 1.4, 'sine', 3136, 3136, 0.06); tone(o, t, 1.2, 'sine', 4699, 4699, 0.03); noise(o, t, 0.3, 'highpass', 6000, 0.7, 0.14); tone(o, t + 0.1, 1.0, 'sawtooth', 70, 220, 0.04); whoosh(t + 0.1, 0.9, 150, 1200, 0.25); break;
+        case 'eclipse:land': boom(t, 1.3); thunder(t + 0.02, 1.0); thunder(t + 0.2, 0.7); crackle(t, 1.4, 14, 0.05); break;
+        case 'eclipse:title': chord(t, [110, 165, 220], 2.0, 'sawtooth', 0.035); chord(t, [440, 523, 659], 1.8, 'triangle', 0.045); tone(o, t, 1.8, 'sine', 55, 55, 0.12); break;
+        // 제니스: 솟구치는 바람 · 오르는 음 → 별이 하나씩 켜지는 소리 → 프리즘 폭발(밝은 화음 · 반짝이는 글리산도) → 착지 충격 → 팡파르
+        case 'zenith:gather': whoosh(t, 1.8, 200, 3000, 0.2, 0.7); [392, 440, 523, 587, 659, 784, 880, 1047].forEach((f, i) => tone(o, t + 0.1 + i * 0.16, 0.6, 'triangle', f, f, 0.035)); break;
+        case 'zenith:crown': [1568, 1760, 2093, 2349, 2637, 2349, 2093, 2637, 3136, 3520].forEach((f, i) => tone(o, t + 0.15 + i * 0.09, 0.5, 'sine', f, f, 0.03)); pad(t, [523, 659, 784], 1.4, 0.025, 'sine', 0.6); break;
+        case 'zenith:prism': boom(t, 0.9); chord(t, [523, 659, 784, 1047, 1319, 1568, 2093], 3.0, 'sine', 0.045, 0.025); for (let i = 0; i < 14; i++) tone(o, t + i * 0.035, 0.6, 'sine', 1200 + i * 260, 2400 + i * 300, 0.016); noise(o, t, 1.8, 'highpass', 6000, 0.7, 0.12); break;
+        case 'zenith:land': boom(t, 1.4); noise(o, t, 1.4, 'bandpass', 4500, 0.6, 0.12); chord(t + 0.05, [1047, 1319, 1568, 2093], 1.6, 'triangle', 0.045); tink(t + 0.1, 12, 2500, 6000, 0.02, 0.05); break;
+        case 'zenith:title': chord(t, [523, 659, 784, 1047], 2.4, 'sawtooth', 0.03); chord(t, [1047, 1319, 1568, 2093], 2.2, 'triangle', 0.05); chord(t + 0.35, [1319, 1568, 2093, 2637], 1.8, 'sine', 0.035); break;
+      }
+    },
     // 총기 스킨(울트라레어) 효과음: draw(빛 띠가 올라가며 나타남) · holster(내려가며 사라짐) · shot(종류별로 총성에 얹는 소리) · hit(맞힘) · kill(처치)
     //  lite: 슈퍼레어(약한 효과) — 작게, 처치도 맞힘 소리 정도로
     skinFx(ph, kind, pos, own, lite) {
