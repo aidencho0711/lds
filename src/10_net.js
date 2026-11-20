@@ -68,7 +68,9 @@ const Net = (() => {
 
   function shuffled(arr, rand) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   // ---------- 시작 (방장·파티원 공통) ----------
-  function join(cfg) {
+  // rj (v23 이어하기 — 10_resume.js): 나갔다가 같은 경기로 돌아옴 { ep: 방장 넘겨받은 횟수, isl: 방장이 아직 스타트 섬, mine: 저장해 둔 내 캐릭터 }
+  //  → 방장에게 연결해 지금 상태(rjs)를 받을 때까지 내 캐릭터 상태를 보내지 않는다(hold)
+  function join(cfg, rj) {
     if (!Cloud.uid || G.state === 'loading') return;
     if (N) close(true);
     if (G.state === 'play' || G.state === 'result') { $('resultPanel').hidden = true; disposeMatch(); G.state = 'lobby'; }
@@ -79,17 +81,32 @@ const Net = (() => {
     const myIdx = cfg.humans.findIndex((h) => h.uid === Cloud.uid);
     N = { cfg, host: cfg.host === Cloud.uid, me: Cloud.uid, myIdx, peers: new Map(), quiet: 0, applying: 0, seq: 0, uidBase: (myIdx + 1) * 1e7, uidN: 0, own,
       items: new Map(), vehs: [], outB: [], tickT: 0, zoneT: 0, t0: now(), welcomed: false, ended: false, ready: false, hiT: 0, gone: new Set(), epoch: 0, mig: false, claimN: 0, claimT: 0, stats: { tx: 0, rx: 0 } };   // gone: 나간 사람 · epoch·mig: 방장 넘겨받은 횟수 · claim: 새 방장 알림
+    // 돌아온 사람: 'hi'를 방장이 offer 할 때까지 되풀이(mig) · 파티 경기는 파티 채널에 없으므로 신호를 로비 채널로(lob)
+    if (rj) { N.rj = rj; N.hold = true; N.mig = true; N.epoch = rj.ep || 0; N.lob = !cfg.mm; }
     G.net = N; G.netAuthority = () => !N || N.host;
     // 온라인 매칭: 이 경기 채널로 신호. 방장은 파티원이 '들어왔다(hi)'고 알릴 때 연결을 시작한다 (채널에 늦게 들어온 사람이 신호를 놓치지 않게)
     if (cfg.mm) MM.chOpen(cfg.mm, onMM, () => { if (N && !N.host) hi(); });
     if (N.host) { for (const hm of cfg.humans) if (hm.uid !== N.me) N.peers.set(hm.uid, newPeer(hm.uid, true, !!cfg.mm)); }
     else N.peers.set(cfg.host, newPeer(cfg.host, false));
     if (pendBuf) { const b = pendBuf; pendBuf = null; for (const m of b) if (m.from === cfg.host || N.host) onSig(m); }
+    if (N.lob) hi();
     if (cfg.dm) DM.start(dmCfg(cfg)); else G.startMatchNet(cfg);
   }
   const viaMM = () => !!(N && N.cfg.mm);
   // 신호·중계 보내기: 온라인 매칭은 경기 채널, 파티는 파티 채널
-  function bus(k, d) { return viaMM() ? MM.chSend(k, d) : Party.send(k, d); }
+  //  v23: 파티 경기에 다시 들어온 사람(파티 채널에 없음)과는 로비 채널로 — 받는 사람(to)이 그런 사람이거나 내가 돌아온 사람이면
+  function bus(k, d) {
+    if (N && !viaMM()) {
+      const to = d && d.to;
+      if (to) { const p = N.peers.get(to); if (N.lob || (p && p.lob)) return lobSend(to, k, d); }
+      else {   // 모두에게(방장 알림 등): 로비로 붙은 사람에게도 따로
+        for (const p of N.peers.values()) if (p.lob && !N.lob) lobSend(p.uid, k, d);
+        if (N.lob) { for (const h of N.cfg.humans) if (h.uid !== N.me && !N.gone.has(h.uid)) lobSend(h.uid, k, d); return true; }
+      }
+    }
+    return viaMM() ? MM.chSend(k, d) : Party.send(k, d);
+  }
+  function lobSend(to, k, d) { const o = Object.assign({}, d); delete o.to; o.nk = k; o.mid = N.cfg.mid; return Social.send(to, 'nt', o); }
   function hi() { if (N && !N.host) { N.hiT = now(); bus('hi', { to: N.cfg.host }); } }
   // 경기 채널로 온 메시지 (나머지 sig·g·hi·host 는 파티 채널과 같이 onParty)
   function onMM(m) {
@@ -220,6 +237,7 @@ const Net = (() => {
     if (!N) return;
     let m; try { m = typeof data === 'string' ? JSON.parse(data) : data; } catch (e) { return; }
     p.lastRx = now(); N.stats.rx += (data && data.length) || 0;
+    if (N.rj && !N.ready) return;   // 다시 들어오는 중 · 아직 맵을 만드는 중: 버림 (인사한 뒤 방장이 지금 상태를 통째로 보낸다 — 그 전 사건을 적용하면 아이템 칸이 없어 오류)
     if (m.s) for (const a of m.s) applyChar(a, p);
     if (m.v) for (const a of m.v) applyVeh(a);
     if (m.w) applyWorld(m.w);
@@ -265,6 +283,7 @@ const Net = (() => {
       case 'vehs': recvVehs(e); break;
       case 'bye': peerLeft(from === N.me ? e.from : (e.uid || from), e.next); break;
       case 'isl': if (!N.host && G.island) Island.end(); break;   // 방장의 스타트 섬이 끝남 → 모두 수송기로
+      case 'rjs': applyRj(e); break;   // v23 다시 들어옴: 방장이 보낸 지금 상태
       case 'vic': Victory.onNet(e); break;   // v23 우승 축하: 파티원의 동상 세우기·춤
     }
   }
@@ -279,9 +298,86 @@ const Net = (() => {
     if (!p) return;
     if (!N.ready) { p.needWelcome = true; return; }
     p.needWelcome = false;
-    const w = { k: 'welcome', t: G.time, sum: G.dm ? null : N.baseSum, zone: G.dm ? null : zoneSnap(), sc: G.dm ? G.dm.score : null };
+    const w = { k: 'welcome', t: G.time, sum: G.dm || p.rj ? null : N.baseSum, zone: G.dm ? null : zoneSnap(), sc: G.dm ? G.dm.score : null };
     sendTo(p, { e: [w] }, true);
     p.welcomed = true;
+    if (p.rj) rjPack(p);
+  }
+
+  // ---------- 다시 들어오기 (v23 · 10_resume.js) ----------
+  //  나갔던 사람(새로고침·뒤로가기·탭 닫힘)이 같은 경기로 돌아옴. 그동안 그 사람 캐릭터는 방장 기기에서 봇이 이어서 했다(botize)
+  //  1. 돌아온 사람 → 로비 채널로 그 경기 사람들 모두에게 'rj' (지금 방장이 누군지 모름 — 그사이 바뀌었을 수 있다)
+  //  2. 지금 방장만 답함 'rjok' { 방장 · 넘겨받은 횟수 · 스타트 섬 } + 그 사람 자리(peer)를 새로 만듦
+  //  3. 돌아온 사람이 같은 설정으로 경기를 열고 방장에게 연결 (온라인 매칭: 그 경기 채널 · 파티: 로비 채널로 신호)
+  //  4. 인사(hello)를 받은 방장 → welcome + 지금 상태 'rjs' (아이템·차량 목록 · 죽은 캐릭터 · 팀 순위 · 누가 어느 캐릭터를 맡는지 · 그 사람 캐릭터)
+  //  5. 돌아온 사람이 맞춘 뒤에야 자기 캐릭터 상태를 보냄 → 방장이 봇을 멈추고 돌려줌(unbotize)
+  //  아무도 답하지 않으면(경기가 끝났거나 모두 나감) 돌아온 사람 쪽에서 '이미 끝남'
+  function onLobby(m) {
+    const k = m.nk, from = m.from && m.from.uid; if (!k || !from) return;
+    if (k === 'rj') { onRejoinReq(from, m); return; }
+    if (k === 'rjok') { if (probeP && m.mid === probeP.mid) probeP.fin({ host: m.host || from, ep: m.ep || 0, isl: !!m.isl }); return; }
+    if (!N || m.mid !== N.cfg.mid) return;
+    const p = N.peers.get(from); if (p) p.lob = true;   // 이 사람과는 로비 채널로
+    onParty({ k, from, to: Cloud.uid, d: m.d, o: m.o, uid: m.uid, ep: m.ep, next: m.next });
+  }
+  function onRejoinReq(from, m) {
+    if (!N || N.ended || !N.host || m.mid !== N.cfg.mid || from === N.me || !N.cfg.humans.some((h) => h.uid === from)) return;
+    let p = N.peers.get(from);
+    if (!p || !p.rj || now() - p.t0 > 8) { if (p) closePeer(p); p = newPeer(from, true, true); p.rj = true; N.peers.set(from, p); }   // 새 자리 (8초 안에 다시 물으면 그대로)
+    p.lob = !N.cfg.mm; N.gone.delete(from);
+    if (G.state === 'result') G.bgSim = true;   // 결과 화면 뒤에서 경기를 다시 돌린다 (돌아온 사람이 할 경기)
+    N.rjKeep = now() + 40;
+    Social.send(from, 'nt', { nk: 'rjok', mid: N.cfg.mid, host: N.me, ep: N.epoch, isl: G.island ? 1 : 0 });
+  }
+  // 돌아온 사람: 지금 방장 찾기 (10초 동안 2초마다 물음) → { host, ep, isl } 또는 null(끝난 경기)
+  let probeP = null;
+  function probe(cfg, ms = 10000) {
+    return new Promise((res) => {
+      const P = probeP = { mid: cfg.mid, done: false };
+      const others = cfg.humans.map((h) => h.uid).filter((u) => u && u !== Cloud.uid);
+      const ask = () => { if (!P.done) for (const u of others) Social.send(u, 'nt', { nk: 'rj', mid: cfg.mid }); };
+      const iv = setInterval(ask, 2000), to = setTimeout(() => P.fin(null), ms);
+      P.fin = (v) => { if (P.done) return; P.done = true; clearInterval(iv); clearTimeout(to); if (probeP === P) probeP = null; res(v); };
+      if (!others.length) { P.fin(null); return; }
+      ask();
+    });
+  }
+  // 방장: 돌아온 사람에게 지금 상태
+  function rjPack(p) {
+    p.rj = false;
+    if (!G.dm) sendLoot(p);   // 지금 바닥 아이템 전부 · 차량 목록(자리)
+    const c0 = CHARS.find((c) => c.human && c.uid === p.uid);
+    const e = { k: 'rjs', gone: [...N.gone], own: [], dead: [], tp: G.teams && !G.dm ? G.teams.map((T) => T.place || 0) : null, vst: G.dm ? [] : N.vehs.map(encVeh),
+      pt: G.plane ? [r2(G.plane.t), G.plane.active ? 1 : 0] : null, me: c0 ? Resume.encChar(c0, (v) => v.nid) : null,
+      duel: G.dm && G.dm.duel ? { r: G.dm.round.n, ph: G.dm.round.ph, t: r2(G.dm.round.t0), sc: G.dm.score.slice(), w: G.dm.lastWin, lo: G.dm.loadout } : null };
+    for (const c of CHARS) {
+      if (c.human && c.net) e.own.push([c.id, c.net.owner]);
+      if (!c.alive && !G.dm) e.dead.push([c.id, c.place || 0, r2(c.deathTime || 0), c.kills || 0]);
+    }
+    sendTo(p, { e: [e] }, true);
+  }
+  // 돌아온 사람: 받은 상태 적용 → 내 캐릭터 상태를 보내기 시작
+  function applyRj(e) {
+    const R = N.rj; if (!R || R.done) return; R.done = true;
+    N.gone = new Set((e.gone || []).filter((u) => u !== N.me));
+    for (const [id, o] of e.own || []) { const c = charById(id); if (c && c.net && !c.isPlayer) { c.net.owner = o; c.net.mine = o === N.me; } }
+    for (const [id, pl, dt, k] of e.dead || []) {   // 그사이 탈락한 캐릭터 (알림·소리 없이)
+      const c = charById(id); if (!c || c.isPlayer || !c.alive) continue;
+      if (c.veh) Veh.exit(c, true, true);
+      c.alive = false; c.hp = 0; c.knocked = false; c.place = pl; c.deathTime = dt; c.kills = Math.max(c.kills, k); c.heal = null; c.vel.set(0, 0, 0); c.anim.dead = 1; c.mode = 'ground'; c.root.visible = false;
+      if (c.net) { c.net.deathLife = c.net.life; c.net.pendDead = 0; }
+      c.inv.weapons = [null, null, null]; c.inv.cur = -1; c.inv.melee = null; c.setVisibleGear();
+    }
+    if (e.tp && G.teams) e.tp.forEach((v, i) => { if (G.teams[i] && v) G.teams[i].place = v; });
+    for (const a of e.vst || []) {
+      applyVeh(a); const v = N.vehs[a[0]];
+      if (v && (a[14] & 1) && !v.T.animal && !v.wreck0) { v.dead = true; v.wreck0 = true; VehModels.wreck(v.P); v.P.root.position.y -= 0.12; }   // 부서진 차량 모양
+    }
+    if (e.pt && G.plane) { G.plane.t = e.pt[0]; if (!e.pt[1]) { G.plane.active = false; G.plane.mesh.visible = false; Audio.plane(false); } }
+    if (e.duel && G.dm) DM.applyDuel(Object.assign({ k: 'duel' }, e.duel));
+    Resume.applyMine(G.player, e.me, R.mine);
+    N.hold = false;
+    Resume.rejoined();
   }
   function applyWelcome(e) {
     N.welcomed = true;
@@ -332,7 +428,7 @@ const Net = (() => {
   }
   function applyChar(a, p) {
     let c = charById(a[0]); if (!c) return;
-    if (N.host && p && c.botized && c.origOwner === p.uid) unbotize(c, p);  // 잠깐 끊겼던 파티원이 돌아옴
+    if (N.host && p && c.botized && (c.uid || c.origOwner) === p.uid) unbotize(c, p);  // 잠깐 끊겼던 파티원 · 나갔다가 다시 들어온 사람이 돌아옴 (v23: 방장이 바뀌었어도 캐릭터의 사람 uid 로)
     if (mine(c)) return;
     if (N.host && p && ownerOf(c) !== p.uid) return;                // 남의 캐릭터를 대신 보내는 것은 무시
     const n = c.net, t = now(), f = a[6];
@@ -598,7 +694,7 @@ const Net = (() => {
       // v22: 캐릭터 상태는 틱마다 한 번만 JSON 으로 만들고, 사람마다 거리로 골라 이어 붙인다 (사람이 많아도 방장 부담이 덜 늘게)
       //  받는 사람 캐릭터에서 150m 안 = 초당 20번, 150~260m = 10번, 그 밖 = 2번 (멀리 있는 캐릭터는 작게 보여 덜 자주 보내도 티가 안 남)
       const EM = [], EO = [];
-      for (const c of mineS) EM.push(c, JSON.stringify(encChar(c)));
+      for (const c of mineS) { if (N.hold && c.isPlayer) continue; EM.push(c, JSON.stringify(encChar(c))); }   // 돌아오는 중: 방장 상태를 맞추기 전에는 내 캐릭터를 보내지 않음
       if (N.host) for (const c of others) if (c.net.lastA) EO.push(c, JSON.stringify(c.net.lastA));
       const tail = (myVeh.length ? ',"v":' + JSON.stringify(myVeh) : '') + (w ? ',"w":' + JSON.stringify(w) : ''), me0 = G.player, tn = N.tickN;
       for (const p of N.peers.values()) {
@@ -672,7 +768,7 @@ const Net = (() => {
   }
   // 봇·나간 사람 캐릭터를 이 기기가 맡음 (다른 기기에는 지금 든 총·장비만 보였으므로 예비 탄약·붕대를 채워 준다)
   function adopt(c) {
-    if (c.human) { c.origOwner = c.net.owner; c.botized = true; }
+    if (c.human) { c.origOwner = c.uid || c.net.owner; c.botized = true; }
     c.net = { owner: N.me, mine: true, buf: [], life: c.net.life };
     ev({ k: 'own', c: c.id, o: N.me });
     if (!c.alive) return;
@@ -742,14 +838,15 @@ const Net = (() => {
   function closePeers(n0) { for (const p of n0.peers.values()) { try { p.pc && p.pc.close(); } catch (e) { /* */ } } }
   function close(quiet) { if (!N) return; if (!quiet) leave(); else { const n0 = N; closePeers(n0); if (n0.cfg.mm) MM.chClose(n0.cfg.mm); N = null; G.net = null; restoreOwn(n0); } }
   // 방장이 로비로 나가려 할 때 아직 살아 있는 파티원이 있는지
-  function othersPlaying() { if (!N || !N.host) return false; return N.cfg.humans.some((hm) => hm.uid !== N.me && CHARS.some((c) => c.net && c.net.owner === hm.uid && c.alive && !c.botized)); }
+  function othersPlaying() { if (!N || !N.host) return false; return (N.rjKeep || 0) > now() || N.cfg.humans.some((hm) => hm.uid !== N.me && CHARS.some((c) => c.net && c.net.owner === hm.uid && c.alive && !c.botized)); }   // rjKeep: 다시 들어오는 사람을 기다리는 동안 (40초)
   // 방장: 아직 인사(hello)가 없는 사람 수 — 스타트 섬을 조금 더 기다린다
   function waiting() { if (!N || !N.host) return 0; let n = 0; for (const p of N.peers.values()) if (!p.helloSeen && !p.left && !p.gone) n++; return n; }
   function status() { if (!N) return null; return { host: N.host, peers: [...N.peers.values()].map((p) => ({ uid: p.uid, name: p.name, open: p.open, relay: p.relay, rx: Math.round(now() - p.lastRx) })), tx: N.stats.tx, rx: N.stats.rx, items: N.items.size, vehs: N.vehs.length }; }
 
   // 창을 닫거나 새로고침할 때도 나간다고 알린다 (방장이면 다음 방장을 골라 넘김 → 남은 사람의 경기는 계속)
-  window.addEventListener('pagehide', () => { try { if (N) leave(); } catch (e) { /* */ } });
-  return { makeConfig, join, ready, onParty, tick, active, isHost, isGuest, mine, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
-    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, waiting, status, ev, flush,
+  //  v23: 나가기 전에 이어하기 저장 (돌아오면 같은 경기로 — 10_resume.js)
+  window.addEventListener('pagehide', () => { try { if (N) { Resume.save(); leave(); } } catch (e) { /* */ } });
+  return { makeConfig, join, ready, onParty, onLobby, probe, tick, active, isHost, isGuest, mine, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
+    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, waiting, status, ev, flush, zoneSnap, applyZone,
     get state() { return N; } };
 })();

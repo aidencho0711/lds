@@ -172,6 +172,20 @@
     </div>
   </section>
 
+  <!-- v23 경기 이어하기: 경기 중 새로고침·뒤로가기로 나갔다가 다시 들어왔을 때 (10_resume.js) -->
+  <section id="rjPanel" class="overlay" hidden>
+    <div class="menu rj-box" role="alertdialog" aria-labelledby="rjTitle">
+      <div class="eyebrow">경기 이어하기</div>
+      <h2 class="rj-h" id="rjTitle">진행 중인 경기가 있습니다</h2>
+      <p class="rj-what" id="rjWhat"></p>
+      <p class="rj-stat" id="rjStat"></p>
+      <p class="micro" id="rjNote"></p>
+      <p class="rj-msg" id="rjMsg" role="status" hidden></p>
+      <button class="btn amber" type="button" id="rjGo">다시 들어가기</button>
+      <button class="btn danger" type="button" id="rjNo">포기하기</button>
+    </div>
+  </section>
+
   <!-- v23 랭크 개편 안내 (4000 RP 넘던 계정이 다시 들어왔을 때 한 번 — 10_rankfx.js) -->
   <section id="rkCutPanel" class="overlay" hidden>
     <div class="menu rkcut-box" role="alertdialog" aria-labelledby="rkCutTitle">

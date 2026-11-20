@@ -1305,6 +1305,13 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .acc-rn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acc-rn .dev-sel { flex: 1 1 140px; max-width: 200px; height: 32px; }
 #rnPanel { z-index: 27; }   /* 개발자 메뉴(26) 등 다른 창보다 위 (관전 화면이 덮고 있으면 나올 때까지 기다림) */
+/* v23 경기 이어하기 창 (10_resume.js) — 들어오자마자 뜨는 다른 안내(랭크 개편 28)보다도 위 */
+#rjPanel { z-index: 29; }
+.menu.rj-box { width: min(360px, 100%); }
+.rj-h { margin: 0; font-size: 1.2rem; }
+.rj-what { margin: 0; color: var(--amber); font-weight: 700; }
+.rj-stat { margin: 0; font-variant-numeric: tabular-nums; }
+.rj-msg { margin: 0; padding: 7px 9px; border-radius: 4px; background: rgba(240, 164, 58, 0.12); border: 1px solid rgba(240, 164, 58, 0.35); font-size: 0.9rem; }
 .menu.rn-box { width: min(340px, 100%); text-align: center; }
 .rn-names { margin: 4px 0 0; font-size: 1.15rem; } .rn-names s { color: var(--dim); } .rn-names b { color: var(--amber); }
 /* v20 테스터(베타 테스터 한정 컬렉션): 창고·무기 칸 전용 테두리 · 육각 β 번호 배지 · EXCLUSIVE 문구 */
@@ -2144,6 +2151,20 @@ body.touch #victoryHud button { padding: 8px 12px; font-size: 0.8rem; }</style>
       <p class="rn-names"><s id="rnOld"></s> → <b id="rnNew"></b></p>
       <p class="micro" id="rnText"></p>
       <button class="btn amber" type="button" id="rnOk">확인</button>
+    </div>
+  </section>
+
+  <!-- v23 경기 이어하기: 경기 중 새로고침·뒤로가기로 나갔다가 다시 들어왔을 때 (10_resume.js) -->
+  <section id="rjPanel" class="overlay" hidden>
+    <div class="menu rj-box" role="alertdialog" aria-labelledby="rjTitle">
+      <div class="eyebrow">경기 이어하기</div>
+      <h2 class="rj-h" id="rjTitle">진행 중인 경기가 있습니다</h2>
+      <p class="rj-what" id="rjWhat"></p>
+      <p class="rj-stat" id="rjStat"></p>
+      <p class="micro" id="rjNote"></p>
+      <p class="rj-msg" id="rjMsg" role="status" hidden></p>
+      <button class="btn amber" type="button" id="rjGo">다시 들어가기</button>
+      <button class="btn danger" type="button" id="rjNo">포기하기</button>
     </div>
   </section>
 
@@ -10288,7 +10309,10 @@ const Crates = (() => {
     }
     map.set(key, b); return b;
   }
-  function track(it) { const b = ensure(it.bx, it.x, it.y, it.z); b.items.add(it); it.box = b; }
+  function track(it) {
+    const b = ensure(it.bx, it.x, it.y, it.z); b.items.add(it); it.box = b;
+    if (b.dead) { const n = +it.bx.slice(it.bx.lastIndexOf('_') + 1); if (n >= seq) seq = n + 1; }   // 이어하기로 되살린 상자 · 다른 기기 상자와 번호가 겹치지 않게
+  }
   function untrack(it) { const b = it.box; if (b) b.items.delete(it); }
   // 시체 상자 key: 같은 캐릭터가 리콜로 다시 죽어도 겹치지 않게 목숨·번호를 붙인다
   function newKey(c) { return 'd' + c.id + '_' + (c.life || 0) + '_' + (seq++); }
@@ -21334,7 +21358,7 @@ const Airdrop = (() => {
     list.push(d);
     HUD.toast('보급품이 투하되었습니다! 지도에 표시됩니다', 'warn');
   }
-  function land(d) {
+  function land(d, quiet) {   // quiet: 이어하기로 되살림 (모델·충돌만 — 연막·내용물은 따로)
     d.landed = true; d.y = d.gy; d.obj.position.y = d.gy; d.landT = G.time;
     // 충돌 상자 (밟고 올라설 수 있음)
     const b = { x0: d.x - 0.62, x1: d.x + 0.62, y0: d.gy - 0.2, y1: d.gy + 0.84, z0: d.z - 0.5, z1: d.z + 0.5, soft: false, nav: false, _q: 0, kind: 'crate' };
@@ -21343,8 +21367,9 @@ const Airdrop = (() => {
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) gridPush(W.grid, j * CGN + i, b);
     // 내용물: 보급 전용 무기 1정 + 맞는 탄 + 장비·조준경·회복 (파티원 기기는 방장이 만든 것을 받는다)
     //  v22: 상자 위에 올려 두지 않고 상자 안에 (bx = 'a<번호>' — 줍기 목록에 '보급 상자'로 묶여 보인다)
+    if (quiet) return;
     if (d.remote) { addSmoke(d); return; }
-    const key = 'a' + (seq++) + '_' + Math.round(d.x) + '_' + Math.round(d.z), y0 = d.gy + 0.3;
+    const key = d.key = 'a' + (seq++) + '_' + Math.round(d.x) + '_' + Math.round(d.z), y0 = d.gy + 0.3;
     const put = (id, n, inst) => { const it = spawnItem(scene, id, n, d.x, y0, d.z, inst, undefined, key); it.drop = 1; d.items.push(it); };
     const gun = weightedPick([['awm', 22], ['amr', 14], ['groza', 22], ['mg3', 20], ['slr', 22]]);   // v20: AMR · Groza 추가
     put(gun, 1, newWeapon(gun, ITEMS[gun].mag));
@@ -21360,12 +21385,39 @@ const Airdrop = (() => {
     if (Math.random() < 0.5 && !G.training) put('gold', Math.round(rnd(40, 80)));
     addSmoke(d);
   }
-  // 주황 연막 기둥
-  function addSmoke(d) {
+  // 주황 연막 기둥 (t0: 이어하기로 되살릴 때 이미 지난 시간 — 소리 없이)
+  function addSmoke(d, t0) {
     const sg = new THREE.Group(), parts = [];
     for (let i = 0; i < 22; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(), color: i % 3 ? 0xe2662a : 0xf08a3a, transparent: true, opacity: 0, depthWrite: false })); s.userData = { ph: Math.random(), sx: rnd(-0.6, 0.6), sz: rnd(-0.6, 0.6) }; sg.add(s); parts.push(s); }
-    sg.position.set(d.x + 0.9, d.gy + 0.2, d.z); scene.add(sg); d.smoke = { g: sg, parts, t: 0 };
-    Audio.impact({ x: d.x, y: d.gy, z: d.z }, false);
+    sg.position.set(d.x + 0.9, d.gy + 0.2, d.z); scene.add(sg); d.smoke = { g: sg, parts, t: t0 || 0 };
+    if (t0 === undefined) Audio.impact({ x: d.x, y: d.gy, z: d.z }, false);
+  }
+  // ---------- 이어하기 (10_resume.js) ----------
+  //  날고 있는 수송기 [시작 x·z, 방향 x·z, 지난 시간, 떨어뜨렸나, 목표 x·z] · 상자 [x, z, 높이, 착지했나, 낙하 시간, 착지 시각, 상자 key]
+  //  착지한 상자의 내용물은 아이템(bx = key)으로 따로 되살아난다 — 여기서는 상자 모델·충돌·연막만
+  const q2 = (v) => Math.round(v * 100) / 100;
+  function snap() {
+    return { k: lastKey, s: seq, p: planes.map((p) => [q2(p.x0), q2(p.z0), q2(p.dx * 1000) / 1000, q2(p.dz * 1000) / 1000, q2(p.t), p.dropped ? 1 : 0, q2(p.target.x), q2(p.target.z)]),
+      d: list.map((d) => [q2(d.x), q2(d.z), q2(d.y), d.landed ? 1 : 0, q2(d.t), d.landed ? q2(d.landT) : 0, d.key || '']) };
+  }
+  function restore(o) {
+    if (!o || !scene) return;
+    lastKey = o.k || ''; seq = o.s || 0;
+    for (const a of o.p || []) {
+      const mesh = buildPlane(); mesh.scale.setScalar(0.8); scene.add(mesh); mesh.rotation.y = Math.atan2(a[2], a[3]);
+      planes.push({ x0: a[0], z0: a[1], dx: a[2], dz: a[3], t: a[4], len: 1300, dropAt: 650, dropped: !!a[5], mesh, target: { x: a[6], z: a[7] }, remote: false });
+    }
+    for (const a of o.d || []) {
+      const obj = new THREE.Group(), crate = Models.crate(), chute = Models.canopy();
+      obj.add(crate); obj.add(chute); chute.position.y = 0.85;
+      const d = { x: a[0], z: a[1], y: a[2], obj, crate, chute, landed: false, t: a[4], items: [], smoke: null, gy: heightAt(a[0], a[1]), remote: false, key: a[6] || '' };
+      obj.position.set(d.x, d.y, d.z); scene.add(obj); list.push(d);
+      if (!a[3]) continue;
+      // 착지한 상자: 충돌 상자 · 내용물 · 낙하산은 접힌 채 · 연막은 40초 동안만
+      land(d, true); d.landT = a[5]; d.chute.visible = false;
+      const ago = G.time - d.landT; if (ago < 34) addSmoke(d, ago);
+      d.items = GROUND.filter((it) => it.alive && it.bx === d.key);
+    }
   }
   function update(dt) {
     if (!scene) return;
@@ -21406,7 +21458,7 @@ const Airdrop = (() => {
     return best;
   }
   function markers() { return list.filter((d) => !d.landed || remaining(d) > 0 || (d.remote && G.time - d.landT < 90)).map((d) => ({ x: d.x, z: d.z, falling: !d.landed })); }
-  return { init, dispose, update, launch, nearest, markers, get list() { return list; }, get planes() { return planes; } };
+  return { init, dispose, update, launch, nearest, markers, snap, restore, get list() { return list; }, get planes() { return planes; } };
 })();
 
 // ---------- 08_island.js ----------
@@ -22090,7 +22142,16 @@ const Recall = (() => {
     }
   }
 
-  return { init, dispose, update, track, held, onDeath, nearCard, canTake, useful, cardName, validCards, towerAt, bestTower, promptFor, start, cancel, updateReg, onNet, hudLine, specLine, drawMap, open, enabled, cutPhase,
+  // ---------- 이어하기 (10_resume.js): 날고 있는 리콜 수송기 [타워 번호, 각도, 지난 시간] ----------
+  //  저장할 때 수송기마다 순번(rsI)을 붙여 두면 탄 캐릭터가 그 번호로 가리킨다
+  function snapPlanes() {
+    const out = [];
+    for (const pl of planes) { pl.rsI = undefined; if (!pl.active) continue; pl.rsI = out.length; out.push([pl.tw.id, Math.round(Math.atan2(pl.dz, pl.dx) * 1000) / 1000, Math.round(pl.t * 100) / 100]); }
+    return out;
+  }
+  function restorePlanes(L) { return (L || []).map((a) => { const tw = W && W.towers && W.towers[a[0]]; return tw && scene ? makePlane(tw, a[1], a[2]) : null; }); }
+
+  return { init, dispose, update, track, held, onDeath, nearCard, canTake, useful, cardName, validCards, towerAt, bestTower, promptFor, start, cancel, updateReg, onNet, hudLine, specLine, drawMap, open, enabled, cutPhase, snapPlanes, restorePlanes,
     get planes() { return planes; }, get cards() { return cards; } };
 })();
 
@@ -24107,6 +24168,13 @@ const CHANGELOG = [
     '티어마다 머리말(SUPERNOVA · ASCENSION · TOTALITY · APEX) · 이름 글자 효과(빛 갈라짐 · 금빛 · 일렁이는 불빛 · 흐르는 무지개) · 소리가 모두 다름',
     '느린 기기에서는 컷신 해상도를 자동으로 낮춰 끊기지 않게 · 개발자 도구 「티어 승급 컷신」에서 네 장면을 다시 볼 수 있음',
   ] },
+  { v: 'v23', d: '2026-11-20', t: '경기 이어하기 — 새로고침·뒤로가기로 나가도 다시 들어가기', items: [
+    '경기 중에 새로고침·뒤로가기·창 닫기(휴대폰에서 다른 앱을 쓰는 사이 브라우저가 탭을 닫은 경우 포함)로 나갔다가 다시 들어오면, 그 경기가 끝나지 않았을 때 「다시 들어가기 · 포기하기」를 물어봄',
+    '혼자 하는 경기(봇과)는 나간 순간 그대로 멈춰 있다가 이어짐 — 내 위치·체력·소지품·장비, 봇, 바닥 아이템·시체 상자, 차량, 자기장, 수송기, 보급 상자, 팀 순위까지 그대로 (데스매치·대결은 점수·시간·처치·데스 그대로, 모두 새로 부활 · 대결은 그 라운드를 처음부터)',
+    '같이 하기·온라인 매칭은 다른 사람들 기기에서 경기가 계속되고, 그동안 내 캐릭터는 봇이 대신 움직임 → 다시 들어가면 지금 방장에게 연결해 내 캐릭터를 돌려받음 (방장이 나갔던 경우도) · 소지품은 나갈 때 그대로',
+    '그사이 경기가 끝났거나 모두 나갔으면 「이미 끝났습니다」 · 포기하면 일시정지 메뉴의 「경기 포기」처럼 떠날 때의 순위로 기록 (랭크전은 RP 반영 · 데스매치는 기록 없음) · 우승·전멸이 정해진 뒤 결과 화면 전에 나갔으면 묻지 않고 그 결과로 기록',
+    '스타트 섬(시작 전)·훈련장·메뉴로 나간 경기는 묻지 않음 · 기기에만 저장 (다른 계정으로 들어오면 버림 · 혼자 12시간 · 같이 하기 35분이 지나면 버림)',
+  ] },
   { v: 'v23', d: '2026-11-20', t: '승급전 · 하드코어 잠수 막기 — 처치 조건 · 잠수 추적', items: [
     '승급전 1회 성공 조건에 처치 추가: 맵마다 정한 순위 안(칼덴 섬 · 아이언리지 10위, 키나루 · 크리스마스 섬 13위, 노르덴 17위) + 처치 2 이상 — 우승하면 처치 수와 상관없이 성공 · 결과 화면에 실패 까닭(순위 밖 · 처치 부족 · 탈주)이 나옴',
     '하드코어: 순위 점수는 싸운 만큼만 — 처치 2(또는 피해 300)면 전부, 한 번도 싸우지 않았으면 20%만 받음 · 숨어서 순위만 올리면 RP가 깎임',
@@ -25226,6 +25294,7 @@ const DM = (() => {
   async function start(cfg) {
     if (G.state === 'loading') return;
     cfg = cfg || {};
+    if (!cfg.resume) Resume.fresh();   // v23 이어하기(cfg.resume): 혼자 하던 판을 같은 명단·총으로 다시 연다 (10_resume.js) · 아니면 새 판
     const type = cfg.type || (isDmGame(SETTINGS.game) ? SETTINGS.game : 'tdm');
     G.state = 'loading'; G.paused = false; G.over = false; G.training = false; G.dm = null;
     document.body.classList.remove('training');
@@ -25238,6 +25307,7 @@ const DM = (() => {
       : type === 'tdm' ? '팀 데스매치: 모두 같은 총으로 싸웁니다. 먼저 40킬 하는 팀이 이깁니다.' : '웨폰 데스매치: 적을 처치할 때마다 총과 스코프가 바뀝니다. 먼저 40킬 하는 팀이 이깁니다.';
     const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
     disposeMatch();
+    G.netCfg = cfg.roster && !cfg.resume && G.net ? G.net.cfg : null;   // 이어하기 저장용 (같이 하기)
     const sc = new THREE.Scene(); G.scene = sc;
     const t = TIMES[SETTINGS.time], Q = QUALITY[SETTINGS.quality], far = Math.min(Q.far, 300);
     G.sky = skyDome(t, far * 0.92); sc.add(G.sky); sc.fog = new THREE.Fog(t.fog, far * 0.35, far); G.fogK = [0.35, 1];
@@ -25261,7 +25331,7 @@ const DM = (() => {
     G.teamSize = TSZ; G.teams = [{ id: 0, members: [], place: 0 }, { id: 1, members: [], place: 0 }];
     const seed = cfg.seed || ((Math.random() * 1e9) | 0);
     const rand = mulberry32(seed);
-    S = { type, seed, rand, arena: arenaId, score: [0, 0], over: false, winner: null, loadout: null, myDeaths: 0, net: !!cfg.roster, duel, round: duel ? { n: 1, ph: 'prep', t0: 0 } : null, lastWin: null };
+    S = { type, seed, rand, arena: arenaId, score: [0, 0], over: false, winner: null, loadout: null, myDeaths: 0, net: !!cfg.roster && !cfg.resume, duel, round: duel ? { n: 1, ph: 'prep', t0: 0 } : null, lastWin: null };
     S.loadout = cfg.loadout || (type === 'tdm' || duel ? loadout(rand, TDM_GUNS, null) : null);
     G.dm = S; G.frozen = !!duel;
     // 참가자: 혼자면 나 + 봇(데스매치 7명 · 대결은 팀 크기만큼). 같이 하기면 방장이 정한 명단
@@ -25275,14 +25345,14 @@ const DM = (() => {
       const hl = r.human ? (r.look || (me ? myLook() : {})) : null, sk = !hl && r.diff ? BotSkin.forBot(BP, r.diff, seed, r.id) : null;
       const look = hl ? Body.makeLook(hl.eq, hl.body) : sk ? sk.look : Body.makeLook(null, Body.randomBody(mulberry32((seed + 7919 * (r.id + 1)) | 0)));
       const c = new Character({ id: r.id, name: r.name || names[i % names.length], isPlayer: me, look, team: r.team });
-      if (!r.human) c.diffKey = r.diff || null; else c.human = true;   // 봇 난이도 — 방장을 넘겨받은 기기가 이 봇을 맡을 때 (10_net.js adopt) · 사람 표시
+      if (!r.human) c.diffKey = r.diff || null; else { c.human = true; if (r.uid) c.uid = r.uid; }   // 봇 난이도 — 방장을 넘겨받은 기기가 이 봇을 맡을 때 (10_net.js adopt) · 사람 표시 · uid: 나갔다 돌아온 사람에게 캐릭터를 돌려줌
       if (hl) c.glook = hl.gun || (me ? Eco.glook() : null);   // 총기 스킨
       if (sk) { c.glook = sk.gun; G.botLooks.push(look); }
       c.slot = G.teams[r.team].members.length; G.teams[r.team].members.push(c); CHARS.push(c); sc.add(c.root);
       if (me) G.player = c;
       if (r.net) { c.net = r.net; if (!c.net.mine) c.root.visible = false; } // 같이 하기: 다른 기기가 움직이는 캐릭터 (받은 상태로 그림)
       else if (!me) new Brain(c, r.diff || botDiff());
-      if (S.type === 'wdm' && (!c.net || c.net.mine)) c.dmLoad = loadout(Math.random, ALL_GUNS, null);
+      if (S.type === 'wdm' && (!c.net || c.net.mine)) c.dmLoad = r.lo || loadout(Math.random, ALL_GUNS, null);   // r.lo: 이어하기 — 그때 들고 있던 총
     });
     for (const c of CHARS) if (!c.net || c.net.mine) spawn(c, true);
     G.total = CHARS.length;
@@ -25533,7 +25603,7 @@ const DM = (() => {
   function end() {
     if (!S) return;
     const p = G.player, my = p.team, en = 1 - my, win = S.winner === my, draw = S.winner < 0;
-    G.state = 'result';
+    G.state = 'result'; Resume.clear();   // 결과가 났으니 이어하기 저장은 지운다
     const xp = Math.round(40 + p.kills * 15 + (win ? 120 : draw ? 40 : 0) + (S.duel ? S.score[my] * 15 : 0));
     G.lastXp = xp;
     STATS.xp += xp;
@@ -26380,7 +26450,7 @@ const EvBR = (() => {
 const $ = (id) => document.getElementById(id);
 const HUD = (() => {
   let loot = [], focusIdx = 0, lastHp = 100, lastLootKey = '', toastQ = [];
-  const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes', 'rnPanel'];
+  const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes', 'rnPanel', 'rjPanel'];
   // 아이콘 칸 — 경기 중 처음 보는 부착물 조합은 기본 아이콘을 먼저 보여 주고 다 그려지면 바꾼다 (v22, 05_models.js idle)
   const ico = (id, att, cls = 'ico') => { const w = h('span', cls), im = h('img'); im.alt = ''; im.draggable = false; const src = Models.icon(id, att, (u) => { if (!u) return; im.src = u; if (!im.parentNode) w.appendChild(im); }); if (src) { im.src = src; w.appendChild(im); } return w; };
   const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
@@ -28081,7 +28151,9 @@ const Net = (() => {
 
   function shuffled(arr, rand) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   // ---------- 시작 (방장·파티원 공통) ----------
-  function join(cfg) {
+  // rj (v23 이어하기 — 10_resume.js): 나갔다가 같은 경기로 돌아옴 { ep: 방장 넘겨받은 횟수, isl: 방장이 아직 스타트 섬, mine: 저장해 둔 내 캐릭터 }
+  //  → 방장에게 연결해 지금 상태(rjs)를 받을 때까지 내 캐릭터 상태를 보내지 않는다(hold)
+  function join(cfg, rj) {
     if (!Cloud.uid || G.state === 'loading') return;
     if (N) close(true);
     if (G.state === 'play' || G.state === 'result') { $('resultPanel').hidden = true; disposeMatch(); G.state = 'lobby'; }
@@ -28092,17 +28164,32 @@ const Net = (() => {
     const myIdx = cfg.humans.findIndex((h) => h.uid === Cloud.uid);
     N = { cfg, host: cfg.host === Cloud.uid, me: Cloud.uid, myIdx, peers: new Map(), quiet: 0, applying: 0, seq: 0, uidBase: (myIdx + 1) * 1e7, uidN: 0, own,
       items: new Map(), vehs: [], outB: [], tickT: 0, zoneT: 0, t0: now(), welcomed: false, ended: false, ready: false, hiT: 0, gone: new Set(), epoch: 0, mig: false, claimN: 0, claimT: 0, stats: { tx: 0, rx: 0 } };   // gone: 나간 사람 · epoch·mig: 방장 넘겨받은 횟수 · claim: 새 방장 알림
+    // 돌아온 사람: 'hi'를 방장이 offer 할 때까지 되풀이(mig) · 파티 경기는 파티 채널에 없으므로 신호를 로비 채널로(lob)
+    if (rj) { N.rj = rj; N.hold = true; N.mig = true; N.epoch = rj.ep || 0; N.lob = !cfg.mm; }
     G.net = N; G.netAuthority = () => !N || N.host;
     // 온라인 매칭: 이 경기 채널로 신호. 방장은 파티원이 '들어왔다(hi)'고 알릴 때 연결을 시작한다 (채널에 늦게 들어온 사람이 신호를 놓치지 않게)
     if (cfg.mm) MM.chOpen(cfg.mm, onMM, () => { if (N && !N.host) hi(); });
     if (N.host) { for (const hm of cfg.humans) if (hm.uid !== N.me) N.peers.set(hm.uid, newPeer(hm.uid, true, !!cfg.mm)); }
     else N.peers.set(cfg.host, newPeer(cfg.host, false));
     if (pendBuf) { const b = pendBuf; pendBuf = null; for (const m of b) if (m.from === cfg.host || N.host) onSig(m); }
+    if (N.lob) hi();
     if (cfg.dm) DM.start(dmCfg(cfg)); else G.startMatchNet(cfg);
   }
   const viaMM = () => !!(N && N.cfg.mm);
   // 신호·중계 보내기: 온라인 매칭은 경기 채널, 파티는 파티 채널
-  function bus(k, d) { return viaMM() ? MM.chSend(k, d) : Party.send(k, d); }
+  //  v23: 파티 경기에 다시 들어온 사람(파티 채널에 없음)과는 로비 채널로 — 받는 사람(to)이 그런 사람이거나 내가 돌아온 사람이면
+  function bus(k, d) {
+    if (N && !viaMM()) {
+      const to = d && d.to;
+      if (to) { const p = N.peers.get(to); if (N.lob || (p && p.lob)) return lobSend(to, k, d); }
+      else {   // 모두에게(방장 알림 등): 로비로 붙은 사람에게도 따로
+        for (const p of N.peers.values()) if (p.lob && !N.lob) lobSend(p.uid, k, d);
+        if (N.lob) { for (const h of N.cfg.humans) if (h.uid !== N.me && !N.gone.has(h.uid)) lobSend(h.uid, k, d); return true; }
+      }
+    }
+    return viaMM() ? MM.chSend(k, d) : Party.send(k, d);
+  }
+  function lobSend(to, k, d) { const o = Object.assign({}, d); delete o.to; o.nk = k; o.mid = N.cfg.mid; return Social.send(to, 'nt', o); }
   function hi() { if (N && !N.host) { N.hiT = now(); bus('hi', { to: N.cfg.host }); } }
   // 경기 채널로 온 메시지 (나머지 sig·g·hi·host 는 파티 채널과 같이 onParty)
   function onMM(m) {
@@ -28233,6 +28320,7 @@ const Net = (() => {
     if (!N) return;
     let m; try { m = typeof data === 'string' ? JSON.parse(data) : data; } catch (e) { return; }
     p.lastRx = now(); N.stats.rx += (data && data.length) || 0;
+    if (N.rj && !N.ready) return;   // 다시 들어오는 중 · 아직 맵을 만드는 중: 버림 (인사한 뒤 방장이 지금 상태를 통째로 보낸다 — 그 전 사건을 적용하면 아이템 칸이 없어 오류)
     if (m.s) for (const a of m.s) applyChar(a, p);
     if (m.v) for (const a of m.v) applyVeh(a);
     if (m.w) applyWorld(m.w);
@@ -28278,6 +28366,7 @@ const Net = (() => {
       case 'vehs': recvVehs(e); break;
       case 'bye': peerLeft(from === N.me ? e.from : (e.uid || from), e.next); break;
       case 'isl': if (!N.host && G.island) Island.end(); break;   // 방장의 스타트 섬이 끝남 → 모두 수송기로
+      case 'rjs': applyRj(e); break;   // v23 다시 들어옴: 방장이 보낸 지금 상태
       case 'vic': Victory.onNet(e); break;   // v23 우승 축하: 파티원의 동상 세우기·춤
     }
   }
@@ -28292,9 +28381,86 @@ const Net = (() => {
     if (!p) return;
     if (!N.ready) { p.needWelcome = true; return; }
     p.needWelcome = false;
-    const w = { k: 'welcome', t: G.time, sum: G.dm ? null : N.baseSum, zone: G.dm ? null : zoneSnap(), sc: G.dm ? G.dm.score : null };
+    const w = { k: 'welcome', t: G.time, sum: G.dm || p.rj ? null : N.baseSum, zone: G.dm ? null : zoneSnap(), sc: G.dm ? G.dm.score : null };
     sendTo(p, { e: [w] }, true);
     p.welcomed = true;
+    if (p.rj) rjPack(p);
+  }
+
+  // ---------- 다시 들어오기 (v23 · 10_resume.js) ----------
+  //  나갔던 사람(새로고침·뒤로가기·탭 닫힘)이 같은 경기로 돌아옴. 그동안 그 사람 캐릭터는 방장 기기에서 봇이 이어서 했다(botize)
+  //  1. 돌아온 사람 → 로비 채널로 그 경기 사람들 모두에게 'rj' (지금 방장이 누군지 모름 — 그사이 바뀌었을 수 있다)
+  //  2. 지금 방장만 답함 'rjok' { 방장 · 넘겨받은 횟수 · 스타트 섬 } + 그 사람 자리(peer)를 새로 만듦
+  //  3. 돌아온 사람이 같은 설정으로 경기를 열고 방장에게 연결 (온라인 매칭: 그 경기 채널 · 파티: 로비 채널로 신호)
+  //  4. 인사(hello)를 받은 방장 → welcome + 지금 상태 'rjs' (아이템·차량 목록 · 죽은 캐릭터 · 팀 순위 · 누가 어느 캐릭터를 맡는지 · 그 사람 캐릭터)
+  //  5. 돌아온 사람이 맞춘 뒤에야 자기 캐릭터 상태를 보냄 → 방장이 봇을 멈추고 돌려줌(unbotize)
+  //  아무도 답하지 않으면(경기가 끝났거나 모두 나감) 돌아온 사람 쪽에서 '이미 끝남'
+  function onLobby(m) {
+    const k = m.nk, from = m.from && m.from.uid; if (!k || !from) return;
+    if (k === 'rj') { onRejoinReq(from, m); return; }
+    if (k === 'rjok') { if (probeP && m.mid === probeP.mid) probeP.fin({ host: m.host || from, ep: m.ep || 0, isl: !!m.isl }); return; }
+    if (!N || m.mid !== N.cfg.mid) return;
+    const p = N.peers.get(from); if (p) p.lob = true;   // 이 사람과는 로비 채널로
+    onParty({ k, from, to: Cloud.uid, d: m.d, o: m.o, uid: m.uid, ep: m.ep, next: m.next });
+  }
+  function onRejoinReq(from, m) {
+    if (!N || N.ended || !N.host || m.mid !== N.cfg.mid || from === N.me || !N.cfg.humans.some((h) => h.uid === from)) return;
+    let p = N.peers.get(from);
+    if (!p || !p.rj || now() - p.t0 > 8) { if (p) closePeer(p); p = newPeer(from, true, true); p.rj = true; N.peers.set(from, p); }   // 새 자리 (8초 안에 다시 물으면 그대로)
+    p.lob = !N.cfg.mm; N.gone.delete(from);
+    if (G.state === 'result') G.bgSim = true;   // 결과 화면 뒤에서 경기를 다시 돌린다 (돌아온 사람이 할 경기)
+    N.rjKeep = now() + 40;
+    Social.send(from, 'nt', { nk: 'rjok', mid: N.cfg.mid, host: N.me, ep: N.epoch, isl: G.island ? 1 : 0 });
+  }
+  // 돌아온 사람: 지금 방장 찾기 (10초 동안 2초마다 물음) → { host, ep, isl } 또는 null(끝난 경기)
+  let probeP = null;
+  function probe(cfg, ms = 10000) {
+    return new Promise((res) => {
+      const P = probeP = { mid: cfg.mid, done: false };
+      const others = cfg.humans.map((h) => h.uid).filter((u) => u && u !== Cloud.uid);
+      const ask = () => { if (!P.done) for (const u of others) Social.send(u, 'nt', { nk: 'rj', mid: cfg.mid }); };
+      const iv = setInterval(ask, 2000), to = setTimeout(() => P.fin(null), ms);
+      P.fin = (v) => { if (P.done) return; P.done = true; clearInterval(iv); clearTimeout(to); if (probeP === P) probeP = null; res(v); };
+      if (!others.length) { P.fin(null); return; }
+      ask();
+    });
+  }
+  // 방장: 돌아온 사람에게 지금 상태
+  function rjPack(p) {
+    p.rj = false;
+    if (!G.dm) sendLoot(p);   // 지금 바닥 아이템 전부 · 차량 목록(자리)
+    const c0 = CHARS.find((c) => c.human && c.uid === p.uid);
+    const e = { k: 'rjs', gone: [...N.gone], own: [], dead: [], tp: G.teams && !G.dm ? G.teams.map((T) => T.place || 0) : null, vst: G.dm ? [] : N.vehs.map(encVeh),
+      pt: G.plane ? [r2(G.plane.t), G.plane.active ? 1 : 0] : null, me: c0 ? Resume.encChar(c0, (v) => v.nid) : null,
+      duel: G.dm && G.dm.duel ? { r: G.dm.round.n, ph: G.dm.round.ph, t: r2(G.dm.round.t0), sc: G.dm.score.slice(), w: G.dm.lastWin, lo: G.dm.loadout } : null };
+    for (const c of CHARS) {
+      if (c.human && c.net) e.own.push([c.id, c.net.owner]);
+      if (!c.alive && !G.dm) e.dead.push([c.id, c.place || 0, r2(c.deathTime || 0), c.kills || 0]);
+    }
+    sendTo(p, { e: [e] }, true);
+  }
+  // 돌아온 사람: 받은 상태 적용 → 내 캐릭터 상태를 보내기 시작
+  function applyRj(e) {
+    const R = N.rj; if (!R || R.done) return; R.done = true;
+    N.gone = new Set((e.gone || []).filter((u) => u !== N.me));
+    for (const [id, o] of e.own || []) { const c = charById(id); if (c && c.net && !c.isPlayer) { c.net.owner = o; c.net.mine = o === N.me; } }
+    for (const [id, pl, dt, k] of e.dead || []) {   // 그사이 탈락한 캐릭터 (알림·소리 없이)
+      const c = charById(id); if (!c || c.isPlayer || !c.alive) continue;
+      if (c.veh) Veh.exit(c, true, true);
+      c.alive = false; c.hp = 0; c.knocked = false; c.place = pl; c.deathTime = dt; c.kills = Math.max(c.kills, k); c.heal = null; c.vel.set(0, 0, 0); c.anim.dead = 1; c.mode = 'ground'; c.root.visible = false;
+      if (c.net) { c.net.deathLife = c.net.life; c.net.pendDead = 0; }
+      c.inv.weapons = [null, null, null]; c.inv.cur = -1; c.inv.melee = null; c.setVisibleGear();
+    }
+    if (e.tp && G.teams) e.tp.forEach((v, i) => { if (G.teams[i] && v) G.teams[i].place = v; });
+    for (const a of e.vst || []) {
+      applyVeh(a); const v = N.vehs[a[0]];
+      if (v && (a[14] & 1) && !v.T.animal && !v.wreck0) { v.dead = true; v.wreck0 = true; VehModels.wreck(v.P); v.P.root.position.y -= 0.12; }   // 부서진 차량 모양
+    }
+    if (e.pt && G.plane) { G.plane.t = e.pt[0]; if (!e.pt[1]) { G.plane.active = false; G.plane.mesh.visible = false; Audio.plane(false); } }
+    if (e.duel && G.dm) DM.applyDuel(Object.assign({ k: 'duel' }, e.duel));
+    Resume.applyMine(G.player, e.me, R.mine);
+    N.hold = false;
+    Resume.rejoined();
   }
   function applyWelcome(e) {
     N.welcomed = true;
@@ -28345,7 +28511,7 @@ const Net = (() => {
   }
   function applyChar(a, p) {
     let c = charById(a[0]); if (!c) return;
-    if (N.host && p && c.botized && c.origOwner === p.uid) unbotize(c, p);  // 잠깐 끊겼던 파티원이 돌아옴
+    if (N.host && p && c.botized && (c.uid || c.origOwner) === p.uid) unbotize(c, p);  // 잠깐 끊겼던 파티원 · 나갔다가 다시 들어온 사람이 돌아옴 (v23: 방장이 바뀌었어도 캐릭터의 사람 uid 로)
     if (mine(c)) return;
     if (N.host && p && ownerOf(c) !== p.uid) return;                // 남의 캐릭터를 대신 보내는 것은 무시
     const n = c.net, t = now(), f = a[6];
@@ -28611,7 +28777,7 @@ const Net = (() => {
       // v22: 캐릭터 상태는 틱마다 한 번만 JSON 으로 만들고, 사람마다 거리로 골라 이어 붙인다 (사람이 많아도 방장 부담이 덜 늘게)
       //  받는 사람 캐릭터에서 150m 안 = 초당 20번, 150~260m = 10번, 그 밖 = 2번 (멀리 있는 캐릭터는 작게 보여 덜 자주 보내도 티가 안 남)
       const EM = [], EO = [];
-      for (const c of mineS) EM.push(c, JSON.stringify(encChar(c)));
+      for (const c of mineS) { if (N.hold && c.isPlayer) continue; EM.push(c, JSON.stringify(encChar(c))); }   // 돌아오는 중: 방장 상태를 맞추기 전에는 내 캐릭터를 보내지 않음
       if (N.host) for (const c of others) if (c.net.lastA) EO.push(c, JSON.stringify(c.net.lastA));
       const tail = (myVeh.length ? ',"v":' + JSON.stringify(myVeh) : '') + (w ? ',"w":' + JSON.stringify(w) : ''), me0 = G.player, tn = N.tickN;
       for (const p of N.peers.values()) {
@@ -28685,7 +28851,7 @@ const Net = (() => {
   }
   // 봇·나간 사람 캐릭터를 이 기기가 맡음 (다른 기기에는 지금 든 총·장비만 보였으므로 예비 탄약·붕대를 채워 준다)
   function adopt(c) {
-    if (c.human) { c.origOwner = c.net.owner; c.botized = true; }
+    if (c.human) { c.origOwner = c.uid || c.net.owner; c.botized = true; }
     c.net = { owner: N.me, mine: true, buf: [], life: c.net.life };
     ev({ k: 'own', c: c.id, o: N.me });
     if (!c.alive) return;
@@ -28755,15 +28921,16 @@ const Net = (() => {
   function closePeers(n0) { for (const p of n0.peers.values()) { try { p.pc && p.pc.close(); } catch (e) { /* */ } } }
   function close(quiet) { if (!N) return; if (!quiet) leave(); else { const n0 = N; closePeers(n0); if (n0.cfg.mm) MM.chClose(n0.cfg.mm); N = null; G.net = null; restoreOwn(n0); } }
   // 방장이 로비로 나가려 할 때 아직 살아 있는 파티원이 있는지
-  function othersPlaying() { if (!N || !N.host) return false; return N.cfg.humans.some((hm) => hm.uid !== N.me && CHARS.some((c) => c.net && c.net.owner === hm.uid && c.alive && !c.botized)); }
+  function othersPlaying() { if (!N || !N.host) return false; return (N.rjKeep || 0) > now() || N.cfg.humans.some((hm) => hm.uid !== N.me && CHARS.some((c) => c.net && c.net.owner === hm.uid && c.alive && !c.botized)); }   // rjKeep: 다시 들어오는 사람을 기다리는 동안 (40초)
   // 방장: 아직 인사(hello)가 없는 사람 수 — 스타트 섬을 조금 더 기다린다
   function waiting() { if (!N || !N.host) return 0; let n = 0; for (const p of N.peers.values()) if (!p.helloSeen && !p.left && !p.gone) n++; return n; }
   function status() { if (!N) return null; return { host: N.host, peers: [...N.peers.values()].map((p) => ({ uid: p.uid, name: p.name, open: p.open, relay: p.relay, rx: Math.round(now() - p.lastRx) })), tx: N.stats.tx, rx: N.stats.rx, items: N.items.size, vehs: N.vehs.length }; }
 
   // 창을 닫거나 새로고침할 때도 나간다고 알린다 (방장이면 다음 방장을 골라 넘김 → 남은 사람의 경기는 계속)
-  window.addEventListener('pagehide', () => { try { if (N) leave(); } catch (e) { /* */ } });
-  return { makeConfig, join, ready, onParty, tick, active, isHost, isGuest, mine, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
-    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, waiting, status, ev, flush,
+  //  v23: 나가기 전에 이어하기 저장 (돌아오면 같은 경기로 — 10_resume.js)
+  window.addEventListener('pagehide', () => { try { if (N) { Resume.save(); leave(); } } catch (e) { /* */ } });
+  return { makeConfig, join, ready, onParty, onLobby, probe, tick, active, isHost, isGuest, mine, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
+    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, waiting, status, ev, flush, zoneSnap, applyZone,
     get state() { return N; } };
 })();
 
@@ -31209,6 +31376,342 @@ const Ladder = (() => {
   return { KINDS, champ, champName, allowed, kindOfTitle, posText, refresh, render, open, setup, get data() { return data; } };
 })();
 
+// ---------- 10_resume.js ----------
+// ============================================================
+// 10_resume.js — 경기 이어하기 (v23)
+//  경기 중에 새로고침·뒤로가기·탭 닫기(모바일에서 앱을 바꾸는 사이 브라우저가 탭을 정리한 경우 포함)로 나갔다가 다시 들어오면,
+//  그 경기가 끝나지 않았을 때 '다시 들어갈까요?' 창을 띄운다 (다시 들어가기 · 포기하기)
+//  · 혼자 하는 경기(봇과): 경기가 이 기기에만 있으므로 5초마다·화면을 떠날 때 상태를 저장(store 'resume')했다가 그대로 되살린다
+//    - 지형·건물은 맵마다 같고, 아이템·봇(이름·얼굴·난이도)은 경기 시드로 다시 만들면 같다 → 저장은 그 뒤로 바뀐 것만
+//      (주워 간 시작 아이템 번호 · 개수가 바뀐 것 · 새로 생긴 아이템(버린 것·시체 상자·보급 상자·리콜 카드))
+//    - 캐릭터(위치·체력·기절·소지품·장비·처치·리콜) · 차량 · 자기장 · 수송기(리콜 수송기 포함) · 보급(수송기·떨어지는 상자·착지한 상자) · 팀 순위
+//    - 봇의 생각(AI)은 저장하지 않고 되살린 자리에서 다시 시작 (방장 넘겨받기와 같은 방식 — 10_net.js adopt)
+//    - 데스매치·대결: 같은 아레나·명단·총으로 다시 열고 점수·시간·처치·데스를 되살린다 (모두 새로 부활 · 대결은 그 라운드를 처음부터)
+//  · 같이 하기·온라인 매칭: 경기는 다른 기기(방장)에서 계속되고, 나간 사람 캐릭터는 그동안 봇이 이어서 한다
+//    → 로비 채널로 그 경기 사람들에게 묻고(rj) 지금 방장이 답하면(rjok) 같은 경기를 열어 다시 연결, 방장이 보낸 지금 상태로 맞춘 뒤
+//      내 캐릭터를 돌려받는다 (소지품은 이 기기에 저장해 둔 것 — 방장 기기는 손에 든 총·장비만 알고 있었다) — 10_net.js
+//    - 10초 동안 아무도 답하지 않으면 이미 끝난 경기 → 떠날 때의 순위로 기록
+//  · 포기하기: 일시정지 메뉴의 '경기 포기'처럼 떠날 때의 순위로 기록 (랭크전은 RP 에도 반영 · 데스매치는 원래처럼 기록 없음)
+//  · 결과가 정해진 뒤(전멸·우승 뒤 결과 화면이 뜨기 전) 떠났으면 묻지 않고 그 결과로 기록
+//  · 저장하지 않는 곳: 스타트 섬(시작 전 — 떠나도 기록이 없음) · 훈련장 · 메뉴로 나간 경기(그때 이미 기록됨)
+//  · 이 기기 저장소에만 둔다 (계정 동기화 없음). 다른 계정으로 들어오면 버림 · 혼자 12시간 · 같이 하기 35분이 지나면 버림
+// ============================================================
+const Resume = (() => {
+  const KEY = 'resume', VER = 1, SOLO_MAX = 12 * 3600e3, NET_MAX = 35 * 60e3, EVERY = 5;
+  let saveT = 0, pend = null, busy = false, waitT = null, hideT = null;
+  const r1 = (v) => Math.round(v * 10) / 10, r2 = (v) => Math.round(v * 100) / 100, r3 = (v) => Math.round(v * 1000) / 1000;
+  const byId = (id) => { for (const c of CHARS) if (c.id === id) return c; return null; };
+  const isNet = (s) => s && (s.kind === 'nbr' || s.kind === 'ndm');
+  const clear = () => { try { localStorage.removeItem(STORE_PREFIX + KEY); } catch (e) { /* */ } };
+
+  // ---------- 소지품 · 캐릭터 ----------
+  function encW(w) { return w ? [w.id, w.mag | 0, w.fm || 0, w.att.scope || 0, w.att.muzzle || 0, w.att.mag || 0, w.att.grip || 0] : 0; }
+  function decW(a) { if (!a || !ITEMS[a[0]]) return null; const w = newWeapon(a[0], a[1] | 0); w.fm = a[2] || 0; w.att = { scope: a[3] || null, muzzle: a[4] || null, mag: a[5] || null, grip: a[6] || null }; return w; }
+  function encInv(v) { const g = v.gear; return { w: v.weapons.map(encW), c: v.cur, m: v.melee || 0, i: Object.assign({}, v.items), h: g.helmet ? [g.helmet.id, r1(g.helmet.dur)] : 0, v: g.vest ? [g.vest.id, r1(g.vest.dur)] : 0, b: g.bag ? g.bag.id : 0, t: v.throwSel }; }
+  function decInv(c, o) {
+    const v = c.inv; v.weapons = [0, 1, 2].map((i) => decW(o.w && o.w[i])); v.cur = o.c >= 0 && v.weapons[o.c] ? o.c : -1;
+    v.melee = o.m && ITEMS[o.m] ? o.m : null; v.items = {}; for (const k in o.i || {}) if (ITEMS[k] && o.i[k] > 0) v.items[k] = o.i[k];
+    v.gear = { helmet: o.h && ITEMS[o.h[0]] ? { id: o.h[0], dur: o.h[1] } : null, vest: o.v && ITEMS[o.v[0]] ? { id: o.v[0], dur: o.v[1] } : null, bag: o.b && ITEMS[o.b] ? { id: o.b } : null };
+    if (o.t && ITEMS[o.t]) v.throwSel = o.t;
+  }
+  // vi: 탄 차량 → 번호 (혼자: 저장할 때 붙인 순서 · 같이 하기: 차량 번호 nid)
+  function encChar(c, vi) {
+    const o = { i: c.id, a: c.alive ? 1 : 0, p: [r2(c.pos.x), r2(c.pos.y), r2(c.pos.z)], y: r3(c.yaw), pt: r3(c.pitch || 0), m: c.mode, s: c.stance, hp: r1(c.hp), k: c.kills || 0 };
+    if (c.knocks) o.kn = c.knocks; if (c.revives) o.rv = c.revives; if (c.damageDealt) o.dd = Math.round(c.damageDealt); if (c.boost) o.bo = r1(c.boost);
+    if (c.knockN) o.kN = c.knockN;
+    if (c.knocked) { o.ko = 1; o.kT = r2(c.knockT || G.time); o.kB = c.knockedBy ? c.knockedBy.id : -1; }
+    if (!c.alive) { o.dt = r2(c.deathTime || 0); o.pl = c.place || 0; }
+    if (c.life) o.lf = c.life; if (c.recallN) o.rn = c.recallN; if (c.cards && c.cards.length) o.cd = c.cards.slice();
+    if (c.alive) o.iv = encInv(c.inv);   // 죽은 캐릭터의 소지품은 시체 상자(아이템)로 이미 나갔다
+    const vn = c.veh && vi ? vi(c.veh) : undefined; if (vn !== undefined && vn !== null) { o.vh = vn; o.st = c.seat || 0; }
+    if (c.mode === 'plane' && c.rplane && c.rplane.rsI !== undefined) o.rp = c.rplane.rsI;
+    if (c.isPlayer) o.me = { hs: c.headshots || 0, lt: c.lootN || 0, hl: c.healN || 0, dr: r1(c.driveM || 0), gd: c.goldN || 0, ga: c.goldAmt || 0, dp: c.dropN || 0 };
+    return o;
+  }
+  // 저장한 상태를 캐릭터에 (vehs: 번호 → 차량 · rps: 리콜 수송기)
+  function charApply(c, o, vehs, rps) {
+    c.kills = o.k || 0; c.knocks = o.kn || 0; c.revives = o.rv || 0; c.damageDealt = o.dd || 0; c.boost = o.bo || 0; c.knockN = o.kN || 0;
+    c.life = o.lf || 0; c.recallN = o.rn || 0; c.cards = o.cd ? o.cd.slice() : [];
+    if (o.me) { c.headshots = o.me.hs; c.lootN = o.me.lt; c.healN = o.me.hl; c.driveM = o.me.dr; c.goldN = o.me.gd; c.goldAmt = o.me.ga; c.dropN = o.me.dp; }
+    if (c.veh) Veh.exit(c, true, true);
+    c.heal = null; c.rl = null; c.cycle = null; c.throwMode = null; c.revive = null; c.revivedBy = null; c.recall = null; c.vault = null; c.aiming = false; c.sprint = false;
+    c.pos.set(o.p[0], o.p[1], o.p[2]); c.vel.set(0, 0, 0); c.yaw = c.bodyYaw = o.y || 0; c.pitch = o.pt || 0;
+    c.root.position.copy(c.pos); c.root.rotation.y = c.yaw;
+    if (!o.a) {   // 탈락
+      c.alive = false; c.hp = 0; c.knocked = false; c.deathTime = o.dt || 0; c.place = o.pl || 0; c.mode = 'ground'; c.stance = 'stand'; c.onGround = true; c.anim.dead = 1;
+      const v = c.inv; v.weapons = [null, null, null]; v.items = {}; v.cur = -1; v.gear = { helmet: null, vest: null, bag: null }; v.melee = null;
+      c.setVisibleGear(); c.root.visible = !c.isPlayer || corpseK(c) < 1;
+      return;
+    }
+    c.alive = true; c.hp = o.hp; c.mode = o.m || 'ground'; c.stance = o.s || 'stand'; c.onGround = c.mode === 'ground'; c.anim.dead = 0;
+    c.knocked = !!o.ko;
+    if (c.knocked) { c.knockT = o.kT; c.knockedBy = o.kB >= 0 ? byId(o.kB) : null; c.stance = 'prone'; }
+    if (o.iv) decInv(c, o.iv);
+    c.equipT = 0; c.setVisibleGear();
+    if (c.mode === 'plane') {
+      const rp = o.rp !== undefined && rps ? rps[o.rp] : null; c.rplane = rp || null;
+      const pl = rp || G.plane; if (pl) c.pos.copy(pl.pos); c.root.visible = false;
+    } else {
+      c.root.visible = true;
+      if (c.mode === 'fall' || c.mode === 'chute') { c.vel.set(0, c.mode === 'fall' ? -30 : -5, 0); c.jumpT = G.time - 2; }
+    }
+    const v = o.vh !== undefined && vehs ? vehs[o.vh] : null;
+    if (v && !v.dead) Veh.enter(c, v, o.st || 0);
+  }
+  // 봇의 생각: 되살린 자리에서 다시 (방장 넘겨받기 adopt 와 같게) — 처음 수송기에 있는 봇은 만들 때 정한 강하 계획 그대로
+  function brainApply(c) {
+    const b = c.brain; if (!b || c.isPlayer || !c.alive) return;
+    if (c.mode === 'plane') {
+      if (c.rplane) { b.followJump = false; b.jumpAt = c.rplane.t + rnd(1, 3); b.dropTarget = { x: c.rplane.tw.ix, z: c.rplane.tw.iz }; b.chuteH = rnd(80, 125); }
+      else if (b.followJump && b.followC && b.followC.mode !== 'plane' && G.plane) b.jumpAt = G.plane.t + rnd(0.3, 1.4);   // 따라 뛸 사람은 이미 뛰었다
+    } else if (c.mode === 'fall' || c.mode === 'chute') { if (!b.followJump) b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0; }
+    else { b.setState('EXPLORE'); b.landT = G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; }
+    if (c.knocked) b.onKnocked();
+  }
+
+  // ---------- 아이템: 시드로 다시 만든 시작 아이템에서 바뀐 것만 ----------
+  // 경기 시작 때 (11_game.js startMatch — populateLoot 바로 뒤): 시작 아이템 수·개수·배치 검증값
+  function mark() {
+    G.loot0 = GROUND.length; G.lootC0 = GROUND.map((it) => it.count);
+    let h = GROUND.length | 0; for (const it of GROUND) h = (Math.imul(h, 31) + ((it.x * 7 + it.z * 13) | 0) + it.count) | 0; G.lootH = h;
+  }
+  function lootSnap() {
+    const n0 = G.loot0 || 0, c0 = G.lootC0 || [], g = [], cn = [], ad = [];
+    for (let i = 0; i < GROUND.length; i++) {
+      const it = GROUND[i];
+      if (i < n0) { if (!it.alive) g.push(i); else if (it.count !== c0[i]) cn.push(i, it.count); }
+      else if (it.alive) ad.push([it.id, it.count, r2(it.x), r2(it.y), r2(it.z), it.inst || 0, it.bx || 0, it.drop ? 1 : 0, it.autoNo === Infinity ? 1 : 0]);   // 마지막: 내가 버린 것(자동 줍기가 다시 줍지 않음)
+    }
+    return { n: n0, h: G.lootH, g, c: cn, a: ad };
+  }
+  function lootApply(L) {
+    if (!L) return;
+    if (L.n === G.loot0 && L.h === G.lootH) {
+      for (const i of L.g) { const it = GROUND[i]; if (it && it.alive) removeItem(it); }
+      for (let k = 0; k < L.c.length; k += 2) { const it = GROUND[L.c[k]]; if (it && it.alive) it.count = L.c[k + 1]; }
+    } else console.warn('이어하기: 시작 아이템 배치가 달라(업데이트 등) 주워 간 아이템은 되살리지 못했습니다');
+    for (const a of L.a) { if (!ITEMS[a[0]]) continue; const it = spawnItem(G.scene, a[0], a[1], a[2], a[3], a[4], a[5] || null, undefined, a[6] || null); if (a[7]) it.drop = 1; if (a[8]) it.autoNo = Infinity; }
+  }
+  // ---------- 차량 ----------
+  function vehSnap() { return Veh.list.map((v, i) => { v.rsI = i; return [v.type, r2(v.pos.x), r2(v.pos.y), r2(v.pos.z), r3(v.yaw), Math.round(v.hp), v.dead ? 1 : 0, v.skin || 0, v.burnT > 0 ? r1(v.burnT) : 0]; }); }
+  function vehApply(V) {
+    if (!V) return [];
+    for (const v of Veh.list.slice()) Veh.remove(v);
+    return V.map((a) => {
+      if (!VEH_TYPES[a[0]]) return null;
+      const v = Veh.make(a[0], a[1], a[3], a[4]); v.hp = a[5];
+      if (a[7] && VehModels.has(a[7])) Veh.setSkin(v, a[7]);
+      if (a[6]) { v.dead = true; v.awake = false; if (!v.T.animal) { VehModels.wreck(v.P); v.P.root.position.y -= 0.12; } }
+      else if (a[8]) { v.burnT = a[8]; v.awake = true; }
+      return v;
+    });
+  }
+
+  // ---------- 기록용 요약 ----------
+  const settingsOf = () => ({ map: SETTINGS.map, mode: SETTINGS.mode, squad: SETTINGS.squad, queue: SETTINGS.queue, time: SETTINGS.time, difficulty: SETTINGS.difficulty, bots: SETTINGS.bots, game: SETTINGS.game, arena: SETTINGS.arena });
+  // 포기했을 때 남길 결과 (일시정지 메뉴 '경기 포기'와 같은 셈 — 11_game.js G.ui('quit')) · 결과가 정해졌으면(G.over) 그 결과
+  function quitSum() {
+    const p = G.player, T = G.teams && G.teams[p.team]; if (!T) return null;
+    let place, win = false;
+    if (G.over) { win = !!G.win; place = win ? 1 : (T.place || aliveTeamCount() + (teamAlive(T) ? 0 : 1)); }
+    else { const others = T.members.some((m) => m !== p && m.alive), n = aliveTeamCount() - (p.alive && !others ? 1 : 0); place = T.place || (others ? n : n + 1); }
+    const surv = p.alive || (win && !p.deathTime) ? G.matchT || G.time : p.deathTime || G.time;   // matchT: 우승이 정해진 시각 (v23 우승 축하 중에 떠나면 그 결과로)
+    return { place, nT: G.teams.length, total: G.total, kills: p.kills, dmg: Math.round(p.damageDealt || 0), revives: p.revives || 0, heads: p.headshots || 0, drive: Math.round(p.driveM || 0), loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0,
+      surv: Math.round(surv), ranked: G.ranked ? 1 : 0, hc: G.hc ? 1 : 0, ts: G.teamSize, party: G.netCfg ? 1 : 0, map: G.netCfg ? G.netCfg.s.map : SETTINGS.map, win: win ? 1 : 0, over: G.over ? 1 : 0 };   // 같이 하기: 창을 닫을 때 10_net.js 가 내 설정을 먼저 되돌려도 경기 맵으로
+  }
+  // 창에 보일 요약
+  function summary() {
+    const p = G.player; let al = 0; for (const c of CHARS) if (c.alive) al++;
+    return { t: Math.round(G.time), al, k: p.kills || 0, a: p.alive ? 1 : 0, dm: G.dm ? [G.dm.score[p.team], G.dm.score[1 - p.team]] : null };
+  }
+
+  // ---------- 저장 ----------
+  const want = () => G.state === 'play' && !!G.scene && !!G.player && !G.training && !G.island && !G.quit && !(G.dm && G.dm.over) && !G.rjHold && !busy;
+  function snapBr() {
+    const rps = Recall.snapPlanes(), vh = vehSnap(), pl = G.plane, vi = (v) => v.rsI;
+    return { kind: 'br', seed: G.mseed, bd: G.bd || '', nb: CHARS.length - 1, ts: G.teamSize, rk: G.ranked ? 1 : 0, hc: G.hc ? 1 : 0, t: r2(G.time),
+      pl: pl ? { a: pl.a, off: pl.offN, t: r2(pl.t), on: pl.active ? 1 : 0 } : null, z: Net.zoneSnap(), tp: G.teams.map((T) => T.place || 0),
+      ch: CHARS.map((c) => encChar(c, vi)), vh, rp: rps, lo: lootSnap(), ad: Airdrop.snap(), st: G.stats, kl: G.killLog, nl: G.knockLog, mk: G.marker || null, q: quitSum() };
+  }
+  function snapDm() {
+    const S = G.dm, p = G.player;
+    return { kind: 'dm', t: r2(G.time), q: null,
+      dm: { type: S.type, seed: S.seed, arena: S.arena, loadout: S.loadout, myId: p.id, roster: CHARS.map((c) => ({ id: c.id, team: c.team, name: c.name, human: !!c.isPlayer, diff: c.diffKey || undefined, lo: c.dmLoad || undefined })) },
+      sc: S.score.slice(), md: S.myDeaths || 0, lw: S.lastWin, rd: S.round ? S.round.n : 0, kd: CHARS.map((c) => [c.id, c.kills || 0, c.dmDeaths || 0]) };
+  }
+  // 같이 하기: 경기 설정 + 내 캐릭터 (소지품) — 나머지는 돌아갈 때 방장이 보내 준다
+  function snapNet() {
+    const cfg = G.netCfg;
+    return { kind: cfg.dm ? 'ndm' : 'nbr', cfg, t: r2(G.time), me: encChar(G.player, null), q: G.dm ? null : quitSum() };
+  }
+  function save() {
+    if (!want()) return;
+    try {
+      const s = G.netCfg ? snapNet() : G.dm ? snapDm() : snapBr();
+      s.v = VER; s.at = Date.now(); s.uid = Cloud.uid || null; s.s = G.netCfg ? Object.assign({ game: G.netCfg.game }, G.netCfg.s) : settingsOf(); s.sum = summary();
+      store.set(KEY, s);
+    } catch (e) { console.warn('이어하기 저장 실패', e); }
+  }
+  // 매 프레임 (11_game.js G.update): 5초마다
+  function tick(dt) { saveT -= dt; if (saveT <= 0) { saveT = EVERY; save(); } }
+  // 화면을 떠날 때 바로 (새로고침·뒤로가기·탭 닫기·앱 전환) — 같이 하기는 10_net.js 가 나가기(leave) 전에 먼저 부른다
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
+  window.addEventListener('pagehide', () => save());
+  // 뒤로 갔다가 앞으로 와서 페이지가 그대로 살아난 경우(bfcache): 같이 하기는 이미 나간 것으로 처리됐으므로 다시 불러 이어하기 창으로
+  window.addEventListener('pageshow', (e) => { if (e.persisted && G.netCfg && G.state === 'play' && !G.net) location.reload(); });
+
+  // ---------- 되살리기 (혼자) ----------
+  // 배틀로얄: startMatch({ resume }) 가 같은 시드로 맵·아이템·캐릭터를 만든 뒤 G.state = 'play' 직전에 부른다
+  function apply(rs) {
+    G.time = rs.t; if (rs.st) G.stats = rs.st; G.killLog = rs.kl || []; G.knockLog = rs.nl || [];
+    const pl = G.plane;
+    if (pl && rs.pl) { pl.t = rs.pl.t; pl.active = !!rs.pl.on; const d = pl.t * pl.speed; pl.pos.set(pl.ax + pl.dx * d, pl.alt, pl.az + pl.dz * d); pl.mesh.position.copy(pl.pos); pl.mesh.visible = pl.active; }
+    Net.applyZone(rs.z);
+    lootApply(rs.lo);
+    const vehs = vehApply(rs.vh), rps = Recall.restorePlanes(rs.rp);
+    for (const o of rs.ch || []) { const c = byId(o.i); if (c) charApply(c, o, vehs, rps); }
+    for (const c of CHARS) brainApply(c);
+    if (rs.tp) rs.tp.forEach((v, i) => { if (G.teams[i]) G.teams[i].place = v; });
+    Airdrop.restore(rs.ad);
+    G.marker = rs.mk || null; G.updateMarker();
+    afterApply();
+  }
+  // 내 캐릭터 기준 마무리: 소리·관전·인벤토리
+  function afterApply() {
+    const p = G.player; if (!p) return;
+    Audio.plane(p.alive && p.mode === 'plane'); Audio.wind(p.alive && p.mode !== 'ground' ? 0.1 : 0);
+    if (!p.alive) { G.spec = null; nextSpectate(); }
+    HUD.refreshInventory();
+  }
+  // 데스매치·대결: DM.start 로 같은 판을 다시 연 뒤
+  function applyDm(rs) {
+    const S = G.dm; if (!S) return;
+    G.time = rs.t; S.score = rs.sc.slice(); S.myDeaths = rs.md || 0; S.lastWin = rs.lw === undefined ? null : rs.lw;
+    for (const [id, k, d] of rs.kd || []) { const c = byId(id); if (c) { c.kills = k; c.dmDeaths = d; } }
+    for (const c of CHARS) if (c.alive) c.spawnProt = S.duel ? G.time + 999 : G.time + DM_RULES.protect;
+    if (S.duel) { S.round.t0 = G.time; if (rs.rd > 1) DM.applyDuel({ r: rs.rd, ph: 'prep', t: G.time, sc: S.score.slice(), w: S.lastWin, lo: S.loadout }); }   // 그 라운드를 처음부터
+  }
+
+  // ---------- 같이 하기로 돌아옴 (10_net.js) ----------
+  // h: 방장이 알려 준 내 캐릭터의 지금 상태 · mine: 이 기기에 저장해 둔 내 캐릭터 (소지품은 이쪽 — 방장 기기는 손에 든 총·장비 + 봇이 쓰던 것만 안다)
+  function applyMine(c, h, mine) {
+    if (!c) return;
+    const o = Object.assign({}, h || mine || {}); if (!o.p) return;
+    if (mine) {
+      if (o.a && mine.iv) o.iv = mine.iv;
+      o.k = Math.max(o.k || 0, mine.k || 0); o.kn = Math.max(o.kn || 0, mine.kn || 0); o.rv = Math.max(o.rv || 0, mine.rv || 0); o.dd = Math.max(o.dd || 0, mine.dd || 0);
+      if (mine.me) o.me = mine.me; o.lf = Math.max(o.lf || 0, mine.lf || 0); o.rn = Math.max(o.rn || 0, mine.rn || 0); if (!o.cd && mine.cd && o.a) o.cd = mine.cd;
+    }
+    const vehs = G.net ? G.net.vehs : null;
+    if (G.dm) { c.kills = o.k || 0; if (o.iv && c.alive) { decInv(c, o.iv); c.setVisibleGear(); } return; }   // 데스매치: 부활한 자리 그대로 · 총(웨폰 데스매치)만
+    charApply(c, o, vehs, null);
+    afterApply();
+    if (!c.alive) G.onDeath(c, null);   // 없는 사이 탈락 → 팀원 관전 또는 (팀 전멸이면) 결과
+  }
+
+  // ---------- 다시 들어왔을 때 ----------
+  // 부팅 끝(로그인 복원 뒤) · 로그인할 때 (11_game.js boot · G.onAuth)
+  function check() {
+    if (pend || busy) return;
+    const s = store.get(KEY, null); if (!s) return;
+    const net = isNet(s), age = Date.now() - (s.at || 0);
+    if (s.v !== VER || age < 0 || age > (net ? NET_MAX : SOLO_MAX)) { clear(); return; }
+    if ((s.uid || null) !== (Cloud.uid || null)) { if (Cloud.uid) clear(); return; }   // 다른 계정 · (로그아웃 상태면 그대로 두었다가 로그인하면 다시 확인)
+    if (s.q && s.q.over) { clear(); record(s.q, false); return; }   // 결과가 정해진 뒤에 떠남 → 묻지 않고 기록
+    if (G.state !== 'lobby') return;
+    pend = s; show(s);
+  }
+  function modeLabel(s) {
+    const S = s.s || {}, g = S.game || 'br';
+    if (isDmGame(g)) return `${(GAME_TYPES[g] || {}).name || '데스매치'} · ${arenaLabel(s.dm ? s.dm.arena : s.cfg && s.cfg.arena)}`;
+    const q = s.q || {}, ts = q.ts || s.ts || (TEAM_MODES[S.squad] || TEAM_MODES.solo).size, sq = ts === 1 ? '솔로' : (Object.values(TEAM_MODES).find((m) => m.size === ts) || TEAM_MODES.solo).name;
+    return [(MAPS[S.map] || {}).name, q.hc ? '하드코어' : q.ranked ? '랭크전' : '', sq, isNet(s) ? (s.cfg && s.cfg.mm ? '온라인 매칭' : '파티') : ''].filter(Boolean).join(' · ');
+  }
+  function agoText(ms) { const m = Math.floor(ms / 60000); return m < 1 ? '방금' : m < 60 ? `${m}분 전` : `${Math.floor(m / 60)}시간 ${m % 60}분 전`; }
+  function show(s, msg) {
+    const net = isNet(s), sm = s.sum || {}, q = s.q;
+    $('rjTitle').textContent = net ? '진행 중인 경기가 있습니다' : '멈춰 둔 경기가 있습니다';
+    $('rjWhat').textContent = modeLabel(s);
+    $('rjStat').textContent = sm.dm ? `${fmtTime(sm.t)} · 점수 ${sm.dm[0]} : ${sm.dm[1]} · 내 처치 ${sm.k}` : `경기 시간 ${fmtTime(sm.t || 0)} · 생존 ${sm.al}명 · 내 처치 ${sm.k}${sm.a ? '' : ' · 탈락 후 관전 중'}`;
+    $('rjNote').textContent = (net ? `${agoText(Date.now() - s.at)} 나갔습니다. 경기는 다른 사람들 기기에서 계속되고, 그동안 내 캐릭터는 봇이 대신 움직였습니다.` : `${agoText(Date.now() - s.at)} 나간 그 순간에 멈춰 있습니다. 다시 들어가면 그대로 이어서 합니다.`)
+      + (q ? ` 포기하면 ${q.place}위로 기록됩니다${q.hc || q.ranked ? ' (랭크 점수 반영)' : ''}.` : ' 포기하면 기록 없이 끝납니다.');
+    const m = $('rjMsg'); m.hidden = !msg; m.textContent = msg || '';
+    $('rjGo').disabled = false; $('rjNo').disabled = false; $('rjGo').textContent = msg ? '다시 시도' : '다시 들어가기';
+    $('rjPanel').hidden = false;
+  }
+  function hide() { $('rjPanel').hidden = true; }
+  // 경기 기록 (11_game.js recordBR — 결과 화면과 같은 셈) · win: 결과가 정해진 뒤 떠난 경기 · head: 알림 앞머리
+  function record(q, quit, head) {
+    if (!q) return;
+    try {
+      const r = recordBR(Object.assign({}, q, { win: !!q.win && !quit, quit: !!quit }));
+      const R = G.rankResult, rp = R && !R.placement && R.delta !== undefined ? ` · 랭크 ${R.delta >= 0 ? '+' : ''}${R.delta} RP` : '';
+      HUD.lobbyNote(`${head || (quit ? '지난 경기를 포기했습니다' : '지난 경기 결과를 기록했습니다')} — ${q.win && !quit ? '우승' : q.place + '위'} · 경험치 +${r.xp}${rp}${r.notes.length ? ' · ' + r.notes.join(' · ') : ''}`);
+      HUD.renderLobby();
+    } catch (e) { console.warn('이어하기 기록 실패', e); }
+  }
+  function forfeit(s) { pend = null; clear(); hide(); if (s && s.q) record(s.q, true); else HUD.lobbyNote('지난 경기를 끝냈습니다'); }
+  // 새 경기를 시작함 (11_game.js startMatch · 10_dm.js start): 답하지 않은 창이 남아 있으면 그 경기는 포기로
+  function fresh() { if (busy) return; if (pend) forfeit(pend); else clear(); saveT = EVERY; }
+
+  // 다시 들어가기
+  async function go() {
+    const s = pend; if (!s || busy) return;
+    busy = true; $('rjGo').disabled = true; $('rjNo').disabled = true;
+    try {
+      if (isNet(s)) { await goNet(s); return; }
+      pend = null; hide();
+      Object.assign(SETTINGS, s.s);
+      if (s.kind === 'dm') { await DM.start(Object.assign({}, s.dm, { resume: true })); if (G.dm) applyDm(s); }
+      else await startMatch({ resume: s });
+      if (G.state === 'play') HUD.toast('경기를 이어서 합니다', 'ok');
+    } catch (e) { console.error(e); HUD.toast('이어하기 실패: ' + e.message, 'warn'); }
+    finally { busy = false; saveT = 1; }
+  }
+  // 같이 하기: 방장 찾기 → 같은 경기 열기 → 방장이 지금 상태를 보낼 때까지 가림막
+  async function goNet(s) {
+    const msg = $('rjMsg'), say = (t) => { msg.hidden = false; msg.textContent = t; };
+    say('경기에 연결하는 중…');
+    try {
+      if (!Cloud.uid) { busy = false; show(s, '로그인이 풀려 있습니다 — 로그인한 뒤 다시 시도하세요'); return; }
+      for (let i = 0; i < 40 && !Social.connected; i++) await new Promise((r) => setTimeout(r, 200));   // 로비 채널 연결을 기다림
+      const ok = Social.connected ? await Net.probe(s.cfg) : null;
+      if (!ok) { busy = false; pend = null; clear(); hide(); if (s.q) record(s.q, true, '그 경기는 이미 끝났습니다 · 떠날 때의 순위로 기록'); else HUD.lobbyNote('그 경기는 이미 끝났습니다'); return; }
+      pend = null; hide();
+      const cfg = JSON.parse(JSON.stringify(s.cfg)); cfg.host = ok.host;
+      Net.join(cfg, { ep: ok.ep, isl: ok.isl, mine: s.me });
+      G.rjHold = true;
+      // 경기 화면이 열린 뒤 방장 상태를 받을 때까지 가림막 (25초 안에 못 받으면 실패)
+      const t0 = Date.now();
+      clearInterval(waitT);
+      waitT = setInterval(() => {
+        if (!G.rjHold) { clearInterval(waitT); return; }
+        if (G.state === 'play') { $('loading').hidden = false; $('loadStep').textContent = '경기 상태를 받는 중…'; $('loadBar').style.width = '99%'; }
+        if (Date.now() - t0 > 25000 || !G.net) { clearInterval(waitT); failNet(s); }
+      }, 300);
+    } catch (e) { console.error(e); busy = false; show(s, '연결 실패: ' + e.message); }
+  }
+  function failNet(s) {
+    G.rjHold = false; busy = false; $('loading').hidden = true;
+    if (G.net) Net.close(true);
+    if (G.state === 'play' || G.state === 'loading') toLobby();
+    pend = s; store.set(KEY, s); show(s, '경기에 다시 연결하지 못했습니다 (방장 기기와 연결이 되지 않음)');
+  }
+  // 방장이 보낸 지금 상태를 적용함 (10_net.js applyRj 끝)
+  function rejoined() {
+    G.rjHold = false; busy = false; clearInterval(waitT); $('loading').hidden = true;
+    const p = G.player;
+    HUD.toast(p && p.alive ? '경기에 다시 들어왔습니다 — 내 캐릭터를 돌려받았습니다' : '경기에 다시 들어왔습니다 — 그사이 탈락해서 팀원을 관전합니다', 'ok');
+    saveT = 1;
+  }
+
+  function setup() {
+    $('rjGo').addEventListener('click', go);
+    $('rjNo').addEventListener('click', () => { if (!busy) forfeit(pend); });
+  }
+  return { setup, check, tick, save, clear, fresh, mark, apply, applyMine, encChar, rejoined, get pending() { return pend; }, get busy() { return busy; } };
+})();
+
 // ---------- 10_shop.js ----------
 // ============================================================
 // 10_shop.js — 상점·미션 화면 + 상자 3D 모델 + 고등급 뽑기 컷신
@@ -32175,6 +32678,7 @@ const Social = (() => {
       if (G.state === 'lobby') HUD.lobbyNote(msg); else HUD.toast(msg, 'info');
     } else if (m.k === 'rsvx') rsvIn.delete(m.from.uid);
     else if (m.k === 'rn') Cloud.refreshName();   // 운영자가 내 아이디를 바꿈 (10_dev.js) — 서버에서 다시 읽어 확인만
+    else if (m.k === 'nt') Net.onLobby(m);        // v23 경기 이어하기: 나갔다 돌아온 사람과 방장 사이 신호 (10_net.js)
   }
   function expireInvites() { const n = invites.length; invites = invites.filter((v) => Date.now() - v.t < 45000); if (invites.length !== n) { renderInvites(); render(); } }
 
@@ -34889,7 +35393,8 @@ function setupPlane(scene, NP) {
   // 같이 하기: 방장이 정한 비행 경로(각도·옆 이동)를 모두가 쓴다
   const a = NP ? NP.a : Math.random() * TAU, off = NP ? NP.off * PC.off : rnd(-PC.off, PC.off), dx = Math.cos(a), dz = Math.sin(a);
   const px = -dz * off, pz = dx * off, L = PC.L;
-  const pl = { ax: px - dx * L, az: pz - dz * L, bx: px + dx * L, bz: pz + dz * L, dx, dz, t: 0, len: L * 2, speed: PC.speed, alt: PC.alt, active: true, pos: new THREE.Vector3(), mesh: buildPlane() };
+  const pl = { ax: px - dx * L, az: pz - dz * L, bx: px + dx * L, bz: pz + dz * L, dx, dz, t: 0, len: L * 2, speed: PC.speed, alt: PC.alt, active: true, pos: new THREE.Vector3(), mesh: buildPlane(),
+    a, offN: PC.off ? off / PC.off : 0 };   // 경로(각도·옆 이동 비율) — 이어하기가 같은 경로로 다시 만든다 (10_resume.js)
   pl.pos.set(pl.ax, pl.alt, pl.az); pl.mesh.position.copy(pl.pos); pl.mesh.rotation.y = Math.atan2(dx, dz);
   scene.add(pl.mesh);
   G.plane = pl;
@@ -35000,10 +35505,11 @@ function pickDropTarget() {
 }
 
 // ---------- 경기 ----------
-// cfg: 같이 하기(파티) 경기 설정 — 없으면 혼자
+// cfg: 같이 하기(파티) 경기 설정 — 없으면 혼자 · { resume }: 혼자 하던 경기를 저장한 상태로 다시 연다 (10_resume.js)
 async function startMatch(cfg) {
   if (G.state === 'loading') return;
-  const net = !!(cfg && G.net);
+  const net = !!(cfg && G.net), rs = !net && cfg && cfg.resume ? cfg.resume : null, rj = net && G.net.rj ? G.net.rj : null;   // rj: 나갔다가 같이 하기 경기로 돌아옴
+  if (!rs) Resume.fresh();   // 새 경기 — 답하지 않은 이어하기 창이 남아 있으면 그 경기는 포기로 기록
   G.state = 'loading'; G.paused = false; G.over = false; G.training = false; G.matchT = 0; G.victory = null;
   document.body.classList.remove('training'); $('quitBtn').textContent = '경기 포기 (로비로)';
   Audio.music(false);
@@ -35011,6 +35517,7 @@ async function startMatch(cfg) {
   $('loadMap').textContent = MAPS[SETTINGS.map].name; $('loadTip').textContent = pick(TIPS);
   const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
   disposeMatch();
+  G.netCfg = net ? cfg : null;   // 이어하기 저장용 (창을 닫을 때 10_net.js 가 먼저 나가도 남아 있게)
   const sc = new THREE.Scene(); G.scene = sc;
   const t = TIMES[SETTINGS.time], Q = QUALITY[SETTINGS.quality];
   // 맵별 안개 (정글: 조금 가깝고 푸르게) — 하늘 지평선 색도 안개 쪽으로 맞춰 경계가 안 보이게
@@ -35031,8 +35538,10 @@ async function startMatch(cfg) {
   try { await generateWorld(SETTINGS.map, sc, prog); }
   catch (e) { console.error(e); fatal('맵 생성 중 오류: ' + e.message); return; }
   prog(0.97, '아이템 배치');
-  // 같이 하기: 시드를 맞춰 모든 기기에서 같은 아이템·차량이 같은 자리에 생긴다
-  if (net) Net.seeded(cfg.seed + 1, () => populateLoot(sc)); else populateLoot(sc);
+  // 경기 시드: 같이 하기는 방장이 정한 것, 혼자면 새로(이어하기는 저장해 둔 것) — 시드가 같으면 모든 기기에서 같은 아이템이 같은 자리에 생긴다
+  //  v23: 혼자 하는 경기도 시드로 — 이어하기가 시작 아이템을 다시 만들고 바뀐 것만 저장한다 (10_resume.js)
+  const ms = net ? cfg.seed : rs ? rs.seed : (Math.random() * 2147483647) | 0; G.mseed = ms;
+  Net.seeded(ms + 1, () => populateLoot(sc)); Resume.mark();
   prog(0.98, '차량 배치');
   Veh.init(sc);
   if (net) Net.seeded(cfg.seed + 2, () => Veh.spawnAll()); else Veh.spawnAll();
@@ -35041,15 +35550,15 @@ async function startMatch(cfg) {
   Zone.init(sc, MODES[SETTINGS.mode].zoneScale, SETTINGS.map);
   Airdrop.init(sc); Recall.init(sc);
   if (W.xmas) XmasFx.init(sc, G.camera.position); else XmasFx.dispose();   // 크리스마스 섬: 내리는 눈·전구 반짝임
-  setupPlane(sc, net ? cfg.plane : null);
+  setupPlane(sc, net ? cfg.plane : rs ? rs.pl : null);   // 이어하기: 같은 비행 경로
   if (W.streamTerrain) { W.streamTerrain(G.plane.pos.x, G.plane.pos.z, Q.far + 250, 99); W.cullChunks(G.plane.pos.x, G.plane.pos.z, Q.far); }
   // 캐릭터 생성
   CHARS = []; G.noises = []; G.time = 0; G.stats = { shots: 0, hits: 0 }; G.killLog = []; G.knockLog = []; G.marker = null; G.updateMarker(); G.spec = null;
   G.teamOrder = null; G.spotted = new Map(); G.danger = null;
-  G.hc = net ? !!cfg.hc : SETTINGS.queue === 'hardcore' && Rank.hcOk();   // 하드코어 랭크전 (다이아 4 이상 경험자 · 전원 익스트림 봇)
-  G.ranked = net ? !!cfg.ranked : (SETTINGS.queue === 'ranked' || G.hc) && Rank.unlocked(); G.quit = false; G.rankResult = null; G.hostGone = false;
+  G.hc = net ? !!cfg.hc : rs ? !!rs.hc : SETTINGS.queue === 'hardcore' && Rank.hcOk();   // 하드코어 랭크전 (다이아 4 이상 경험자 · 전원 익스트림 봇)
+  G.ranked = net ? !!cfg.ranked : rs ? !!rs.rk : (SETTINGS.queue === 'ranked' || G.hc) && Rank.unlocked(); G.quit = false; G.rankResult = null; G.hostGone = false;
   // 팀 구성 (혼자 랭크전은 솔로 고정, 파티 랭크전은 고른 팀 구성)
-  const TS = G.teamSize = net ? cfg.teamSize : G.ranked ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
+  const TS = G.teamSize = net ? cfg.teamSize : rs ? rs.ts : G.ranked ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
   G.teams = [];
   const newTeam = (human) => { const T = { id: G.teams.length, members: [], place: 0, human: !!human }; G.teams.push(T); return T; };
   const addTo = (c, T) => { c.team = T.id; c.slot = T.members.length; T.members.push(c); return T; };
@@ -35065,7 +35574,7 @@ async function startMatch(cfg) {
     c.human = true;   // 사람(파티원 포함) — 봇은 사람 팀원에게 차 자리를 비켜 준다 (08_vehicle.js yieldSeat)
     c.vlook = hl.veh || null; c.glook = hl.gun || null;   // 차량·총기 스킨 (파티원은 그 사람의 장착 목록)
     c.pf = hl.pf || null;   // 프로필 사진·테두리·칭호 — 스타트 섬 머리 위 칭호 (08_island.js)
-    if (net) c.net = Net.charNet(hm.uid);
+    if (net) { c.net = Net.charNet(hm.uid); c.uid = hm.uid; }   // uid: 이 캐릭터의 사람 — 나갔다 돌아오면 봇에게서 돌려받는다 (10_net.js unbotize)
     const g = net && cfg.mm ? hm.g || 0 : 0; let T = grpT.get(g);
     if (!T || T.members.length >= TS) { T = newTeam(true); grpT.set(g, T); }
     CHARS.push(c); addTo(c, T); if (me) player = c;
@@ -35073,13 +35582,13 @@ async function startMatch(cfg) {
   // 사람이 장착한 차량 스킨 모델은 로딩 중에 미리 만들어 둠 (운전석에 앉는 순간 처음 만들면 큰 모델은 한 박자 멈춤 · 모델은 종류마다 한 번 만들어 공유)
   for (const c of CHARS) if (c.vlook) for (const t in c.vlook) { const id = c.vlook[t]; if (id && VehModels.has(id)) try { VehModels.instance(t, id); } catch (e) { console.warn(e); } }
   G.player = player;
-  const srand = net ? mulberry32(cfg.seed ^ 0x2545f491) : Math.random;        // 봇 이름·얼굴: 모든 기기에서 같게
+  const srand = mulberry32(ms ^ 0x2545f491);        // 봇 이름·얼굴: 시드가 같으면 같게 (같이 하기는 모든 기기에서 · 혼자는 이어하기가 다시 만들 때)
   const names = BOT_NAMES.slice(); for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(srand() * (i + 1)); const t0 = names[i]; names[i] = names[j]; names[j] = t0; }
-  const nBots = net ? Math.max(0, cfg.nBots - humans.length + 1) : G.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, 1, mapMaxBots(SETTINGS.map));
+  const nBots = net ? Math.max(0, cfg.nBots - humans.length + 1) : rs ? rs.nb : G.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, 1, mapMaxBots(SETTINGS.map));
   const pl = G.plane, hostSide = !net || Net.isHost(), H0 = humans.length;
-  // 봇 난이도 → 스킨 (07_bot_skin.js): 같이 하기면 방장이 정한 난이도(cfg.bd)와 시드로 모든 기기에서 같은 스킨
-  const bseed = net ? cfg.seed : (Math.random() * 2147483647) | 0, dks = [];
-  for (let i = 0; i < nBots; i++) dks.push(net && cfg.bd ? BotSkin.fromCode(cfg.bd[i]) : hostSide ? BotSkin.pickDiff(G.ranked, G.hc) : null);
+  // 봇 난이도 → 스킨 (07_bot_skin.js): 같이 하기면 방장이 정한 난이도(cfg.bd)와 시드로 모든 기기에서 같은 스킨 · 혼자도 난이도를 글자로 정해 두어 이어하기가 같게
+  const bseed = ms, dks = [], bd = net ? cfg.bd : rs ? rs.bd : BotSkin.diffCodes(nBots, G.ranked, G.hc); G.bd = bd || '';
+  for (let i = 0; i < nBots; i++) dks.push(bd ? BotSkin.fromCode(bd[i]) : hostSide ? BotSkin.pickDiff(G.ranked, G.hc) : null);
   const BP = BotSkin.pool([...new Set(dks.filter(Boolean))], bseed); G.botLooks = [];
   for (let i = 0; i < nBots; i++) {
     const body0 = Body.randomBody(srand), dk = dks[i], sk = dk ? BotSkin.forBot(BP, dk, bseed, i) : null;
@@ -35111,12 +35620,14 @@ async function startMatch(cfg) {
   G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
   HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
   // 스타트 섬 (08_island.js): 25초 동안 모두 섬에 모였다가 수송기로 — 끝나면 비행 경로 보기부터. 테스트는 G.skipIsland 로 건너뜀
-  const isl = !G.skipIsland && Island.start(sc, net ? cfg.seed : (Math.random() * 2147483647) | 0);
+  //  이어하기는 섬 없이 (섬에서는 저장하지 않는다) · 같이 하기로 돌아올 때는 방장이 아직 섬에 있을 때만
+  const isl = !G.skipIsland && !rs && !(rj && !rj.isl) && Island.start(sc, net ? cfg.seed : (Math.random() * 2147483647) | 0);
+  if (rs) Resume.apply(rs);
   if (net) Net.ready();
   $('loading').hidden = true; $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
   G.state = 'play';
   if (isl) { G.previewT = 0; Audio.wind(0.04); }
-  else planeIntro();
+  else if (!rs && !rj) planeIntro();
 }
 // 비행 경로 보기 → 지도를 닫으면 출발 (스타트 섬이 끝날 때도)
 function planeIntro() {
@@ -35126,7 +35637,7 @@ function planeIntro() {
 }
 G.planeIntro = planeIntro;
 function disposeMatch() {
-  Training.dispose(); DM.dispose(); Island.dispose(); G.bgSim = false;
+  Training.dispose(); DM.dispose(); Island.dispose(); G.bgSim = false; G.netCfg = null; G.rjHold = false;
   Victory.reset();   // v23 우승 축하 창·춤 음악 정리
   if (!G.scene) return;
   Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose(); XmasFx.dispose();
@@ -35184,19 +35695,29 @@ function endMatch() {
   if (G.island) Island.dispose();
   // 방장: 다른 팀 사람(온라인 매칭)이 아직 경기 중이면 결과 화면 뒤에서 경기(봇·자기장·중계)를 계속 돌린다 — 안 그러면 그 사람들 경기가 멈춤
   G.bgSim = !!(G.net && Net.isHost() && Net.othersPlaying());
+  Resume.clear();   // 결과가 났으니 이어하기 저장은 지운다
+  const r = recordBR({ place, nT, total: G.total, kills: p.kills, dmg: p.damageDealt || 0, revives: p.revives, heads: p.headshots || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0,
+    surv: p.alive || win && !p.deathTime ? G.matchT || G.time : p.deathTime || 0, ranked: G.ranked, hc: G.hc, ts: G.teamSize, party: !!G.net, map: SETTINGS.map, win, quit: !!G.quit });   // matchT: 우승이 정해진 시각 (v23 우승 축하 시간은 빼고)
+  for (const m of r.notes) HUD.toast(m, 'ok');
+  HUD.showResult(win, p, nT);
+}
+// 배틀로얄 경기 기록: 경험치 · 전적 · 랭크 · 미션 — 결과 화면(endMatch)과 이어하기에서 포기·이미 끝난 경기(10_resume.js) 공용
+//  r: { place, nT(팀 수), total(인원), kills, dmg, revives, heads, drive, loot, heals, goldN, drops, surv(생존 초), ranked, hc, ts(팀 크기), party, map, win, quit }
+function recordBR(r) {
   // 경험치: 처치·부활·순위(팀 수 대비 비율)·우승
-  const xp = Math.round(40 + p.kills * 35 + p.revives * 20 + Math.max(0, nT - place) / Math.max(1, nT - 1) * (G.total - 1) * 4 + (win ? 150 : 0));
+  const xp = Math.round(40 + r.kills * 35 + (r.revives || 0) * 20 + Math.max(0, r.nT - r.place) / Math.max(1, r.nT - 1) * (r.total - 1) * 4 + (r.win ? 150 : 0));
   G.lastXp = xp;
-  STATS.matches++; STATS.kills += p.kills; STATS.xp += xp; if (win) STATS.wins++;
-  STATS.best = Math.min(STATS.best || 99, place);
-  const rr = { place, total: G.teamSize > 1 ? nT : G.total, kills: p.kills, dmg: p.damageDealt, win, quit: !!G.quit, map: SETTINGS.map };   // map: 승급전 성공 순위 (10_rank.js SERIES_TOP)
-  G.rankResult = G.hc ? Rank.applyHc(rr) : G.ranked ? Rank.apply(rr) : null;
-  STATS.recent.unshift({ rank: place, total: nT, kills: p.kills, time: Math.round(p.alive || win && !p.deathTime ? G.matchT || G.time : p.deathTime), map: SETTINGS.map, ranked: !!G.ranked, hc: G.hc ? 1 : 0, sq: G.teamSize, party: G.net ? 1 : 0, delta: G.rankResult && !G.rankResult.placement ? G.rankResult.delta : undefined });
+  STATS.matches++; STATS.kills += r.kills; STATS.xp += xp; if (r.win) STATS.wins++;
+  STATS.best = Math.min(STATS.best || 99, r.place);
+  const rr = { place: r.place, total: r.ts > 1 ? r.nT : r.total, kills: r.kills, dmg: r.dmg, win: !!r.win, quit: !!r.quit, map: r.map };   // map: 승급전 성공 순위 (10_rank.js SERIES_TOP)
+  G.rankResult = r.hc ? Rank.applyHc(rr) : r.ranked ? Rank.apply(rr) : null;
+  STATS.recent.unshift({ rank: r.place, total: r.nT, kills: r.kills, time: Math.round(r.surv), map: r.map, ranked: !!r.ranked, hc: r.hc ? 1 : 0, sq: r.ts, party: r.party ? 1 : 0, delta: G.rankResult && !G.rankResult.placement ? G.rankResult.delta : undefined });
   STATS.recent = STATS.recent.slice(0, 5);
   G.statsSaved = saveStats();
   // 미션: 배틀로얄 경기 기록 반영 (훈련장·데스매치는 여기로 오지 않음)
-  try { const evG = Eco.matchEnd({ quit: !!G.quit, win, place, kills: p.kills, heads: p.headshots || 0, dmg: p.damageDealt || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0, surv: p.alive || win && !p.deathTime ? G.matchT || G.time : p.deathTime || 0 }); if (evG) HUD.toast(`골드 이벤트 · 매치 보너스 +${evG} 골드 탄피`, 'ok'); const B = Eco.bpLast; if (B && B.xp) HUD.toast(`배틀패스 +${B.xp} 경험치` + (B.lv > B.lv0 ? ` · ${B.lv}단계 달성! 보상이 들어왔습니다` : ''), 'ok'); } catch (e) { console.warn('미션 반영 실패', e); }
-  HUD.showResult(win, p, nT);
+  const notes = [];
+  try { const evG = Eco.matchEnd({ quit: !!r.quit, win: !!r.win, place: r.place, kills: r.kills, heads: r.heads || 0, dmg: r.dmg || 0, drive: r.drive || 0, loot: r.loot || 0, heals: r.heals || 0, goldN: r.goldN || 0, drops: r.drops || 0, surv: r.surv || 0 }); if (evG) notes.push(`골드 이벤트 · 매치 보너스 +${evG} 골드 탄피`); const B = Eco.bpLast; if (B && B.xp) notes.push(`배틀패스 +${B.xp} 경험치` + (B.lv > B.lv0 ? ` · ${B.lv}단계 달성! 보상이 들어왔습니다` : '')); } catch (e) { console.warn('미션 반영 실패', e); }
+  return { xp, notes };
 }
 
 // ---------- 메인 업데이트 ----------
@@ -35232,8 +35753,8 @@ G.update = function (dt) {
     if (!overIsland(pl.ax + pl.dx * ahead, pl.az + pl.dz * ahead) && d > pl.len * 0.5) for (const c of left) { if (!Net.mine(c)) continue; if (c.isPlayer) HUD.toast('수송기가 섬을 벗어나 자동 강하합니다', 'warn'); jumpOut(c); }
     if (d > pl.len) { pl.active = false; pl.mesh.visible = false; Audio.plane(false); }
   }
-  // 플레이어
-  if (p && p.alive && (!G.over || G.victory)) {   // v23 우승 축하 중에도 움직일 수 있다
+  // 플레이어 (v23 우승 축하 중에도 움직일 수 있다 · 같이 하기로 돌아오는 중이면 방장이 지금 상태를 보낼 때까지 그대로 — 10_resume.js)
+  if (p && p.alive && (!G.over || G.victory) && !G.rjHold) {
     const modal = HUD.modalOpen();
     if (p.mode === 'plane') {
       if (!modal || !$('mapPanel').hidden) { p.yaw -= Input.lookX * 0.0023 * SETTINGS.lookSens; p.pitch = clamp(p.pitch - Input.lookY * 0.0023 * SETTINGS.lookSens, -1.2, 0.6); }
@@ -35367,6 +35888,7 @@ G.update = function (dt) {
   }
   if (!bg) HUD.update(dt);
   if (G.net) Net.tick(dt);
+  if (!bg) Resume.tick(dt);   // 이어하기: 5초마다 경기 상태 저장
   if (G.victory) Victory.update(dt);   // v23 우승 축하: 동상·춤·자동 결산 (결산은 거기서)
   else if (G.over) { G.endT -= dt; if (G.endT <= 0 && G.state === 'play') { if (G.dm) DM.end(); else endMatch(); } }
 };
@@ -35430,6 +35952,7 @@ G.ui = function (a) {
 };
 function toLobby() {
   if (G.net) Net.leave();
+  if (!Resume.busy) Resume.clear();   // 메뉴로 나간 경기는 이어하지 않는다 (경기 포기는 그때 기록됨)
   $('resultPanel').hidden = true; $('hud').hidden = true; $('mapPanel').hidden = true; $('invPanel').hidden = true; $('pausePanel').hidden = true;
   disposeMatch(); G.state = 'lobby'; G.paused = false; G.spec = null; releaseLock();
   G.training = false; document.body.classList.remove('training');
@@ -35525,7 +36048,10 @@ function boot() {
   Lobby.init();
   setupInput($('gl'));
   setupTouch($('touch'));
-  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Chat.setup(); Watch.setup(); Shop.setup(); Pass.setup(); Ladder.setup(); Dev.setup(); Prof.setup(); RankFx.setup(); Cloud.setup(); Cloud.init();
+  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Chat.setup(); Watch.setup(); Shop.setup(); Pass.setup(); Ladder.setup(); Dev.setup(); Prof.setup(); RankFx.setup(); Resume.setup(); Cloud.setup();
+  // 이어하기: 로그인 복원이 끝난 뒤(계정 기록을 불러온 다음) 지난 경기가 남아 있으면 묻는다 · 나중에 로그인할 때도 (10_resume.js)
+  Promise.resolve(Cloud.init()).catch((e) => console.warn(e)).then(() => Resume.check());
+  { const prev = G.onAuth; G.onAuth = (on) => { if (prev) try { prev(on); } catch (e) { console.warn(e); } if (on) setTimeout(() => Resume.check(), 0); }; }
   $('rotateDismiss').addEventListener('click', () => { G.rotateDismissed = true; $('rotateHint').hidden = true; });
   G.onResize();
   document.addEventListener('pointerdown', () => { Audio.init(); if (G.state === 'lobby') Audio.music(true); }, { once: true });
@@ -35534,7 +36060,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

@@ -242,7 +242,10 @@ const Crates = (() => {
     }
     map.set(key, b); return b;
   }
-  function track(it) { const b = ensure(it.bx, it.x, it.y, it.z); b.items.add(it); it.box = b; }
+  function track(it) {
+    const b = ensure(it.bx, it.x, it.y, it.z); b.items.add(it); it.box = b;
+    if (b.dead) { const n = +it.bx.slice(it.bx.lastIndexOf('_') + 1); if (n >= seq) seq = n + 1; }   // 이어하기로 되살린 상자 · 다른 기기 상자와 번호가 겹치지 않게
+  }
   function untrack(it) { const b = it.box; if (b) b.items.delete(it); }
   // 시체 상자 key: 같은 캐릭터가 리콜로 다시 죽어도 겹치지 않게 목숨·번호를 붙인다
   function newKey(c) { return 'd' + c.id + '_' + (c.life || 0) + '_' + (seq++); }

@@ -1302,6 +1302,13 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .acc-rn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acc-rn .dev-sel { flex: 1 1 140px; max-width: 200px; height: 32px; }
 #rnPanel { z-index: 27; }   /* 개발자 메뉴(26) 등 다른 창보다 위 (관전 화면이 덮고 있으면 나올 때까지 기다림) */
+/* v23 경기 이어하기 창 (10_resume.js) — 들어오자마자 뜨는 다른 안내(랭크 개편 28)보다도 위 */
+#rjPanel { z-index: 29; }
+.menu.rj-box { width: min(360px, 100%); }
+.rj-h { margin: 0; font-size: 1.2rem; }
+.rj-what { margin: 0; color: var(--amber); font-weight: 700; }
+.rj-stat { margin: 0; font-variant-numeric: tabular-nums; }
+.rj-msg { margin: 0; padding: 7px 9px; border-radius: 4px; background: rgba(240, 164, 58, 0.12); border: 1px solid rgba(240, 164, 58, 0.35); font-size: 0.9rem; }
 .menu.rn-box { width: min(340px, 100%); text-align: center; }
 .rn-names { margin: 4px 0 0; font-size: 1.15rem; } .rn-names s { color: var(--dim); } .rn-names b { color: var(--amber); }
 /* v20 테스터(베타 테스터 한정 컬렉션): 창고·무기 칸 전용 테두리 · 육각 β 번호 배지 · EXCLUSIVE 문구 */

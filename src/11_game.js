@@ -232,7 +232,8 @@ function setupPlane(scene, NP) {
   // 같이 하기: 방장이 정한 비행 경로(각도·옆 이동)를 모두가 쓴다
   const a = NP ? NP.a : Math.random() * TAU, off = NP ? NP.off * PC.off : rnd(-PC.off, PC.off), dx = Math.cos(a), dz = Math.sin(a);
   const px = -dz * off, pz = dx * off, L = PC.L;
-  const pl = { ax: px - dx * L, az: pz - dz * L, bx: px + dx * L, bz: pz + dz * L, dx, dz, t: 0, len: L * 2, speed: PC.speed, alt: PC.alt, active: true, pos: new THREE.Vector3(), mesh: buildPlane() };
+  const pl = { ax: px - dx * L, az: pz - dz * L, bx: px + dx * L, bz: pz + dz * L, dx, dz, t: 0, len: L * 2, speed: PC.speed, alt: PC.alt, active: true, pos: new THREE.Vector3(), mesh: buildPlane(),
+    a, offN: PC.off ? off / PC.off : 0 };   // 경로(각도·옆 이동 비율) — 이어하기가 같은 경로로 다시 만든다 (10_resume.js)
   pl.pos.set(pl.ax, pl.alt, pl.az); pl.mesh.position.copy(pl.pos); pl.mesh.rotation.y = Math.atan2(dx, dz);
   scene.add(pl.mesh);
   G.plane = pl;
@@ -343,10 +344,11 @@ function pickDropTarget() {
 }
 
 // ---------- 경기 ----------
-// cfg: 같이 하기(파티) 경기 설정 — 없으면 혼자
+// cfg: 같이 하기(파티) 경기 설정 — 없으면 혼자 · { resume }: 혼자 하던 경기를 저장한 상태로 다시 연다 (10_resume.js)
 async function startMatch(cfg) {
   if (G.state === 'loading') return;
-  const net = !!(cfg && G.net);
+  const net = !!(cfg && G.net), rs = !net && cfg && cfg.resume ? cfg.resume : null, rj = net && G.net.rj ? G.net.rj : null;   // rj: 나갔다가 같이 하기 경기로 돌아옴
+  if (!rs) Resume.fresh();   // 새 경기 — 답하지 않은 이어하기 창이 남아 있으면 그 경기는 포기로 기록
   G.state = 'loading'; G.paused = false; G.over = false; G.training = false; G.matchT = 0; G.victory = null;
   document.body.classList.remove('training'); $('quitBtn').textContent = '경기 포기 (로비로)';
   Audio.music(false);
@@ -354,6 +356,7 @@ async function startMatch(cfg) {
   $('loadMap').textContent = MAPS[SETTINGS.map].name; $('loadTip').textContent = pick(TIPS);
   const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
   disposeMatch();
+  G.netCfg = net ? cfg : null;   // 이어하기 저장용 (창을 닫을 때 10_net.js 가 먼저 나가도 남아 있게)
   const sc = new THREE.Scene(); G.scene = sc;
   const t = TIMES[SETTINGS.time], Q = QUALITY[SETTINGS.quality];
   // 맵별 안개 (정글: 조금 가깝고 푸르게) — 하늘 지평선 색도 안개 쪽으로 맞춰 경계가 안 보이게
@@ -374,8 +377,10 @@ async function startMatch(cfg) {
   try { await generateWorld(SETTINGS.map, sc, prog); }
   catch (e) { console.error(e); fatal('맵 생성 중 오류: ' + e.message); return; }
   prog(0.97, '아이템 배치');
-  // 같이 하기: 시드를 맞춰 모든 기기에서 같은 아이템·차량이 같은 자리에 생긴다
-  if (net) Net.seeded(cfg.seed + 1, () => populateLoot(sc)); else populateLoot(sc);
+  // 경기 시드: 같이 하기는 방장이 정한 것, 혼자면 새로(이어하기는 저장해 둔 것) — 시드가 같으면 모든 기기에서 같은 아이템이 같은 자리에 생긴다
+  //  v23: 혼자 하는 경기도 시드로 — 이어하기가 시작 아이템을 다시 만들고 바뀐 것만 저장한다 (10_resume.js)
+  const ms = net ? cfg.seed : rs ? rs.seed : (Math.random() * 2147483647) | 0; G.mseed = ms;
+  Net.seeded(ms + 1, () => populateLoot(sc)); Resume.mark();
   prog(0.98, '차량 배치');
   Veh.init(sc);
   if (net) Net.seeded(cfg.seed + 2, () => Veh.spawnAll()); else Veh.spawnAll();
@@ -384,15 +389,15 @@ async function startMatch(cfg) {
   Zone.init(sc, MODES[SETTINGS.mode].zoneScale, SETTINGS.map);
   Airdrop.init(sc); Recall.init(sc);
   if (W.xmas) XmasFx.init(sc, G.camera.position); else XmasFx.dispose();   // 크리스마스 섬: 내리는 눈·전구 반짝임
-  setupPlane(sc, net ? cfg.plane : null);
+  setupPlane(sc, net ? cfg.plane : rs ? rs.pl : null);   // 이어하기: 같은 비행 경로
   if (W.streamTerrain) { W.streamTerrain(G.plane.pos.x, G.plane.pos.z, Q.far + 250, 99); W.cullChunks(G.plane.pos.x, G.plane.pos.z, Q.far); }
   // 캐릭터 생성
   CHARS = []; G.noises = []; G.time = 0; G.stats = { shots: 0, hits: 0 }; G.killLog = []; G.knockLog = []; G.marker = null; G.updateMarker(); G.spec = null;
   G.teamOrder = null; G.spotted = new Map(); G.danger = null;
-  G.hc = net ? !!cfg.hc : SETTINGS.queue === 'hardcore' && Rank.hcOk();   // 하드코어 랭크전 (다이아 4 이상 경험자 · 전원 익스트림 봇)
-  G.ranked = net ? !!cfg.ranked : (SETTINGS.queue === 'ranked' || G.hc) && Rank.unlocked(); G.quit = false; G.rankResult = null; G.hostGone = false;
+  G.hc = net ? !!cfg.hc : rs ? !!rs.hc : SETTINGS.queue === 'hardcore' && Rank.hcOk();   // 하드코어 랭크전 (다이아 4 이상 경험자 · 전원 익스트림 봇)
+  G.ranked = net ? !!cfg.ranked : rs ? !!rs.rk : (SETTINGS.queue === 'ranked' || G.hc) && Rank.unlocked(); G.quit = false; G.rankResult = null; G.hostGone = false;
   // 팀 구성 (혼자 랭크전은 솔로 고정, 파티 랭크전은 고른 팀 구성)
-  const TS = G.teamSize = net ? cfg.teamSize : G.ranked ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
+  const TS = G.teamSize = net ? cfg.teamSize : rs ? rs.ts : G.ranked ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size;
   G.teams = [];
   const newTeam = (human) => { const T = { id: G.teams.length, members: [], place: 0, human: !!human }; G.teams.push(T); return T; };
   const addTo = (c, T) => { c.team = T.id; c.slot = T.members.length; T.members.push(c); return T; };
@@ -408,7 +413,7 @@ async function startMatch(cfg) {
     c.human = true;   // 사람(파티원 포함) — 봇은 사람 팀원에게 차 자리를 비켜 준다 (08_vehicle.js yieldSeat)
     c.vlook = hl.veh || null; c.glook = hl.gun || null;   // 차량·총기 스킨 (파티원은 그 사람의 장착 목록)
     c.pf = hl.pf || null;   // 프로필 사진·테두리·칭호 — 스타트 섬 머리 위 칭호 (08_island.js)
-    if (net) c.net = Net.charNet(hm.uid);
+    if (net) { c.net = Net.charNet(hm.uid); c.uid = hm.uid; }   // uid: 이 캐릭터의 사람 — 나갔다 돌아오면 봇에게서 돌려받는다 (10_net.js unbotize)
     const g = net && cfg.mm ? hm.g || 0 : 0; let T = grpT.get(g);
     if (!T || T.members.length >= TS) { T = newTeam(true); grpT.set(g, T); }
     CHARS.push(c); addTo(c, T); if (me) player = c;
@@ -416,13 +421,13 @@ async function startMatch(cfg) {
   // 사람이 장착한 차량 스킨 모델은 로딩 중에 미리 만들어 둠 (운전석에 앉는 순간 처음 만들면 큰 모델은 한 박자 멈춤 · 모델은 종류마다 한 번 만들어 공유)
   for (const c of CHARS) if (c.vlook) for (const t in c.vlook) { const id = c.vlook[t]; if (id && VehModels.has(id)) try { VehModels.instance(t, id); } catch (e) { console.warn(e); } }
   G.player = player;
-  const srand = net ? mulberry32(cfg.seed ^ 0x2545f491) : Math.random;        // 봇 이름·얼굴: 모든 기기에서 같게
+  const srand = mulberry32(ms ^ 0x2545f491);        // 봇 이름·얼굴: 시드가 같으면 같게 (같이 하기는 모든 기기에서 · 혼자는 이어하기가 다시 만들 때)
   const names = BOT_NAMES.slice(); for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(srand() * (i + 1)); const t0 = names[i]; names[i] = names[j]; names[j] = t0; }
-  const nBots = net ? Math.max(0, cfg.nBots - humans.length + 1) : G.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, 1, mapMaxBots(SETTINGS.map));
+  const nBots = net ? Math.max(0, cfg.nBots - humans.length + 1) : rs ? rs.nb : G.ranked ? Rank.botCount(SETTINGS.map) : clamp(SETTINGS.bots, 1, mapMaxBots(SETTINGS.map));
   const pl = G.plane, hostSide = !net || Net.isHost(), H0 = humans.length;
-  // 봇 난이도 → 스킨 (07_bot_skin.js): 같이 하기면 방장이 정한 난이도(cfg.bd)와 시드로 모든 기기에서 같은 스킨
-  const bseed = net ? cfg.seed : (Math.random() * 2147483647) | 0, dks = [];
-  for (let i = 0; i < nBots; i++) dks.push(net && cfg.bd ? BotSkin.fromCode(cfg.bd[i]) : hostSide ? BotSkin.pickDiff(G.ranked, G.hc) : null);
+  // 봇 난이도 → 스킨 (07_bot_skin.js): 같이 하기면 방장이 정한 난이도(cfg.bd)와 시드로 모든 기기에서 같은 스킨 · 혼자도 난이도를 글자로 정해 두어 이어하기가 같게
+  const bseed = ms, dks = [], bd = net ? cfg.bd : rs ? rs.bd : BotSkin.diffCodes(nBots, G.ranked, G.hc); G.bd = bd || '';
+  for (let i = 0; i < nBots; i++) dks.push(bd ? BotSkin.fromCode(bd[i]) : hostSide ? BotSkin.pickDiff(G.ranked, G.hc) : null);
   const BP = BotSkin.pool([...new Set(dks.filter(Boolean))], bseed); G.botLooks = [];
   for (let i = 0; i < nBots; i++) {
     const body0 = Body.randomBody(srand), dk = dks[i], sk = dk ? BotSkin.forBot(BP, dk, bseed, i) : null;
@@ -454,12 +459,14 @@ async function startMatch(cfg) {
   G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
   HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
   // 스타트 섬 (08_island.js): 25초 동안 모두 섬에 모였다가 수송기로 — 끝나면 비행 경로 보기부터. 테스트는 G.skipIsland 로 건너뜀
-  const isl = !G.skipIsland && Island.start(sc, net ? cfg.seed : (Math.random() * 2147483647) | 0);
+  //  이어하기는 섬 없이 (섬에서는 저장하지 않는다) · 같이 하기로 돌아올 때는 방장이 아직 섬에 있을 때만
+  const isl = !G.skipIsland && !rs && !(rj && !rj.isl) && Island.start(sc, net ? cfg.seed : (Math.random() * 2147483647) | 0);
+  if (rs) Resume.apply(rs);
   if (net) Net.ready();
   $('loading').hidden = true; $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
   G.state = 'play';
   if (isl) { G.previewT = 0; Audio.wind(0.04); }
-  else planeIntro();
+  else if (!rs && !rj) planeIntro();
 }
 // 비행 경로 보기 → 지도를 닫으면 출발 (스타트 섬이 끝날 때도)
 function planeIntro() {
@@ -469,7 +476,7 @@ function planeIntro() {
 }
 G.planeIntro = planeIntro;
 function disposeMatch() {
-  Training.dispose(); DM.dispose(); Island.dispose(); G.bgSim = false;
+  Training.dispose(); DM.dispose(); Island.dispose(); G.bgSim = false; G.netCfg = null; G.rjHold = false;
   Victory.reset();   // v23 우승 축하 창·춤 음악 정리
   if (!G.scene) return;
   Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose(); XmasFx.dispose();
@@ -527,19 +534,29 @@ function endMatch() {
   if (G.island) Island.dispose();
   // 방장: 다른 팀 사람(온라인 매칭)이 아직 경기 중이면 결과 화면 뒤에서 경기(봇·자기장·중계)를 계속 돌린다 — 안 그러면 그 사람들 경기가 멈춤
   G.bgSim = !!(G.net && Net.isHost() && Net.othersPlaying());
+  Resume.clear();   // 결과가 났으니 이어하기 저장은 지운다
+  const r = recordBR({ place, nT, total: G.total, kills: p.kills, dmg: p.damageDealt || 0, revives: p.revives, heads: p.headshots || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0,
+    surv: p.alive || win && !p.deathTime ? G.matchT || G.time : p.deathTime || 0, ranked: G.ranked, hc: G.hc, ts: G.teamSize, party: !!G.net, map: SETTINGS.map, win, quit: !!G.quit });   // matchT: 우승이 정해진 시각 (v23 우승 축하 시간은 빼고)
+  for (const m of r.notes) HUD.toast(m, 'ok');
+  HUD.showResult(win, p, nT);
+}
+// 배틀로얄 경기 기록: 경험치 · 전적 · 랭크 · 미션 — 결과 화면(endMatch)과 이어하기에서 포기·이미 끝난 경기(10_resume.js) 공용
+//  r: { place, nT(팀 수), total(인원), kills, dmg, revives, heads, drive, loot, heals, goldN, drops, surv(생존 초), ranked, hc, ts(팀 크기), party, map, win, quit }
+function recordBR(r) {
   // 경험치: 처치·부활·순위(팀 수 대비 비율)·우승
-  const xp = Math.round(40 + p.kills * 35 + p.revives * 20 + Math.max(0, nT - place) / Math.max(1, nT - 1) * (G.total - 1) * 4 + (win ? 150 : 0));
+  const xp = Math.round(40 + r.kills * 35 + (r.revives || 0) * 20 + Math.max(0, r.nT - r.place) / Math.max(1, r.nT - 1) * (r.total - 1) * 4 + (r.win ? 150 : 0));
   G.lastXp = xp;
-  STATS.matches++; STATS.kills += p.kills; STATS.xp += xp; if (win) STATS.wins++;
-  STATS.best = Math.min(STATS.best || 99, place);
-  const rr = { place, total: G.teamSize > 1 ? nT : G.total, kills: p.kills, dmg: p.damageDealt, win, quit: !!G.quit, map: SETTINGS.map };   // map: 승급전 성공 순위 (10_rank.js SERIES_TOP)
-  G.rankResult = G.hc ? Rank.applyHc(rr) : G.ranked ? Rank.apply(rr) : null;
-  STATS.recent.unshift({ rank: place, total: nT, kills: p.kills, time: Math.round(p.alive || win && !p.deathTime ? G.matchT || G.time : p.deathTime), map: SETTINGS.map, ranked: !!G.ranked, hc: G.hc ? 1 : 0, sq: G.teamSize, party: G.net ? 1 : 0, delta: G.rankResult && !G.rankResult.placement ? G.rankResult.delta : undefined });
+  STATS.matches++; STATS.kills += r.kills; STATS.xp += xp; if (r.win) STATS.wins++;
+  STATS.best = Math.min(STATS.best || 99, r.place);
+  const rr = { place: r.place, total: r.ts > 1 ? r.nT : r.total, kills: r.kills, dmg: r.dmg, win: !!r.win, quit: !!r.quit, map: r.map };   // map: 승급전 성공 순위 (10_rank.js SERIES_TOP)
+  G.rankResult = r.hc ? Rank.applyHc(rr) : r.ranked ? Rank.apply(rr) : null;
+  STATS.recent.unshift({ rank: r.place, total: r.nT, kills: r.kills, time: Math.round(r.surv), map: r.map, ranked: !!r.ranked, hc: r.hc ? 1 : 0, sq: r.ts, party: r.party ? 1 : 0, delta: G.rankResult && !G.rankResult.placement ? G.rankResult.delta : undefined });
   STATS.recent = STATS.recent.slice(0, 5);
   G.statsSaved = saveStats();
   // 미션: 배틀로얄 경기 기록 반영 (훈련장·데스매치는 여기로 오지 않음)
-  try { const evG = Eco.matchEnd({ quit: !!G.quit, win, place, kills: p.kills, heads: p.headshots || 0, dmg: p.damageDealt || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0, surv: p.alive || win && !p.deathTime ? G.matchT || G.time : p.deathTime || 0 }); if (evG) HUD.toast(`골드 이벤트 · 매치 보너스 +${evG} 골드 탄피`, 'ok'); const B = Eco.bpLast; if (B && B.xp) HUD.toast(`배틀패스 +${B.xp} 경험치` + (B.lv > B.lv0 ? ` · ${B.lv}단계 달성! 보상이 들어왔습니다` : ''), 'ok'); } catch (e) { console.warn('미션 반영 실패', e); }
-  HUD.showResult(win, p, nT);
+  const notes = [];
+  try { const evG = Eco.matchEnd({ quit: !!r.quit, win: !!r.win, place: r.place, kills: r.kills, heads: r.heads || 0, dmg: r.dmg || 0, drive: r.drive || 0, loot: r.loot || 0, heals: r.heals || 0, goldN: r.goldN || 0, drops: r.drops || 0, surv: r.surv || 0 }); if (evG) notes.push(`골드 이벤트 · 매치 보너스 +${evG} 골드 탄피`); const B = Eco.bpLast; if (B && B.xp) notes.push(`배틀패스 +${B.xp} 경험치` + (B.lv > B.lv0 ? ` · ${B.lv}단계 달성! 보상이 들어왔습니다` : '')); } catch (e) { console.warn('미션 반영 실패', e); }
+  return { xp, notes };
 }
 
 // ---------- 메인 업데이트 ----------
@@ -575,8 +592,8 @@ G.update = function (dt) {
     if (!overIsland(pl.ax + pl.dx * ahead, pl.az + pl.dz * ahead) && d > pl.len * 0.5) for (const c of left) { if (!Net.mine(c)) continue; if (c.isPlayer) HUD.toast('수송기가 섬을 벗어나 자동 강하합니다', 'warn'); jumpOut(c); }
     if (d > pl.len) { pl.active = false; pl.mesh.visible = false; Audio.plane(false); }
   }
-  // 플레이어
-  if (p && p.alive && (!G.over || G.victory)) {   // v23 우승 축하 중에도 움직일 수 있다
+  // 플레이어 (v23 우승 축하 중에도 움직일 수 있다 · 같이 하기로 돌아오는 중이면 방장이 지금 상태를 보낼 때까지 그대로 — 10_resume.js)
+  if (p && p.alive && (!G.over || G.victory) && !G.rjHold) {
     const modal = HUD.modalOpen();
     if (p.mode === 'plane') {
       if (!modal || !$('mapPanel').hidden) { p.yaw -= Input.lookX * 0.0023 * SETTINGS.lookSens; p.pitch = clamp(p.pitch - Input.lookY * 0.0023 * SETTINGS.lookSens, -1.2, 0.6); }
@@ -710,6 +727,7 @@ G.update = function (dt) {
   }
   if (!bg) HUD.update(dt);
   if (G.net) Net.tick(dt);
+  if (!bg) Resume.tick(dt);   // 이어하기: 5초마다 경기 상태 저장
   if (G.victory) Victory.update(dt);   // v23 우승 축하: 동상·춤·자동 결산 (결산은 거기서)
   else if (G.over) { G.endT -= dt; if (G.endT <= 0 && G.state === 'play') { if (G.dm) DM.end(); else endMatch(); } }
 };
@@ -773,6 +791,7 @@ G.ui = function (a) {
 };
 function toLobby() {
   if (G.net) Net.leave();
+  if (!Resume.busy) Resume.clear();   // 메뉴로 나간 경기는 이어하지 않는다 (경기 포기는 그때 기록됨)
   $('resultPanel').hidden = true; $('hud').hidden = true; $('mapPanel').hidden = true; $('invPanel').hidden = true; $('pausePanel').hidden = true;
   disposeMatch(); G.state = 'lobby'; G.paused = false; G.spec = null; releaseLock();
   G.training = false; document.body.classList.remove('training');
@@ -868,7 +887,10 @@ function boot() {
   Lobby.init();
   setupInput($('gl'));
   setupTouch($('touch'));
-  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Chat.setup(); Watch.setup(); Shop.setup(); Pass.setup(); Ladder.setup(); Dev.setup(); Prof.setup(); RankFx.setup(); Cloud.setup(); Cloud.init();
+  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Chat.setup(); Watch.setup(); Shop.setup(); Pass.setup(); Ladder.setup(); Dev.setup(); Prof.setup(); RankFx.setup(); Resume.setup(); Cloud.setup();
+  // 이어하기: 로그인 복원이 끝난 뒤(계정 기록을 불러온 다음) 지난 경기가 남아 있으면 묻는다 · 나중에 로그인할 때도 (10_resume.js)
+  Promise.resolve(Cloud.init()).catch((e) => console.warn(e)).then(() => Resume.check());
+  { const prev = G.onAuth; G.onAuth = (on) => { if (prev) try { prev(on); } catch (e) { console.warn(e); } if (on) setTimeout(() => Resume.check(), 0); }; }
   $('rotateDismiss').addEventListener('click', () => { G.rotateDismissed = true; $('rotateHint').hidden = true; });
   G.onResize();
   document.addEventListener('pointerdown', () => { Audio.init(); if (G.state === 'lobby') Audio.music(true); }, { once: true });
@@ -877,7 +899,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

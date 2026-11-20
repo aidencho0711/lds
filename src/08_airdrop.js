@@ -51,7 +51,7 @@ const Airdrop = (() => {
     list.push(d);
     HUD.toast('보급품이 투하되었습니다! 지도에 표시됩니다', 'warn');
   }
-  function land(d) {
+  function land(d, quiet) {   // quiet: 이어하기로 되살림 (모델·충돌만 — 연막·내용물은 따로)
     d.landed = true; d.y = d.gy; d.obj.position.y = d.gy; d.landT = G.time;
     // 충돌 상자 (밟고 올라설 수 있음)
     const b = { x0: d.x - 0.62, x1: d.x + 0.62, y0: d.gy - 0.2, y1: d.gy + 0.84, z0: d.z - 0.5, z1: d.z + 0.5, soft: false, nav: false, _q: 0, kind: 'crate' };
@@ -60,8 +60,9 @@ const Airdrop = (() => {
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) gridPush(W.grid, j * CGN + i, b);
     // 내용물: 보급 전용 무기 1정 + 맞는 탄 + 장비·조준경·회복 (파티원 기기는 방장이 만든 것을 받는다)
     //  v22: 상자 위에 올려 두지 않고 상자 안에 (bx = 'a<번호>' — 줍기 목록에 '보급 상자'로 묶여 보인다)
+    if (quiet) return;
     if (d.remote) { addSmoke(d); return; }
-    const key = 'a' + (seq++) + '_' + Math.round(d.x) + '_' + Math.round(d.z), y0 = d.gy + 0.3;
+    const key = d.key = 'a' + (seq++) + '_' + Math.round(d.x) + '_' + Math.round(d.z), y0 = d.gy + 0.3;
     const put = (id, n, inst) => { const it = spawnItem(scene, id, n, d.x, y0, d.z, inst, undefined, key); it.drop = 1; d.items.push(it); };
     const gun = weightedPick([['awm', 22], ['amr', 14], ['groza', 22], ['mg3', 20], ['slr', 22]]);   // v20: AMR · Groza 추가
     put(gun, 1, newWeapon(gun, ITEMS[gun].mag));
@@ -77,12 +78,39 @@ const Airdrop = (() => {
     if (Math.random() < 0.5 && !G.training) put('gold', Math.round(rnd(40, 80)));
     addSmoke(d);
   }
-  // 주황 연막 기둥
-  function addSmoke(d) {
+  // 주황 연막 기둥 (t0: 이어하기로 되살릴 때 이미 지난 시간 — 소리 없이)
+  function addSmoke(d, t0) {
     const sg = new THREE.Group(), parts = [];
     for (let i = 0; i < 22; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(), color: i % 3 ? 0xe2662a : 0xf08a3a, transparent: true, opacity: 0, depthWrite: false })); s.userData = { ph: Math.random(), sx: rnd(-0.6, 0.6), sz: rnd(-0.6, 0.6) }; sg.add(s); parts.push(s); }
-    sg.position.set(d.x + 0.9, d.gy + 0.2, d.z); scene.add(sg); d.smoke = { g: sg, parts, t: 0 };
-    Audio.impact({ x: d.x, y: d.gy, z: d.z }, false);
+    sg.position.set(d.x + 0.9, d.gy + 0.2, d.z); scene.add(sg); d.smoke = { g: sg, parts, t: t0 || 0 };
+    if (t0 === undefined) Audio.impact({ x: d.x, y: d.gy, z: d.z }, false);
+  }
+  // ---------- 이어하기 (10_resume.js) ----------
+  //  날고 있는 수송기 [시작 x·z, 방향 x·z, 지난 시간, 떨어뜨렸나, 목표 x·z] · 상자 [x, z, 높이, 착지했나, 낙하 시간, 착지 시각, 상자 key]
+  //  착지한 상자의 내용물은 아이템(bx = key)으로 따로 되살아난다 — 여기서는 상자 모델·충돌·연막만
+  const q2 = (v) => Math.round(v * 100) / 100;
+  function snap() {
+    return { k: lastKey, s: seq, p: planes.map((p) => [q2(p.x0), q2(p.z0), q2(p.dx * 1000) / 1000, q2(p.dz * 1000) / 1000, q2(p.t), p.dropped ? 1 : 0, q2(p.target.x), q2(p.target.z)]),
+      d: list.map((d) => [q2(d.x), q2(d.z), q2(d.y), d.landed ? 1 : 0, q2(d.t), d.landed ? q2(d.landT) : 0, d.key || '']) };
+  }
+  function restore(o) {
+    if (!o || !scene) return;
+    lastKey = o.k || ''; seq = o.s || 0;
+    for (const a of o.p || []) {
+      const mesh = buildPlane(); mesh.scale.setScalar(0.8); scene.add(mesh); mesh.rotation.y = Math.atan2(a[2], a[3]);
+      planes.push({ x0: a[0], z0: a[1], dx: a[2], dz: a[3], t: a[4], len: 1300, dropAt: 650, dropped: !!a[5], mesh, target: { x: a[6], z: a[7] }, remote: false });
+    }
+    for (const a of o.d || []) {
+      const obj = new THREE.Group(), crate = Models.crate(), chute = Models.canopy();
+      obj.add(crate); obj.add(chute); chute.position.y = 0.85;
+      const d = { x: a[0], z: a[1], y: a[2], obj, crate, chute, landed: false, t: a[4], items: [], smoke: null, gy: heightAt(a[0], a[1]), remote: false, key: a[6] || '' };
+      obj.position.set(d.x, d.y, d.z); scene.add(obj); list.push(d);
+      if (!a[3]) continue;
+      // 착지한 상자: 충돌 상자 · 내용물 · 낙하산은 접힌 채 · 연막은 40초 동안만
+      land(d, true); d.landT = a[5]; d.chute.visible = false;
+      const ago = G.time - d.landT; if (ago < 34) addSmoke(d, ago);
+      d.items = GROUND.filter((it) => it.alive && it.bx === d.key);
+    }
   }
   function update(dt) {
     if (!scene) return;
@@ -123,5 +151,5 @@ const Airdrop = (() => {
     return best;
   }
   function markers() { return list.filter((d) => !d.landed || remaining(d) > 0 || (d.remote && G.time - d.landT < 90)).map((d) => ({ x: d.x, z: d.z, falling: !d.landed })); }
-  return { init, dispose, update, launch, nearest, markers, get list() { return list; }, get planes() { return planes; } };
+  return { init, dispose, update, launch, nearest, markers, snap, restore, get list() { return list; }, get planes() { return planes; } };
 })();
