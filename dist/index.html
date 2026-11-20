@@ -3757,18 +3757,42 @@ const Audio = (() => {
       const fire = (t0, d, g = 0.25) => { whoosh(t0, d, 300, 1400, g); for (let i = 0; i < 6; i++) noise(o, t0 + Math.random() * d, 0.03, 'highpass', 2500 + Math.random() * 2500, 1, 0.08); };
       const glit = (t0, n) => { for (let i = 0; i < n; i++) tone(o, t0 + i * 0.06 + Math.random() * 0.03, 0.035, 'square', 300 + Math.random() * 1800, 150 + Math.random() * 600, 0.035); };
       switch (kind) {
-        case 'meteor': tone(o, t, 0.5, 'sine', 2200, 260, 0.06); whoosh(t, 0.5, 600, 3000, 0.3); boom(t + 0.5, 1.1); chord(t + 0.55, [1318, 1760, 2637], 0.9, 'sine', 0.03, 0.03); break;
-        case 'launch': tone(o, t + 0.3, 0.65, 'sine', 180, 900, 0.08); tone(o, t + 0.3, 0.65, 'sawtooth', 90, 360, 0.025); whoosh(t + 0.95, 0.7, 500, 4000, 0.32); chord(t + 0.95, [1760, 2637, 3520], 0.6, 'sine', 0.03, 0.04); break;
-        case 'spinfall': pad(t, [523, 659, 784, 1046], 1.6, 0.04); whoosh(t + 0.2, 1.2, 400, 2400, 0.2); boom(t + 1.38, 1.2); chord(t + 1.4, [1046, 1318, 1568, 2093], 1.4, 'triangle', 0.05, 0.02); chord(t + 2.75, [784, 988, 1175, 1568], 0.9, 'triangle', 0.06, 0.09); break;
-        case 'spinOut': chord(t + 0.6, [784, 988, 1175], 0.6, 'sine', 0.04, 0.06); whoosh(t + 1.55, 1.0, 400, 3600, 0.26); pad(t + 1.55, [1046, 1318, 1568, 2093], 1.2, 0.035); chord(t + 2.45, [2093, 2637, 3136, 4186], 0.8, 'sine', 0.03, 0.03); break;
-        case 'descend': pad(t, [392, 494, 587, 784], 2.6, 0.045); chord(t + 0.3, [1568, 2093, 2349, 3136], 2.2, 'sine', 0.018, 0.45); chord(t + 2.25, [784, 988, 1175, 1568], 1.6, 'sine', 0.04, 0.05); break;
-        case 'ascend': pad(t + 0.4, [392, 494, 587, 784, 988], 2.6, 0.04); chord(t + 1.1, [1568, 2093, 2637, 3136], 2.0, 'sine', 0.02, 0.35); chord(t + 2.75, [2093, 2637, 3136], 0.9, 'sine', 0.03, 0.03); break;
-        case 'emerge': tone(o, t, 2.4, 'sawtooth', 48, 62, 0.06); noise(o, t, 2.4, 'lowpass', 160, 0.8, 0.22); whoosh(t + 0.7, 1.5, 200, 900, 0.18); boom(t + 2.45, 0.9); tone(o, t + 2.45, 0.6, 'sawtooth', 110, 55, 0.06); break;
-        case 'sink': tone(o, t, 2.4, 'sawtooth', 62, 44, 0.06); noise(o, t, 2.2, 'lowpass', 160, 0.8, 0.2); whoosh(t + 0.8, 1.5, 900, 180, 0.2); boom(t + 2.35, 0.6); break;
-        case 'podium': chord(t, [523, 659, 784, 1046], 0.5, 'sawtooth', 0.025, 0.11); chord(t + 0.5, [1046, 1318, 1568], 1.2, 'triangle', 0.06); for (const tt of [0.6, 0.75, 1.4, 1.55]) { noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); noise(o, t + tt, 0.8, 'highpass', 5000, 0.7, 0.05); } whoosh(t + 0.5, 1.8, 900, 1500, 0.1); for (const tt of [2.4, 2.75, 3.1]) tone(o, t + tt, 0.25, 'triangle', 1568, 1568, 0.05); break;
-        case 'bowOut': chord(t + 0.7, [1046, 784, 659, 523], 0.5, 'triangle', 0.04, 0.12); for (const tt of [1.65, 1.7]) noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); chord(t + 2.35, [1568, 2093, 2637], 0.7, 'sine', 0.035, 0.04); break;
-        case 'rez': for (let i = 0; i < 12; i++) tone(o, t + 0.1 + i * 0.075, 0.05, 'square', 400 + i * 160, 400 + i * 160, 0.022); tone(o, t + 1.0, 0.5, 'sine', 1318, 1318, 0.05); chord(t + 1.55, [659, 880, 1318], 0.7, 'triangle', 0.04, 0.05); break;
-        case 'derez': chord(t + 0.7, [659, 880, 1318], 0.5, 'triangle', 0.035, 0.05); for (let i = 0; i < 10; i++) tone(o, t + 1.75 + i * 0.07, 0.05, 'square', 2000 - i * 150, 2000 - i * 150, 0.022); break;
+        // 노바: 별이 떨며 부푸는 높은 소리 → 터짐 → 떨어지는 휘파람 → 착지 · 수정이 솟는 맑은 소리 · 수정이 부서짐
+        case 'nova': tone(o, t, 0.55, 'sine', 900, 2400, 0.04); boom(t + 0.55, 0.7); chord(t + 0.56, [1568, 2093, 3136], 0.8, 'sine', 0.035, 0.02); tone(o, t + 0.6, 0.45, 'sine', 2200, 260, 0.05); whoosh(t + 0.6, 0.45, 600, 3000, 0.28); boom(t + 1.05, 1.1);
+          for (let i = 0; i < 6; i++) tone(o, t + 1.08 + i * 0.035, 0.5, 'sine', 2637 + i * 220, 2637 + i * 200, 0.025); noise(o, t + 3.0, 0.3, 'highpass', 5000, 0.8, 0.12); chord(t + 3.0, [3136, 3951, 4699], 0.4, 'sine', 0.02, 0.03); break;
+        case 'novaOut': tone(o, t + 0.3, 0.65, 'sine', 180, 900, 0.08); tone(o, t + 0.3, 0.65, 'sawtooth', 90, 360, 0.025); whoosh(t + 0.95, 0.7, 500, 4000, 0.32); boom(t + 1.2, 0.5); chord(t + 1.2, [1760, 2637, 3520], 0.7, 'sine', 0.035, 0.03); break;
+        // 제니스: 천상의 화음 위로 고리가 도는 맑은 소리 → 착지 충격 → 왕관이 맺히는 종 · 승리 화음 / 빨라지는 고리 · 별이 되어 솟음
+        case 'armillary': pad(t, [523, 659, 784, 1046], 1.7, 0.04); for (let i = 0; i < 8; i++) tone(o, t + 0.2 + i * 0.15, 0.3, 'triangle', 1318 + (i % 3) * 330, 1318 + (i % 3) * 330, 0.012); boom(t + 1.5, 1.2); chord(t + 1.52, [1046, 1318, 1568, 2093], 1.4, 'triangle', 0.05, 0.02);
+          chord(t + 2.15, [2093, 2637, 3136], 0.9, 'sine', 0.035, 0.05); chord(t + 2.8, [784, 988, 1175, 1568], 0.9, 'triangle', 0.06, 0.09); break;
+        case 'ascendStar': chord(t + 0.35, [1568, 2093, 2637], 0.7, 'sine', 0.03, 0.05); for (let i = 0; i < 10; i++) tone(o, t + 1.0 + i * Math.max(0.04, 0.12 - i * 0.009), 0.2, 'triangle', 1318 + i * 120, 1318 + i * 120, 0.012); whoosh(t + 1.0, 1.1, 400, 3600, 0.24); pad(t + 1.0, [1046, 1318, 1568, 2093], 1.1, 0.035); chord(t + 2.05, [2093, 2637, 3136, 4186], 0.9, 'sine', 0.035, 0.03); break;
+        // 하드코어 패왕: 불꼬리 → 쾅 · 바위가 갈라져 솟는 소리 · 우르르 · 목 꺾는 소리 · 주먹 / 바위가 덮치며 삼키는 소리
+        case 'crater': whoosh(t, 0.42, 300, 1800, 0.28); fire(t, 0.42, 0.15); boom(t + 0.42, 1.5); for (let i = 0; i < 9; i++) noise(o, t + 0.44 + i * 0.012, 0.09, 'bandpass', 500 + Math.random() * 600, 1, 0.22); noise(o, t + 0.45, 1.6, 'lowpass', 120, 0.7, 0.3);
+          for (const tt of [2.35, 2.65]) noise(o, t + tt, 0.04, 'highpass', 2200, 1.4, 0.25); tone(o, t + 3.25, 0.12, 'sine', 160, 60, 0.3); noise(o, t + 3.25, 0.1, 'lowpass', 800, 0.8, 0.3); for (let i = 0; i < 6; i++) noise(o, t + 3.2 + i * 0.1, 0.12, 'lowpass', 300, 0.8, 0.12); break;
+        case 'devour': boom(t + 0.62, 1.0); for (let i = 0; i < 9; i++) noise(o, t + 0.7 + i * 0.015, 0.1, 'bandpass', 400 + Math.random() * 500, 1, 0.2); fire(t + 0.8, 1.3, 0.3); boom(t + 1.2, 0.8); break;
+        // 이클립스: 낮게 깔리는 웅 · 해가 가려지는 동안 내려가는 음 → 다이아몬드 링의 맑은 섬광음 → 터짐
+        case 'eclipse': tone(o, t, 2.6, 'sawtooth', 62, 44, 0.05); noise(o, t, 2.4, 'lowpass', 160, 0.8, 0.2); tone(o, t + 0.15, 1.0, 'sine', 330, 110, 0.05); whoosh(t + 0.95, 1.4, 200, 900, 0.16); chord(t + 2.55, [2637, 3136, 3951, 5274], 0.9, 'sine', 0.035, 0.02); boom(t + 2.57, 0.9); tone(o, t + 2.57, 0.6, 'sawtooth', 110, 55, 0.06); break;
+        case 'umbra': tone(o, t, 2.6, 'sawtooth', 62, 44, 0.05); tone(o, t + 0.1, 1.1, 'sine', 330, 110, 0.05); noise(o, t, 2.4, 'lowpass', 160, 0.8, 0.2); whoosh(t + 1.0, 1.4, 900, 180, 0.2); chord(t + 2.6, [2637, 3136, 3951], 0.8, 'sine', 0.03, 0.02); break;
+        // 랭크 챔피언: 팡파르 · 시상대가 솟는 소리 · 트로피를 받는 종 · 색종이 대포 · 환호 같은 잡음 / 커튼콜 박수 · 커튼이 닫혔다 열림
+        case 'ceremony': chord(t, [523, 659, 784, 1046], 0.55, 'sawtooth', 0.025, 0.11); noise(o, t + 0.05, 0.6, 'lowpass', 300, 0.8, 0.15); chord(t + 0.6, [1046, 1318, 1568], 1.2, 'triangle', 0.06); chord(t + 1.15, [1568, 2093, 2637], 0.8, 'sine', 0.04, 0.03); chord(t + 1.65, [784, 988, 1175, 1568], 1.2, 'triangle', 0.06, 0.06);
+          for (const tt of [1.7, 1.82, 2.3, 2.42]) { noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); noise(o, t + tt, 0.8, 'highpass', 5000, 0.7, 0.05); } for (let i = 0; i < 30; i++) noise(o, t + 1.7 + Math.random() * 1.6, 0.03, 'bandpass', 1500 + Math.random() * 2500, 1.2, 0.05); break;
+        case 'curtain': chord(t + 0.75, [784, 659, 523], 0.6, 'triangle', 0.04, 0.12); for (let i = 0; i < 40; i++) noise(o, t + 0.9 + Math.random() * 1.3, 0.03, 'bandpass', 1500 + Math.random() * 2500, 1.2, 0.05); whoosh(t + 1.85, 0.45, 300, 900, 0.18); whoosh(t + 2.62, 0.45, 900, 300, 0.15); for (const tt of [2.65, 2.7]) noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); break;
+        // 정점의 베테랑: 연막탄이 구르는 쇳소리 · 쉭 하는 연기 · 군화 발소리 · 차렷 · 훈장 셋 / 연막 · 멀어지는 발소리 · 군번줄
+        case 'smokeIn': for (const tt of [0.45, 0.62]) noise(o, t + tt, 0.05, 'bandpass', 2800, 2, 0.2); noise(o, t + 0.5, 2.2, 'bandpass', 3200, 0.6, 0.1); for (let i = 0; i < 4; i++) noise(o, t + 0.85 + i * 0.27, 0.06, 'lowpass', 700, 1, 0.25); noise(o, t + 1.9, 0.08, 'lowpass', 600, 1, 0.35);
+          for (const tt of [2.4, 2.65, 2.9]) { tone(o, t + tt, 0.4, 'sine', 2637, 2630, 0.04); tone(o, t + tt, 0.25, 'sine', 3951, 3940, 0.02); } break;
+        case 'smokeOut': for (const tt of [1.6, 1.72]) noise(o, t + tt, 0.05, 'bandpass', 2800, 2, 0.2); noise(o, t + 1.65, 1.8, 'bandpass', 3200, 0.6, 0.12); for (let i = 0; i < 4; i++) noise(o, t + 1.95 + i * 0.27, 0.06, 'lowpass', 700, 1, 0.22 * (1 - i * 0.2)); for (const tt of [2.75, 3.05]) tone(o, t + tt, 0.3, 'sine', 3136, 3130, 0.025); break;
+        // 셀레스티얼: 성가 같은 화음 · 날갯짓 바람 소리 · 착지의 종 · 깃털 / 날아오르는 날갯짓
+        case 'wingsIn': pad(t, [392, 494, 587, 784], 2.6, 0.045); for (const tt of [0.5, 1.7]) whoosh(t + tt, 0.6, 250, 700, 0.16); chord(t + 0.3, [1568, 2093, 2349, 3136], 2.2, 'sine', 0.018, 0.45); chord(t + 2.25, [784, 988, 1175, 1568], 1.6, 'sine', 0.04, 0.05); noise(o, t + 2.85, 0.6, 'highpass', 3000, 0.7, 0.06); break;
+        case 'wingsOut': pad(t + 0.4, [392, 494, 587, 784, 988], 2.6, 0.04); for (let i = 0; i < 4; i++) whoosh(t + 0.9 + i * 0.45, 0.5, 220, 650, 0.2); chord(t + 1.1, [1568, 2093, 2637, 3136], 2.0, 'sine', 0.02, 0.35); chord(t + 2.75, [2093, 2637, 3136], 0.9, 'sine', 0.03, 0.03); break;
+        // 오버로드: 용암이 끓는 소리 · 옥좌가 솟는 낮은 울림 · 불길 · 주먹을 손바닥에 / 가라앉는 울림
+        case 'throne': noise(o, t, 3.0, 'lowpass', 220, 0.8, 0.22); for (let i = 0; i < 10; i++) noise(o, t + Math.random() * 3, 0.05, 'bandpass', 300 + Math.random() * 300, 3, 0.12); tone(o, t + 0.3, 0.9, 'sawtooth', 40, 70, 0.06); fire(t + 0.2, 1.2, 0.3); tone(o, t + 2.95, 0.7, 'sawtooth', 70, 40, 0.05); tone(o, t + 3.1, 0.12, 'sine', 160, 60, 0.32); noise(o, t + 3.1, 0.1, 'lowpass', 800, 0.8, 0.3); break;
+        case 'throneOut': noise(o, t + 0.15, 2.8, 'lowpass', 220, 0.8, 0.2); tone(o, t + 0.3, 0.6, 'sawtooth', 40, 70, 0.06); fire(t + 1.95, 1.0, 0.3); tone(o, t + 2.0, 0.8, 'sawtooth', 70, 38, 0.06); break;
+        // 이터널: 거꾸로 감기다 느려지는 초침 소리 → 열두 시 종 / 빨라지는 초침 · 모래 흐르는 소리
+        case 'clockIn': for (let tt = 0.3; tt < 1.6;) { tone(o, t + tt, 0.03, 'square', 2600, 2600, 0.025); tt += 0.035 + Math.pow(tt / 1.6, 3) * 0.2; } for (let i = 0; i < 3; i++) { tone(o, t + 1.6 + i * 0.5, 1.6, 'sine', 523, 520, 0.06); tone(o, t + 1.6 + i * 0.5, 1.2, 'sine', 1046, 1040, 0.03); } chord(t + 1.62, [988, 1318, 1976, 2637], 1.4, 'sine', 0.03, 0.03); break;
+        case 'clockOut': for (let tt = 0.3; tt < 2.0;) { tone(o, t + tt, 0.03, 'square', 2600, 2600, 0.022); tt += Math.max(0.03, 0.25 - (tt - 0.3) * 0.15); } noise(o, t + 1.0, 1.1, 'highpass', 4000, 0.5, 0.06); chord(t + 1.95, [1976, 1318, 988], 0.8, 'sine', 0.03, 0.06); break;
+        // 전쟁의 신: 칼들이 휘파람 소리를 내며 떨어져 꽂히는 쇳소리 · 번개 · 포효 / 검이 꽂히고 뽑히는 쇳소리 · 번개
+        case 'bladeRain': for (let i = 0; i < 7; i++) { const tt = 0.1 + i * 0.11; tone(o, t + tt, 0.22, 'sine', 2400, 900, 0.025); noise(o, t + tt + 0.22, 0.06, 'bandpass', 3200, 3, 0.18); tone(o, t + tt + 0.22, 0.3, 'triangle', 1900 + i * 80, 1850, 0.03); }
+          thunder(t + 0.85, 0.7); thunder(t + 0.95, 1.2); boom(t + 2.35, 0.6); noise(o, t + 2.35, 0.7, 'bandpass', 500, 0.7, 0.2); break;
+        case 'swordOut': tone(o, t + 0.3, 0.25, 'sine', 2200, 700, 0.03); noise(o, t + 0.55, 0.08, 'bandpass', 2800, 3, 0.3); boom(t + 0.55, 0.6); noise(o, t + 1.2, 0.35, 'bandpass', 3500, 2, 0.12); tone(o, t + 1.22, 0.4, 'triangle', 1500, 2600, 0.03); thunder(t + 1.72, 1.3); break;
         case 'escape': {   // 백룸 탈출: 형광등 웅 · 찢어지며 열림 · 몸을 던짐 · 착지 · 그것의 울음(떨리며 오르는 톱니) · 허공을 움켜쥠 · 문틈이 닫힘
           tone(o, t, 3.0, 'sawtooth', 118, 121, 0.035); tone(o, t, 3.0, 'sine', 236, 236, 0.03); noise(o, t, 0.35, 'bandpass', 2600, 0.7, 0.3); glit(t + 0.02, 7);
           whoosh(t + 0.38, 0.5, 400, 2800, 0.28); noise(o, t + 0.97, 0.12, 'lowpass', 500, 0.8, 0.45); tone(o, t + 0.97, 0.2, 'sine', 110, 50, 0.3);
@@ -3781,14 +3805,6 @@ const Audio = (() => {
         // 노클립: 바닥이 지직 · 형광등 웅 → 구멍으로 떨어지는 바람 소리 → 아래에서 빛 · 멀리 바닥에 떨어지는 소리
         case 'noclip': tone(o, t + 0.35, 1.2, 'sawtooth', 118, 126, 0.04); glit(t + 0.42, 10); tone(o, t + 0.92, 0.3, 'square', 300, 60, 0.05); whoosh(t + 0.96, 0.6, 1600, 140, 0.25);
           tone(o, t + 1.5, 0.5, 'sine', 1200, 1250, 0.04); noise(o, t + 1.5, 0.4, 'highpass', 4000, 0.8, 0.08); noise(o, t + 2.0, 0.3, 'lowpass', 260, 0.8, 0.25); tone(o, t + 2.0, 0.35, 'sine', 70, 40, 0.2); break;
-        case 'strikeIn': thunder(t + 0.02, 0.6); thunder(t + 0.18, 0.8); thunder(t + 0.3, 1.1); for (const tt of [2.0, 2.45, 2.9]) noise(o, t + tt, 0.08, 'highpass', 2600, 0.8, 0.12); break;
-        case 'strikeOut': thunder(t + 0.75, 0.5); thunder(t + 0.98, 1.2); break;
-        case 'slam': whoosh(t, 0.42, 300, 1800, 0.28); fire(t, 0.42, 0.15); boom(t + 0.42, 1.4); noise(o, t + 0.45, 1.6, 'lowpass', 120, 0.7, 0.3); fire(t + 0.5, 1.0, 0.12); break;
-        case 'slamOut': boom(t + 0.62, 1.0); fire(t + 0.66, 1.4, 0.3); break;
-        case 'fireStep': fire(t, 1.3, 0.32); boom(t + 0.05, 0.6); tone(o, t + 2.1, 0.12, 'sine', 160, 60, 0.3); noise(o, t + 2.1, 0.1, 'lowpass', 800, 0.8, 0.3); break;
-        case 'burnOut': fire(t + 0.85, 1.4, 0.3); whoosh(t + 1.5, 0.6, 600, 3000, 0.15); break;
-        case 'orbForm': for (let i = 0; i < 5; i++) tone(o, t + i * 0.12, 1.3, 'sine', 300 + i * 90, 900 + i * 220, 0.025); chord(t + 1.4, [988, 1318, 1976, 2637], 1.6, 'sine', 0.04, 0.03); break;
-        case 'orbOut': chord(t + 0.6, [988, 1318, 1976], 0.8, 'sine', 0.03, 0.05); for (let i = 0; i < 5; i++) tone(o, t + 1.0 + i * 0.1, 1.2, 'sine', 1200 + i * 200, 400 + i * 80, 0.025); break;
         case 'bye': chord(t + 0.4, [1318, 1568, 2093], 0.9, 'sine', 0.035, 0.07); noise(o, t + 0.42, 0.5, 'highpass', 4500, 0.8, 0.05); break;
       }
     },
@@ -24214,6 +24230,19 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-20', t: '입장·퇴장 연출 10가지를 각자의 테마로 새로 — 시상식 · 혼천의 · 분화구 · 개기일식 · 연막 · 날개 · 노바 · 옥좌 · 시계 · 칼비', items: [
+    '랭크 챔피언 — 입장: 양쪽 조명이 쓸고 와 모이고 금빛 「1」 시상대가 솟아 캐릭터를 들어 올림 → 하늘에서 내려온 트로피를 받아 머리 위로 번쩍 · 색종이 대포 / 퇴장: 커튼콜 — 조명 아래 깊이 인사하고 손을 흔들면 붉은 커튼이 닫혔다 열리고 빈자리',
+    '제니스 — 입장: 세 겹 혼천의 고리가 서로 다른 축으로 돌며 몸을 감싼 채 하늘에서 내려오고, 착지하면 고리가 머리 위로 올라가 별 왕관이 됨 → 승리의 주먹 / 퇴장: 왕관이 다시 혼천의로 펼쳐져 점점 빠르게 돌고, 그 속에서 작아져 별이 되어 하늘로',
+    '하드코어 패왕 — 입장: 불꼬리를 끌며 떨어져 주먹으로 땅을 내려치면 바위판이 분화구처럼 솟고 용암이 갈라짐 → 일어나 목을 꺾어 풂 / 퇴장: 땅을 치면 바위판이 이빨처럼 솟아 안쪽으로 덮치고 불길과 함께 땅속으로',
+    '이클립스 — 입장: 하늘의 해 위로 검은 달이 미끄러져 개기일식 — 세상이 붉게 어두워지고 그림자에서 팔짱 낀 채 솟아오름 → 다이아몬드 링 섬광과 함께 두 팔을 내뻗음 / 퇴장: 다시 일식이 오고 팔짱 낀 채 그림자 속으로 가라앉음',
+    '정점의 베테랑 — 입장: 연막탄이 날아와 구르고, 은빛 연기 속에서 행진해 나와 차렷 → 경례 · 가슴에 훈장 셋이 차례로 반짝 / 퇴장: 마지막 경례 후 발밑에 연막탄을 떨어뜨리고 연기 속으로 돌아서 걸어감 → 연기가 걷히면 군번줄만 반짝',
+    '셀레스티얼 — 입장: 큰 깃털 날개로 천천히 날갯짓하며 빛기둥 속으로 내려와 사뿐히 · 날개를 접자 깃털로 흩어지고 머리 위 광륜 · 두 손을 펴 축복 / 퇴장: 등에서 날개가 펼쳐져 크게 날갯짓하며 빛기둥을 따라 날아오름',
+    '노바 — 입장: 하늘의 별이 부풀다 노바로 터지고, 그 조각이 떨어져 한 무릎 착지 · 바닥에서 푸른 수정이 솟음 / 퇴장: 가슴에 빛을 모아 솟구치고 하늘에서 다시 별로 터짐',
+    '오버로드 — 입장: 바닥이 녹아 용암이 되고 불길에 휩싸인 검은 쇠 옥좌가 솟음 — 턱을 괴고 앉아 내려다보다 일어나 한 걸음 나와 주먹을 손바닥에 / 퇴장: 등 뒤에 옥좌가 솟고, 물러나 앉아 턱을 괸 채 옥좌와 함께 용암 속으로',
+    '이터널 — 입장: 커다란 시계의 바늘이 거꾸로 빠르게 돌고(시간 되감기) ∞ 빛이 감기며 몸이 빚어짐 → 열두 시에 멈추며 종소리 · 두 손을 펴 하늘을 봄 / 퇴장: 바늘이 점점 빠르게 앞으로 돌고 몸이 보랏빛 모래가 되어 흘러내림',
+    '전쟁의 신 — 입장: 달아오른 칼들이 비처럼 쏟아져 둘레에 꽂히고, 붉은 번개 속에 한 무릎으로 나타나 포효 → 칼은 타오르다 재가 됨 / 퇴장: 큰 검이 눈앞에 내리꽂히고, 두 손으로 뽑아 치켜들면 번개가 검에 떨어지며 사라짐',
+    '소리도 연출마다 새로: 팡파르 · 박수 · 커튼 · 연막탄 핀과 쉭 소리 · 군화 발소리 · 날갯짓 · 시계 똑딱임과 종 · 칼이 꽂히는 쨍 소리 · 용암 끓는 소리 등 · 계정 정보 「입장 연출」 탭의 설명도 새 연출에 맞춤',
+  ] },
   { v: 'v23', d: '2026-11-20', t: '제니스 승급 컷신 — 엠블럼 구성품이 합쳐지는 장면', items: [
     '프리즘 빛이 갈라지면 그 빛에서 새 제니스 엠블럼의 구성품이 튀어나와 입체로 펼쳐짐 — 금빛 인장판 · 무지개 안쪽 면 · 팔각 별 · 보석 · 양쪽 날개 · 궤도 고리 · 왕관 · 단계 명판 (비스듬히 본 모습 · 층마다 그림자 · 별자리 선)',
     '인장판이 돌며 자리를 잡고 날개 · 궤도 고리 · 안쪽 면 · 별 · 왕관 · 명판이 차례로 날아들어 「철컥」 맞물림 — 맞물릴 때마다 빛 · 빛 알갱이 · 무지개 고리 · 한 음씩 높아지는 소리, 카메라는 점점 정면으로',
@@ -29164,17 +29193,17 @@ const PartyFx = (() => {
   //  t: 새 티어 번호(RANK_TIERS — 10_rank.js, 최고 도달은 칭호 tier_<id> 로 판단) · 없으면 같은 id 의 칭호(10_ui_profile.js TI)
   //  mo: [입장, 퇴장, 작별 몸짓] · c: [주색, 보조색, 밝은 색] · pal: 입자 색
   const ENT = [
-    { id: 'champ_tier', name: '랭크 챔피언', mo: ['podium', 'bowOut', 'bow'], c: [0xffc93a, 0xff6a3a, 0xfff4c8], pal: [0xffd65a, 0xfff0b0, 0xff4a5a, 0x4ab8ff, 0x6aff9a, 0xffffff] },
-    { id: 'zenith', t: 13, name: '제니스', mo: ['spinfall', 'spinOut', 'salute'], c: [0xffd76a, 0xa47cff, 0xffffff], pal: [0xffd76a, 0xfff2c8, 0xc8a8ff, 0xffffff] },
-    { id: 'champ_hc', name: '하드코어 패왕', mo: ['slam', 'slamOut', 'flex'], c: [0xff3a1e, 0xffa030, 0xffe2c8], pal: [0xff3a1e, 0xff7a20, 0xffc04a, 0xffe2c8] },
-    { id: 'eclipse', t: 12, name: '이클립스', mo: ['emerge', 'sink', 'cross'], c: [0xff4a2e, 0x8a0c1a, 0xffd8c8], pal: [0xff4a2e, 0xff8a5a, 0xffd0b0, 0xc8102a] },
-    { id: 'champ_lv', name: '정점의 베테랑', mo: ['rez', 'derez', 'salute'], c: [0xcfe4ff, 0x7fb8ff, 0xffffff], pal: [0xcfe4ff, 0x9fd0ff, 0xffffff, 0xffe9a8] },
-    { id: 'celestial', t: 11, name: '셀레스티얼', mo: ['descend', 'ascend', 'open'], c: [0xf3d98b, 0xfff4d8, 0xffffff], pal: [0xf3d98b, 0xffe9b0, 0xfffaf0, 0xffffff] },
-    { id: 'nova', t: 10, name: '노바', mo: ['meteor', 'launch', 'wave'], c: [0x8fe3ff, 0x2f86ff, 0xffffff], pal: [0x8fe3ff, 0x4fb0ff, 0xd8f6ff, 0xffffff] },
-    { id: 'hc_overlord', name: '오버로드', mo: ['fireStep', 'burnOut', 'fistPalm'], c: [0xff7a18, 0xffc040, 0xfff0c8], pal: [0xff6a12, 0xff9a2a, 0xffc04a, 0xfff0c0] },
-    { id: 'tier_eternal', name: '이터널', mo: ['orbForm', 'orbOut', 'open'], c: [0xc58cff, 0x7a3cff, 0xf6eaff], pal: [0xc58cff, 0xe6c8ff, 0x9a6aff, 0xffffff] },
+    { id: 'champ_tier', name: '랭크 챔피언', mo: ['ceremony', 'curtain', 'bow'], c: [0xffc93a, 0xff6a3a, 0xfff4c8], pal: [0xffd65a, 0xfff0b0, 0xff4a5a, 0x4ab8ff, 0x6aff9a, 0xffffff] },
+    { id: 'zenith', t: 13, name: '제니스', mo: ['armillary', 'ascendStar', 'salute'], c: [0xffd76a, 0xa47cff, 0xffffff], pal: [0xffd76a, 0xfff2c8, 0xc8a8ff, 0xffffff] },
+    { id: 'champ_hc', name: '하드코어 패왕', mo: ['crater', 'devour', 'flex'], c: [0xff3a1e, 0xffa030, 0xffe2c8], pal: [0xff3a1e, 0xff7a20, 0xffc04a, 0xffe2c8] },
+    { id: 'eclipse', t: 12, name: '이클립스', mo: ['eclipse', 'umbra', 'cross'], c: [0xff4a2e, 0x8a0c1a, 0xffd8c8], pal: [0xff4a2e, 0xff8a5a, 0xffd0b0, 0xc8102a] },
+    { id: 'champ_lv', name: '정점의 베테랑', mo: ['smokeIn', 'smokeOut', 'salute'], c: [0xcfe4ff, 0x7fb8ff, 0xffffff], pal: [0xcfe4ff, 0x9fd0ff, 0xffffff, 0xffe9a8] },
+    { id: 'celestial', t: 11, name: '셀레스티얼', mo: ['wingsIn', 'wingsOut', 'open'], c: [0xf3d98b, 0xfff4d8, 0xffffff], pal: [0xf3d98b, 0xffe9b0, 0xfffaf0, 0xffffff] },
+    { id: 'nova', t: 10, name: '노바', mo: ['nova', 'novaOut', 'wave'], c: [0x8fe3ff, 0x2f86ff, 0xffffff], pal: [0x8fe3ff, 0x4fb0ff, 0xd8f6ff, 0xffffff] },
+    { id: 'hc_overlord', name: '오버로드', mo: ['throne', 'throneOut', 'fistPalm'], c: [0xff7a18, 0xffc040, 0xfff0c8], pal: [0xff6a12, 0xff9a2a, 0xffc04a, 0xfff0c0] },
+    { id: 'tier_eternal', name: '이터널', mo: ['clockIn', 'clockOut', 'open'], c: [0xc58cff, 0x7a3cff, 0xf6eaff], pal: [0xc58cff, 0xe6c8ff, 0x9a6aff, 0xffffff] },
     { id: 'br_all', name: '백룸 정복자', mo: ['escape', 'noclip', 'shrug'], c: [0xffe066, 0xc9b27a, 0xfffbe0], pal: [0xffe066, 0xe8d8a0, 0xc9b27a, 0xfff8d0] },
-    { id: 'wargod', name: '전쟁의 신', mo: ['strikeIn', 'strikeOut', 'armUp'], c: [0xff2a3a, 0xff8a8a, 0xffeef0], pal: [0xff2a3a, 0xff6a6a, 0xffd0d0, 0xffffff] },
+    { id: 'wargod', name: '전쟁의 신', mo: ['bladeRain', 'swordOut', 'armUp'], c: [0xff2a3a, 0xff8a8a, 0xffeef0], pal: [0xff2a3a, 0xff6a6a, 0xffd0d0, 0xffffff] },
   ];
   const byId = (id) => ENT.find((e) => e.id === id) || null;
   const tiOf = (id) => (typeof Prof !== 'undefined' && Prof.TI ? Prof.TI.find((x) => x.id === id) || null : null);
@@ -29394,7 +29423,7 @@ const PartyFx = (() => {
   function warm(L) {
     if (warmed || !L.scene || !G.renderer) return; warmed = true; SC = L.scene; CAM = L.cam;
     const g = kit().geo(), objs = [new THREE.Mesh(g.plane, mat(sigilTex(), 0)), new THREE.Mesh(g.col, mat(colTex(), 0)), new THREE.Sprite(kit().sprMat(0)), new THREE.Mesh(kit().vplane(), mat(tex().ring(), 0))];
-    for (const t of [crownTex, corridorTex, frameTex, pitTex, sqTex, coronaTex, discTex, boltTex]) objs.push(new THREE.Mesh(g.plane, mat(t(), 0)));
+    for (const t of [crownTex, corridorTex, frameTex, pitTex, sqTex, coronaTex, discTex, boltTex, podTex, curtainTex, featherTex, clockTex, beamTex]) objs.push(new THREE.Mesh(g.plane, mat(t(), 0)));
     objs.push(new THREE.Mesh(handGeo().box, new THREE.MeshBasicMaterial({ color: 0 })));   // 백룸 손 재료(지도 없는 단색)와 같은 셰이더
     for (const t of ['star4', 'star5', 'flake', 'lava', 'swirl', 'fire', 'ice', 'glow']) if (tex()[t]) objs.push(new THREE.Mesh(g.plane, mat(tex()[t](), 0)));
     const grp = new THREE.Group(); for (const o of objs) { o.frustumCulled = false; o.material.opacity = 0; o.scale.setScalar(0.001); grp.add(o); }
@@ -29503,6 +29532,21 @@ const PartyFx = (() => {
     wipe(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [0], [-0.04], [-0.12], [-0.16, 0, -0.06]); up(r); legsStand(r, 0.11); hand(r, r.armR, r.head, [-0.07, 0.11, 0.13], [1, 0.12, 0.05], [0, 0.1, 1], [-0.45, 0.02, 0.22], 'relax'); fk(r.armL, 0.05, 0, 0.12, -0.2); },
     // 발밑을 내려다봄 (중심을 잃으려는 듯 팔을 조금 벌리고 무릎을 굽힘)
     lookDown(r) { r.hips.position.set(0, 0.9, 0); spineSet(r, [0.06], [0.18], [0.1], [0.4], [0.3]); up(r); legsStand(r, 0.15, 0.03, 0); fk(r.armL, -0.15, 0, 0.6, -0.35, 'open'); fk(r.armR, -0.15, 0, 0.6, -0.35, 'open'); },
+    // 트로피를 가슴 앞에서 두 손으로 / 머리 위로 번쩍 (o.t 로 들썩)
+    trophyHold(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [-0.03], [-0.04], [-0.05], [-0.08]); up(r); legsStand(r, 0.12); hands(r, r.chest, [-0.15, 0.04, 0.3], null, null, [-0.5, -0.3, 0.05], 'fist'); },
+    trophyUp(r, o) { const b = Math.abs(Math.sin(o.t * 5)) * 0.07; r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [-0.08], [-0.1], [-0.2], [-0.25]); up(r); legsStand(r, 0.15); hands(r, r.chest, [-0.15, 0.62 + b, 0.14], null, null, [-0.55, 0.3, 0.1], 'fist'); },
+    // 커튼콜 인사: 깊이 숙이며 오른손은 배 앞으로, 왼팔은 옆으로 펼침
+    bowSweep(r) { r.hips.position.set(0, 0.92, -0.05); spineSet(r, [-0.08], [0.5], [0.25], [0.12], [0.1]); up(r); legsStand(r, 0.1, 0.06, -0.12); hand(r, r.armR, r.chest, [0.08, -0.28, 0.24], [1, -0.2, 0], [0, 0, -1], [-0.4, -0.35, 0.2], 'flat'); fk(r.armL, -0.6, 0, 1.15, -0.2, 'open'); },
+    // 행진 (o.t 로 걸음 — 몸 채널로 앞으로 움직임)
+    march(r, o) { const w = o.t * TAU * 1.1, s = Math.sin(w); r.hips.position.set(0, 0.93 + Math.abs(Math.cos(w)) * 0.02, 0); spineSet(r, [0.04], [0.04], [0], [-0.02], [-0.04]); up(r); lfk(r.legL, -0.42 * s, 0.03, Math.max(0, s) * 0.75 + 0.06, 0.1); lfk(r.legR, 0.42 * s, 0.03, Math.max(0, -s) * 0.75 + 0.06, 0.1); fk(r.armL, 0.38 * s, 0, 0.1, -0.25, 'fist'); fk(r.armR, -0.38 * s, 0, 0.1, -0.25, 'fist'); },
+    // 목을 좌우로 꺾어 풂 (주먹 쥐고)
+    neck(r, o) { KP.stand(r); const p = Math.sin(o.t * 4.2); r.neck.rotation.z = p * 0.3; r.head.rotation.set(-0.05, p * 0.1, p * 0.25); fk(r.armL, 0.05, 0, 0.14, -0.2, 'fist'); fk(r.armR, 0.05, 0, 0.14, -0.2, 'fist'); },
+    // 옥좌에 앉음: 두 손을 팔걸이에 (위엄) / 오른 주먹으로 턱을 괴고 몸을 조금 숙임
+    sitGrand(r) { r.hips.position.set(0, 0.6, -0.02); spineSet(r, [-0.05], [-0.04], [-0.03], [-0.04], [-0.1]); up(r); plant(r, r.legL, [0.17, 0.085, 0.42], [0.2, 0.2, 1], 0.25); plant(r, r.legR, [-0.17, 0.085, 0.42], [-0.2, 0.2, 1], 0.25); hands(r, r.body, [-0.42, 0.8, 0.02], [0, 0, 1], [0, -1, 0], [-0.6, -0.15, -0.2], 'claw'); },
+    sitRest(r) { r.hips.position.set(0, 0.6, -0.02); spineSet(r, [-0.02], [0.1], [0.08, -0.08], [0.05], [0.06, -0.05, 0.12]); up(r); plant(r, r.legL, [0.17, 0.085, 0.42], [0.2, 0.2, 1], 0.25); plant(r, r.legR, [-0.12, 0.085, 0.47], [-0.1, 0.2, 1], 0.1); hand(r, r.armR, r.head, [-0.02, -0.13, 0.11], null, null, [-0.3, -0.5, 0.2], 'fist'); hand(r, r.armL, r.body, [0.42, 0.8, 0.02], [0, 0, 1], [0, -1, 0], [0.6, -0.15, -0.2], 'claw'); },
+    // 땅에 꽂힌 검의 손잡이를 두 손으로 / 검을 머리 위로 치켜듦
+    gripSword(r) { r.hips.position.set(0, 0.9, 0); spineSet(r, [0.08], [0.12], [0.05], [0], [0.05]); up(r); legsStand(r, 0.17, 0.05, -0.05); hand(r, r.armR, r.chest, [-0.02, -0.12, 0.42], null, null, [-0.5, -0.3, 0.1], 'fist'); hand(r, r.armL, r.chest, [0.02, -0.22, 0.4], null, null, [0.5, -0.3, 0.1], 'fist'); },
+    swordUp(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [-0.1], [-0.12], [-0.3], [-0.35]); up(r); legsStand(r, 0.18); hand(r, r.armR, r.chest, [-0.03, 0.8, 0.14], null, null, [-0.5, 0.3, 0], 'fist'); hand(r, r.armL, r.chest, [0.01, 0.7, 0.16], null, null, [0.5, 0.3, 0], 'fist'); },
     // 아래로 떨어짐: 두 팔을 위로 허우적 · 위(빛 쪽)를 봄
     flail(r, o) { const s = Math.sin(o.t * 13) * 0.25; r.hips.position.set(0, 0.95, 0); spineSet(r, [-0.08], [-0.12], [-0.1], [-0.3], [-0.4]); up(r); lfk(r.legL, -0.6, 0.05, 1.1, 0.3); lfk(r.legR, 0.1, 0.05, 0.3, 0.5); fk(r.armL, -0.4 + s, 0.3, 2.45, -0.7, 'open'); fk(r.armR, -0.4 - s, 0.3, 2.45, -0.7, 'open'); },
   };
@@ -29523,118 +29567,272 @@ const PartyFx = (() => {
   const chestW = (r, out) => r.chest.getWorldPosition(out);
   const hipsAt = (a, y) => _g.set(a.gp.x, a.gp.y + y, a.gp.z);
   const MOT = {};
-  // ===== 노바: 유성 강하 · 한 무릎 착지 / 웅크렸다 하늘로 솟구침 =====
-  MOT.meteor = { kind: 'in', dur: 3.5, keys: [[0, 'fall'], [0.5, 'land', 0.06], [1.45, 'land'], [2.05, 'rise', 0.55], [2.75, 'stand', 0.6]],
-    body(t, B) { if (t < 0.5) B.y = 7 * (1 - ein(t / 0.5)); else if (t < 0.62) B.y = -0.04 * Math.sin((t - 0.5) / 0.12 * Math.PI); },
+  const stepQ = (u, n) => Math.floor(u * n + 1e-6) / n;
+  // ----- 소품: 고체는 lam(같이 쓰는 재료라 지우지 않음) · 빛나는 것은 더하기 혼합 단색 · 도형은 소품마다 새로 만들고 끝나면 지움
+  const solid = (geo, col, par, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, lam(col)); m.userData.keep = true; m.userData.own = true; m.castShadow = m.receiveShadow = true; m.position.set(x, y, z); if (par) par.add(m); return m; };
+  const glowM = (col, op = 1) => new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false });
+  const lit = (geo, col, par, x = 0, y = 0, z = 0, op = 1) => { const m = new THREE.Mesh(geo, glowM(col, op)); m.userData.own = true; m.renderOrder = 6; m.position.set(x, y, z); if (par) par.add(m); return m; };
+  const grpAt = (a, dz = 0) => { const g = new THREE.Group(); g.position.set(a.gp.x + Math.sin(a.yaw) * dz, a.gp.y, a.gp.z + Math.cos(a.yaw) * dz); g.rotation.y = a.yaw; return g; };
+  const gpOf = (a, v) => ({ x: v.x, y: a.gp.y, z: v.z, snow: a.gp.snow });
+  const burst = (p, E, n, sp, opt) => { const Q = P(); for (let i = 0; i < n; i++) { _a.set(rnd(-1, 1), rnd(-0.3, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(sp * 0.4, sp)); EM(Q, p, _a.x, _a.y, _a.z, pk(E), rnd(0.03, 0.065), rnd(0.4, 0.9), Object.assign({ drag: 2, so: 0.45 }, opt)); } };
+  const FLATQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+  // ===== 노바: 하늘의 별 하나가 떨며 부풀다 '노바'로 터지고, 그 조각이 유성이 되어 떨어져 한 무릎 착지 · 둘레에 푸른 수정이 솟았다가 부서짐
+  //        퇴장: 웅크려 가슴에 빛을 모았다가 솟구치고, 하늘에서 다시 별로 터짐
+  const NOVA = [0.6, 2.6, -2.2];   // 터지는 별 자리 (캐릭터 기준 x 왼쪽 · 높이 · z 앞)
+  function novaBurst(a, p, delay, k = 1) {
+    const E = a.E;
+    at(delay, () => { glow(p, E.c[2], 3.2 * k, 0.45); glow(p, E.c[0], 6 * k, 0.8); flash(1.35, 0.3); shake(0.03);
+      for (const [s, d, c] of [[2.6, 0.7, E.c[0]], [1.6, 0.5, E.c[2]], [3.6, 1.0, E.c[1]]]) card(p.clone(), tex().ring(), c, d, (m, u) => { m.scale.setScalar(s * k * (0.1 + 0.9 * eout(u))); m.material.opacity = 1 - u; });
+      burst(p, E, 60, 4.5 * k, { g: 0 }); });
+  }
+  function crystals(a, t0, t1) {
+    const E = a.E, g = grpAt(a), geo = new THREE.OctahedronGeometry(1, 0), C = [];
+    for (let i = 0; i < 8; i++) {
+      const an = (i / 8) * TAU + rnd(-0.25, 0.25), rr = rnd(0.5, 0.95), h = rnd(0.35, 0.7), w = rnd(0.08, 0.13), tl = rnd(0.25, 0.55), c = new THREE.Group();
+      c.position.set(Math.sin(an) * rr, 0, Math.cos(an) * rr); c.rotation.set(tl * Math.cos(an), 0, -tl * Math.sin(an));
+      lit(geo, E.c[0], c, 0, 0, 0, 0.85).scale.set(w, h, w); lit(geo, 0xffffff, c, 0, 0, 0, 0.55).scale.set(w * 0.45, h * 0.8, w * 0.45);
+      c.scale.setScalar(0.001); g.add(c); C.push([c, i * 0.035]);
+    }
+    const T = t1 - t0;
+    add(g, T + 0.3, (e) => { const t = e.t; for (const [c, d] of C) c.scale.setScalar(Math.max(0.001, t < T ? eout(seg(t, d, d + 0.16)) * (1 + Math.sin(t * 6 + d * 40) * 0.04) : 1 - seg(t, T, T + 0.15))); }, t0);
+    at(t1, () => { for (const [c] of C) { c.getWorldPosition(_c); _c.y += 0.15; burst(_c, E, 10, 1.6, { g: -2 }); } });
+  }
+  MOT.nova = { kind: 'in', dur: 4.1, keys: [[0, 'fall'], [1.05, 'land', 0.06], [1.95, 'land'], [2.5, 'rise', 0.5], [2.8, 'stand', 0.3]],
+    body(t, B) { B.vis = t > 0.55; if (t < 1.05) { const k = ein(seg(t, 0.55, 1.05)); B.x = NOVA[0] * (1 - k); B.y = NOVA[1] * (1 - k); B.z = NOVA[2] * (1 - k); } else if (t < 1.17) B.y = -0.04 * Math.sin((t - 1.05) / 0.12 * Math.PI); },
     fx(a) {
-      const E = a.E, gp = a.gp;
-      ring(gp, E.c[0], 2.6, 0.75, 0.5); ring(gp, E.c[2], 1.5, 0.45, 0.53); ring(gp, E.c[1], 3.6, 1.0, 0.58);
-      decal(gp, tex().ice(), 2.8, 2.8, E.c[2], E.c[1], 0.5); glow(hipsAt(a, 0.35).clone(), E.c[2], 4.2, 0.4, 0.5); glow(hipsAt(a, 0.6).clone(), E.c[0], 7, 0.7, 0.5);
-      pillar(gp, E.c[0], 0.5, 5.5, 0.7, 0.5, 0.1); shake(0.1, 0.5); flash(1.7, 0.35, 0.5); label(E, gp, 0.7);
-      at(0.5, () => { const Q = P(); for (let i = 0; i < 70; i++) { const an = Math.random() * TAU, sp = rnd(2.5, 6.5); _a.set(gp.x + Math.cos(an) * 0.3, gp.y + 0.08, gp.z + Math.sin(an) * 0.3); EM(Q, _a, Math.cos(an) * sp, rnd(0.6, 2.6), Math.sin(an) * sp, pk(E), rnd(0.035, 0.07), rnd(0.35, 0.8), { g: -6, drag: 1.6, so: 0.6 }); }
-        for (let i = 0; i < 26; i++) { const an = Math.random() * TAU, sp = rnd(1.2, 3.5); EM(Q, _a.set(gp.x, gp.y + 0.1, gp.z), Math.cos(an) * sp, rnd(2, 4.5), Math.sin(an) * sp, 0xc8d4e0, rnd(0.03, 0.05), rnd(0.6, 1.1), { g: -10, drag: 0.6, sq: 1, so: 0.9 }); } });
+      const E = a.E, gp = a.gp, p = loc(a, NOVA[0], NOVA[1] + 0.9, NOVA[2], new THREE.Vector3()), T = 1.05;
+      card(p.clone(), tex().star4(), E.c[2], 0.58, (m, u) => { m.scale.setScalar(0.25 + u * u * 1.7); m.rotateZ(0.09); m.material.opacity = 0.55 + 0.45 * Math.random(); });
+      glow(p, E.c[0], 1.4, 0.6); novaBurst(a, p, 0.55);
+      ring(gp, E.c[0], 2.6, 0.75, T); ring(gp, E.c[2], 1.5, 0.45, T + 0.03); ring(gp, E.c[1], 3.6, 1.0, T + 0.08);
+      decal(gp, tex().ice(), 2.8, 2.8, E.c[2], E.c[1], T); glow(hipsAt(a, 0.35).clone(), E.c[2], 4.2, 0.4, T); glow(hipsAt(a, 0.6).clone(), E.c[0], 7, 0.7, T);
+      pillar(gp, E.c[0], 0.5, 5.5, 0.7, T, 0.1); shake(0.1, T); flash(1.7, 0.35, T); label(E, gp, T + 0.2); crystals(a, T, 3.0);
+      at(T, () => { const Q = P(); for (let i = 0; i < 26; i++) { const an = Math.random() * TAU, sp = rnd(1.2, 3.5); EM(Q, _a.set(gp.x, gp.y + 0.1, gp.z), Math.cos(an) * sp, rnd(2, 4.5), Math.sin(an) * sp, 0xc8d4e0, rnd(0.03, 0.05), rnd(0.6, 1.1), { g: -10, drag: 0.6, sq: 1, so: 0.9 }); } burst(_c.set(gp.x, gp.y + 0.1, gp.z), E, 50, 5, { g: -6 }); });
     },
-    tick(a, r, t, dt) {   // 떨어지는 동안 꼬리 · 착지 뒤 피어오르는 빛 알갱이
+    tick(a, r, t, dt) {
       const Q = P(), E = a.E;
-      if (t < 0.5) { hipsW(r, _a); const n = Math.ceil(dt * 260); for (let i = 0; i < n; i++) EM(Q, _b.set(_a.x + rnd(-0.18, 0.18), _a.y + rnd(0, 1.4), _a.z + rnd(-0.18, 0.18)), 0, rnd(1, 3), 0, i % 3 ? E.c[0] : E.c[2], rnd(0.06, 0.14), rnd(0.18, 0.4), { grow: -0.6, so: 0.25 }); }
-      else if (t < 2.4 && Math.random() < dt * 30) { const an = Math.random() * TAU, rr = rnd(0.2, 1.3); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + 0.05, a.gp.z + Math.sin(an) * rr), 0, rnd(0.4, 1.1), 0, pk(E), rnd(0.025, 0.045), rnd(0.8, 1.4), { so: 0.4 }); }
+      if (t > 0.55 && t < 1.05) { hipsW(r, _a); const n = Math.ceil(dt * 260); for (let i = 0; i < n; i++) EM(Q, _b.set(_a.x + rnd(-0.18, 0.18), _a.y + rnd(0, 1.4), _a.z + rnd(-0.18, 0.18)), 0, rnd(1, 3), 0, i % 3 ? E.c[0] : E.c[2], rnd(0.06, 0.14), rnd(0.18, 0.4), { grow: -0.6, so: 0.25 }); }
+      else if (t > 1.05 && t < 2.9 && Math.random() < dt * 30) { const an = Math.random() * TAU, rr = rnd(0.2, 1.1); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + 0.05, a.gp.z + Math.sin(an) * rr), 0, rnd(0.4, 1.1), 0, pk(E), rnd(0.025, 0.045), rnd(0.8, 1.4), { so: 0.4 }); }
     } };
-  MOT.launch = { kind: 'out', dur: 2.3, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.85, 'charge', 0.45], [0.98, 'jump', 0.1]],
-    body(t, B) { if (t > 0.92) { const u = t - 0.92; B.y = u * u * 55 + u * 6; B.sy = 1 + Math.min(0.8, u * 4); B.sx = B.sz = 1 / Math.sqrt(B.sy); B.vis = B.y < 16; } },
-    fx(a) { const E = a.E, gp = a.gp; sigil(gp, tex().ring(), 1.8, 1.0, E.c[0], 2, 0.2, -0.4, 0.2); ring(gp, E.c[0], 2.4, 0.6, 0.95); ring(gp, E.c[2], 1.3, 0.4, 0.95); glow(hipsAt(a, 0.4).clone(), E.c[2], 3.4, 0.4, 0.95); pillar(gp, E.c[0], 0.42, 9, 1.1, 0.95, 0.15); shake(0.05, 0.95); flash(1.35, 0.3, 0.95); },
-    tick(a, r, t, dt) { const Q = P(), E = a.E;
+  MOT.novaOut = { kind: 'out', dur: 2.6, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.85, 'charge', 0.45], [0.98, 'jump', 0.1]],
+    body(t, B) { if (t > 0.92) { const u = t - 0.92; B.y = u * u * 55 + u * 6; B.sy = 1 + Math.min(0.8, u * 4); B.sx = B.sz = 1 / Math.sqrt(B.sy); B.vis = B.y < 3.4; } },
+    fx(a) {
+      const E = a.E, gp = a.gp; sigil(gp, tex().ring(), 1.8, 1.0, E.c[0], 2, 0.2, -0.4, 0.2); ring(gp, E.c[0], 2.4, 0.6, 0.95); ring(gp, E.c[2], 1.3, 0.4, 0.95); glow(hipsAt(a, 0.4).clone(), E.c[2], 3.4, 0.4, 0.95); pillar(gp, E.c[0], 0.42, 9, 1.1, 0.95, 0.15); shake(0.05, 0.95); flash(1.35, 0.3, 0.95);
+      const gl = new THREE.Sprite(kit().sprMat(E.c[2])); gl.renderOrder = 7; add(gl, 0.65, (e, u) => { chestW(a.rig, gl.position); gl.position.x += Math.sin(a.yaw) * 0.18; gl.position.z += Math.cos(a.yaw) * 0.18; gl.scale.setScalar(0.2 + u * 0.9); gl.material.opacity = 0.5 + u * 0.5; }, 0.3);   // 가슴에 모이는 빛
+      novaBurst(a, loc(a, 0, 2.7, -0.3, new THREE.Vector3()), 1.2, 0.75);
+    },
+    tick(a, r, t, dt) {
+      const Q = P(), E = a.E;
       if (t > 0.3 && t < 0.95) { const n = Math.ceil(dt * 90); hipsW(r, _a); for (let i = 0; i < n; i++) { const an = Math.random() * TAU, rr = rnd(0.6, 1.1); _b.set(_a.x + Math.cos(an) * rr, _a.y + rnd(-0.6, 0.8), _a.z + Math.sin(an) * rr); EM(Q, _b, (_a.x - _b.x) * 3, (_a.y - _b.y) * 3, (_a.z - _b.z) * 3, pk(E), rnd(0.025, 0.045), 0.3, { so: 0.3 }); } }
       if (t > 0.95 && t < 1.5) { hipsW(r, _a); const n = Math.ceil(dt * 220); for (let i = 0; i < n; i++) EM(Q, _b.set(_a.x + rnd(-0.15, 0.15), _a.y + rnd(-1.2, 0.2), _a.z + rnd(-0.15, 0.15)), 0, rnd(-3, -1), 0, i % 3 ? E.c[0] : E.c[2], rnd(0.06, 0.13), rnd(0.2, 0.4), { grow: -0.6, so: 0.25 }); }
     } };
-  // ===== 제니스: 하늘의 별이 열리고 빛줄기 속을 돌며 강하 · 착지 충격파 · 주먹을 하늘로 / 경례 후 돌며 솟아 별로 흩어짐 =====
-  MOT.spinfall = { kind: 'in', dur: 4.3, keys: [[0, 'spin'], [1.32, 'spin'], [1.38, 'land', 0.06], [1.95, 'land'], [2.5, 'rise', 0.5], [2.75, 'victory', 0.3], [3.6, 'victory']],
-    body(t, B) { if (t < 1.38) { const u = seg(t, 0.2, 1.38); B.y = 4.6 * (1 - eout(u)) + (t < 0.2 ? 5 : 0); B.ry = (1 - eout(u)) * TAU * 2; B.vis = t > 0.2; } },
+  // ===== 제니스: 정점의 혼천의 — 세 겹 고리가 서로 다른 축으로 돌며 몸을 감싼 채 하늘에서 내려오고, 착지하면 고리가 머리 위로 올라가 별 왕관이 됨 → 승리의 주먹
+  //        퇴장: 별 왕관이 다시 혼천의로 펼쳐져 점점 빠르게 돌고, 그 속에서 작아져 별이 되어 하늘로 솟음
+  const RAX = [new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0), new THREE.Vector3(1, 1, 0).normalize()], RSP = [1.7, -2.2, 2.8];
+  // k(t): 0 = 몸을 감싼 혼천의 · 1 = 머리 위 별 왕관 / sp(t): 도는 빠르기 배율 / op(t): 투명도
+  function armillary(a, t0, dur, k, sp, op) {
+    const E = a.E, g = new THREE.Group(), R = [[0.82, E.c[0]], [0.72, E.c[1]], [0.62, E.c[2]]].map(([rr, c]) => lit(new THREE.TorusGeometry(rr, 0.034, 8, 56), c, g, 0, 0, 0, 0.95));
+    const stars = []; for (let i = 0; i < 5; i++) { const s = new THREE.Mesh(kit().vplane(), mat(tex().star5(), E.c[0])); s.renderOrder = 8; g.add(s); stars.push(s); }
+    const q = new THREE.Quaternion(), ang = [0, 1, 2];
+    add(g, dur, (e) => { const t = t0 + e.t, kk = k(t), o = op(t), r = a.rig;
+      r.chest.getWorldPosition(_a); r.head.getWorldPosition(_b); _b.y += 0.3; g.position.copy(_a).lerp(_b, kk);
+      R.forEach((m, i) => { ang[i] += e.dt * RSP[i] * sp(t); q.setFromAxisAngle(RAX[i], ang[i]); m.quaternion.copy(q).slerp(FLATQ, kk); m.scale.setScalar(lerp(1, 0.26 + i * 0.02, kk)); m.position.y = kk * i * 0.035; m.material.opacity = 0.95 * o; });
+      stars.forEach((s, i) => { const an = i / 5 * TAU + e.t * 0.8, v = sstep(0.85, 1, kk); s.position.set(Math.cos(an) * 0.21, 0.07, Math.sin(an) * 0.21); if (CAM) s.quaternion.copy(CAM.quaternion); s.scale.setScalar(0.1 * v + 0.001); s.material.opacity = v * o; });
+    }, t0);
+  }
+  MOT.armillary = { kind: 'in', dur: 4.5, keys: [[0, 'float'], [1.35, 'float'], [1.5, 'land', 0.12], [1.95, 'land'], [2.45, 'rise', 0.45], [2.7, 'victory', 0.25], [3.7, 'victory']],
+    body(t, B) { B.vis = t > 0.12; if (t < 1.5) B.y = 4.4 * (1 - eout(seg(t, 0.12, 1.5))); },
     fx(a) {
-      const E = a.E, gp = a.gp, sky = new THREE.Vector3(gp.x, gp.y + 2.6, gp.z - 0.8);
+      const E = a.E, gp = a.gp, sky = loc(a, 0, 2.6, -0.8, new THREE.Vector3());
       card(sky, tex().star4(), E.c[0], 1.3, (m, u) => { m.scale.setScalar(3.2 * (0.25 + 0.75 * Math.sqrt(u))); m.rotateZ(u * 1.6); m.material.opacity = Math.min(1, u * 6) * (1 - u); });
-      glow(sky, E.c[2], 4, 0.9); envFx(1.6, (u) => { const v = 1 + 0.35 * Math.sin(Math.PI * u); return [v, v]; });
-      sigil(gp, sigilTex(), 3.4, 3.9, E.c[0], 0.5, 0.05); sigil(gp, sigilTex(), 2.1, 3.7, E.c[1], -1.1, 0.25);
-      pillar(gp, dim(E.c[2], 0.45), 0.55, 7, 1.35, 0.15, 0.6); beam(sky, new THREE.Vector3(gp.x, gp.y, gp.z), E.c[0], 0.5, 0.8, 0.15);
-      ring(gp, E.c[0], 3.1, 0.8, 1.38); ring(gp, E.c[1], 2.2, 0.6, 1.42); ring(gp, E.c[2], 4.2, 1.1, 1.5);
-      glow(hipsAt(a, 0.5).clone(), E.c[2], 5, 0.45, 1.38); shake(0.12, 1.38); flash(1.8, 0.4, 1.38); label(E, gp, 1.5);
-      at(1.38, () => { const Q = P(); for (let i = 0; i < 90; i++) { _a.set(rnd(-1, 1), rnd(0.2, 1.4), rnd(-1, 1)).normalize().multiplyScalar(rnd(2.5, 6.5)); EM(Q, hipsAt(a, 0.4), _a.x, _a.y, _a.z, pk(E), rnd(0.04, 0.08), rnd(0.5, 1.1), { g: -4, drag: 1.8, so: 0.55 }); } });
-      at(2.8, () => { const Q = P(); hand0(a, _c); glow(_c, E.c[2], 2.4, 0.4); card(_c.clone(), tex().star4(), E.c[0], 0.6, (m, u) => { m.scale.setScalar(1.6 * Math.sqrt(u) + 0.01); m.rotateZ(u * 2); m.material.opacity = 1 - u; }); for (let i = 0; i < 40; i++) { _a.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1, 3)); EM(Q, _c, _a.x, _a.y, _a.z, pk(E), rnd(0.03, 0.06), rnd(0.6, 1.2), { g: -2.5, drag: 1.4, so: 0.5 }); } });
+      glow(sky, E.c[2], 4, 0.9); envFx(1.8, (u) => { const v = 1 + 0.3 * Math.sin(Math.PI * u); return [v, v]; });
+      sigil(gp, sigilTex(), 3.4, 4.0, E.c[0], 0.5, 0.05); sigil(gp, sigilTex(), 2.1, 3.8, E.c[1], -1.1, 0.25); pillar(gp, dim(E.c[2], 0.4), 0.55, 7, 1.5, 0.12, 0.6);
+      ring(gp, E.c[0], 3.1, 0.8, 1.5); ring(gp, E.c[1], 2.2, 0.6, 1.54); ring(gp, E.c[2], 4.2, 1.1, 1.6); glow(hipsAt(a, 0.5).clone(), E.c[2], 5, 0.45, 1.5); shake(0.1, 1.5); flash(1.7, 0.4, 1.5); label(E, gp, 1.7);
+      at(1.5, () => burst(hipsAt(a, 0.4), E, 80, 6, { g: -4 }));
+      armillary(a, 0.12, 3.6, (t) => sstep(1.55, 2.15, t), (t) => 1 - sstep(1.6, 2.2, t) * 0.75, (t) => 1 - sstep(3.3, 3.72, t));
+      at(2.8, () => { hand0(a, _c); glow(_c, E.c[2], 2.4, 0.4); card(_c.clone(), tex().star4(), E.c[0], 0.6, (m, u) => { m.scale.setScalar(1.6 * Math.sqrt(u) + 0.01); m.rotateZ(u * 2); m.material.opacity = 1 - u; }); burst(_c, E, 40, 3, { g: -2.5 }); });
+    },
+    tick(a, r, t, dt) { if (t > 2.75 && t < 3.6 && Math.random() < dt * 40) { hand0(a, _c); EM(P(), _c, rnd(-0.4, 0.4), rnd(0.3, 1.2), rnd(-0.4, 0.4), pk(a.E), rnd(0.025, 0.05), rnd(0.5, 0.9), { g: -1, so: 0.5 }); } } };
+  MOT.ascendStar = { kind: 'out', dur: 3.1, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.8, 'reach', 0.45], [1.3, 'float', 0.4]],
+    body(t, B) { if (t > 1.0) { const u = seg(t, 1.0, 2.05); B.y = 1.3 * ein(u); B.s = Math.max(0.01, 1 - sstep(0.45, 1, u)); B.ry = ein(u) * 6; B.vis = B.s > 0.02; } },
+    fx(a) {
+      const E = a.E, gp = a.gp, st = new THREE.Vector3(); sigil(gp, sigilTex(), 3.0, 2.6, E.c[0], 0.6, 0.3); sigil(gp, sigilTex(), 1.9, 2.4, E.c[1], -1.2, 0.45);
+      armillary(a, 0.3, 1.8, (t) => 1 - sstep(0.45, 0.95, t), (t) => 1 + sstep(0.9, 2.0, t) * 5, (t) => sstep(0.3, 0.45, t) * (1 - sstep(1.95, 2.08, t)));
+      at(2.05, () => { hipsW(a.rig, st); st.y += 0.3; glow(st, E.c[2], 3.4, 0.5); flash(1.4, 0.3); burst(st, E, 50, 3.5, { g: -1 });
+        card(st.clone(), tex().star4(), 0xffffff, 0.75, (m, u) => { m.position.y = st.y + ein(u) * 4; m.scale.setScalar(0.9 - u * 0.4); m.rotateZ(0.2); m.material.opacity = 1 - u * 0.3; }); beam(st.clone(), st.clone().add(_a.set(0, 4.5, 0)), E.c[0], 0.35, 0.6, 0.12); });
+    },
+    tick(a, r, t, dt) { if (t < 1.0 || t > 2.1) return; hipsW(r, _a); const n = Math.ceil(dt * 120); for (let i = 0; i < n; i++) { const an = t * 12 + i * 2.4; EM(P(), _b.set(_a.x + Math.cos(an) * 0.5, _a.y + rnd(-0.6, 0.6), _a.z + Math.sin(an) * 0.5), 0, 0.8, 0, pk(a.E), rnd(0.03, 0.06), rnd(0.4, 0.7), { so: 0.45 }); } } };
+  // ===== 셀레스티얼: 금빛 빛기둥 속으로 커다란 날개를 펴고 천천히 날갯짓하며 내려와 사뿐히 · 날개를 접자 깃털로 흩어짐 · 머리 위 광륜 · 두 손을 펴 축복
+  //        퇴장: 광륜이 뜨고 등에서 날개가 펼쳐져 크게 날갯짓하며 빛기둥을 따라 날아오름 · 깃털이 흩날림
+  const featherTex = () => ctex('feath', 64, 256, (g, W, H) => {
+    const gr = g.createLinearGradient(0, H, 0, 0); gr.addColorStop(0, 'rgba(255,226,150,1)'); gr.addColorStop(0.35, 'rgba(255,250,236,1)'); gr.addColorStop(1, 'rgba(255,255,255,0.92)');
+    g.fillStyle = gr; g.beginPath(); g.moveTo(W / 2, H); g.quadraticCurveTo(-W * 0.1, H * 0.5, W / 2, 0); g.quadraticCurveTo(W * 1.1, H * 0.5, W / 2, H); g.fill();
+    g.strokeStyle = 'rgba(205,165,80,0.9)'; g.lineWidth = 2; g.beginPath(); g.moveTo(W / 2, H); g.lineTo(W / 2, 8); g.stroke();
+    g.strokeStyle = 'rgba(200,180,130,0.35)'; g.lineWidth = 1; for (let y = 22; y < H - 12; y += 7) { g.beginPath(); g.moveTo(W / 2, y + 7); g.lineTo(W * 0.16, y); g.moveTo(W / 2, y + 7); g.lineTo(W * 0.84, y); g.stroke(); }
+  });
+  // 날개 한 쌍 (가슴 뼈를 따라감): spread(t) 0 = 접힘 · 1 = 활짝 / flap(t) 날갯짓(−1~1) / op(t) 투명도
+  function wings(a, t0, dur, spread, flap, op) {
+    const root = new THREE.Group(), fg = new THREE.PlaneGeometry(1, 1); fg.translate(0, 0.5, 0);
+    const fm = new THREE.MeshBasicMaterial({ map: featherTex(), transparent: true, side: THREE.DoubleSide, depthWrite: false, fog: false, color: 0xfff7e6 });
+    const W = [1, -1].map((s) => { const w = new THREE.Group(); w.position.set(s * 0.09, 0.14, -0.16); w.scale.x = s; root.add(w); const F = [];
+      for (let i = 0; i < 9; i++) { const f = new THREE.Mesh(fg, fm); f.userData.own = true; f.scale.set(0.16, 0.55 + 0.62 * (i / 8), 1); f.renderOrder = 5; f.position.z = -0.004 * i; w.add(f); F.push([f, i / 8, 0]); }
+      for (let i = 0; i < 7; i++) { const f = new THREE.Mesh(fg, fm); f.userData.own = true; f.scale.set(0.13, 0.3 + 0.22 * (i / 6), 1); f.renderOrder = 6; f.position.z = 0.012; w.add(f); F.push([f, i / 6, 1]); }
+      return { w, F, s }; });
+    add(root, dur, (e) => { const t = t0 + e.t, k = spread(t), fl = flap(t), r = a.rig;
+      r.chest.matrixWorld.decompose(root.position, root.quaternion, root.scale); fm.opacity = op(t);
+      for (const { w, F, s } of W) { w.rotation.set(0.12 + fl * 0.22, s * (0.35 - fl * 0.85 + (1 - k) * 0.5), 0); for (const [f, v, row] of F) f.rotation.z = -lerp(lerp(2.75, 3.0, v), lerp(0.12, row ? 1.5 : 1.8, v), k) + row * 0.08; }
+    }, t0);
+  }
+  function crownHalo(a, t0, dur, op) { const E = a.E, m = lit(new THREE.TorusGeometry(0.17, 0.014, 6, 40), E.c[0], null); m.quaternion.copy(FLATQ); add(m, dur, (e) => { const t = t0 + e.t; a.rig.head.getWorldPosition(m.position); m.position.y += 0.3 + Math.sin(t * 2) * 0.012; m.material.opacity = op(t); }, t0); }
+  function featherFall(a, n, t0, spread) { at(t0, () => { chestW(a.rig, _c); const c0 = _c.clone(); for (let i = 0; i < n; i++) { const v = new THREE.Vector3(rnd(-0.6, 0.6), rnd(0.2, 1.0), rnd(-0.4, 0.4)), ph = Math.random() * TAU;
+    card(c0.clone().add(_a.set(rnd(-spread, spread), rnd(-0.3, 0.5), rnd(-0.3, 0.2))), featherTex(), 0xfff2d8, rnd(1.6, 2.6), (m, u, e) => { v.y = Math.max(-0.45, v.y - e.dt * 1.5); v.multiplyScalar(1 - e.dt * 0.8); m.position.addScaledVector(v, e.dt); m.position.x += Math.sin(e.t * 3 + ph) * 0.006; m.scale.set(0.07, 0.24, 1); m.rotateZ(Math.sin(e.t * 2.5 + ph) * 0.9 + ph); m.material.opacity = u < 0.7 ? 1 : (1 - u) / 0.3; }, 0, true); } }); }
+  MOT.wingsIn = { kind: 'in', dur: 4.5, keys: [[0, 'float'], [2.0, 'float'], [2.35, 'stand', 0.35], [2.6, 'stand'], [3.0, 'open', 0.4], [3.75, 'open']],
+    body(t, B) { if (t < 2.25) { const u = seg(t, 0, 2.25); B.y = 3.4 * (1 - eout(u)) * (1 - eout(u)) + Math.sin(t * 2.6) * 0.06 * (1 - u); } },
+    fx(a) {
+      const E = a.E, gp = a.gp; pillar(gp, dim(E.c[0], 0.42), 0.85, 9, 3.4, 0, 0.55); envFx(4.2, (u) => { const v = 1 + 0.18 * Math.sin(Math.PI * u); return [v, 1 + 0.12 * Math.sin(Math.PI * u)]; });
+      ring(gp, E.c[0], 2.0, 1.0, 2.25); sigil(gp, sigilTex(), 2.8, 2.2, E.c[0], 0.25, 2.2); glow(hipsAt(a, 0.3).clone(), E.c[2], 2.6, 0.6, 2.25); label(E, gp, 2.35);
+      wings(a, 0, 2.95, (t) => 1 - sstep(2.35, 2.75, t) * 0.9, (t) => (t < 2.3 ? Math.sin(t * 2.6) : 0), (t) => 1 - sstep(2.8, 2.92, t));
+      crownHalo(a, 0, 3.5, (t) => sstep(0, 0.3, t) * (1 - sstep(3.1, 3.5, t))); featherFall(a, 18, 2.85, 0.8);
+      at(3.05, () => { const Q = P(); for (const s of [-1, 1]) { hand0(a, _c, s); for (let i = 0; i < 18; i++) EM(Q, _c, rnd(-0.3, 0.3), rnd(0.4, 1.3), rnd(-0.3, 0.3), pk(E), rnd(0.025, 0.05), rnd(0.7, 1.3), { drag: 0.8, so: 0.45 }); } });
     },
     tick(a, r, t, dt) { const Q = P(), E = a.E;
-      if (t > 0.2 && t < 1.4) { hipsW(r, _a); const n = Math.ceil(dt * 120); for (let i = 0; i < n; i++) { const an = t * 9 + i * 2.1 + Math.random() * 0.3, rr = 0.55 + Math.random() * 0.15; EM(Q, _b.set(_a.x + Math.cos(an) * rr, _a.y + rnd(-0.7, 0.9), _a.z + Math.sin(an) * rr), 0, 0.6, 0, pk(E), rnd(0.03, 0.06), rnd(0.4, 0.7), { drag: 1, so: 0.45 }); } }
-      if (t > 2.75 && t < 3.6 && Math.random() < dt * 40) { hand0(a, _c); EM(Q, _c, rnd(-0.4, 0.4), rnd(0.3, 1.2), rnd(-0.4, 0.4), pk(E), rnd(0.025, 0.05), rnd(0.5, 0.9), { g: -1, so: 0.5 }); }
-    } };
-  MOT.spinOut = { kind: 'out', dur: 3.1, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.65, 'salute', 0.35], [1.25, 'salute'], [1.5, 'charge', 0.25], [1.62, 'spin', 0.12]],
-    body(t, B) { if (t > 1.55) { const u = t - 1.55; B.y = u * u * 7 + u * 3.5; B.ry = u * u * 9 + u * 6; B.s = 1 - sstep(0.55, 0.95, u); B.vis = B.s > 0.02; } },
-    fx(a) { const E = a.E, gp = a.gp; sigil(gp, sigilTex(), 3.2, 2.6, E.c[0], 0.6, 0.45); sigil(gp, sigilTex(), 2.0, 2.4, E.c[1], -1.2, 0.6); ring(gp, E.c[0], 2.8, 0.7, 1.55); pillar(gp, dim(E.c[2], 0.5), 0.5, 8, 1.3, 1.55, 0.4); flash(1.4, 0.35, 1.55); shake(0.05, 1.55);
-      at(2.45, () => { const Q = P(); hipsW(a.rig, _c); glow(_c, E.c[2], 3.6, 0.5); for (let i = 0; i < 70; i++) { _a.set(rnd(-1, 1), rnd(-0.4, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1.5, 4.5)); EM(Q, _c, _a.x, _a.y, _a.z, pk(E), rnd(0.035, 0.07), rnd(0.6, 1.3), { g: -1.5, drag: 1.6, so: 0.5 }); } }); },
-    tick(a, r, t, dt) { if (t < 1.55 || t > 2.6) return; const Q = P(), E = a.E; hipsW(r, _a); const n = Math.ceil(dt * 160); for (let i = 0; i < n; i++) { const an = t * 12 + i * 2.4, rr = 0.5; EM(Q, _b.set(_a.x + Math.cos(an) * rr, _a.y + rnd(-0.8, 0.6), _a.z + Math.sin(an) * rr), 0, -0.8, 0, pk(E), rnd(0.03, 0.06), rnd(0.4, 0.8), { so: 0.45 }); } } };
-  // ===== 셀레스티얼: 금빛 빛기둥 속으로 천천히 내려와 사뿐히 · 두 손을 펴 축복 / 빛기둥을 타고 떠올라 빛으로 =====
-  MOT.descend = { kind: 'in', dur: 4.4, keys: [[0, 'float'], [2.0, 'float'], [2.35, 'stand', 0.35], [2.6, 'stand'], [3.0, 'open', 0.4], [3.75, 'open']],
-    body(t, B) { if (t < 2.25) { const u = seg(t, 0, 2.25); B.y = 3.4 * (1 - eout(u)) * (1 - eout(u)); B.ry = Math.sin(t * 1.3) * 0.15 * (1 - u); } },
-    fx(a) { const E = a.E, gp = a.gp; pillar(gp, dim(E.c[0], 0.42), 0.85, 9, 3.4, 0, 0.55); envFx(4.2, (u) => { const v = 1 + 0.18 * Math.sin(Math.PI * u); return [v, 1 + 0.12 * Math.sin(Math.PI * u)]; });
-      for (let i = 0; i < 4; i++) halo(gp, i % 2 ? E.c[2] : E.c[0], 3.6, 0.15, 0.55, 0.85, 1.6, i * 0.45);
-      ring(gp, E.c[0], 2.0, 1.0, 2.25); sigil(gp, sigilTex(), 2.8, 2.2, E.c[0], 0.25, 2.2); glow(hipsAt(a, 0.3).clone(), E.c[2], 2.6, 0.6, 2.25); label(E, gp, 2.35);
-      at(3.05, () => { const Q = P(); for (const s of [-1, 1]) { hand0(a, _c, s); for (let i = 0; i < 18; i++) EM(Q, _c, rnd(-0.3, 0.3), rnd(0.4, 1.3), rnd(-0.3, 0.3), pk(E), rnd(0.025, 0.05), rnd(0.7, 1.3), { drag: 0.8, so: 0.45 }); } }); },
-    tick(a, r, t, dt) { const Q = P(), E = a.E;   // 깃털처럼 흔들리며 내려오는 금빛 조각
-      if (t < 3.4 && Math.random() < dt * 26) { const an = Math.random() * TAU, rr = rnd(0.2, 1.1); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + rnd(1.6, 3.2), a.gp.z + Math.sin(an) * rr), rnd(-0.25, 0.25), rnd(-0.55, -0.3), rnd(-0.25, 0.25), pk(E), rnd(0.035, 0.06), rnd(2, 3), { sq: 1, so: 0.65 }); }
+      if (t < 3.4 && Math.random() < dt * 22) { const an = Math.random() * TAU, rr = rnd(0.2, 1.1); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + rnd(1.6, 3.2), a.gp.z + Math.sin(an) * rr), rnd(-0.25, 0.25), rnd(-0.55, -0.3), rnd(-0.25, 0.25), pk(E), rnd(0.035, 0.06), rnd(2, 3), { sq: 1, so: 0.65 }); }
       if (t < 2.2) { hipsW(r, _a); if (Math.random() < dt * 40) EM(Q, _b.set(_a.x + rnd(-0.3, 0.3), _a.y + rnd(-0.9, 0.9), _a.z + rnd(-0.3, 0.3)), 0, 0.15, 0, E.c[2], rnd(0.03, 0.05), 0.8, { so: 0.3 }); } } };
-  MOT.ascend = { kind: 'out', dur: 3.3, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.85, 'reach', 0.5], [1.4, 'reach'], [1.9, 'float', 0.5]],
-    body(t, B) { if (t > 1.1) { const u = seg(t, 1.1, 2.9); B.y = 3.6 * ein(u); B.s = 1 - sstep(0.7, 1, u) * 0.98; B.vis = B.s > 0.03; } },
-    fx(a) { const E = a.E, gp = a.gp; sigil(gp, sigilTex(), 2.8, 3.0, E.c[0], 0.3, 0.2); pillar(gp, dim(E.c[0], 0.42), 0.8, 9, 3.0, 0.4, 0.6); for (let i = 0; i < 3; i++) halo(gp, E.c[i % 2 ? 2 : 0], 0.2, 3.6, 0.75, 0.5, 1.7, 1.1 + i * 0.35);
-      at(2.75, () => { const Q = P(); _c.set(gp.x, gp.y + 3.4, gp.z); glow(_c, E.c[2], 3.4, 0.6); for (let i = 0; i < 50; i++) { _a.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1, 3)); EM(Q, _c, _a.x, _a.y, _a.z, pk(E), rnd(0.03, 0.06), rnd(0.8, 1.4), { drag: 1.2, so: 0.5 }); } }); },
+  MOT.wingsOut = { kind: 'out', dur: 3.3, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.85, 'reach', 0.5], [1.4, 'reach'], [1.9, 'float', 0.5]],
+    body(t, B) { if (t > 1.1) { const u = seg(t, 1.1, 2.9); B.y = 3.6 * ein(u) + Math.max(0, Math.sin((t - 0.9) * 7)) * 0.05; B.s = 1 - sstep(0.7, 1, u) * 0.98; B.vis = B.s > 0.03; } },
+    fx(a) {
+      const E = a.E, gp = a.gp; sigil(gp, sigilTex(), 2.8, 3.0, E.c[0], 0.3, 0.2); pillar(gp, dim(E.c[0], 0.42), 0.8, 9, 3.0, 0.4, 0.6);
+      wings(a, 0.3, 2.75, (t) => sstep(0.3, 0.9, t), (t) => (t > 0.9 ? Math.sin((t - 0.9) * 7) * 1.1 : 0), (t) => 1 - sstep(2.7, 3.0, t));
+      crownHalo(a, 0.3, 2.75, (t) => sstep(0.3, 0.55, t) * (1 - sstep(2.7, 3.0, t))); ring(gp, E.c[0], 2.2, 0.6, 1.0); featherFall(a, 10, 1.05, 0.9);
+      at(2.75, () => { const Q = P(); _c.set(gp.x, gp.y + 3.4, gp.z); glow(_c, E.c[2], 3.4, 0.6); for (let i = 0; i < 50; i++) { _a.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1, 3)); EM(Q, _c, _a.x, _a.y, _a.z, pk(E), rnd(0.03, 0.06), rnd(0.8, 1.4), { drag: 1.2, so: 0.5 }); } });
+    },
     tick(a, r, t, dt) { const Q = P(), E = a.E; if (Math.random() < dt * 24) { const an = Math.random() * TAU, rr = rnd(0.2, 1.0); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + rnd(1.5, 3), a.gp.z + Math.sin(an) * rr), rnd(-0.2, 0.2), rnd(-0.5, -0.3), rnd(-0.2, 0.2), pk(E), rnd(0.035, 0.055), rnd(1.8, 2.6), { sq: 1, so: 0.65 }); }
       if (t > 1.1 && t < 2.9) { hipsW(r, _a); const n = Math.ceil(dt * 70); for (let i = 0; i < n; i++) EM(Q, _b.set(_a.x + rnd(-0.3, 0.3), _a.y + rnd(-0.9, 0.5), _a.z + rnd(-0.3, 0.3)), 0, -0.6, 0, pk(E), rnd(0.03, 0.05), rnd(0.5, 0.9), { so: 0.4 }); } } };
-  // ===== 이클립스: 해가 가려 어두워지고 땅에 열린 붉은 구멍에서 팔짱 낀 채 솟아올라 팔을 내뻗음 / 팔짱 끼고 구멍 속으로 가라앉음 =====
-  const eclipseSky = (a, dur, delay = 0) => { const E = a.E, gp = a.gp, p = new THREE.Vector3(gp.x - 0.3, gp.y + 2.5, gp.z - 2.6);
-    card(p, discTex(), 0x050002, dur, (m, u) => { const k = sstep(0, 0.2, u) * (1 - sstep(0.8, 1, u)); m.scale.setScalar(1.25 * k + 0.01); m.material.opacity = k; }, delay, true);
-    card(p.clone(), coronaTex(), E.c[0], dur, (m, u, e) => { const k = sstep(0.05, 0.25, u) * (1 - sstep(0.78, 1, u)); m.scale.setScalar(2.9 * k + 0.01); m.rotateZ(e.t * 0.25); m.material.opacity = k; }, delay); };
+  // ===== 이클립스: 하늘의 해 위로 검은 달이 미끄러져 개기일식 — 세상이 붉게 어두워지고 땅의 그림자에서 팔짱 낀 채 솟아오름 → 달이 비켜나는 순간 '다이아몬드 링' 섬광과 함께 두 팔을 내뻗음
+  //        퇴장: 다시 일식이 시작되어 어두워지고 팔짱 낀 채 그림자 속으로 가라앉음 → 다이아몬드 링이 번쩍이면 빈자리
+  function eclipseSky(a, tIn, tTot, tDia, tEnd) {
+    const E = a.E, p = loc(a, -0.3, 2.5, -2.6, new THREE.Vector3()), R = new THREE.Vector3(), cov = (t) => sstep(tIn, tTot, t) * (1 - sstep(tDia, tDia + 0.45, t)), show = (t) => sstep(0, 0.3, t) * (1 - sstep(tEnd - 0.4, tEnd, t));
+    const sun = new THREE.Sprite(kit().sprMat(0xfff4c8)); sun.renderOrder = 6; sun.position.copy(p);
+    add(sun, tEnd, (e) => { const v = show(e.t); sun.scale.setScalar(1.6 * v + 0.01); sun.material.opacity = v * (1 - cov(e.t) * 0.85); });
+    card(p.clone(), tex().star4(), 0xffe6a0, tEnd, (m, u, e) => { const v = show(e.t) * (1 - cov(e.t)); m.scale.setScalar(2.3 * v + 0.01); m.rotateZ(e.t * 0.2); m.material.opacity = v; });
+    card(p.clone(), coronaTex(), E.c[0], tEnd, (m, u, e) => { const k = sstep(tTot - 0.15, tTot + 0.1, e.t) * (1 - sstep(tDia, tDia + 0.3, e.t)); m.scale.setScalar(2.9 * k + 0.01); m.rotateZ(e.t * 0.25); m.material.opacity = k; });
+    const moon = card(p.clone(), discTex(), 0x050002, tEnd, (m, u, e) => { const t = e.t; R.set(1, 0, 0).applyQuaternion(CAM.quaternion); const off = t < tDia ? 1.4 * (1 - eout(seg(t, tIn, tTot))) : -1.4 * ein(seg(t, tDia, tDia + 0.9)); m.position.copy(p).addScaledVector(R, off); m.scale.setScalar(1.25); m.material.opacity = sstep(tIn - 0.15, tIn + 0.1, t) * (1 - sstep(tEnd - 0.4, tEnd, t)); }, 0, true); moon.renderOrder = 9;
+    at(tDia, () => { R.set(1, 0, 0).applyQuaternion(CAM.quaternion); const d = p.clone().addScaledVector(R, -0.5); glow(d, 0xffffff, 2, 0.5); card(d, tex().star4(), 0xffffff, 0.8, (m, u) => { m.scale.setScalar(2.4 * (1 - u) + 0.01); m.rotateZ(u * 1.2); m.material.opacity = 1 - u; }); flash(1.7, 0.35); });
+    envFx(tEnd, (u) => { const k = cov(u * tEnd); return [1 - 0.62 * k, 1 - 0.55 * k]; });
+  }
   const portal = (a, size, dur, delay = 0) => { const E = a.E, gp = a.gp;
     const d = flat(discTex(), 0x0a0003, gp, 0.02); d.material.blending = THREE.NormalBlending; d.renderOrder = 2;
     add(d, dur, (e, u) => { const k = sstep(0, 0.15, u) * (1 - sstep(0.85, 1, u)); d.scale.setScalar(size * 0.75 * k + 0.01); d.material.opacity = 0.92 * k; }, delay);
     const s = flat(tex().swirl(), E.c[0], gp, 0.04); add(s, dur, (e, u) => { const k = sstep(0, 0.15, u) * (1 - sstep(0.85, 1, u)); s.scale.setScalar(size * k + 0.01); s.rotation.y = -e.t * 2.4; s.material.opacity = k; }, delay); };
-  MOT.emerge = { kind: 'in', dur: 4.3, keys: [[0, 'cross'], [2.25, 'cross'], [2.45, 'burst', 0.16], [3.4, 'burst']],
-    body(t, B) { const u = seg(t, 0.7, 2.2); B.y = -2.05 * (1 - eout(u)); B.vis = t > 0.6; },
-    fx(a) { const E = a.E, gp = a.gp; envFx(4.0, (u) => { const k = sstep(0, 0.1, u) * (1 - sstep(0.82, 1, u)); return [1 - 0.62 * k, 1 - 0.55 * k]; }); eclipseSky(a, 3.9, 0.05); portal(a, 2.4, 2.6, 0.2);
-      ring(gp, E.c[0], 2.8, 0.7, 2.45); ring(gp, E.c[2], 1.6, 0.45, 2.47); glow(hipsAt(a, 0.6).clone(), E.c[0], 4.6, 0.5, 2.45); shake(0.07, 2.45); label(E, gp, 2.5);
-      at(2.45, () => { const Q = P(); for (let i = 0; i < 60; i++) { const an = Math.random() * TAU, sp = rnd(2, 5); EM(Q, hipsAt(a, rnd(0.2, 1.2)), Math.cos(an) * sp, rnd(-0.3, 1.2), Math.sin(an) * sp, pk(E), rnd(0.035, 0.07), rnd(0.4, 0.9), { drag: 2, so: 0.6 }); } }); },
-    tick(a, r, t, dt) { if (t > 2.6) return; const Q = P(), E = a.E, n = Math.ceil(dt * 60);
+  MOT.eclipse = { kind: 'in', dur: 4.5, keys: [[0, 'cross'], [2.35, 'cross'], [2.55, 'burst', 0.16], [3.5, 'burst']],
+    body(t, B) { const u = seg(t, 0.95, 2.35); B.y = -2.05 * (1 - eout(u)); B.vis = t > 0.85; },
+    fx(a) { const E = a.E, gp = a.gp; eclipseSky(a, 0.15, 1.1, 2.55, 4.3); portal(a, 2.4, 2.4, 0.6);
+      ring(gp, E.c[0], 2.8, 0.7, 2.55); ring(gp, E.c[2], 1.6, 0.45, 2.57); glow(hipsAt(a, 0.6).clone(), E.c[0], 4.6, 0.5, 2.55); shake(0.07, 2.55); label(E, gp, 2.6);
+      at(2.55, () => { const Q = P(); for (let i = 0; i < 60; i++) { const an = Math.random() * TAU, sp = rnd(2, 5); EM(Q, hipsAt(a, rnd(0.2, 1.2)), Math.cos(an) * sp, rnd(-0.3, 1.2), Math.sin(an) * sp, pk(E), rnd(0.035, 0.07), rnd(0.4, 0.9), { drag: 2, so: 0.6 }); } }); },
+    tick(a, r, t, dt) { if (t < 0.6 || t > 2.75) return; const Q = P(), E = a.E, n = Math.ceil(dt * 60);
       for (let i = 0; i < n; i++) { const an = Math.random() * TAU, rr = rnd(0.05, 0.9); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + 0.05, a.gp.z + Math.sin(an) * rr), rnd(-0.1, 0.1), rnd(1.2, 3.2), rnd(-0.1, 0.1), pk(E), rnd(0.03, 0.06), rnd(0.4, 0.9), { drag: 0.6, so: 0.5 }); }
       if (Math.random() < dt * 14) EM(Q, _b.set(a.gp.x + rnd(-0.5, 0.5), a.gp.y + 0.1, a.gp.z + rnd(-0.5, 0.5)), 0, rnd(0.5, 1), 0, 0x1a0408, rnd(0.25, 0.4), rnd(0.9, 1.4), { grow: 1.4, so: 1, a: 0.6 }); } };
-  MOT.sink = { kind: 'out', dur: 3.0, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.7, 'cross', 0.4]],
-    body(t, B) { const u = seg(t, 0.8, 2.3); B.y = -2.1 * ein(u); B.vis = u < 0.98; },
-    fx(a) { const E = a.E, gp = a.gp; envFx(2.9, (u) => { const k = sstep(0, 0.15, u) * (1 - sstep(0.8, 1, u)); return [1 - 0.55 * k, 1 - 0.5 * k]; }); eclipseSky(a, 2.8, 0.1); portal(a, 2.4, 2.3, 0.45); ring(gp, E.c[0], 2.4, 0.6, 2.35); glow(hipsAt(a, 0.2).clone(), E.c[0], 3.2, 0.5, 2.35); },
-    tick: (a, r, t, dt) => MOT.emerge.tick(a, r, t * 0.9, dt) };
-  // ===== 랭크 챔피언: 금빛 조명 속에 번쩍 나타나 두 팔 V · 양옆 색종이 대포 · 머리 위 왕관 · 주먹 / 가슴에 손 얹고 인사 후 금빛으로 =====
-  MOT.podium = { kind: 'in', dur: 4.1, keys: [[0, 'tall'], [0.55, 'tall'], [0.95, 'vArms', 0.35], [2.0, 'vArms'], [2.35, 'victory', 0.3], [3.5, 'victory']],
-    body(t, B, a) { const u = seg(t, 0, 0.35); B.s = u < 1 ? Math.max(0.01, eout(u) * 1.12 - 0.12 * sstep(0.7, 1, u)) : 1; if (t > 2.35 && t < 3.4) B.y = Math.max(0, Math.sin((t - 2.35) * 9)) * 0.03; },
-    fx(a) { const E = a.E, gp = a.gp; pillar(gp, dim(E.c[0], 0.38), 0.75, 7.5, 3.9, 0, 0.6); glow(hipsAt(a, 0.5).clone(), E.c[2], 4, 0.45); ring(gp, E.c[0], 2.4, 0.7, 0.05); sigil(gp, tex().ring(), 1.9, 3.8, E.c[0], 0.4, 0.1, 0, 0.2); flash(1.5, 0.35); label(E, gp, 0.4);
-      const cr = new THREE.Vector3(gp.x, gp.y + 2.3, gp.z); card(cr, crownTex(), 0xffffff, 3.4, (m, u, e) => { const k = sstep(0, 0.12, u) * (1 - sstep(0.85, 1, u)); m.scale.set(0.62 * k + 0.01, 0.465 * k + 0.01, 1); m.position.y = cr.y + 0.22 + Math.sin(e.t * 3) * 0.04; m.rotateZ(Math.sin(e.t * 2) * 0.08); m.material.opacity = k; }, 0.3);
-      for (const [tt, s] of [[0.6, -1], [0.75, 1], [1.4, -1], [1.55, 1]]) at(tt, () => confetti(a, s));
-      for (const tt of [2.4, 2.75, 3.1]) at(tt, () => { hand0(a, _c); glow(_c, E.c[2], 1.6, 0.3); const Q = P(); for (let i = 0; i < 14; i++) EM(Q, _c, rnd(-1, 1), rnd(0.5, 2), rnd(-1, 1), pk(E), rnd(0.03, 0.05), rnd(0.5, 0.8), { g: -3, drag: 1, so: 0.6 }); }); },
-    tick(a, r, t, dt) { const Q = P(), E = a.E; if (t < 3.6 && Math.random() < dt * 30) { const an = Math.random() * TAU, rr = rnd(0.1, 0.8); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + rnd(2.0, 2.8), a.gp.z + Math.sin(an) * rr), 0, -0.4, 0, E.c[2], rnd(0.02, 0.04), rnd(1.2, 2), { so: 0.5 }); } } };
-  // 색종이 대포: 캐릭터 옆(s = ±1)에서 비스듬히 위로
-  function confetti(a, s) {
-    const Q = P(), gp = a.gp, E = a.E; _c.set(gp.x + s * 1.1, gp.y + 0.2, gp.z + 0.15); glow(_c.clone(), E.c[2], 1.2, 0.25);
-    for (let i = 0; i < 55; i++) EM(Q, _c, -s * rnd(0.6, 2.4), rnd(3.5, 6.5), rnd(-0.8, 0.8), pk(E), rnd(0.035, 0.06), rnd(1.4, 2.4), { g: -3.2, drag: 1.3, sq: 1, so: 0.9 });
+  MOT.umbra = { kind: 'out', dur: 3.4, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.7, 'cross', 0.4]],
+    body(t, B) { const u = seg(t, 1.0, 2.4); B.y = -2.1 * ein(u); B.vis = u < 0.98; },
+    fx(a) { const E = a.E, gp = a.gp; eclipseSky(a, 0.1, 1.2, 2.6, 3.35); portal(a, 2.4, 2.2, 0.75); ring(gp, E.c[0], 2.4, 0.6, 2.6); glow(hipsAt(a, 0.2).clone(), E.c[0], 3.2, 0.5, 2.5); },
+    tick: (a, r, t, dt) => MOT.eclipse.tick(a, r, t * 0.95 + 0.1, dt) };
+  // ===== 랭크 챔피언: 시상식 — 양쪽에서 조명이 쓸고 와 모이고, 금빛 '1' 시상대가 바닥에서 솟아 캐릭터를 들어 올림 → 하늘에서 내려온 트로피를 받아 머리 위로 번쩍 · 색종이 대포 → 트로피는 금빛으로 흩어지고 시상대는 내려감 · 손 흔들기
+  //        퇴장: 커튼콜 — 조명 아래 깊이 인사하고 손을 흔들면 붉은 벨벳 커튼이 닫혔다가 다시 열리면 빈자리 · 색종이
+  const podTex = () => ctex('pod1', 256, 160, (g, W, H) => {
+    g.strokeStyle = '#e9c25a'; g.lineWidth = 3; g.strokeRect(6, 6, W - 12, H - 12);
+    g.fillStyle = '#e9c25a'; for (const s of [-1, 1]) for (let i = 0; i < 8; i++) { const a = -0.95 + i * 0.25, x = W / 2 + s * Math.cos(a) * 66, y = 86 + Math.sin(a) * 58; g.save(); g.translate(x, y); g.rotate(a + s * 0.6); g.beginPath(); g.ellipse(0, 0, 10, 4.5, 0, 0, TAU); g.fill(); g.restore(); }
+    g.font = 'bold 112px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const gr = g.createLinearGradient(0, 24, 0, 140); gr.addColorStop(0, '#fff6c8'); gr.addColorStop(0.5, '#ffd34d'); gr.addColorStop(1, '#a66a08'); g.fillStyle = gr; g.fillText('1', W / 2, 86);
+  });
+  const curtainTex = () => ctex('curt', 128, 256, (g, W, H) => {
+    for (let x = 0; x < W; x++) { const f = 0.5 + 0.5 * Math.sin(x / W * Math.PI * 7); g.fillStyle = `rgb(${Math.round(110 + 80 * f)},${Math.round(8 + 14 * f)},${Math.round(18 + 18 * f)})`; g.fillRect(x, 0, 1, H); }
+    const sh = g.createLinearGradient(0, 0, 0, H); sh.addColorStop(0, 'rgba(0,0,0,0.35)'); sh.addColorStop(0.15, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.3)'); g.fillStyle = sh; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#d9a83a'; g.fillRect(0, H - 16, W, 6); for (let x = 2; x < W; x += 6) g.fillRect(x, H - 10, 2, 10);
+  });
+  const beamTex = () => ctex('beam', 32, 128, (g, W, H) => { const r = g.createLinearGradient(0, 0, 0, H); r.addColorStop(0, 'rgba(255,255,255,0.9)'); r.addColorStop(1, 'rgba(255,255,255,0.18)'); g.fillStyle = r; g.fillRect(0, 0, W, H); });
+  // 무대 조명: 위쪽 옆(side ±1)에서 바깥을 비추다가 가운데로 쓸고 옴
+  function spotlight(a, side, t0, dur, col) {
+    const L = 5.4, geo = new THREE.CylinderGeometry(0.05, 0.62, L, 18, 1, true); geo.translate(0, -L / 2, 0);
+    const m = new THREE.Mesh(geo, mat(beamTex(), col)); m.userData.own = true; m.renderOrder = 4;
+    const S = loc(a, side * 2.2, 4.3, 0.7, new THREE.Vector3()), T0 = loc(a, side * 2.4, 0, 1.3, new THREE.Vector3()), T1 = loc(a, 0, 0.3, 0, new THREE.Vector3()), T = new THREE.Vector3(), D = new THREE.Vector3(), DN = new THREE.Vector3(0, -1, 0);
+    m.position.copy(S);
+    add(m, dur, (e, u) => { T.copy(T0).lerp(T1, side ? eout(seg(e.t, 0, 0.55)) : 1); D.subVectors(T, S).normalize(); m.quaternion.setFromUnitVectors(DN, D); m.material.opacity = 0.15 * Math.min(1, e.t * 4) * (1 - sstep(0.85, 1, u)); }, t0);
   }
-  MOT.bowOut = { kind: 'out', dur: 3.0, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.7, 'bow', 0.4], [1.35, 'bow'], [1.65, 'vArms', 0.3]],
-    body(t, B) { if (t > 1.9) { const u = seg(t, 1.9, 2.4); B.s = 1 - ein(u) * 0.99; B.y = u * 0.4; B.vis = u < 0.99; } },
-    fx(a) { const E = a.E, gp = a.gp; pillar(gp, dim(E.c[0], 0.38), 0.7, 7, 2.8, 0.1, 0.6); at(1.65, () => { confetti(a, -1); confetti(a, 1); }); ring(gp, E.c[0], 2.2, 0.6, 2.35);
-      at(2.35, () => { const Q = P(); hipsW(a.rig, _c); _c.y += 0.4; glow(_c, E.c[2], 3, 0.5); card(_c.clone(), crownTex(), 0xffffff, 0.9, (m, u) => { m.scale.set(0.6, 0.45, 1); m.position.y += e1(u); m.material.opacity = 1 - u; }); for (let i = 0; i < 50; i++) { _a.set(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1.2, 3.4)); EM(Q, _c, _a.x, _a.y, _a.z, pk(E), rnd(0.035, 0.06), rnd(0.7, 1.2), { g: -2, drag: 1.4, sq: Math.random() < 0.5, so: 0.8 }); } }); } };
-  const e1 = (u) => u * 0.012;
-  // ===== 정점의 베테랑: 은빛 훑는 고리가 지나가며 몸이 짜여 나타나 경례 · 별 훈장이 돎 / 경례 후 위에서부터 훑어 사라짐 =====
-  const stepQ = (u, n) => Math.floor(u * n + 1e-6) / n;
-  MOT.rez = { kind: 'in', dur: 3.8, keys: [[0, 'att'], [1.2, 'att'], [1.55, 'salute', 0.35], [2.9, 'salute'], [3.2, 'att', 0.3]],
-    body(t, B) { const u = seg(t, 0.1, 1.0); B.s = Math.max(0.02, stepQ(eout(u), 6)); B.vis = t > 0.1 && (u >= 1 || Math.random() < 0.8); },
-    fx(a) { const E = a.E, gp = a.gp; for (let i = 0; i < 2; i++) halo(gp, i ? E.c[2] : E.c[1], 0.05, 2.0, 0.6, 0.6, 0.95, i * 0.15, sqTex()); pillar(gp, dim(E.c[1], 0.6), 0.55, 2.4, 1.3, 0, 0.5); sigil(gp, sqTex(), 1.6, 3.4, E.c[1], 0.8, 0.1);
-      glow(hipsAt(a, 0.5).clone(), E.c[2], 3.2, 0.4, 1.0); ring(gp, E.c[2], 1.9, 0.55, 1.0); label(E, gp, 1.15); flash(1.25, 0.3, 1.0);
-      for (let i = 0; i < 3; i++) { const ph = i * TAU / 3; card(new THREE.Vector3(), tex().star5(), E.pal[i === 1 ? 0 : 3], 2.3, (m, u, e) => { const k = sstep(0, 0.12, u) * (1 - sstep(0.85, 1, u)), an = ph + e.t * 1.6; m.position.set(gp.x + Math.cos(an) * 0.75, gp.y + 1.25 + Math.sin(e.t * 2 + ph) * 0.1, gp.z + Math.sin(an) * 0.75); m.scale.setScalar(0.32 * k + 0.01); m.material.opacity = k; }, 1.3); } },
-    tick(a, r, t, dt) { if (t > 1.1) return; const Q = P(), E = a.E, n = Math.ceil(dt * 70), h = 2 * seg(t, 0.05, 1.0); for (let i = 0; i < n; i++) { const an = Math.random() * TAU; EM(Q, _b.set(a.gp.x + Math.cos(an) * 0.55, a.gp.y + h, a.gp.z + Math.sin(an) * 0.55), 0, 0, 0, pk(E), rnd(0.025, 0.045), 0.35, { sq: 1, so: 0.5 }); } } };
-  MOT.derez = { kind: 'out', dur: 2.8, keys: [[0, 'stand'], [0.3, 'att', 0.3], [0.7, 'salute', 0.35], [1.45, 'salute'], [1.65, 'att', 0.2]],
-    body(t, B) { const u = seg(t, 1.75, 2.45); B.s = Math.max(0.02, 1 - stepQ(ein(u), 6)); B.vis = u < 0.99 && (u <= 0 || Math.random() < 0.8); },
-    fx(a) { const E = a.E, gp = a.gp; sigil(gp, sqTex(), 1.6, 2.6, E.c[1], 0.8, 0.2); halo(gp, E.c[2], 2.0, 0.05, 0.6, 0.6, 0.75, 1.72, sqTex()); pillar(gp, dim(E.c[1], 0.6), 0.55, 2.4, 1.0, 1.7, 0.4); at(2.45, () => { glow(hipsAt(a, 0.2).clone(), E.c[2], 2.4, 0.4); ring(gp, E.c[2], 1.6, 0.5); }); },
-    tick(a, r, t, dt) { if (t < 1.72 || t > 2.5) return; const Q = P(), E = a.E, n = Math.ceil(dt * 70), h = 2 * (1 - seg(t, 1.72, 2.47)); for (let i = 0; i < n; i++) { const an = Math.random() * TAU; EM(Q, _b.set(a.gp.x + Math.cos(an) * 0.55, a.gp.y + h, a.gp.z + Math.sin(an) * 0.55), 0, 0, 0, pk(E), rnd(0.025, 0.045), 0.35, { sq: 1, so: 0.5 }); } } };
+  const podY = (t, up, dn) => (t < dn[0] ? -0.56 * (1 - eout(seg(t, up[0], up[1]))) : -0.56 * ein(seg(t, dn[0], dn[1])));
+  function podium(a, up, dn, dur) {
+    const g = grpAt(a);
+    solid(new THREE.BoxGeometry(1.15, 0.5, 0.9), 0x6a1420, g, 0, 0.25, -0.05); solid(new THREE.BoxGeometry(1.2, 0.05, 0.95), 0xd8a43a, g, 0, 0.5, -0.05); solid(new THREE.BoxGeometry(1.2, 0.05, 0.95), 0xd8a43a, g, 0, 0.025, -0.05);
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(0.64, 0.4), new THREE.MeshBasicMaterial({ map: podTex(), transparent: true, side: THREE.DoubleSide, fog: false })); f.userData.own = true; f.position.set(0, 0.26, 0.405); g.add(f);
+    add(g, dur, (e) => { g.position.y = a.gp.y + podY(e.t, up, dn); });
+    for (const tt of [up[0], dn[0]]) at(tt, () => { const Q = P(); for (let i = 0; i < 24; i++) { const an = Math.random() * TAU; loc(a, Math.cos(an) * 0.7, 0.05, Math.sin(an) * 0.6, _c); EM(Q, _c, Math.cos(an) * rnd(0.3, 1), rnd(0.3, 1), Math.sin(an) * rnd(0.3, 1), 0xbfb5a0, rnd(0.15, 0.3), rnd(0.6, 1.1), { grow: 1.2, so: 1, a: 0.45, drag: 1 }); } });
+  }
+  // 트로피: tIn 에 하늘에서 내려와 두 손 사이로 · tOut 에 금빛으로 흩어짐
+  function trophy(a, tIn, tOut) {
+    const E = a.E, g = new THREE.Group(), GOLD = 0xe2b443, mid = new THREE.Vector3(), sky = loc(a, 0, 3.4, 0.1, new THREE.Vector3());
+    const prof = [[0, 0], [0.085, 0], [0.085, 0.018], [0.03, 0.035], [0.022, 0.11], [0.05, 0.13], [0.105, 0.19], [0.125, 0.29], [0.13, 0.34], [0.115, 0.34], [0.11, 0.3], [0.09, 0.2], [0.02, 0.15]].map(([x, y]) => new THREE.Vector2(x, y));
+    solid(new THREE.LatheGeometry(prof, 18), GOLD, g, 0, -0.2, 0);
+    for (const s of [-1, 1]) { const h = solid(new THREE.TorusGeometry(0.06, 0.012, 6, 12, Math.PI), GOLD, g, s * 0.12, 0.0, 0); h.rotation.z = -s * Math.PI / 2; }
+    const gl = new THREE.Sprite(kit().sprMat(E.c[0])); gl.renderOrder = 7; g.add(gl); gl.position.y = 0.02;
+    add(g, tOut + 0.25 - tIn, (e) => { const t = tIn + e.t, r = a.rig; r.armL.hand.getWorldPosition(_a); r.armR.hand.getWorldPosition(_b); mid.addVectors(_a, _b).multiplyScalar(0.5); mid.y -= 0.02;
+      const k = eout(seg(t, tIn, tIn + 0.4)); g.position.copy(sky).lerp(mid, k); g.rotation.set(0, a.yaw + (1 - k) * 6, 0);
+      const s = t < tOut ? 1 : Math.max(0.001, 1 - seg(t, tOut, tOut + 0.2)); g.scale.setScalar(s); gl.scale.setScalar(0.5 + Math.sin(t * 6) * 0.08); gl.material.opacity = 0.55 * s; }, tIn);
+    at(tIn + 0.4, () => glow(mid, 0xffffff, 1.4, 0.3)); at(tOut, () => burst(mid, E, 44, 2.4, { g: -1.5 }));
+  }
+  function confetti(a, s) {
+    const Q = P(), gp = a.gp, E = a.E; loc(a, s * 1.1, 0.2, 0.15, _c); glow(_c.clone(), E.c[2], 1.2, 0.25);
+    for (let i = 0; i < 55; i++) EM(Q, _c, -s * rnd(0.6, 2.4) * Math.cos(a.yaw), rnd(3.5, 6.5), rnd(-0.8, 0.8), pk(E), rnd(0.035, 0.06), rnd(1.4, 2.4), { g: -3.2, drag: 1.3, sq: 1, so: 0.9 });
+  }
+  MOT.ceremony = { kind: 'in', dur: 4.7, keys: [[0, 'att'], [0.85, 'att'], [1.15, 'trophyHold', 0.3], [1.35, 'trophyHold'], [1.65, 'trophyUp', 0.3], [2.75, 'trophyUp'], [3.0, 'trophyHold', 0.25], [3.3, 'wave', 0.3], [4.0, 'wave']],
+    body(t, B) { B.y = Math.max(0, podY(t, [0.05, 0.6], [3.2, 3.7]) + 0.525); },
+    fx(a) { const E = a.E, gp = a.gp; spotlight(a, 1, 0, 4.3, 0xfff1c0); spotlight(a, -1, 0.1, 4.2, 0xfff1c0); podium(a, [0.05, 0.6], [3.2, 3.7], 3.8); trophy(a, 0.75, 2.95);
+      ring(gp, E.c[0], 2.4, 0.7, 0.6); label(E, gp, 0.9); flash(1.35, 0.3, 1.7);
+      for (const [tt, s] of [[1.7, -1], [1.82, 1], [2.3, -1], [2.42, 1]]) at(tt, () => confetti(a, s)); },
+    tick(a, r, t, dt) { if (t > 1.6 && t < 3.2 && Math.random() < dt * 30) { const an = Math.random() * TAU, rr = rnd(0.1, 0.8); EM(P(), _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + rnd(2.0, 2.8), a.gp.z + Math.sin(an) * rr), 0, -0.4, 0, a.E.c[2], rnd(0.02, 0.04), rnd(1.2, 2), { so: 0.5 }); } } };
+  // 커튼: tc 에 닫히고 to 에 다시 열림 (불투명 — 뒤의 캐릭터를 가림)
+  function curtains(a, t0, tc, to, tEnd) {
+    const g = grpAt(a), geo = new THREE.PlaneGeometry(0.82, 2.5); geo.translate(0, 1.25, 0);
+    const mk = () => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: curtainTex(), side: THREE.DoubleSide, fog: false })); m.userData.own = true; g.add(m); return m; };
+    const C = [[mk(), 1], [mk(), -1]], rod = solid(new THREE.BoxGeometry(1.75, 0.06, 0.06), 0xd8a43a, g, 0, 2.53, 0.48);
+    add(g, tEnd - t0, (e) => { const t = t0 + e.t, c = t < to ? eout(seg(t, tc - 0.45, tc)) : 1 - eout(seg(t, to, to + 0.45)), drop = sstep(t0, t0 + 0.35, t) * (1 - sstep(tEnd - 0.35, tEnd, t));
+      // 열림 = 바깥 끝에 주름을 잡아 모음(옆 사람을 가리지 않게) · 닫힘 = 가운데서 맞닿음
+      for (const [m, s] of C) { m.position.set(s * lerp(0.66, 0.4, c), (1 - drop) * 2.6, 0.48); m.rotation.y = Math.sin(t * 3 + s) * 0.05 * (1 - c * 0.5); m.scale.set(lerp(0.36, 1, c), Math.max(0.01, drop), 1); }
+      rod.position.y = 2.53 + (1 - drop) * 0.6; }, t0);
+  }
+  MOT.curtain = { kind: 'out', dur: 3.6, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.75, 'bowSweep', 0.4], [1.3, 'bowSweep'], [1.6, 'wave', 0.3], [2.25, 'wave']],
+    body(t, B) { B.vis = t < 2.3; },
+    fx(a) { const E = a.E, gp = a.gp; spotlight(a, 0, 0, 2.4, 0xfff1c0); curtains(a, 0.15, 2.3, 2.62, 3.55); ring(gp, E.c[0], 2.0, 0.6, 2.65);
+      at(2.65, () => { confetti(a, -1); confetti(a, 1); burst(hipsAt(a, 0.9), E, 40, 2.6, { g: -2, sq: 1, so: 0.85 }); }); } };
+  // ===== 정점의 베테랑: 연막탄이 날아와 구르고 은빛 연기가 피어오르면, 그 속에서 걸어 나와 차렷 → 경례 · 가슴에 훈장이 하나씩 빛남
+  //        퇴장: 마지막 경례 후 발밑에 연막탄을 떨어뜨리고, 연기 속에서 돌아서 걸어가 사라짐 → 연기가 걷히면 군번줄만 반짝
+  function smokeCan(a, from, to, t0, t1, tEnd) {
+    const g = new THREE.Group(); solid(new THREE.CylinderGeometry(0.034, 0.034, 0.13, 10), 0x5b6450, g); solid(new THREE.CylinderGeometry(0.02, 0.026, 0.035, 8), 0x2c2f2a, g, 0, 0.08, 0); solid(new THREE.BoxGeometry(0.012, 0.09, 0.02), 0x8a8f86, g, 0.036, 0.02, 0);
+    const A = loc(a, from[0], from[1], from[2], new THREE.Vector3()), Bq = loc(a, to[0], to[1], to[2], new THREE.Vector3()); a.can = Bq;
+    add(g, tEnd - t0, (e) => { const t = t0 + e.t, u = seg(t, t0, t1), h = t < t1 ? Math.sin(Math.PI * u) * 0.7 : Math.max(0, Math.sin(Math.PI * seg(t, t1, t1 + 0.25))) * 0.12;
+      g.position.copy(A).lerp(Bq, eout(u)); g.position.y += h + 0.035; g.rotation.set(t < t1 ? e.t * 9 : Math.PI / 2, a.yaw + 0.6, t < t1 ? e.t * 5 : 0); }, t0);
+    at(t1, () => { const Q = P(); for (let i = 0; i < 30; i++) { const an = Math.random() * TAU, sp = rnd(0.4, 1.4); EM(Q, Bq, Math.cos(an) * sp, rnd(0.2, 0.9), Math.sin(an) * sp, i % 2 ? 0xe4e8e4 : 0xc2c9c5, rnd(0.4, 0.75), rnd(1.4, 2.2), { grow: 2.4, drag: 1.6, so: 1, a: 0.6 }); } });   // 터지는 순간 뭉게 연기
+  }
+  // 연기: 깡통에서 뿜는 줄기 + 둘레로 번진 두꺼운 구름(zb: 캐릭터 앞(+)·뒤(−) 쪽으로 더 번짐) — 덮어 그리기라 뒤의 캐릭터를 가림
+  const smokeTick = (a, dt, rate, zb = 0) => { if (!a.can) return; const Q = P(), p = a.can, cy = Math.cos(a.yaw), sy = Math.sin(a.yaw), n = Math.ceil(dt * rate);
+    for (let i = 0; i < n; i++) { const col = Math.random() < 0.5 ? 0xe4e8e4 : 0xc2c9c5;
+      if (i % 3 === 0) { EM(Q, _b.set(p.x, p.y + 0.08, p.z), rnd(-0.25, 0.25), rnd(0.9, 1.6), rnd(-0.25, 0.25), col, rnd(0.18, 0.3), rnd(0.9, 1.4), { grow: 3.2, drag: 1.2, so: 1, a: 0.6 }); continue; }
+      const x = rnd(-0.6, 0.6), z = rnd(-0.45, 0.45) + zb * Math.random(); EM(Q, _b.set(p.x + cy * x + sy * z, p.y + rnd(0.1, 0.7), p.z - sy * x + cy * z), rnd(-0.3, 0.3), rnd(0.12, 0.45), rnd(-0.3, 0.3), col, rnd(0.55, 0.95), rnd(1.6, 2.5), { grow: 2.0, drag: 0.8, so: 1, a: 0.55 }); } };
+  // 가슴의 훈장 3개: 차례로 달리며 반짝
+  function medals(a, ts, tEnd) {
+    const E = a.E, cols = [0xffd65a, 0xdfe6ee, 0xd08a4a];
+    ts.forEach((t1, i) => { const m = card(new THREE.Vector3(), tex().star5(), cols[i], tEnd - t1, (mm, u, e) => { a.rig.chest.localToWorld(mm.position.set(0.04 + i * 0.055, 0.02 - (i % 2) * 0.03, 0.17)); mm.scale.setScalar(0.07 * Math.min(1, e.t * 6) + Math.max(0, 0.2 - e.t) * 0.4); mm.material.opacity = 1 - sstep(tEnd - t1 - 0.4, tEnd - t1, e.t); }, t1);
+      at(t1, () => { a.rig.chest.localToWorld(_c.set(0.04 + i * 0.055, 0.02, 0.17)); glow(_c, 0xffffff, 0.5, 0.3); }); });
+  }
+  MOT.smokeIn = { kind: 'in', dur: 4.4, keys: [[0, 'march'], [1.72, 'march'], [1.9, 'att', 0.18], [2.05, 'att'], [2.35, 'salute', 0.3], [3.35, 'salute'], [3.6, 'att', 0.25]],
+    body(t, B) { B.vis = t > 0.7; if (t < 1.85) B.z = -1.55 * (1 - seg(t, 0.72, 1.82)); },
+    fx(a) { const E = a.E, gp = a.gp; smokeCan(a, [-2.2, 1.6, 0.6], [0.18, 0.04, -0.8], 0, 0.45, 3.4); label(E, gp, 2.1); medals(a, [2.4, 2.65, 2.9], 4.2);
+      at(1.9, () => { ring(gp, E.c[1], 1.2, 0.4, 0); const Q = P(); for (let i = 0; i < 14; i++) { const an = Math.random() * TAU; EM(Q, _c.set(gp.x + Math.cos(an) * 0.2, gp.y + 0.04, gp.z + Math.sin(an) * 0.2), Math.cos(an) * 0.8, 0.3, Math.sin(an) * 0.8, 0xcfd4cc, rnd(0.08, 0.14), 0.6, { grow: 1, so: 1, a: 0.5, drag: 2 }); } }); },
+    tick(a, r, t, dt) { if (t > 0.45 && t < 2.8) smokeTick(a, dt, t < 1.6 ? 115 : 45 * (1 - seg(t, 1.6, 2.8)), -0.5); } };
+  MOT.smokeOut = { kind: 'out', dur: 3.7, keys: [[0, 'stand'], [0.3, 'att', 0.3], [0.65, 'salute', 0.3], [1.35, 'salute'], [1.55, 'att', 0.2], [1.75, 'att'], [1.9, 'march', 0.15]],
+    body(t, B) { B.ry = Math.PI * sstep(1.55, 1.9, t); if (t > 1.9) B.z = -1.6 * seg(t, 1.9, 2.95); B.vis = t < 2.55; },
+    fx(a) { const E = a.E, gp = a.gp; smokeCan(a, [-0.25, 0.85, 0.12], [0.12, 0.04, 0.32], 1.42, 1.62, 3.6);
+      const tags = new THREE.Group(); [[0, 0, 0.3], [0.035, 0.01, -0.25]].forEach(([x, z, ry]) => { const m = solid(new THREE.BoxGeometry(0.05, 0.005, 0.03), 0xc9ced2, tags, x, 0.004, z); m.rotation.y = ry; });
+      const tp = loc(a, 0.05, 0, 0.1, new THREE.Vector3()); add(tags, 1.1, (e) => { tags.position.copy(tp); tags.rotation.y = a.yaw; }, 2.5);
+      for (const tt of [2.75, 3.05, 3.35]) at(tt, () => card(_c.set(tp.x, tp.y + 0.03, tp.z).clone(), tex().star4(), 0xffffff, 0.35, (m, u) => { m.scale.setScalar(0.3 * Math.sin(Math.PI * u) + 0.01); m.material.opacity = 1; })); },
+    tick(a, r, t, dt) { if (t > 1.62 && t < 3.3) smokeTick(a, dt, t < 2.6 ? 120 : 50 * (1 - seg(t, 2.6, 3.3)), -1.0); } };
   // ===== 백룸 정복자 =====
   //  입장(탈출): 등 뒤에 백룸 복도가 보이는 문틈이 찢어지듯 열리고, 그 속에서 몸을 던져 빠져나와 네 발로 구름 — 바로 뒤에서 검은 손이 문틈 밖까지 뻗어 발목을 낚아채려다
   //   허공을 움켜쥐고 더듬음 · 다른 손은 문틀을 움켜쥠 → 손이 끌려 들어가며 문틈이 닫힘 → 뒤를 돌아보고 이마의 땀을 훔침
@@ -29742,58 +29940,137 @@ const PartyFx = (() => {
       if (t > 0.45 && t < 1.5 && Math.random() < dt * 45) { const an = Math.random() * TAU, rr = rnd(0.15, 0.75); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + 0.05, a.gp.z + Math.sin(an) * rr), 0, rnd(0.3, 1.0), 0, pk(E), rnd(0.03, 0.06), rnd(0.4, 0.9), { sq: 1, so: 0.85 }); }   // 바닥에서 떠오르는 픽셀
       if (t > 0.6 && t < 1.45 && Math.random() < dt * 30) { hipsW(r, _a); for (const c of [0xff3050, 0x30e8ff]) EM(Q, _b.set(_a.x + rnd(-0.35, 0.35), _a.y + rnd(-0.8, 0.9), _a.z + rnd(-0.2, 0.2)), rnd(-0.3, 0.3), 0, 0, c, rnd(0.02, 0.04), rnd(0.15, 0.3), { sq: 1, so: 0.7 }); }   // 몸 둘레 색 어긋남
     } };
-  // ===== 전쟁의 신: 붉은 번개가 내리꽂히고 번쩍이는 순간 한 무릎으로 나타나 두 주먹 힘자랑 / 오른팔을 하늘로 들자 번개를 맞고 사라짐 =====
+  // ===== 전쟁의 신: 하늘에서 붉게 달아오른 칼들이 비처럼 쏟아져 둘레에 꽂히고, 가운데에 붉은 번개가 떨어지며 한 무릎으로 나타남 → 일어나 포효(힘자랑)하면 칼들이 붉게 타오르다 재가 됨
+  //        퇴장: 커다란 검이 눈앞에 내리꽂히고, 두 손으로 뽑아 하늘로 치켜들면 번개가 검에 떨어지며 사라짐 → 검은 쓰러지며 불티로
   const sky3 = (gp, k = 1) => new THREE.Vector3(gp.x + rnd(-0.8, 0.8) * k, gp.y + 9, gp.z + rnd(-1.5, -0.5) * k);
-  MOT.strikeIn = { kind: 'in', dur: 3.7, keys: [[0, 'land'], [1.0, 'land'], [1.55, 'rise', 0.5], [1.95, 'flex', 0.4], [3.1, 'flex']],
-    body(t, B) { B.vis = t > 0.32; },
-    fx(a) { const E = a.E, gp = a.gp, g0 = new THREE.Vector3(gp.x, gp.y, gp.z);
-      for (const [tt, k] of [[0.02, 0.6], [0.18, 0.8], [0.3, 1.0]]) { bolt(sky3(gp), g0.clone().add(_a.set(rnd(-0.15, 0.15), 0, rnd(-0.15, 0.15))), E.c[0], 0.42, tt, 0.13 * k + 0.05); flash(1 + 1.3 * k, 0.16, tt); }
-      shake(0.12, 0.3); ring(gp, E.c[0], 2.8, 0.7, 0.32); ring(gp, E.c[2], 1.5, 0.4, 0.34); decal(gp, tex().lava(), 2.2, 2.6, E.c[2], E.c[0], 0.3); glow(hipsAt(a, 0.5).clone(), E.c[2], 5, 0.4, 0.3); label(E, gp, 0.6);
-      at(0.32, () => { const Q = P(); for (let i = 0; i < 60; i++) { const an = Math.random() * TAU, sp = rnd(2.5, 6); EM(Q, _a.set(gp.x, gp.y + 0.1, gp.z), Math.cos(an) * sp, rnd(0.5, 3), Math.sin(an) * sp, pk(E), rnd(0.02, 0.045), rnd(0.2, 0.5), { drag: 3, so: 0.4 }); } });
-      for (const tt of [2.0, 2.45, 2.9]) at(tt, () => { chestW(a.rig, _c); bolt(_c.clone().add(_a.set(rnd(-0.6, 0.6), rnd(0.2, 0.7), rnd(-0.3, 0.3))), _c.clone().add(_b.set(rnd(-0.6, 0.6), rnd(-0.9, -0.2), rnd(-0.3, 0.3))), E.c[0], 0.22, 0, 0.05); }); },
-    tick(a, r, t, dt) { if (t < 1.9 || t > 3.2 || Math.random() > dt * 30) return; chestW(r, _c); EM(P(), _b.set(_c.x + rnd(-0.4, 0.4), _c.y + rnd(-0.6, 0.6), _c.z + rnd(-0.3, 0.3)), 0, 0.3, 0, pk(a.E), rnd(0.02, 0.04), 0.3, { so: 0.4 }); } };
-  MOT.strikeOut = { kind: 'out', dur: 2.4, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.75, 'armUp', 0.4]],
-    body(t, B) { B.vis = t < 1.02 || (t < 1.12 && Math.random() < 0.5); },
-    fx(a) { const E = a.E, gp = a.gp; at(0.98, () => { hand0(a, _c); bolt(sky3(gp, 0.3), _c.clone(), E.c[0], 0.5, 0, 0.2); flash(2.4, 0.2); shake(0.1); ring(gp, E.c[0], 2.6, 0.6); decal(gp, tex().lava(), 2, 2.2, E.c[2], E.c[0]); glow(hipsAt(a, 0.8).clone(), E.c[2], 5, 0.45); const Q = P(); for (let i = 0; i < 50; i++) { _a.set(rnd(-1, 1), rnd(-0.3, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(2, 5)); EM(Q, hipsAt(a, rnd(0.3, 1.4)), _a.x, _a.y, _a.z, pk(E), rnd(0.02, 0.045), rnd(0.25, 0.55), { drag: 2.5, so: 0.4 }); } }); bolt(sky3(gp), new THREE.Vector3(gp.x + 0.8, gp.y, gp.z - 0.4), E.c[0], 0.3, 0.75, 0.1); } };
-  // ===== 하드코어 패왕: 불꼬리를 끌며 떨어져 땅을 주먹으로 내려침 · 용암 균열 · 불 고리 / 땅을 치자 불기둥이 솟아 삼킴 =====
-  MOT.slam = { kind: 'in', dur: 3.9, keys: [[0, 'fall'], [0.42, 'punch', 0.06], [1.4, 'punch'], [2.0, 'rise', 0.55], [2.35, 'flex', 0.35], [3.3, 'flex']],
+  // 검: 손잡이 가운데가 원점 · 칼날은 +y (끝 1.11 × s) · 붉은 기운(glow)
+  function sword(E, s) {
+    const g = new THREE.Group(), steel = 0x9097a0;
+    solid(new THREE.BoxGeometry(0.075 * s, 0.86 * s, 0.014 * s), steel, g, 0, 0.53 * s, 0);
+    const tp = solid(new THREE.ConeGeometry(0.038 * s, 0.15 * s, 4), steel, g, 0, 1.035 * s, 0); tp.scale.z = 0.25;
+    const sm = [tp, solid(new THREE.BoxGeometry(0.27 * s, 0.035 * s, 0.05 * s), 0x3a0d10, g, 0, 0.09 * s, 0), solid(new THREE.CylinderGeometry(0.017 * s, 0.02 * s, 0.17 * s, 8), 0x1d1515, g, 0, -0.005 * s, 0), solid(new THREE.SphereGeometry(0.03 * s, 8, 6), 0x3a0d10, g, 0, -0.1 * s, 0)];
+    for (const m of sm) m.castShadow = false;   // 작은 부품은 그림자 생략 (칼이 7자루라 그리기 횟수 절약)
+    g.userData.glow = lit(new THREE.BoxGeometry(0.03 * s, 0.84 * s, 0.024 * s), 0xff4414, g, 0, 0.55 * s, 0, 0.5);   // 칼날 가운데 홈이 주홍빛으로 달아오름 (칼날 전체를 덮으면 판자처럼 보임)
+    return g;
+  }
+  function bladeRain(a, tEnd, tRoar) {
+    const E = a.E, g = grpAt(a), S = [];
+    [70, 110, 145, 180, 215, 250, 290].forEach((deg, i) => { const an = deg * Math.PI / 180, rr = rnd(0.95, 1.25), sc = rnd(1.0, 1.2), w = sword(E, sc); w.rotation.order = 'YXZ'; w.visible = false; g.add(w);
+      S.push({ w, x: Math.sin(an) * rr, z: Math.cos(an) * rr, y0: 1.11 * sc - 0.28, t: 0.1 + i * 0.11, ry: rnd(0, TAU), rx: Math.PI + rnd(-0.18, 0.18), rz: rnd(-0.18, 0.18) }); });
+    add(g, tEnd, (e) => { const t = e.t, sink = sstep(tEnd - 0.75, tEnd - 0.1, t), fl = Math.max(0, 1 - Math.abs(t - tRoar - 0.2) / 0.45);
+      for (const s of S) { const f = seg(t, s.t, s.t + 0.22); s.w.visible = t > s.t; s.w.position.set(s.x, s.y0 + (1 - ein(f)) * 4.6 - sink * 1.5, s.z); s.w.rotation.set(s.rx, s.ry, s.rz); s.w.userData.glow.material.opacity = (0.5 + fl * 0.5 + Math.sin(t * 9 + s.ry) * 0.08) * (1 - sink * 0.8); } });
+    for (const s of S) at(s.t + 0.22, () => { loc(a, s.x, 0.05, s.z, _c); ring(gpOf(a, _c), E.c[0], 0.5, 0.35); const Q = P(); for (let i = 0; i < 12; i++) EM(Q, _c, rnd(-1.5, 1.5), rnd(0.8, 2.8), rnd(-1.5, 1.5), i % 2 ? 0xffd2a0 : E.c[0], rnd(0.02, 0.04), rnd(0.25, 0.5), { g: -7, drag: 1.5, so: 0.4 }); });
+    at(tEnd - 0.7, () => { for (const s of S) { loc(a, s.x, 0.4, s.z, _c); burst(_c, E, 12, 1.4, { g: 1.2 }); } });
+  }
+  MOT.bladeRain = { kind: 'in', dur: 4.3, keys: [[0, 'land'], [1.4, 'land'], [1.95, 'rise', 0.5], [2.35, 'flex', 0.4], [3.45, 'flex']],
+    body(t, B) { B.vis = t > 0.97; },
+    fx(a) { const E = a.E, gp = a.gp, g0 = new THREE.Vector3(gp.x, gp.y, gp.z); bladeRain(a, 4.0, 2.35);
+      bolt(sky3(gp, 0.3), g0.clone(), E.c[0], 0.42, 0.93, 0.2); bolt(sky3(gp), g0.clone().add(_a.set(0.2, 0, -0.1)), E.c[0], 0.3, 0.85, 0.1); flash(2.4, 0.18, 0.95); shake(0.13, 0.97);
+      ring(gp, E.c[0], 2.8, 0.7, 0.97); ring(gp, E.c[2], 1.5, 0.4, 0.99); decal(gp, tex().lava(), 2.2, 2.6, E.c[2], E.c[0], 0.95); glow(hipsAt(a, 0.5).clone(), E.c[2], 5, 0.4, 0.95); label(E, gp, 1.2);
+      at(0.97, () => { const Q = P(); for (let i = 0; i < 60; i++) { const an = Math.random() * TAU, sp = rnd(2.5, 6); EM(Q, _a.set(gp.x, gp.y + 0.1, gp.z), Math.cos(an) * sp, rnd(0.5, 3), Math.sin(an) * sp, pk(E), rnd(0.02, 0.045), rnd(0.2, 0.5), { drag: 3, so: 0.4 }); } });
+      at(2.35, () => { ring(gp, E.c[0], 2.4, 0.55); flash(1.3, 0.25); shake(0.05); chestW(a.rig, _c); bolt(_c.clone().add(_a.set(0, 0.6, 0)), _c.clone().add(_b.set(rnd(-0.6, 0.6), -0.5, 0)), E.c[0], 0.22, 0, 0.05); }); },
+    tick(a, r, t, dt) { if (t < 2.3 || t > 3.5 || Math.random() > dt * 30) return; chestW(r, _c); EM(P(), _b.set(_c.x + rnd(-0.4, 0.4), _c.y + rnd(-0.6, 0.6), _c.z + rnd(-0.3, 0.3)), 0, 0.3, 0, pk(a.E), rnd(0.02, 0.04), 0.3, { so: 0.4 }); } };
+  MOT.swordOut = { kind: 'out', dur: 3.2, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.9, 'gripSword', 0.35], [1.22, 'gripSword'], [1.55, 'swordUp', 0.3]],
+    body(t, B) { B.vis = t < 1.76 || (t < 1.86 && Math.random() < 0.5); },
+    fx(a) {
+      const E = a.E, gp = a.gp, S = 1.35, sw = sword(E, S), yq = new THREE.Quaternion().setFromAxisAngle(AX_Y, a.yaw), upQ = yq.clone(), dnQ = yq.clone().multiply(new THREE.Quaternion().setFromAxisAngle(AX_X, Math.PI));
+      const stuck = loc(a, 0, 1.11 * S - 0.3, 0.46, new THREE.Vector3()), v = new THREE.Vector3(), tip = new THREE.Vector3();
+      add(sw, 2.7, (e) => { const t = 0.3 + e.t, r = a.rig;
+        if (t < 1.18) { sw.position.copy(stuck); sw.position.y += (1 - ein(seg(t, 0.3, 0.55))) * 4.4; sw.quaternion.copy(dnQ); }
+        else if (t < 1.8) { r.armR.hand.getWorldPosition(sw.position); sw.quaternion.copy(dnQ).slerp(upQ, sstep(1.22, 1.6, t)); v.set(0, 0, 0); }
+        else { v.y -= e.dt * 9; sw.position.addScaledVector(v, e.dt); sw.rotateX(e.dt * 3); sw.scale.setScalar(Math.max(0.001, 1 - seg(t, 2.3, 2.9))); }
+        sw.userData.glow.material.opacity = 0.6 + (t > 1.2 && t < 1.8 ? 0.4 : 0) + Math.sin(t * 10) * 0.08; }, 0.3);
+      at(0.55, () => { ring(gp, E.c[0], 1.4, 0.4); shake(0.06); const Q = P(); loc(a, 0, 0.05, 0.46, _c); for (let i = 0; i < 26; i++) EM(Q, _c, rnd(-2, 2), rnd(0.8, 3), rnd(-2, 2), i % 2 ? 0xffd2a0 : E.c[0], rnd(0.02, 0.045), rnd(0.3, 0.6), { g: -7, drag: 1.5, so: 0.4 }); });
+      at(1.72, () => { tip.set(0, 1.11 * S, 0).applyQuaternion(sw.quaternion).add(sw.position); bolt(sky3(gp, 0.3), tip.clone(), E.c[0], 0.5, 0, 0.2); flash(2.4, 0.2); shake(0.1); ring(gp, E.c[0], 2.6, 0.6); decal(gp, tex().lava(), 2, 2.2, E.c[2], E.c[0]); glow(hipsAt(a, 0.8).clone(), E.c[2], 5, 0.45);
+        burst(hipsAt(a, 0.9), E, 50, 5, { drag: 2.5, so: 0.4 }); });
+    },
+    tick(a, r, t, dt) { if (t > 1.8 && t < 2.6 && Math.random() < dt * 40) EM(P(), _b.set(a.gp.x + rnd(-0.6, 0.6), a.gp.y + rnd(0.1, 1.2), a.gp.z + rnd(-0.6, 0.6)), 0, rnd(0.5, 1.4), 0, pk(a.E), rnd(0.02, 0.04), rnd(0.5, 0.9), { g: 0.5, so: 0.5 }); } };
+  // ===== 하드코어 패왕: 불꼬리를 끌며 떨어져 주먹으로 땅을 내려치면 둘레의 바닥이 깨져 바위판이 분화구처럼 솟고 용암이 갈라져 빛남 → 일어나 목을 꺾어 풀고 주먹을 꺾음 · 바위판이 가라앉음
+  //        퇴장: 주먹으로 땅을 치면 바위판이 이빨처럼 솟아 안쪽으로 덮치고, 불길과 함께 땅속으로 삼켜짐
+  function slabs(a, tUp, tDown, inward, tEnd, sinkTo) {
+    const g = grpAt(a), S = [];
+    for (let i = 0; i < 9; i++) { const an = (i / 9) * TAU + rnd(-0.15, 0.15), w = rnd(0.38, 0.55), h = rnd(0.55, 0.85), geo = new THREE.BoxGeometry(w, h, rnd(0.14, 0.2)); geo.translate(0, h / 2, 0);
+      const s = new THREE.Group(); s.rotation.order = 'YXZ'; s.rotation.y = an; solid(geo, i % 2 ? 0x2a2320 : 0x342b26, s).rotation.z = rnd(-0.12, 0.12); g.add(s);
+      S.push({ s, an, rr: rnd(0.78, 0.95), tilt: (inward ? -1 : 1) * rnd(0.35, 0.6), d: rnd(0, 0.06) }); }
+    add(g, tEnd, (e) => { const t = e.t; for (const o of S) { const u = eout(seg(t, tUp + o.d, tUp + o.d + 0.13)), dn = ein(seg(t, tDown, tDown + 0.6)); o.s.position.set(Math.sin(o.an) * o.rr, -0.9 * (1 - u) - dn * sinkTo, Math.cos(o.an) * o.rr); o.s.rotation.x = o.tilt * u; } });
+    at(tUp, () => { const Q = P(); for (const o of S) { loc(a, Math.sin(o.an) * o.rr, 0.1, Math.cos(o.an) * o.rr, _c); for (let i = 0; i < 4; i++) EM(Q, _c, rnd(-1, 1), rnd(1, 3), rnd(-1, 1), 0x2a2420, rnd(0.04, 0.07), rnd(0.6, 1.1), { g: -10, sq: 1, so: 1 }); } });
+  }
+  MOT.crater = { kind: 'in', dur: 4.4, keys: [[0, 'fall'], [0.42, 'punch', 0.06], [1.35, 'punch'], [1.9, 'rise', 0.5], [2.2, 'neck', 0.3], [2.95, 'neck'], [3.2, 'fistPalm', 0.25], [3.75, 'fistPalm']],
     body(t, B) { if (t < 0.42) B.y = 6.5 * (1 - ein(t / 0.42)); else if (t < 0.55) B.y = -0.05 * Math.sin((t - 0.42) / 0.13 * Math.PI); },
-    fx(a) { const E = a.E, gp = a.gp; decal(gp, tex().lava(), 3.6, 3.4, 0xffd0a0, E.c[0], 0.42); sigil(gp, tex().fire(), 2.6, 1.6, E.c[1], 1.5, 0.42, 0.25); ring(gp, E.c[0], 3.2, 0.8, 0.42); ring(gp, E.c[1], 2.0, 0.5, 0.45);
-      glow(hipsAt(a, 0.3).clone(), E.c[2], 5.5, 0.45, 0.42); shake(0.16, 0.42); flash(1.9, 0.4, 0.42); label(E, gp, 0.65);
-      at(0.42, () => { const Q = P(); for (let i = 0; i < 40; i++) { const an = Math.random() * TAU, sp = rnd(1.5, 4.5); EM(Q, _a.set(gp.x, gp.y + 0.1, gp.z), Math.cos(an) * sp, rnd(2.5, 5.5), Math.sin(an) * sp, 0x2a1a14, rnd(0.04, 0.07), rnd(0.7, 1.2), { g: -11, drag: 0.5, sq: 1, so: 1 }); }
-        for (let i = 0; i < 70; i++) { const an = Math.random() * TAU, sp = rnd(1, 4); EM(Q, _a.set(gp.x + Math.cos(an) * 0.4, gp.y + 0.1, gp.z + Math.sin(an) * 0.4), Math.cos(an) * sp, rnd(1, 4), Math.sin(an) * sp, pk(E), rnd(0.03, 0.06), rnd(0.5, 1.2), { g: -2, drag: 1.2, so: 0.55 }); }
-        for (let i = 0; i < 10; i++) EM(Q, _a.set(gp.x + rnd(-0.6, 0.6), gp.y + 0.2, gp.z + rnd(-0.6, 0.6)), rnd(-0.6, 0.6), rnd(0.5, 1.4), rnd(-0.6, 0.6), 0x2a2420, rnd(0.35, 0.55), rnd(1.2, 1.8), { grow: 1.3, so: 1, a: 0.55 }); }); },
+    fx(a) { const E = a.E, gp = a.gp; decal(gp, tex().lava(), 3.6, 3.6, 0xffd0a0, E.c[0], 0.42); sigil(gp, tex().fire(), 2.6, 1.6, E.c[1], 1.5, 0.42, 0.25); ring(gp, E.c[0], 3.2, 0.8, 0.42); ring(gp, E.c[1], 2.0, 0.5, 0.45);
+      glow(hipsAt(a, 0.3).clone(), E.c[2], 5.5, 0.45, 0.42); shake(0.18, 0.42); flash(1.9, 0.4, 0.42); label(E, gp, 0.65); slabs(a, 0.42, 3.2, false, 3.95, 1.0);
+      at(0.42, () => { const Q = P(); for (let i = 0; i < 70; i++) { const an = Math.random() * TAU, sp = rnd(1, 4); EM(Q, _a.set(gp.x + Math.cos(an) * 0.4, gp.y + 0.1, gp.z + Math.sin(an) * 0.4), Math.cos(an) * sp, rnd(1, 4), Math.sin(an) * sp, pk(E), rnd(0.03, 0.06), rnd(0.5, 1.2), { g: -2, drag: 1.2, so: 0.55 }); }
+        for (let i = 0; i < 10; i++) EM(Q, _a.set(gp.x + rnd(-0.6, 0.6), gp.y + 0.2, gp.z + rnd(-0.6, 0.6)), rnd(-0.6, 0.6), rnd(0.5, 1.4), rnd(-0.6, 0.6), 0x2a2420, rnd(0.35, 0.55), rnd(1.2, 1.8), { grow: 1.3, so: 1, a: 0.55 }); });
+      at(3.25, () => { chestW(a.rig, _c); _c.x += Math.sin(a.yaw) * 0.3; _c.z += Math.cos(a.yaw) * 0.3; glow(_c, E.c[2], 1.6, 0.25); burst(_c, E, 24, 2.2, { drag: 2.5 }); }); },
     tick(a, r, t, dt) { const Q = P(), E = a.E;
       if (t < 0.42) { hipsW(r, _a); const n = Math.ceil(dt * 200); for (let i = 0; i < n; i++) EM(Q, _b.set(_a.x + rnd(-0.25, 0.25), _a.y + rnd(0, 1.3), _a.z + rnd(-0.25, 0.25)), rnd(-0.4, 0.4), rnd(1, 3), rnd(-0.4, 0.4), i % 4 ? pk(E) : 0x2a2420, rnd(0.07, 0.15), rnd(0.2, 0.45), { grow: 0.6, so: i % 4 ? 0.5 : 1 }); }
-      else if (t < 3.0 && Math.random() < dt * 34) { const an = Math.random() * TAU, rr = rnd(0.1, 1.5); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + 0.05, a.gp.z + Math.sin(an) * rr), rnd(-0.1, 0.1), rnd(0.6, 1.6), rnd(-0.1, 0.1), pk(E), rnd(0.02, 0.04), rnd(0.8, 1.5), { g: 0.2, so: 0.5 }); } } };
+      else if (t < 3.3 && Math.random() < dt * 40) { const an = Math.random() * TAU, rr = rnd(0.3, 1.0); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + 0.05, a.gp.z + Math.sin(an) * rr), rnd(-0.1, 0.1), rnd(0.6, 1.6), rnd(-0.1, 0.1), pk(E), rnd(0.02, 0.04), rnd(0.8, 1.5), { g: 0.2, so: 0.5 }); } } };
   const firePillar = (a, dur, delay, h = 4.2) => { const E = a.E, gp = a.gp; pillar(gp, dim(E.c[0], 0.5), 0.8, h, dur, delay, 0.45); pillar(gp, dim(0xff3a10, 0.55), 0.5, h * 0.7, dur * 0.9, delay + 0.05, 0.5); sigil(gp, tex().fire(), 2.6, dur, E.c[1], 1.8, delay, 0.15); };
-  const fireTick = (a, r, dt, k = 1) => { const Q = P(), E = a.E, n = Math.ceil(dt * 120 * k); for (let i = 0; i < n; i++) { const an = Math.random() * TAU, rr = rnd(0.1, 0.65); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + rnd(0, 0.5), a.gp.z + Math.sin(an) * rr), -Math.sin(an) * 0.8, rnd(1.5, 4), Math.cos(an) * 0.8, pk(E), rnd(0.06, 0.13), rnd(0.35, 0.7), { grow: -0.5, so: 0.45 }); } };
-  MOT.slamOut = { kind: 'out', dur: 2.6, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.62, 'punch', 0.2]],
-    body(t, B) { if (t > 0.9) { const u = seg(t, 0.9, 1.45); B.s = 1 - ein(u) * 0.99; B.vis = u < 0.99; } },
-    fx(a) { const E = a.E, gp = a.gp; decal(gp, tex().lava(), 3.2, 2.0, 0xffd0a0, E.c[0], 0.62); ring(gp, E.c[0], 2.6, 0.6, 0.62); shake(0.12, 0.62); flash(1.6, 0.3, 0.62); firePillar(a, 1.6, 0.66, 4.5); },
-    tick(a, r, t, dt) { if (t > 0.66 && t < 2.1) fireTick(a, r, dt, 1.3); } };
-  // ===== 오버로드: 불기둥이 치솟고 그 속에서 웅크린 채 나타나 일어서며 주먹을 손바닥에 탁 · 팔짱 / 팔짱 낀 채 불 소용돌이에 타 사라짐 =====
-  MOT.fireStep = { kind: 'in', dur: 4.0, keys: [[0, 'land'], [0.95, 'land'], [1.5, 'rise', 0.5], [1.85, 'stand', 0.3], [2.1, 'fistPalm', 0.22], [2.75, 'fistPalm'], [3.05, 'cross', 0.3], [3.45, 'cross']],
-    body(t, B) { B.vis = t > 0.3; },
-    fx(a) { const E = a.E, gp = a.gp; firePillar(a, 1.5, 0, 4.6); ring(gp, E.c[0], 2.4, 0.6, 0.05); flash(1.4, 0.3, 0.05); shake(0.06, 0.05); label(E, gp, 0.8);
-      at(2.1, () => { chestW(a.rig, _c); _c.y -= 0.05; const fw = _a.set(0, 0, 0.35).applyQuaternion(a.rig.root.quaternion); _c.add(fw); glow(_c, E.c[2], 2.6, 0.3); ring(a.gp, E.c[0], 2.2, 0.5); shake(0.05); const Q = P(); for (let i = 0; i < 40; i++) { const an = Math.random() * TAU; EM(Q, _c, Math.cos(an) * rnd(1.5, 3.5), rnd(-0.5, 1.5), Math.sin(an) * rnd(1.5, 3.5), pk(E), rnd(0.03, 0.05), rnd(0.3, 0.6), { drag: 2.5, so: 0.5 }); } }); },
-    tick(a, r, t, dt) { if (t < 1.4) fireTick(a, r, dt, 1 - t / 1.6); else if (t < 3.6 && Math.random() < dt * 20) EM(P(), _b.set(a.gp.x + rnd(-0.8, 0.8), a.gp.y + 0.05, a.gp.z + rnd(-0.8, 0.8)), 0, rnd(0.6, 1.4), 0, pk(a.E), rnd(0.02, 0.04), rnd(0.8, 1.3), { so: 0.5 }); } };
-  MOT.burnOut = { kind: 'out', dur: 2.7, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.7, 'cross', 0.4]],
-    body(t, B) { if (t > 1.5) { const u = seg(t, 1.5, 2.0); B.s = 1 - ein(u) * 0.99; B.ry = ein(u) * 3; B.vis = u < 0.99; } },
-    fx(a) { const E = a.E, gp = a.gp; firePillar(a, 1.7, 0.85, 4); for (let i = 0; i < 3; i++) halo(gp, E.c[i % 2], 0.1, 2.2, 0.75, 0.35, 0.9, 0.95 + i * 0.25, tex().fire()); at(2.0, () => { glow(hipsAt(a, 0.5).clone(), E.c[2], 3, 0.4); ring(gp, E.c[0], 2, 0.5); }); },
-    tick(a, r, t, dt) { if (t > 0.85 && t < 2.3) fireTick(a, r, dt, 1.2); } };
-  // ===== 이터널: 보랏빛 구슬들이 돌며 모여 몸이 빚어지고 두 손을 펴 하늘을 봄 / 구슬로 흩어지며 올라감 =====
-  const orbs = (a, t, dt, inward) => { const Q = P(), E = a.E; for (let i = 0; i < 9; i++) { const ph = i * TAU / 9, u = inward ? seg(t, 0, 1.4) : seg(t, 1.0, 2.2), rr = inward ? 1.6 * (1 - eout(u)) + 0.05 : 0.1 + 1.8 * ein(u), an = ph + t * (inward ? 3.2 : 2.6), y = inward ? 0.4 + i * 0.16 + (1 - u) * 0.6 : 1.0 + u * 2.4 + i * 0.05;
-    _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + y, a.gp.z + Math.sin(an) * rr); EM(Q, _b, 0, 0, 0, i % 3 ? E.c[0] : E.c[2], 0.2, 0.1, { so: 0.15 }); EM(Q, _b, 0, 0, 0, E.c[1], 0.34, 0.08, { so: 0, a: 0.5 }); if (Math.random() < 0.8) EM(Q, _b, rnd(-0.15, 0.15), rnd(-0.15, 0.15), rnd(-0.15, 0.15), pk(E), 0.07, 0.6, { so: 0.3 }); } };
-  MOT.orbForm = { kind: 'in', dur: 4.0, keys: [[0, 'float'], [1.35, 'float'], [1.7, 'tall', 0.35], [2.0, 'tall'], [2.35, 'open', 0.35], [3.3, 'open']],
+  const fireTick = (a, r, dt, k = 1, rad = 0.65) => { const Q = P(), E = a.E, n = Math.ceil(dt * 120 * k); for (let i = 0; i < n; i++) { const an = Math.random() * TAU, rr = rnd(0.1, rad); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + rnd(0, 0.5), a.gp.z + Math.sin(an) * rr), -Math.sin(an) * 0.8, rnd(1.5, 4), Math.cos(an) * 0.8, pk(E), rnd(0.06, 0.13), rnd(0.35, 0.7), { grow: -0.5, so: 0.45 }); } };
+  MOT.devour = { kind: 'out', dur: 3.0, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.62, 'punch', 0.2]],
+    body(t, B) { if (t > 1.15) { const u = seg(t, 1.15, 1.75); B.y = -1.6 * ein(u); B.vis = u < 0.98; } },
+    fx(a) { const E = a.E, gp = a.gp; decal(gp, tex().lava(), 3.2, 2.2, 0xffd0a0, E.c[0], 0.62); ring(gp, E.c[0], 2.6, 0.6, 0.62); shake(0.12, 0.62); flash(1.6, 0.3, 0.62); slabs(a, 0.68, 1.15, true, 2.1, 1.3); firePillar(a, 1.4, 0.8, 3.8);
+      at(1.75, () => { ring(gp, E.c[0], 1.8, 0.5); glow(hipsAt(a, 0.2).clone(), E.c[2], 3, 0.4); }); },
+    tick(a, r, t, dt) { if (t > 0.7 && t < 2.0) fireTick(a, r, dt, 1.3); } };
+  // ===== 오버로드: 바닥이 녹아 용암 웅덩이가 되고 불길에 휩싸인 검은 쇠 옥좌가 솟아오름 — 그 위에 턱을 괴고 앉아 내려다보다가 일어나 한 걸음 나와 주먹을 손바닥에 · 옥좌는 용암 속으로
+  //        퇴장: 등 뒤 용암에서 옥좌가 솟고, 뒤로 물러나 앉아 턱을 괸 채 옥좌와 함께 용암 속으로 가라앉음
+  const TZ = -0.3;   // 옥좌는 캐릭터 자리보다 뒤 (앉으면 몸도 이만큼 뒤로)
+  const thY = (t, up, dn) => (t < dn[0] ? -2.3 * (1 - eout(seg(t, up[0], up[1]))) : -2.3 * ein(seg(t, dn[0], dn[1])));
+  function throne(a, up, dn, tEnd) {
+    const E = a.E, g = grpAt(a, TZ), I = 0x1c1818, Rd = 0x4a0c0c;
+    solid(new THREE.BoxGeometry(0.8, 0.46, 0.6), I, g, 0, 0.23, -0.1); solid(new THREE.BoxGeometry(0.72, 0.07, 0.54), Rd, g, 0, 0.49, -0.08);
+    solid(new THREE.BoxGeometry(0.8, 1.45, 0.12), I, g, 0, 1.19, -0.36); solid(new THREE.BoxGeometry(0.64, 1.12, 0.03), Rd, g, 0, 1.1, -0.29);
+    [[-0.33, 0.28], [-0.17, 0.4], [0, 0.56], [0.17, 0.4], [0.33, 0.28]].forEach(([x, h]) => solid(new THREE.ConeGeometry(0.055, h, 6), I, g, x, 1.915 + h / 2, -0.36));
+    for (const s of [-1, 1]) { solid(new THREE.BoxGeometry(0.13, 0.09, 0.56), I, g, s * 0.43, 0.73, -0.09); solid(new THREE.BoxGeometry(0.1, 0.26, 0.1), I, g, s * 0.43, 0.56, 0.13); lit(new THREE.SphereGeometry(0.055, 10, 8), E.c[1], g, s * 0.43, 0.8, 0.19, 0.9); lit(new THREE.BoxGeometry(0.03, 1.45, 0.03), E.c[0], g, s * 0.41, 1.19, -0.29, 0.8); }
+    lit(new THREE.BoxGeometry(0.82, 0.03, 0.03), E.c[0], g, 0, 1.92, -0.29, 0.8); lit(new THREE.BoxGeometry(0.82, 0.03, 0.03), E.c[0], g, 0, 0.46, 0.21, 0.8);
+    add(g, tEnd, (e) => { g.position.y = a.gp.y + thY(e.t, up, dn); });
+  }
+  const lavaPool = (a, t0, dur) => { const E = a.E, gq = loc(a, 0, 0, TZ, new THREE.Vector3()), gp = gpOf(a, gq); decal(gp, tex().lava(), 2.8, dur, 0xffd0a0, E.c[0], t0); sigil(gp, tex().fire(), 2.4, dur, E.c[1], 0.8, t0, 0.1); };
+  MOT.throne = { kind: 'in', dur: 4.7, keys: [[0, 'sitGrand'], [1.25, 'sitGrand'], [1.55, 'sitRest', 0.3], [2.3, 'sitRest'], [2.75, 'stand', 0.45], [3.05, 'fistPalm', 0.25], [3.6, 'fistPalm'], [3.9, 'cross', 0.3]],
+    body(t, B) { B.vis = t > 0.25; B.z = TZ * (1 - sstep(2.3, 2.75, t)); if (t < 2.6) B.y = thY(t, [0.3, 1.2], [9, 9]); },
+    fx(a) { const E = a.E, gp = a.gp; lavaPool(a, 0, 3.9); throne(a, [0.3, 1.2], [2.95, 3.6], 3.7); firePillar(a, 1.3, 0.2, 3.2); flash(1.3, 0.3, 0.3); label(E, gp, 1.3);
+      at(3.1, () => { chestW(a.rig, _c); _c.x += Math.sin(a.yaw) * 0.35; _c.z += Math.cos(a.yaw) * 0.35; glow(_c, E.c[2], 2.6, 0.3); ring(gp, E.c[0], 2.2, 0.5); shake(0.05); burst(_c, E, 40, 3.5, { drag: 2.5 }); }); },
+    tick(a, r, t, dt) { if (t > 0.2 && t < 1.4) fireTick(a, r, dt, 1.1, 0.9); else if (t < 3.7 && Math.random() < dt * 24) EM(P(), _b.set(a.gp.x + rnd(-0.9, 0.9), a.gp.y + 0.05, a.gp.z + rnd(-0.9, 0.9)), 0, rnd(0.6, 1.4), 0, pk(a.E), rnd(0.02, 0.04), rnd(0.8, 1.3), { so: 0.5 }); } };
+  MOT.throneOut = { kind: 'out', dur: 3.3, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.95, 'stand'], [1.4, 'sitGrand', 0.45], [1.75, 'sitRest', 0.3]],
+    body(t, B) { B.z = TZ * sstep(0.95, 1.4, t); if (t > 2.0) B.y = thY(t, [0, 0.01], [2.0, 2.8]); B.vis = t < 2.75; },
+    fx(a) { const E = a.E, gp = a.gp; lavaPool(a, 0.15, 3.1); throne(a, [0.3, 0.9], [2.0, 2.8], 2.95); firePillar(a, 1.1, 1.95, 3.2); flash(1.25, 0.3, 0.3);
+      at(2.8, () => { ring(gp, E.c[0], 1.8, 0.5); glow(hipsAt(a, 0.3).clone(), E.c[2], 2.6, 0.4); }); },
+    tick(a, r, t, dt) { if ((t > 0.3 && t < 0.9) || (t > 1.95 && t < 2.9)) fireTick(a, r, dt, 1.1, 0.9); } };
+  // ===== 이터널: 커다란 시계가 나타나 바늘이 거꾸로 빠르게 돌고(시간이 되감김) ∞ 모양 빛이 감기며 몸이 빚어짐 → 바늘이 열두 시에 멈추며 종소리 · 두 손을 펴 하늘을 봄
+  //        퇴장: 시계 바늘이 점점 빠르게 앞으로 돌고, 몸이 보랏빛 모래가 되어 흘러내리며 흩어짐
+  const clockTex = () => ctex('clock', 512, 512, (g) => {
+    g.translate(256, 256); g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineCap = 'round';
+    const circ = (r, w) => { g.lineWidth = w; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke(); };
+    circ(246, 6); circ(234, 2); circ(160, 3); circ(152, 1); circ(34, 3);
+    for (let i = 0; i < 60; i++) { const an = i / 60 * TAU, l = i % 5 ? 8 : 18; g.lineWidth = i % 5 ? 2 : 4; g.beginPath(); g.moveTo(Math.sin(an) * 230, -Math.cos(an) * 230); g.lineTo(Math.sin(an) * (230 - l), -Math.cos(an) * (230 - l)); g.stroke(); }
+    g.font = 'bold 34px Georgia, "Times New Roman", serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    ['XII', 'I', 'II', 'III', 'IIII', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'].forEach((n, i) => { const an = i / 12 * TAU; g.save(); g.translate(Math.sin(an) * 192, -Math.cos(an) * 192); g.rotate(an); g.fillText(n, 0, 0); g.restore(); });
+    g.lineWidth = 1.5; for (let i = 0; i < 12; i++) { const an = i / 12 * TAU; g.beginPath(); g.moveTo(Math.sin(an) * 40, -Math.cos(an) * 40); g.lineTo(Math.sin(an + 0.26) * 148, -Math.cos(an + 0.26) * 148); g.stroke(); }
+  });
+  // 시계 (캐릭터 뒤에 세움): ang(t) → [시침, 분침] (라디안, 시계 방향 +) · op(t)
+  function clock(a, t0, dur, ang, op) {
+    const E = a.E, g = grpAt(a), dial = new THREE.Mesh(kit().vplane(), mat(clockTex(), E.c[0])); dial.position.set(0, 1.25, -0.8); dial.scale.setScalar(2.1); dial.renderOrder = 4; g.add(dial);
+    const back = new THREE.Mesh(kit().vplane(), new THREE.MeshBasicMaterial({ map: discTex(), color: 0x1c0a36, transparent: true, depthWrite: false, fog: false })); back.position.set(0, 1.25, -0.83); back.scale.setScalar(2.0); back.renderOrder = 3; g.add(back);   // 어두운 유리 문자판 — 밝은 하늘에서도 빛나는 눈금이 보이게
+    const hand = (L, w, c) => { const geo = new THREE.PlaneGeometry(w, L); geo.translate(0, L / 2 - 0.06, 0); const m = new THREE.Mesh(geo, glowM(c, 0.95)); m.userData.own = true; m.renderOrder = 6; m.position.set(0, 1.25, -0.78); g.add(m); return m; };
+    const hh = hand(0.5, 0.05, E.c[2]), mh = hand(0.8, 0.035, 0xffffff);
+    add(g, dur, (e) => { const t = t0 + e.t, o = op(t), [h, m] = ang(t); hh.rotation.z = -h; mh.rotation.z = -m; dial.material.opacity = o * 0.9; back.material.opacity = o * 0.5; hh.material.opacity = mh.material.opacity = o; dial.rotation.z = Math.sin(t * 0.7) * 0.02; }, t0);
+  }
+  // ∞ 빛: 시계 앞에 누운 8자를 따라 빛 머리 셋이 돌며 꼬리를 남김 (sc: 크기)
+  const infinity = (a, t, dt, sc) => { if (sc < 0.02) return; const Q = P(), E = a.E; for (let k = 0; k < 3; k++) { const s = t * 3.2 + k * TAU / 3, d = 1 + Math.sin(s) ** 2, x = 0.85 * sc * Math.cos(s) / d, y = 0.85 * sc * Math.sin(s) * Math.cos(s) / d;
+    loc(a, x, 1.15 + y, -0.35, _b); EM(Q, _b, 0, 0, 0, k ? E.c[0] : E.c[2], 0.13 * sc + 0.03, 0.09, { so: 0.2 }); EM(Q, _b, rnd(-0.05, 0.05), rnd(-0.05, 0.05), 0, pk(E), 0.05, 0.55, { so: 0.3 }); } };
+  MOT.clockIn = { kind: 'in', dur: 4.2, keys: [[0, 'float'], [1.35, 'float'], [1.7, 'tall', 0.35], [2.0, 'tall'], [2.35, 'open', 0.35], [3.3, 'open']],
     body(t, B) { const u = seg(t, 0.25, 1.4); B.s = Math.max(0.01, eout(u)); B.ry = (1 - eout(u)) * TAU; B.y = 0.25 * (1 - eout(u)); B.vis = t > 0.25; },
-    fx(a) { const E = a.E, gp = a.gp; sigil(gp, sigilTex(), 2.6, 3.8, E.c[0], -0.5, 0); glow(hipsAt(a, 0.5).clone(), E.c[2], 4, 0.5, 1.4); ring(gp, E.c[0], 2.4, 0.7, 1.4); ring(gp, E.c[1], 1.5, 0.5, 1.45); flash(1.3, 0.3, 1.4); label(E, gp, 1.5);
-      for (let i = 0; i < 2; i++) halo(gp, E.c[i], 1.9, 0.1, 0.4, 0.9, 1.0, 1.4 + i * 0.2); },
-    tick(a, r, t, dt) { if (t < 1.45) orbs(a, t, dt, true); else if (t > 2.3 && t < 3.4 && Math.random() < dt * 30) { const Q = P(); for (const s of [-1, 1]) { hand0(a, _c, s); EM(Q, _c, rnd(-0.1, 0.1), rnd(0.3, 0.8), rnd(-0.1, 0.1), pk(a.E), rnd(0.03, 0.05), rnd(0.5, 0.9), { so: 0.4 }); } } } };
-  MOT.orbOut = { kind: 'out', dur: 2.8, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.7, 'open', 0.4], [1.0, 'open'], [1.3, 'float', 0.3]],
-    body(t, B) { if (t > 1.0) { const u = seg(t, 1.0, 1.9); B.s = Math.max(0.01, 1 - eout(u)); B.ry = eout(u) * TAU; B.y = u * 0.4; B.vis = u < 0.99; } },
-    fx(a) { const E = a.E, gp = a.gp; sigil(gp, sigilTex(), 2.4, 2.6, E.c[0], 0.5, 0.15); ring(gp, E.c[0], 2.2, 0.6, 1.0); glow(hipsAt(a, 0.6).clone(), E.c[2], 3, 0.5, 1.85); },
-    tick(a, r, t, dt) { if (t > 1.0 && t < 2.3) orbs(a, t, dt, false); } };
+    fx(a) { const E = a.E, gp = a.gp; clock(a, 0, 2.9, (t) => { const m = t < 1.6 ? -Math.pow(1.6 - t, 2) * 9 : 0; return [m / 12, m]; }, (t) => sstep(0, 0.3, t) * (1 - sstep(2.3, 2.85, t)));
+      sigil(gp, sigilTex(), 2.6, 3.8, E.c[0], -0.5, 0); ring(gp, E.c[0], 2.4, 0.7, 1.6); ring(gp, E.c[1], 1.5, 0.5, 1.65); flash(1.35, 0.3, 1.6); label(E, gp, 1.7);
+      at(1.6, () => { const p = loc(a, 0, 1.25, -0.75, new THREE.Vector3()); glow(p, E.c[2], 2.6, 0.5); card(p.clone(), tex().ring(), E.c[0], 0.6, (m, u) => { m.scale.setScalar(2.4 * eout(u) + 0.01); m.material.opacity = 1 - u; }); glow(hipsAt(a, 0.5).clone(), E.c[2], 3.2, 0.45); }); },
+    tick(a, r, t, dt) { if (t > 0.3 && t < 1.65) infinity(a, t, dt, t < 1.4 ? 1 : 1 - seg(t, 1.4, 1.62));
+      else if (t > 2.3 && t < 3.4 && Math.random() < dt * 30) { const Q = P(); for (const s of [-1, 1]) { hand0(a, _c, s); EM(Q, _c, rnd(-0.1, 0.1), rnd(0.3, 0.8), rnd(-0.1, 0.1), pk(a.E), rnd(0.03, 0.05), rnd(0.5, 0.9), { so: 0.4 }); } } } };
+  MOT.clockOut = { kind: 'out', dur: 3.0, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.7, 'open', 0.4], [1.0, 'open'], [1.3, 'float', 0.3]],
+    body(t, B) { if (t > 1.0) { const u = seg(t, 1.0, 2.0); B.s = Math.max(0.01, 1 - eout(u)); B.ry = eout(u) * TAU; B.y = u * 0.3; B.vis = u < 0.99; } },
+    fx(a) { const E = a.E, gp = a.gp; clock(a, 0.15, 2.7, (t) => { const m = Math.pow(Math.max(0, t - 0.3), 2.2) * 14; return [m / 12, m]; }, (t) => sstep(0.15, 0.45, t) * (1 - sstep(2.3, 2.85, t)));
+      sigil(gp, sigilTex(), 2.4, 2.6, E.c[0], 0.5, 0.15); ring(gp, E.c[0], 2.2, 0.6, 1.0); glow(hipsAt(a, 0.6).clone(), E.c[2], 3, 0.5, 1.95); },
+    tick(a, r, t, dt) { if (t > 0.4 && t < 2.0) infinity(a, t, dt, t < 1.8 ? 1 : 1 - seg(t, 1.8, 2.0));
+      if (t > 1.0 && t < 2.05) { const Q = P(), E = a.E, n = Math.ceil(dt * 110); hipsW(r, _a); for (let i = 0; i < n; i++) EM(Q, _b.set(_a.x + rnd(-0.28, 0.28), _a.y + rnd(-0.7, 0.8) * r.body.scale.y, _a.z + rnd(-0.2, 0.2)), rnd(-0.15, 0.15), rnd(-0.3, 0.1), rnd(-0.15, 0.15), i % 3 ? E.c[0] : 0xe8c46a, rnd(0.02, 0.035), rnd(0.6, 1.1), { g: -4.5, sq: 1, so: 0.7 }); } } };
   // ===== 작별 몸짓 (내가 파티에서 나왔을 때 내 캐릭터): 대상의 몸짓 + 바닥 문양 · 위로 흩어지는 빛 =====
   function byeMot(g) { return { kind: 'bye', dur: 2.4, keys: [[0, 'stand'], [0.4, g, 0.4], [1.8, g], [2.1, 'stand', 0.3]],
     fx(a) { const E = a.E, gp = a.gp; sigil(gp, sigilTex(), 2.2, 2.2, E.c[0], 0.6, 0.1); ring(gp, E.c[0], 2.0, 0.6, 0.45); glow(hipsAt(a, 0.7).clone(), E.c[2], 2.4, 0.4, 0.45); label(E, gp, 0.3, 1.9);
@@ -29925,10 +30202,10 @@ const PartyFx = (() => {
   }
   const owned = () => ENT.filter(ok);
   // 연출 한 줄 설명 (계정 창)
-  const MOVE = { podium: '금빛 조명 속 등장 · 두 팔 V · 색종이 · 왕관', spinfall: '하늘의 별 · 빛줄기 속을 돌며 강하 · 충격파 · 승리의 주먹', slam: '불꼬리 낙하 · 땅을 주먹으로 · 용암 균열', emerge: '일식 · 붉은 구멍에서 팔짱 낀 채 솟아오름', rez: '은빛 고리가 훑으며 나타나 경례 · 별 훈장',
-    descend: '금빛 빛기둥 속으로 천천히 강림 · 축복', meteor: '유성처럼 떨어져 한 무릎 착지 · 충격파', fireStep: '불기둥 속에서 등장 · 주먹을 손바닥에', orbForm: '보랏빛 구슬이 모여 몸이 빚어짐', escape: '백룸 복도 문틈에서 몸을 던져 탈출 · 낚아채려는 검은 손', strikeIn: '붉은 번개 세 줄기 · 힘자랑' };
-  const MOVE_OUT = { bowOut: '가슴에 손 얹고 인사 · 색종이 · 금빛으로 사라짐', spinOut: '경례 후 돌며 솟아올라 별로 흩어짐', slamOut: '땅을 내려쳐 솟은 불기둥에 삼켜짐', sink: '팔짱 낀 채 붉은 구멍 속으로 가라앉음', derez: '경례 후 위에서부터 훑어 사라짐',
-    ascend: '빛기둥을 타고 떠올라 빛으로', launch: '웅크렸다 하늘로 솟구침', burnOut: '팔짱 낀 채 불 소용돌이에 타 사라짐', orbOut: '보랏빛 구슬로 흩어지며 올라감', noclip: '바닥에 열린 백룸 구멍으로 떨어짐', strikeOut: '팔을 하늘로 뻗자 번개를 맞고 사라짐' };
+  const MOVE = { ceremony: '시상식 — 솟아오른 1위 시상대 · 하늘에서 내려온 트로피를 번쩍 · 조명 · 색종이', armillary: '세 겹 혼천의 고리에 싸여 강하 · 착지하면 고리가 별 왕관으로', crater: '불꼬리 낙하 · 주먹으로 땅을 쳐 바위판이 분화구처럼 솟음 · 목을 꺾어 풂', eclipse: '해를 가리는 달 · 개기일식의 그림자에서 솟아 다이아몬드 링과 함께 팔을 펼침', smokeIn: '연막탄 연기 속에서 걸어 나와 경례 · 가슴에 훈장 셋',
+    wingsIn: '큰 날개로 날갯짓하며 강림 · 날개가 깃털로 흩어지고 광륜', nova: '별이 부풀어 노바로 터지고 그 조각이 떨어져 착지 · 푸른 수정이 솟음', throne: '용암에서 솟는 쇠 옥좌에 턱을 괴고 앉아 있다 일어섬', clockIn: '거꾸로 도는 큰 시계 · ∞ 빛이 감기며 몸이 빚어짐 · 열두 시 종', escape: '백룸 복도 문틈에서 몸을 던져 탈출 · 낚아채려는 검은 손', bladeRain: '하늘에서 붉은 칼이 비처럼 꽂히고 번개 속에 나타나 포효' };
+  const MOVE_OUT = { curtain: '커튼콜 — 인사하고 손을 흔들면 붉은 커튼이 닫혔다 열리고 빈자리', ascendStar: '별 왕관이 혼천의로 펼쳐져 빠르게 돌고 별이 되어 하늘로', devour: '땅을 치면 바위판이 이빨처럼 덮쳐 불길과 함께 삼킴', umbra: '다시 일식 — 팔짱 낀 채 그림자 속으로 가라앉음', smokeOut: '마지막 경례 · 연막 속으로 돌아서 걸어가고 군번줄만 반짝',
+    wingsOut: '광륜과 날개를 펴고 날갯짓하며 빛기둥을 따라 날아오름', novaOut: '가슴에 빛을 모아 솟구치고 하늘에서 다시 별로 터짐', throneOut: '옥좌에 앉아 턱을 괸 채 용암 속으로 가라앉음', clockOut: '시계가 빨리 돌고 몸이 보랏빛 모래로 흘러내림', noclip: '바닥에 열린 백룸 구멍으로 떨어짐', swordOut: '꽂힌 큰 검을 뽑아 치켜들자 번개를 맞고 사라짐' };
 
   return { ENT, MOT, KP, mine, mineList, valid, ok, avail, nameOf, owned, team, ghost, bound, spot, update, cam, clear, preview, profTab, play, get anims() { return AN; }, get ghosts() { return GH; }, get live() { return LIVE.length; },
     _rigPose(r, name, t = 0) { evalKey(r, name, Object.assign(BB, B0), { t }); } };

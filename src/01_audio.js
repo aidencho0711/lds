@@ -912,18 +912,42 @@ const Audio = (() => {
       const fire = (t0, d, g = 0.25) => { whoosh(t0, d, 300, 1400, g); for (let i = 0; i < 6; i++) noise(o, t0 + Math.random() * d, 0.03, 'highpass', 2500 + Math.random() * 2500, 1, 0.08); };
       const glit = (t0, n) => { for (let i = 0; i < n; i++) tone(o, t0 + i * 0.06 + Math.random() * 0.03, 0.035, 'square', 300 + Math.random() * 1800, 150 + Math.random() * 600, 0.035); };
       switch (kind) {
-        case 'meteor': tone(o, t, 0.5, 'sine', 2200, 260, 0.06); whoosh(t, 0.5, 600, 3000, 0.3); boom(t + 0.5, 1.1); chord(t + 0.55, [1318, 1760, 2637], 0.9, 'sine', 0.03, 0.03); break;
-        case 'launch': tone(o, t + 0.3, 0.65, 'sine', 180, 900, 0.08); tone(o, t + 0.3, 0.65, 'sawtooth', 90, 360, 0.025); whoosh(t + 0.95, 0.7, 500, 4000, 0.32); chord(t + 0.95, [1760, 2637, 3520], 0.6, 'sine', 0.03, 0.04); break;
-        case 'spinfall': pad(t, [523, 659, 784, 1046], 1.6, 0.04); whoosh(t + 0.2, 1.2, 400, 2400, 0.2); boom(t + 1.38, 1.2); chord(t + 1.4, [1046, 1318, 1568, 2093], 1.4, 'triangle', 0.05, 0.02); chord(t + 2.75, [784, 988, 1175, 1568], 0.9, 'triangle', 0.06, 0.09); break;
-        case 'spinOut': chord(t + 0.6, [784, 988, 1175], 0.6, 'sine', 0.04, 0.06); whoosh(t + 1.55, 1.0, 400, 3600, 0.26); pad(t + 1.55, [1046, 1318, 1568, 2093], 1.2, 0.035); chord(t + 2.45, [2093, 2637, 3136, 4186], 0.8, 'sine', 0.03, 0.03); break;
-        case 'descend': pad(t, [392, 494, 587, 784], 2.6, 0.045); chord(t + 0.3, [1568, 2093, 2349, 3136], 2.2, 'sine', 0.018, 0.45); chord(t + 2.25, [784, 988, 1175, 1568], 1.6, 'sine', 0.04, 0.05); break;
-        case 'ascend': pad(t + 0.4, [392, 494, 587, 784, 988], 2.6, 0.04); chord(t + 1.1, [1568, 2093, 2637, 3136], 2.0, 'sine', 0.02, 0.35); chord(t + 2.75, [2093, 2637, 3136], 0.9, 'sine', 0.03, 0.03); break;
-        case 'emerge': tone(o, t, 2.4, 'sawtooth', 48, 62, 0.06); noise(o, t, 2.4, 'lowpass', 160, 0.8, 0.22); whoosh(t + 0.7, 1.5, 200, 900, 0.18); boom(t + 2.45, 0.9); tone(o, t + 2.45, 0.6, 'sawtooth', 110, 55, 0.06); break;
-        case 'sink': tone(o, t, 2.4, 'sawtooth', 62, 44, 0.06); noise(o, t, 2.2, 'lowpass', 160, 0.8, 0.2); whoosh(t + 0.8, 1.5, 900, 180, 0.2); boom(t + 2.35, 0.6); break;
-        case 'podium': chord(t, [523, 659, 784, 1046], 0.5, 'sawtooth', 0.025, 0.11); chord(t + 0.5, [1046, 1318, 1568], 1.2, 'triangle', 0.06); for (const tt of [0.6, 0.75, 1.4, 1.55]) { noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); noise(o, t + tt, 0.8, 'highpass', 5000, 0.7, 0.05); } whoosh(t + 0.5, 1.8, 900, 1500, 0.1); for (const tt of [2.4, 2.75, 3.1]) tone(o, t + tt, 0.25, 'triangle', 1568, 1568, 0.05); break;
-        case 'bowOut': chord(t + 0.7, [1046, 784, 659, 523], 0.5, 'triangle', 0.04, 0.12); for (const tt of [1.65, 1.7]) noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); chord(t + 2.35, [1568, 2093, 2637], 0.7, 'sine', 0.035, 0.04); break;
-        case 'rez': for (let i = 0; i < 12; i++) tone(o, t + 0.1 + i * 0.075, 0.05, 'square', 400 + i * 160, 400 + i * 160, 0.022); tone(o, t + 1.0, 0.5, 'sine', 1318, 1318, 0.05); chord(t + 1.55, [659, 880, 1318], 0.7, 'triangle', 0.04, 0.05); break;
-        case 'derez': chord(t + 0.7, [659, 880, 1318], 0.5, 'triangle', 0.035, 0.05); for (let i = 0; i < 10; i++) tone(o, t + 1.75 + i * 0.07, 0.05, 'square', 2000 - i * 150, 2000 - i * 150, 0.022); break;
+        // 노바: 별이 떨며 부푸는 높은 소리 → 터짐 → 떨어지는 휘파람 → 착지 · 수정이 솟는 맑은 소리 · 수정이 부서짐
+        case 'nova': tone(o, t, 0.55, 'sine', 900, 2400, 0.04); boom(t + 0.55, 0.7); chord(t + 0.56, [1568, 2093, 3136], 0.8, 'sine', 0.035, 0.02); tone(o, t + 0.6, 0.45, 'sine', 2200, 260, 0.05); whoosh(t + 0.6, 0.45, 600, 3000, 0.28); boom(t + 1.05, 1.1);
+          for (let i = 0; i < 6; i++) tone(o, t + 1.08 + i * 0.035, 0.5, 'sine', 2637 + i * 220, 2637 + i * 200, 0.025); noise(o, t + 3.0, 0.3, 'highpass', 5000, 0.8, 0.12); chord(t + 3.0, [3136, 3951, 4699], 0.4, 'sine', 0.02, 0.03); break;
+        case 'novaOut': tone(o, t + 0.3, 0.65, 'sine', 180, 900, 0.08); tone(o, t + 0.3, 0.65, 'sawtooth', 90, 360, 0.025); whoosh(t + 0.95, 0.7, 500, 4000, 0.32); boom(t + 1.2, 0.5); chord(t + 1.2, [1760, 2637, 3520], 0.7, 'sine', 0.035, 0.03); break;
+        // 제니스: 천상의 화음 위로 고리가 도는 맑은 소리 → 착지 충격 → 왕관이 맺히는 종 · 승리 화음 / 빨라지는 고리 · 별이 되어 솟음
+        case 'armillary': pad(t, [523, 659, 784, 1046], 1.7, 0.04); for (let i = 0; i < 8; i++) tone(o, t + 0.2 + i * 0.15, 0.3, 'triangle', 1318 + (i % 3) * 330, 1318 + (i % 3) * 330, 0.012); boom(t + 1.5, 1.2); chord(t + 1.52, [1046, 1318, 1568, 2093], 1.4, 'triangle', 0.05, 0.02);
+          chord(t + 2.15, [2093, 2637, 3136], 0.9, 'sine', 0.035, 0.05); chord(t + 2.8, [784, 988, 1175, 1568], 0.9, 'triangle', 0.06, 0.09); break;
+        case 'ascendStar': chord(t + 0.35, [1568, 2093, 2637], 0.7, 'sine', 0.03, 0.05); for (let i = 0; i < 10; i++) tone(o, t + 1.0 + i * Math.max(0.04, 0.12 - i * 0.009), 0.2, 'triangle', 1318 + i * 120, 1318 + i * 120, 0.012); whoosh(t + 1.0, 1.1, 400, 3600, 0.24); pad(t + 1.0, [1046, 1318, 1568, 2093], 1.1, 0.035); chord(t + 2.05, [2093, 2637, 3136, 4186], 0.9, 'sine', 0.035, 0.03); break;
+        // 하드코어 패왕: 불꼬리 → 쾅 · 바위가 갈라져 솟는 소리 · 우르르 · 목 꺾는 소리 · 주먹 / 바위가 덮치며 삼키는 소리
+        case 'crater': whoosh(t, 0.42, 300, 1800, 0.28); fire(t, 0.42, 0.15); boom(t + 0.42, 1.5); for (let i = 0; i < 9; i++) noise(o, t + 0.44 + i * 0.012, 0.09, 'bandpass', 500 + Math.random() * 600, 1, 0.22); noise(o, t + 0.45, 1.6, 'lowpass', 120, 0.7, 0.3);
+          for (const tt of [2.35, 2.65]) noise(o, t + tt, 0.04, 'highpass', 2200, 1.4, 0.25); tone(o, t + 3.25, 0.12, 'sine', 160, 60, 0.3); noise(o, t + 3.25, 0.1, 'lowpass', 800, 0.8, 0.3); for (let i = 0; i < 6; i++) noise(o, t + 3.2 + i * 0.1, 0.12, 'lowpass', 300, 0.8, 0.12); break;
+        case 'devour': boom(t + 0.62, 1.0); for (let i = 0; i < 9; i++) noise(o, t + 0.7 + i * 0.015, 0.1, 'bandpass', 400 + Math.random() * 500, 1, 0.2); fire(t + 0.8, 1.3, 0.3); boom(t + 1.2, 0.8); break;
+        // 이클립스: 낮게 깔리는 웅 · 해가 가려지는 동안 내려가는 음 → 다이아몬드 링의 맑은 섬광음 → 터짐
+        case 'eclipse': tone(o, t, 2.6, 'sawtooth', 62, 44, 0.05); noise(o, t, 2.4, 'lowpass', 160, 0.8, 0.2); tone(o, t + 0.15, 1.0, 'sine', 330, 110, 0.05); whoosh(t + 0.95, 1.4, 200, 900, 0.16); chord(t + 2.55, [2637, 3136, 3951, 5274], 0.9, 'sine', 0.035, 0.02); boom(t + 2.57, 0.9); tone(o, t + 2.57, 0.6, 'sawtooth', 110, 55, 0.06); break;
+        case 'umbra': tone(o, t, 2.6, 'sawtooth', 62, 44, 0.05); tone(o, t + 0.1, 1.1, 'sine', 330, 110, 0.05); noise(o, t, 2.4, 'lowpass', 160, 0.8, 0.2); whoosh(t + 1.0, 1.4, 900, 180, 0.2); chord(t + 2.6, [2637, 3136, 3951], 0.8, 'sine', 0.03, 0.02); break;
+        // 랭크 챔피언: 팡파르 · 시상대가 솟는 소리 · 트로피를 받는 종 · 색종이 대포 · 환호 같은 잡음 / 커튼콜 박수 · 커튼이 닫혔다 열림
+        case 'ceremony': chord(t, [523, 659, 784, 1046], 0.55, 'sawtooth', 0.025, 0.11); noise(o, t + 0.05, 0.6, 'lowpass', 300, 0.8, 0.15); chord(t + 0.6, [1046, 1318, 1568], 1.2, 'triangle', 0.06); chord(t + 1.15, [1568, 2093, 2637], 0.8, 'sine', 0.04, 0.03); chord(t + 1.65, [784, 988, 1175, 1568], 1.2, 'triangle', 0.06, 0.06);
+          for (const tt of [1.7, 1.82, 2.3, 2.42]) { noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); noise(o, t + tt, 0.8, 'highpass', 5000, 0.7, 0.05); } for (let i = 0; i < 30; i++) noise(o, t + 1.7 + Math.random() * 1.6, 0.03, 'bandpass', 1500 + Math.random() * 2500, 1.2, 0.05); break;
+        case 'curtain': chord(t + 0.75, [784, 659, 523], 0.6, 'triangle', 0.04, 0.12); for (let i = 0; i < 40; i++) noise(o, t + 0.9 + Math.random() * 1.3, 0.03, 'bandpass', 1500 + Math.random() * 2500, 1.2, 0.05); whoosh(t + 1.85, 0.45, 300, 900, 0.18); whoosh(t + 2.62, 0.45, 900, 300, 0.15); for (const tt of [2.65, 2.7]) noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); break;
+        // 정점의 베테랑: 연막탄이 구르는 쇳소리 · 쉭 하는 연기 · 군화 발소리 · 차렷 · 훈장 셋 / 연막 · 멀어지는 발소리 · 군번줄
+        case 'smokeIn': for (const tt of [0.45, 0.62]) noise(o, t + tt, 0.05, 'bandpass', 2800, 2, 0.2); noise(o, t + 0.5, 2.2, 'bandpass', 3200, 0.6, 0.1); for (let i = 0; i < 4; i++) noise(o, t + 0.85 + i * 0.27, 0.06, 'lowpass', 700, 1, 0.25); noise(o, t + 1.9, 0.08, 'lowpass', 600, 1, 0.35);
+          for (const tt of [2.4, 2.65, 2.9]) { tone(o, t + tt, 0.4, 'sine', 2637, 2630, 0.04); tone(o, t + tt, 0.25, 'sine', 3951, 3940, 0.02); } break;
+        case 'smokeOut': for (const tt of [1.6, 1.72]) noise(o, t + tt, 0.05, 'bandpass', 2800, 2, 0.2); noise(o, t + 1.65, 1.8, 'bandpass', 3200, 0.6, 0.12); for (let i = 0; i < 4; i++) noise(o, t + 1.95 + i * 0.27, 0.06, 'lowpass', 700, 1, 0.22 * (1 - i * 0.2)); for (const tt of [2.75, 3.05]) tone(o, t + tt, 0.3, 'sine', 3136, 3130, 0.025); break;
+        // 셀레스티얼: 성가 같은 화음 · 날갯짓 바람 소리 · 착지의 종 · 깃털 / 날아오르는 날갯짓
+        case 'wingsIn': pad(t, [392, 494, 587, 784], 2.6, 0.045); for (const tt of [0.5, 1.7]) whoosh(t + tt, 0.6, 250, 700, 0.16); chord(t + 0.3, [1568, 2093, 2349, 3136], 2.2, 'sine', 0.018, 0.45); chord(t + 2.25, [784, 988, 1175, 1568], 1.6, 'sine', 0.04, 0.05); noise(o, t + 2.85, 0.6, 'highpass', 3000, 0.7, 0.06); break;
+        case 'wingsOut': pad(t + 0.4, [392, 494, 587, 784, 988], 2.6, 0.04); for (let i = 0; i < 4; i++) whoosh(t + 0.9 + i * 0.45, 0.5, 220, 650, 0.2); chord(t + 1.1, [1568, 2093, 2637, 3136], 2.0, 'sine', 0.02, 0.35); chord(t + 2.75, [2093, 2637, 3136], 0.9, 'sine', 0.03, 0.03); break;
+        // 오버로드: 용암이 끓는 소리 · 옥좌가 솟는 낮은 울림 · 불길 · 주먹을 손바닥에 / 가라앉는 울림
+        case 'throne': noise(o, t, 3.0, 'lowpass', 220, 0.8, 0.22); for (let i = 0; i < 10; i++) noise(o, t + Math.random() * 3, 0.05, 'bandpass', 300 + Math.random() * 300, 3, 0.12); tone(o, t + 0.3, 0.9, 'sawtooth', 40, 70, 0.06); fire(t + 0.2, 1.2, 0.3); tone(o, t + 2.95, 0.7, 'sawtooth', 70, 40, 0.05); tone(o, t + 3.1, 0.12, 'sine', 160, 60, 0.32); noise(o, t + 3.1, 0.1, 'lowpass', 800, 0.8, 0.3); break;
+        case 'throneOut': noise(o, t + 0.15, 2.8, 'lowpass', 220, 0.8, 0.2); tone(o, t + 0.3, 0.6, 'sawtooth', 40, 70, 0.06); fire(t + 1.95, 1.0, 0.3); tone(o, t + 2.0, 0.8, 'sawtooth', 70, 38, 0.06); break;
+        // 이터널: 거꾸로 감기다 느려지는 초침 소리 → 열두 시 종 / 빨라지는 초침 · 모래 흐르는 소리
+        case 'clockIn': for (let tt = 0.3; tt < 1.6;) { tone(o, t + tt, 0.03, 'square', 2600, 2600, 0.025); tt += 0.035 + Math.pow(tt / 1.6, 3) * 0.2; } for (let i = 0; i < 3; i++) { tone(o, t + 1.6 + i * 0.5, 1.6, 'sine', 523, 520, 0.06); tone(o, t + 1.6 + i * 0.5, 1.2, 'sine', 1046, 1040, 0.03); } chord(t + 1.62, [988, 1318, 1976, 2637], 1.4, 'sine', 0.03, 0.03); break;
+        case 'clockOut': for (let tt = 0.3; tt < 2.0;) { tone(o, t + tt, 0.03, 'square', 2600, 2600, 0.022); tt += Math.max(0.03, 0.25 - (tt - 0.3) * 0.15); } noise(o, t + 1.0, 1.1, 'highpass', 4000, 0.5, 0.06); chord(t + 1.95, [1976, 1318, 988], 0.8, 'sine', 0.03, 0.06); break;
+        // 전쟁의 신: 칼들이 휘파람 소리를 내며 떨어져 꽂히는 쇳소리 · 번개 · 포효 / 검이 꽂히고 뽑히는 쇳소리 · 번개
+        case 'bladeRain': for (let i = 0; i < 7; i++) { const tt = 0.1 + i * 0.11; tone(o, t + tt, 0.22, 'sine', 2400, 900, 0.025); noise(o, t + tt + 0.22, 0.06, 'bandpass', 3200, 3, 0.18); tone(o, t + tt + 0.22, 0.3, 'triangle', 1900 + i * 80, 1850, 0.03); }
+          thunder(t + 0.85, 0.7); thunder(t + 0.95, 1.2); boom(t + 2.35, 0.6); noise(o, t + 2.35, 0.7, 'bandpass', 500, 0.7, 0.2); break;
+        case 'swordOut': tone(o, t + 0.3, 0.25, 'sine', 2200, 700, 0.03); noise(o, t + 0.55, 0.08, 'bandpass', 2800, 3, 0.3); boom(t + 0.55, 0.6); noise(o, t + 1.2, 0.35, 'bandpass', 3500, 2, 0.12); tone(o, t + 1.22, 0.4, 'triangle', 1500, 2600, 0.03); thunder(t + 1.72, 1.3); break;
         case 'escape': {   // 백룸 탈출: 형광등 웅 · 찢어지며 열림 · 몸을 던짐 · 착지 · 그것의 울음(떨리며 오르는 톱니) · 허공을 움켜쥠 · 문틈이 닫힘
           tone(o, t, 3.0, 'sawtooth', 118, 121, 0.035); tone(o, t, 3.0, 'sine', 236, 236, 0.03); noise(o, t, 0.35, 'bandpass', 2600, 0.7, 0.3); glit(t + 0.02, 7);
           whoosh(t + 0.38, 0.5, 400, 2800, 0.28); noise(o, t + 0.97, 0.12, 'lowpass', 500, 0.8, 0.45); tone(o, t + 0.97, 0.2, 'sine', 110, 50, 0.3);
@@ -936,14 +960,6 @@ const Audio = (() => {
         // 노클립: 바닥이 지직 · 형광등 웅 → 구멍으로 떨어지는 바람 소리 → 아래에서 빛 · 멀리 바닥에 떨어지는 소리
         case 'noclip': tone(o, t + 0.35, 1.2, 'sawtooth', 118, 126, 0.04); glit(t + 0.42, 10); tone(o, t + 0.92, 0.3, 'square', 300, 60, 0.05); whoosh(t + 0.96, 0.6, 1600, 140, 0.25);
           tone(o, t + 1.5, 0.5, 'sine', 1200, 1250, 0.04); noise(o, t + 1.5, 0.4, 'highpass', 4000, 0.8, 0.08); noise(o, t + 2.0, 0.3, 'lowpass', 260, 0.8, 0.25); tone(o, t + 2.0, 0.35, 'sine', 70, 40, 0.2); break;
-        case 'strikeIn': thunder(t + 0.02, 0.6); thunder(t + 0.18, 0.8); thunder(t + 0.3, 1.1); for (const tt of [2.0, 2.45, 2.9]) noise(o, t + tt, 0.08, 'highpass', 2600, 0.8, 0.12); break;
-        case 'strikeOut': thunder(t + 0.75, 0.5); thunder(t + 0.98, 1.2); break;
-        case 'slam': whoosh(t, 0.42, 300, 1800, 0.28); fire(t, 0.42, 0.15); boom(t + 0.42, 1.4); noise(o, t + 0.45, 1.6, 'lowpass', 120, 0.7, 0.3); fire(t + 0.5, 1.0, 0.12); break;
-        case 'slamOut': boom(t + 0.62, 1.0); fire(t + 0.66, 1.4, 0.3); break;
-        case 'fireStep': fire(t, 1.3, 0.32); boom(t + 0.05, 0.6); tone(o, t + 2.1, 0.12, 'sine', 160, 60, 0.3); noise(o, t + 2.1, 0.1, 'lowpass', 800, 0.8, 0.3); break;
-        case 'burnOut': fire(t + 0.85, 1.4, 0.3); whoosh(t + 1.5, 0.6, 600, 3000, 0.15); break;
-        case 'orbForm': for (let i = 0; i < 5; i++) tone(o, t + i * 0.12, 1.3, 'sine', 300 + i * 90, 900 + i * 220, 0.025); chord(t + 1.4, [988, 1318, 1976, 2637], 1.6, 'sine', 0.04, 0.03); break;
-        case 'orbOut': chord(t + 0.6, [988, 1318, 1976], 0.8, 'sine', 0.03, 0.05); for (let i = 0; i < 5; i++) tone(o, t + 1.0 + i * 0.1, 1.2, 'sine', 1200 + i * 200, 400 + i * 80, 0.025); break;
         case 'bye': chord(t + 0.4, [1318, 1568, 2093], 0.9, 'sine', 0.035, 0.07); noise(o, t + 0.42, 0.5, 'highpass', 4500, 0.8, 0.05); break;
       }
     },
