@@ -119,7 +119,7 @@ const Lobby = {
       if (pl && pl.sg) { for (const s of ['x2', 'reddot']) if (attFits(s, gid)) { att.scope = s; break; } } else att.scope = i === 2 ? 'x4' : 'reddot';
       rig.gunObj = buildGunMesh(gid, att, sk); rig.gunMount.add(rig.gunObj); rig.matesSkin = sk;
       if (sk) GunSkin.draw(rig.gunObj, 0.55, null, true);
-      rig.setGear(2, i === 1 ? 0 : 2, i === 2 ? 3 : 2);
+      { const E = pl ? Body.normEquip(pl.eq) : {}; rig.setGear(E.helmet ? 3 : E.hat ? 0 : 2, i === 1 ? 0 : 2, E.pack || i === 2 ? 3 : 2); }   // v23 헬멧·가방 스킨이 있으면 3레벨로 보여 줌
       // 가운데 받침(반지름 2.2 · 높이 0.2) 위 자리는 받침 윗면에 세운다 (예전엔 발이 받침 속 20cm 에 묻혔음)
       const pd = Math.hypot(spots[si][0], spots[si][1]), py = pd < 2.2 ? 0.2 : Math.max(0, 2.4 - pd);
       rig.root.position.set(spots[si][0], py, spots[si][1]); rig.baseYaw = spots[si][2]; rig.ph = si * 1.7 + 0.6; rig.uid = uid;
@@ -143,7 +143,8 @@ const Lobby = {
     if (this.rig) { this.scene.remove(this.rig.root); this.rig.skel.dispose(); }
     const rig = buildRig(Body.makeLook(eq, SETTINGS.body)); this.rig = rig; this.scene.add(rig.root);
     this.setGun(false);
-    this.gear = [Body.normEquip(eq).hat ? 0 : 2, 2, 2]; rig.setGear(this.gear[0], this.gear[1], this.gear[2]);
+    // 헬멧: 헬멧 스킨이 있으면 3레벨(모자는 숨김), 모자만 있으면 맨머리에 모자 · 가방: 가방 스킨이 있으면 3레벨 (v23)
+    const E = Body.normEquip(eq); this.gear = [E.helmet ? 3 : E.hat ? 0 : 2, 2, E.pack ? 3 : 2]; rig.setGear(this.gear[0], this.gear[1], this.gear[2]);
     rig.root.position.set(0, 0.2, 0);
   },
   // 가운데 캐릭터가 드는 총: 마지막으로 스킨을 바꾼 총(+그 스킨). 바꾸면 울트라레어는 빛 띠와 함께 나타남
@@ -192,18 +193,20 @@ const Lobby = {
       this.cam.position.set(-off + 0.25 * s, 0.5 * s + 0.75, dist); this.cam.lookAt(-off, 0.2 * s + 0.35, 0);
       return;
     }
-    // 창고(옷 보기): 조끼·가방·헬멧을 벗겨 옷이 보이게
-    const g = this.focus ? [0, 0, 0] : (this.gear || [2, 2, 2]); r.setGear(g[0], g[1], g[2]);
+    // 창고(옷 보기): 조끼·가방·헬멧을 벗겨 옷이 보이게 — v23 헬멧·가방 탭이면 고른 레벨의 그 장비만 (가방은 등이 보이게 돌림, 헬멧은 머리 가까이)
+    const gv = this.focus ? this.gearView : null;
+    const g = this.focus ? (gv ? (gv.k === 'helmet' ? [gv.lv, 0, 0] : [0, 0, gv.lv]) : [0, 0, 0]) : (this.gear || [2, 2, 2]); r.setGear(g[0], g[1], g[2]);
     // 창고 탭: 카메라를 캐릭터 가까이(오른쪽에 크게), 캐릭터는 천천히 돌며 옷을 보여 줌
     this.fk = lerp(this.fk || 0, this.focus ? 1 : 0, clamp(dt * 4, 0, 1));
-    const yaw = lerp(0.35 + Math.sin(t * 0.25) * 0.15, 0.25 + Math.sin(t * 0.32) * 0.65, this.fk);
+    this.bk = lerp(this.bk || 0, gv && gv.k === 'pack' ? 1 : 0, clamp(dt * 3, 0, 1)); this.hk = lerp(this.hk || 0, gv && gv.k === 'helmet' ? 1 : 0, clamp(dt * 3, 0, 1));
+    const yaw = lerp(0.35 + Math.sin(t * 0.25) * 0.15, 0.25 + Math.sin(t * 0.32) * 0.65, this.fk) + this.bk * Math.PI * 0.85;
     this.pose(r, t, yaw); OutfitFx.update(r, dt);   // EXCLUSIVE 옷 효과 (08_outfitfx.js)
     for (const m of this.mates) { m.root.visible = this.fk < 0.5; if (m.root.visible) { this.pose(m, t + m.ph, m.baseYaw + Math.sin((t + m.ph) * 0.21) * 0.12); OutfitFx.update(m, dt); } }
     if (typeof PartyFx !== 'undefined') PartyFx.update(dt, this);   // 파티 입장·퇴장 연출: 쉬는 자세 위에 동작을 덮어 쓰고 효과를 진행 (10_partyfx.js)
     // 캐릭터를 화면 가운데에 (왼쪽 패널은 배경 위에 겹친다)
-    const a = t * 0.08, f = smoothstep01(this.fk);
-    this.cam.position.set(lerp(Math.sin(a) * 0.5 + 0.2, -0.55, f), lerp(1.45 + Math.sin(t * 0.3) * 0.05, 1.32, f), lerp(4.9 + Math.cos(a) * 0.2, 3.05, f));
-    this.cam.lookAt(lerp(0.05, -0.62, f), lerp(1.02, 1.05, f), 0);
+    const a = t * 0.08, f = smoothstep01(this.fk), hk = smoothstep01(this.hk || 0);
+    this.cam.position.set(lerp(Math.sin(a) * 0.5 + 0.2, lerp(-0.55, -0.3, hk), f), lerp(1.45 + Math.sin(t * 0.3) * 0.05, lerp(1.32, 1.72, hk), f), lerp(4.9 + Math.cos(a) * 0.2, lerp(3.05, 1.6, hk), f));
+    this.cam.lookAt(lerp(0.05, lerp(-0.62, -0.34, hk), f), lerp(1.02, lerp(1.05, 1.64, hk), f), 0);
     if (typeof PartyFx !== 'undefined') PartyFx.cam(this.cam, dt);   // 착지 충격 흔들림
   },
 };
@@ -889,7 +892,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

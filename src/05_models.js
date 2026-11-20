@@ -491,9 +491,10 @@ const Models = (() => {
       A(g, PL(0.15, 0.09), MT(ctex('lbl:rcard', 384, 232, LABELS.rcard), { alpha: true }), 0.022, 0.0132, 0.012, -Math.PI / 2);
     },
     // 헬멧·조끼·가방: 몸에 걸친 장비(05_models_gear.js)와 같은 모델 → 바닥·아이콘·착용 모습이 일치
-    vest(g, id) { Gear.build.vest[ITEMS[id].lvl](g); },
-    helmet(g, id) { Gear.build.helmet[ITEMS[id].lvl](g); },
-    bag(g, id) { const s = new THREE.Group(); s.rotation.y = Math.PI; g.add(s); Gear.build.pack[ITEMS[id].lvl](s); },
+    //  v23: 바닥에 놓인 것은 턱끈·어깨끈을 뺀 모양 (끈 때문에 공중에 뜨지 않게)
+    vest(g, id) { Gear.item('vest', ITEMS[id].lvl, g); },
+    helmet(g, id) { Gear.item('helmet', ITEMS[id].lvl, g); },
+    bag(g, id) { const s = new THREE.Group(); s.rotation.y = Math.PI; g.add(s); Gear.item('pack', ITEMS[id].lvl, s); },
     frag(g) {
       const s = SPH(0.03, 16, 12); s.scale(1, 1.15, 1); A(g, s, M('polymer', 0x4a5236), 0, 0.035, 0);
       A(g, CY(0.011, 0.012, 0.02, 12, 'y'), M('gunmetal', 0x5a5c58), 0, 0.075, 0);

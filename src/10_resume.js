@@ -101,7 +101,7 @@ const Resume = (() => {
     for (let i = 0; i < GROUND.length; i++) {
       const it = GROUND[i];
       if (i < n0) { if (!it.alive) g.push(i); else if (it.count !== c0[i]) cn.push(i, it.count); }
-      else if (it.alive) ad.push([it.id, it.count, r2(it.x), r2(it.y), r2(it.z), it.inst || 0, it.bx || 0, it.drop ? 1 : 0]);
+      else if (it.alive) ad.push([it.id, it.count, r2(it.x), r2(it.y), r2(it.z), it.inst || 0, it.bx || 0, it.drop ? 1 : 0, it.autoNo === Infinity ? 1 : 0]);   // 마지막: 내가 버린 것(자동 줍기가 다시 줍지 않음)
     }
     return { n: n0, h: G.lootH, g, c: cn, a: ad };
   }
@@ -111,7 +111,7 @@ const Resume = (() => {
       for (const i of L.g) { const it = GROUND[i]; if (it && it.alive) removeItem(it); }
       for (let k = 0; k < L.c.length; k += 2) { const it = GROUND[L.c[k]]; if (it && it.alive) it.count = L.c[k + 1]; }
     } else console.warn('이어하기: 시작 아이템 배치가 달라(업데이트 등) 주워 간 아이템은 되살리지 못했습니다');
-    for (const a of L.a) { if (!ITEMS[a[0]]) continue; const it = spawnItem(G.scene, a[0], a[1], a[2], a[3], a[4], a[5] || null, undefined, a[6] || null); if (a[7]) it.drop = 1; }
+    for (const a of L.a) { if (!ITEMS[a[0]]) continue; const it = spawnItem(G.scene, a[0], a[1], a[2], a[3], a[4], a[5] || null, undefined, a[6] || null); if (a[7]) it.drop = 1; if (a[8]) it.autoNo = Infinity; }
   }
   // ---------- 차량 ----------
   function vehSnap() { return Veh.list.map((v, i) => { v.rsI = i; return [v.type, r2(v.pos.x), r2(v.pos.y), r2(v.pos.z), r3(v.yaw), Math.round(v.hp), v.dead ? 1 : 0, v.skin || 0, v.burnT > 0 ? r1(v.burnT) : 0]; }); }
