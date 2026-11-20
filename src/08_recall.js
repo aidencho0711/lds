@@ -384,6 +384,15 @@ const Recall = (() => {
     }
   }
 
-  return { init, dispose, update, track, held, onDeath, nearCard, canTake, useful, cardName, validCards, towerAt, bestTower, promptFor, start, cancel, updateReg, onNet, hudLine, specLine, drawMap, open, enabled, cutPhase,
+  // ---------- 이어하기 (10_resume.js): 날고 있는 리콜 수송기 [타워 번호, 각도, 지난 시간] ----------
+  //  저장할 때 수송기마다 순번(rsI)을 붙여 두면 탄 캐릭터가 그 번호로 가리킨다
+  function snapPlanes() {
+    const out = [];
+    for (const pl of planes) { pl.rsI = undefined; if (!pl.active) continue; pl.rsI = out.length; out.push([pl.tw.id, Math.round(Math.atan2(pl.dz, pl.dx) * 1000) / 1000, Math.round(pl.t * 100) / 100]); }
+    return out;
+  }
+  function restorePlanes(L) { return (L || []).map((a) => { const tw = W && W.towers && W.towers[a[0]]; return tw && scene ? makePlane(tw, a[1], a[2]) : null; }); }
+
+  return { init, dispose, update, track, held, onDeath, nearCard, canTake, useful, cardName, validCards, towerAt, bestTower, promptFor, start, cancel, updateReg, onNet, hudLine, specLine, drawMap, open, enabled, cutPhase, snapPlanes, restorePlanes,
     get planes() { return planes; }, get cards() { return cards; } };
 })();

@@ -33,6 +33,7 @@ const DM = (() => {
   async function start(cfg) {
     if (G.state === 'loading') return;
     cfg = cfg || {};
+    if (!cfg.resume) Resume.fresh();   // v23 이어하기(cfg.resume): 혼자 하던 판을 같은 명단·총으로 다시 연다 (10_resume.js) · 아니면 새 판
     const type = cfg.type || (isDmGame(SETTINGS.game) ? SETTINGS.game : 'tdm');
     G.state = 'loading'; G.paused = false; G.over = false; G.training = false; G.dm = null;
     document.body.classList.remove('training');
@@ -45,6 +46,7 @@ const DM = (() => {
       : type === 'tdm' ? '팀 데스매치: 모두 같은 총으로 싸웁니다. 먼저 40킬 하는 팀이 이깁니다.' : '웨폰 데스매치: 적을 처치할 때마다 총과 스코프가 바뀝니다. 먼저 40킬 하는 팀이 이깁니다.';
     const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
     disposeMatch();
+    G.netCfg = cfg.roster && !cfg.resume && G.net ? G.net.cfg : null;   // 이어하기 저장용 (같이 하기)
     const sc = new THREE.Scene(); G.scene = sc;
     const t = TIMES[SETTINGS.time], Q = QUALITY[SETTINGS.quality], far = Math.min(Q.far, 300);
     G.sky = skyDome(t, far * 0.92); sc.add(G.sky); sc.fog = new THREE.Fog(t.fog, far * 0.35, far); G.fogK = [0.35, 1];
@@ -68,7 +70,7 @@ const DM = (() => {
     G.teamSize = TSZ; G.teams = [{ id: 0, members: [], place: 0 }, { id: 1, members: [], place: 0 }];
     const seed = cfg.seed || ((Math.random() * 1e9) | 0);
     const rand = mulberry32(seed);
-    S = { type, seed, rand, arena: arenaId, score: [0, 0], over: false, winner: null, loadout: null, myDeaths: 0, net: !!cfg.roster, duel, round: duel ? { n: 1, ph: 'prep', t0: 0 } : null, lastWin: null };
+    S = { type, seed, rand, arena: arenaId, score: [0, 0], over: false, winner: null, loadout: null, myDeaths: 0, net: !!cfg.roster && !cfg.resume, duel, round: duel ? { n: 1, ph: 'prep', t0: 0 } : null, lastWin: null };
     S.loadout = cfg.loadout || (type === 'tdm' || duel ? loadout(rand, TDM_GUNS, null) : null);
     G.dm = S; G.frozen = !!duel;
     // 참가자: 혼자면 나 + 봇(데스매치 7명 · 대결은 팀 크기만큼). 같이 하기면 방장이 정한 명단
@@ -82,14 +84,14 @@ const DM = (() => {
       const hl = r.human ? (r.look || (me ? myLook() : {})) : null, sk = !hl && r.diff ? BotSkin.forBot(BP, r.diff, seed, r.id) : null;
       const look = hl ? Body.makeLook(hl.eq, hl.body) : sk ? sk.look : Body.makeLook(null, Body.randomBody(mulberry32((seed + 7919 * (r.id + 1)) | 0)));
       const c = new Character({ id: r.id, name: r.name || names[i % names.length], isPlayer: me, look, team: r.team });
-      if (!r.human) c.diffKey = r.diff || null; else c.human = true;   // 봇 난이도 — 방장을 넘겨받은 기기가 이 봇을 맡을 때 (10_net.js adopt) · 사람 표시
+      if (!r.human) c.diffKey = r.diff || null; else { c.human = true; if (r.uid) c.uid = r.uid; }   // 봇 난이도 — 방장을 넘겨받은 기기가 이 봇을 맡을 때 (10_net.js adopt) · 사람 표시 · uid: 나갔다 돌아온 사람에게 캐릭터를 돌려줌
       if (hl) c.glook = hl.gun || (me ? Eco.glook() : null);   // 총기 스킨
       if (sk) { c.glook = sk.gun; G.botLooks.push(look); }
       c.slot = G.teams[r.team].members.length; G.teams[r.team].members.push(c); CHARS.push(c); sc.add(c.root);
       if (me) G.player = c;
       if (r.net) { c.net = r.net; if (!c.net.mine) c.root.visible = false; } // 같이 하기: 다른 기기가 움직이는 캐릭터 (받은 상태로 그림)
       else if (!me) new Brain(c, r.diff || botDiff());
-      if (S.type === 'wdm' && (!c.net || c.net.mine)) c.dmLoad = loadout(Math.random, ALL_GUNS, null);
+      if (S.type === 'wdm' && (!c.net || c.net.mine)) c.dmLoad = r.lo || loadout(Math.random, ALL_GUNS, null);   // r.lo: 이어하기 — 그때 들고 있던 총
     });
     for (const c of CHARS) if (!c.net || c.net.mine) spawn(c, true);
     G.total = CHARS.length;
@@ -340,7 +342,7 @@ const DM = (() => {
   function end() {
     if (!S) return;
     const p = G.player, my = p.team, en = 1 - my, win = S.winner === my, draw = S.winner < 0;
-    G.state = 'result';
+    G.state = 'result'; Resume.clear();   // 결과가 났으니 이어하기 저장은 지운다
     const xp = Math.round(40 + p.kills * 15 + (win ? 120 : draw ? 40 : 0) + (S.duel ? S.score[my] * 15 : 0));
     G.lastXp = xp;
     STATS.xp += xp;

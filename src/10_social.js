@@ -87,6 +87,7 @@ const Social = (() => {
       if (G.state === 'lobby') HUD.lobbyNote(msg); else HUD.toast(msg, 'info');
     } else if (m.k === 'rsvx') rsvIn.delete(m.from.uid);
     else if (m.k === 'rn') Cloud.refreshName();   // 운영자가 내 아이디를 바꿈 (10_dev.js) — 서버에서 다시 읽어 확인만
+    else if (m.k === 'nt') Net.onLobby(m);        // v23 경기 이어하기: 나갔다 돌아온 사람과 방장 사이 신호 (10_net.js)
   }
   function expireInvites() { const n = invites.length; invites = invites.filter((v) => Date.now() - v.t < 45000); if (invites.length !== n) { renderInvites(); render(); } }
 
