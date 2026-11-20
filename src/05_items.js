@@ -322,6 +322,7 @@ function pickupItem(c, it, scene, opts = {}) {
   const id = it.id, drop = !!it.drop, r = pickupItemRaw(c, it, scene, opts);
   if (r.ok) {
     if (!(opts.auto && c.pickT > PICK_T * 0.4)) c.pickT = PICK_T;   // 자동 줍기로 여러 개를 연달아 주우면 허리를 한 번만 굽힌다
+    c.pickId = id;   // v23 1인칭 줍기: 줍는 손에 잠깐 보여 줄 물건
     if (c.isPlayer) { c.lootN = (c.lootN || 0) + 1; if (drop) c.dropN = (c.dropN || 0) + 1; }
     if (c.isPlayer || (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 22)) Audio.pickup(pickupKind(id), c.pos, c.isPlayer);
   }
