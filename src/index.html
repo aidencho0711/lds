@@ -172,6 +172,20 @@
     </div>
   </section>
 
+  <!-- v23 계정 밴 안내: 로그인이 막혔을 때 · 이미 로그인된 기기에서 밴을 알게 됐을 때 (10_cloud.js) -->
+  <section id="banPanel" class="overlay" hidden>
+    <div class="menu ban-box" role="alertdialog" aria-labelledby="banTitle">
+      <div class="eyebrow">계정 정지</div>
+      <h2 class="ban-h" id="banTitle">계정이 정지되었습니다</h2>
+      <p class="ban-who" id="banWho"></p>
+      <p class="ban-until" id="banUntil"></p>
+      <p class="ban-left" id="banLeft"></p>
+      <p class="ban-reason" id="banReason" hidden></p>
+      <p class="micro">정지 기간 동안은 이 계정으로 로그인할 수 없습니다. 로그인하지 않은 게스트로는 계속 플레이할 수 있습니다.</p>
+      <button class="btn amber" type="button" id="banOk">확인</button>
+    </div>
+  </section>
+
   <!-- v23 경기 이어하기: 경기 중 새로고침·뒤로가기로 나갔다가 다시 들어왔을 때 (10_resume.js) -->
   <section id="rjPanel" class="overlay" hidden>
     <div class="menu rj-box" role="alertdialog" aria-labelledby="rjTitle">

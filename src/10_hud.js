@@ -5,7 +5,7 @@
 const $ = (id) => document.getElementById(id);
 const HUD = (() => {
   let loot = [], focusIdx = 0, lastHp = 100, lastLootKey = '', toastQ = [];
-  const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes', 'rnPanel', 'rjPanel'];
+  const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes', 'rnPanel', 'rjPanel', 'banPanel'];
   // 아이콘 칸 — 경기 중 처음 보는 부착물 조합은 기본 아이콘을 먼저 보여 주고 다 그려지면 바꾼다 (v22, 05_models.js idle)
   const ico = (id, att, cls = 'ico') => { const w = h('span', cls), im = h('img'); im.alt = ''; im.draggable = false; const src = Models.icon(id, att, (u) => { if (!u) return; im.src = u; if (!im.parentNode) w.appendChild(im); }); if (src) { im.src = src; w.appendChild(im); } return w; };
   const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };

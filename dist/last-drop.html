@@ -1304,7 +1304,27 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 /* v22 개발자 계정 상세: 아이디 강제 변경 · 바뀐 사람에게 보이는 안내 */
 .acc-rn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acc-rn .dev-sel { flex: 1 1 140px; max-width: 200px; height: 32px; }
+/* v23 부개발자 · 계정 밴 (10_dev.js) */
+.acc-row.sub { border-color: rgba(170, 140, 255, 0.55); }
+.acc-row.banned { border-color: rgba(214, 74, 58, 0.55); background: rgba(60, 18, 14, 0.45); }
+.acc-banb { margin-left: 8px; padding: 1px 6px; border-radius: 3px; font-size: 0.72rem; background: rgba(214, 74, 58, 0.22); color: #f2917f; white-space: nowrap; }
+.acc-ban { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px dashed rgba(214, 74, 58, 0.45); border-radius: 5px; }
+.acc-banned { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.82rem; color: #f2917f; }
+.acc-banrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.acc-banrow .dev-sel { height: 32px; }
+.acc-banrow .acc-bann { flex: 0 0 68px; width: 68px; text-align: center; }
+.acc-banrow .acc-banu { flex: 0 0 76px; width: 76px; }
+.acc-banrow .acc-banwhy { flex: 1 1 120px; min-width: 100px; max-width: 240px; }
 #rnPanel { z-index: 27; }   /* 개발자 메뉴(26) 등 다른 창보다 위 (관전 화면이 덮고 있으면 나올 때까지 기다림) */
+/* v23 계정 밴 안내 (10_cloud.js) — 이어하기 창(29)보다도 위 */
+#banPanel { z-index: 30; }
+.menu.ban-box { width: min(340px, 100%); text-align: center; border-color: rgba(214, 74, 58, 0.6); }
+.ban-box .eyebrow { color: #e0634f; }
+.ban-h { margin: 0; font-size: 1.2rem; }
+.ban-who { margin: 0; font-weight: 700; color: var(--amber); }
+.ban-until { margin: 0; }
+.ban-left { margin: 0; font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #f08a78; }
+.ban-reason { margin: 0; padding: 7px 9px; border-radius: 4px; background: rgba(214, 74, 58, 0.12); border: 1px solid rgba(214, 74, 58, 0.35); }
 /* v23 경기 이어하기 창 (10_resume.js) — 들어오자마자 뜨는 다른 안내(랭크 개편 28)보다도 위 */
 #rjPanel { z-index: 29; }
 .menu.rj-box { width: min(360px, 100%); }
@@ -2151,6 +2171,20 @@ body.touch #victoryHud button { padding: 8px 12px; font-size: 0.8rem; }</style>
       <p class="rn-names"><s id="rnOld"></s> → <b id="rnNew"></b></p>
       <p class="micro" id="rnText"></p>
       <button class="btn amber" type="button" id="rnOk">확인</button>
+    </div>
+  </section>
+
+  <!-- v23 계정 밴 안내: 로그인이 막혔을 때 · 이미 로그인된 기기에서 밴을 알게 됐을 때 (10_cloud.js) -->
+  <section id="banPanel" class="overlay" hidden>
+    <div class="menu ban-box" role="alertdialog" aria-labelledby="banTitle">
+      <div class="eyebrow">계정 정지</div>
+      <h2 class="ban-h" id="banTitle">계정이 정지되었습니다</h2>
+      <p class="ban-who" id="banWho"></p>
+      <p class="ban-until" id="banUntil"></p>
+      <p class="ban-left" id="banLeft"></p>
+      <p class="ban-reason" id="banReason" hidden></p>
+      <p class="micro">정지 기간 동안은 이 계정으로 로그인할 수 없습니다. 로그인하지 않은 게스트로는 계속 플레이할 수 있습니다.</p>
+      <button class="btn amber" type="button" id="banOk">확인</button>
     </div>
   </section>
 
@@ -24160,6 +24194,12 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-20', t: '부개발자 · 계정 밴', items: [
+    '부개발자 권한: 개발자와 같은 개발자 도구(모든 스킨 · 경기 도구 · 관전 · 계정 관리)를 쓰지만, 다른 계정에 골드 탄피를 줄 수 없고 개발자·다른 부개발자 계정은 바꿀 수 없음 (서버도 같은 규칙) · 아이디 「부개발자」 계정에 부여',
+    '계정 밴(개발자·부개발자): 개발자 도구 → 계정 관리 → 계정 상세에서 기간(숫자 + 분·시간·일)과 사유(선택)를 정해 두 번 눌러 밴 · 밴 해제 · 목록에 「정지 남은 시간」 표시',
+    '밴된 계정은 그 기간 동안 로그인할 수 없음 (서버가 막음) — 로그인하려 하면 정지 안내 창(언제까지 · 남은 시간 · 사유) · 접속 중이었으면 경기 중이어도 바로 로비로 나와 로그아웃 · 게스트로는 계속 플레이 가능',
+    '개발자 계정은 밴할 수 없고, 부개발자는 다른 부개발자도 밴할 수 없음 · 「개발자」·「부개발자」 아이디는 그 관리자 계정만 쓸 수 있음',
+  ] },
   { v: 'v23', d: '2026-11-20', t: '상위 티어 승급 컷신 — 티어마다 다른 장면 4가지', items: [
     '노바 「초신성」: 깊은 우주에서 별빛이 빨려들고 강착 원반이 돌며 이전 엠블럼이 한 점으로 오그라든 뒤 초신성 폭발 — 화면을 가로지르는 렌즈 빛 · 육각 빛 고스트 · 퍼져 나가는 빛의 껍질 · 날아가는 수정 조각 → 별 모양 빛살과 성운 고리 속에서 새 엠블럼, 둘레를 도는 별 · 유성',
     '셀레스티얼 「천상의 문」: 노을 구름 바다 위로 빛의 고리가 내려오고 깃털이 날림 → 이전 엠블럼이 아래부터 금빛 알갱이로 풀려 하늘로 → 위 구름이 갈라지며 빛기둥 · 새 엠블럼이 천천히 내려앉고 금빛 날개가 펼쳐짐 · 머리 위 빛의 고리 · 초승달',
@@ -24548,7 +24588,7 @@ const Chat = (() => {
 // ============================================================
 const Cloud = (() => {
   const cfg = CLOUD_CFG, enabled = !!(cfg.url && cfg.key);
-  let sb = null, loading = null, user = null, name = null, status = enabled ? 'idle' : 'off', lastSync = 0, dirty = false, syncT = null, busy = false, lastErr = '', admin = false;
+  let sb = null, loading = null, user = null, name = null, status = enabled ? 'idle' : 'off', lastSync = 0, dirty = false, syncT = null, busy = false, lastErr = '', admin = false, role = null;   // role: v23 'dev' 개발자 · 'sub' 부개발자
   const ID_RE = /^[가-힣A-Za-z0-9_]+$/;
 
   // ---------- 아이디 규칙 ----------
@@ -24568,6 +24608,7 @@ const Cloud = (() => {
     const m = ((err && (err.message || err.error_description)) || String(err || '')).toLowerCase(), code = err && err.code;
     if (code === 'user_already_exists' || m.includes('already registered') || m.includes('already exists')) return '이미 사용 중인 아이디입니다';
     if (code === 'invalid_credentials' || m.includes('invalid login credentials')) return '아이디 또는 비밀번호가 맞지 않습니다';
+    if (code === 'user_banned' || m.includes('banned')) return '정지된 계정입니다';   // v23 계정 밴 (admin.sql admin_ban)
     if (code === 'same_password' || m.includes('different from the old')) return '지금 비밀번호와 같습니다 — 다른 비밀번호로 정해 주세요';
     if (code === 'reauthentication_needed' || m.includes('reauthenticat')) return '보안을 위해 로그아웃 후 다시 로그인한 뒤 바꿔 주세요';
     if (code === 'weak_password' || m.includes('password should be')) return '비밀번호가 너무 짧거나 단순합니다 (6자 이상)';
@@ -24587,6 +24628,8 @@ const Cloud = (() => {
       const done = () => {
         try {
           sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: STORE_PREFIX + 'auth' } });
+          // v23: 세션 갱신이 거부돼(밴 등) SDK 가 로그아웃시키면 밴인지 확인 (콜백 안에서 SDK 를 바로 부르면 멈출 수 있어 다음 차례에)
+          if (sb.auth.onAuthStateChange) sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT' && user && !signingOut) setTimeout(lostSession, 0); });
           res(sb);
         } catch (e) { rej(e); }
       };
@@ -24680,6 +24723,15 @@ const Cloud = (() => {
     user = u;
     const prev = store.get('account', null);
     const prof = await profOf(u.id);   // 조회 실패해도 진행
+    // v23 밴 중인 계정 (토큰이 아직 살아 있던 세션 복원 · 로그인 직후): 아무것도 불러오지 않고 바로 로그아웃 + 안내 창
+    const ban = banOf(prof);
+    if (ban) {
+      signingOut = true;
+      try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
+      user = null; store.set('account', null); status = 'idle'; render();
+      showBan(ban, (prof && prof.username) || '');
+      const e = new Error(`정지된 계정입니다 — ${banTime(ban.until)}까지`); e.ban = true; throw e;
+    }
     name = (prof && prof.username) || (u.user_metadata && u.user_metadata.username) || '플레이어';
     if (!store.get('guestBackup', null)) store.set('guestBackup', { stats: STATS, rank: Rank.state, settings: SETTINGS });
     let row = null;
@@ -24697,7 +24749,7 @@ const Cloud = (() => {
     }
     store.set('account', { id: u.id, name });
     status = 'online'; lastSync = Date.now();
-    admin = await checkAdmin(name);
+    admin = await checkAdmin(name); role = admin ? await checkRole() : null;
     Eco.flushGrants('login');   // 계정을 불러오는 중에 받은 보상 · 서버에 아직 못 올린 보상을 이 계정 기록에 다시 넣음 (10_eco.js)
     EvBR.recover();             // 예전에 이 기기에서 받았는데 계정에 들어오지 않은 백룸 보상을 한 번 복구 (10_event.js)
     Dev.onLogin();   // 개발자 계정이면 모든 스킨 지급 (10_dev.js)
@@ -24710,13 +24762,54 @@ const Cloud = (() => {
   // ---------- 아이디가 다른 곳에서 바뀜 (v22: 운영자 강제 변경 — admin.sql admin_rename · 다른 기기에서 본인 변경) ----------
   //  프로필: 아이디 + 바꾼 시각. name_forced_at(운영자가 바꾼 시각)이 본인 변경(name_changed_at)보다 늦지 않으면 운영자 변경
   //  (서버에 그 칸이 아직 없으면 아이디만 읽는다)
+  //  v23: 밴 시각·사유도 (그 칸이 아직 없는 서버면 예전 칸만)
   async function profOf(id) {
     try {
-      let r = await sb.from('profiles').select('username, name_changed_at, name_forced_at').eq('id', id).maybeSingle();
+      let r = await sb.from('profiles').select('username, name_changed_at, name_forced_at, banned_until, ban_reason').eq('id', id).maybeSingle();
+      if (r.error) r = await sb.from('profiles').select('username, name_changed_at, name_forced_at').eq('id', id).maybeSingle();
       if (r.error) r = await sb.from('profiles').select('username').eq('id', id).maybeSingle();
       return r.data || null;
     } catch (e) { return null; }
   }
+
+  // ---------- v23 계정 밴 (admin.sql admin_ban) ----------
+  //  실제로 막는 것은 Supabase 로그인(auth.users.banned_until — 비밀번호 로그인·세션 갱신을 'User is banned' 로 거부). 여기는 안내와 이미 로그인된 기기 정리:
+  //  · 로그인이 막힘 → ban_info(아이디)로 기간·사유를 받아 창으로
+  //  · 세션 복원·로그인 직후 내 프로필이 밴 중이면 → 로그아웃 + 창 (토큰이 아직 살아 있어도) — afterLogin
+  //  · 운영자가 밴하면 로비 채널 알림(ban) → 서버에서 내 프로필을 다시 읽어 확인(누구나 보낼 수 있으므로 · 3초에 한 번) → 경기 중이면 로비로 · 로그아웃 + 창
+  //  · 세션 갱신이 거부돼 SDK 가 로그아웃시키면(SIGNED_OUT) → 아이디로 밴인지 확인해 같은 처리
+  let signingOut = false, banAt = 0, banning = false;
+  const banOf = (p) => p && p.banned_until && new Date(p.banned_until).getTime() > Date.now() ? { until: p.banned_until, reason: p.ban_reason || '' } : null;
+  const banTime = (t) => new Date(t).toLocaleString('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  function banLeft(ms) { const m = Math.max(1, Math.ceil(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60; return d ? `${d}일 ${h}시간` : h ? `${h}시간 ${mm}분` : `${mm}분`; }
+  async function banInfoByName(nm) {
+    try { await loadSdk(); const { data, error } = await sb.rpc('ban_info', { p_name: nm }); if (!error && data) return banOf({ banned_until: data.until, ban_reason: data.reason }); } catch (e) { /* 서버에 함수가 없으면 기간 없이 안내 */ }
+    return null;
+  }
+  function showBan(b, who) {
+    $('banWho').textContent = who || '';
+    $('banUntil').textContent = b ? `${banTime(b.until)}까지 로그인할 수 없습니다` : '정해진 기간 동안 로그인할 수 없습니다';
+    $('banLeft').textContent = b ? `남은 시간 ${banLeft(new Date(b.until).getTime() - Date.now())}` : '';
+    const rs = $('banReason'); rs.hidden = !(b && b.reason); rs.textContent = b && b.reason ? `사유: ${b.reason}` : '';
+    $('banPanel').hidden = false;
+  }
+  // 로그인된 이 기기에서 밴을 알게 됨: 매칭·경기 정리 → 로그아웃 → 창
+  async function kickBanned(b) {
+    if (banning || !user) return; banning = true;
+    const who = name;
+    try {
+      try { if (MM.searching()) MM.cancel('계정이 정지되어 매칭을 취소했습니다'); } catch (e) { console.warn(e); }
+      if (G.state === 'play' || G.state === 'result') { try { toLobby(); } catch (e) { console.warn(e); } }
+      await signOut();
+    } finally { banning = false; }
+    showBan(b, who);
+  }
+  async function checkBan() {
+    if (!sb || !user || Date.now() - banAt < 3000) return false; banAt = Date.now();
+    const b = banOf(await profOf(user.id)); if (!b) return false;
+    kickBanned(b); return true;
+  }
+  async function lostSession() { if (!user) return; const b = await banInfoByName(name); if (b) kickBanned(b); }
   // 세션을 새로 받아 둔다 — 로그인 아이디(내부 이메일)가 바뀌었으므로 (비밀번호 변경이 옛 이메일로 다시 로그인해 확인하다 실패하지 않게)
   async function freshUser() { try { const r = await sb.auth.refreshSession(); if (r && r.data && r.data.user && user && r.data.user.id === user.id) user = r.data.user; } catch (e) { /* 다음 자동 갱신 때 */ } }
   let rnPend = null, rnT = null, rnAt = 0;
@@ -24762,6 +24855,11 @@ const Cloud = (() => {
     } catch (e) { /* 연결 실패: 관리자가 아닌 것으로 */ }
     return false;
   }
+  // v23 역할: 'dev' 개발자 · 'sub' 부개발자 (서버 admin_role — 함수가 없는 옛 서버면 관리자 = 개발자)
+  async function checkRole() {
+    try { const { data, error } = await sb.rpc('admin_role'); if (!error) return data === 'sub' ? 'sub' : 'dev'; } catch (e) { /* */ }
+    return 'dev';
+  }
   // 비밀번호 변경: 지금 비밀번호로 다시 로그인해 확인 → 새 비밀번호로 바꿈 → 이 기기를 뺀 다른 모든 기기의 로그인을 끊음
   //  돌려주는 값: 다른 기기 로그아웃까지 됐으면 true
   async function changePassword(cur, pw, pw2) {
@@ -24788,8 +24886,12 @@ const Cloud = (() => {
       await loadSdk();
       const { data } = await sb.auth.getSession();
       if (data && data.session && data.session.user) await afterLogin(data.session.user, false);
-      else { store.set('account', null); restoreGuest(); status = 'idle'; render(); try { Rank.settle(); } catch (e) { console.warn(e); } }
-    } catch (e) { status = 'error'; lastErr = msgOf(e); render(); }
+      else {
+        const was = store.get('account', null);
+        store.set('account', null); restoreGuest(); status = 'idle'; render(); try { Rank.settle(); } catch (e) { console.warn(e); }
+        if (was && was.name) { const b = await banInfoByName(was.name); if (b) showBan(b, was.name); }   // v23 세션 갱신이 밴으로 거부돼 세션이 없어짐 → 안내
+      }
+    } catch (e) { if (e && e.ban) { restoreGuest(); status = 'idle'; render(); return; } status = 'error'; lastErr = msgOf(e); render(); }   // e.ban: 밴 중인 계정 (afterLogin 이 로그아웃·창을 이미)
   }
   async function signUp(id, pw, pw2) {
     const bad = checkId(id); if (bad) throw new Error(bad);
@@ -24810,7 +24912,14 @@ const Cloud = (() => {
     if (!pw) throw new Error('비밀번호를 입력하세요');
     await loadSdk();
     const { data, error } = await sb.auth.signInWithPassword({ email: idEmail(id), password: pw });
-    if (error) throw new Error(msgOf(error));
+    if (error) {
+      // v23 밴: Supabase 가 로그인을 거부 → 기간·사유를 받아 창으로
+      if (error.code === 'user_banned' || /banned/i.test(String(error.message || ''))) {
+        const nm = id.normalize('NFC').trim(), b = await banInfoByName(nm); showBan(b, nm);
+        const e = new Error(b ? `정지된 계정입니다 — ${banTime(b.until)}까지` : '정지된 계정입니다'); e.ban = true; throw e;
+      }
+      throw new Error(msgOf(error));
+    }
     return afterLogin(data.user, false);
   }
   function restoreGuest() {
@@ -24819,9 +24928,10 @@ const Cloud = (() => {
   }
   async function signOut() {
     if (dirty) await pushNow();
-    try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ }
+    signingOut = true;
+    try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
     if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
-    user = null; name = null; admin = false; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
+    user = null; name = null; admin = false; role = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
     store.set('account', null);
     restoreGuest();
     refreshUi();
@@ -24886,10 +24996,11 @@ const Cloud = (() => {
     $('acctLogout').addEventListener('click', async () => { await signOut(); close(); HUD.lobbyNote('로그아웃했습니다 — 이 기기의 게스트 기록으로 돌아왔습니다'); });
     $('acctSyncNow').addEventListener('click', async () => { const ok = await pushNow(); render(); if (ok) msg('저장했습니다', true); });
     $('rnOk').addEventListener('click', () => { Audio.ui(); $('rnPanel').hidden = true; });
+    $('banOk').addEventListener('click', () => { Audio.ui(); $('banPanel').hidden = true; });
     render();
   }
-  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, refreshName, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
-    get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get admin() { return admin; }, get status() { return status; }, get lastError() { return lastErr; } };
+  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, refreshName, checkBan, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
+    get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get admin() { return admin; }, get role() { return role; }, get status() { return status; }, get lastError() { return lastErr; } };
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'
 const playerName = () => (Cloud.user && Cloud.name) || '나';
@@ -24907,11 +25018,16 @@ const playerName = () => (Cloud.user && Cloud.name) || '나';
 //  · v22 관전: 경기 중인 모든 계정 목록 → 누르면 그 계정의 화면을 본다 (10_watch.js · 서버 supabase/spectate.sql 이 관리자인지 확인)
 //  · 켜고 끄는 값은 이 기기에만 저장(서버로 가지 않음)
 //  · 한계: 재화·판정이 모두 기기에서 돌아가는 구조라 서버가 지켜 주는 권한이 아니다. 아이디는 먼저 가입한 사람이 가진다
+//  · v23 부개발자(서버 admins.role = 'sub'): 개발자와 같은 도구·계정 관리를 쓰지만 다른 계정에 골드 탄피를 줄 수 없고(서버 admin_gold 도 거부),
+//    개발자·다른 부개발자 계정은 건드릴 수 없다 (초기화·베타 테스터·아이디 변경·밴 — 서버가 'admin' 으로 거부)
+//  · v23 계정 밴 (개발자·부개발자): 계정 상세에서 기간(숫자 + 분·시간·일)과 사유 → 서버 admin_ban → 그동안 로그인할 수 없음 · 접속 중이면 바로 로그아웃
 // ============================================================
 const Dev = (() => {
   const F = Object.assign({ god: false, ammo: false, tp: false, zone: false, stats: false }, store.get('dev', null) || {});
   const save = () => store.set('dev', F);
-  const is = () => !!(Cloud.user && Cloud.admin);   // 로그인할 때 서버에 물어본 관리자 여부 (10_cloud.js checkAdmin)
+  const is = () => !!(Cloud.user && Cloud.admin);   // 로그인할 때 서버에 물어본 관리자 여부 (10_cloud.js checkAdmin) — 개발자·부개발자
+  const sub = () => is() && Cloud.role === 'sub';   // v23 부개발자
+  const roleName = () => (sub() ? '부개발자' : '개발자');
   const inMatch = () => G.state === 'play' && !!G.player;
   const cheatsOk = () => is() && inMatch() && !G.net;
   const cheat = (k) => !!F[k] && is() && !G.net;   // 경기 코드에서 부르는 검사 (같이 하기에선 항상 꺼짐)
@@ -24921,7 +25037,7 @@ const Dev = (() => {
   function onLogin() {
     if (!is()) return refresh();
     const n = Eco.devGrantAll();
-    if (n) setTimeout(() => HUD.lobbyNote(`개발자 계정 — 스킨 ${n}개를 지급했습니다 (옷·차량·총기 전부)`), 400);
+    if (n) setTimeout(() => HUD.lobbyNote(`${roleName()} 계정 — 스킨 ${n}개를 지급했습니다 (옷·차량·총기 전부)`), 400);
     refresh();
   }
   function refresh() {
@@ -25009,23 +25125,31 @@ const Dev = (() => {
 
   // ---------- 계정 관리 (서버 함수 — supabase/admin.sql) ----------
   //  목록(최근 저장 순·이름 검색) · 골드 탄피 지급 · 기록 초기화 · 계정 삭제. 초기화·삭제는 두 번 눌러야 실행
-  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '', sel: '', det: {}, rn: {} };
+  const ACC = { q: '', list: null, err: '', busy: false, amt: 10000, sure: '', sureT: null, msg: '', sel: '', det: {}, rn: {}, ban: {} };
   const rpcErr = (e) => { const m = String((e && e.message) || e || ''); return e && e.code === 'PGRST202' || /could not find|does not exist/i.test(m) ? '서버 설정 필요: Supabase SQL Editor에서 supabase/admin.sql 을 실행해 주세요' : /not admin/i.test(m) ? '관리자로 등록되지 않은 계정입니다 (이 계정이 있는 상태에서 admin.sql 을 실행해야 등록됨)' : Cloud.msgOf(e); };
   const RES = { denied: '관리자만 할 수 있습니다', self: '자기 계정은 지울 수 없습니다', admin: '다른 관리자 계정은 지울 수 없습니다', notfound: '없는 계정입니다', amount: '지급 양이 올바르지 않습니다 (1 ~ 1,000,000)',
-    invalid: '아이디는 2~10자, 한글·영문·숫자·밑줄(_)만 쓸 수 있습니다', taken: '이미 사용 중인 아이디입니다', same: '지금 아이디와 같습니다', reserved: "'개발자'는 관리자 계정만 쓸 수 있습니다" };
+    invalid: '아이디는 2~10자, 한글·영문·숫자·밑줄(_)만 쓸 수 있습니다', taken: '이미 사용 중인 아이디입니다', same: '지금 아이디와 같습니다', reserved: "'개발자'·'부개발자'는 그 관리자 계정만 쓸 수 있습니다",
+    devonly: '골드 탄피 지급은 개발자만 할 수 있습니다' };
+  const SUB_RES = { admin: '부개발자는 개발자·다른 부개발자 계정을 바꿀 수 없습니다' };   // v23 초기화·베타 테스터·아이디 변경
+  const BAN_RES = { self: '자기 계정은 밴할 수 없습니다', admin: '개발자 계정은 밴할 수 없습니다 (부개발자는 다른 부개발자도 · 밴 해제도 개발자만)', amount: '밴 기간이 올바르지 않습니다 (1분 ~ 3650일)' };
+  // 계정 목록: v23 admin_accounts(역할·밴 포함) → 없으면(옛 서버) admin_list
   async function accLoad() {
     const sb = Cloud.client(); if (!sb || !Cloud.user) { ACC.err = '로그인이 필요합니다'; renderAcc(); return; }
     ACC.busy = true; ACC.err = ''; renderAcc();
-    try { const { data, error } = await sb.rpc('admin_list', { p_q: ACC.q }); if (error) throw error; ACC.list = data || []; }
+    try {
+      let r = await sb.rpc('admin_accounts', { p_q: ACC.q });
+      if (r.error && (r.error.code === 'PGRST202' || /could not find|does not exist/i.test(String(r.error.message || '')))) r = await sb.rpc('admin_list', { p_q: ACC.q });
+      if (r.error) throw r.error; ACC.list = r.data || [];
+    }
     catch (e) { ACC.err = rpcErr(e); ACC.list = null; }
     ACC.busy = false; renderAcc();
   }
-  // 돌려주는 값: 서버 함수의 답('ok' 등) · 실패하면 null
-  async function accDo(fn, args, okMsg) {
+  // 돌려주는 값: 서버 함수의 답('ok' 등) · 실패하면 null · res: 이 기능의 답 문구(RES 대신)
+  async function accDo(fn, args, okMsg, res0) {
     const sb = Cloud.client(); if (!sb) return null;
     ACC.busy = true; ACC.msg = '처리 중…'; renderAcc();
     let res = null;
-    try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; res = data; ACC.msg = data === 'ok' ? okMsg : RES[data] || `실패: ${data}`; }
+    try { const { data, error } = await sb.rpc(fn, args); if (error) throw error; res = data; ACC.msg = data === 'ok' ? okMsg : (res0 && res0[data]) || RES[data] || `실패: ${data}`; }
     catch (e) { ACC.msg = rpcErr(e); }
     ACC.busy = false; ACC.det = {}; await accLoad();
     const su = ACC.sel && ACC.list && ACC.list.find((x) => x.id === ACC.sel); if (su) detLoad(su);   // 펼쳐 둔 상세도 새로
@@ -25046,7 +25170,7 @@ const Dev = (() => {
       if (ACC.sure !== k) { ACC.sure = k; clearTimeout(ACC.sureT); ACC.sureT = setTimeout(() => { ACC.sure = ''; renderAcc(); }, 3000); renderAcc(); return; }
       ACC.sure = ''; clearTimeout(ACC.sureT);
       const old = u.username, id = u.id;
-      accDo('admin_rename', { p_id: id, p_name: nm }, `${old} → ${nm} 으로 아이디를 바꿨습니다 — 다음 로그인부터 '${nm}' + 원래 비밀번호 (접속 중이면 바로 알림)`).then((r) => {
+      accDo('admin_rename', { p_id: id, p_name: nm }, `${old} → ${nm} 으로 아이디를 바꿨습니다 — 다음 로그인부터 '${nm}' + 원래 비밀번호 (접속 중이면 바로 알림)`, SUB_RES).then((r) => {
         if (r !== 'ok') return;
         delete ACC.rn[id];
         if (id === Cloud.uid) Cloud.refreshName(); else Social.send(id, 'rn', {});
@@ -25054,6 +25178,47 @@ const Dev = (() => {
     };
     rb.append(inp, go);
     return rb;
+  }
+  // ---------- v23 역할 · 계정 밴 ----------
+  //  상대 역할: 'dev' · 'sub' · null (옛 서버 목록은 admin 만 → 개발자로)
+  const roleOf = (u, x) => (x && x.role) || u.role || (u.admin ? 'dev' : null);
+  const roleTag = (u, x) => { const r = roleOf(u, x); return r === 'sub' ? ' ☆부개발자' : r === 'dev' ? ' ★개발자' : ''; };
+  const canEdit = (u, x) => !sub() || u.id === Cloud.uid || !roleOf(u, x);   // 부개발자는 다른 관리자 계정을 바꿀 수 없다 (서버도 거부)
+  const canBan = (u, x) => u.id !== Cloud.uid && roleOf(u, x) !== 'dev' && (!sub() || !roleOf(u, x));
+  const banUntil = (t) => (t && new Date(t).getTime() > Date.now() ? t : null);
+  const leftT = (t) => { const m = Math.max(1, Math.ceil((new Date(t).getTime() - Date.now()) / 60000)), d = Math.floor(m / 1440), hh = Math.floor((m % 1440) / 60), mm = m % 60; return d ? `${d}일 ${hh}시간` : hh ? `${hh}시간 ${mm}분` : `${mm}분`; };
+  const BAN_UNIT = { m: ['분', 1], h: ['시간', 60], d: ['일', 1440] };
+  //  기간(1~999 + 분·시간·일) · 사유(선택, 60자) → admin_ban (두 번 눌러야 실행) · 밴 중이면 상태와 '밴 해제'
+  //  밴하면 그 사람이 접속 중일 때 로비 채널로 알림(ban) → 그 기기가 서버에서 다시 읽어 확인하고 로그아웃 + 안내 창 (10_cloud.js checkBan)
+  function banRow(u, x) {
+    const box = h('div', 'acc-ban'), k = 'ban' + u.id, B = ACC.ban[u.id] || (ACC.ban[u.id] = { n: 1, unit: 'd', why: '' });
+    const until = banUntil(x.banned_until !== undefined ? x.banned_until : u.banned_until), why0 = x.ban_reason || u.ban_reason || '';
+    if (until) {
+      const st = h('div', 'acc-banned'); st.textContent = `⛔ 정지 중 — ${fmtT(until, 1)}까지 · 남은 ${leftT(until)}` + (why0 ? ` · 사유: ${why0}` : '') + (x.banned_by ? ` · ${x.banned_by}${x.banned_at ? ' ' + fmtT(x.banned_at) : ''}` : '');
+      const ub = h('button', 'btn sm', '밴 해제'); ub.type = 'button'; ub.disabled = ACC.busy;
+      ub.onclick = () => accDo('admin_unban', { p_id: u.id }, `${u.username} 계정의 밴을 풀었습니다 — 바로 다시 로그인할 수 있습니다`, BAN_RES);
+      st.appendChild(ub); box.appendChild(st);
+    }
+    const row = h('div', 'acc-banrow');
+    row.appendChild(h('span', 'acc-meta', until ? '다시 밴 (지금부터 새 기간)' : '계정 밴'));
+    const num = h('input', 'dev-sel acc-bann'); num.type = 'number'; num.min = '1'; num.max = '999'; num.step = '1'; num.value = B.n; num.inputMode = 'numeric';
+    const unit = h('select', 'dev-sel acc-banu'); for (const key in BAN_UNIT) { const o = document.createElement('option'); o.value = key; o.textContent = BAN_UNIT[key][0]; unit.appendChild(o); } unit.value = B.unit;
+    const why = h('input', 'dev-sel acc-banwhy'); why.placeholder = '사유 (선택)'; why.maxLength = 60; why.value = B.why; why.spellcheck = false; why.autocomplete = 'off';
+    const go = h('button', 'btn sm danger', ACC.sure === k ? '정말 밴?' : '밴하기'); go.type = 'button'; go.disabled = ACC.busy;
+    const unsure = () => { if (ACC.sure === k) { ACC.sure = ''; go.textContent = '밴하기'; } };
+    num.oninput = () => { B.n = num.value; unsure(); }; unit.onchange = () => { B.unit = unit.value; unsure(); }; why.oninput = () => { B.why = why.value; };
+    for (const el of [num, why]) el.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); go.click(); } });
+    go.onclick = () => {
+      const n = Number(num.value), U = BAN_UNIT[unit.value] || BAN_UNIT.d;
+      if (!(n >= 1 && n <= 999 && Math.floor(n) === n)) { ACC.sure = ''; ACC.msg = '밴 기간은 1 ~ 999 (분·시간·일) 사이의 정수로 정해 주세요'; renderAcc(); return; }
+      if (ACC.sure !== k) { ACC.sure = k; clearTimeout(ACC.sureT); ACC.sureT = setTimeout(() => { ACC.sure = ''; renderAcc(); }, 3000); renderAcc(); return; }
+      ACC.sure = ''; clearTimeout(ACC.sureT);
+      const id = u.id, reason = String(why.value || '').trim().slice(0, 60), label = `${n}${U[0]}`;
+      accDo('admin_ban', { p_id: id, p_minutes: n * U[1], p_reason: reason }, `${u.username} 계정을 ${label} 밴했습니다${reason ? ` (사유: ${reason})` : ''} — 그동안 로그인할 수 없고, 접속 중이면 바로 로그아웃됩니다`, BAN_RES)
+        .then((r) => { if (r === 'ok') { B.why = ''; Social.send(id, 'ban', {}); } });
+    };
+    row.append(num, unit, why, go); box.appendChild(row);
+    return box;
   }
   // ---------- 계정 상세 (목록에서 계정을 누르면 그 아래에 펼침) ----------
   //  서버 함수 admin_get 이 있으면 전체 기록(stats·rank)까지, 없으면(옛 admin.sql) 목록 값만 보여 준다
@@ -25083,7 +25248,7 @@ const Dev = (() => {
     // 머리: 계정 사진 · 이름 · 칭호 · 접속 상태
     const hd = h('div', 'acc-dh');
     const pf = h('div', 'acc-dpf'); pf.innerHTML = Prof.frameHTML(P.fr || 'none', P.av || 'helmet', 54); hd.appendChild(pf);
-    const nm = h('div', 'acc-dn'); nm.appendChild(h('b', '', u.username + (u.admin ? ' ★관리자' : '')));
+    const nm = h('div', 'acc-dn'); nm.appendChild(h('b', '', u.username + roleTag(u, x)));
     if (P.ti) { const t = h('div', ''); t.innerHTML = Prof.titleHTML(P.ti, 'sm'); nm.appendChild(t); }
     const st = h('span', 'acc-on ' + (on.on ? on.st === 'game' ? 'game' : 'on' : 'off'), (on.on ? '● ' : '○ ') + onlineText(on) + (on.on || !lastT(x, u) ? '' : ` · 마지막 접속 ${agoT(lastT(x, u))}`));
     nm.appendChild(st); hd.appendChild(nm);
@@ -25104,13 +25269,17 @@ const Dev = (() => {
     }
     box.appendChild(hd);
     // 베타 테스터: 칭호 부여·회수 (서버 함수 admin_beta) — 받으면 베타 테스터 사진·테두리·칭호 + 테스터 등급 총 스킨
+    //  v23 부개발자는 다른 관리자 계정의 베타 테스터·아이디를 바꿀 수 없다 · 밴은 개발자 계정은 아무도, 부개발자는 다른 부개발자도 안 됨
     if (D.d) {
-      const isB = !!(S.beta && S.beta.on), bb = h('div', 'acc-beta');
-      bb.innerHTML = isB ? Prof.titleHTML('beta') + `<span class="acc-meta">베타 테스터 · ${fmtT(S.beta.t, 1)} 부여</span>` : '<span class="acc-meta">베타 테스터 아님</span>';
-      const btn = h('button', 'btn sm ' + (isB ? 'danger' : 'amber'), isB ? '베타 테스터 회수' : '베타 테스터 칭호 부여'); btn.type = 'button'; btn.disabled = ACC.busy;
-      btn.onclick = () => accDo('admin_beta', { p_id: u.id, p_on: !isB }, isB ? `${u.username}님의 베타 테스터 칭호를 회수했습니다` : `${u.username}님에게 베타 테스터 칭호를 부여했습니다 — 사진·테두리·칭호·테스터 총 스킨(접속 중이면 다음 저장 때)`).then(() => { if (u.id === Cloud.uid) Cloud.pushNow(); });   // 내 계정이면 바로 합쳐 받기
-      bb.appendChild(btn); box.appendChild(bb);
-      box.appendChild(renameRow(u));
+      if (canEdit(u, x)) {
+        const isB = !!(S.beta && S.beta.on), bb = h('div', 'acc-beta');
+        bb.innerHTML = isB ? Prof.titleHTML('beta') + `<span class="acc-meta">베타 테스터 · ${fmtT(S.beta.t, 1)} 부여</span>` : '<span class="acc-meta">베타 테스터 아님</span>';
+        const btn = h('button', 'btn sm ' + (isB ? 'danger' : 'amber'), isB ? '베타 테스터 회수' : '베타 테스터 칭호 부여'); btn.type = 'button'; btn.disabled = ACC.busy;
+        btn.onclick = () => accDo('admin_beta', { p_id: u.id, p_on: !isB }, isB ? `${u.username}님의 베타 테스터 칭호를 회수했습니다` : `${u.username}님에게 베타 테스터 칭호를 부여했습니다 — 사진·테두리·칭호·테스터 총 스킨(접속 중이면 다음 저장 때)`, SUB_RES).then(() => { if (u.id === Cloud.uid) Cloud.pushNow(); });   // 내 계정이면 바로 합쳐 받기
+        bb.appendChild(btn); box.appendChild(bb);
+        box.appendChild(renameRow(u));
+      } else box.appendChild(h('div', 'dev-note', `${roleOf(u, x) === 'dev' ? '개발자' : '부개발자'} 계정 — 부개발자는 바꿀 수 없습니다 (보기만)`));
+      if (canBan(u, x)) box.appendChild(banRow(u, x));
     }
     // 레벨 막대
     const lvb = h('div', 'acc-dlv'); lvb.appendChild(h('b', '', `Lv ${L.lv}`));
@@ -25149,29 +25318,35 @@ const Dev = (() => {
     const q = h('input', 'dev-sel acc-q'); q.placeholder = '아이디 검색'; q.value = ACC.q; q.maxLength = 10;
     q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { ACC.q = q.value.trim(); accLoad(); } });
     const sbtn = h('button', 'btn', '검색'); sbtn.type = 'button'; sbtn.onclick = () => { ACC.q = q.value.trim(); accLoad(); };
-    const amt = h('select', 'dev-sel'); for (const v of [1000, 5000, 10000, 50000, 100000]) { const o = document.createElement('option'); o.value = v; o.textContent = `골드 ${v.toLocaleString()}`; amt.appendChild(o); }
-    amt.value = ACC.amt; amt.onchange = () => { ACC.amt = +amt.value; };
-    top.append(q, sbtn, amt); host.appendChild(top);
+    top.append(q, sbtn);
+    if (!sub()) {   // v23 골드 탄피 지급은 개발자만
+      const amt = h('select', 'dev-sel'); for (const v of [1000, 5000, 10000, 50000, 100000]) { const o = document.createElement('option'); o.value = v; o.textContent = `골드 ${v.toLocaleString()}`; amt.appendChild(o); }
+      amt.value = ACC.amt; amt.onchange = () => { ACC.amt = +amt.value; }; top.appendChild(amt);
+    }
+    host.appendChild(top);
     if (ACC.msg) host.appendChild(h('div', 'dev-note acc-msg', ACC.msg));
     if (ACC.busy && !ACC.list) { host.appendChild(h('div', 'dev-note', '불러오는 중…')); return; }
     if (ACC.err) { host.appendChild(h('div', 'dev-note bad', ACC.err)); return; }
     if (!ACC.list) return;
-    host.appendChild(h('div', 'dev-note', `계정 ${ACC.list.length}개 · 접속 중 ${ACC.list.filter((u) => onlineOf(u.id).on).length}명 · 이름을 누르면 상세 정보 (최근 저장 순${ACC.q ? ` · '${ACC.q}' 검색` : ''})`));
+    const nBan = ACC.list.filter((u) => banUntil(u.banned_until)).length;
+    host.appendChild(h('div', 'dev-note', `계정 ${ACC.list.length}개 · 접속 중 ${ACC.list.filter((u) => onlineOf(u.id).on).length}명${nBan ? ` · 정지 ${nBan}명` : ''} · 이름을 누르면 상세 정보 (최근 저장 순${ACC.q ? ` · '${ACC.q}' 검색` : ''})`));
     const L = h('div', 'acc-list');
     for (const u of ACC.list) {
-      const r = h('div', 'acc-row' + (u.admin ? ' admin' : '') + (u.id === Cloud.uid ? ' me' : '') + (ACC.sel === u.id ? ' open' : ''));
+      const bu = banUntil(u.banned_until);
+      const r = h('div', 'acc-row' + (u.admin ? ' admin' : '') + (roleOf(u) === 'sub' ? ' sub' : '') + (bu ? ' banned' : '') + (u.id === Cloud.uid ? ' me' : '') + (ACC.sel === u.id ? ' open' : ''));
       const info = h('div', 'acc-info'), on = onlineOf(u.id);
       info.title = '눌러서 상세 정보'; info.onclick = () => { ACC.sel = ACC.sel === u.id ? '' : u.id; if (ACC.sel && !ACC.det[u.id]) detLoad(u); else renderAcc(); Audio.ui(); };
       const nm = h('b', 'acc-name'); nm.appendChild(h('i', 'acc-dot ' + (on.on ? on.st === 'game' ? 'game' : 'on' : 'off'))); nm.title = onlineText(on);
-      nm.appendChild(document.createTextNode(u.username + (u.admin ? ' ★관리자' : '') + (u.id === Cloud.uid ? ' (나)' : '')));
+      nm.appendChild(document.createTextNode(u.username + roleTag(u) + (u.id === Cloud.uid ? ' (나)' : '')));
+      if (bu) nm.appendChild(h('span', 'acc-banb', `⛔ 정지 ${leftT(bu)}`));   // v23 밴 중
       nm.appendChild(h('span', 'acc-arw', ACC.sel === u.id ? '▴' : '▾')); info.appendChild(nm);
       info.appendChild(h('span', 'acc-meta', `Lv ${levelFromXp(u.xp || 0).lv} · ${u.matches}판 ${u.wins}승 ${u.kills}킬 · 골드 ${(u.gold || 0).toLocaleString()} · RP ${u.rp} · ${u.updated_at ? '저장 ' + new Date(u.updated_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '기록 없음'}`));
       r.appendChild(info);
       const bs = h('div', 'acc-btns');
       const mk = (label, cls, fn) => { const b = h('button', 'btn sm ' + cls, label); b.type = 'button'; b.disabled = ACC.busy; b.onclick = fn; bs.appendChild(b); return b; };
-      mk(`골드 +${ACC.amt.toLocaleString()}`, 'amber', () => accDo('admin_gold', { p_id: u.id, p_amount: ACC.amt }, `${u.username}님에게 ${GOLD_NAME} ${ACC.amt.toLocaleString()} 지급 — 접속 중이면 다음 저장 때 합쳐짐`));
+      if (!sub()) mk(`골드 +${ACC.amt.toLocaleString()}`, 'amber', () => accDo('admin_gold', { p_id: u.id, p_amount: ACC.amt }, `${u.username}님에게 ${GOLD_NAME} ${ACC.amt.toLocaleString()} 지급 — 접속 중이면 다음 저장 때 합쳐짐`));   // v23 개발자만
       const sure = (k, label, fn) => mk(ACC.sure === k + u.id ? `정말 ${label}?` : label, 'danger', () => { if (ACC.sure === k + u.id) { ACC.sure = ''; fn(); } else { ACC.sure = k + u.id; clearTimeout(ACC.sureT); ACC.sureT = setTimeout(() => { ACC.sure = ''; renderAcc(); }, 3000); renderAcc(); } });
-      sure('reset', '초기화', () => accDo('admin_reset', { p_id: u.id }, `${u.username}님의 기록을 초기화했습니다 (전적·레벨·재화·스킨·랭크)`));
+      if (canEdit(u)) sure('reset', '초기화', () => accDo('admin_reset', { p_id: u.id }, `${u.username}님의 기록을 초기화했습니다 (전적·레벨·재화·스킨·랭크)`, SUB_RES));
       if (!u.admin && u.id !== Cloud.uid) sure('del', '삭제', () => accDo('admin_delete', { p_id: u.id }, `${u.username} 계정을 삭제했습니다 (되돌릴 수 없음)`));
       r.appendChild(bs); L.appendChild(r);
       if (ACC.sel === u.id) L.appendChild(detailCard(u));
@@ -25196,7 +25371,7 @@ const Dev = (() => {
     const tg = (row, k, label, needMatch = true) => btn(row, label + (F[k] ? ' 켬' : ' 끔'), () => { F[k] = !F[k]; save(); refresh(); return `${label} ${F[k] ? '켬' : '끔'}`; }, { on: F[k], dis: needMatch && !!G.net });
     let render2 = () => {};
     const L = levelFromXp(STATS.xp || 0), own = (o, all) => `${o}/${all}`;
-    box.appendChild(h('div', 'dev-who', `개발자 계정: ${Cloud.name} · 옷 ${own(Eco.ownedSkins().size, Object.keys(Body.SKINS).length)} · 차량 ${own((STATS.vskins || []).length, Object.keys(VSKINS).length)} · 총기 ${own(Eco.gskinsOwned().length, Object.keys(GSKINS).length)}`));
+    box.appendChild(h('div', 'dev-who', `${roleName()} 계정: ${Cloud.name} · 옷 ${own(Eco.ownedSkins().size, Object.keys(Body.SKINS).length)} · 차량 ${own((STATS.vskins || []).length, Object.keys(VSKINS).length)} · 총기 ${own(Eco.gskinsOwned().length, Object.keys(GSKINS).length)}`));
     // 재화·레벨·미션 (로비·경기 어디서나)
     let r = sec('재화', `골드 탄피 ${Eco.gold.toLocaleString()} · 차량 코인 ${Eco.coin} · 총기 코인 ${Eco.gcoin}`);
     btn(r, `${GOLD_NAME} +10,000`, () => { Eco.devAdd('gold', 10000); return `${GOLD_NAME} +10,000`; });
@@ -25244,7 +25419,8 @@ const Dev = (() => {
     Watch.devList(wl);
     // 계정 관리 (서버)
     const as = h('div', 'dev-sec'); as.appendChild(h('div', 'dev-h', '계정 관리'));
-    as.appendChild(h('div', 'dev-note', '모든 계정 목록 · 골드 탄피 지급 · 기록 초기화(전적·레벨·재화·스킨·랭크) · 계정 삭제(되돌릴 수 없음). 서버 함수 supabase/admin.sql 필요'));
+    as.appendChild(h('div', 'dev-note', sub() ? '모든 계정 목록 · 기록 초기화(전적·레벨·재화·스킨·랭크) · 아이디 변경 · 계정 밴(분·시간·일) · 계정 삭제(되돌릴 수 없음). 부개발자는 골드 탄피를 줄 수 없고, 개발자·다른 부개발자 계정은 바꿀 수 없습니다'
+      : '모든 계정 목록 · 골드 탄피 지급 · 기록 초기화(전적·레벨·재화·스킨·랭크) · 아이디 변경 · 계정 밴(분·시간·일) · 계정 삭제(되돌릴 수 없음). 서버 함수 supabase/admin.sql 필요'));
     const acc = h('div', 'acc-box'); acc.id = 'devAcc'; as.appendChild(acc); box.appendChild(as);
     renderAcc(); if (ACC.list === null && !ACC.busy && !ACC.err) accLoad();
     box.appendChild(msg);
@@ -26450,7 +26626,7 @@ const EvBR = (() => {
 const $ = (id) => document.getElementById(id);
 const HUD = (() => {
   let loot = [], focusIdx = 0, lastHp = 100, lastLootKey = '', toastQ = [];
-  const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes', 'rnPanel', 'rjPanel'];
+  const modals = ['devPanel', 'mapPanel', 'invPanel', 'pausePanel', 'settingsPanel', 'helpPanel', 'resultPanel', 'layoutEditor', 'rankPanel', 'matchCfgPanel', 'mapPickPanel', 'acctPanel', 'friendPanel', 'oddsPanel', 'gachaRes', 'rnPanel', 'rjPanel', 'banPanel'];
   // 아이콘 칸 — 경기 중 처음 보는 부착물 조합은 기본 아이콘을 먼저 보여 주고 다 그려지면 바꾼다 (v22, 05_models.js idle)
   const ico = (id, att, cls = 'ico') => { const w = h('span', cls), im = h('img'); im.alt = ''; im.draggable = false; const src = Models.icon(id, att, (u) => { if (!u) return; im.src = u; if (!im.parentNode) w.appendChild(im); }); if (src) { im.src = src; w.appendChild(im); } return w; };
   const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
@@ -32678,6 +32854,7 @@ const Social = (() => {
       if (G.state === 'lobby') HUD.lobbyNote(msg); else HUD.toast(msg, 'info');
     } else if (m.k === 'rsvx') rsvIn.delete(m.from.uid);
     else if (m.k === 'rn') Cloud.refreshName();   // 운영자가 내 아이디를 바꿈 (10_dev.js) — 서버에서 다시 읽어 확인만
+    else if (m.k === 'ban') Cloud.checkBan();     // v23 운영자가 내 계정을 밴함 (10_dev.js) — 서버에서 내 프로필을 다시 읽어 확인만 (밴이면 로그아웃 + 안내)
     else if (m.k === 'nt') Net.onLobby(m);        // v23 경기 이어하기: 나갔다 돌아온 사람과 방장 사이 신호 (10_net.js)
   }
   function expireInvites() { const n = invites.length; invites = invites.filter((v) => Date.now() - v.t < 45000); if (invites.length !== n) { renderInvites(); render(); } }

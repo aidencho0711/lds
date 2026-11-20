@@ -10,7 +10,7 @@
 // ============================================================
 const Cloud = (() => {
   const cfg = CLOUD_CFG, enabled = !!(cfg.url && cfg.key);
-  let sb = null, loading = null, user = null, name = null, status = enabled ? 'idle' : 'off', lastSync = 0, dirty = false, syncT = null, busy = false, lastErr = '', admin = false;
+  let sb = null, loading = null, user = null, name = null, status = enabled ? 'idle' : 'off', lastSync = 0, dirty = false, syncT = null, busy = false, lastErr = '', admin = false, role = null;   // role: v23 'dev' 개발자 · 'sub' 부개발자
   const ID_RE = /^[가-힣A-Za-z0-9_]+$/;
 
   // ---------- 아이디 규칙 ----------
@@ -30,6 +30,7 @@ const Cloud = (() => {
     const m = ((err && (err.message || err.error_description)) || String(err || '')).toLowerCase(), code = err && err.code;
     if (code === 'user_already_exists' || m.includes('already registered') || m.includes('already exists')) return '이미 사용 중인 아이디입니다';
     if (code === 'invalid_credentials' || m.includes('invalid login credentials')) return '아이디 또는 비밀번호가 맞지 않습니다';
+    if (code === 'user_banned' || m.includes('banned')) return '정지된 계정입니다';   // v23 계정 밴 (admin.sql admin_ban)
     if (code === 'same_password' || m.includes('different from the old')) return '지금 비밀번호와 같습니다 — 다른 비밀번호로 정해 주세요';
     if (code === 'reauthentication_needed' || m.includes('reauthenticat')) return '보안을 위해 로그아웃 후 다시 로그인한 뒤 바꿔 주세요';
     if (code === 'weak_password' || m.includes('password should be')) return '비밀번호가 너무 짧거나 단순합니다 (6자 이상)';
@@ -49,6 +50,8 @@ const Cloud = (() => {
       const done = () => {
         try {
           sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: STORE_PREFIX + 'auth' } });
+          // v23: 세션 갱신이 거부돼(밴 등) SDK 가 로그아웃시키면 밴인지 확인 (콜백 안에서 SDK 를 바로 부르면 멈출 수 있어 다음 차례에)
+          if (sb.auth.onAuthStateChange) sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT' && user && !signingOut) setTimeout(lostSession, 0); });
           res(sb);
         } catch (e) { rej(e); }
       };
@@ -142,6 +145,15 @@ const Cloud = (() => {
     user = u;
     const prev = store.get('account', null);
     const prof = await profOf(u.id);   // 조회 실패해도 진행
+    // v23 밴 중인 계정 (토큰이 아직 살아 있던 세션 복원 · 로그인 직후): 아무것도 불러오지 않고 바로 로그아웃 + 안내 창
+    const ban = banOf(prof);
+    if (ban) {
+      signingOut = true;
+      try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
+      user = null; store.set('account', null); status = 'idle'; render();
+      showBan(ban, (prof && prof.username) || '');
+      const e = new Error(`정지된 계정입니다 — ${banTime(ban.until)}까지`); e.ban = true; throw e;
+    }
     name = (prof && prof.username) || (u.user_metadata && u.user_metadata.username) || '플레이어';
     if (!store.get('guestBackup', null)) store.set('guestBackup', { stats: STATS, rank: Rank.state, settings: SETTINGS });
     let row = null;
@@ -159,7 +171,7 @@ const Cloud = (() => {
     }
     store.set('account', { id: u.id, name });
     status = 'online'; lastSync = Date.now();
-    admin = await checkAdmin(name);
+    admin = await checkAdmin(name); role = admin ? await checkRole() : null;
     Eco.flushGrants('login');   // 계정을 불러오는 중에 받은 보상 · 서버에 아직 못 올린 보상을 이 계정 기록에 다시 넣음 (10_eco.js)
     EvBR.recover();             // 예전에 이 기기에서 받았는데 계정에 들어오지 않은 백룸 보상을 한 번 복구 (10_event.js)
     Dev.onLogin();   // 개발자 계정이면 모든 스킨 지급 (10_dev.js)
@@ -172,13 +184,54 @@ const Cloud = (() => {
   // ---------- 아이디가 다른 곳에서 바뀜 (v22: 운영자 강제 변경 — admin.sql admin_rename · 다른 기기에서 본인 변경) ----------
   //  프로필: 아이디 + 바꾼 시각. name_forced_at(운영자가 바꾼 시각)이 본인 변경(name_changed_at)보다 늦지 않으면 운영자 변경
   //  (서버에 그 칸이 아직 없으면 아이디만 읽는다)
+  //  v23: 밴 시각·사유도 (그 칸이 아직 없는 서버면 예전 칸만)
   async function profOf(id) {
     try {
-      let r = await sb.from('profiles').select('username, name_changed_at, name_forced_at').eq('id', id).maybeSingle();
+      let r = await sb.from('profiles').select('username, name_changed_at, name_forced_at, banned_until, ban_reason').eq('id', id).maybeSingle();
+      if (r.error) r = await sb.from('profiles').select('username, name_changed_at, name_forced_at').eq('id', id).maybeSingle();
       if (r.error) r = await sb.from('profiles').select('username').eq('id', id).maybeSingle();
       return r.data || null;
     } catch (e) { return null; }
   }
+
+  // ---------- v23 계정 밴 (admin.sql admin_ban) ----------
+  //  실제로 막는 것은 Supabase 로그인(auth.users.banned_until — 비밀번호 로그인·세션 갱신을 'User is banned' 로 거부). 여기는 안내와 이미 로그인된 기기 정리:
+  //  · 로그인이 막힘 → ban_info(아이디)로 기간·사유를 받아 창으로
+  //  · 세션 복원·로그인 직후 내 프로필이 밴 중이면 → 로그아웃 + 창 (토큰이 아직 살아 있어도) — afterLogin
+  //  · 운영자가 밴하면 로비 채널 알림(ban) → 서버에서 내 프로필을 다시 읽어 확인(누구나 보낼 수 있으므로 · 3초에 한 번) → 경기 중이면 로비로 · 로그아웃 + 창
+  //  · 세션 갱신이 거부돼 SDK 가 로그아웃시키면(SIGNED_OUT) → 아이디로 밴인지 확인해 같은 처리
+  let signingOut = false, banAt = 0, banning = false;
+  const banOf = (p) => p && p.banned_until && new Date(p.banned_until).getTime() > Date.now() ? { until: p.banned_until, reason: p.ban_reason || '' } : null;
+  const banTime = (t) => new Date(t).toLocaleString('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  function banLeft(ms) { const m = Math.max(1, Math.ceil(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60; return d ? `${d}일 ${h}시간` : h ? `${h}시간 ${mm}분` : `${mm}분`; }
+  async function banInfoByName(nm) {
+    try { await loadSdk(); const { data, error } = await sb.rpc('ban_info', { p_name: nm }); if (!error && data) return banOf({ banned_until: data.until, ban_reason: data.reason }); } catch (e) { /* 서버에 함수가 없으면 기간 없이 안내 */ }
+    return null;
+  }
+  function showBan(b, who) {
+    $('banWho').textContent = who || '';
+    $('banUntil').textContent = b ? `${banTime(b.until)}까지 로그인할 수 없습니다` : '정해진 기간 동안 로그인할 수 없습니다';
+    $('banLeft').textContent = b ? `남은 시간 ${banLeft(new Date(b.until).getTime() - Date.now())}` : '';
+    const rs = $('banReason'); rs.hidden = !(b && b.reason); rs.textContent = b && b.reason ? `사유: ${b.reason}` : '';
+    $('banPanel').hidden = false;
+  }
+  // 로그인된 이 기기에서 밴을 알게 됨: 매칭·경기 정리 → 로그아웃 → 창
+  async function kickBanned(b) {
+    if (banning || !user) return; banning = true;
+    const who = name;
+    try {
+      try { if (MM.searching()) MM.cancel('계정이 정지되어 매칭을 취소했습니다'); } catch (e) { console.warn(e); }
+      if (G.state === 'play' || G.state === 'result') { try { toLobby(); } catch (e) { console.warn(e); } }
+      await signOut();
+    } finally { banning = false; }
+    showBan(b, who);
+  }
+  async function checkBan() {
+    if (!sb || !user || Date.now() - banAt < 3000) return false; banAt = Date.now();
+    const b = banOf(await profOf(user.id)); if (!b) return false;
+    kickBanned(b); return true;
+  }
+  async function lostSession() { if (!user) return; const b = await banInfoByName(name); if (b) kickBanned(b); }
   // 세션을 새로 받아 둔다 — 로그인 아이디(내부 이메일)가 바뀌었으므로 (비밀번호 변경이 옛 이메일로 다시 로그인해 확인하다 실패하지 않게)
   async function freshUser() { try { const r = await sb.auth.refreshSession(); if (r && r.data && r.data.user && user && r.data.user.id === user.id) user = r.data.user; } catch (e) { /* 다음 자동 갱신 때 */ } }
   let rnPend = null, rnT = null, rnAt = 0;
@@ -224,6 +277,11 @@ const Cloud = (() => {
     } catch (e) { /* 연결 실패: 관리자가 아닌 것으로 */ }
     return false;
   }
+  // v23 역할: 'dev' 개발자 · 'sub' 부개발자 (서버 admin_role — 함수가 없는 옛 서버면 관리자 = 개발자)
+  async function checkRole() {
+    try { const { data, error } = await sb.rpc('admin_role'); if (!error) return data === 'sub' ? 'sub' : 'dev'; } catch (e) { /* */ }
+    return 'dev';
+  }
   // 비밀번호 변경: 지금 비밀번호로 다시 로그인해 확인 → 새 비밀번호로 바꿈 → 이 기기를 뺀 다른 모든 기기의 로그인을 끊음
   //  돌려주는 값: 다른 기기 로그아웃까지 됐으면 true
   async function changePassword(cur, pw, pw2) {
@@ -250,8 +308,12 @@ const Cloud = (() => {
       await loadSdk();
       const { data } = await sb.auth.getSession();
       if (data && data.session && data.session.user) await afterLogin(data.session.user, false);
-      else { store.set('account', null); restoreGuest(); status = 'idle'; render(); try { Rank.settle(); } catch (e) { console.warn(e); } }
-    } catch (e) { status = 'error'; lastErr = msgOf(e); render(); }
+      else {
+        const was = store.get('account', null);
+        store.set('account', null); restoreGuest(); status = 'idle'; render(); try { Rank.settle(); } catch (e) { console.warn(e); }
+        if (was && was.name) { const b = await banInfoByName(was.name); if (b) showBan(b, was.name); }   // v23 세션 갱신이 밴으로 거부돼 세션이 없어짐 → 안내
+      }
+    } catch (e) { if (e && e.ban) { restoreGuest(); status = 'idle'; render(); return; } status = 'error'; lastErr = msgOf(e); render(); }   // e.ban: 밴 중인 계정 (afterLogin 이 로그아웃·창을 이미)
   }
   async function signUp(id, pw, pw2) {
     const bad = checkId(id); if (bad) throw new Error(bad);
@@ -272,7 +334,14 @@ const Cloud = (() => {
     if (!pw) throw new Error('비밀번호를 입력하세요');
     await loadSdk();
     const { data, error } = await sb.auth.signInWithPassword({ email: idEmail(id), password: pw });
-    if (error) throw new Error(msgOf(error));
+    if (error) {
+      // v23 밴: Supabase 가 로그인을 거부 → 기간·사유를 받아 창으로
+      if (error.code === 'user_banned' || /banned/i.test(String(error.message || ''))) {
+        const nm = id.normalize('NFC').trim(), b = await banInfoByName(nm); showBan(b, nm);
+        const e = new Error(b ? `정지된 계정입니다 — ${banTime(b.until)}까지` : '정지된 계정입니다'); e.ban = true; throw e;
+      }
+      throw new Error(msgOf(error));
+    }
     return afterLogin(data.user, false);
   }
   function restoreGuest() {
@@ -281,9 +350,10 @@ const Cloud = (() => {
   }
   async function signOut() {
     if (dirty) await pushNow();
-    try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ }
+    signingOut = true;
+    try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
     if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
-    user = null; name = null; admin = false; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
+    user = null; name = null; admin = false; role = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
     store.set('account', null);
     restoreGuest();
     refreshUi();
@@ -348,10 +418,11 @@ const Cloud = (() => {
     $('acctLogout').addEventListener('click', async () => { await signOut(); close(); HUD.lobbyNote('로그아웃했습니다 — 이 기기의 게스트 기록으로 돌아왔습니다'); });
     $('acctSyncNow').addEventListener('click', async () => { const ok = await pushNow(); render(); if (ok) msg('저장했습니다', true); });
     $('rnOk').addEventListener('click', () => { Audio.ui(); $('rnPanel').hidden = true; });
+    $('banOk').addEventListener('click', () => { Audio.ui(); $('banPanel').hidden = true; });
     render();
   }
-  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, refreshName, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
-    get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get admin() { return admin; }, get status() { return status; }, get lastError() { return lastErr; } };
+  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, refreshName, checkBan, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
+    get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get admin() { return admin; }, get role() { return role; }, get status() { return status; }, get lastError() { return lastErr; } };
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'
 const playerName = () => (Cloud.user && Cloud.name) || '나';

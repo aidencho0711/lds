@@ -1301,7 +1301,27 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 /* v22 개발자 계정 상세: 아이디 강제 변경 · 바뀐 사람에게 보이는 안내 */
 .acc-rn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acc-rn .dev-sel { flex: 1 1 140px; max-width: 200px; height: 32px; }
+/* v23 부개발자 · 계정 밴 (10_dev.js) */
+.acc-row.sub { border-color: rgba(170, 140, 255, 0.55); }
+.acc-row.banned { border-color: rgba(214, 74, 58, 0.55); background: rgba(60, 18, 14, 0.45); }
+.acc-banb { margin-left: 8px; padding: 1px 6px; border-radius: 3px; font-size: 0.72rem; background: rgba(214, 74, 58, 0.22); color: #f2917f; white-space: nowrap; }
+.acc-ban { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px dashed rgba(214, 74, 58, 0.45); border-radius: 5px; }
+.acc-banned { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.82rem; color: #f2917f; }
+.acc-banrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.acc-banrow .dev-sel { height: 32px; }
+.acc-banrow .acc-bann { flex: 0 0 68px; width: 68px; text-align: center; }
+.acc-banrow .acc-banu { flex: 0 0 76px; width: 76px; }
+.acc-banrow .acc-banwhy { flex: 1 1 120px; min-width: 100px; max-width: 240px; }
 #rnPanel { z-index: 27; }   /* 개발자 메뉴(26) 등 다른 창보다 위 (관전 화면이 덮고 있으면 나올 때까지 기다림) */
+/* v23 계정 밴 안내 (10_cloud.js) — 이어하기 창(29)보다도 위 */
+#banPanel { z-index: 30; }
+.menu.ban-box { width: min(340px, 100%); text-align: center; border-color: rgba(214, 74, 58, 0.6); }
+.ban-box .eyebrow { color: #e0634f; }
+.ban-h { margin: 0; font-size: 1.2rem; }
+.ban-who { margin: 0; font-weight: 700; color: var(--amber); }
+.ban-until { margin: 0; }
+.ban-left { margin: 0; font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #f08a78; }
+.ban-reason { margin: 0; padding: 7px 9px; border-radius: 4px; background: rgba(214, 74, 58, 0.12); border: 1px solid rgba(214, 74, 58, 0.35); }
 /* v23 경기 이어하기 창 (10_resume.js) — 들어오자마자 뜨는 다른 안내(랭크 개편 28)보다도 위 */
 #rjPanel { z-index: 29; }
 .menu.rj-box { width: min(360px, 100%); }
