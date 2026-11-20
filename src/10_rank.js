@@ -325,49 +325,60 @@ const Rank = (() => {
     g.lineWidth = 3.5; g.strokeStyle = 'rgba(0,0,0,0.65)'; g.strokeText(label, cx, y + 1); g.shadowColor = edge; g.shadowBlur = 8; g.fillStyle = '#fff'; g.fillText(label, cx, y + 1);
     g.restore();
   }
-  function drawSup(g, t, div) {
+  // part: 그 구성품만 그림 (컷신 「합체」 — SUP_PARTS · embParts). 없으면 전부
+  function drawSup(g, t, div, part) {
     const T = RANK_TIERS[t], k = t - SUP.t0, cx = 128, cy = 118, SR = k === 3 ? 66 : 62, FR = SR * 0.64;
-    const ga = (a) => T.glow.replace(/[\d.]+\)$/, a + ')');
+    const ga = (a) => T.glow.replace(/[\d.]+\)$/, a + ')'), on = (p) => !part || part === p;
     // ① 뒤 빛 · 빛줄기 · 별 가루
-    g.fillStyle = rad(g, cx, cy, 4, 128, [[0, ga(0.95)], [0.45, ga(0.32)], [1, ga(0)]]); g.fillRect(0, 0, 256, 256);
-    if (k === 0) spikes(g, cx, cy, 16, 18, 128, 5, 'rgba(210,245,255,0.95)', Math.PI / 16, 0.6);
-    if (k === 1) rays(g, cx, cy, 28, 126, 20, 'rgba(255,236,180,0.75)', 0.05);
-    if (k === 2) { g.fillStyle = rad(g, cx, cy, SR * 0.8, 124, [[0, 'rgba(255,60,20,0.5)'], [1, 'rgba(0,0,0,0)']]); g.fillRect(0, 0, 256, 256); corona(g, cx, cy, SR * 0.98, 28, 46, 77); }
-    if (k === 3) { g.save(); g.globalAlpha = 0.75; g.lineWidth = 8; g.strokeStyle = prism(g, cx, cy); g.beginPath(); g.arc(cx, cy, 110, 0, TAU); g.stroke(); g.globalAlpha = 0.35; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, 122, 0, TAU); g.stroke(); g.restore(); spikes(g, cx, cy, 24, 22, 128, 4.5, 'rgba(255,240,190,0.95)', 0, 0.58); }
-    dust(g, cx, cy, 66, 124, 36 + k * 14, '#ffffff', 300 + k * 11);
+    if (on('back')) {
+      g.fillStyle = rad(g, cx, cy, 4, 128, [[0, ga(0.95)], [0.45, ga(0.32)], [1, ga(0)]]); g.fillRect(0, 0, 256, 256);
+      if (k === 0) spikes(g, cx, cy, 16, 18, 128, 5, 'rgba(210,245,255,0.95)', Math.PI / 16, 0.6);
+      if (k === 1) rays(g, cx, cy, 28, 126, 20, 'rgba(255,236,180,0.75)', 0.05);
+      if (k === 2) { g.fillStyle = rad(g, cx, cy, SR * 0.8, 124, [[0, 'rgba(255,60,20,0.5)'], [1, 'rgba(0,0,0,0)']]); g.fillRect(0, 0, 256, 256); corona(g, cx, cy, SR * 0.98, 28, 46, 77); }
+      if (k === 3) { g.save(); g.globalAlpha = 0.75; g.lineWidth = 8; g.strokeStyle = prism(g, cx, cy); g.beginPath(); g.arc(cx, cy, 110, 0, TAU); g.stroke(); g.globalAlpha = 0.35; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, 122, 0, TAU); g.stroke(); g.restore(); spikes(g, cx, cy, 24, 22, 128, 4.5, 'rgba(255,240,190,0.95)', 0, 0.58); }
+      dust(g, cx, cy, 66, 124, 36 + k * 14, '#ffffff', 300 + k * 11);
+    }
     // ② 궤도 고리 — 뒤쪽 반 (인장 뒤로 지나감)
     const ORB = [[[110, 25, -0.3]], [[102, 22, 0.42], [102, 22, -0.42]], [], [[114, 24, -0.26], [100, 30, 0.5]]][k];
     const oc = ['rgba(140,225,255,0.85)', 'rgba(255,226,150,0.85)', '', 'rgba(255,236,170,0.9)'][k];
-    for (const [rx, ry, rot] of ORB) orbitRing(g, cx, cy, rx, ry, rot, oc, 2.2, Math.PI, TAU);
-    // ③ 날개
-    if (k === 0) for (const s of [-1, 1]) blades(g, cx + s * 30, cy - 8, s, 6, 98, ['#ffffff', '#86e0ff', '#0d3c84'], 0.95, 0.2);
-    if (k === 1) for (const s of [-1, 1]) { wing(g, cx + s * 34, cy + 18, s, 66, 8, ['#ffffff', '#f6e2a8', '#b48a2a'], 0.7, -0.8); wing(g, cx + s * 38, cy - 14, s, 106, 12, ['#ffffff', '#fff1c8', '#c7962c'], 1.05, 0.15); }
-    if (k === 2) { g.save(); g.shadowColor = 'rgba(255,70,30,0.9)'; g.shadowBlur = 10; for (const s of [-1, 1]) blades(g, cx + s * 32, cy - 4, s, 5, 102, ['#ff9a6a', '#5a0a10', '#0a0204'], 0.9, 0.35); g.restore(); }
-    if (k === 3) for (const s of [-1, 1]) { blades(g, cx + s * 30, cy, s, 6, 116, ['#ffffff', '#c9a6ff', '#4b1f8f'], 1.0, 0.02, 0.92); wing(g, cx + s * 40, cy - 16, s, 106, 12, ['#ffffff', '#ffe08a', '#a8780a'], 1.05, 0.25); }
+    if (on('orbB')) for (const [rx, ry, rot] of ORB) orbitRing(g, cx, cy, rx, ry, rot, oc, 2.2, Math.PI, TAU);
+    // ③ 날개 (왼쪽 · 오른쪽)
+    for (const s of [-1, 1]) {
+      if (!on(s < 0 ? 'wingL' : 'wingR')) continue;
+      if (k === 0) blades(g, cx + s * 30, cy - 8, s, 6, 98, ['#ffffff', '#86e0ff', '#0d3c84'], 0.95, 0.2);
+      if (k === 1) { wing(g, cx + s * 34, cy + 18, s, 66, 8, ['#ffffff', '#f6e2a8', '#b48a2a'], 0.7, -0.8); wing(g, cx + s * 38, cy - 14, s, 106, 12, ['#ffffff', '#fff1c8', '#c7962c'], 1.05, 0.15); }
+      if (k === 2) { g.save(); g.shadowColor = 'rgba(255,70,30,0.9)'; g.shadowBlur = 10; blades(g, cx + s * 32, cy - 4, s, 5, 102, ['#ff9a6a', '#5a0a10', '#0a0204'], 0.9, 0.35); g.restore(); }
+      if (k === 3) { blades(g, cx + s * 30, cy, s, 6, 116, ['#ffffff', '#c9a6ff', '#4b1f8f'], 1.0, 0.02, 0.92); wing(g, cx + s * 40, cy - 16, s, 106, 12, ['#ffffff', '#ffe08a', '#a8780a'], 1.05, 0.25); }
+    }
     // ④ 인장 본체 (뾰족한 별 모양 금속판)
     const NP = [8, 12, 16, 12][k], KK = [0.8, 0.88, 0.88, 0.86][k];
-    seal(g, cx, cy, SR, NP, KK);
-    g.save(); g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 12; g.shadowOffsetY = 4;
-    g.fillStyle = [lin(g, 0, cy - SR, 0, cy + SR, [[0, '#ffffff'], [0.3, '#d2ecff'], [0.58, '#5f86b4'], [0.82, '#e9f8ff'], [1, '#7aa2cc']]), lin(g, 0, cy - SR, 0, cy + SR, metalStops(['#fffbe8', '#f0c95a', '#7a5410'])),
-      lin(g, 0, cy - SR, 0, cy + SR, [[0, '#6a5050'], [0.35, '#1c0d0f'], [0.7, '#070203'], [1, '#4a1410']]), lin(g, 0, cy - SR, 0, cy + SR, metalStops(['#ffffff', '#ffd76a', '#8a5a06']))][k];
-    g.fill(); g.restore();
-    g.lineWidth = 3; g.strokeStyle = k === 2 ? lin(g, 0, cy - SR, 0, cy + SR, [[0, '#ffcf6a'], [0.5, '#ff3b1f'], [1, '#ffcf6a']]) : k === 3 ? prism(g, cx, cy) : k === 1 ? '#fff3c4' : '#e2f8ff'; g.stroke();
-    for (let i = 0; i < NP; i++) { const a = -Math.PI / 2 + i * TAU / NP; sparkle(g, cx + Math.cos(a) * (SR - 3), cy + Math.sin(a) * (SR - 3), 2.6, 'rgba(255,255,255,0.9)'); }
+    if (on('seal')) {
+      seal(g, cx, cy, SR, NP, KK);
+      g.save(); g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 12; g.shadowOffsetY = 4;
+      g.fillStyle = [lin(g, 0, cy - SR, 0, cy + SR, [[0, '#ffffff'], [0.3, '#d2ecff'], [0.58, '#5f86b4'], [0.82, '#e9f8ff'], [1, '#7aa2cc']]), lin(g, 0, cy - SR, 0, cy + SR, metalStops(['#fffbe8', '#f0c95a', '#7a5410'])),
+        lin(g, 0, cy - SR, 0, cy + SR, [[0, '#6a5050'], [0.35, '#1c0d0f'], [0.7, '#070203'], [1, '#4a1410']]), lin(g, 0, cy - SR, 0, cy + SR, metalStops(['#ffffff', '#ffd76a', '#8a5a06']))][k];
+      g.fill(); g.restore();
+      g.lineWidth = 3; g.strokeStyle = k === 2 ? lin(g, 0, cy - SR, 0, cy + SR, [[0, '#ffcf6a'], [0.5, '#ff3b1f'], [1, '#ffcf6a']]) : k === 3 ? prism(g, cx, cy) : k === 1 ? '#fff3c4' : '#e2f8ff'; g.stroke();
+      for (let i = 0; i < NP; i++) { const a = -Math.PI / 2 + i * TAU / NP; sparkle(g, cx + Math.cos(a) * (SR - 3), cy + Math.sin(a) * (SR - 3), 2.6, 'rgba(255,255,255,0.9)'); }
+    }
     // ⑤ 안쪽 면 + 별밭
-    g.save(); g.beginPath(); g.arc(cx, cy, FR, 0, TAU);
-    g.fillStyle = [rad(g, cx, cy, 2, FR, [[0, '#9fe8ff'], [0.35, '#1d5fb8'], [1, '#04102e']]), rad(g, cx - 8, cy - 10, 2, FR, [[0, '#ffffff'], [0.45, '#d2ebff'], [1, '#5a86c8']]),
-      rad(g, cx, cy, 2, FR, [[0, '#3a0a0c'], [0.6, '#120204'], [1, '#2a0606']]), rad(g, cx, cy, 2, FR, [[0, '#ffffff'], [0.5, '#7a4ad0'], [1, '#1a0840']])][k];
-    g.fill(); g.clip();
-    if (k === 3) { g.globalAlpha = 0.5; g.fillStyle = prism(g, cx, cy); g.fillRect(cx - FR, cy - FR, FR * 2, FR * 2); g.globalAlpha = 1; }
-    if (k !== 1) dust(g, cx, cy, 0, FR, 26, '#ffffff', 900 + k);
-    g.restore();
-    g.lineWidth = 4; g.strokeStyle = [lin(g, 0, cy - FR, 0, cy + FR, [[0, '#ffffff'], [0.5, '#7aa2cc'], [1, '#e9f8ff']]), lin(g, 0, cy - FR, 0, cy + FR, metalStops(['#fffbe8', '#d9aa3a', '#7a5410'])), '#ff5a2a', lin(g, 0, cy - FR, 0, cy + FR, metalStops(['#ffffff', '#ffd76a', '#8a5a06']))][k];
-    g.beginPath(); g.arc(cx, cy, FR, 0, TAU); g.stroke();
-    g.lineWidth = 1.2; g.strokeStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.arc(cx, cy, FR - 4.5, 0, TAU); g.stroke();
+    if (on('face')) {
+      g.save(); g.beginPath(); g.arc(cx, cy, FR, 0, TAU);
+      g.fillStyle = [rad(g, cx, cy, 2, FR, [[0, '#9fe8ff'], [0.35, '#1d5fb8'], [1, '#04102e']]), rad(g, cx - 8, cy - 10, 2, FR, [[0, '#ffffff'], [0.45, '#d2ebff'], [1, '#5a86c8']]),
+        rad(g, cx, cy, 2, FR, [[0, '#3a0a0c'], [0.6, '#120204'], [1, '#2a0606']]), rad(g, cx, cy, 2, FR, [[0, '#ffffff'], [0.5, '#7a4ad0'], [1, '#1a0840']])][k];
+      g.fill(); g.clip();
+      if (k === 3) { g.globalAlpha = 0.5; g.fillStyle = prism(g, cx, cy); g.fillRect(cx - FR, cy - FR, FR * 2, FR * 2); g.globalAlpha = 1; }
+      if (k !== 1) dust(g, cx, cy, 0, FR, 26, '#ffffff', 900 + k);
+      g.restore();
+      g.lineWidth = 4; g.strokeStyle = [lin(g, 0, cy - FR, 0, cy + FR, [[0, '#ffffff'], [0.5, '#7aa2cc'], [1, '#e9f8ff']]), lin(g, 0, cy - FR, 0, cy + FR, metalStops(['#fffbe8', '#d9aa3a', '#7a5410'])), '#ff5a2a', lin(g, 0, cy - FR, 0, cy + FR, metalStops(['#ffffff', '#ffd76a', '#8a5a06']))][k];
+      g.beginPath(); g.arc(cx, cy, FR, 0, TAU); g.stroke();
+      g.lineWidth = 1.2; g.strokeStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.arc(cx, cy, FR - 4.5, 0, TAU); g.stroke();
+    }
     // 위쪽 반사
-    g.save(); seal(g, cx, cy, SR, NP, KK); g.clip(); g.globalAlpha = k === 2 ? 0.12 : 0.22; g.fillStyle = '#fff'; g.beginPath(); g.ellipse(cx - 16, cy - SR * 0.55, SR * 0.72, SR * 0.24, -0.35, 0, TAU); g.fill(); g.restore();
-    // ⑥ 가운데 문양
-    if (k === 0) {   // 폭발하는 별 + 렌즈 빛
+    if (on('gloss')) { g.save(); seal(g, cx, cy, SR, NP, KK); g.clip(); g.globalAlpha = k === 2 ? 0.12 : 0.22; g.fillStyle = '#fff'; g.beginPath(); g.ellipse(cx - 16, cy - SR * 0.55, SR * 0.72, SR * 0.24, -0.35, 0, TAU); g.fill(); g.restore(); }
+    // ⑥ 가운데 문양 (제니스는 별 · 보석을 따로)
+    const cOn = on('star');
+    if (k === 0 && cOn) {   // 폭발하는 별 + 렌즈 빛
       g.save(); g.shadowColor = '#8fe3ff'; g.shadowBlur = 18;
       g.fillStyle = rad(g, cx, cy, 2, 36, [[0, '#ffffff'], [0.4, '#dff7ff'], [1, '#49c6ff']]); star(g, cx, cy, 36, 8, 0.32); g.fill();
       g.fillStyle = '#ffffff'; star(g, cx, cy, 20, 4, 0.28); g.fill(); g.restore();
@@ -375,31 +386,32 @@ const Rank = (() => {
       g.fillStyle = lin(g, cx - 74, 0, cx + 74, 0, [[0, 'rgba(120,220,255,0)'], [0.5, 'rgba(255,255,255,0.95)'], [1, 'rgba(120,220,255,0)']]); g.fillRect(cx - 74, cy - 1.6, 148, 3.2);
       g.fillStyle = lin(g, 0, cy - 46, 0, cy + 46, [[0, 'rgba(120,220,255,0)'], [0.5, 'rgba(255,255,255,0.9)'], [1, 'rgba(120,220,255,0)']]); g.fillRect(cx - 1.3, cy - 46, 2.6, 92);
       g.fillStyle = rad(g, cx, cy, 0, 15, [[0, 'rgba(255,255,255,1)'], [1, 'rgba(255,255,255,0)']]); g.fillRect(cx - 15, cy - 15, 30, 30); g.restore();
-    } else if (k === 1) {   // 초승달 + 별
+    } else if (k === 1 && cOn) {   // 초승달 + 별
       g.save(); g.beginPath(); g.arc(cx - 2, cy + 2, 30, 0, TAU); g.clip();
       g.beginPath(); g.arc(cx - 2, cy + 2, 30, 0, TAU); g.arc(cx + 12, cy - 6, 26, 0, TAU);
       g.fillStyle = lin(g, cx - 32, cy - 28, cx + 8, cy + 32, [[0, '#fffbe8'], [0.5, '#f3c95a'], [1, '#a8780a']]); g.fill('evenodd'); g.restore();
       g.save(); g.shadowColor = 'rgba(255,210,110,0.95)'; g.shadowBlur = 10; g.strokeStyle = 'rgba(122,84,16,0.6)'; g.lineWidth = 1.2; g.beginPath(); g.arc(cx - 2, cy + 2, 30, 0.75, 4.95); g.stroke(); g.restore();
       g.save(); g.shadowColor = '#fff'; g.shadowBlur = 10; sparkle(g, cx + 12, cy - 6, 15, '#ffffff'); sparkle(g, cx + 22, cy + 14, 6, '#fffbe0'); sparkle(g, cx + 2, cy - 22, 5, '#fffbe0'); g.restore();
-    } else if (k === 2) {   // 검은 태양 + 코로나 + 다이아몬드 반지 섬광
+    } else if (k === 2 && cOn) {   // 검은 태양 + 코로나 + 다이아몬드 반지 섬광
       corona(g, cx, cy, 27, 20, 20, 91);
       g.fillStyle = rad(g, cx - 6, cy - 6, 2, 30, [[0, '#1c0b0b'], [1, '#000000']]); g.beginPath(); g.arc(cx, cy, 27, 0, TAU); g.fill();
       g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,205,150,0.95)'; g.lineWidth = 2.6; g.shadowColor = '#ff6a2a'; g.shadowBlur = 14; g.beginPath(); g.arc(cx, cy, 28, 0, TAU); g.stroke(); g.restore();
       const fa = -0.75, fx = cx + Math.cos(fa) * 28, fy = cy + Math.sin(fa) * 28;
       g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = rad(g, fx, fy, 0, 18, [[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,220,170,0.8)'], [1, 'rgba(255,120,40,0)']]); g.fillRect(fx - 18, fy - 18, 36, 36); g.restore();
       sparkle(g, fx, fy, 14, 'rgba(255,255,255,0.95)');
-    } else {   // 금빛 팔각 별 + 큰 보석
-      g.save(); g.shadowColor = 'rgba(255,230,150,0.9)'; g.shadowBlur = 14;
-      g.fillStyle = lin(g, 0, cy - 42, 0, cy + 42, [[0, '#ffffff'], [0.45, '#ffe08a'], [1, '#b8860b']]); star(g, cx, cy, 42, 8, 0.5); g.fill(); g.restore();
-      g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 1.5; star(g, cx, cy, 42, 8, 0.5); g.stroke();
-      gem(g, cx, cy, 21, ['#ffffff', '#ffb8f4', '#5a1ea8'], 8);
-      sparkle(g, cx - 7, cy - 9, 8, 'rgba(255,255,255,0.95)');
+    } else if (k === 3) {   // 금빛 팔각 별 + 큰 보석
+      if (cOn) {
+        g.save(); g.shadowColor = 'rgba(255,230,150,0.9)'; g.shadowBlur = 14;
+        g.fillStyle = lin(g, 0, cy - 42, 0, cy + 42, [[0, '#ffffff'], [0.45, '#ffe08a'], [1, '#b8860b']]); star(g, cx, cy, 42, 8, 0.5); g.fill(); g.restore();
+        g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 1.5; star(g, cx, cy, 42, 8, 0.5); g.stroke();
+      }
+      if (on('gem')) { gem(g, cx, cy, 21, ['#ffffff', '#ffb8f4', '#5a1ea8'], 8); sparkle(g, cx - 7, cy - 9, 8, 'rgba(255,255,255,0.95)'); }
     }
     // ⑦ 궤도 고리 — 앞쪽 반 + 빛 구슬
-    for (const [rx, ry, rot] of ORB) { orbitRing(g, cx, cy, rx, ry, rot, oc, 2.4, 0, Math.PI); for (const th of [0.55, 2.35]) { const [x, y] = onEllipse(cx, cy, rx, ry, rot, th); orb(g, x, y, 3.2, oc); } }
+    if (on('orbF')) for (const [rx, ry, rot] of ORB) { orbitRing(g, cx, cy, rx, ry, rot, oc, 2.4, 0, Math.PI); for (const th of [0.55, 2.35]) { const [x, y] = onEllipse(cx, cy, rx, ry, rot, th); orb(g, x, y, 3.2, oc); } }
     // ⑧ 머리 장식
     const ty = cy - SR;
-    if (k === 0) {   // 수정 조각 관
+    if (!on('crown')) { /* 다른 구성품만 */ } else if (k === 0) {   // 수정 조각 관
       const C = ['#ffffff', '#86e0ff', '#0d3c84'];
       spike(g, cx - 11, ty + 8, -Math.PI / 2 - 0.45, 30, 12, C); spike(g, cx + 11, ty + 8, -Math.PI / 2 + 0.45, 30, 12, C); spike(g, cx, ty + 6, -Math.PI / 2, 44, 16, C);
       gem(g, cx, ty + 4, 8, ['#ffffff', '#8fe3ff', '#0b2f6e'], 4);
@@ -417,9 +429,9 @@ const Rank = (() => {
       crown(g, cx, ty - 12, 84, 42, ['#ffffff', '#ffe08a', '#9a6a08'], ['#ffffff', '#ff9bf0', '#7a2ac0']);
     }
     // ⑨ 반짝임
-    for (const [x, y, r] of [[cx + 52, cy - 56, 7], [cx - 56, cy + 30, 5], [cx + 34, cy + 56, 4], [cx - 40, cy - 64, 5], [cx + 70, cy + 12, 3.5], [cx - 72, cy - 20, 3.5]].slice(0, 3 + k)) sparkle(g, x, y, r + k, 'rgba(255,255,255,0.95)');
+    if (on('spark')) for (const [x, y, r] of [[cx + 52, cy - 56, 7], [cx - 56, cy + 30, 5], [cx + 34, cy + 56, 4], [cx - 40, cy - 64, 5], [cx + 70, cy + 12, 3.5], [cx - 72, cy - 20, 3.5]].slice(0, 3 + k)) sparkle(g, x, y, r + k, 'rgba(255,255,255,0.95)');
     // ⑩ 단계 명판
-    if (div) plaque(g, cx, 224, 70 + k * 6, ROMAN[div], [['#3a86e0', '#0d2f6e', '#061633'], ['#fff2c8', '#c9962e', '#6e4c0c'], ['#3a1012', '#14040a', '#060102'], ['#5a34a8', '#2a1060', '#120630']][k],
+    if (div && on('plaque')) plaque(g, cx, 224, 70 + k * 6, ROMAN[div], [['#3a86e0', '#0d2f6e', '#061633'], ['#fff2c8', '#c9962e', '#6e4c0c'], ['#3a1012', '#14040a', '#060102'], ['#5a34a8', '#2a1060', '#120630']][k],
       ['#8fe3ff', '#fff3c4', '#ff5a2a', '#ffd76a'][k], [['#ffffff', '#8fe3ff', '#0b2f6e'], ['#ffffff', '#a9d8ff', '#2a5a9a'], ['#ffe0c0', '#ff3b1f', '#4a0505'], ['#ffffff', '#ff9bf0', '#7a2ac0']][k]);
   }
   // 티어별 엠블럼. t=-1: 배치 전(물음표), t=-2: 잠김
@@ -495,6 +507,25 @@ const Rank = (() => {
   }
   // 컷신용: 티어(tierOf · hcTierOf 결과) → 그 크기의 캔버스 (캐시 없이 새로)
   const embCanvas = (x, size = 512) => (x.hc ? drawHc(x.t, x.div, size) : draw(x.t, x.div, size));
+  // 컷신 「합체」(제니스): 상위 티어 엠블럼을 구성품별 그림으로 — 겹치는 순서대로 [{ id, cv, x, y, w, h }]
+  //  cv 는 빈 곳을 잘라낸 그림, x·y·w·h 는 엠블럼 그림(0~1) 안의 자리. 모두 제자리에 겹쳐 그리면 embCanvas 와 같은 모습
+  const SUP_PARTS = ['back', 'orbB', 'wingL', 'wingR', 'seal', 'face', 'gloss', 'star', 'gem', 'orbF', 'crown', 'spark', 'plaque'];
+  function embParts(x, size = 512, ids = SUP_PARTS) {
+    if (!x || x.hc || !RANK_TIERS[x.t] || !RANK_TIERS[x.t].sup) return null;
+    const out = [];
+    for (const id of SUP_PARTS) {
+      if (!ids.includes(id)) continue;
+      const cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d', { willReadFrequently: true });
+      g.scale(size / 256, size / 256); drawSup(g, x.t, x.div, id);
+      const d = g.getImageData(0, 0, size, size).data; let x0 = size, y0 = size, x1 = -1, y1 = -1;
+      for (let y = 0; y < size; y++) for (let i = y * size * 4 + 3, xx = 0; xx < size; xx++, i += 4) if (d[i] > 1) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; y1 = y; }
+      if (x1 < 0) continue;   // 이 티어에는 없는 구성품
+      x0 = Math.max(0, x0 - 2); y0 = Math.max(0, y0 - 2); x1 = Math.min(size - 1, x1 + 2); y1 = Math.min(size - 1, y1 + 2);
+      const w = x1 - x0 + 1, h = y1 - y0 + 1, c2 = document.createElement('canvas'); c2.width = w; c2.height = h; c2.getContext('2d').drawImage(cv, x0, y0, w, h, 0, 0, w, h);
+      out.push({ id, cv: c2, x: x0 / size, y: y0 / size, w: w / size, h: h / size });
+    }
+    return out;
+  }
   // ---------- 하드코어 랭크전 ----------
   //  참가: 일반 랭크 최고 기록이 다이아 4(2000 RP) 이상. 배치고사 없이 스토커 4(0 RP)부터
   //  봇은 전원 익스트림, 티어 세금·감점이 일반 랭크보다 크다. 기록은 S.hc (랭크 기록과 같이 서버에 저장)
@@ -637,7 +668,7 @@ const Rank = (() => {
     if (ti.series) { const need = SUP.need[S.sg]; return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: `${ti.label} · 승급전`, sub: `연속 성공 ${S.ss} / ${need} → ${RANK_TIERS[ti.t + 1].name} 5`, tier: ti, series: { n: S.ss, need, next: ti.t + 1 } }; }
     return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${S.rp} RP` : `${ti.into} / ${ti.need} RP`, tier: ti };
   }
-  return { get state() { return S; }, get hc() { return hcS(); }, hcOk, hcTierOf, applyHc, hcEmblem, hcStatus, embOf, embCanvas, rpDeltaHc, unlocked, placed, tierOf, mine, peakTier, viewOf, series, settle, cutSeen, ord, apply, botDifficulty, botCount, mixOf, emblem, status, placementScore, rpDelta,
+  return { get state() { return S; }, get hc() { return hcS(); }, hcOk, hcTierOf, applyHc, hcEmblem, hcStatus, embOf, embCanvas, embParts, rpDeltaHc, unlocked, placed, tierOf, mine, peakTier, viewOf, series, settle, cutSeen, ord, apply, botDifficulty, botCount, mixOf, emblem, status, placementScore, rpDelta,
     reset() { S = S0(); norm(); save(); }, _set(o) { Object.assign(S, o); norm(); save(); },
     // 계정 전환: 통째로 바꿔 끼움 (저장 알림 없이) — 개편 전 기록이면 norm 이 옮긴다
     replace(o) { S = Object.assign(S0(), o || {}); norm(); store.set('rank', S); } };

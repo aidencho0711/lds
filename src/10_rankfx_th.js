@@ -7,7 +7,8 @@
 //  · 이클립스 「개기일식」: 붉은 하늘의 태양을 검은 달이 가림 · 이전 엠블럼은 붉은 금이 가고 가장자리부터 타들어 재로
 //      → 개기일식(코로나 · 홍염 · 붉은 번개) → 다이아몬드 링 → 땅이 갈라진 붉은 틈에서 새 엠블럼이 솟아오름 · 번개 · 불티 폭풍
 //  · 제니스 「정점」: 하늘을 뚫고 올라감(아래로 흐르는 빛 띠) · 오로라 · 은하 · 별자리 왕관이 이어짐 · 팔각 별 문양
-//      → 이전 엠블럼이 흰빛으로 모였다가 프리즘처럼 무지개 빛살로 → 새 엠블럼이 돌며 내려와 착지 충격파 · 색종이 · 별 왕관 · 무지개 고리
+//      → 이전 엠블럼이 흰빛으로 모였다가 프리즘처럼 무지개 빛살로 → 그 빛에서 새 엠블럼의 구성품이 튀어나와 입체로 펼쳐짐(별자리 선)
+//      → 인장 · 날개 · 궤도 고리 · 안쪽 면 · 별 · 왕관 · 명판이 차례로 '철컥' 맞물리고 마지막 보석이 박히며 완성 → 충격파 · 색종이 · 별 왕관 · 무지개 고리
 //  · 장면은 시각 t 하나로 정해짐(draw) — 입자·모양은 build 에서 시드로 한 번 · 소리 Audio.rankTheme(id, 단계) · 글자 모양 text
 // ============================================================
 const RankTheme = (() => {
@@ -498,10 +499,19 @@ const RankTheme = (() => {
   };
 
   // =================== 제니스 — 정점 ===================
+  // 합체: 엠블럼 구성품(Rank.embParts) — ox·oy 옆으로 · z 앞으로 펼친 거리(E 단위) · r 돌아간 각 · s 크기 · ax·ay 돌며 맞물리는 중심(256 기준) · n 맞물리는 차례
+  //  궤도 고리의 뒤·앞 반쪽(orbB · orbF)은 같이 움직여야 고리 하나로 보임
+  const ZPART = {
+    orbB: { r: 0.8, s: 1.4, n: 2 }, wingL: { ox: -0.8, oy: 0.04, r: 0.5, ax: 95, ay: 112, n: 1 }, wingR: { ox: 0.8, oy: 0.04, r: -0.5, ax: 161, ay: 112, n: 1 },
+    seal: { r: -1.2, s: 1.12, n: 0 }, face: { z: 0.4, n: 3 }, star: { z: 0.75, r: 1.3, n: 4 }, gem: { z: 1.15, r: 0.9, s: 1.2, n: 7 },
+    orbF: { r: 0.8, s: 1.4, n: 2 }, crown: { oy: -0.1, z: 0.25, r: -0.3, ay: 40, n: 5 }, plaque: { oy: 0.12, z: 0.25, r: 0.25, ay: 224, n: 6 },
+  };
+  const ZLOCK = [3.6, 3.82, 4.0, 4.15, 4.28, 4.4, 4.5, 4.75];   // 차례(n)마다 맞물리는 시각 — 마지막(보석) = 완성(P.land)
+  const eBackIn = (x) => 2.70158 * x * x * x - 1.70158 * x * x;   // 살짝 물러났다가 빨려 들어감
   const ZEN = {
-    id: 'zenith', Tm: { title: 4.35, dur: 9.6 },
-    P: { ascend: 1.7, crown: 0.95, white: 1.95, prism: 2.35, desc: 2.45, land: 3.4 },
-    cues: [[0, 'gather'], [0.95, 'crown'], [2.35, 'prism'], [3.4, 'land'], [4.35, 'title']],
+    id: 'zenith', Tm: { title: 5.7, dur: 10.95 },
+    P: { ascend: 1.7, crown: 0.95, white: 1.95, prism: 2.35, form: 2.4, pull: 3.3, land: 4.75 },
+    cues: [[0, 'gather'], [0.95, 'crown'], [2.35, 'prism'], [2.42, 'form'], [3.3, 'pull'], [4.37, 'charge'], [4.75, 'land'], [5.7, 'title']].concat(ZLOCK.slice(0, 7).map((t, i) => [t, 'lock' + i])).sort((a, b) => a[0] - b[0]),
     text: { kick: '승급전 통과  ·  APEX', rainbow: true, glow: '#fff3c8' },
     build(X, R) {
       const sf = starfield(R, 600, 1024, ['#ffffff', '#ffffff', '#fff2c4', '#d8c8ff', '#a8d8ff']);
@@ -521,11 +531,77 @@ const RankTheme = (() => {
       const conf = []; for (let i = 0; i < 90; i++) { const q = R(); conf.push({ a: -Math.PI / 2 + (R() - 0.5) * Math.PI * 1.9, s: 0.6 + R() * 2.2, w: 0.012 + R() * 0.012, h: 0.006 + R() * 0.006, spin: (R() - 0.5) * 10, flip: 4 + R() * 8, life: 1.8 + R() * 1.8, c: q < 0.4 ? '#ffd76a' : q < 0.6 ? '#ffffff' : hsl(R() * 360, 70) }); }
       const glit = []; for (let i = 0; i < 50; i++) glit.push({ x: R(), y: R(), f: 1 + R() * 3, ph: R() * TAU, s: 1 + R() * 2.2, hue: R() * 360 });
       const [ac, ah] = mk(256, 96);   // 오로라를 그리는 곳
-      return { sf, gal, bands, speed, auro, ac, ah, crown, scat, rays, conf, glit, wA: tint(X.imgA, '#ffffff'), wB: tint(X.imgB, '#ffffff') };
+      // 합체 구성품: 그림 · 흰빛 그림 · 맞물릴 때 튀는 빛 알갱이 (못 만들면 새 엠블럼이 그냥 나타남)
+      let parts = null;
+      try { parts = Rank.embParts ? Rank.embParts(X.to, 512, Object.keys(ZPART)) : null; } catch (e) { parts = null; }
+      if (parts && parts.length) {
+        parts = parts.map((p, i) => { const q = ZPART[p.id]; return Object.assign(p, { i, n: q.n, ox: q.ox || 0, oy: q.oy || 0, z: q.z || 0, r: q.r || 0, s: q.s || 1, ax: (q.ax || 128) / 256, ay: (q.ay || 118) / 256, tl: ZLOCK[q.n], du: q.n === 7 ? 0.55 : q.n === 0 ? 0.5 : 0.42, wv: tint(p.cv, '#ffffff'), dv: tint(p.cv, '#06020f'), sp: Array.from({ length: 9 }, () => ({ a: R() * TAU, s: 0.25 + R() * 0.5, life: 0.35 + R() * 0.4, h: R() * 360 })) }); });
+      } else parts = null;
+      return { sf, gal, bands, speed, auro, ac, ah, crown, scat, rays, conf, glit, parts, iSeal: parts ? parts.findIndex((p) => p.id === 'seal') : -1, wA: tint(X.imgA, '#ffffff'), wB: tint(X.imgB, '#ffffff') };
+    },
+    // 합체 — 구성품 q 의 시각 t 자리: 프리즘에서 튀어나와(m) 입체로 펼쳐져 있다가(f) 맞물림(e → 1) · cam: 카메라 (옆으로 돈 각 · 내려다본 각 · 원근)
+    lay(q, t, cam) {
+      const { cx, cy, E } = S, te = ZEN.P.form + q.n * 0.035, m = eOut(seg(t, te, te + 0.55));
+      const k = seg(t, q.tl - q.du, q.tl), e = k > 0 ? eBackIn(k) : 0, f = 1 - e, done = k >= 1, pu = done ? cam.pu : 1;
+      const X = q.ax - 0.5 + q.ox * f * cam.spread, Y = q.ay - 0.5 + q.oy * f + f * 0.016 * Math.sin(t * 2.1 + q.n * 1.7), Z = q.z * f - cam.zc;
+      const x1 = X * cam.ct + Z * cam.st, z1 = Z * cam.ct - X * cam.st, py = Y * cam.cp - z1 * cam.sp, pz = Y * cam.sp + z1 * cam.cp, ps = 3.2 / (3.2 - pz);
+      return { x: cx + x1 * E * ps * m * pu, y: cy + py * E * ps * m * pu, k: E * ps * (1 + (q.s - 1) * f) * lerp(0.06, 1, m) * pu, r: q.r * f + (1 - m) * 2.4 * (q.n % 2 ? 1 : -1), z: q.z * f, m, e, f, done };
+    },
+    // 구성품 그림을 그 자리 · 각 · 크기로 (판이 카메라 쪽으로 기울어 보이게)
+    put(q, L, im, cam) {
+      const c = Math.cos(L.r), s = Math.sin(L.r);
+      g.save(); g.transform((cam.ux * c + cam.vx * s) * L.k, (cam.uy * c + cam.vy * s) * L.k, (cam.vx * c - cam.ux * s) * L.k, (cam.vy * c - cam.uy * s) * L.k, L.x, L.y);
+      g.drawImage(im, q.x - q.ax, q.y - q.ay, q.w, q.h); g.restore();
+    },
+    asm(D, t) {
+      const { W, cx, cy, E } = S, P = ZEN.P, ce = eInOut(seg(t, P.pull, P.land - 0.12));
+      // 카메라: 비스듬히 내려다본 펼친 모습(앞 층일수록 오른쪽 아래) → 맞물릴수록 정면으로
+      const th = lerp(0.5, 0.36, seg(t, P.form, P.pull)) * (1 - ce), ph = -(0.42 + 0.04 * Math.sin(t * 1.1)) * (1 - ce);
+      let last = -9, nOn = 0; for (let n = 0; n < 7; n++) if (t >= ZLOCK[n]) { last = ZLOCK[n]; nOn++; }
+      const cam = { ct: Math.cos(th), st: Math.sin(th), cp: Math.cos(ph), sp: Math.sin(ph), zc: 0.55 * (1 - ce), spread: clamp((W * 0.5 / E - 0.75) / 0.55, 0.35, 1), pu: 1 + 0.045 * Math.exp(-(t - last) * 11) };
+      cam.ux = cam.ct; cam.uy = cam.st * cam.sp; cam.vx = 0; cam.vy = cam.cp;
+      const Q = D.parts, L = Q.map((q) => ZEN.lay(q, t, cam)), sl = L[D.iSeal] || { x: cx, y: cy, m: 1 };
+      // 뒤 빛 (맞물린 구성품이 늘수록 밝게)
+      ADD(); dot(glow('#fff3c8', 0.14), sl.x, sl.y, E * (0.45 + 0.05 * nOn), (0.08 + 0.03 * nOn) * sl.m);
+      // 별자리 선: 아직 떨어져 있는 구성품 → 인장 가운데 (펼친 모습이 한눈에)
+      g.lineWidth = 1; g.strokeStyle = '#ffe9b0';
+      for (let i = 0; i < Q.length; i++) {
+        const q = Q[i], l = L[i]; if (!q.n || l.done || q.id === 'orbB' || q.id === 'orbF') continue;
+        const a = (q.ox || q.oy ? 0.38 : 0.22) * l.f * l.m; if (a < 0.01) continue;
+        A(a); g.beginPath(); g.moveTo(sl.x, sl.y); g.lineTo(l.x, l.y); g.stroke(); star4(l.x, l.y, E * 0.035, '#ffffff', Math.min(1, a * 2), t * 0.8 + i);
+      }
+      // 구성품: 앞뒤(z) 순서로 — 같으면 엠블럼을 그리는 순서
+      const ord = Q.map((q, i) => i).sort((a, b) => L[a].z - L[b].z || a - b);
+      for (const i of ord) {
+        const q = Q[i], l = L[i]; if (l.m <= 0) continue;
+        if (q.n === 7 && !l.done) { ADD(); dot(glow('#ffb8f4', 0.2), l.x, l.y, l.k * 0.24, (0.45 + 0.2 * Math.sin(t * 5)) * l.m); }   // 보석: 이전 엠블럼의 빛 — 펼친 동안 숨 쉬듯
+        if (l.e > 0.02 && !l.done) { ADD(); for (let j = 3; j >= 1; j--) { A(0.2 * (1 - j / 4)); ZEN.put(q, ZEN.lay(q, t - j * 0.03, cam), q.wv, cam); } }   // 날아드는 꼬리
+        if (l.f > 0.02 && q.id !== 'orbB' && q.id !== 'orbF') { SRC(); A(0.42 * l.f * l.m); ZEN.put(q, Object.assign({}, l, { x: l.x + E * 0.03 * l.f, y: l.y + E * 0.05 * l.f }), q.dv, cam); }   // 그림자: 뒤 층에 드리워 앞뒤가 보이게
+        SRC(); A(1); ZEN.put(q, l, q.cv, cam);
+        const te = P.form + q.n * 0.035, hot = 1 - seg(t, te, te + 0.45), dl = t - q.tl;
+        const wl = Math.max(hot, l.done ? 0.75 * Math.exp(-dl * 7) : 0.02 + 0.02 * Math.sin(t * 3 + q.n));   // 흰빛: 달아오름 → 은은히 → 맞물린 순간 번쩍
+        if (wl > 0.01) { ADD(); A(wl); ZEN.put(q, l, q.wv, cam); }
+      }
+      // 맞물린 순간: 빛 · 반짝 · 빛 알갱이 · 고리 (보석은 완성 장면이 맡음)
+      ADD();
+      for (let i = 0; i < Q.length; i++) {
+        const q = Q[i], l = L[i], dl = t - q.tl; if (q.n === 7 || dl < 0 || dl > 0.8 || q.id === 'orbB') continue;
+        const p = seg(dl, 0, 0.45);
+        dot(glow('#fff3c8', 0.2), l.x, l.y, E * 0.24, 0.6 * Math.exp(-dl * 6)); star4(l.x, l.y, E * 0.2 * (1 - p), '#ffffff', 1 - p, p * 1.6);
+        for (const s of q.sp) { if (dl > s.life) continue; const d = E * s.s * eOut(dl / s.life) * 0.6; dot(hueGlow(s.h + t * 60), l.x + Math.cos(s.a) * d, l.y + Math.sin(s.a) * d, E * 0.02, 0.9 * (1 - dl / s.life)); }
+      }
+      for (let n = 0; n < 7; n++) { const p = seg(t - ZLOCK[n], 0, 0.55); if (p > 0 && p < 1) ring(sl.x, sl.y, E * (0.28 + 0.5 * eOut(p)), 3 * (1 - p) + 0.6, hsl(n * 50 + 40, 75), (1 - p) * 0.7); }
+      // 마지막: 인장 끝 열두 곳에서 빛이 가운데로 모임 → 보석이 박힘
+      const chg = seg(t, P.land - 0.4, P.land);
+      if (chg > 0) {
+        for (let i = 0; i < 12; i++) { const a = -Math.PI / 2 + i * TAU / 12, p = eIn(seg(t, P.land - 0.38 + (i % 3) * 0.04, P.land - 0.02)), rr = E * 0.26 * (1 - p); if (p > 0 && p < 1) dot(hueGlow(i * 30 + t * 200), sl.x + Math.cos(a) * rr, sl.y + Math.sin(a) * rr, E * 0.04, 0.9 * Math.sin(p * Math.PI)); }
+        dot(glow('#ffffff', 0.25), sl.x, sl.y, E * (0.06 + 0.26 * eIn(chg)), 0.75 * chg * chg);
+      }
     },
     draw(X, t) {
       const D = X.td, P = ZEN.P, { W, H, cx, cy, E, MX } = S, fin = seg(t, 0, 0.5), dP = t - P.prism, dL = t - P.land;
-      const asc = eInOut(seg(t, 0.15, P.ascend)), shk = (dL >= 0 ? Math.min(W, H) * 0.05 * Math.exp(-dL * 4.2) : 0) + (dP >= 0 && dL < 0 ? Math.min(W, H) * 0.02 * Math.exp(-dP * 6) : 0) + 2 * bump(t, 0.2, P.ascend), [jx, jy] = jit(t, shk);
+      let lk = 0; for (let n = 0; n < 7; n++) { const d = t - ZLOCK[n]; if (d >= 0 && d < 0.6) lk += Math.exp(-d * 12); }   // 맞물릴 때마다 '쿵'
+      const asc = eInOut(seg(t, 0.15, P.ascend)), shk = (dL >= 0 ? Math.min(W, H) * 0.05 * Math.exp(-dL * 4.2) : 0) + (dP >= 0 && dL < 0 ? Math.min(W, H) * (0.02 * Math.exp(-dP * 6) + 0.011 * lk) : 0) + 2 * bump(t, 0.2, P.ascend), [jx, jy] = jit(t, shk);
       // 하늘 → 우주 (위로 올라감)
       const sky = g.createLinearGradient(0, 0, 0, H);
       sky.addColorStop(0, rgba(mixc('#1c1748', '#020108', asc), 1)); sky.addColorStop(0.6, rgba(mixc('#3b2a6a', '#07041a', asc), 1)); sky.addColorStop(1, rgba(mixc('#6a4270', '#0d0820', asc), 1));
@@ -556,7 +632,7 @@ const RankTheme = (() => {
         for (const sd of [-1, 1]) { const r0 = sd * t * 0.5; g.beginPath(); for (let i = 0; i < 4; i++) { const a = r0 + i * Math.PI / 2 + (sd > 0 ? Math.PI / 4 : 0); g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.closePath(); g.stroke(); }
         ring(cx, cy, rr * 0.71, 1, '#fff6d8', 0.55 * ok); ring(cx, cy, rr * 1.04, 1, '#ffe39a', 0.4 * ok);
       }
-      // ① 별자리 왕관: 하나씩 켜지며 이어짐 → 프리즘 때 흩어졌다가 착지하면 다시 모여 머리 위에
+      // ① 별자리 왕관: 하나씩 켜지며 이어짐 → 프리즘 때 흩어졌다가 완성되면 다시 모여 머리 위에
       const cs = clamp((cy - 0.5 * E - H * 0.035) / (0.24 * E), 0.45, 1);   // 왕관 높이: 엠블럼 위에 남은 자리에 맞춤 (가로 화면은 위가 좁음)
       const crownAt = (i, k) => { const [x, y] = D.crown[i], [sx2, sy2] = D.scat[i], yy = -0.5 + (y + 0.5) * cs, xx = x * (0.7 + 0.3 * cs); return [cx + lerp(sx2 * E, xx * E, k), cy + lerp(sy2 * E, yy * E, k)]; };
       // k: 0 흩어짐 → 1 왕관 자리 · al: 밝기 · tl(i): 선 i(별 i → i+1)가 그어진 정도 · pv(i): 별 i 가 켜진 정도
@@ -580,7 +656,8 @@ const RankTheme = (() => {
       }
       // ② 프리즘: 흰빛이 무지개 빛살로 갈라짐 (천천히 돌며 남음)
       if (dP >= 0) {
-        ADD(); const rk = eOut(seg(dP, 0, 0.5)), ra = 0.55 * Math.exp(-dP * 0.9) + 0.13 * (1 - seg(dP, 3, 6));
+        const dl0 = P.land - P.prism;   // 합체하는 동안은 빛살을 낮춰 구성품이 잘 보이게 → 완성되면 다시
+        ADD(); const rk = eOut(seg(dP, 0, 0.5)), ra = 0.5 * Math.exp(-dP * 2.5) + (0.06 + 0.08 * seg(dP, dl0 - 0.1, dl0 + 0.4)) * (1 - seg(dP, dl0 + 1.4, dl0 + 4.4));
         for (const r of D.rays) {
           const a = r.a + t * 0.05, L = MX * r.L * rk, w = MX * r.w, ex = cx + Math.cos(a) * L, ey = cy + Math.sin(a) * L, gr = g.createLinearGradient(cx, cy, ex, ey);
           gr.addColorStop(0, hsl(r.hue + t * 30, 85, 0.9)); gr.addColorStop(1, hsl(r.hue + t * 30, 65, 0));
@@ -588,24 +665,20 @@ const RankTheme = (() => {
         }
         const p = seg(dP, 0, 1.1); if (p < 1) for (let i = 0; i < 6; i++) ring(cx, cy, E * 0.2 + eOut(p) * MX * (0.62 + i * 0.025), 5 * (1 - p) + 1, hsl(i * 60 + t * 40, 65), (1 - p) * 0.7);
       }
-      // ③ 새 엠블럼: 무지개 빛기둥 속을 돌며 내려옴 → 착지 충격파 · 색종이 · 별 왕관 · 무지개 고리
-      if (t >= P.desc) {
-        const kd = seg(t, P.desc, P.land), ey = lerp(-E * 0.75, cy, eOut(kd)), th = 5 * Math.PI * (1 - eOut(kd)), sx = Math.cos(th), al = seg(t, P.desc, P.desc + 0.15);
-        const sk = 1 - seg(t, P.land, P.land + 1.2);
-        if (sk > 0) { ADD(); const pw = E * 0.34, gr = g.createLinearGradient(cx - pw, 0, cx + pw, 0); for (let i = 0; i <= 6; i++) gr.addColorStop(i / 6, hsl(i * 60 + t * 60, 72, (i === 0 || i === 6 ? 0 : 0.28) * sk)); A(1); g.fillStyle = gr; g.fillRect(cx - pw, -10, pw * 2, ey + 10); }
+      // ③ 합체: 프리즘에서 구성품이 튀어나와 입체로 펼쳐짐(별자리 선) → 인장 · 날개 · 궤도 고리 · 안쪽 면 · 별 · 왕관 · 명판이 차례로 맞물림 → 마지막 보석
+      if (D.parts && t >= P.form && t < P.land) ZEN.asm(D, t);
+      // ④ 완성 (보석이 박힌 순간): 몸통이 한 번 '쿵' · 충격파 · 색종이 · 별 왕관이 다시 모임 · 무지개 고리
+      if (dL >= 0 || (!D.parts && t >= P.land - 0.45)) {
+        const al = D.parts ? 1 : seg(t, P.land - 0.45, P.land), S2 = E * (1 + 0.06 * Math.exp(-Math.max(0, dL) * 8)), hk = seg(t, P.land, P.land + 0.6);
         ADD();
-        if (kd < 1) for (let q = 1; q <= 12; q++) { const tq = t - q * 0.035, kq = seg(tq, P.desc, P.land), yq = lerp(-E * 0.75, cy, eOut(kq)); dot(hueGlow(q * 30 + t * 90), cx + Math.sin(q * 1.9 + t * 6) * E * 0.25, yq, E * 0.03, (1 - q / 12) * 0.7 * al); }
-        const hk = seg(t, P.land, P.land + 0.6);
         if (hk > 0) {   // 무지개 고리 (뒤)
           const rr = E * 0.6, rot = t * 0.4; A(0.55 * hk);
           if (g.createConicGradient) { const cg = g.createConicGradient(rot, cx, cy); for (let i = 0; i <= 6; i++) cg.addColorStop(i / 6, hsl(i * 60, 70)); g.strokeStyle = cg; } else g.strokeStyle = '#ffe39a';
           g.lineWidth = E * 0.022; g.beginPath(); g.arc(cx, cy, rr, 0, TAU); g.stroke(); ring(cx, cy, rr, 1.2, '#ffffff', 0.6 * hk);
         }
-        dot(glow('#fff3c8', 0.14), cx, ey, E * 0.95, 0.5 * al);
-        SRC(); pic(X.imgB, cx, ey, E, al, sx); pic(D.wB, cx, ey, E, (1 - seg(t, P.land, P.land + 1.0)) * 0.7 * al, sx);
-        if (Math.abs(sx) < 0.3 && kd < 1) { ADD(); const gk2 = 1 - Math.abs(sx) / 0.3, gr = g.createLinearGradient(0, ey - E * 0.5, 0, ey + E * 0.5); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); A(gk2 * al); g.fillStyle = gr; g.fillRect(cx - 2, ey - E * 0.5, 4, E); }
-        if (dL > 0) sweeps(E, cx, ey, t, [P.land + 0.3, ZEN.Tm.title + 1.5, ZEN.Tm.title + 3.3]);
-        // 착지: 충격파 (금빛 + 무지개) · 색종이 · 별 왕관이 다시 모임
+        dot(glow('#fff3c8', 0.14), cx, cy, E * 0.95, 0.5 * al);
+        SRC(); pic(X.imgB, cx, cy, S2, al); pic(D.wB, cx, cy, S2, (1 - seg(t, P.land, P.land + 1.0)) * 0.75 * al);
+        if (dL > 0) sweeps(E, cx, cy, t, [P.land + 0.3, ZEN.Tm.title + 1.5, ZEN.Tm.title + 3.3]);
         if (dL >= 0) {
           ADD();
           for (const [d0, c, w0, sp] of [[0, '#fff6d8', 18, 1], [0.08, '#ffd76a', 9, 0.8], [0.18, null, 5, 0.62]]) { const p = seg(dL, d0, d0 + 1.0); if (p <= 0 || p >= 1) continue; const r = E * 0.3 + eOut(p) * MX * 0.8 * sp; if (c) ring(cx, cy, r, w0 * (1 - p) + 1, c, 1 - p); else for (let i = 0; i < 6; i++) ring(cx, cy, r + i * 3, 2, hsl(i * 60, 65), (1 - p) * 0.8); }
@@ -620,7 +693,7 @@ const RankTheme = (() => {
       }
       g.restore();
       if (dP >= 0) flash('#ffffff', 0.95 * Math.exp(-dP * 5.5));
-      if (dL >= 0) flash('#fff1c8', 0.45 * Math.exp(-dL * 6));
+      if (dL >= 0) flash('#fff1c8', 0.5 * Math.exp(-dL * 6));
     },
   };
 

@@ -768,11 +768,18 @@ const Audio = (() => {
         case 'eclipse:diamond': tone(o, t, 1.4, 'sine', 3136, 3136, 0.06); tone(o, t, 1.2, 'sine', 4699, 4699, 0.03); noise(o, t, 0.3, 'highpass', 6000, 0.7, 0.14); tone(o, t + 0.1, 1.0, 'sawtooth', 70, 220, 0.04); whoosh(t + 0.1, 0.9, 150, 1200, 0.25); break;
         case 'eclipse:land': boom(t, 1.3); thunder(t + 0.02, 1.0); thunder(t + 0.2, 0.7); crackle(t, 1.4, 14, 0.05); break;
         case 'eclipse:title': chord(t, [110, 165, 220], 2.0, 'sawtooth', 0.035); chord(t, [440, 523, 659], 1.8, 'triangle', 0.045); tone(o, t, 1.8, 'sine', 55, 55, 0.12); break;
-        // 제니스: 솟구치는 바람 · 오르는 음 → 별이 하나씩 켜지는 소리 → 프리즘 폭발(밝은 화음 · 반짝이는 글리산도) → 착지 충격 → 팡파르
+        // 제니스: 솟구치는 바람 · 오르는 음 → 별이 하나씩 켜지는 소리 → 프리즘 폭발(밝은 화음 · 반짝이는 글리산도) → 구성품이 하나씩 맞물리는 '철컥'(점점 높게) → 모이는 소리 → 완성 충격 → 팡파르
         case 'zenith:gather': whoosh(t, 1.8, 200, 3000, 0.2, 0.7); [392, 440, 523, 587, 659, 784, 880, 1047].forEach((f, i) => tone(o, t + 0.1 + i * 0.16, 0.6, 'triangle', f, f, 0.035)); break;
         case 'zenith:crown': [1568, 1760, 2093, 2349, 2637, 2349, 2093, 2637, 3136, 3520].forEach((f, i) => tone(o, t + 0.15 + i * 0.09, 0.5, 'sine', f, f, 0.03)); pad(t, [523, 659, 784], 1.4, 0.025, 'sine', 0.6); break;
         case 'zenith:prism': boom(t, 0.9); chord(t, [523, 659, 784, 1047, 1319, 1568, 2093], 3.0, 'sine', 0.045, 0.025); for (let i = 0; i < 14; i++) tone(o, t + i * 0.035, 0.6, 'sine', 1200 + i * 260, 2400 + i * 300, 0.016); noise(o, t, 1.8, 'highpass', 6000, 0.7, 0.12); break;
-        case 'zenith:land': boom(t, 1.4); noise(o, t, 1.4, 'bandpass', 4500, 0.6, 0.12); chord(t + 0.05, [1047, 1319, 1568, 2093], 1.6, 'triangle', 0.045); tink(t + 0.1, 12, 2500, 6000, 0.02, 0.05); break;
+        case 'zenith:form': whoosh(t, 0.7, 4200, 700, 0.1, 0.8); tink(t + 0.02, 10, 2800, 7500, 0.018, 0.03); break;   // 구성품이 빛에서 튀어나옴
+        case 'zenith:pull': whoosh(t, 1.4, 300, 2600, 0.1, 0.7); pad(t, [262, 392, 523], 1.5, 0.02, 'sine', 1.0); break;
+        case 'zenith:lock0': case 'zenith:lock1': case 'zenith:lock2': case 'zenith:lock3': case 'zenith:lock4': case 'zenith:lock5': case 'zenith:lock6': {   // 맞물림 '철컥' — 차례마다 한 음씩 높게
+          const i = +ph.slice(4), f = [523, 587, 659, 784, 880, 1047, 1175][i] || 1175;
+          noise(o, t, 0.05, 'bandpass', 2400 + i * 350, 1.6, 0.16); tone(o, t, 0.22, 'sine', 180, 70, 0.14); tone(o, t, 0.06, 'square', 2200, 1200, 0.018); bell(t + 0.01, f, 1.2, 0.035); break;
+        }
+        case 'zenith:charge': whoosh(t, 0.38, 700, 7000, 0.22, 1.1); tone(o, t, 0.38, 'sawtooth', 110, 440, 0.03); tone(o, t, 0.38, 'sine', 880, 1760, 0.02); break;
+        case 'zenith:land': boom(t, 1.4); noise(o, t, 0.08, 'bandpass', 3200, 1.4, 0.2); noise(o, t, 1.4, 'bandpass', 4500, 0.6, 0.12); chord(t + 0.05, [1047, 1319, 1568, 2093], 1.6, 'triangle', 0.045); tink(t + 0.1, 12, 2500, 6000, 0.02, 0.05); break;
         case 'zenith:title': chord(t, [523, 659, 784, 1047], 2.4, 'sawtooth', 0.03); chord(t, [1047, 1319, 1568, 2093], 2.2, 'triangle', 0.05); chord(t + 0.35, [1319, 1568, 2093, 2637], 1.8, 'sine', 0.035); break;
       }
     },
