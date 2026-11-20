@@ -917,8 +917,18 @@ const Audio = (() => {
         case 'bowOut': chord(t + 0.7, [1046, 784, 659, 523], 0.5, 'triangle', 0.04, 0.12); for (const tt of [1.65, 1.7]) noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); chord(t + 2.35, [1568, 2093, 2637], 0.7, 'sine', 0.035, 0.04); break;
         case 'rez': for (let i = 0; i < 12; i++) tone(o, t + 0.1 + i * 0.075, 0.05, 'square', 400 + i * 160, 400 + i * 160, 0.022); tone(o, t + 1.0, 0.5, 'sine', 1318, 1318, 0.05); chord(t + 1.55, [659, 880, 1318], 0.7, 'triangle', 0.04, 0.05); break;
         case 'derez': chord(t + 0.7, [659, 880, 1318], 0.5, 'triangle', 0.035, 0.05); for (let i = 0; i < 10; i++) tone(o, t + 1.75 + i * 0.07, 0.05, 'square', 2000 - i * 150, 2000 - i * 150, 0.022); break;
-        case 'glitchIn': tone(o, t, 1.5, 'sawtooth', 120, 120, 0.05); tone(o, t, 1.5, 'sine', 240, 240, 0.04); glit(t + 0.15, 14); noise(o, t + 1.3, 0.08, 'highpass', 3000, 1, 0.2); tone(o, t + 1.32, 0.3, 'sine', 880, 880, 0.04); break;
-        case 'noclip': glit(t + 1.1, 9); whoosh(t + 1.3, 0.7, 1200, 150, 0.22); tone(o, t + 1.3, 0.7, 'sine', 500, 60, 0.08); break;
+        case 'escape': {   // 백룸 탈출: 형광등 웅 · 찢어지며 열림 · 몸을 던짐 · 착지 · 그것의 울음(떨리며 오르는 톱니) · 허공을 움켜쥠 · 문틈이 닫힘
+          tone(o, t, 3.0, 'sawtooth', 118, 121, 0.035); tone(o, t, 3.0, 'sine', 236, 236, 0.03); noise(o, t, 0.35, 'bandpass', 2600, 0.7, 0.3); glit(t + 0.02, 7);
+          whoosh(t + 0.38, 0.5, 400, 2800, 0.28); noise(o, t + 0.97, 0.12, 'lowpass', 500, 0.8, 0.45); tone(o, t + 0.97, 0.2, 'sine', 110, 50, 0.3);
+          const os = ctx.createOscillator(), lf = ctx.createOscillator(), lg = ctx.createGain(), g = ctx.createGain(), f = ctx.createBiquadFilter(), t0 = t + 0.86;
+          os.type = 'sawtooth'; os.frequency.setValueAtTime(170, t0); os.frequency.exponentialRampToValueAtTime(640, t0 + 0.45); os.frequency.exponentialRampToValueAtTime(220, t0 + 1.05);
+          lf.frequency.value = 23; lg.gain.value = 45; lf.connect(lg); lg.connect(os.frequency); f.type = 'bandpass'; f.frequency.value = 950; f.Q.value = 1.3;
+          g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.11, t0 + 0.2); g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.1); os.connect(f); f.connect(g); g.connect(o); os.start(t0); lf.start(t0); os.stop(t0 + 1.15); lf.stop(t0 + 1.15);
+          noise(o, t + 1.12, 0.05, 'highpass', 3000, 1, 0.3); tone(o, t + 1.95, 0.4, 'sine', 90, 35, 0.4); noise(o, t + 1.95, 0.25, 'lowpass', 700, 0.8, 0.35); glit(t + 1.93, 5); break;
+        }
+        // 노클립: 바닥이 지직 · 형광등 웅 → 구멍으로 떨어지는 바람 소리 → 아래에서 빛 · 멀리 바닥에 떨어지는 소리
+        case 'noclip': tone(o, t + 0.35, 1.2, 'sawtooth', 118, 126, 0.04); glit(t + 0.42, 10); tone(o, t + 0.92, 0.3, 'square', 300, 60, 0.05); whoosh(t + 0.96, 0.6, 1600, 140, 0.25);
+          tone(o, t + 1.5, 0.5, 'sine', 1200, 1250, 0.04); noise(o, t + 1.5, 0.4, 'highpass', 4000, 0.8, 0.08); noise(o, t + 2.0, 0.3, 'lowpass', 260, 0.8, 0.25); tone(o, t + 2.0, 0.35, 'sine', 70, 40, 0.2); break;
         case 'strikeIn': thunder(t + 0.02, 0.6); thunder(t + 0.18, 0.8); thunder(t + 0.3, 1.1); for (const tt of [2.0, 2.45, 2.9]) noise(o, t + tt, 0.08, 'highpass', 2600, 0.8, 0.12); break;
         case 'strikeOut': thunder(t + 0.75, 0.5); thunder(t + 0.98, 1.2); break;
         case 'slam': whoosh(t, 0.42, 300, 1800, 0.28); fire(t, 0.42, 0.15); boom(t + 0.42, 1.4); noise(o, t + 0.45, 1.6, 'lowpass', 120, 0.7, 0.3); fire(t + 0.5, 1.0, 0.12); break;

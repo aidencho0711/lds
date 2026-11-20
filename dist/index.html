@@ -3761,8 +3761,18 @@ const Audio = (() => {
         case 'bowOut': chord(t + 0.7, [1046, 784, 659, 523], 0.5, 'triangle', 0.04, 0.12); for (const tt of [1.65, 1.7]) noise(o, t + tt, 0.05, 'bandpass', 1200, 0.8, 0.25); chord(t + 2.35, [1568, 2093, 2637], 0.7, 'sine', 0.035, 0.04); break;
         case 'rez': for (let i = 0; i < 12; i++) tone(o, t + 0.1 + i * 0.075, 0.05, 'square', 400 + i * 160, 400 + i * 160, 0.022); tone(o, t + 1.0, 0.5, 'sine', 1318, 1318, 0.05); chord(t + 1.55, [659, 880, 1318], 0.7, 'triangle', 0.04, 0.05); break;
         case 'derez': chord(t + 0.7, [659, 880, 1318], 0.5, 'triangle', 0.035, 0.05); for (let i = 0; i < 10; i++) tone(o, t + 1.75 + i * 0.07, 0.05, 'square', 2000 - i * 150, 2000 - i * 150, 0.022); break;
-        case 'glitchIn': tone(o, t, 1.5, 'sawtooth', 120, 120, 0.05); tone(o, t, 1.5, 'sine', 240, 240, 0.04); glit(t + 0.15, 14); noise(o, t + 1.3, 0.08, 'highpass', 3000, 1, 0.2); tone(o, t + 1.32, 0.3, 'sine', 880, 880, 0.04); break;
-        case 'noclip': glit(t + 1.1, 9); whoosh(t + 1.3, 0.7, 1200, 150, 0.22); tone(o, t + 1.3, 0.7, 'sine', 500, 60, 0.08); break;
+        case 'escape': {   // 백룸 탈출: 형광등 웅 · 찢어지며 열림 · 몸을 던짐 · 착지 · 그것의 울음(떨리며 오르는 톱니) · 허공을 움켜쥠 · 문틈이 닫힘
+          tone(o, t, 3.0, 'sawtooth', 118, 121, 0.035); tone(o, t, 3.0, 'sine', 236, 236, 0.03); noise(o, t, 0.35, 'bandpass', 2600, 0.7, 0.3); glit(t + 0.02, 7);
+          whoosh(t + 0.38, 0.5, 400, 2800, 0.28); noise(o, t + 0.97, 0.12, 'lowpass', 500, 0.8, 0.45); tone(o, t + 0.97, 0.2, 'sine', 110, 50, 0.3);
+          const os = ctx.createOscillator(), lf = ctx.createOscillator(), lg = ctx.createGain(), g = ctx.createGain(), f = ctx.createBiquadFilter(), t0 = t + 0.86;
+          os.type = 'sawtooth'; os.frequency.setValueAtTime(170, t0); os.frequency.exponentialRampToValueAtTime(640, t0 + 0.45); os.frequency.exponentialRampToValueAtTime(220, t0 + 1.05);
+          lf.frequency.value = 23; lg.gain.value = 45; lf.connect(lg); lg.connect(os.frequency); f.type = 'bandpass'; f.frequency.value = 950; f.Q.value = 1.3;
+          g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.11, t0 + 0.2); g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.1); os.connect(f); f.connect(g); g.connect(o); os.start(t0); lf.start(t0); os.stop(t0 + 1.15); lf.stop(t0 + 1.15);
+          noise(o, t + 1.12, 0.05, 'highpass', 3000, 1, 0.3); tone(o, t + 1.95, 0.4, 'sine', 90, 35, 0.4); noise(o, t + 1.95, 0.25, 'lowpass', 700, 0.8, 0.35); glit(t + 1.93, 5); break;
+        }
+        // 노클립: 바닥이 지직 · 형광등 웅 → 구멍으로 떨어지는 바람 소리 → 아래에서 빛 · 멀리 바닥에 떨어지는 소리
+        case 'noclip': tone(o, t + 0.35, 1.2, 'sawtooth', 118, 126, 0.04); glit(t + 0.42, 10); tone(o, t + 0.92, 0.3, 'square', 300, 60, 0.05); whoosh(t + 0.96, 0.6, 1600, 140, 0.25);
+          tone(o, t + 1.5, 0.5, 'sine', 1200, 1250, 0.04); noise(o, t + 1.5, 0.4, 'highpass', 4000, 0.8, 0.08); noise(o, t + 2.0, 0.3, 'lowpass', 260, 0.8, 0.25); tone(o, t + 2.0, 0.35, 'sine', 70, 40, 0.2); break;
         case 'strikeIn': thunder(t + 0.02, 0.6); thunder(t + 0.18, 0.8); thunder(t + 0.3, 1.1); for (const tt of [2.0, 2.45, 2.9]) noise(o, t + tt, 0.08, 'highpass', 2600, 0.8, 0.12); break;
         case 'strikeOut': thunder(t + 0.75, 0.5); thunder(t + 0.98, 1.2); break;
         case 'slam': whoosh(t, 0.42, 300, 1800, 0.28); fire(t, 0.42, 0.15); boom(t + 0.42, 1.4); noise(o, t + 0.45, 1.6, 'lowpass', 120, 0.7, 0.3); fire(t + 0.5, 1.0, 0.12); break;
@@ -24196,6 +24206,12 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-20', t: '백룸 정복자 입장·퇴장 연출 새로 — 백룸 탈출 · 검은 손 · 노클립', items: [
+    '입장: 등 뒤에 노란 백룸 복도가 보이는 문틈이 찢어지듯 열리고, 그 속에서 몸을 던져 빠져나와 네 발로 구름',
+    '바로 뒤에서 커다란 검은 손이 문틈 밖까지 뻗어 나와 낚아채려다 허공을 움켜쥐고 더듬음 · 다른 손들은 문틀을 안쪽에서 움켜쥠 → 손이 끌려 들어가며 문틈이 닫히고, 뒤를 돌아본 뒤 이마의 땀을 훔침',
+    '퇴장: 발밑이 지직거리며 네모 격자가 번지고 픽셀이 떠오름 → 바닥에 노란 백룸이 내려다보이는 구멍이 열리고 두 팔을 허우적거리며 떨어짐 → 아래에서 형광 빛이 솟구친 뒤 구멍이 닫힘',
+    '소리도 새로: 형광등 웅 · 문틈이 찢어지는 소리 · 그것의 울음 · 허공을 움켜쥐는 소리 · 멀리서 바닥에 떨어지는 소리',
+  ] },
   { v: 'v23', d: '2026-11-20', t: '부개발자 · 계정 밴', items: [
     '부개발자 권한: 개발자와 같은 개발자 도구(모든 스킨 · 경기 도구 · 관전 · 계정 관리)를 쓰지만, 다른 계정에 골드 탄피를 줄 수 없고 개발자·다른 부개발자 계정은 바꿀 수 없음 (서버도 같은 규칙) · 아이디 「부개발자」 계정에 부여',
     '계정 밴(개발자·부개발자): 개발자 도구 → 계정 관리 → 계정 상세에서 기간(숫자 + 분·시간·일)과 사유(선택)를 정해 두 번 눌러 밴 · 밴 해제 · 목록에 「정지 남은 시간」 표시',
@@ -29140,7 +29156,7 @@ const PartyFx = (() => {
     { id: 'nova', t: 10, name: '노바', mo: ['meteor', 'launch', 'wave'], c: [0x8fe3ff, 0x2f86ff, 0xffffff], pal: [0x8fe3ff, 0x4fb0ff, 0xd8f6ff, 0xffffff] },
     { id: 'hc_overlord', name: '오버로드', mo: ['fireStep', 'burnOut', 'fistPalm'], c: [0xff7a18, 0xffc040, 0xfff0c8], pal: [0xff6a12, 0xff9a2a, 0xffc04a, 0xfff0c0] },
     { id: 'tier_eternal', name: '이터널', mo: ['orbForm', 'orbOut', 'open'], c: [0xc58cff, 0x7a3cff, 0xf6eaff], pal: [0xc58cff, 0xe6c8ff, 0x9a6aff, 0xffffff] },
-    { id: 'br_all', name: '백룸 정복자', mo: ['glitchIn', 'noclip', 'shrug'], c: [0xffe066, 0xc9b27a, 0xfffbe0], pal: [0xffe066, 0xe8d8a0, 0xc9b27a, 0xfff8d0] },
+    { id: 'br_all', name: '백룸 정복자', mo: ['escape', 'noclip', 'shrug'], c: [0xffe066, 0xc9b27a, 0xfffbe0], pal: [0xffe066, 0xe8d8a0, 0xc9b27a, 0xfff8d0] },
     { id: 'wargod', name: '전쟁의 신', mo: ['strikeIn', 'strikeOut', 'armUp'], c: [0xff2a3a, 0xff8a8a, 0xffeef0], pal: [0xff2a3a, 0xff6a6a, 0xffd0d0, 0xffffff] },
   ];
   const byId = (id) => ENT.find((e) => e.id === id) || null;
@@ -29195,7 +29211,7 @@ const PartyFx = (() => {
     const e = { o, t: -delay, dur, upd, dt: 0, on: false }; LIVE.push(e); return e;
   }
   const at = (delay, fn) => add(null, 0.001, (e) => { if (!e.done) { e.done = true; fn(); } }, delay);
-  function free(o) { o.traverse((m) => { if (m.material) { if (m.userData.ownMap && m.material.map) m.material.map.dispose(); m.material.dispose(); } if (m.geometry && m.userData.own) m.geometry.dispose(); }); }
+  function free(o) { o.traverse((m) => { if (m.material && !m.userData.keep) { if (m.userData.ownMap && m.material.map) m.material.map.dispose(); m.material.dispose(); } if (m.geometry && m.userData.own) m.geometry.dispose(); }); }   // keep: 같이 쓰는 재료(백룸 손)
   function tickFx(dt) {
     for (let i = LIVE.length - 1; i >= 0; i--) {
       const e = LIVE[i]; e.t += dt; e.dt = dt; if (e.t < 0) continue;
@@ -29227,11 +29243,32 @@ const PartyFx = (() => {
     g.fillStyle = '#ffe9a0'; g.fillRect(50, 150, 156, 18); g.strokeRect(50, 150, 156, 18);
     for (const [x, y, c] of [[40, 64, '#ff5a6a'], [128, 44, '#6ad8ff'], [216, 64, '#7aff9a'], [128, 128, '#ff5a6a'], [88, 140, '#6ad8ff'], [168, 140, '#7aff9a']]) { g.fillStyle = c; g.beginPath(); g.arc(x, y, 9, 0, TAU); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(x - 3, y - 3, 3, 0, TAU); g.fill(); }
   });
-  // 백룸 문틀: 노란 형광 빛이 새는 직사각형
-  const doorTex = () => ctex('door', 128, 256, (g) => {
-    const gr = g.createLinearGradient(0, 0, 128, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.2, 'rgba(255,255,255,0.55)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.8, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = gr; g.fillRect(14, 10, 100, 246); g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 5; g.strokeRect(14, 10, 100, 246);
-    g.fillStyle = 'rgba(0,0,0,0.25)'; for (let y = 30; y < 256; y += 26) g.fillRect(14, y, 100, 2);
+  // 백룸 복도 (문틈 안에 보이는 그림, 한 점 투시): 형광등 판이 박힌 천장 · 노란 벽지 · 누런 카펫 · 끝의 어두운 문
+  const brPoly = (g, pts, fill) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fillStyle = fill; g.fill(); };
+  const corridorTex = () => ctex('brc', 256, 512, (g, W, H) => {
+    const x0 = 104, x1 = 152, y0 = 196, y1 = 288;   // 복도 끝(먼 벽)
+    brPoly(g, [[0, 0], [W, 0], [x1, y0], [x0, y0]], '#dcd3a6'); brPoly(g, [[0, H], [W, H], [x1, y1], [x0, y1]], '#8e7d48');
+    brPoly(g, [[0, 0], [x0, y0], [x0, y1], [0, H]], '#cfb866'); brPoly(g, [[W, 0], [x1, y0], [x1, y1], [W, H]], '#bea756'); brPoly(g, [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], '#7e6d36');
+    g.fillStyle = '#16110a'; g.fillRect(121, 238, 14, 50);
+    g.strokeStyle = 'rgba(118,94,30,0.35)'; g.lineWidth = 1.2;   // 벽지 세로줄 · 천장 이음매 · 카펫 결
+    for (let i = 1; i < 16; i++) { const u = i / 16; for (const [a, b] of [[0, x0], [W, x1]]) { g.beginPath(); g.moveTo(lerp(a, b, u), lerp(0, y0, u)); g.lineTo(lerp(a, b, u), lerp(H, y1, u)); g.stroke(); } }
+    g.strokeStyle = 'rgba(150,140,100,0.35)'; for (let i = 1; i < 7; i++) { const u = 1 - Math.pow(0.66, i), y = lerp(0, y0, u); g.beginPath(); g.moveTo(lerp(0, x0, u), y); g.lineTo(lerp(W, x1, u), y); g.stroke(); }
+    for (let i = 0; i < 6; i++) { const u = 1 - Math.pow(0.62, i + 0.5), cx = W / 2, y = lerp(0, y0, u) + 4, w = lerp(84, 8, u), h = lerp(24, 3, u); const gr = g.createRadialGradient(cx, y, 0, cx, y, w); gr.addColorStop(0, 'rgba(255,255,232,0.6)'); gr.addColorStop(1, 'rgba(255,255,232,0)'); g.fillStyle = gr; g.fillRect(cx - w * 1.3, y - w, w * 2.6, w * 2); g.fillStyle = '#fffff0'; g.fillRect(cx - w / 2, y - h / 2, w, h); }
+    const v = g.createRadialGradient(W / 2, (y0 + y1) / 2, 8, W / 2, (y0 + y1) / 2, 300); v.addColorStop(0, 'rgba(28,22,6,0.6)'); v.addColorStop(0.3, 'rgba(28,22,6,0.18)'); v.addColorStop(1, 'rgba(28,22,6,0)'); g.fillStyle = v; g.fillRect(0, 0, W, H);
+    const R = mulberry32(61); for (let i = 0; i < 1100; i++) { g.fillStyle = R() < 0.55 ? `rgba(60,46,14,${0.05 + R() * 0.08})` : `rgba(255,250,215,${0.04 + R() * 0.07})`; g.fillRect(R() * W, R() * H, 2, 2); }
+    for (const [x, d] of [[0, 1], [W, -1]]) { const e = g.createLinearGradient(x, 0, x + d * 22, 0); e.addColorStop(0, 'rgba(20,15,4,0.55)'); e.addColorStop(1, 'rgba(20,15,4,0)'); g.fillStyle = e; g.fillRect(Math.min(x, x + d * 22), 0, 22, H); }
+  });
+  // 문틈 테두리 빛 (안쪽 가장자리가 가장 밝음)
+  const frameTex = () => ctex('brf', 128, 256, (g, W, H) => { for (let i = 0; i < 10; i++) { g.strokeStyle = `rgba(255,255,255,${0.07 + i * 0.09})`; g.lineWidth = 24 - i * 2.2; g.strokeRect(13, 13, W - 26, H - 26); } g.strokeStyle = '#fff'; g.lineWidth = 3; g.strokeRect(13, 13, W - 26, H - 26); });
+  // 바닥 구멍으로 내려다본 백룸: 네 벽(먼 벽이 가장 밝음) · 벽지 줄이 안쪽으로 모임 · 깊은 바닥의 형광등 빛 · 노란 날
+  const pitTex = () => ctex('brp', 256, 256, (g, W) => {
+    const i0 = 92, i1 = 164;
+    brPoly(g, [[0, 0], [W, 0], [i1, i0], [i0, i0]], '#d9c26d'); brPoly(g, [[0, 0], [i0, i0], [i0, i1], [0, W]], '#b7a052'); brPoly(g, [[W, 0], [i1, i0], [i1, i1], [W, W]], '#a68f3e'); brPoly(g, [[0, W], [W, W], [i1, i1], [i0, i1]], '#6c5d2a'); brPoly(g, [[i0, i0], [i1, i0], [i1, i1], [i0, i1]], '#7c6b38');
+    g.strokeStyle = 'rgba(90,70,20,0.45)'; g.lineWidth = 1.2;
+    for (let k = 1; k < 12; k++) { const u = k / 12, o = lerp(0, W, u), n = lerp(i0, i1, u); for (const [ax, ay, bx, by] of [[o, 0, n, i0], [o, W, n, i1], [0, o, i0, n], [W, o, i1, n]]) { g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke(); } }
+    const v = g.createRadialGradient(128, 128, 30, 128, 128, 182); v.addColorStop(0, 'rgba(18,14,4,0.55)'); v.addColorStop(0.45, 'rgba(18,14,4,0.25)'); v.addColorStop(1, 'rgba(18,14,4,0)'); g.fillStyle = v; g.fillRect(0, 0, W, W);
+    const l = g.createRadialGradient(128, 128, 0, 128, 128, 40); l.addColorStop(0, 'rgba(255,252,220,0.95)'); l.addColorStop(1, 'rgba(255,252,220,0)'); g.fillStyle = l; g.fillRect(88, 88, 80, 80); g.fillStyle = '#fffff0'; g.fillRect(118, 124, 20, 8);
+    g.strokeStyle = 'rgba(255,236,150,0.95)'; g.lineWidth = 5; g.strokeRect(2.5, 2.5, W - 5, W - 5);
   });
   // 네모 고리 (글리치)
   const sqTex = () => ctex('sq', 256, 256, (g) => { g.strokeStyle = '#fff'; g.lineWidth = 12; g.strokeRect(16, 16, 224, 224); g.lineWidth = 3; g.strokeRect(44, 44, 168, 168); g.fillStyle = '#fff'; for (const [x, y] of [[16, 16], [240, 16], [16, 240], [240, 240]]) g.fillRect(x - 12, y - 12, 24, 24); });
@@ -29340,7 +29377,8 @@ const PartyFx = (() => {
   function warm(L) {
     if (warmed || !L.scene || !G.renderer) return; warmed = true; SC = L.scene; CAM = L.cam;
     const g = kit().geo(), objs = [new THREE.Mesh(g.plane, mat(sigilTex(), 0)), new THREE.Mesh(g.col, mat(colTex(), 0)), new THREE.Sprite(kit().sprMat(0)), new THREE.Mesh(kit().vplane(), mat(tex().ring(), 0))];
-    for (const t of [crownTex, doorTex, sqTex, coronaTex, discTex, boltTex]) objs.push(new THREE.Mesh(g.plane, mat(t(), 0)));
+    for (const t of [crownTex, corridorTex, frameTex, pitTex, sqTex, coronaTex, discTex, boltTex]) objs.push(new THREE.Mesh(g.plane, mat(t(), 0)));
+    objs.push(new THREE.Mesh(handGeo().box, new THREE.MeshBasicMaterial({ color: 0 })));   // 백룸 손 재료(지도 없는 단색)와 같은 셰이더
     for (const t of ['star4', 'star5', 'flake', 'lava', 'swirl', 'fire', 'ice', 'glow']) if (tex()[t]) objs.push(new THREE.Mesh(g.plane, mat(tex()[t](), 0)));
     const grp = new THREE.Group(); for (const o of objs) { o.frustumCulled = false; o.material.opacity = 0; o.scale.setScalar(0.001); grp.add(o); }
     grp.position.copy(L.cam.position).add(_a.set(0, 0, -1).applyQuaternion(L.cam.quaternion)); L.scene.add(grp);
@@ -29433,6 +29471,23 @@ const PartyFx = (() => {
     shrug(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [0], [-0.02], [0], [0.02, 0, 0.18]); up(r); legsStand(r, 0.11); r.armL.clav.rotation.set(0, 0, 0.22); r.armR.clav.rotation.set(0, 0, -0.22); up(r); hands(r, r.chest, [-0.34, -0.18, 0.22], [-0.6, 0, 1], [0, 1, 0], [-0.55, -0.3, -0.2], 'open'); },
     // 차렷 + 고개 들기 (이터널 · 베테랑 등장 순간)
     tall(r) { KP.att(r); r.head.rotation.x = -0.12; },
+    // 몸을 던짐 (몸 채널에서 앞으로 크게 기울임): 두 팔을 머리 위로 쭉 · 한 다리는 뒤로 뻗고 한 다리는 굽힘 · 앞을 봄
+    dive(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [-0.05], [-0.12], [-0.1], [-0.45], [-0.35]); up(r); lfk(r.legL, 0.28, 0.04, 0.15, 0.6); lfk(r.legR, -0.45, 0.04, 1.1, 0.5); fk(r.armL, -2.75, 0, 0.2, -0.12, 'open'); fk(r.armR, -2.75, 0, 0.2, -0.12, 'open'); },
+    // 네 발로 엎드림 (무릎·손바닥이 바닥) · lk: 어깨 너머로 뒤를 돌아보는 정도 (팔을 짚기 전에 상체를 틀어 손은 그대로)
+    sprawl(r, o, lk = 0) {
+      r.hips.position.set(0, 0.5, 0); spineSet(r, [0.65], [0.5, -0.12 * lk], [0.25, -0.3 * lk, 0.15 * lk], [-0.6 + 0.35 * lk, -0.75 * lk, 0.1 * lk], [-0.45 + 0.4 * lk, -0.7 * lk, 0.15 * lk]); up(r);
+      plant(r, r.legL, [0.13, 0.1, -0.42], [0, -1, 0.35], null); plant(r, r.legR, [-0.13, 0.1, -0.42], [0, -1, 0.35], null);
+      hands(r, r.body, [-0.21, 0.05, 0.5], [0, 0, 1], [0, -1, 0], [-0.5, 0.05, -0.25], 'flat');
+    },
+    crawlLook(r, o) { KP.sprawl(r, o, 1); },
+    // 선 채로 오른쪽 어깨 너머 뒤를 돌아봄 (왼팔은 반쯤 들어 막는 자세)
+    lookBack(r) { r.hips.position.set(0, 0.94, 0); spineSet(r, [0, -0.15], [0.02, -0.3], [-0.02, -0.45], [0, -0.55], [-0.05, -0.55, -0.05]); up(r); legsStand(r, 0.14, 0.06, -0.04); fk(r.armL, -0.55, 0, 0.45, -1.1, 'open'); fk(r.armR, 0.1, 0, 0.18, -0.3); },
+    // 휴 — 손등으로 이마의 땀을 훔침
+    wipe(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [0], [-0.04], [-0.12], [-0.16, 0, -0.06]); up(r); legsStand(r, 0.11); hand(r, r.armR, r.head, [-0.07, 0.11, 0.13], [1, 0.12, 0.05], [0, 0.1, 1], [-0.45, 0.02, 0.22], 'relax'); fk(r.armL, 0.05, 0, 0.12, -0.2); },
+    // 발밑을 내려다봄 (중심을 잃으려는 듯 팔을 조금 벌리고 무릎을 굽힘)
+    lookDown(r) { r.hips.position.set(0, 0.9, 0); spineSet(r, [0.06], [0.18], [0.1], [0.4], [0.3]); up(r); legsStand(r, 0.15, 0.03, 0); fk(r.armL, -0.15, 0, 0.6, -0.35, 'open'); fk(r.armR, -0.15, 0, 0.6, -0.35, 'open'); },
+    // 아래로 떨어짐: 두 팔을 위로 허우적 · 위(빛 쪽)를 봄
+    flail(r, o) { const s = Math.sin(o.t * 13) * 0.25; r.hips.position.set(0, 0.95, 0); spineSet(r, [-0.08], [-0.12], [-0.1], [-0.3], [-0.4]); up(r); lfk(r.legL, -0.6, 0.05, 1.1, 0.3); lfk(r.legR, 0.1, 0.05, 0.3, 0.5); fk(r.armL, -0.4 + s, 0.3, 2.45, -0.7, 'open'); fk(r.armR, -0.4 - s, 0.3, 2.45, -0.7, 'open'); },
   };
   // 열쇠 자세 하나를 놓는다: 뼈 초기화 → 몸 채널 → 자세 함수
   const B0 = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, sx: 1, sy: 1, sz: 1, vis: true };
@@ -29563,19 +29618,113 @@ const PartyFx = (() => {
     body(t, B) { const u = seg(t, 1.75, 2.45); B.s = Math.max(0.02, 1 - stepQ(ein(u), 6)); B.vis = u < 0.99 && (u <= 0 || Math.random() < 0.8); },
     fx(a) { const E = a.E, gp = a.gp; sigil(gp, sqTex(), 1.6, 2.6, E.c[1], 0.8, 0.2); halo(gp, E.c[2], 2.0, 0.05, 0.6, 0.6, 0.75, 1.72, sqTex()); pillar(gp, dim(E.c[1], 0.6), 0.55, 2.4, 1.0, 1.7, 0.4); at(2.45, () => { glow(hipsAt(a, 0.2).clone(), E.c[2], 2.4, 0.4); ring(gp, E.c[2], 1.6, 0.5); }); },
     tick(a, r, t, dt) { if (t < 1.72 || t > 2.5) return; const Q = P(), E = a.E, n = Math.ceil(dt * 70), h = 2 * (1 - seg(t, 1.72, 2.47)); for (let i = 0; i < n; i++) { const an = Math.random() * TAU; EM(Q, _b.set(a.gp.x + Math.cos(an) * 0.55, a.gp.y + h, a.gp.z + Math.sin(an) * 0.55), 0, 0, 0, pk(E), rnd(0.025, 0.045), 0.35, { sq: 1, so: 0.5 }); } } };
-  // ===== 백룸 정복자: 형광등처럼 깜빡이며 노란 문틀에서 지직거리며 나타나 두리번 · 으쓱 / 두리번하다 노클립으로 바닥 아래로 =====
-  const flick = (t) => Math.random() < 0.55 + 0.45 * Math.sin(t * 40) * 0.5;
-  MOT.glitchIn = { kind: 'in', dur: 4.0, keys: [[0, 'stand'], [1.3, 'stand'], [1.6, 'look', 0.3], [2.6, 'look'], [2.9, 'shrug', 0.3], [3.45, 'shrug']],
-    body(t, B) { if (t < 1.3) { const k = 1 - seg(t, 0.9, 1.3); B.vis = t > 0.15 && (k <= 0 || flick(t)); if (B.vis && k > 0 && Math.random() < 0.5) { B.x = rnd(-0.18, 0.18) * k; B.z = rnd(-0.12, 0.12) * k; B.sx = 1 + rnd(-0.2, 0.25) * k; B.sy = 1 + rnd(-0.1, 0.1) * k; } } },
-    fx(a) { const E = a.E, gp = a.gp; envFx(1.5, (u) => { const k = u < 0.85 ? (Math.random() < 0.3 ? 0.55 : 1) : 1; return [k, k]; });
-      const dp = new THREE.Vector3(gp.x, gp.y + 1.05, gp.z - 0.55); card(dp, doorTex(), dim(E.c[0], 0.6), 2.2, (m, u) => { const k = sstep(0, 0.1, u) * (1 - sstep(0.7, 1, u)); m.scale.set(1.0 * k + 0.01, 2.1 * (0.3 + 0.7 * k), 1); m.material.opacity = k * (Math.random() < 0.15 ? 0.3 : 0.85); });
-      sigil(gp, sqTex(), 1.9, 2.0, E.c[0], 0, 0.1, 0.2); ring(gp, E.c[0], 2.0, 0.6, 1.3, sqTex()); glow(hipsAt(a, 0.5).clone(), E.c[2], 2.6, 0.35, 1.3); label(E, gp, 1.4); },
-    tick(a, r, t, dt) { if (t > 1.4) return; const Q = P(), E = a.E, n = Math.ceil(dt * 50); for (let i = 0; i < n; i++) EM(Q, _b.set(a.gp.x + rnd(-0.55, 0.55), a.gp.y + rnd(0.1, 1.9), a.gp.z + rnd(-0.35, 0.35)), rnd(-0.6, 0.6), rnd(-0.2, 0.3), rnd(-0.3, 0.3), pk(E), rnd(0.035, 0.075), rnd(0.15, 0.35), { sq: 1, so: 0.85 }); } };
-  MOT.noclip = { kind: 'out', dur: 2.6, keys: [[0, 'stand'], [0.3, 'look', 0.3], [1.1, 'look'], [1.25, 'stand', 0.15]],
-    body(t, B) { if (t > 1.15) { const u = seg(t, 1.3, 1.85); B.y = -2.3 * ein(u); B.vis = u < 0.99 && flick(t); if (Math.random() < 0.4) { B.x = rnd(-0.1, 0.1); B.sx = 1 + rnd(-0.2, 0.2); } } },
-    fx(a) { const E = a.E, gp = a.gp; sigil(gp, sqTex(), 1.4, 1.4, E.c[1], 0, 1.1); at(1.15, () => envFx(0.7, () => { const k = Math.random() < 0.35 ? 0.55 : 1; return [k, k]; })); ring(gp, E.c[0], 1.6, 0.5, 1.85, sqTex());
-      const dp = new THREE.Vector3(gp.x, gp.y + 0.02, gp.z); add(flat(doorTex(), E.c[0], dp, 0.02), 0.9, (e, u) => { e.o.scale.set(1.1, 1, 1.6); e.o.material.opacity = (1 - u) * (Math.random() < 0.2 ? 0.3 : 1); }, 1.2); },
-    tick: (a, r, t, dt) => { if (t > 1.15 && t < 1.9) MOT.glitchIn.tick(a, r, 0, dt); } };
+  // ===== 백룸 정복자 =====
+  //  입장(탈출): 등 뒤에 백룸 복도가 보이는 문틈이 찢어지듯 열리고, 그 속에서 몸을 던져 빠져나와 네 발로 구름 — 바로 뒤에서 검은 손이 문틈 밖까지 뻗어 발목을 낚아채려다
+  //   허공을 움켜쥐고 더듬음 · 다른 손은 문틀을 움켜쥠 → 손이 끌려 들어가며 문틈이 닫힘 → 뒤를 돌아보고 이마의 땀을 훔침
+  //  퇴장(노클립): 발밑이 지직거리며 네모 격자가 번지고 픽셀이 떠오름 → 바닥에 노란 백룸이 내려다보이는 구멍이 열리고 허우적거리며 떨어짐 → 아래에서 형광 빛이 솟고 구멍이 닫힘
+  //  문틈은 불투명 그림이라 그 뒤(백룸 안)에 있는 몸·팔은 가려지고, 문틈을 넘어온 부분만 보인다
+  const BR = { W: 1.25, H: 2.35, D: 0.95 };   // 문틈 너비·높이 · 캐릭터 뒤로 떨어진 거리
+  // 캐릭터 기준 자리(x 왼쪽 +, z 앞) → 월드
+  const loc = (a, x, y, z, out) => out.set(a.gp.x + Math.cos(a.yaw) * x + Math.sin(a.yaw) * z, a.gp.y + y, a.gp.z - Math.sin(a.yaw) * x + Math.cos(a.yaw) * z);
+  // 백룸 '그것'의 검은 손: 손목이 원점 · +z = 손가락 · 손바닥은 −y · 마디 셋에 갈고리 손톱 · 팔뚝은 뒤(−z)로 arm 길이만큼
+  let HG = null;
+  function handGeo() { return HG || (HG = { box: new THREE.BoxGeometry(1, 1, 1), cone: new THREE.ConeGeometry(0.5, 1, 5).rotateX(Math.PI / 2), arm: new THREE.CylinderGeometry(0.5, 0.62, 1, 7).rotateX(Math.PI / 2), mat: new THREE.MeshBasicMaterial({ color: 0x060508 }) }); }
+  function entityHand(arm) {
+    const H = handGeo(), g = new THREE.Group();
+    const part = (geo, sx, sy, sz, x, y, z, par) => { const m = new THREE.Mesh(geo, H.mat); m.userData.keep = true; m.scale.set(sx, sy, sz); m.position.set(x, y, z); (par || g).add(m); return m; };
+    if (arm) part(H.arm, 0.075, 0.07, arm, 0, -0.005, -arm / 2);
+    part(H.box, 0.1, 0.032, 0.12, 0, 0, 0.055);
+    const F = [];
+    for (const [x, L, sp] of [[-0.038, 0.85, -0.22], [-0.013, 1, -0.07], [0.013, 1.06, 0.07], [0.038, 0.9, 0.22]]) {
+      const s1 = new THREE.Group(); s1.position.set(x, 0, 0.11); g.add(s1); part(H.box, 0.018, 0.018, 0.085 * L, 0, 0, 0.042 * L, s1);
+      const s2 = new THREE.Group(); s2.position.z = 0.085 * L; s1.add(s2); part(H.box, 0.015, 0.015, 0.075 * L, 0, 0, 0.037 * L, s2);
+      const s3 = new THREE.Group(); s3.position.z = 0.075 * L; s2.add(s3); part(H.cone, 0.016, 0.016, 0.075 * L, 0, 0, 0.037 * L, s3);
+      F.push([s1, s2, s3, sp]);
+    }
+    const t1 = new THREE.Group(); t1.position.set(-0.05, -0.005, 0.03); t1.rotation.y = -0.9; g.add(t1); part(H.box, 0.017, 0.017, 0.075, 0, 0, 0.037, t1);
+    const t2 = new THREE.Group(); t2.position.z = 0.075; t1.add(t2); part(H.cone, 0.016, 0.016, 0.065, 0, 0, 0.032, t2);
+    g.userData.F = F; g.userData.T = [t1, t2]; return g;
+  }
+  // 쥐기: k 0 = 쫙 폄(조금 젖힘) · 1 = 꽉 쥠 — 손가락마다 조금씩 어긋나게 꿈틀
+  function grip(g, k, t) {
+    g.userData.F.forEach((f, i) => { const kk = clamp(k + Math.sin(t * 9 + i * 1.7) * 0.06, -0.35, 1.25); f[0].rotation.set(kk * 0.95 - 0.15, f[3] * (1 - Math.max(0, kk) * 0.7), 0); f[1].rotation.x = kk * 1.15; f[2].rotation.x = kk * 0.9; });
+    const T = g.userData.T; T[0].rotation.x = k * 0.6; T[1].rotation.x = k * 0.8;
+  }
+  // 문틈: 복도 그림(불투명 — 뒤를 가림) + 테두리 빛 + 바닥에 쏟아지는 빛 · tc 에 닫힘
+  function brPortal(a, tc) {
+    const E = a.E, c = loc(a, 0, BR.H / 2, -BR.D, new THREE.Vector3()), F = new THREE.Vector3(Math.sin(a.yaw), 0, Math.cos(a.yaw)), life = tc + 0.24;
+    const m = new THREE.Mesh(kit().vplane(), new THREE.MeshBasicMaterial({ map: corridorTex(), side: THREE.DoubleSide, fog: false })); m.rotation.y = a.yaw;
+    const fr = new THREE.Mesh(kit().vplane(), mat(frameTex(), E.c[0])); fr.rotation.y = a.yaw; fr.renderOrder = 7;
+    const gq = loc(a, 0, 0, -BR.D + 0.55, new THREE.Vector3()); gq.snow = a.gp.snow; const sp = flat(tex().glow(), dim(E.c[0], 0.6), gq, 0.025); sp.rotation.y = a.yaw;
+    const op = (t) => (t < 0.3 ? Math.max(0.03, stepQ(eout(t / 0.3), 6)) : 1);
+    add(m, life, (e) => {
+      const t = e.t; let sx = op(t), sy = 1; if (t > tc) { const v = seg(t, tc, tc + 0.2); sy = Math.max(0.01, 1 - stepQ(ein(v), 5)); sx *= 1 - v * 0.6; }
+      const j = t < 0.35 || t > tc ? 0.03 : 0.005; m.position.copy(c); m.position.x += rnd(-j, j); m.position.y += rnd(-j, j) * 0.5;
+      m.scale.set(BR.W * sx, BR.H * sy, 1); m.material.color.setScalar(Math.random() < 0.07 ? 0.55 : 0.9 + Math.random() * 0.1);
+      fr.position.copy(m.position).addScaledVector(F, 0.015); fr.scale.set(BR.W * 1.18 * sx + 0.04, BR.H * 1.08 * sy, 1); fr.material.opacity = (0.7 + Math.random() * 0.3) * Math.min(1, t * 5);
+      const k = Math.min(1, t / 0.3) * (t > tc ? 1 - seg(t, tc, tc + 0.2) : 1); sp.scale.set(1.7, 1, 2.3 * k + 0.01); sp.material.opacity = k * (0.65 + Math.random() * 0.35);
+    });
+    add(fr, life, () => {}); add(sp, life, () => {});
+    at(tc + 0.18, () => { glow(c, E.c[2], 2.4, 0.3); ring(a.gp, E.c[0], 1.8, 0.5, 0, sqTex()); shake(0.035); const Q = P(); for (let i = 0; i < 40; i++) loc(a, rnd(-0.4, 0.4), rnd(0.2, 2.1), -BR.D + 0.05, _b), EM(Q, _b, rnd(-1.6, 1.6), rnd(-0.6, 1.4), rnd(-0.6, 1.2), pk(E), rnd(0.03, 0.065), rnd(0.3, 0.7), { sq: 1, drag: 2.5, so: 0.85 }); });
+  }
+  // 발목을 낚아채려는 손 (t0 에 문틈 밖으로 뻗음): 쭉 뻗음 → 허공을 움켜쥠 → 더듬음 → tr 에 끌려 들어감
+  function brReach(a, t0, tr) {
+    const h = entityHand(0.9), S = loc(a, -0.05, 1.32, -1.9, new THREE.Vector3()), T = loc(a, -0.08, 1.2, -0.4, new THREE.Vector3()), d = new THREE.Vector3().subVectors(T, S).normalize(), Lx = new THREE.Vector3(Math.cos(a.yaw), 0, -Math.sin(a.yaw)), p = new THREE.Vector3();
+    add(h, tr + 0.14 - t0, (e) => {
+      const t = t0 + e.t; let reach, g;
+      if (t < t0 + 0.22) { reach = eout(seg(t, t0, t0 + 0.22)) * 1.05; g = -0.3; }
+      else if (t < t0 + 0.29) { reach = 1.05 - seg(t, t0 + 0.22, t0 + 0.29) * 0.05; g = sstep(t0 + 0.22, t0 + 0.27, t) * 1.1; }
+      else if (t < tr) { reach = 0.98 + Math.sin(t * 6) * 0.03; g = 0.3 + 0.5 * Math.abs(Math.sin(t * 5.5)); }
+      else { reach = 0.98 - ein(seg(t, tr, tr + 0.12)) * 1.2; g = 0.95; }
+      p.copy(S).lerp(T, reach); if (t > t0 + 0.29 && t < tr) { const k = Math.abs(Math.sin(t * 4.6)); p.addScaledVector(Lx, Math.sin(t * 7.3) * 0.09).addScaledVector(d, k * 0.08); p.y -= k * 0.16; }
+      p.x += rnd(-0.005, 0.005); p.y += rnd(-0.005, 0.005);
+      h.position.copy(p); h.lookAt(_a.copy(p).add(d)); h.scale.setScalar(2.2); grip(h, g, t); h.visible = t < tr + 0.12;
+    }, t0);
+  }
+  // 문틀을 안쪽에서 움켜쥔 손: 손바닥·팔은 문틈 그림 뒤에 가리고 손가락만 문틀 밖으로 감겨 나옴
+  //  edge 'side' = 화면 왼쪽(캐릭터 오른쪽) 기둥 · 'top' = 윗변 (거대한 무언가가 문틈 뒤에서 몸을 끌어당기는 듯)
+  function brGrip(a, t0, tr, edge) {
+    const h = entityHand(0), Lx = new THREE.Vector3(Math.cos(a.yaw), 0, -Math.sin(a.yaw)), F = new THREE.Vector3(Math.sin(a.yaw), 0, Math.cos(a.yaw)), p = new THREE.Vector3(), top = edge === 'top';
+    const zA = top ? new THREE.Vector3(0, 1, 0) : Lx.clone().negate(), yA = F.clone().negate(), q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(yA, zA), yA, zA));
+    add(h, tr + 0.12 - t0, (e) => { const t = t0 + e.t, inn = t < t0 + 0.15 ? 1 - eout(seg(t, t0, t0 + 0.15)) : t > tr ? seg(t, tr, tr + 0.1) : 0;
+      if (top) loc(a, 0.18 + Math.sin(t * 2.5) * 0.01, BR.H - 0.33 - inn * 0.4, -BR.D - 0.1, p); else loc(a, -0.42 + inn * 0.4, 1.45 + Math.sin(t * 3) * 0.012, -BR.D - 0.1, p);
+      h.position.copy(p); h.quaternion.copy(q); h.scale.setScalar(2.0); grip(h, t < tr ? 0.85 + Math.sin(t * 8 + (top ? 2 : 0)) * 0.07 : 0.25, t); h.visible = t < tr + 0.1; }, t0);
+  }
+  MOT.escape = { kind: 'in', dur: 4.4, keys: [[0, 'dive'], [0.84, 'dive'], [0.98, 'sprawl', 0.14], [1.15, 'sprawl'], [1.35, 'crawlLook', 0.2], [1.85, 'crawlLook'], [2.25, 'rise', 0.35], [2.55, 'lookBack', 0.3], [3.05, 'lookBack'], [3.3, 'wipe', 0.25], [3.85, 'wipe']],
+    body(t, B) { B.vis = t > 0.32; const u = seg(t, 0.32, 0.84), w = sstep(0.82, 0.98, t); B.z = lerp(-3.3, -1.0, eout(u)) * (1 - w); B.y = (0.5 + Math.sin(Math.PI * u) * 0.2) * (1 - w); B.rx = 1.2 * (1 - w); },
+    fx(a) {
+      const E = a.E, gp = a.gp;
+      envFx(0.5, () => { const k = Math.random() < 0.4 ? 0.5 : 1; return [k, k]; }); at(1.9, () => envFx(0.3, () => { const k = Math.random() < 0.5 ? 0.55 : 1; return [k, k]; }));
+      brPortal(a, 1.95); brReach(a, 0.86, 1.8); brGrip(a, 0.95, 1.8, 'side'); brGrip(a, 1.2, 1.78, 'top');
+      at(0.97, () => { shake(0.04); const Q = P(); for (let i = 0; i < 28; i++) { loc(a, rnd(-0.4, 0.4), 0.05, rnd(-0.45, 0.6), _b); EM(Q, _b, rnd(-0.8, 0.8), rnd(0.4, 1.4), rnd(-0.8, 0.8), i % 3 ? 0xd9cfae : pk(E), rnd(0.025, 0.05), rnd(0.4, 0.8), { sq: 1, g: -4, drag: 1.2, so: 0.9 }); } });
+      label(E, gp, 2.3);
+    },
+    tick(a, r, t, dt) {   // 문틈 가장자리에서 떨어져 나오는 픽셀 (열리고 닫힐 때 많이)
+      if (t > 2.15 || Math.random() > dt * (t < 0.4 || t > 1.9 ? 80 : 16)) return;
+      const s = Math.random() < 0.5 ? -1 : 1; loc(a, s * BR.W * 0.5 * rnd(0.85, 1.05), rnd(0.05, BR.H), -BR.D + 0.03, _b);
+      EM(P(), _b, rnd(-0.3, 0.3), rnd(-0.1, 0.5), rnd(-0.3, 0.3), pk(a.E), rnd(0.025, 0.05), rnd(0.25, 0.6), { sq: 1, drag: 1.5, so: 0.85 });
+    } };
+  MOT.noclip = { kind: 'out', dur: 2.9, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.62, 'lookDown', 0.3], [0.94, 'lookDown'], [1.04, 'flail', 0.1]],
+    body(t, B) {
+      if (t > 0.45 && t < 0.98) { const k = seg(t, 0.45, 0.95); if (Math.random() < 0.35 * k) { B.x = rnd(-0.03, 0.03) * k; B.sx = 1 + rnd(-0.06, 0.06) * k; } }
+      if (t > 0.98) { const u = seg(t, 0.98, 1.5); B.y = -2.5 * ein(u); B.rx = 0.18 * u; B.ry = 0.5 * u; B.vis = u < 0.97 && (u < 0.75 || Math.random() < 0.7); }
+    },
+    fx(a) {
+      const E = a.E, gp = a.gp, open = (t) => (t < 1.06 ? stepQ(seg(t, 0.92, 1.06), 4) : t > 1.72 ? 1 - stepQ(seg(t, 1.72, 2.1), 5) : 1);
+      const grid = flat(sqTex(), E.c[0], gp, 0.035); grid.rotation.y = a.yaw; add(grid, 0.7, (e, u) => { grid.scale.setScalar(0.6 + u); grid.material.opacity = (Math.random() < 0.3 ? 0.25 : 0.9) * Math.min(1, u * 4); }, 0.35);   // 발밑이 지직
+      at(0.4, () => envFx(1.3, (u) => { const k = Math.random() < 0.25 + u * 0.2 ? 0.55 : 1; return [k, k]; }));
+      const pit = flat(pitTex(), 0xffffff, gp, 0.04); pit.material.blending = THREE.NormalBlending; pit.rotation.y = a.yaw; pit.renderOrder = 3;   // 내려다보이는 백룸 (덮어 그림)
+      add(pit, 1.2, (e) => { const s = open(0.92 + e.t); pit.scale.setScalar(Math.max(0.01, 1.55 * s)); pit.material.color.setScalar(Math.random() < 0.06 ? 0.7 : 1); }, 0.92);
+      const rim = flat(sqTex(), E.c[0], gp, 0.05); rim.rotation.y = a.yaw; add(rim, 1.2, (e) => { rim.scale.setScalar(Math.max(0.01, 1.63 * open(0.92 + e.t))); rim.material.opacity = 0.8 + Math.random() * 0.2; }, 0.92);
+      pillar(gp, dim(E.c[0], 0.45), 0.6, 1.4, 1.0, 0.95, 0.5);   // 구멍에서 새어 나오는 형광 빛
+      at(1.5, () => { pillar(gp, dim(E.c[0], 0.55), 0.5, 4.2, 0.55, 0, 0.1); glow(_c.set(gp.x, gp.y + 0.4, gp.z), E.c[2], 2.2, 0.35); flash(1.2, 0.25); shake(0.03); const Q = P(); for (let i = 0; i < 40; i++) EM(Q, _b.set(gp.x + rnd(-0.6, 0.6), gp.y + 0.1, gp.z + rnd(-0.6, 0.6)), rnd(-0.4, 0.4), rnd(1.5, 4.5), rnd(-0.4, 0.4), pk(E), rnd(0.03, 0.06), rnd(0.5, 1.0), { sq: 1, drag: 1, so: 0.85 }); });
+      at(2.1, () => { ring(gp, E.c[0], 1.4, 0.45, 0, sqTex()); decal(gp, sqTex(), 1.5, 0.8, E.c[1], 0x000000); });
+    },
+    tick(a, r, t, dt) {
+      const Q = P(), E = a.E;
+      if (t > 0.45 && t < 1.5 && Math.random() < dt * 45) { const an = Math.random() * TAU, rr = rnd(0.15, 0.75); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + 0.05, a.gp.z + Math.sin(an) * rr), 0, rnd(0.3, 1.0), 0, pk(E), rnd(0.03, 0.06), rnd(0.4, 0.9), { sq: 1, so: 0.85 }); }   // 바닥에서 떠오르는 픽셀
+      if (t > 0.6 && t < 1.45 && Math.random() < dt * 30) { hipsW(r, _a); for (const c of [0xff3050, 0x30e8ff]) EM(Q, _b.set(_a.x + rnd(-0.35, 0.35), _a.y + rnd(-0.8, 0.9), _a.z + rnd(-0.2, 0.2)), rnd(-0.3, 0.3), 0, 0, c, rnd(0.02, 0.04), rnd(0.15, 0.3), { sq: 1, so: 0.7 }); }   // 몸 둘레 색 어긋남
+    } };
   // ===== 전쟁의 신: 붉은 번개가 내리꽂히고 번쩍이는 순간 한 무릎으로 나타나 두 주먹 힘자랑 / 오른팔을 하늘로 들자 번개를 맞고 사라짐 =====
   const sky3 = (gp, k = 1) => new THREE.Vector3(gp.x + rnd(-0.8, 0.8) * k, gp.y + 9, gp.z + rnd(-1.5, -0.5) * k);
   MOT.strikeIn = { kind: 'in', dur: 3.7, keys: [[0, 'land'], [1.0, 'land'], [1.55, 'rise', 0.5], [1.95, 'flex', 0.4], [3.1, 'flex']],
@@ -29755,7 +29904,7 @@ const PartyFx = (() => {
   const owned = () => ENT.filter(ok);
   // 연출 한 줄 설명 (계정 창)
   const MOVE = { podium: '금빛 조명 속 등장 · 두 팔 V · 색종이 · 왕관', spinfall: '하늘의 별 · 빛줄기 속을 돌며 강하 · 충격파 · 승리의 주먹', slam: '불꼬리 낙하 · 땅을 주먹으로 · 용암 균열', emerge: '일식 · 붉은 구멍에서 팔짱 낀 채 솟아오름', rez: '은빛 고리가 훑으며 나타나 경례 · 별 훈장',
-    descend: '금빛 빛기둥 속으로 천천히 강림 · 축복', meteor: '유성처럼 떨어져 한 무릎 착지 · 충격파', fireStep: '불기둥 속에서 등장 · 주먹을 손바닥에', orbForm: '보랏빛 구슬이 모여 몸이 빚어짐', glitchIn: '형광등 깜빡임 · 노란 문틀에서 지직거리며 등장', strikeIn: '붉은 번개 세 줄기 · 힘자랑' };
+    descend: '금빛 빛기둥 속으로 천천히 강림 · 축복', meteor: '유성처럼 떨어져 한 무릎 착지 · 충격파', fireStep: '불기둥 속에서 등장 · 주먹을 손바닥에', orbForm: '보랏빛 구슬이 모여 몸이 빚어짐', escape: '백룸 복도 문틈에서 몸을 던져 탈출 · 발목을 낚아채려는 검은 손', strikeIn: '붉은 번개 세 줄기 · 힘자랑' };
 
   return { ENT, MOT, KP, mine, mineList, valid, ok, avail, nameOf, owned, team, ghost, bound, spot, update, cam, clear, preview, profTab, play, get anims() { return AN; }, get ghosts() { return GH; }, get live() { return LIVE.length; },
     _rigPose(r, name, t = 0) { evalKey(r, name, Object.assign(BB, B0), { t }); } };
