@@ -1,7 +1,7 @@
 -- ============================================================
 -- Last Drop Royale — 개발자(관리자) 계정 관리 (v20, Supabase SQL Editor에서 한 번 실행)
 --  · 게임의 개발자 도구 → '계정 관리'가 부르는 함수: 계정 목록 · 계정 상세 · 골드 탄피 지급 · 베타 테스터 부여 · 기록 초기화 · 계정 삭제
---    · 아이디 강제 변경 (v22, admin_rename) · v23 부개발자 · 계정 밴 (admin_role · admin_accounts · admin_ban · admin_unban · ban_info)
+--    · 아이디 강제 변경 (v22, admin_rename) · v23 부개발자 · 계정 밴 (admin_role · admin_accounts · admin_ban · admin_unban · ban_info · staff_roles)
 --  · 관리자 = public.admins 에 있는 계정. 이 파일을 실행할 때 아이디가 '개발자'인 계정을 관리자로 등록한다
 --    (아이디로 판단하지 않고 계정 고유번호로 등록 → 아이디를 바꿔도 관리자 유지, 다른 사람이 '개발자'를 가져가도 관리자가 아님)
 --  · v23 역할(role): 'dev' 개발자 · 'sub' 부개발자 — 부개발자는 개발자와 같은 관리 기능(계정 목록·상세·기록 초기화·베타 테스터·
@@ -297,6 +297,17 @@ language sql stable security definer set search_path = '' as $$
    limit 1;
 $$;
 
+-- v23 관리자 표시: 주어진 계정들 가운데 관리자인 것의 역할 { "<계정 고유번호>": "dev" | "sub" } (관리자가 아니면 빠짐)
+--  · 파티 로비에서 개발자 전용 입장 연출과 관리자가 단 칭호를, 그 계정이 정말 관리자일 때만 보여 주려고 다른 기기가 부른다
+--    (게임이 파티원·같은 경기 사람의 고유번호를 넣어 부름 — 로그인한 사람 누구나 · 한 번에 16명까지 · 읽기만 함)
+--  · 이 함수가 없는 동안 게임은 예약 아이디('개발자'·'부개발자')로 대신 본다
+create or replace function public.staff_roles(p_ids uuid[]) returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select coalesce(jsonb_object_agg(a.id::text, a.role), '{}'::jsonb)
+    from public.admins a
+   where a.id = any ((coalesce(p_ids, '{}'::uuid[]))[1:16]);
+$$;
+
 revoke execute on function public.is_admin() from public, anon;
 revoke execute on function public.admin_list(text) from public, anon;
 revoke execute on function public.admin_get(uuid) from public, anon;
@@ -325,3 +336,5 @@ grant execute on function public.admin_accounts(text) to authenticated;
 grant execute on function public.admin_ban(uuid, integer, text) to authenticated;
 grant execute on function public.admin_unban(uuid) to authenticated;
 grant execute on function public.ban_info(text) to anon, authenticated;
+revoke execute on function public.staff_roles(uuid[]) from public, anon;
+grant execute on function public.staff_roles(uuid[]) to authenticated;

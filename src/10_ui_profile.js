@@ -199,14 +199,18 @@ const Prof = (() => {
   // 하드코어 최고 티어 번호 (한 판도 안 했으면 -1)
   function hcPeakT() { const H = Rank.hc; return (H.games || 0) > 0 ? Rank.hcTierOf(Math.max(H.peak || 0, H.rp || 0)).t : -1; }
   const tiOf = (id) => TI.find((t) => t.id === id) || null;
+  // v23 개발자·부개발자 계정은 모든 사진·테두리·칭호를 가진다 (파티 입장 연출도 — 10_partyfx.js 가 칭호의 ok 를 본다)
+  //  own = 조건을 직접 채웠는가 (목록에 '개발자 권한'으로 구분해 보여 줌) · 다른 기기는 그 계정이 관리자인지 서버에 확인하고 보여 준다 (Cloud.staffRole)
+  const staff = () => typeof Dev !== 'undefined' && Dev.is();
+  for (const t of TI) { const own = t.ok; t.own = own; t.ok = () => staff() || own(); }
 
   // ---------- 상태 ----------
   const P0 = { av: 'helmet', fr: 'none', ti: null };
   const st = () => (STATS.prof && typeof STATS.prof === 'object' ? STATS.prof : (STATS.prof = Object.assign({}, P0)));
   const lv = () => levelFromXp(STATS.xp || 0).lv;
-  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (a.ev ? !!(STATS.eco && STATS.eco[a.ev]) : a.beta ? Eco.isBeta() : lv() >= a.lv); };
+  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (staff() || (a.ev ? !!(STATS.eco && STATS.eco[a.ev]) : a.beta ? Eco.isBeta() : lv() >= a.lv)); };
   const avEv = (a) => (a.ev === 'brx12' ? '백룸 12가지 탈출 이벤트' : '백룸 탈출 이벤트');
-  const frOk = (id) => { const f = FR.find((x) => x.id === id); if (!f) return false; if (f.kind === 'base') return true; if (f.kind === 'tier') return placedOk() && peakT() >= f.t; if (f.kind === 'hc') return hcPeakT() >= f.t; const t = tiOf(f.title); return !!t && t.ok(); };
+  const frOk = (id) => { const f = FR.find((x) => x.id === id); if (!f) return false; if (f.kind === 'base' || staff()) return true; if (f.kind === 'tier') return placedOk() && peakT() >= f.t; if (f.kind === 'hc') return hcPeakT() >= f.t; const t = tiOf(f.title); return !!t && t.ok(); };
   const tiOk = (id) => { const t = tiOf(id); return !!t && t.ok(); };
   // 지금 보여 줄 값 (조건이 사라진 것은 기본으로)
   function my() { const s = st(); return { av: avOk(s.av) ? s.av : 'helmet', fr: frOk(s.fr) ? s.fr : 'none', ti: s.ti && tiOk(s.ti) ? s.ti : null }; }
@@ -275,7 +279,7 @@ const Prof = (() => {
       const none = document.createElement('button'); none.type = 'button'; none.className = 'ti-row' + (!m.ti ? ' on' : ''); none.innerHTML = '<span class="ti-none">칭호 달지 않기</span>'; none.onclick = () => { set('ti', null); Audio.ui(); }; L.appendChild(none);
       for (const t of TI) {
         const ok = t.ok(), b = document.createElement('button'); b.type = 'button'; b.className = 'ti-row' + (m.ti === t.id ? ' on' : '') + (ok ? '' : ' lock');
-        b.innerHTML = `${titleHTML(t.id)}<span class="ti-d"><b>${t.desc}</b><small>${ok ? (m.ti === t.id ? '달고 있음' : '얻음 · 눌러서 달기') : '진행: ' + t.prog()}</small></span>${frameHTML(t.fr, m.av, 34)}`;
+        b.innerHTML = `${titleHTML(t.id)}<span class="ti-d"><b>${t.desc}</b><small>${ok ? (m.ti === t.id ? '달고 있음' : (t.own() ? '얻음' : Dev.roleName() + ' 권한') + ' · 눌러서 달기') : '진행: ' + t.prog()}</small></span>${frameHTML(t.fr, m.av, 34)}`;
         b.onclick = () => { if (!ok) { msg(`아직 얻지 못했습니다 — ${t.desc}`); return; } set('ti', t.id); if (frOk(t.fr) && st().fr === 'none') set('fr', t.fr); Audio.ui(); };
         L.appendChild(b);
       }
@@ -283,7 +287,9 @@ const Prof = (() => {
       B.appendChild(el('p', 'micro', '단 칭호는 로비에서 내 캐릭터 아래에 표시되고, 파티원 화면에도 보입니다. 칭호를 얻으면 같은 주제의 테두리도 해금됩니다.'));
     } else if (tab === 'ent' && typeof PartyFx !== 'undefined') {
       PartyFx.profTab(B);   // 파티 입장·퇴장 연출 고르기 (10_partyfx.js)
-    } else if (tab === 'acct') {
+    }
+    if (staff() && (tab === 'av' || tab === 'fr' || tab === 'ti')) B.appendChild(el('p', 'micro staff-note', `${Dev.roleName()} 계정은 모든 사진·테두리·칭호·입장 연출을 가지고 있습니다 — 1위 칭호처럼 조건이 있는 것도 달 수 있고, 다른 사람 화면에도 그대로 보입니다.`));
+    if (tab === 'acct') {
       const left = Math.max(0, (STATS.nameT || 0) + NAME_GAP - Date.now());
       const box = document.createElement('div'); box.className = 'prof-acct';
       box.innerHTML = `<div class="eyebrow">아이디 변경</div><p class="micro">3일에 한 번 바꿀 수 있습니다. 바꾸면 다음 로그인부터 새 아이디로 로그인합니다 (비밀번호는 그대로).</p>
@@ -328,7 +334,7 @@ const Prof = (() => {
     if (show) {
       const m = Cloud.user ? my() : null;
       if (m && m.ti) items.push({ obj: L.rig.root, html: titleHTML(m.ti) });
-      (L.mates || []).forEach((r, i) => { const inf = (L.mateInfo || [])[i]; if (!inf || !r.root.visible) return; const pf = inf.pf || {}, ti = pf.ti && Ladder.allowed(pf.ti, inf.name) ? pf.ti : null; items.push({ obj: r.root, html: `<span class="lbtag-name">${esc(inf.name || '')}</span>${ti ? titleHTML(ti) : ''}` }); });
+      (L.mates || []).forEach((r, i) => { const inf = (L.mateInfo || [])[i]; if (!inf || !r.root.visible) return; const pf = inf.pf || {}, ti = pf.ti && Ladder.allowed(pf.ti, inf.name, inf.uid) ? pf.ti : null; items.push({ obj: r.root, html: `<span class="lbtag-name">${esc(inf.name || '')}</span>${ti ? titleHTML(ti) : ''}` }); });
     }
     while (tagEls.length < items.length) { const d = document.createElement('div'); d.className = 'lbtag'; box.appendChild(d); tagEls.push(d); }
     const W = window.innerWidth, H = window.innerHeight, placed = [];

@@ -32,8 +32,9 @@ const Ladder = (() => {
   function champName(k, name) { if (!data) return null; const t = topOf(k); return !!(t && name && t.name === name); }
   // 칭호·테두리 id 가 1위 보상이면 그 랭킹 종류
   const kindOfTitle = (id) => ORDER.find((k) => KINDS[k].title === id) || null;
-  // 이 사람(name)이 이 칭호·테두리를 달 수 있나 (1위 보상이 아니면 true)
-  function allowed(id, name) { const k = kindOfTitle(id); if (!k) return true; const r = champName(k, name); return r === null ? true : r; }
+  // 이 사람(name · 계정 uid)이 이 칭호·테두리를 달 수 있나 (1위 보상이 아니면 true)
+  //  v23 관리자(개발자·부개발자) 계정은 모든 칭호를 가진다 — 서버에 확인된 계정만 (Cloud.staffRole, 10_cloud.js)
+  function allowed(id, name, uid) { const k = kindOfTitle(id); if (!k) return true; if (uid && Cloud.staffRole(uid, name)) return true; const r = champName(k, name); return r === null ? true : r; }
   // 진행 표시 (프로필 칭호 목록)
   function posText(k) {
     if (!Cloud.user) return '로그인 필요';

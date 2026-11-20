@@ -1172,6 +1172,16 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 @keyframes ent-ban-b { from { opacity: 0; transform: scale(1.7); filter: blur(5px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes ent-ban-i { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: none; } }
 @media (max-height: 500px) { .ent-ban b { font-size: 1.15rem; } .ent-ban i { width: 30px; } }
+/* 개발자 전용 연출: 이름 띠가 명령 줄처럼 타자 치듯 찍히다가 실행되면 <개발자 /> 로 바뀜 */
+.ent-ban.dev .eb-cmd { display: inline-flex; align-items: center; font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace; font-size: 1.02rem; font-weight: 700; color: #dffcff; background: rgba(4, 16, 26, 0.86); border: 1px solid var(--ec); border-radius: 5px; padding: 4px 10px; box-shadow: 0 0 12px rgba(77, 232, 255, 0.45), inset 0 0 8px rgba(77, 232, 255, 0.16); }
+.ent-ban.dev .eb-cmd em { font-style: normal; color: #7dffb0; margin-right: 7px; }
+.ent-ban.dev .eb-cmd u { text-decoration: none; white-space: pre; }
+.ent-ban.dev .eb-cmd s { display: inline-block; width: 0.55em; height: 1.05em; margin-left: 2px; background: var(--ec); animation: eb-caret 0.45s steps(1) infinite; }
+.ent-ban.dev b { font-family: Consolas, 'Cascadia Mono', 'Courier New', 'Malgun Gothic', monospace; letter-spacing: 0.03em; }
+.ent-ban.dev b span { color: #7dffb0; text-shadow: 0 0 8px #7dffb0, 0 2px 2px rgba(0, 0, 0, 0.6); }
+@keyframes eb-caret { 50% { opacity: 0; } }
+@media (max-height: 500px) { .ent-ban.dev .eb-cmd { font-size: 0.86rem; padding: 3px 8px; } }
+.staff-note { margin-top: 10px; color: #7de8ff; }
 .prof-acct { display: flex; flex-direction: column; gap: 6px; padding: 10px 4px; }
 /* v21 비밀번호 변경: 입력 셋 + 버튼 (좁은 화면은 한 줄씩) */
 .pw-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -3803,6 +3813,25 @@ const Audio = (() => {
         // 노클립: 바닥이 지직 · 형광등 웅 → 구멍으로 떨어지는 바람 소리 → 아래에서 빛 · 멀리 바닥에 떨어지는 소리
         case 'noclip': tone(o, t + 0.35, 1.2, 'sawtooth', 118, 126, 0.04); glit(t + 0.42, 10); tone(o, t + 0.92, 0.3, 'square', 300, 60, 0.05); whoosh(t + 0.96, 0.6, 1600, 140, 0.25);
           tone(o, t + 1.5, 0.5, 'sine', 1200, 1250, 0.04); noise(o, t + 1.5, 0.4, 'highpass', 4000, 0.8, 0.08); noise(o, t + 2.0, 0.3, 'lowpass', 260, 0.8, 0.25); tone(o, t + 2.0, 0.35, 'sine', 70, 40, 0.2); break;
+        // 개발자: 편집기 켜지는 삑 · 끌어오는 바람 · 툭 놓음 · 확인음 둘 · 올라가는 훑기 음 + 자료 틱 · 완료 · ▶ 딸깍과 켜지는 화음 · 자판 · 실행 키 쿵 + 8비트 팡파르
+        case 'devIn': {
+          const blip = (t0, f, d = 0.05, g = 0.035) => tone(o, t0, d, 'square', f, f, g);
+          blip(t, 880); blip(t + 0.07, 1318, 0.07); whoosh(t + 0.12, 0.7, 500, 1900, 0.1);
+          tone(o, t + 0.85, 0.12, 'sine', 220, 90, 0.3); noise(o, t + 0.85, 0.05, 'highpass', 2500, 1, 0.2); blip(t + 0.86, 660, 0.05, 0.045); blip(t + 1.01, 1568, 0.04, 0.028); blip(t + 1.13, 1760, 0.04, 0.028);
+          tone(o, t + 1.2, 1.2, 'sawtooth', 180, 720, 0.028); tone(o, t + 1.2, 1.2, 'sine', 360, 1440, 0.035); for (let i = 0; i < 18; i++) blip(t + 1.22 + i * 0.065, 1800 + (i % 5) * 240, 0.02, 0.016);
+          chord(t + 2.42, [1318, 1976], 0.35, 'sine', 0.05, 0.07);
+          blip(t + 2.99, 990, 0.03, 0.06); noise(o, t + 2.99, 0.03, 'highpass', 3000, 1, 0.2); chord(t + 3.0, [523, 659, 784, 1046], 0.5, 'triangle', 0.05, 0.045); tone(o, t + 3.0, 0.5, 'sine', 110, 220, 0.12);
+          for (let i = 0; i < 9; i++) { const tt = t + 4.06 + i * 0.058 + Math.random() * 0.015; noise(o, tt, 0.018, 'bandpass', 2600 + Math.random() * 1400, 2, 0.16); tone(o, tt, 0.02, 'square', 300 + Math.random() * 200, 200, 0.02); }
+          boom(t + 4.82, 0.9); noise(o, t + 4.82, 0.04, 'highpass', 2200, 1, 0.3); [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(o, t + 4.84 + i * 0.055, 0.16, 'square', f, f, 0.032));
+          chord(t + 5.2, [1046, 1318, 1568, 2093], 1.0, 'triangle', 0.05, 0.02); noise(o, t + 4.9, 0.9, 'highpass', 5000, 0.7, 0.05); break;
+        }
+        // 개발자 퇴장: 경례 삑 · ■ 딸깍과 꺼지는 화음 · 내려가는 훑기 음 · 집는 딸깍 · 끌려가는 바람 · 퐁 · 글자 커서 깜빡임 둘
+        case 'devOut': {
+          const blip = (t0, f, d = 0.05, g = 0.035) => tone(o, t0, d, 'square', f, f, g);
+          blip(t + 0.82, 1318, 0.04, 0.03); blip(t + 1.34, 990, 0.03, 0.06); noise(o, t + 1.34, 0.03, 'highpass', 3000, 1, 0.2); chord(t + 1.36, [1046, 784, 659, 523], 0.45, 'triangle', 0.045, 0.05); tone(o, t + 1.36, 0.5, 'sine', 220, 100, 0.12);
+          tone(o, t + 1.75, 0.8, 'sawtooth', 720, 180, 0.028); tone(o, t + 1.75, 0.8, 'sine', 1440, 360, 0.035); for (let i = 0; i < 12; i++) blip(t + 1.77 + i * 0.065, 2700 - (i % 5) * 240, 0.02, 0.016);
+          blip(t + 2.75, 880, 0.03, 0.05); whoosh(t + 2.78, 0.5, 600, 2400, 0.14); tone(o, t + 3.3, 0.1, 'sine', 900, 1500, 0.07); blip(t + 3.36, 1760, 0.03, 0.028); blip(t + 3.62, 1760, 0.03, 0.028); break;
+        }
         case 'bye': chord(t + 0.4, [1318, 1568, 2093], 0.9, 'sine', 0.035, 0.07); noise(o, t + 0.42, 0.5, 'highpass', 4500, 0.8, 0.05); break;
       }
     },
@@ -8849,7 +8878,7 @@ function buildRig(look) {
   if (L.hat) { const hm = Body.hatMesh(L.hat); if (hm) hat.add(hm); }
   const chute = Gear.canopy(L.chute); chute.visible = false; root.add(chute);
   const rig = { root, body, hips: B.hips, spine: B.spine, chest: B.chest, neck: B.neck, head: B.head, armL: arm('L'), armR: arm('R'), legL: leg('L'), legR: leg('R'),
-    gunMount, backGuns, backKey: ['', ''], meleeHip, meleeKey: '', chute, helmet, vest, pack, hat, mesh: I.hi, meshLo: I.lo, skel: I.skel, bones: I.list, look: L, gunId: null, gunObj: null, gearKey: '', lod: 0, shadow: true,
+    gunMount, backGuns, backKey: ['', ''], meleeHip, meleeKey: '', chute, helmet, vest, pack, vestL, vestR, hat, mesh: I.hi, meshLo: I.lo, skel: I.skel, bones: I.list, look: L, gunId: null, gunObj: null, gearKey: '', lod: 0, shadow: true,
     ofx: typeof OutfitFx !== 'undefined' ? OutfitFx.kindsOf(L) : [],   // EXCLUSIVE 옷 효과 종류 (08_outfitfx.js)
     // 장비 단계(0 = 없음): 바뀔 때만 메시 교체 · v23 헬멧·가방 스킨(look.helmet·look.pack) · 멀리(lod 1)는 간략 모델 · 가방은 조끼 레벨에 맞춰 뒤로
     gearLv: [0, 0, 0],
@@ -21664,7 +21693,7 @@ const Island = (() => {
   const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   function tagHTML(c) {
     if (c.human) {
-      const pf = c.pf || {}, ti = pf.ti && (typeof Ladder === 'undefined' || Ladder.allowed(pf.ti, c.name)) ? pf.ti : null;
+      const pf = c.pf || {}, ti = pf.ti && (typeof Ladder === 'undefined' || Ladder.allowed(pf.ti, c.name, c.uid)) ? pf.ti : null;
       return `<span class="itag-name">${esc(c.name)}</span>${ti ? Prof.titleHTML(ti, 'sm') : ''}`;
     }
     const k = c.diffKey || 'normal';
@@ -24228,6 +24257,13 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-21', t: '개발자 전용 파티 입장 연출 — 로비가 편집기가 된다 · 개발자·부개발자는 모든 테두리·칭호·입장 연출 보유', items: [
+    '개발자 전용 입장 연출 (개발자·부개발자 계정): 바닥에 청사진 눈금이 깔리고, 마우스 커서가 모델을 끌어다 놓으면 T 자세의 철사 모델이 선택 상자·이동 축과 함께 나타남 → 커서가 훑는 틀을 끌어 올리면 아래부터 텍스처가 입혀지고 조끼·가방·헬멧이 차례로 달림 → 커서가 ▶ 를 누르는 순간 뚝뚝 끊기며 깨어나 자기 두 손을 내려다봄 → 허공의 자판으로 명령을 치고 실행 키를 내리찍으면 캐릭터 양옆에 < /> 가 서고 코드 글자가 터져 나옴 → 팔짱 끼고 끄덕',
+    '퇴장: 검지 경례 → 커서가 ■ 를 누르면 T 자세로 굳고, 틀이 내려오며 텍스처가 벗겨져 철사 모델로 → 커서가 집어 조그맣게 줄여 끌고 나감 → 빈자리에 글자 커서만 깜빡',
+    '이름 띠가 명령 줄처럼 타자 치듯 찍히다가( > party.join("개발자") ) 실행되면 <개발자 /> 로 바뀜 — 부개발자는 <부개발자 /> · 전용 소리: 편집기 삑 · 올라가는 훑기 음 · ▶ 딸깍 · 자판 · 8비트 팡파르',
+    '개발자·부개발자 계정은 모든 프로필 사진·테두리·칭호·입장 연출을 가짐 — 조건을 직접 채우지 않은 칭호는 목록에 「개발자 권한」으로 표시 · 랭킹 1위 칭호도 달 수 있고 다른 사람 화면에도 그대로 보임',
+    '다른 사람의 기기는 그 계정이 정말 개발자·부개발자인지 서버에 확인한 뒤에만 전용 연출과 칭호를 보여 줌 (확인하는 잠깐 동안 입장을 미룸 · 다른 계정이 흉내 내도 무시) · 전용 연출은 「입장 연출」 탭에서 개발자·부개발자에게만 보임',
+  ] },
   { v: 'v23', d: '2026-11-20', t: '입장·퇴장 연출 10가지를 각자의 테마로 새로 — 시상식 · 혼천의 · 분화구 · 개기일식 · 연막 · 날개 · 노바 · 옥좌 · 시계 · 칼비', items: [
     '랭크 챔피언 — 입장: 양쪽 조명이 쓸고 와 모이고 금빛 「1」 시상대가 솟아 캐릭터를 들어 올림 → 하늘에서 내려온 트로피를 받아 머리 위로 번쩍 · 색종이 대포 / 퇴장: 커튼콜 — 조명 아래 깊이 인사하고 손을 흔들면 붉은 커튼이 닫혔다 열리고 빈자리',
     '제니스 — 입장: 세 겹 혼천의 고리가 서로 다른 축으로 돌며 몸을 감싼 채 하늘에서 내려오고, 착지하면 고리가 머리 위로 올라가 별 왕관이 됨 → 승리의 주먹 / 퇴장: 왕관이 다시 혼천의로 펼쳐져 점점 빠르게 돌고, 그 속에서 작아져 별이 되어 하늘로',
@@ -24922,6 +24958,38 @@ const Cloud = (() => {
     try { const { data, error } = await sb.rpc('admin_role'); if (!error) return data === 'sub' ? 'sub' : 'dev'; } catch (e) { /* */ }
     return 'dev';
   }
+  // ---------- v23 다른 계정이 관리자(개발자·부개발자)인가 ----------
+  //  파티 로비에서 개발자 전용 입장 연출과 관리자가 단 칭호를 '그 계정이 정말 관리자일 때만' 보여 주려고 다른 기기가 확인한다 (10_partyfx.js · 10_ranking.js)
+  //  서버 staff_roles(supabase/admin.sql)에 계정 고유번호를 물어 { 고유번호: 'dev' | 'sub' } 를 받아 10분 동안 기억 (관리자가 아니면 '')
+  //  서버에 그 함수가 아직 없으면 예약 아이디('개발자'·'부개발자' — 그 관리자 계정만 쓸 수 있음)로 본다
+  const STAFF = new Map(), STAFF_NAMES = { '개발자': 'dev', '부개발자': 'sub' }, staffWant = new Set();
+  let staffSrv = null, staffT = null;   // staffSrv: 서버에 staff_roles 가 있는가 (null = 아직 모름 · false = 없음)
+  const staffFresh = (uid) => { const c = STAFF.get(uid); return !!c && Date.now() - c.t < (c.ok ? 600e3 : 20e3); };
+  // 그 계정의 역할: 'dev' · 'sub' · ''(관리자가 아님 또는 아직 모름)
+  function staffRole(uid, nm) {
+    if (!uid || !user) return '';
+    if (uid === user.id) return admin ? role || 'dev' : '';
+    if (staffSrv === false) return STAFF_NAMES[String(nm || '').normalize('NFC').trim().toLowerCase()] || '';
+    const c = STAFF.get(uid); return c ? c.r : '';
+  }
+  // 서버에 물어본 답이 있는가 (없으면 연출을 잠깐 미룬다)
+  const staffKnown = (uid) => !uid || !user || uid === user.id || staffSrv === false || !!(STAFF.get(uid) && STAFF.get(uid).ok);
+  // 모르는 계정을 모아 한 번에 묻는다 (16명씩)
+  function staffAsk(uids) {
+    if (!sb || !user || staffSrv === false) return;
+    for (const u of uids || []) if (u && u !== user.id && !staffFresh(u)) staffWant.add(u);
+    if (!staffWant.size || staffT) return;
+    staffT = setTimeout(async () => {
+      const ids = [...staffWant].slice(0, 16); for (const u of ids) staffWant.delete(u);
+      const miss = () => { for (const u of ids) STAFF.set(u, { r: (STAFF.get(u) || {}).r || '', t: Date.now(), ok: false }); };   // 연결 실패: 20초 뒤 다시
+      try {
+        const { data, error } = await sb.rpc('staff_roles', { p_ids: ids });
+        if (error) { const m = String(error.message || '').toLowerCase(); if (error.code === 'PGRST202' || m.includes('could not find') || m.includes('does not exist')) staffSrv = false; else miss(); }
+        else { staffSrv = true; for (const u of ids) STAFF.set(u, { r: data && (data[u] === 'dev' || data[u] === 'sub') ? data[u] : '', t: Date.now(), ok: true }); }
+      } catch (e) { miss(); }
+      staffT = null; if (staffWant.size) staffAsk([]);
+    }, 0);
+  }
   // 비밀번호 변경: 지금 비밀번호로 다시 로그인해 확인 → 새 비밀번호로 바꿈 → 이 기기를 뺀 다른 모든 기기의 로그인을 끊음
   //  돌려주는 값: 다른 기기 로그아웃까지 됐으면 true
   async function changePassword(cur, pw, pw2) {
@@ -24994,6 +25062,7 @@ const Cloud = (() => {
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
     if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
     user = null; name = null; admin = false; role = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
+    STAFF.clear(); staffWant.clear(); staffSrv = null;
     store.set('account', null);
     restoreGuest();
     refreshUi();
@@ -25061,7 +25130,7 @@ const Cloud = (() => {
     $('banOk').addEventListener('click', () => { Audio.ui(); $('banPanel').hidden = true; });
     render();
   }
-  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, refreshName, checkBan, changePassword, checkId, idEmail, client: () => sb, msgOf, get uid() { return user && user.id; },
+  return { init, setup, signUp, signIn, signOut, pushNow, pull, open, close, rename, refreshName, checkBan, changePassword, checkId, idEmail, client: () => sb, msgOf, staffRole, staffKnown, staffAsk, get uid() { return user && user.id; },
     get enabled() { return enabled; }, get user() { return user; }, get name() { return name; }, get admin() { return admin; }, get role() { return role; }, get status() { return status; }, get lastError() { return lastErr; } };
 })();
 // 게임 속 내 이름: 로그인했으면 아이디, 아니면 '나'
@@ -25083,6 +25152,8 @@ const playerName = () => (Cloud.user && Cloud.name) || '나';
 //  · v23 부개발자(서버 admins.role = 'sub'): 개발자와 같은 도구·계정 관리를 쓰지만 다른 계정에 골드 탄피를 줄 수 없고(서버 admin_gold 도 거부),
 //    개발자·다른 부개발자 계정은 건드릴 수 없다 (초기화·베타 테스터·아이디 변경·밴 — 서버가 'admin' 으로 거부)
 //  · v23 계정 밴 (개발자·부개발자): 계정 상세에서 기간(숫자 + 분·시간·일)과 사유 → 서버 admin_ban → 그동안 로그인할 수 없음 · 접속 중이면 바로 로그아웃
+//  · v23 개발자·부개발자 계정은 모든 프로필 사진·테두리·칭호·파티 입장 연출을 가진다 (10_ui_profile.js staff) + 전용 입장 연출 (10_partyfx.js 'dev')
+//    다른 기기는 그 계정이 관리자인지 서버에 확인하고 보여 준다 (10_cloud.js staffRole · supabase/admin.sql staff_roles)
 // ============================================================
 const Dev = (() => {
   const F = Object.assign({ god: false, ammo: false, tp: false, zone: false, stats: false }, store.get('dev', null) || {});
@@ -25493,7 +25564,7 @@ const Dev = (() => {
     $('devClose').addEventListener('click', () => { Audio.ui(); close(); });
     refresh();
   }
-  return { is, cheat, onLogin, refresh, open, close, setup, frame, mapTap, flags: F, _giveGun: giveGun, _kit: kit, _spawnVeh: spawnVeh, _killAll: killAll };
+  return { is, sub, roleName, cheat, onLogin, refresh, open, close, setup, frame, mapTap, flags: F, _giveGun: giveGun, _kit: kit, _spawnVeh: spawnVeh, _killAll: killAll };
 })();
 
 // ---------- 10_dm.js ----------
@@ -29185,12 +29256,16 @@ const Net = (() => {
 //  · 캐릭터: 열쇠 자세(KP — 팔은 IK/FK, 디딘 발은 다리 IK) 사이를 이어 붙인 동작(MOT) + 몸 채널(높이·회전·크기·깜빡임)
 //  · 효과: 로비 장면 전용 시간 효과(고리·기둥·바닥 문양·빛 판·빛줄기·번개) + 총기 스킨 입자 풀(GunSkin.fx)
 //    새 조명을 더하지 않고(셰이더를 다시 만들지 않게) 해·하늘 밝기만 잠깐 바꾸고, 재료는 로비를 만들 때 미리 한 번 그려 둔다
+//  · 개발자 전용 연출(관리자 = 개발자·부개발자 계정): 로비가 편집기가 되어 T 자세 모델을 끌어다 놓고 텍스처를 입힌 뒤 ▶ 실행 —
+//    관리자 계정은 이 연출과 함께 모든 연출을 가진다. 다른 기기는 그 계정이 관리자인지 서버에 확인한 뒤에만 보여 준다 (Cloud.staffRole, supabase/admin.sql staff_roles)
 // ============================================================
 const PartyFx = (() => {
   // ---------- 대상 (자동 선택은 위에서부터) ----------
   //  t: 새 티어 번호(RANK_TIERS — 10_rank.js, 최고 도달은 칭호 tier_<id> 로 판단) · 없으면 같은 id 의 칭호(10_ui_profile.js TI)
   //  mo: [입장, 퇴장, 작별 몸짓] · c: [주색, 보조색, 밝은 색] · pal: 입자 색
+  //  staff: 관리자(개발자·부개발자) 계정 전용 — 칭호·티어와 상관없이 그 계정만 (다른 기기는 서버에 확인: Cloud.staffRole)
   const ENT = [
+    { id: 'dev', staff: true, name: '개발자', mo: ['devIn', 'devOut', 'devBye'], c: [0x4de8ff, 0x7dffb0, 0xffffff], pal: [0x4de8ff, 0x7dffb0, 0xffd866, 0xff7ab8, 0xc9a0ff, 0xffffff] },
     { id: 'champ_tier', name: '랭크 챔피언', mo: ['ceremony', 'curtain', 'bow'], c: [0xffc93a, 0xff6a3a, 0xfff4c8], pal: [0xffd65a, 0xfff0b0, 0xff4a5a, 0x4ab8ff, 0x6aff9a, 0xffffff] },
     { id: 'zenith', t: 13, name: '제니스', mo: ['armillary', 'ascendStar', 'salute'], c: [0xffd76a, 0xa47cff, 0xffffff], pal: [0xffd76a, 0xfff2c8, 0xc8a8ff, 0xffffff] },
     { id: 'champ_hc', name: '하드코어 패왕', mo: ['crater', 'devour', 'flex'], c: [0xff3a1e, 0xffa030, 0xffe2c8], pal: [0xff3a1e, 0xff7a20, 0xffc04a, 0xffe2c8] },
@@ -29207,10 +29282,14 @@ const PartyFx = (() => {
   const tiOf = (id) => (typeof Prof !== 'undefined' && Prof.TI ? Prof.TI.find((x) => x.id === id) || null : null);
   const tiKey = (E) => (E.t != null ? 'tier_' + E.id : E.id);
   // 이 판(클라이언트)에 그 티어·칭호가 있는가 (새 티어는 10_rank.js 가 RANK_TIERS 에 더한 뒤부터)
-  const avail = (E) => (E.t != null ? RANK_TIERS.length > E.t : !!tiOf(E.id));
-  const nameOf = (E) => (E.t != null && RANK_TIERS[E.t] ? RANK_TIERS[E.t].name : (tiOf(tiKey(E)) || {}).name || E.name);
+  const avail = (E) => (E.staff ? true : E.t != null ? RANK_TIERS.length > E.t : !!tiOf(E.id));
+  // 관리자 전용 대상은 역할을 붙여 쓴다 (이름 띠: 개발자 / 부개발자) — 원래 대상을 본뜬 것이라 id·동작·색은 그대로
+  const myRole = () => (typeof Dev !== 'undefined' && Dev.is() ? (Dev.sub() ? 'sub' : 'dev') : '');
+  const withRole = (E, role) => (E && E.staff ? Object.assign(Object.create(E), { role: role || 'dev' }) : E);
+  const nameOf = (E) => (E.staff ? ((E.role || myRole()) === 'sub' ? '부개발자' : '개발자') : E.t != null && RANK_TIERS[E.t] ? RANK_TIERS[E.t].name : (tiOf(tiKey(E)) || {}).name || E.name);
   function ok(E) {
     if (!E || !avail(E)) return false;
+    if (E.staff) return !!myRole();
     const T = tiOf(tiKey(E)); if (T) { try { return !!T.ok(); } catch (e) { return false; } }
     if (E.t == null || typeof Rank === 'undefined') return false;
     const pk = typeof Rank.peakTier === 'function' ? Rank.peakTier() : null, t = pk == null ? -1 : typeof pk === 'number' ? pk : pk.t;   // 칭호가 없으면 최고 도달 티어
@@ -29228,14 +29307,20 @@ const PartyFx = (() => {
   // 파티 정보로 보내는 값: 고른 것 + 가진 나머지(높은 순, 4개까지) — 받는 기기의 랭킹 자료가 늦어 1위 칭호를 못 믿으면 다음 것으로
   function mineList() { const m = mine(); if (!m) return null; const L = [m]; for (const e of ENT) if (L.length < 4 && e.id !== m && ok(e)) L.push(e.id); return L; }
   // 다른 기기에서 온 값 확인 (id 하나 또는 목록): 이 판에 있는 대상 · 랭킹 1위 칭호는 지금 1위인 이름만 (10_ranking.js)
-  function valid(ids, name) {
+  //  · 관리자 전용 연출은 서버가 관리자라고 확인해 준 계정(uid)만 — 관리자 계정은 1위 칭호 연출도 쓸 수 있다
+  const staffOf = (uid, name) => (typeof Cloud !== 'undefined' && Cloud.staffRole ? Cloud.staffRole(uid, name) : '');
+  function valid(ids, name, uid) {
     for (const id of Array.isArray(ids) ? ids.slice(0, 4) : [ids]) {
       const E = byId(id); if (!E || !avail(E)) continue;
-      if (/^champ_/.test(E.id) && typeof Ladder !== 'undefined' && Ladder.allowed && !Ladder.allowed(E.id, name)) continue;
+      if (E.staff) { const r = staffOf(uid, name); if (!r) continue; return withRole(E, r); }
+      if (/^champ_/.test(E.id) && typeof Ladder !== 'undefined' && Ladder.allowed && !Ladder.allowed(E.id, name, uid)) continue;
       return E;
     }
     return null;
   }
+  // 관리자 전용 연출을 보냈는데 그 계정이 관리자인지 아직 모름 → 답이 올 때까지 입장을 잠깐 미룬다
+  const unsure = (f) => { if (!f || !f.uid || typeof Cloud === 'undefined' || !Cloud.staffKnown) return false; return (Array.isArray(f.ent) ? f.ent : [f.ent]).includes('dev') && !Cloud.staffKnown(f.uid); };
+  const mineE = () => withRole(byId(mine()), myRole());
 
   // ---------- 효과 (로비 장면 전용 · 시간 진행) ----------
   let SC = null, CAM = null, LOB = null, SHK = 0, alive = 0, warmed = false;
@@ -29348,12 +29433,13 @@ const PartyFx = (() => {
   }
   // 이름 띠 (화면 글자 — #lobbyTags 층): 머리 위 빈자리에, 위 메뉴에 가리면(휴대폰 가로) 발아래 이름표 밑에
   const BAN = [];
-  function label(E, gp, delay = 0, dur = 2.4) {
+  //  opt: { cls 덧붙일 클래스 · html 안쪽 내용 · upd(el, t) 매 프레임 } — 개발자 연출의 명령 줄 띠가 쓴다
+  function label(E, gp, delay = 0, dur = 2.4, opt) {
     at(delay, () => {
       const box = document.getElementById('lobbyTags'); if (!box) return;
-      const el = document.createElement('div'); el.className = 'ent-ban'; el.style.setProperty('--ec', '#' + E.c[0].toString(16).padStart(6, '0'));
-      el.innerHTML = `<i></i><b>${nameOf(E)}</b><i></i>`; box.appendChild(el);
-      const top = document.querySelector('#lobby .lb-top'); BAN.push({ el, gp: { x: gp.x, y: gp.y, z: gp.z }, t: 0, dur, top: top ? top.getBoundingClientRect().bottom : 60 });
+      const el = document.createElement('div'); el.className = 'ent-ban' + (opt && opt.cls ? ' ' + opt.cls : ''); el.style.setProperty('--ec', '#' + E.c[0].toString(16).padStart(6, '0'));
+      el.innerHTML = opt && opt.html ? opt.html : `<i></i><b>${nameOf(E)}</b><i></i>`; box.appendChild(el);
+      const top = document.querySelector('#lobby .lb-top'); BAN.push({ el, gp: { x: gp.x, y: gp.y, z: gp.z }, t: 0, dur, top: top ? top.getBoundingClientRect().bottom : 60, upd: opt && opt.upd });
     });
   }
   function tickBan(dt) {
@@ -29361,6 +29447,7 @@ const PartyFx = (() => {
     for (let i = BAN.length - 1; i >= 0; i--) {
       const b = BAN[i]; b.t += dt; const u = b.t / b.dur;
       if (u >= 1 || !CAM) { b.el.remove(); BAN.splice(i, 1); continue; }
+      if (b.upd) b.upd(b.el, b.t);
       _a.set(b.gp.x, b.gp.y + 2.0, b.gp.z).project(CAM); _b.set(b.gp.x, b.gp.y, b.gp.z).project(CAM);
       const h = b.el.offsetHeight || 30, x = (_a.x + 1) / 2 * W, yh = (1 - _a.y) / 2 * H, yf = (1 - _b.y) / 2 * H;
       const y = yh - h - 4 >= b.top + 6 ? yh - h - 4 : yf + 30;
@@ -29547,7 +29634,31 @@ const PartyFx = (() => {
     swordUp(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [-0.1], [-0.12], [-0.3], [-0.35]); up(r); legsStand(r, 0.18); hand(r, r.armR, r.chest, [-0.03, 0.8, 0.14], null, null, [-0.5, 0.3, 0], 'fist'); hand(r, r.armL, r.chest, [0.01, 0.7, 0.16], null, null, [0.5, 0.3, 0], 'fist'); },
     // 아래로 떨어짐: 두 팔을 위로 허우적 · 위(빛 쪽)를 봄
     flail(r, o) { const s = Math.sin(o.t * 13) * 0.25; r.hips.position.set(0, 0.95, 0); spineSet(r, [-0.08], [-0.12], [-0.1], [-0.3], [-0.4]); up(r); lfk(r.legL, -0.6, 0.05, 1.1, 0.3); lfk(r.legR, 0.1, 0.05, 0.3, 0.5); fk(r.armL, -0.4 + s, 0.3, 2.45, -0.7, 'open'); fk(r.armR, -0.4 - s, 0.3, 2.45, -0.7, 'open'); },
+    // ----- 개발자 -----
+    // T 자세: 편집기에 막 불러온 모델 그대로 (팔을 옆으로 쭉 · 손가락 펴고 · 정면 — 숨도 쉬지 않음)
+    tpose(r) { r.hips.position.set(0, 0.962, 0); spineSet(r, [0], [0], [0], [0], [0]); up(r); legsStand(r, 0.11, 0, 0); fk(r.armL, 0, 0, 1.5, 0, 'flat'); fk(r.armR, 0, 0, 1.5, 0, 'flat'); },
+    // 깨어나 자기 두 손을 내려다봄 (손가락을 쥐었다 폄 — o.t)
+    lookHands(r, o) { const k = 0.5 - 0.5 * Math.cos(o.t * 10); r.hips.position.set(0, 0.95, 0); spineSet(r, [0.02], [0.08], [0.06], [0.34], [0.34]); up(r); legsStand(r, 0.12);
+      hands(r, r.chest, [-0.2, 0.0, 0.3], [0.3, 0.5, 1], [0.1, 0.85, -0.45], [-0.55, -0.35, -0.05], 'open'); for (const A of [r.armL, r.armR]) setFingers(A, mixFing(FING.open, FING.hold, k)); },
+    // 허공의 자판을 두드림 (o.t: 두 손이 번갈아 들썩 · 손가락이 까딱)
+    type(r, o) { const t = o.t; r.hips.position.set(0, 0.95, 0); spineSet(r, [0.02], [0.06], [0.04], [0.16], [0.16]); up(r); legsStand(r, 0.13);
+      for (const [A, s, ph] of [[r.armR, 1, 0], [r.armL, -1, 1.7]]) { const b = Math.max(0, Math.sin(t * 31 + ph)), c = Math.sin(t * 23 + ph * 2);
+        hand(r, A, r.chest, [(-0.14 + c * 0.012) * s, -0.2 + b * 0.016, 0.33 + c * 0.01], [0.1 * s, 0.05, 1], [0, -1, 0.1], [-0.5 * s, -0.4, -0.1], 'relax');
+        setFingers(A, [0.45 + 0.4 * Math.max(0, Math.sin(t * 37 + ph)), 0.4, 0.35 + 0.5 * Math.max(0, Math.sin(t * 29 + ph + 1)), 0.3, 0.2]); } },
+    // 실행 키를 누르려고 오른손을 치켜듦 (검지만 폄) / 내리찍음 — 왼손은 자판 위에 그대로
+    enterUp(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [0.02], [-0.03, 0.08], [-0.04], [-0.06]); up(r); legsStand(r, 0.13);
+      hand(r, r.armR, r.chest, [-0.3, 0.4, 0.2], [0.1, 0.9, 0.4], [0.2, -0.3, 1], [-0.65, 0, -0.1], 'relax'); setFingers(r.armR, FPOINT);
+      hand(r, r.armL, r.chest, [0.14, -0.2, 0.33], [-0.1, 0.05, 1], [0, -1, 0.1], [0.5, -0.4, -0.1], 'relax'); },
+    enterHit(r) { r.hips.position.set(0, 0.94, 0); spineSet(r, [0.03], [0.1], [0.07, -0.06], [0.14], [0.12]); up(r); legsStand(r, 0.13);
+      hand(r, r.armR, r.chest, [-0.08, -0.2, 0.39], [0.1, -0.5, 1], [0, -1, -0.2], [-0.5, -0.35, -0.1], 'relax'); setFingers(r.armR, FPOINT);
+      hand(r, r.armL, r.chest, [0.14, -0.2, 0.33], [-0.1, 0.05, 1], [0, -1, 0.1], [0.5, -0.4, -0.1], 'relax'); },
+    // 팔짱 끼고 고개를 끄덕 (o.t)
+    crossNod(r, o) { KP.cross(r); r.head.rotation.x = -0.1 + Math.max(0, Math.sin(o.t * 7)) * 0.2; },
+    // 검지 경례를 이마에서 바깥으로 툭 (o.t 0.7~0.95초에 튕김)
+    devBye(r, o) { const k = sstep(0.7, 0.95, o.t); KP.stand(r); r.head.rotation.set(-0.08, -0.1, 0.05); up(r);
+      hand(r, r.armR, r.head, [lerp(-0.115, -0.3, k), lerp(0.06, 0.13, k), lerp(0.07, 0.24, k)], [lerp(0.62, 0.3, k), lerp(0.32, 0.8, k), 0.55], [0.12, -0.9, -0.35], [-0.55, 0.22, 0.12], 'flat'); setFingers(r.armR, FPOINT); },
   };
+  const FPOINT = [1.6, 1.55, 0.05, 0.05, 0.9];   // 검지만 편 손
   // 열쇠 자세 하나를 놓는다: 뼈 초기화 → 몸 채널 → 자세 함수
   const B0 = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, sx: 1, sy: 1, sz: 1, vis: true };
   const BB = Object.assign({}, B0);
@@ -30069,6 +30180,278 @@ const PartyFx = (() => {
       sigil(gp, sigilTex(), 2.4, 2.6, E.c[0], 0.5, 0.15); ring(gp, E.c[0], 2.2, 0.6, 1.0); glow(hipsAt(a, 0.6).clone(), E.c[2], 3, 0.5, 1.95); },
     tick(a, r, t, dt) { if (t > 0.4 && t < 2.0) infinity(a, t, dt, t < 1.8 ? 1 : 1 - seg(t, 1.8, 2.0));
       if (t > 1.0 && t < 2.05) { const Q = P(), E = a.E, n = Math.ceil(dt * 110); hipsW(r, _a); for (let i = 0; i < n; i++) EM(Q, _b.set(_a.x + rnd(-0.28, 0.28), _a.y + rnd(-0.7, 0.8) * r.body.scale.y, _a.z + rnd(-0.2, 0.2)), rnd(-0.15, 0.15), rnd(-0.3, 0.1), rnd(-0.15, 0.15), i % 3 ? E.c[0] : 0xe8c46a, rnd(0.02, 0.035), rnd(0.6, 1.1), { g: -4.5, sq: 1, so: 0.7 }); } } };
+  // ===== 개발자 (관리자 계정 전용): 로비가 잠깐 '편집기'가 된다 =====
+  //  입장: 바닥에 청사진 눈금이 깔리고, 마우스 커서가 철사 상자(모델)를 끌어다 놓으면 T 자세의 재질 없는 모델이 선택 상자·이동 축과 함께 나타남
+  //   → 커서가 훑는 틀을 끌어 올리면 아래부터 텍스처가 입혀지고(장비도 그 높이에서 달림) → 커서가 ▶ 를 누르는 순간 뚝뚝 끊기며 깨어나 자기 두 손을 내려다봄
+  //   → 허공의 자판을 두드려 명령을 치고(이름 띠가 명령 줄처럼 찍힘) 실행 키를 내리찍으면 등 뒤에 </> 문장이 켜지고 코드 글자가 터져 나옴 → 팔짱 끼고 끄덕
+  //  퇴장: 검지 경례 → 커서가 ■ 를 누르면 T 자세로 굳고, 훑는 틀이 내려오며 텍스처가 벗겨져 철사 모델로 → 커서가 집어 조그맣게 줄여 끌고 나감 → 빈자리에 글자 커서만 깜빡
+  //  · 재질 없는 모델 = 같은 뼈대로 그린 남색 덩어리 + 청록 철사 (자르는 면 위쪽만 보임). 덩어리가 진짜 몸을 덮어 가리므로 면이 올라가면 아래부터 진짜 몸이 드러난다
+  //    (진짜 몸은 그동안 조금 뒤로 밀어 그려 겹침 얼룩이 없게 · 새 셰이더는 '뼈대 + 자르는 면 하나' 하나뿐이고 warmDev 가 미리 만들어 둔다)
+  //  · 밝은 하늘·눈밭에서도 보이게 조작 도구(선택 상자·축·단추·커서·꼬리표)는 빛을 더하지 않는 단색·어두운 판으로 그린다
+  const DVB = { W: 1.86, H: 1.93, D: 0.56 };   // T 자세를 감싸는 선택 상자
+  const KB = { y: 1.03, z: 0.39, tilt: 0.95 }; // 허공의 자판: 가슴 앞 높이·거리 · 화면 쪽으로 눕힌 각
+  const DV = { drop: 0.85, s0: 1.2, s1: 2.4, play: 3.0, type: 4.08, enter: 4.82 };   // 입장: 놓음 · 훑기 시작/끝 · ▶ · 타자 · 실행 키
+  const DX = { stop: 1.35, s0: 1.75, s1: 2.55, grab: 2.75, gone: 3.3 };              // 퇴장: ■ · 훑기 시작/끝 · 집음 · 사라짐
+  const CODEFONT = 'Consolas, "Cascadia Mono", "Courier New", monospace', CLAY = 0x10263a, WIRE = 0x58e6ff;
+  // ----- 그림 -----
+  // 청사진 눈금: 네 칸마다 굵은 줄 · 가운데 표적 · 멀어질수록 흐려짐
+  const gridTex = () => ctex('dvgrid', 512, 512, (g, W) => {
+    g.strokeStyle = '#fff'; for (let i = 0; i <= 16; i++) { const p = i * 32, big = i % 4 === 0; g.globalAlpha = big ? 0.95 : 0.42; g.lineWidth = big ? 3 : 1.5; g.beginPath(); g.moveTo(p, 0); g.lineTo(p, W); g.moveTo(0, p); g.lineTo(W, p); g.stroke(); }
+    g.globalAlpha = 1; g.lineWidth = 3; g.beginPath(); g.arc(256, 256, 22, 0, TAU); g.stroke();
+    g.globalCompositeOperation = 'destination-in'; const r = g.createRadialGradient(256, 256, 30, 256, 256, 256); r.addColorStop(0, 'rgba(0,0,0,1)'); r.addColorStop(0.55, 'rgba(0,0,0,0.7)'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, W, W);
+  });
+  // 마우스 커서 (흰 화살표 · 짙은 테두리) — 화살표 끝은 그림의 (9, 4)
+  const cursorTex = () => ctex('dvcur', 64, 64, (g) => { g.beginPath(); [[9, 4], [9, 49], [20, 39], [28, 58], [36, 54], [28, 36], [44, 36]].forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.lineJoin = 'round'; g.lineWidth = 6; g.strokeStyle = '#06131c'; g.stroke(); g.fillStyle = '#fff'; g.fill(); });
+  // 단추: 둥근 네모 판 + ▶(play) · ■(stop) — on = 눌린 뒤(초록)
+  const btnTex = (kind, on) => ctex('dvb' + kind + (on ? 1 : 0), 128, 128, (g) => {
+    g.beginPath(); g.moveTo(32, 8); g.arcTo(120, 8, 120, 120, 24); g.arcTo(120, 120, 8, 120, 24); g.arcTo(8, 120, 8, 8, 24); g.arcTo(8, 8, 120, 8, 24); g.closePath();
+    g.fillStyle = on ? 'rgba(14,104,58,0.95)' : 'rgba(6,22,34,0.9)'; g.fill(); g.lineWidth = 6; g.strokeStyle = on ? '#b4ffd2' : '#4de8ff'; g.stroke(); g.fillStyle = on ? '#fff' : '#bff6ff';
+    if (kind === 'play') { g.beginPath(); g.moveTo(47, 35); g.lineTo(93, 64); g.lineTo(47, 93); g.closePath(); g.fill(); } else g.fillRect(40, 40, 48, 48);
+  });
+  // 허공의 자판: 어두운 판 · 자판 세 줄 · 긴 칸 · 오른쪽 아래 초록 실행 키
+  const kbdTex = () => ctex('dvkbd', 256, 96, (g, W, H) => {
+    g.fillStyle = 'rgba(6,22,34,0.62)'; g.fillRect(0, 0, W, H); g.strokeStyle = '#4de8ff'; g.lineWidth = 2.5; g.strokeRect(2, 2, W - 4, H - 4);
+    g.lineWidth = 1.5; for (let r = 0; r < 3; r++) for (let c = 0; c < 10; c++) g.strokeRect(9 + c * 21 + r * 4, 8 + r * 20, 17, 15.5);
+    g.strokeRect(62, 70, 112, 16); g.fillStyle = 'rgba(125,255,176,0.92)'; g.fillRect(222, 28, 25, 58);
+  });
+  // 꺾쇠 글자 '<' · '/>' (흰 글자 · 청록 빛 · 짙은 테두리 — 밝은 하늘 앞에서도 또렷하게): 캐릭터 양옆에 서서 캐릭터를 <개발자 /> 처럼 감싼다
+  const brkTex = (i) => ctex('dvbrk' + i, 256, 256, (g) => { g.font = 'bold 170px ' + CODEFONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.lineWidth = 22; g.strokeStyle = 'rgba(4,16,26,0.92)'; g.strokeText(i ? '/>' : '<', 128, 136); g.shadowColor = '#4de8ff'; g.shadowBlur = 16; g.fillStyle = '#eaffff'; g.fillText(i ? '/>' : '<', 128, 136); });
+  // 바닥 문양: 육각 고리 · 0과 1의 띠 · 가운데 </>
+  const dsigTex = () => ctex('dvsig', 256, 256, (g) => {
+    g.translate(128, 128); g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const hex = (r, w) => { g.lineWidth = w; g.beginPath(); for (let i = 0; i <= 6; i++) { const an = i * TAU / 6; i ? g.lineTo(Math.cos(an) * r, Math.sin(an) * r) : g.moveTo(Math.cos(an) * r, Math.sin(an) * r); } g.stroke(); };
+    hex(120, 4); hex(104, 1.5); hex(58, 3);
+    const R = mulberry32(9); g.font = 'bold 13px ' + CODEFONT; for (let i = 0; i < 36; i++) { g.save(); g.rotate(i / 36 * TAU); g.fillText(R() < 0.5 ? '0' : '1', 0, -82); g.restore(); }
+    for (let i = 0; i < 6; i++) { const an = i * TAU / 6; g.beginPath(); g.arc(Math.cos(an) * 120, Math.sin(an) * 120, 5, 0, TAU); g.fill(); g.lineWidth = 1.5; g.beginPath(); g.moveTo(Math.cos(an) * 58, Math.sin(an) * 58); g.lineTo(Math.cos(an) * 104, Math.sin(an) * 104); g.stroke(); }
+    g.font = 'bold 40px ' + CODEFONT; g.fillText('</>', 0, 3);
+  });
+  // 훑는 틀 아래로 드리우는 빛 막 (위가 밝고 아래로 사라짐 · 가로 줄)
+  const scanTex = () => ctex('dvscan', 32, 64, (g, W, H) => { const r = g.createLinearGradient(0, 0, 0, H); r.addColorStop(0, 'rgba(255,255,255,0.95)'); r.addColorStop(0.14, 'rgba(255,255,255,0.45)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'destination-out'; g.fillStyle = 'rgba(0,0,0,0.35)'; for (let y = 6; y < H; y += 6) g.fillRect(0, y, W, 2); });
+  // 코드 글자 (흰 글자 · 짙은 테두리 — 색은 재료에서 입힘)
+  const GLY = ['{', '}', '<', '>', '/', ';', '=', '0', '1', '(', ')', '#'];
+  const glyTex = (i) => ctex('dvg' + i, 64, 64, (g) => { g.font = 'bold 54px ' + CODEFONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.lineWidth = 7; g.strokeStyle = 'rgba(4,14,22,0.9)'; g.strokeText(GLY[i], 32, 35); g.fillStyle = '#fff'; g.fillText(GLY[i], 32, 35); });
+  // ----- 부품 -----
+  // 단색 부품 (빛을 더하지 않음) · top: 다른 것에 가리지 않고 늘 위에 (편집기의 조작 도구처럼)
+  const tint = (geo, col, par, x = 0, y = 0, z = 0, top = false) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: top, depthTest: !top, depthWrite: !top })); m.userData.own = true; if (top) m.renderOrder = 11; m.position.set(x, y, z); if (par) par.add(m); return m; };
+  // 상자 여럿을 한 도형으로 (그리기 한 번): [[너비, 높이, 깊이, x, y, z], …]
+  const boxes = (list) => { const pos = [], idx = []; let n = 0;
+    for (const [w, h, d, x, y, z] of list) { const g = new THREE.BoxGeometry(w, h, d), p = g.attributes.position.array, ix = g.index.array; for (let i = 0; i < p.length; i += 3) pos.push(p[i] + x, p[i + 1] + y, p[i + 2] + z); for (let i = 0; i < ix.length; i++) idx.push(ix[i] + n); n += p.length / 3; g.dispose(); }
+    const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); out.setIndex(idx); return out; };
+  // 시각 → 자리 [x, y, z] 를 부드럽게 잇는 길: K = [[시각, x, y, z], …]
+  const track = (K) => (t) => { let i = 0; while (i < K.length - 2 && t >= K[i + 1][0]) i++; const A = K[i], B = K[i + 1], u = sstep(A[0], B[0], t); return [lerp(A[1], B[1], u), lerp(A[2], B[2], u), lerp(A[3], B[3], u)]; };
+  // 훑는 높이 (발바닥 기준): up = 아래 → 위 (입장) · 아니면 위 → 아래 (퇴장)
+  const scanY = (t, t0, t1, up) => { const k = sstep(t0, t1, t); return up ? -0.06 + 2.16 * k : 2.1 - 2.16 * k; };
+  // 커서가 다니는 길 (캐릭터 기준 자리 — 화살표 끝)
+  const BTN = [0.62, 1.74, 0.3], CORNER = [DVB.W / 2 + 0.03, 0, DVB.D / 2 + 0.03];   // 단추 자리 (벌린 왼팔 위, 머리 옆 빈 곳 — 옆 사람 몸에 가리지 않게 · 상태 꼬리표는 반대쪽) · 훑는 틀의 앞쪽 모서리
+  const DVP = {
+    in: (() => { const A = track([[0.05, 1.7, 2.35, 0.5], [DV.drop, 0, 1.0, 0.45], [DV.drop + 0.1, 0, 1.0, 0.45], [DV.s0, CORNER[0], -0.06, CORNER[2]]]), B = track([[DV.s1, CORNER[0], 2.1, CORNER[2]], [DV.s1 + 0.08, CORNER[0], 2.1, CORNER[2]], [DV.play - 0.1, BTN[0], BTN[1] - 0.02, BTN[2]], [DV.play + 0.08, BTN[0], BTN[1] - 0.02, BTN[2]], [DV.play + 0.3, 0.95, 0.68, 0.45]]);
+      return (t) => (t < DV.s0 ? A(t) : t <= DV.s1 ? [CORNER[0], scanY(t, DV.s0, DV.s1, true), CORNER[2]] : B(t)); })(),
+    out: (() => { const A = track([[0.9, 1.6, 2.2, 0.5], [DX.stop - 0.08, BTN[0], BTN[1] - 0.02, BTN[2]], [DX.stop + 0.08, BTN[0], BTN[1] - 0.02, BTN[2]], [DX.s0, CORNER[0], 2.1, CORNER[2]]]), B = track([[DX.s1, CORNER[0], -0.06, CORNER[2]], [DX.s1 + 0.04, CORNER[0], -0.06, CORNER[2]], [DX.grab, 0.05, 1.2, 0.35], [DX.grab + 0.08, 0.05, 1.2, 0.35], [DX.gone, 1.7, 2.3, 0.5]]);
+      return (t) => (t < DX.s0 ? A(t) : t <= DX.s1 ? [CORNER[0], scanY(t, DX.s0, DX.s1, false), CORNER[2]] : B(t)); })(),
+  };
+  // 퇴장 끝: 집힌 모델이 커서 끝으로 줄어들며 끌려감 → { s 크기, x, y, z 몸 자리 }
+  const mini = (t) => { const k = ein(seg(t, DX.grab, DX.grab + 0.3)), c = DVP.out(t), s = lerp(1, 0.15, k); return { s, x: c[0] * k, y: (c[1] - 0.95 * s) * k, z: c[2] * k }; };
+  // 청사진 눈금 바닥: 펼쳐진 뒤 pulses 시각마다 번쩍 (초록으로)
+  function grid(a, t0, dur, pulses) {
+    const E = a.E, m = flat(gridTex(), E.c[0], a.gp, 0.032), C0 = new THREE.Color(E.c[0]), C1 = new THREE.Color(E.c[1]); m.rotation.y = a.yaw; m.renderOrder = 3;
+    add(m, dur, (e, u) => { const t = t0 + e.t; let p = 0; for (const tp of pulses) if (t >= tp) p = Math.max(p, 1 - (t - tp) / 0.4);
+      m.scale.setScalar(5.6 * (0.15 + 0.85 * eout(seg(e.t, 0, 0.5)))); m.material.color.copy(C0).lerp(C1, p * 0.7);
+      m.material.opacity = (0.55 + 0.45 * p) * Math.min(1, e.t * 5) * (1 - sstep(0.88, 1, u)) * (e.t < 0.3 && Math.random() < 0.3 ? 0.4 : 1); }, t0);
+  }
+  // 선택 상자: 모서리 꺾쇠 여덟 (그리기 한 번) — f(t) → [x, 가운데 높이, z, 크기, 색, 투명도] (캐릭터 기준)
+  function selBox(a, t0, dur, f) {
+    const L = [], l = 0.2, th = 0.02;
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) { const x = sx * DVB.W / 2, y = sy * DVB.H / 2, z = sz * DVB.D / 2; L.push([l, th, th, x - sx * l / 2, y, z], [th, l, th, x, y - sy * l / 2, z], [th, th, l * 0.8, x, y, z - sz * l * 0.4]); }
+    const m = tint(boxes(L), a.E.c[0], null); m.material.transparent = true; m.rotation.y = a.yaw;
+    add(m, dur, (e) => { const s = f(t0 + e.t); loc(a, s[0], s[1], s[2], m.position); m.scale.setScalar(Math.max(0.001, s[3])); m.material.color.setHex(s[4]); m.material.opacity = s[5]; }, t0);
+  }
+  // 이동 축 (x 빨강 · y 초록 · z 파랑 화살표 — 늘 위에): 발 가운데가 원점
+  function gizmo(a, t0, tOut) {
+    const g = grpAt(a); g.position.y += 0.02;
+    for (const [c, rot] of [[0xff5063, [0, 0, -Math.PI / 2]], [0x6dff8a, [0, 0, 0]], [0x4d9bff, [Math.PI / 2, 0, 0]]]) { const s = new THREE.Group(); s.rotation.set(rot[0], rot[1], rot[2]); g.add(s);
+      const sh = new THREE.BoxGeometry(0.018, 0.5, 0.018); sh.translate(0, 0.25, 0); tint(sh, c, s, 0, 0, 0, true); tint(new THREE.ConeGeometry(0.042, 0.13, 8), c, s, 0, 0.56, 0, true); }
+    tint(new THREE.BoxGeometry(0.055, 0.055, 0.055), 0xffffff, g, 0, 0, 0, true);
+    add(g, tOut + 0.16 - t0, (e) => { const t = t0 + e.t; g.scale.setScalar(Math.max(0.001, t < tOut ? eout(seg(t, t0, t0 + 0.16)) * (1 + 0.25 * Math.sin(Math.PI * seg(t, t0, t0 + 0.26))) : 1 - ein(seg(t, tOut, tOut + 0.14)))); }, t0);
+  }
+  // 훑는 틀: 선택 상자의 가로 단면을 도는 밝은 테 + 아래로 드리운 빛 막 — t0~t1 동안 아래에서 위로(up) 또는 위에서 아래로 움직임
+  function scanFrame(a, t0, t1, up) {
+    const E = a.E, g = grpAt(a), W = CORNER[0] * 2, D = CORNER[2] * 2, th = 0.022, T0 = t0 - 0.12;
+    const rim = tint(boxes([[W, th, th, 0, 0, D / 2], [W, th, th, 0, 0, -D / 2], [th, th, D, W / 2, 0, 0], [th, th, D, -W / 2, 0, 0]]), 0xeaffff, g); rim.material.transparent = true;
+    const cg = new THREE.CylinderGeometry(0.7071, 0.7071, 1, 4, 1, true); cg.rotateY(Math.PI / 4); cg.translate(0, -0.5, 0);
+    { const ix = Array.from(cg.index.array), n = ix.length; for (let i = 0; i < n; i += 3) ix.push(ix[i], ix[i + 2], ix[i + 1]); cg.setIndex(ix); }   // 안쪽 면도 (양면 재료를 쓰지 않으려고)
+    const cur = new THREE.Mesh(cg, mat(scanTex(), E.c[0])); cur.userData.own = true; cur.scale.set(W, 0.32, D); cur.renderOrder = 6; g.add(cur);
+    add(g, t1 + 0.2 - T0, (e) => { const t = T0 + e.t, o = sstep(T0, t0, t) * (1 - sstep(t1, t1 + 0.2, t)); g.position.y = a.gp.y + scanY(t, t0, t1, up); rim.material.opacity = o; cur.material.opacity = o * 0.8; }, T0);
+  }
+  // 마우스 커서: path(t) 자리에 화살표 끝 · press(t) 누르는 동안 조금 작아짐 · 늘 위에
+  function cursor(a, t0, t1, path, press) {
+    const m = new THREE.Mesh(kit().vplane(), mat(cursorTex(), 0xffffff)), R = new THREE.Vector3(), U = new THREE.Vector3(); m.material.blending = THREE.NormalBlending; m.material.depthTest = false; m.renderOrder = 12;
+    add(m, t1 - t0, (e) => { const t = t0 + e.t, c = path(t), s = 0.24 * (press(t) ? 0.84 : 1); loc(a, c[0], c[1], c[2], m.position); if (!CAM) return;
+      m.quaternion.copy(CAM.quaternion); R.set(1, 0, 0).applyQuaternion(CAM.quaternion); U.set(0, 1, 0).applyQuaternion(CAM.quaternion); m.position.addScaledVector(R, 0.36 * s).addScaledVector(U, -0.44 * s);
+      m.scale.setScalar(s); m.material.opacity = Math.min(1, e.t * 8, (t1 - t) * 8); }, t0);
+  }
+  // 딸깍: 커서 끝에서 번지는 작은 고리
+  const click = (a, c, t) => at(t, () => { const m = card(loc(a, c[0], c[1], c[2], new THREE.Vector3()), tex().ring(), a.E.c[0], 0.3, (mm, u) => { mm.scale.setScalar(0.07 + 0.34 * eout(u)); mm.material.opacity = 1 - u; }, 0, true); m.material.depthTest = false; m.renderOrder = 12; });
+  // 끌려오는 철사 상자 (아직 풀리지 않은 모델): 커서 끝을 따라 돌다가 놓는 순간 커지며 사라짐
+  function prefab(a, t0, t1, path) {
+    const g = new THREE.Group(), w = tint(new THREE.BoxGeometry(1, 1, 1), WIRE, g); w.material.wireframe = true; w.material.transparent = true; const c = tint(new THREE.BoxGeometry(0.8, 0.8, 0.8), CLAY, g); c.material.transparent = true;
+    add(g, t1 + 0.1 - t0, (e) => { const t = t0 + e.t, p = path(t), o = t < t1 ? 1 : Math.max(0, 1 - (t - t1) / 0.1); loc(a, p[0], p[1], p[2], g.position); g.rotation.set(e.t * 2.2, e.t * 3.1, 0); g.scale.setScalar(0.3 * Math.min(1, e.t * 6) * (t < t1 ? 1 : 1 + (t - t1) * 16)); w.material.opacity = o; c.material.opacity = o * 0.9; }, t0);
+  }
+  // 단추 (▶ 실행 · ■ 정지): tIn 에 나타나 tHit 에 눌려 초록으로 바뀌고 tOut 에 사라짐
+  function button(a, kind, tIn, tHit, tOut) {
+    const m = card(loc(a, BTN[0], BTN[1], BTN[2], new THREE.Vector3()), btnTex(kind, false), 0xffffff, tOut - tIn, (mm, u, e) => { const t = tIn + e.t, hit = t >= tHit;
+      if (hit && !mm.userData.hit) { mm.userData.hit = true; mm.material.map = btnTex(kind, true); }
+      mm.scale.setScalar(Math.max(0.001, 0.3 * eout(seg(t, tIn, tIn + 0.14)) * (1 - ein(seg(t, tOut - 0.16, tOut))) * (hit ? 1 + 0.3 * Math.max(0, 1 - (t - tHit) / 0.2) : 1 + Math.sin(t * 7) * 0.04))); mm.material.opacity = 1; }, tIn, true);
+    m.renderOrder = 9;
+  }
+  // 상태 꼬리표: 작은 어두운 판에 mesh · rig 확인 표시와 진행 막대 — st(t) → { a, b, p 0~1, done, label, fin } (바뀔 때만 다시 그림)
+  function statusChip(a, t0, dur, st) {
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 112; const g = cv.getContext('2d'), tx = new THREE.CanvasTexture(cv); let sig = '';
+    const m = new THREE.Mesh(kit().vplane(), mat(tx, 0xffffff)); m.material.blending = THREE.NormalBlending; m.userData.ownMap = true; m.renderOrder = 9; loc(a, -BTN[0], BTN[1], BTN[2] - 0.06, m.position);
+    const chk = (x, y, on, txt) => { g.strokeStyle = g.fillStyle = on ? '#7dffb0' : '#55707c'; g.lineWidth = 4; g.beginPath(); if (on) { g.moveTo(x, y); g.lineTo(x + 6, y + 7); g.lineTo(x + 17, y - 8); } else g.arc(x + 8, y, 3, 0, TAU); g.stroke(); g.fillText(txt, x + 26, y + 1); };
+    const draw = (s) => { g.clearRect(0, 0, 256, 112); g.fillStyle = 'rgba(5,18,30,0.88)'; g.fillRect(0, 0, 256, 112); g.lineWidth = 3; g.strokeStyle = s.done ? '#7dffb0' : '#4de8ff'; g.strokeRect(1.5, 1.5, 253, 109);
+      g.font = 'bold 24px ' + CODEFONT; g.textBaseline = 'middle'; g.textAlign = 'left'; chk(14, 25, s.a, 'mesh'); chk(138, 25, s.b, 'rig');
+      g.fillStyle = s.done ? '#7dffb0' : '#d9fbff'; g.fillText(s.done ? s.fin : s.label, 14, 58); g.textAlign = 'right'; g.fillText(Math.round(s.p * 100) + '%', 242, 58);
+      g.fillStyle = 'rgba(77,232,255,0.22)'; g.fillRect(14, 80, 228, 16); g.fillStyle = s.done ? '#7dffb0' : '#4de8ff'; g.fillRect(14, 80, 228 * s.p, 16); tx.needsUpdate = true; };
+    add(m, dur, (e, u) => { const s = st(t0 + e.t), k = (s.a ? 1 : 0) + '|' + (s.b ? 1 : 0) + '|' + Math.round(s.p * 25) + '|' + (s.done ? 1 : 0); if (k !== sig) { sig = k; draw(s); }
+      if (CAM) m.quaternion.copy(CAM.quaternion); const v = eout(seg(e.t, 0, 0.14)) * (1 - ein(seg(u, 0.9, 1))); m.scale.set(0.66 * v + 0.001, 0.29 * v + 0.001, 1); }, t0);
+  }
+  // 허공의 자판: 가슴 앞에 화면 쪽으로 눕혀 뜸 · tHit(실행 키)에 번쩍이며 눌림
+  function keyboard(a, t0, tHit, tOut) {
+    const g = grpAt(a, KB.z), m = new THREE.Mesh(kit().vplane(), mat(kbdTex(), 0xffffff)); m.material.blending = THREE.NormalBlending; m.rotation.x = -KB.tilt; m.renderOrder = 7; g.add(m);
+    add(g, tOut - t0, (e) => { const t = t0 + e.t, k = eout(seg(t, t0, t0 + 0.18)) * (1 - ein(seg(t, tOut - 0.2, tOut))), hit = Math.max(0, 1 - Math.abs(t - tHit) / 0.12);
+      m.scale.set(0.78 * k + 0.001, 0.29 * (0.3 + 0.7 * k), 1); m.material.color.setScalar(1 + hit * 0.7); g.position.y = a.gp.y + KB.y - hit * 0.02; }, t0);
+  }
+  // 실행된 순간: 캐릭터 양옆에 꺾쇠 '<' 와 '/>' 가 가운데에서 벌어지며 서고(캐릭터가 <개발자 /> 의 알맹이가 됨) 등 뒤에 빛
+  function tagMarks(a, t0, dur) {
+    const E = a.E;
+    card(loc(a, 0, 1.25, -0.3, new THREE.Vector3()), tex().glow(), E.c[0], dur, (m, u, e) => { const k = eout(seg(e.t, 0, 0.2)) * (1 - sstep(0.75, 1, u)); m.scale.setScalar(3.2 * k + 0.01); m.material.opacity = 0.5 * k; }, t0);
+    for (const [i, s] of [[0, -1], [1, 1]]) card(new THREE.Vector3(), brkTex(i), 0xffffff, dur, (m, u, e) => { const k = eout(seg(e.t, 0, 0.22));
+      loc(a, s * lerp(0.2, i ? 0.72 : 0.6, k), 1.2 + Math.sin(e.t * 3 + i) * 0.012, 0.06, m.position); m.scale.setScalar(0.86 * k * (1 + 0.25 * Math.max(0, 1 - e.t / 0.25)) + 0.01); m.material.opacity = 1 - sstep(0.8, 1, u); }, t0, true);
+  }
+  // 코드 글자가 자판에서 터져 나와 포물선으로 흩어짐
+  function glyphs(a, n, t0, from) {
+    at(t0, () => { const E = a.E, c0 = loc(a, from[0], from[1], from[2], new THREE.Vector3()), cy = Math.cos(a.yaw), sy = Math.sin(a.yaw);
+      for (let i = 0; i < n; i++) { const an = rnd(-1.3, 1.3), sp = rnd(1.3, 3.1), vx = Math.sin(an) * sp, vz = rnd(-0.3, 0.9), v = new THREE.Vector3(cy * vx + sy * vz, rnd(2.4, 4.4), -sy * vx + cy * vz), s = rnd(0.17, 0.27), spin = rnd(-4, 4);
+        card(c0.clone(), glyTex((i + ((Math.random() * 3) | 0)) % GLY.length), pk(E), rnd(1.0, 1.5), (m, u, e) => { v.y -= e.dt * 6.5; m.position.addScaledVector(v, e.dt); m.scale.setScalar(s * Math.min(1, u * 8) + 0.001); m.rotateZ(spin * e.t); m.material.opacity = u < 0.75 ? 1 : (1 - u) / 0.25; }, i * 0.012, true); } });
+  }
+  // 명령 줄 이름 띠: '> 명령' 이 타자 치듯 찍히고(tType 초 동안), tRun 에 실행되어 이름 띠 <개발자 /> 로 바뀜 (tRun 이 없으면 명령 줄인 채로 사라짐)
+  function cmdLabel(a, delay, dur, cmd, tType, tRun) {
+    const E = a.E; let n = -1, ran = false;
+    label(E, a.gp, delay, dur, { cls: 'dev', html: '<span class="eb-cmd"><em>&gt;</em><u></u><s></s></span>', upd(el, t) {
+      if (tRun != null && t >= tRun) { if (!ran) { ran = true; el.innerHTML = `<i></i><b><span>&lt;</span>${nameOf(E)}<span> /&gt;</span></b><i></i>`; } return; }
+      const k = Math.min(cmd.length, Math.floor(cmd.length * clamp(t / tType, 0, 1))); if (k !== n) { n = k; const u = el.querySelector('u'); if (u) u.textContent = cmd.slice(0, k); } } });
+  }
+  // ----- 재질 없는 모델 (덩어리 + 철사) -----
+  const IDM = new THREE.Matrix4(), WG = new WeakMap();
+  let clipN = 0, devWarm = null;
+  const clipUse = (d) => { clipN = Math.max(0, clipN + d); if (G.renderer) G.renderer.localClippingEnabled = clipN > 0; };   // 자르는 면은 이 연출이 도는 동안만 켠다
+  const holoMat = (plane, wire) => new THREE.MeshBasicMaterial(wire ? { color: WIRE, skinning: true, wireframe: true, clippingPlanes: [plane] } : { color: CLAY, skinning: true, clippingPlanes: [plane], polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 });
+  // 진짜 몸의 재료를 본뜬 것 + 자르는 면 — 같은 셰이더에 '자르는 면 하나'가 붙은 변형 (warmDev 가 미리 만들어 둔다)
+  const bodyMat = (base, plane) => { const m = base.clone(); m.clippingPlanes = [plane]; return m; };
+  // 철사 도형: 간략 모델에서 꺾인 모서리(이웃한 두 면이 WIRE_COS 보다 많이 꺾임)와 끝 모서리만 — 삼각형을 전부 그리면 멀리서는 그냥 색 덩어리로 보인다
+  //  뼈대를 따라 움직이게 원래 도형의 꼭짓점·가중치를 그대로 쓰고, 모서리마다 납작한 삼각형(a, b, b)을 넣어 '철사 그리기'로 선만 나오게 한다 (외형마다 한 번)
+  const WIRE_COS = 0.955;
+  function wireGeo(src) {
+    let g = WG.get(src); if (g) return g;
+    const pos = src.attributes.position, ix = src.index ? src.index.array : null, nT = (ix ? ix.length : pos.count) / 3, weld = new Map(), id = new Int32Array(pos.count), ED = new Map(), out = [];
+    for (let i = 0; i < pos.count; i++) { const k = Math.round(pos.getX(i) * 2000) + ',' + Math.round(pos.getY(i) * 2000) + ',' + Math.round(pos.getZ(i) * 2000); let v = weld.get(k); if (v === undefined) { v = i; weld.set(k, i); } id[i] = v; }   // 같은 자리의 꼭짓점은 하나로 (이음매)
+    for (let t = 0; t < nT; t++) { const A = ix ? ix[t * 3] : t * 3, B = ix ? ix[t * 3 + 1] : t * 3 + 1, C = ix ? ix[t * 3 + 2] : t * 3 + 2;
+      _a.fromBufferAttribute(pos, A); _b.fromBufferAttribute(pos, B); _c.fromBufferAttribute(pos, C); _d.subVectors(_b, _a); _e.subVectors(_c, _a); _d.cross(_e); if (_d.lengthSq() < 1e-14) continue; _d.normalize();
+      for (const [p, q] of [[A, B], [B, C], [C, A]]) { const u = id[p], v = id[q]; if (u === v) continue; const k = u < v ? u * 1e6 + v : v * 1e6 + u, e = ED.get(k); if (e) { e.n++; e.d = Math.min(e.d, e.x * _d.x + e.y * _d.y + e.z * _d.z); } else ED.set(k, { p, q, n: 1, d: 1, x: _d.x, y: _d.y, z: _d.z }); } }
+    for (const e of ED.values()) if (e.n === 1 || e.d < WIRE_COS) out.push(e.p, e.q, e.q);
+    g = new THREE.BufferGeometry(); for (const k of ['position', 'skinIndex', 'skinWeight']) g.setAttribute(k, src.attributes[k]); g.setIndex(out); g.boundingSphere = src.boundingSphere; WG.set(src, g); return g;
+  }
+  // 캐릭터에 '재질 없는 모델'을 겹쳐 건다: 간략 모델의 남색 덩어리 + 청록 철사는 자르는 면 위쪽만, 진짜 몸은 아래쪽만 그린다 (끝나면 fin 이 되돌림)
+  function holo(a) {
+    const r = a.rig, up = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), dn = new THREE.Plane(new THREE.Vector3(0, -1, 0), 999), clay = holoMat(up, false), wire = holoMat(up, true), base = r.mesh.material, body = bodyMat(base, dn), lo = r.meshLo.geometry;
+    const ms = [[lo, clay], [wireGeo(lo), wire]].map(([geo, mt], i) => { const m = new THREE.SkinnedMesh(geo, mt); m.bind(r.skel, IDM); m.frustumCulled = false; m.visible = false; m.renderOrder = i; r.root.add(m); return m; });
+    const gear = [r.helmet, r.hat, r.vest, r.pack, r.vestL, r.vestR].filter(Boolean).map((g) => ({ g, v: g.visible, y: g === r.helmet || g === r.hat ? 1.8 : 1.5, on: true }));
+    r.mesh.material = body; clipUse(1);
+    a.fin.push(() => { for (const m of ms) if (m.parent) m.parent.remove(m); clay.dispose(); wire.dispose(); if (r.mesh.material === body) r.mesh.material = base; body.dispose(); for (const q of gear) q.g.visible = q.v; clipUse(-1); });
+    a.holo = { up, dn, ms, gear };
+  }
+  // y(발바닥 기준) 위쪽이 재질 없는 모델 · on: 모델을 쓰는 중인가 · 장비(조끼·가방·헬멧)는 면이 그 높이를 지나야 보이고, 달리는 순간 반짝
+  function holoCut(a, y, on) {
+    const H = a.holo; if (!H || a.dead) return; const h = on ? a.gp.y + y : 999, show = on && y < 2.05; H.up.constant = -h; H.dn.constant = h; for (const m of H.ms) m.visible = show;
+    for (const q of H.gear) { const vis = !on || y > q.y; if (vis && !q.on && q.v) { q.g.getWorldPosition(_c); glow(_c, 0xffffff, 0.7, 0.25); burst(_c, a.E, 8, 1.2, { sq: 1, g: 0 }); } q.on = vis; q.g.visible = q.v && vis; }
+  }
+  // 개발자 연출 재료를 미리 한 번 그려 둔다 (관리자 계정 · 관리자 파티원이 보일 때만): 그림 올리기 + '자르는 면'이 붙은 셰이더 둘(덩어리·진짜 몸)
+  function warmDev(L) {
+    if (devWarm || !L || !L.scene || !L.rig || !L.rig.root.parent || !G.renderer) return;
+    const rg = L.rig, pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), -999), tmp = [new THREE.SkinnedMesh(rg.meshLo.geometry, holoMat(pl, false)), new THREE.SkinnedMesh(rg.mesh.geometry, bodyMat(rg.mesh.material, pl))];
+    devWarm = tmp.map((m) => m.material);   // 재료는 버리지 않는다 (프로그램 유지)
+    for (const m of tmp) { m.bind(rg.skel, IDM); m.frustumCulled = false; rg.root.add(m); }
+    const g = kit().geo(), grp = new THREE.Group();
+    for (const t of [gridTex, cursorTex, kbdTex, dsigTex, scanTex, () => brkTex(0), () => brkTex(1), () => btnTex('play', false), () => btnTex('play', true), () => btnTex('stop', false), () => btnTex('stop', true), ...GLY.map((_, i) => () => glyTex(i))]) { const o = new THREE.Mesh(g.plane, mat(t(), 0)); o.frustumCulled = false; o.material.opacity = 0; o.scale.setScalar(0.001); grp.add(o); }
+    grp.position.copy(L.cam.position).add(_a.set(0, 0, -1).applyQuaternion(L.cam.quaternion)); L.scene.add(grp);
+    const R = G.renderer, clip = R.localClippingEnabled, vis = rg.root.visible; R.localClippingEnabled = true; rg.root.visible = true;
+    try { R.render(L.scene, L.cam); } catch (e) { /* 처음 그릴 때 */ }
+    R.localClippingEnabled = clip; rg.root.visible = vis; for (const m of tmp) rg.root.remove(m); L.scene.remove(grp);
+  }
+  MOT.devIn = { kind: 'in', dur: 6.3, keys: [[0, 'tpose'], [DV.play, 'tpose'], [DV.play + 0.3, 'lookHands', 0.3, 4], [3.78, 'lookHands'], [DV.type, 'type', 0.3], [4.6, 'type'], [4.74, 'enterUp', 0.14], [DV.enter + 0.02, 'enterHit', 0.08], [5.0, 'enterHit'], [5.32, 'crossNod', 0.32], [5.85, 'crossNod']],
+    body(t, B) { B.vis = t > DV.drop; if (t < DV.drop + 0.24) { const u = seg(t, DV.drop, DV.drop + 0.24); B.s = 0.55 + 0.45 * eout(u) + Math.sin(Math.PI * u) * 0.07; } else if (t > DV.play && t < DV.play + 0.2) B.y = 0.04 * Math.sin((t - DV.play) / 0.2 * Math.PI); },   // 놓는 순간 통 튀며 커짐 · ▶ 에 움찔
+    fx(a) {
+      const E = a.E, gp = a.gp, cur = DVP.in; warmDev(LOB); holo(a);
+      grid(a, 0, 6.2, [DV.drop, DV.s1, DV.play, DV.enter]);
+      // 끌어다 놓기
+      prefab(a, 0.05, DV.drop, cur); cursor(a, 0.05, DV.play + 0.3, cur, (t) => t < DV.drop || (t > DV.s0 && t < DV.s1) || Math.abs(t - DV.play) < 0.07);
+      click(a, cur(DV.drop), DV.drop); ring(gp, E.c[0], 2.2, 0.5, DV.drop, sqTex()); shake(0.03, DV.drop);
+      selBox(a, DV.drop, DV.play + 0.3 - DV.drop, (t) => { const out = seg(t, DV.play, DV.play + 0.3); return [0, DVB.H / 2, 0, eout(seg(t, DV.drop, DV.drop + 0.16)) * (1 + 0.12 * Math.sin(Math.PI * seg(t, DV.drop, DV.drop + 0.28))) * (1 + 0.55 * eout(out)), t > DV.s1 && t < DV.play ? E.c[1] : E.c[0], 1 - out]; });
+      gizmo(a, DV.drop + 0.05, DV.play);
+      statusChip(a, DV.drop + 0.08, DV.play + 0.22 - DV.drop, (t) => ({ a: t > DV.drop + 0.16, b: t > DV.drop + 0.28, p: seg(t, DV.s0, DV.s1), done: t >= DV.s1, label: 'tex', fin: 'build OK' }));
+      // 텍스처 훑기
+      scanFrame(a, DV.s0, DV.s1, true); click(a, cur(DV.s0), DV.s0);
+      at(DV.s1, () => { ring(gp, E.c[1], 1.6, 0.45, 0, sqTex()); loc(a, 0, 1.95, 0, _c); glow(_c, 0xffffff, 1.6, 0.3); });
+      // ▶ 실행
+      button(a, 'play', DV.s1 + 0.06, DV.play, DV.play + 0.3); click(a, BTN, DV.play);
+      flash(1.4, 0.3, DV.play); shake(0.04, DV.play); ring(gp, E.c[1], 3.0, 0.7, DV.play, sqTex()); ring(gp, E.c[2], 1.7, 0.45, DV.play + 0.03, sqTex());
+      at(DV.play, () => { chestW(a.rig, _c); glow(_c, E.c[1], 3.2, 0.4); burst(_c, E, 46, 3.6, { sq: 1, g: 0 }); });
+      // 자판 · 명령 줄 · 실행 키
+      keyboard(a, DV.type - 0.25, DV.enter, 5.2);
+      cmdLabel(a, DV.type - 0.12, 6.2 - (DV.type - 0.12), `party.join("${nameOf(E)}")`, 0.62, DV.enter - (DV.type - 0.12));
+      tagMarks(a, DV.enter, 1.3); glyphs(a, 14, DV.enter, [0, KB.y + 0.05, KB.z]);
+      ring(gp, E.c[0], 3.2, 0.75, DV.enter, sqTex()); ring(gp, E.c[1], 1.9, 0.5, DV.enter + 0.04, sqTex()); sigil(gp, dsigTex(), 3.0, 1.38, E.c[0], 0.5, DV.enter); flash(1.6, 0.35, DV.enter); shake(0.08, DV.enter);
+      at(DV.enter, () => { loc(a, 0, KB.y, KB.z, _c); glow(_c, 0xffffff, 2.2, 0.3); burst(_c, E, 60, 4.2, { sq: 1, g: -3 });
+        const Q = P(); for (let i = 0; i < 14; i++) { const an = (i / 14) * TAU + rnd(-0.1, 0.1), rr = rnd(0.75, 1.05), x = gp.x + Math.cos(an) * rr, z = gp.z + Math.sin(an) * rr, c = i % 3 ? E.c[1] : E.c[0], v = rnd(2.6, 3.6);   // 둘레에서 솟는 코드 줄기 (네모 조각이 줄지어 올라감)
+          for (let k = 0; k < 6; k++) EM(Q, _b.set(x, gp.y + 0.05 + k * 0.13, z), 0, v, 0, c, 0.04, 0.5 + k * 0.03, { sq: 1, so: 0.75, g: 0, drag: 1.2 }); } });
+    },
+    tick(a, r, t, dt) {
+      const Q = P(), E = a.E; holoCut(a, t < DV.s0 ? -0.06 : scanY(t, DV.s0, DV.s1, true), t < DV.s1 + 0.02);
+      if (t > DV.s0 && t < DV.s1) {   // 사방에서 날아와 훑는 틀에 꽂히는 자료 조각 + 단면에서 튀는 빛
+        const y = scanY(t, DV.s0, DV.s1, true), n = Math.ceil(dt * 80);
+        for (let i = 0; i < n; i++) { const s = Math.random() < 0.5 ? -1 : 1, side = Math.random() < 0.3, an = Math.random() * TAU, rr = rnd(1.1, 1.7), L = rnd(0.28, 0.45);
+          loc(a, side ? s * CORNER[0] : rnd(-0.9, 0.9), y, side ? rnd(-0.3, 0.3) : s * CORNER[2], _b); _a.set(a.gp.x + Math.cos(an) * rr, a.gp.y + y + rnd(-0.5, 0.7), a.gp.z + Math.sin(an) * rr);
+          EM(Q, _a, (_b.x - _a.x) / L, (_b.y - _a.y) / L, (_b.z - _a.z) / L, pk(E), rnd(0.03, 0.05), L, { sq: 1, so: 0.85, g: 0, drag: 0 }); }
+        if (Math.random() < dt * 60) { loc(a, rnd(-0.28, 0.28) * (y > 1.32 && y < 1.6 ? 3 : 1), y, rnd(-0.14, 0.14), _b); EM(Q, _b, 0, rnd(0.1, 0.4), 0, 0xffffff, rnd(0.025, 0.045), rnd(0.15, 0.3), { sq: 1, so: 0.5, g: 0 }); }
+      } else if (t > DV.type - 0.05 && t < DV.enter - 0.2) { if (Math.random() < dt * 34) { const v = rnd(-0.09, 0.09); loc(a, rnd(-0.27, 0.27), KB.y + v * Math.cos(KB.tilt), KB.z - v * Math.sin(KB.tilt), _b); EM(Q, _b, 0, 0.25, 0, Math.random() < 0.3 ? E.c[1] : 0xffffff, 0.035, 0.14, { sq: 1, so: 0.6, g: 0 }); } }   // 눌린 자판이 반짝
+      else if (t > DV.enter && t < 6.0 && Math.random() < dt * 26) { const an = Math.random() * TAU, rr = rnd(0.3, 1.2); EM(Q, _b.set(a.gp.x + Math.cos(an) * rr, a.gp.y + 0.05, a.gp.z + Math.sin(an) * rr), 0, rnd(0.5, 1.3), 0, pk(E), rnd(0.025, 0.045), rnd(0.8, 1.4), { sq: 1, so: 0.7, g: 0 }); }
+    } };
+  MOT.devOut = { kind: 'out', dur: 3.9, keys: [[0, 'stand'], [0.3, 'stand', 0.3], [0.62, 'devBye', 0.3], [1.3, 'devBye'], [DX.stop + 0.25, 'tpose', 0.25, 3]],
+    body(t, B) { if (t > DX.grab) { const s = mini(t); B.s = s.s; B.x = s.x; B.y = s.y; B.z = s.z; B.vis = t < DX.gone; } },
+    fx(a) {
+      const E = a.E, gp = a.gp, cur = DVP.out; warmDev(LOB); holo(a);
+      cmdLabel(a, 0.35, 3.3, 'party.leave()', 0.7);
+      // ■ 정지 → 편집 상태로
+      button(a, 'stop', 0.9, DX.stop, DX.stop + 0.3); cursor(a, 0.9, DX.gone + 0.1, cur, (t) => Math.abs(t - DX.stop) < 0.07 || (t > DX.s0 && t < DX.s1) || t > DX.grab); click(a, BTN, DX.stop);
+      envFx(0.45, (u) => { const k = 1 - 0.22 * (1 - u); return [k, k]; }, DX.stop); ring(gp, E.c[0], 2.6, 0.6, DX.stop, sqTex()); shake(0.03, DX.stop);
+      grid(a, DX.stop - 0.08, 3.85 - (DX.stop - 0.08), [DX.stop, DX.s1, DX.gone]);
+      selBox(a, DX.stop, DX.gone - DX.stop, (t) => { const s = mini(t); return [s.x, s.y + DVB.H / 2 * s.s, s.z, s.s * eout(seg(t, DX.stop, DX.stop + 0.16)), t > DX.s1 ? E.c[1] : E.c[0], 1 - sstep(DX.gone - 0.12, DX.gone, t)]; });
+      gizmo(a, DX.stop + 0.05, DX.grab);
+      statusChip(a, DX.stop + 0.1, DX.grab + 0.1 - DX.stop, (t) => ({ a: true, b: true, p: 1 - seg(t, DX.s0, DX.s1), done: t >= DX.s1, label: 'tex', fin: 'unloaded' }));
+      // 텍스처 벗기기 → 집어서 끌고 나감
+      scanFrame(a, DX.s0, DX.s1, false); click(a, cur(DX.s0), DX.s0); click(a, cur(DX.grab), DX.grab);
+      at(DX.gone, () => { const c = cur(DX.gone); loc(a, c[0], c[1], c[2], _c); glow(_c, E.c[2], 1.4, 0.3); ring(gp, E.c[0], 1.6, 0.5, 0, sqTex()); });
+      // 빈자리에 글자 커서만 깜빡
+      const car = tint(new THREE.BoxGeometry(0.05, 0.36, 0.012), E.c[0], null); car.rotation.y = a.yaw; loc(a, 0, 0.95, 0, car.position); add(car, 0.55, (e) => { car.visible = Math.sin(e.t * 20) > -0.2; }, DX.gone);
+    },
+    tick(a, r, t, dt) {
+      holoCut(a, t < DX.s0 ? 2.1 : scanY(t, DX.s0, DX.s1, false), t > DX.stop);
+      if (t > DX.s0 && t < DX.s1) {   // 벗겨진 조각이 훑는 틀에서 밖으로 흩어짐
+        const Q = P(), E = a.E, y = scanY(t, DX.s0, DX.s1, false), n = Math.ceil(dt * 70);
+        for (let i = 0; i < n; i++) { const s = Math.random() < 0.5 ? -1 : 1, side = Math.random() < 0.3, x = side ? s * CORNER[0] : rnd(-0.9, 0.9), z = side ? rnd(-0.3, 0.3) : s * CORNER[2]; loc(a, x, y, z, _b); loc(a, x * 2.2, y + rnd(-0.2, 0.9), z * 3.5, _a);
+          EM(Q, _b, (_a.x - _b.x) * 2.2, (_a.y - _b.y) * 2.2, (_a.z - _b.z) * 2.2, pk(E), rnd(0.03, 0.05), rnd(0.3, 0.5), { sq: 1, so: 0.85, g: 0, drag: 1.5 }); }
+      }
+    } };
   // ===== 작별 몸짓 (내가 파티에서 나왔을 때 내 캐릭터): 대상의 몸짓 + 바닥 문양 · 위로 흩어지는 빛 =====
   function byeMot(g) { return { kind: 'bye', dur: 2.4, keys: [[0, 'stand'], [0.4, g, 0.4], [1.8, g], [2.1, 'stand', 0.3]],
     fx(a) { const E = a.E, gp = a.gp; sigil(gp, sigilTex(), 2.2, 2.2, E.c[0], 0.6, 0.1); ring(gp, E.c[0], 2.0, 0.6, 0.45); glow(hipsAt(a, 0.7).clone(), E.c[2], 2.4, 0.4, 0.45); label(E, gp, 0.3, 1.9);
@@ -30088,11 +30471,13 @@ const PartyFx = (() => {
     const mo = E.mo[dir === 'in' ? 0 : dir === 'out' ? 1 : 2], M = dir === 'back' ? MOT.back : dir === 'bye' ? byeMot(mo) : MOT[mo]; if (!M || !rig) return;
     const old = AN.get(k); if (old) stop(L, k, old);
     SC = L.scene; CAM = L.cam; LOB = L;
-    const p = rig.root.position, a = { k, E, M, dir, t: 0, rig, yaw: rig.baseYaw != null ? rig.baseYaw : 0.3, gp: { x: p.x, y: p.y, z: p.z, snow: p.y < 0.05 && typeof WINTER !== 'undefined' && WINTER.on() }, o: { t: 0 }, ghost: dir === 'out' && k !== 'me' ? rig : null, back: dir === 'out' && k === 'me', gunShown: false };
+    const p = rig.root.position, a = { k, E, M, dir, t: 0, rig, yaw: rig.baseYaw != null ? rig.baseYaw : 0.3, gp: { x: p.x, y: p.y, z: p.z, snow: p.y < 0.05 && typeof WINTER !== 'undefined' && WINTER.on() }, o: { t: 0 }, ghost: dir === 'out' && k !== 'me' ? rig : null, back: dir === 'out' && k === 'me', gunShown: false, fin: [] };
     AN.set(k, a); M.fx(a);
     if (typeof Audio !== 'undefined' && Audio.partyFx) Audio.partyFx(dir === 'bye' || dir === 'back' ? 'bye' : mo);
   }
-  function stop(L, k, a) { const r = rigOf(L, k, a); if (r) { r.body.scale.set(1, 1, 1); r.gunMount.visible = true; } if (a.ghost) dropGhost(L, a.ghost); AN.delete(k); }
+  // 동작이 리그에 걸어 둔 것(철사 모델 · 바꿔 낀 재료 · 숨긴 장비)을 되돌린다 — 끝났을 때 · 중간에 끊겼을 때 · 리그가 사라졌을 때
+  function fin(a) { a.dead = true; const F = a.fin; a.fin = []; for (const f of F || []) { try { f(); } catch (e) { /* */ } } }
+  function stop(L, k, a) { fin(a); const r = rigOf(L, k, a); if (r) { r.body.scale.set(1, 1, 1); r.gunMount.visible = true; } if (a.ghost) dropGhost(L, a.ghost); AN.delete(k); }
   function dropGhost(L, g) { const i = GH.indexOf(g); if (i >= 0) GH.splice(i, 1); if (g.root.parent) g.root.parent.remove(g.root); g.skel.dispose(); }
   // 한 프레임: 이미 쉬는 자세(Lobby.pose)가 놓인 리그 위에 동작을 덮어 쓴다
   function drive(a, r, dt) {
@@ -30101,7 +30486,7 @@ const PartyFx = (() => {
     const B = Object.assign(BB, B0); if (M.body) M.body(t, B, a);
     let i = 0; while (i < K.length - 1 && t >= K[i + 1][0]) i++;
     const k0 = K[i], k1 = K[i + 1]; let w = 0;
-    if (k1) { const b = k1[2] || 0.35; w = sstep(k1[0] - b, k1[0], t); }
+    if (k1) { const b = k1[2] || 0.35; w = sstep(k1[0] - b, k1[0], t); if (k1[3]) w = stepQ(w, k1[3]); }   // 넷째 값: 몇 칸으로 끊어 넘어갈지 (뚝뚝 끊기는 '애니메이션 시작')
     r.root.rotation.y = a.yaw; a.o.t = t;
     if (!k1 || w <= 0) evalKey(r, k0[1], B, a.o); else if (w >= 1) evalKey(r, k1[1], B, a.o);
     else { evalKey(r, k0[1], B, a.o); grab(r, KA); evalKey(r, k1[1], B, a.o); mixTo(r, KA, 1 - w); }
@@ -30122,13 +30507,14 @@ const PartyFx = (() => {
     const pid = typeof Party !== 'undefined' ? Party.id() : null, ids = new Map();
     for (const f of infos || []) if (f && f.uid) ids.set(f.uid, f);
     const prev = lastIds, ok = fresh() && !L.sc; lastIds = ids; pend = [];
+    if (ids.size && typeof Cloud !== 'undefined' && Cloud.staffAsk) { Cloud.staffAsk([...ids.keys()]); if (fresh()) for (const f of ids.values()) if ((Array.isArray(f.ent) ? f.ent : [f.ent]).includes('dev')) { warmDev(L); break; } }   // 파티원이 관리자인지 미리 물어 두고, 개발자 연출 재료도 미리 그려 둠 (로비가 돌고 있을 때만 — 경기 화면에 로비를 그리지 않게)
     const gone = new Map();
     if (ok && prev && pid && pid === lastPid) {
-      for (const [u, f] of ids) if (!prev.has(u)) { const E = valid(f.ent, f.name); if (E) pend.push([u, E]); }
-      for (const [u, f] of prev) if (!ids.has(u)) { const E = valid(f.ent, f.name); if (E) gone.set(u, E); }
+      for (const [u, f] of ids) if (!prev.has(u)) { if (unsure(f)) { pend.push([u, null, 'wait', f]); continue; } const E = valid(f.ent, f.name, u); if (E) pend.push([u, E]); }
+      for (const [u, f] of prev) if (!ids.has(u)) { const E = valid(f.ent, f.name, u); if (E) gone.set(u, E); }
     }
-    if (ok && pid && pid !== lastPid && !Party.isLeader()) { const E = byId(mine()); if (E) pend.push(['me', E, 'in']); }   // 내가 남의 파티에 들어감
-    if (ok && lastPid && !pid) { const E = byId(mine()); if (E) pend.push(['me', E, 'bye']); }   // 내가 파티에서 나옴
+    if (ok && pid && pid !== lastPid && !Party.isLeader()) { const E = mineE(); if (E) pend.push(['me', E, 'in']); }   // 내가 남의 파티에 들어감
+    if (ok && lastPid && !pid) { const E = mineE(); if (E) pend.push(['me', E, 'bye']); }   // 내가 파티에서 나옴
     lastPid = pid;
     return gone;
   }
@@ -30137,8 +30523,18 @@ const PartyFx = (() => {
   // 새 리그가 만들어진 뒤: 같은 uid 의 유령은 바로 치우고, 들어온 사람은 입장
   function bound(L) {
     for (const m of L.mates) { const a = AN.get(m.uid); if (m.uid && a && a.ghost) stop(L, m.uid, a); }
-    for (const [u, E, dir] of pend) { if (u === 'me') play(L, 'me', E, dir, L.rig); else { const r = L.mates.find((m) => m.uid === u); if (r) play(L, u, E, 'in', r); } }
+    for (const [u, E, dir, f] of pend) { if (u === 'me') play(L, 'me', E, dir, L.rig); else { const r = L.mates.find((m) => m.uid === u); if (!r) continue; if (dir === 'wait') { WAIT.set(u, { f, t: 0 }); r.root.visible = false; } else play(L, u, E, 'in', r); } }
     pend = [];
+  }
+  // 관리자인지 확인을 기다리는 입장 (uid → { f 파티 정보, t 기다린 시간 }): 답이 오면(또는 2.5초가 지나면) 확인된 연출로 입장 — 그동안 그 캐릭터는 숨김
+  const WAIT = new Map();
+  function tickWait(dt, L) {
+    for (const [u, w] of WAIT) {
+      const r = (L.mates || []).find((m) => m.uid === u); if (!r) { WAIT.delete(u); continue; }
+      w.t += dt;
+      if (!unsure(w.f) || w.t > 2.5) { WAIT.delete(u); const E = valid(w.f.ent, w.f.name, u); if (E) play(L, u, E, 'in', r); }
+      else r.root.visible = false;
+    }
   }
   // 파티원 자리: uid 마다 한 번 정하면 그대로 (나간 사람 유령과 겹치지 않게 빈자리부터)
   const SPOT = new Map();
@@ -30153,11 +30549,13 @@ const PartyFx = (() => {
     const now = performance.now(); if (alive && now - alive > 1500 && (AN.size || LIVE.length || BAN.length)) clear(L);   // 경기·숨긴 탭에서 돌아옴: 하다 만 연출은 끝냄
     alive = now; SC = L.scene; CAM = L.cam; LOB = L;
     if (!warmed) warm(L);
+    if (!devWarm && myRole()) warmDev(L);   // 관리자 계정: 개발자 연출 재료도 미리 (로그인이 끝난 뒤 한 번)
     P();   // 로비 입자 풀을 계속 써 둔다 (안 쓰면 치워졌다가 다음 연출 때 셰이더를 다시 만들어 멈칫함)
     if (L.sc) { clear(L); return; }   // 상점 진열 중: 모두 그만
+    if (WAIT.size) tickWait(dt, L);
     for (const [k, a] of AN) {
       const r = rigOf(L, k, a);
-      if (!r || !r.root.parent) { AN.delete(k); if (a.ghost) dropGhost(L, a.ghost); continue; }
+      if (!r || !r.root.parent) { fin(a); AN.delete(k); if (a.ghost) dropGhost(L, a.ghost); continue; }
       if (a.ghost) { L.pose(r, L.t + (r.ph || 0), r.baseYaw || 0); r.root.visible = L.fk < 0.5; }
       drive(a, r, dt);
       if (a.t >= a.M.dur) { stop(L, k, a); if (a.back) play(L, 'me', a.E, 'back', L.rig); }   // 퇴장 미리 보기: 사라진 내 캐릭터가 다시 나타남 (같은 프레임에 이어서 돌아 깜빡이지 않음)
@@ -30165,16 +30563,16 @@ const PartyFx = (() => {
     tickFx(dt); tickEnv(dt, L); tickBan(dt);
     for (const [u] of SPOT) if (!(lastIds && lastIds.has(u)) && !GH.some((g) => g.uid === u)) SPOT.delete(u);
   }
-  function clear(L) { for (const [k, a] of [...AN]) stop(L, k, a); for (const b of BAN) b.el.remove(); BAN.length = 0; for (const e of LIVE) if (e.o) { if (e.o.parent) e.o.parent.remove(e.o); free(e.o); } LIVE.length = 0; ENV.length = 0; tickEnv(0, L); }
+  function clear(L) { WAIT.clear(); for (const [k, a] of [...AN]) stop(L, k, a); for (const b of BAN) b.el.remove(); BAN.length = 0; for (const e of LIVE) if (e.o) { if (e.o.parent) e.o.parent.remove(e.o); free(e.o); } LIVE.length = 0; ENV.length = 0; tickEnv(0, L); }
   // 카메라 흔들림 (Lobby.update 끝에서)
   function cam(c, dt) { if (SHK < 0.002) { SHK = 0; return; } c.position.x += (Math.random() - 0.5) * SHK; c.position.y += (Math.random() - 0.5) * SHK; SHK *= Math.pow(0.015, dt); }
   // 미리 보기: 내 캐릭터로 입장(in)·작별(bye) — 계정 창에서
-  function preview(id, dir = 'in') { const E = byId(id), L = LOB || (typeof Lobby !== 'undefined' ? Lobby : null); if (!E || !L || !L.rig) return false; play(L, 'me', E, dir, L.rig); return true; }
+  function preview(id, dir = 'in') { const E = withRole(byId(id), myRole()), L = LOB || (typeof Lobby !== 'undefined' ? Lobby : null); if (!E || !L || !L.rig) return false; play(L, 'me', E, dir, L.rig); return true; }
 
   // ---------- 계정 창 탭: 입장 연출 고르기 ----------
   function profTab(B) {
-    const cur = pref(), act = mine(), list = ENT.filter(avail);
-    const head = document.createElement('p'); head.className = 'micro'; head.textContent = '새 티어(노바·셀레스티얼·이클립스·제니스)나 어려운 칭호를 가진 사람은 파티에 들어오고 나갈 때 로비에서 캐릭터가 직접 등장·퇴장합니다. 같은 파티 모두의 화면에 보입니다.'; B.appendChild(head);
+    const cur = pref(), act = mine(), list = ENT.filter((E) => avail(E) && (!E.staff || ok(E)));   // 관리자 전용 연출은 관리자 계정에만 보인다
+    const head = document.createElement('p'); head.className = 'micro'; head.textContent = '새 티어(노바·셀레스티얼·이클립스·제니스)나 어려운 칭호를 가진 사람은 파티에 들어오고 나갈 때 로비에서 캐릭터가 직접 등장·퇴장합니다. 같은 파티 모두의 화면에 보입니다.' + (myRole() ? ` ${nameOf(ENT[0])} 계정은 전용 연출과 함께 모든 연출을 가지고 있습니다.` : ''); B.appendChild(head);
     const L = document.createElement('div'); L.className = 'prof-ti ent-list';
     const row = (key, title, sub, on, lock, onClick, prev) => {
       const b = document.createElement('div'); b.className = 'ti-row ent-row' + (on ? ' on' : '') + (lock ? ' lock' : ''); b.tabIndex = 0;
@@ -30189,7 +30587,7 @@ const PartyFx = (() => {
     row('off', '<span class="ent-auto">끄기</span>', ['파티에 들어가고 나갈 때 연출 없음', '다른 사람의 연출은 그대로 보입니다'], cur === 'off', false, () => set('off'));
     for (const E of list) {
       const has = ok(E), T = tiOf(tiKey(E)), hex = '#' + E.c[0].toString(16).padStart(6, '0');
-      const how = E.t != null ? `랭크 ${nameOf(E)} 도달 (최고 기록)` : (T && T.desc) || '';
+      const how = E.staff ? '개발자·부개발자 계정 전용' : E.t != null ? `랭크 ${nameOf(E)} 도달 (최고 기록)` : (T && T.desc) || '';
       let pr = ''; try { pr = !has && T && T.prog ? '진행: ' + T.prog() : ''; } catch (e) { pr = ''; }
       row(E.id, `<span class="ent-nm" style="--ec:${hex}">${nameOf(E)}</span>`, [`입장: ${MOVE[E.mo[0]] || ''}<br>퇴장: ${MOVE_OUT[E.mo[1]] || ''}`, has ? (cur === E.id ? '사용 중' : '얻음 · 눌러서 고르기') + ' — ' + how : `잠김 — ${how}${pr ? ' · ' + pr : ''}`], cur === E.id, !has,
         () => { if (!has) { HUD.lobbyNote(`아직 얻지 못했습니다 — ${how}`); return; } set(E.id); },
@@ -30201,8 +30599,10 @@ const PartyFx = (() => {
   const owned = () => ENT.filter(ok);
   // 연출 한 줄 설명 (계정 창)
   const MOVE = { ceremony: '시상식 — 솟아오른 1위 시상대 · 하늘에서 내려온 트로피를 번쩍 · 조명 · 색종이', armillary: '세 겹 혼천의 고리에 싸여 강하 · 착지하면 고리가 별 왕관으로', crater: '불꼬리 낙하 · 주먹으로 땅을 쳐 바위판이 분화구처럼 솟음 · 목을 꺾어 풂', eclipse: '해를 가리는 달 · 개기일식의 그림자에서 솟아 다이아몬드 링과 함께 팔을 펼침', smokeIn: '연막탄 연기 속에서 걸어 나와 경례 · 가슴에 훈장 셋',
+    devIn: '편집기에 끌어다 놓은 T 자세 모델에 텍스처가 입혀지고, ▶ 실행에 깨어나 허공의 자판으로 명령을 실행',
     wingsIn: '큰 날개로 날갯짓하며 강림 · 날개가 깃털로 흩어지고 광륜', nova: '별이 부풀어 노바로 터지고 그 조각이 떨어져 착지 · 푸른 수정이 솟음', throne: '용암에서 솟는 쇠 옥좌에 턱을 괴고 앉아 있다 일어섬', clockIn: '거꾸로 도는 큰 시계 · ∞ 빛이 감기며 몸이 빚어짐 · 열두 시 종', escape: '백룸 복도 문틈에서 몸을 던져 탈출 · 낚아채려는 검은 손', bladeRain: '하늘에서 붉은 칼이 비처럼 꽂히고 번개 속에 나타나 포효' };
   const MOVE_OUT = { curtain: '커튼콜 — 인사하고 손을 흔들면 붉은 커튼이 닫혔다 열리고 빈자리', ascendStar: '별 왕관이 혼천의로 펼쳐져 빠르게 돌고 별이 되어 하늘로', devour: '땅을 치면 바위판이 이빨처럼 덮쳐 불길과 함께 삼킴', umbra: '다시 일식 — 팔짱 낀 채 그림자 속으로 가라앉음', smokeOut: '마지막 경례 · 연막 속으로 돌아서 걸어가고 군번줄만 반짝',
+    devOut: '■ 정지에 T 자세로 굳어 철사 모델이 되고, 커서에 집혀 나가면 글자 커서만 깜빡',
     wingsOut: '광륜과 날개를 펴고 날갯짓하며 빛기둥을 따라 날아오름', novaOut: '가슴에 빛을 모아 솟구치고 하늘에서 다시 별로 터짐', throneOut: '옥좌에 앉아 턱을 괸 채 용암 속으로 가라앉음', clockOut: '시계가 빨리 돌고 몸이 보랏빛 모래로 흘러내림', noclip: '바닥에 열린 백룸 구멍으로 떨어짐', swordOut: '꽂힌 큰 검을 뽑아 치켜들자 번개를 맞고 사라짐' };
 
   return { ENT, MOT, KP, mine, mineList, valid, ok, avail, nameOf, owned, team, ghost, bound, spot, update, cam, clear, preview, profTab, play, get anims() { return AN; }, get ghosts() { return GH; }, get live() { return LIVE.length; },
@@ -32004,8 +32404,9 @@ const Ladder = (() => {
   function champName(k, name) { if (!data) return null; const t = topOf(k); return !!(t && name && t.name === name); }
   // 칭호·테두리 id 가 1위 보상이면 그 랭킹 종류
   const kindOfTitle = (id) => ORDER.find((k) => KINDS[k].title === id) || null;
-  // 이 사람(name)이 이 칭호·테두리를 달 수 있나 (1위 보상이 아니면 true)
-  function allowed(id, name) { const k = kindOfTitle(id); if (!k) return true; const r = champName(k, name); return r === null ? true : r; }
+  // 이 사람(name · 계정 uid)이 이 칭호·테두리를 달 수 있나 (1위 보상이 아니면 true)
+  //  v23 관리자(개발자·부개발자) 계정은 모든 칭호를 가진다 — 서버에 확인된 계정만 (Cloud.staffRole, 10_cloud.js)
+  function allowed(id, name, uid) { const k = kindOfTitle(id); if (!k) return true; if (uid && Cloud.staffRole(uid, name)) return true; const r = champName(k, name); return r === null ? true : r; }
   // 진행 표시 (프로필 칭호 목록)
   function posText(k) {
     if (!Cloud.user) return '로그인 필요';
@@ -34661,14 +35062,18 @@ const Prof = (() => {
   // 하드코어 최고 티어 번호 (한 판도 안 했으면 -1)
   function hcPeakT() { const H = Rank.hc; return (H.games || 0) > 0 ? Rank.hcTierOf(Math.max(H.peak || 0, H.rp || 0)).t : -1; }
   const tiOf = (id) => TI.find((t) => t.id === id) || null;
+  // v23 개발자·부개발자 계정은 모든 사진·테두리·칭호를 가진다 (파티 입장 연출도 — 10_partyfx.js 가 칭호의 ok 를 본다)
+  //  own = 조건을 직접 채웠는가 (목록에 '개발자 권한'으로 구분해 보여 줌) · 다른 기기는 그 계정이 관리자인지 서버에 확인하고 보여 준다 (Cloud.staffRole)
+  const staff = () => typeof Dev !== 'undefined' && Dev.is();
+  for (const t of TI) { const own = t.ok; t.own = own; t.ok = () => staff() || own(); }
 
   // ---------- 상태 ----------
   const P0 = { av: 'helmet', fr: 'none', ti: null };
   const st = () => (STATS.prof && typeof STATS.prof === 'object' ? STATS.prof : (STATS.prof = Object.assign({}, P0)));
   const lv = () => levelFromXp(STATS.xp || 0).lv;
-  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (a.ev ? !!(STATS.eco && STATS.eco[a.ev]) : a.beta ? Eco.isBeta() : lv() >= a.lv); };
+  const avOk = (id) => { const a = AV.find((x) => x.id === id); return !!a && (staff() || (a.ev ? !!(STATS.eco && STATS.eco[a.ev]) : a.beta ? Eco.isBeta() : lv() >= a.lv)); };
   const avEv = (a) => (a.ev === 'brx12' ? '백룸 12가지 탈출 이벤트' : '백룸 탈출 이벤트');
-  const frOk = (id) => { const f = FR.find((x) => x.id === id); if (!f) return false; if (f.kind === 'base') return true; if (f.kind === 'tier') return placedOk() && peakT() >= f.t; if (f.kind === 'hc') return hcPeakT() >= f.t; const t = tiOf(f.title); return !!t && t.ok(); };
+  const frOk = (id) => { const f = FR.find((x) => x.id === id); if (!f) return false; if (f.kind === 'base' || staff()) return true; if (f.kind === 'tier') return placedOk() && peakT() >= f.t; if (f.kind === 'hc') return hcPeakT() >= f.t; const t = tiOf(f.title); return !!t && t.ok(); };
   const tiOk = (id) => { const t = tiOf(id); return !!t && t.ok(); };
   // 지금 보여 줄 값 (조건이 사라진 것은 기본으로)
   function my() { const s = st(); return { av: avOk(s.av) ? s.av : 'helmet', fr: frOk(s.fr) ? s.fr : 'none', ti: s.ti && tiOk(s.ti) ? s.ti : null }; }
@@ -34737,7 +35142,7 @@ const Prof = (() => {
       const none = document.createElement('button'); none.type = 'button'; none.className = 'ti-row' + (!m.ti ? ' on' : ''); none.innerHTML = '<span class="ti-none">칭호 달지 않기</span>'; none.onclick = () => { set('ti', null); Audio.ui(); }; L.appendChild(none);
       for (const t of TI) {
         const ok = t.ok(), b = document.createElement('button'); b.type = 'button'; b.className = 'ti-row' + (m.ti === t.id ? ' on' : '') + (ok ? '' : ' lock');
-        b.innerHTML = `${titleHTML(t.id)}<span class="ti-d"><b>${t.desc}</b><small>${ok ? (m.ti === t.id ? '달고 있음' : '얻음 · 눌러서 달기') : '진행: ' + t.prog()}</small></span>${frameHTML(t.fr, m.av, 34)}`;
+        b.innerHTML = `${titleHTML(t.id)}<span class="ti-d"><b>${t.desc}</b><small>${ok ? (m.ti === t.id ? '달고 있음' : (t.own() ? '얻음' : Dev.roleName() + ' 권한') + ' · 눌러서 달기') : '진행: ' + t.prog()}</small></span>${frameHTML(t.fr, m.av, 34)}`;
         b.onclick = () => { if (!ok) { msg(`아직 얻지 못했습니다 — ${t.desc}`); return; } set('ti', t.id); if (frOk(t.fr) && st().fr === 'none') set('fr', t.fr); Audio.ui(); };
         L.appendChild(b);
       }
@@ -34745,7 +35150,9 @@ const Prof = (() => {
       B.appendChild(el('p', 'micro', '단 칭호는 로비에서 내 캐릭터 아래에 표시되고, 파티원 화면에도 보입니다. 칭호를 얻으면 같은 주제의 테두리도 해금됩니다.'));
     } else if (tab === 'ent' && typeof PartyFx !== 'undefined') {
       PartyFx.profTab(B);   // 파티 입장·퇴장 연출 고르기 (10_partyfx.js)
-    } else if (tab === 'acct') {
+    }
+    if (staff() && (tab === 'av' || tab === 'fr' || tab === 'ti')) B.appendChild(el('p', 'micro staff-note', `${Dev.roleName()} 계정은 모든 사진·테두리·칭호·입장 연출을 가지고 있습니다 — 1위 칭호처럼 조건이 있는 것도 달 수 있고, 다른 사람 화면에도 그대로 보입니다.`));
+    if (tab === 'acct') {
       const left = Math.max(0, (STATS.nameT || 0) + NAME_GAP - Date.now());
       const box = document.createElement('div'); box.className = 'prof-acct';
       box.innerHTML = `<div class="eyebrow">아이디 변경</div><p class="micro">3일에 한 번 바꿀 수 있습니다. 바꾸면 다음 로그인부터 새 아이디로 로그인합니다 (비밀번호는 그대로).</p>
@@ -34790,7 +35197,7 @@ const Prof = (() => {
     if (show) {
       const m = Cloud.user ? my() : null;
       if (m && m.ti) items.push({ obj: L.rig.root, html: titleHTML(m.ti) });
-      (L.mates || []).forEach((r, i) => { const inf = (L.mateInfo || [])[i]; if (!inf || !r.root.visible) return; const pf = inf.pf || {}, ti = pf.ti && Ladder.allowed(pf.ti, inf.name) ? pf.ti : null; items.push({ obj: r.root, html: `<span class="lbtag-name">${esc(inf.name || '')}</span>${ti ? titleHTML(ti) : ''}` }); });
+      (L.mates || []).forEach((r, i) => { const inf = (L.mateInfo || [])[i]; if (!inf || !r.root.visible) return; const pf = inf.pf || {}, ti = pf.ti && Ladder.allowed(pf.ti, inf.name, inf.uid) ? pf.ti : null; items.push({ obj: r.root, html: `<span class="lbtag-name">${esc(inf.name || '')}</span>${ti ? titleHTML(ti) : ''}` }); });
     }
     while (tagEls.length < items.length) { const d = document.createElement('div'); d.className = 'lbtag'; box.appendChild(d); tagEls.push(d); }
     const W = window.innerWidth, H = window.innerHeight, placed = [];
@@ -36312,6 +36719,7 @@ async function startMatch(cfg) {
   });
   // 사람이 장착한 차량 스킨 모델은 로딩 중에 미리 만들어 둠 (운전석에 앉는 순간 처음 만들면 큰 모델은 한 박자 멈춤 · 모델은 종류마다 한 번 만들어 공유)
   for (const c of CHARS) if (c.vlook) for (const t in c.vlook) { const id = c.vlook[t]; if (id && VehModels.has(id)) try { VehModels.instance(t, id); } catch (e) { console.warn(e); } }
+  if (net && typeof Cloud !== 'undefined' && Cloud.staffAsk) Cloud.staffAsk(humans.map((hm) => hm.uid));   // v23 스타트 섬 머리 위 칭호: 관리자 계정이 단 칭호를 보여 주려고 미리 확인 (10_cloud.js)
   G.player = player;
   const srand = mulberry32(ms ^ 0x2545f491);        // 봇 이름·얼굴: 시드가 같으면 같게 (같이 하기는 모든 기기에서 · 혼자는 이어하기가 다시 만들 때)
   const names = BOT_NAMES.slice(); for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(srand() * (i + 1)); const t0 = names[i]; names[i] = names[j]; names[j] = t0; }

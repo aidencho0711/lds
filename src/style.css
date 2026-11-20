@@ -1169,6 +1169,16 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 @keyframes ent-ban-b { from { opacity: 0; transform: scale(1.7); filter: blur(5px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes ent-ban-i { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: none; } }
 @media (max-height: 500px) { .ent-ban b { font-size: 1.15rem; } .ent-ban i { width: 30px; } }
+/* 개발자 전용 연출: 이름 띠가 명령 줄처럼 타자 치듯 찍히다가 실행되면 <개발자 /> 로 바뀜 */
+.ent-ban.dev .eb-cmd { display: inline-flex; align-items: center; font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace; font-size: 1.02rem; font-weight: 700; color: #dffcff; background: rgba(4, 16, 26, 0.86); border: 1px solid var(--ec); border-radius: 5px; padding: 4px 10px; box-shadow: 0 0 12px rgba(77, 232, 255, 0.45), inset 0 0 8px rgba(77, 232, 255, 0.16); }
+.ent-ban.dev .eb-cmd em { font-style: normal; color: #7dffb0; margin-right: 7px; }
+.ent-ban.dev .eb-cmd u { text-decoration: none; white-space: pre; }
+.ent-ban.dev .eb-cmd s { display: inline-block; width: 0.55em; height: 1.05em; margin-left: 2px; background: var(--ec); animation: eb-caret 0.45s steps(1) infinite; }
+.ent-ban.dev b { font-family: Consolas, 'Cascadia Mono', 'Courier New', 'Malgun Gothic', monospace; letter-spacing: 0.03em; }
+.ent-ban.dev b span { color: #7dffb0; text-shadow: 0 0 8px #7dffb0, 0 2px 2px rgba(0, 0, 0, 0.6); }
+@keyframes eb-caret { 50% { opacity: 0; } }
+@media (max-height: 500px) { .ent-ban.dev .eb-cmd { font-size: 0.86rem; padding: 3px 8px; } }
+.staff-note { margin-top: 10px; color: #7de8ff; }
 .prof-acct { display: flex; flex-direction: column; gap: 6px; padding: 10px 4px; }
 /* v21 비밀번호 변경: 입력 셋 + 버튼 (좁은 화면은 한 줄씩) */
 .pw-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

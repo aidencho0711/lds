@@ -46,7 +46,7 @@ function buildRig(look) {
   if (L.hat) { const hm = Body.hatMesh(L.hat); if (hm) hat.add(hm); }
   const chute = Gear.canopy(L.chute); chute.visible = false; root.add(chute);
   const rig = { root, body, hips: B.hips, spine: B.spine, chest: B.chest, neck: B.neck, head: B.head, armL: arm('L'), armR: arm('R'), legL: leg('L'), legR: leg('R'),
-    gunMount, backGuns, backKey: ['', ''], meleeHip, meleeKey: '', chute, helmet, vest, pack, hat, mesh: I.hi, meshLo: I.lo, skel: I.skel, bones: I.list, look: L, gunId: null, gunObj: null, gearKey: '', lod: 0, shadow: true,
+    gunMount, backGuns, backKey: ['', ''], meleeHip, meleeKey: '', chute, helmet, vest, pack, vestL, vestR, hat, mesh: I.hi, meshLo: I.lo, skel: I.skel, bones: I.list, look: L, gunId: null, gunObj: null, gearKey: '', lod: 0, shadow: true,
     ofx: typeof OutfitFx !== 'undefined' ? OutfitFx.kindsOf(L) : [],   // EXCLUSIVE 옷 효과 종류 (08_outfitfx.js)
     // 장비 단계(0 = 없음): 바뀔 때만 메시 교체 · v23 헬멧·가방 스킨(look.helmet·look.pack) · 멀리(lod 1)는 간략 모델 · 가방은 조끼 레벨에 맞춰 뒤로
     gearLv: [0, 0, 0],

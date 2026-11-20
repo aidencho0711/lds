@@ -132,7 +132,7 @@ const Island = (() => {
   const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   function tagHTML(c) {
     if (c.human) {
-      const pf = c.pf || {}, ti = pf.ti && (typeof Ladder === 'undefined' || Ladder.allowed(pf.ti, c.name)) ? pf.ti : null;
+      const pf = c.pf || {}, ti = pf.ti && (typeof Ladder === 'undefined' || Ladder.allowed(pf.ti, c.name, c.uid)) ? pf.ti : null;
       return `<span class="itag-name">${esc(c.name)}</span>${ti ? Prof.titleHTML(ti, 'sm') : ''}`;
     }
     const k = c.diffKey || 'normal';

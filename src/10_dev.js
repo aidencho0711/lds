@@ -13,6 +13,8 @@
 //  · v23 부개발자(서버 admins.role = 'sub'): 개발자와 같은 도구·계정 관리를 쓰지만 다른 계정에 골드 탄피를 줄 수 없고(서버 admin_gold 도 거부),
 //    개발자·다른 부개발자 계정은 건드릴 수 없다 (초기화·베타 테스터·아이디 변경·밴 — 서버가 'admin' 으로 거부)
 //  · v23 계정 밴 (개발자·부개발자): 계정 상세에서 기간(숫자 + 분·시간·일)과 사유 → 서버 admin_ban → 그동안 로그인할 수 없음 · 접속 중이면 바로 로그아웃
+//  · v23 개발자·부개발자 계정은 모든 프로필 사진·테두리·칭호·파티 입장 연출을 가진다 (10_ui_profile.js staff) + 전용 입장 연출 (10_partyfx.js 'dev')
+//    다른 기기는 그 계정이 관리자인지 서버에 확인하고 보여 준다 (10_cloud.js staffRole · supabase/admin.sql staff_roles)
 // ============================================================
 const Dev = (() => {
   const F = Object.assign({ god: false, ammo: false, tp: false, zone: false, stats: false }, store.get('dev', null) || {});
@@ -423,5 +425,5 @@ const Dev = (() => {
     $('devClose').addEventListener('click', () => { Audio.ui(); close(); });
     refresh();
   }
-  return { is, cheat, onLogin, refresh, open, close, setup, frame, mapTap, flags: F, _giveGun: giveGun, _kit: kit, _spawnVeh: spawnVeh, _killAll: killAll };
+  return { is, sub, roleName, cheat, onLogin, refresh, open, close, setup, frame, mapTap, flags: F, _giveGun: giveGun, _kit: kit, _spawnVeh: spawnVeh, _killAll: killAll };
 })();
