@@ -461,6 +461,55 @@ const Audio = (() => {
   const engines = new Map();
   function stopEng(id, e) { engines.delete(id); if (!ctx) return; e.out.gain.setTargetAtTime(0, ctx.currentTime, 0.08); setTimeout(() => e.nodes.forEach((n) => { try { n.stop(); } catch (_) {} }), 600); }
 
+  // ---------- v23 우승 축하 춤 음악 (120 BPM · 16분음표 = 0.125초) ----------
+  //  pattern(o = 드럼·선율, lp = 베이스(저역 통과), t = 시각, s = 16분음표 번호) — 모두 코드로 만든 소리
+  let dmus = null;
+  const NF = (n) => 440 * Math.pow(2, (n - 69) / 12);   // MIDI 번호 → 주파수
+  const dKick = (o, t, g = 0.8) => { tone(o, t, 0.24, 'sine', 150, 42, g); tone(o, t, 0.025, 'triangle', 1100, 300, g * 0.2); };
+  const dSnare = (o, t, g = 0.38) => { noise(o, t, 0.16, 'bandpass', 1900, 0.7, g); tone(o, t, 0.08, 'triangle', 240, 170, g * 0.5); };
+  const dClap = (o, t, g = 0.32) => { for (let i = 0; i < 3; i++) noise(o, t + i * 0.012, 0.1, 'bandpass', 1300, 1.3, g * (i === 2 ? 1 : 0.55)); };
+  const dHat = (o, t, g = 0.09, open = false) => noise(o, t, open ? 0.2 : 0.045, 'highpass', 7800, 0.7, g);
+  const DPAT = {
+    // 환호: 경기장 응원 — 쿵쿵 박수, 힘찬 8분 베이스, C · G · Am · F 위로 외치는 듯한 선율
+    cheer(o, lp, t, s) {
+      const b = s % 16, bar = Math.floor(s / 16) % 4, root = [48, 43, 45, 41][bar];
+      if (b % 4 === 0) dKick(o, t);
+      if (b === 4 || b === 12) dClap(o, t, 0.36);
+      if (b % 2 === 1) dHat(o, t, 0.07);
+      if (b % 2 === 0) tone(lp, t, 0.2, 'sawtooth', NF(root - 12), NF(root - 12), 0.28);
+      const m = [[0, 76], [4, 76], [6, 79], [8, 76], [12, 72]].find((x) => x[0] === b);
+      if (m && bar % 2 === 0) { tone(o, t, 0.28, 'square', NF(m[1]), NF(m[1]), 0.045); tone(o, t, 0.3, 'triangle', NF(m[1] + 12), NF(m[1] + 12), 0.03); }
+      if (bar % 2 === 1 && b % 4 === 0) [0, 4, 7].forEach((iv) => tone(o, t, 0.4, 'triangle', NF(root + 12 + iv), NF(root + 12 + iv), 0.03));
+    },
+    // 스텝 & 박수: 펑키 — 엇박 킥, 16분 하이햇, 통통 튀는 베이스, 짧은 기타 같은 화음
+    step(o, lp, t, s) {
+      const b = s % 16, bl = [36, 0, 0, 48, 0, 0, 46, 0, 36, 0, 43, 0, 46, 48, 0, 0][b];
+      if (b === 0 || b === 6 || b === 10) dKick(o, t, 0.75);
+      if (b === 4 || b === 12) { dSnare(o, t); dClap(o, t, 0.25); }
+      dHat(o, t, b % 4 === 2 ? 0.09 : 0.045);
+      if (bl) tone(lp, t, 0.14, 'sawtooth', NF(bl), NF(bl), 0.32);
+      if (b === 2 || b === 10) [64, 67, 70].forEach((n) => tone(o, t, 0.09, 'square', NF(n), NF(n), 0.025));
+    },
+    // 로봇: 일렉트로 — 네 박 킥, 각진 사각파 아르페지오 (Am · F · G · Em)
+    robot(o, lp, t, s) {
+      const b = s % 16, bar = Math.floor(s / 16) % 4, ch = [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 55, 59]][bar], n = ch[b % 3] + (b >= 8 ? 12 : 0);
+      if (b % 4 === 0) dKick(o, t, 0.85);
+      if (b === 4 || b === 12) { dSnare(o, t, 0.3); noise(o, t, 0.05, 'highpass', 3000, 0.7, 0.12); }
+      if (b % 2 === 1) dHat(o, t, 0.05);
+      tone(o, t, 0.1, 'square', NF(n), NF(n), 0.03);
+      if (b % 4 === 0 || b === 14) tone(lp, t, 0.22, 'square', NF(ch[0] - 24), NF(ch[0] - 24), 0.26);
+    },
+    // 디스코: 네 박 킥 · 뒷박 열린 하이햇 · 옥타브 베이스 · 현악 같은 화음 찌르기 (Dm7 · G7 · Cmaj7 · Am7)
+    disco(o, lp, t, s) {
+      const b = s % 16, bar = Math.floor(s / 16) % 4, root = [38, 43, 36, 45][bar], ch = [[62, 65, 69, 72], [59, 62, 65, 67], [60, 64, 67, 71], [57, 60, 64, 67]][bar];
+      if (b % 4 === 0) dKick(o, t, 0.8);
+      if (b === 4 || b === 12) dClap(o, t, 0.3);
+      if (b % 4 === 2) dHat(o, t, 0.08, true); else if (b % 2 === 1) dHat(o, t, 0.04);
+      if (b % 2 === 0) { const n = root + (b % 4 === 2 ? 12 : 0); tone(lp, t, 0.12, 'sawtooth', NF(n), NF(n), 0.3); }
+      if (b === 6 || b === 14) ch.forEach((n) => { tone(o, t, 0.22, 'sawtooth', NF(n), NF(n), 0.018); tone(o, t, 0.22, 'triangle', NF(n + 12), NF(n + 12), 0.012); });
+    },
+  };
+
   const api = {
     init, applyVolumes, setListener,
     get ready() { return !!ctx; }, get bankReady() { return bankReady; }, get _bank() { return bank; },
@@ -961,9 +1010,41 @@ const Audio = (() => {
         const g = ctx.createGain(); g.gain.value = 0; s.connect(f); f.connect(g); g.connect(sfxBus); s.start();
         ambient = { s, f, g };
       }
-      ambient.g.gain.setTargetAtTime(0.03 + level * 0.4, ctx.currentTime, 0.4);
+      // v23: 자유낙하(1)만 크게 — 땅·수송기·낙하산은 작게 (예전 0.03 + level × 0.4 → 땅 0.03 · 수송기 0.07 · 낙하산 0.17 · 낙하 0.43)
+      ambient.g.gain.setTargetAtTime(0.01 + Math.pow(Math.max(0, level), 1.6) * 0.42, ctx.currentTime, 0.4);
       ambient.f.frequency.setTargetAtTime(300 + level * 900, ctx.currentTime, 0.4);
     },
+    // ----- v23 우승 축하 -----
+    // 팡파르: 금관 같은 화음 다섯 번 (C → C → F → G → 높은 C) + 반짝 종 + 심벌
+    victory() {
+      if (!ctx) return; const t = ctx.currentTime + 0.03, o = sfxBus;
+      const ch = (t0, fs, d, g) => fs.forEach((f) => { tone(o, t0, d, 'square', f, f, g * 0.35); tone(o, t0, d * 1.15, 'triangle', f * 2, f * 2, g * 0.45); tone(o, t0, d, 'sawtooth', f / 2, f / 2, g * 0.25); });
+      ch(t, [261.6, 329.6, 392], 0.3, 0.1); ch(t + 0.32, [261.6, 329.6, 392], 0.14, 0.08); ch(t + 0.48, [349.2, 440, 523.3], 0.3, 0.1); ch(t + 0.8, [392, 493.9, 587.3], 0.3, 0.1); ch(t + 1.12, [523.3, 659.3, 784], 1.6, 0.12);
+      [1046.5, 1318.5, 1568, 2093, 2637].forEach((f, i) => tone(o, t + 1.12 + i * 0.08, 1.4, 'sine', f, f, 0.06));
+      noise(o, t + 1.12, 1.2, 'highpass', 6000, 0.5, 0.05);
+    },
+    // 승리의 동상: rise = 땅이 울리며 돌이 부서지는 소리(3초) · done = 쿵 + 팡파르
+    statue(stage) {
+      if (!ctx) return; const t = ctx.currentTime + 0.02, o = sfxBus;
+      if (stage === 'rise') {
+        const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+        const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 160;
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.9, t + 0.5); g.gain.setValueAtTime(0.9, t + 2.3); g.gain.exponentialRampToValueAtTime(0.001, t + 3.0);
+        s.connect(f); f.connect(g); g.connect(o); s.start(t); s.stop(t + 3.1);
+        tone(o, t, 2.9, 'sine', 52, 36, 0.35);
+        for (let i = 0; i < 16; i++) noise(o, t + 0.15 + Math.random() * 2.5, 0.08 + Math.random() * 0.14, 'bandpass', 500 + Math.random() * 1800, 1.4, 0.1 + Math.random() * 0.12);
+      } else if (stage === 'done') { tone(o, t, 0.7, 'sine', 95, 38, 0.7); noise(o, t, 0.6, 'lowpass', 700, 0.7, 0.5); api.victory(); }
+    },
+    // 춤 음악 켜기 (kind: cheer·step·robot·disco) → 첫 박까지 남은 초 (춤 동작을 박자에 맞추려고) · danceStop 으로 끔
+    dance(kind) {
+      if (!ctx) return 0; api.danceStop();
+      const out = ctx.createGain(); out.gain.value = 1.4; out.connect(musicBus);   // 음악 크기 설정(기본 0.35)을 따름 — 춤 음악은 그보다 조금 크게
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600; lp.Q.value = 4; lp.connect(out);
+      const D = { out, lp, step: 0, t0: ctx.currentTime + 0.08, iv: 0 }, P = DPAT[kind] || DPAT.cheer;
+      D.iv = setInterval(() => { while (D.t0 + D.step * 0.125 < ctx.currentTime + 0.16) { P(out, lp, D.t0 + D.step * 0.125, D.step); D.step++; } }, 30);
+      dmus = D; return D.t0 - ctx.currentTime;
+    },
+    danceStop() { const D = dmus; if (!D) return; dmus = null; clearInterval(D.iv); D.out.gain.setTargetAtTime(0, ctx.currentTime, 0.06); setTimeout(() => { try { D.out.disconnect(); } catch (e) { /* 이미 끊김 */ } }, 900); },
     music(on) {
       if (!ctx) return;
       if (on && !music) {
