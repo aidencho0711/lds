@@ -3,8 +3,8 @@
 //  티어: 아이언 · 브론즈 · 실버 · 골드 · 플래티넘 · 다이아 · 마스터 · 그랜드마스터 · 레전드 · 이터널  (한 단계 100 RP, 한 티어 400 RP · 이터널 = 3600~4000)
 //  v23 상위 티어: 노바 · 셀레스티얼 · 이클립스 · 제니스 — 이터널 아래 티어들과 격이 다른 티어. 한 단계 200 RP, 한 티어 1000 RP (노바 5 = 4000 RP)
 //   · 티어 끝(이터널 1 = 4000 · 노바 1 = 5000 · 셀레스티얼 1 = 6000 · 이클립스 1 = 7000)에 닿으면 RP가 멈추고 '승급전'
-//   · 승급전: 맵마다 정한 순위 안에 들면 1회 성공(SERIES_TOP) — 연속으로 3 → 3 → 4 → 5번 성공하면 다음 티어 5단계
-//     실패하면 연속 기록이 0부터 · 승급전 동안 RP는 그대로 · 봇 95% 익스트림
+//   · 승급전: 맵마다 정한 순위 안에 들고(SERIES_TOP) 처치 2 이상이면 1회 성공(우승은 처치 수 상관없이) — 연속으로 3 → 3 → 4 → 5번 성공하면 다음 티어 5단계
+//     실패하면 연속 기록이 0부터 · 승급전 동안 RP는 그대로 · 봇 95% 익스트림 · 숨어 있으면 봇이 찾아온다(07_bot_hunt.js)
 //   · 한 번 오른 상위 티어 밑으로는 떨어지지 않는다(강등 보호). 제니스 1부터는 상한 없이 RP만 쌓인다
 //   · 저장: S.sg = 통과한 승급전 수(0~4) · S.ss = 지금 승급전 연속 성공 · S.cv = 개편 뒤 기록 표식
 //     S.cv 가 없는 옛 기록은 4000 RP를 넘으면 4000(이터널 1 · 승급전 대기)으로 내리고 S.cut 에 남긴다 → 최상위 스킨 3종 + 안내 (settle)
@@ -32,6 +32,10 @@ const SUP = { t0: 10, base: 4000, span: 1000, div: 200, need: [3, 3, 4, 5], mix:
 // 승급전 1회 성공 순위 (이 순위 안) — 맵마다. 목록에 없는 맵은 10위
 const SERIES_TOP = { kalden: 10, ironridge: 10, kinaru: 13, xmas: 13, norden: 17 };
 const seriesTop = (map) => SERIES_TOP[map] || 10;
+// v23 잠수 막기: 순위만으로는 성공이 아니다 — 처치도 이만큼 (우승은 처치 수 상관없이). 숨어서 순위만 올리면 실패
+const SERIES_KILLS = 2;
+// 승급전 1회 판정: '' = 성공, 아니면 실패 까닭 (quit 탈주 · place 순위 밖 · kills 처치 부족)
+const seriesWhy = (r) => (r.quit ? 'quit' : r.win ? '' : r.place > seriesTop(r.map) ? 'place' : (r.kills || 0) < SERIES_KILLS ? 'kills' : '');
 // 하드코어 랭크전 티어 (다이아 4 이상을 찍어 본 사람만): 방패·날개 대신 각진 흑철 휘장 · 갈라진 틈에서 빛이 샌다
 //  스토커 → 헌터 → 슬레이어 → 리퍼 → 오버로드. 단계는 4→1 동일, 오버로드 1부터 상한 없이 RP
 const HC_TIERS = [
@@ -97,7 +101,7 @@ const Rank = (() => {
   // 승급전 정보 (승급전 중이 아니면 null)
   function series() {
     const ti = mine(); if (!placed() || !ti.series) return null;
-    return { n: S.ss, need: SUP.need[S.sg], next: ti.t + 1, from: ti, lim: seriesTop(SETTINGS.map) };
+    return { n: S.ss, need: SUP.need[S.sg], next: ti.t + 1, from: ti, lim: seriesTop(SETTINGS.map), k: SERIES_KILLS };
   }
   // ---------- 점수 ----------
   // 배치고사 1판 점수: 순위(상위일수록 크게) + 우승 + 처치 + 가한 피해
@@ -133,16 +137,16 @@ const Rank = (() => {
       S.history = S.history.slice(0, 10); save(); return out;
     }
     const before = mine();
-    // 승급전: RP 그대로, 순위 안이면 연속 성공 +1 (다 채우면 다음 티어 5단계) / 밖이거나 탈주면 연속 기록 0
+    // 승급전: RP 그대로, 순위 안 + 처치 2 이상이면 연속 성공 +1 (다 채우면 다음 티어 5단계) / 아니거나 탈주면 연속 기록 0
     if (before.series) {
-      const need = SUP.need[S.sg], lim = seriesTop(r.map), ok = !r.quit && r.place <= lim;
+      const need = SUP.need[S.sg], lim = seriesTop(r.map), why = seriesWhy(r), ok = !why;
       S.ss = ok ? S.ss + 1 : 0;
       const passed = ok && S.ss >= need;
       if (passed) { S.sg++; S.ss = 0; }
       const after = mine();
       S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta: 0, rp: S.rp, ser: ok ? 1 : -1 });
       S.history = S.history.slice(0, 10); save();
-      return { placement: false, series: true, ok, streak: passed ? need : S.ss, need, lim, map: r.map, passed, delta: 0, before, after, promoted: passed, demoted: false, tierUp: passed };
+      return { placement: false, series: true, ok, why, kills: r.kills || 0, needK: SERIES_KILLS, streak: passed ? need : S.ss, need, lim, map: r.map, passed, delta: 0, before, after, promoted: passed, demoted: false, tierUp: passed };
     }
     const raw = rpDelta(r, before.t), rp = clamp(S.rp + raw, floorOf(S.sg), capOf(S.sg)), delta = rp - S.rp;
     S.rp = rp; S.peak = Math.max(S.peak, S.rp);
@@ -504,9 +508,11 @@ const Rank = (() => {
     const top = t === 4 && div === 1, base = t * 400 + (4 - div) * 100;
     return { hc: true, t, div, rp, name: HC_TIERS[t].name, label: `${HC_TIERS[t].name} ${div}`, into: rp - base, need: top ? null : 100, top, pct: top ? 100 : rp - base };
   }
+  // v23 잠수 막기: 순위 점수는 싸운 만큼만 — 처치 2 (또는 피해 300, 처치 1 + 피해 150)면 다 받고, 한 번도 안 싸웠으면 20%만
+  const fightK = (r) => clamp(((r.kills || 0) + (r.dmg || 0) / 150) / 2, 0, 1);
   function rpDeltaHc(r, t) {
     const p = (r.place - 1) / Math.max(1, r.total - 1);
-    let d = 52 * (1 - p) ** 2 - 24 + (r.win ? 26 : 0) + Math.min(r.kills, 12) * 6 + Math.min(r.dmg, 2000) / 100 - t * 4;
+    let d = 52 * (1 - p) ** 2 * (0.2 + 0.8 * fightK(r)) - 24 + (r.win ? 26 : 0) + Math.min(r.kills, 12) * 6 + Math.min(r.dmg, 2000) / 100 - t * 4;
     if (r.quit) d = Math.min(d, -35) - 15;
     return Math.round(clamp(d, -60, 150));
   }
@@ -515,8 +521,9 @@ const Rank = (() => {
     const before = hcTierOf(H.rp), delta = rpDeltaHc(r, before.t);
     H.rp = Math.max(0, H.rp + delta); H.peak = Math.max(H.peak || 0, H.rp);
     const after = hcTierOf(H.rp), rank = (x) => x.t * 4 + (4 - x.div);
+    const p = (r.place - 1) / Math.max(1, r.total - 1), lazy = r.quit ? 0 : Math.round(52 * (1 - p) ** 2 * 0.8 * (1 - fightK(r)));   // 싸우지 않아 덜 받은 순위 점수
     H.history = [{ place: r.place, total: r.total, kills: r.kills, delta, rp: H.rp }].concat(H.history || []).slice(0, 10); save();
-    return { hc: true, placement: false, delta, before, after, promoted: rank(after) > rank(before), demoted: rank(after) < rank(before), tierUp: after.t > before.t };
+    return { hc: true, placement: false, delta, lazy: lazy >= 3 ? lazy : 0, before, after, promoted: rank(after) > rank(before), demoted: rank(after) < rank(before), tierUp: after.t > before.t };
   }
   // 하드코어 휘장: 위아래가 뾰족한 각진 판(흑철) + 티어별 장식. 단계는 각진 명판에 로마 숫자
   function blade(g, cx, cy, w, h) {

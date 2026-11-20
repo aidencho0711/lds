@@ -1168,10 +1168,10 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       $('cfgNote').textContent = `${GT.name}: ${pm ? `블루 [${fill(0)}] vs 레드 [${fill(1)}]` : `나${DTS > 1 ? ' · 봇' : ''} vs 봇 ${DTS}명 (친구를 파티에 초대하면 상대 팀으로)`} · 먼저 ${DUEL_RULES.win}라운드 · 라운드 ${DUEL_RULES.round}초 · 라운드마다 모두 같은 무작위 총` +
         (pm && pm.length > DTS * 2 ? ` · ⚠ ${DTS * 2}명까지 가능 (지금 ${pm.length}명)` : '');
     } else if (dm) $('cfgNote').textContent = `${GT.name}: 4 대 4 고정(빈자리는 봇) · 먼저 ${DM_RULES.killTarget}킬 · 최대 ${DM_RULES.timeLimit / 60}분 · 봇 난이도·시간대·시점만 적용`;
-    else if (hc) $('cfgNote').textContent = `하드코어 랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 전원 익스트림 · 스토커 4부터 시작 · 일반 랭크보다 RP가 크게 깎입니다`;
+    else if (hc) $('cfgNote').textContent = `하드코어 랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 전원 익스트림 · 스토커 4부터 시작 · 일반 랭크보다 RP가 크게 깎입니다 · 순위 점수는 싸운 만큼만 · 숨어 있으면 봇이 찾아옵니다`;
     else if (ranked) {
-      const se = Rank.series();   // v23 승급전 중이면 이 맵의 성공 순위
-      $('cfgNote').textContent = se ? `랭크 승급전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 · 익스트림 봇 95% · ${MAPS[SETTINGS.map].name.replace(/\s*\(.*\)$/, '')} ${se.lim}위 안이면 1회 성공 (연속 ${se.n} / ${se.need}) · 다른 맵: 칼덴·아이언리지 10위 · 키나루·크리스마스 13위 · 노르덴 17위`
+      const se = Rank.series();   // v23 승급전 중이면 이 맵의 성공 순위 + 처치
+      $('cfgNote').textContent = se ? `랭크 승급전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 · 익스트림 봇 95% · ${MAPS[SETTINGS.map].name.replace(/\s*\(.*\)$/, '')} ${se.lim}위 안 + 처치 ${se.k} 이상이면 1회 성공 (우승은 처치 상관없이 · 연속 ${se.n} / ${se.need}) · 숨어 있으면 봇이 찾아옵니다 · 다른 맵: 칼덴·아이언리지 10위 · 키나루·크리스마스 13위 · 노르덴 17위`
         : `랭크전: ${sqName} · 봇 ${Rank.botCount(SETTINGS.map)}명 고정 · 봇 난이도는 ${Rank.placed() ? '현재 티어' : '배치고사 기준(혼합)'}에 맞춰 자동 설정`;
     }
     // 랭크 카드 (랭크·하드코어 대기열에서만) — v23 승급전이면 연속 성공 칸(●)
@@ -1325,7 +1325,8 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       `아이언~이터널은 4 → 3 → 2 → 1 단계로 올라갑니다. 한 단계는 100 RP, 한 티어는 400 RP입니다.`,
       `RP는 순위(상위일수록 크게), 우승, 처치, 가한 피해로 오르고, 하위권이면 내려갑니다. 높은 티어일수록 오르기 어렵습니다.`,
       `상위 티어(노바 · 셀레스티얼 · 이클립스 · 제니스)는 5 → 4 → 3 → 2 → 1 단계, 한 단계 200 RP입니다. 티어 끝(이터널 1 · 노바 1 · 셀레스티얼 1 · 이클립스 1)에 닿으면 RP가 멈추고 승급전이 열립니다.`,
-      `승급전: 칼덴 섬 · 아이언리지는 10위 안, 키나루 · 크리스마스 섬은 13위 안, 노르덴은 17위 안이면 1회 성공. 연속 성공 ${SUP.need.join(' → ')}번(노바 → 셀레스티얼 → 이클립스 → 제니스)이면 다음 티어 5단계로 오릅니다. 한 번이라도 실패하면 연속 기록은 0부터 — RP는 깎이지 않습니다. 승급전 봇은 95%가 익스트림입니다.`,
+      `승급전: 칼덴 섬 · 아이언리지는 10위 안, 키나루 · 크리스마스 섬은 13위 안, 노르덴은 17위 안에 들고 처치 ${SERIES_KILLS} 이상이면 1회 성공(우승은 처치 수와 상관없이 성공). 연속 성공 ${SUP.need.join(' → ')}번(노바 → 셀레스티얼 → 이클립스 → 제니스)이면 다음 티어 5단계로 오릅니다. 한 번이라도 실패하면 연속 기록은 0부터 — RP는 깎이지 않습니다. 승급전 봇은 95%가 익스트림입니다.`,
+      `잠수 추적(승급전 · 하드코어): 땅에 내리고 1분이 지난 뒤, 반경 ${HUNT.R}m 안에서 ${HUNT.idle}초 동안 한 번도 피해를 주지 않으면 가까운 봇들이 대략적인 위치를 알아채고 찾아옵니다(${HUNT.warn}초 전에 경고). 움직이거나 싸우면 풀립니다.`,
       `한 번 오른 상위 티어 밑으로는 떨어지지 않습니다. 제니스 1부터는 상한 없이 RP만 쌓입니다. 상위 티어에 오르면 그 티어의 칭호와 전용 테두리를 얻습니다.`,
       `봇 수는 고정(기본 맵·키나루 74명, 노르덴 99명)이고 봇 난이도는 티어가 높을수록 어려워집니다. 골드부터 익스트림 봇(어려움보다 조준·반응·무빙·판단이 한 단계 위)이 섞이고, 이터널은 절반, 상위 티어는 60~88%가 익스트림입니다. 경기 도중 나가면 패배 처리와 추가 감점이 있습니다(승급전이면 실패).`,
       Rank.placed() ? `현재 ${cur.label}${se ? ` · 승급전 연속 ${se.n} / ${se.need}` : ''} · ${st.rp} RP · 최고 ${Rank.peakTier().label} · 랭크 ${st.games}판 ${st.wins}승` : `배치고사 ${st.placed} / 3 진행`].forEach((t) => ul.appendChild(h('li', '', t)));
@@ -1342,6 +1343,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     [`일반 랭크에서 최고 다이아 4 이상을 찍어 본 사람만 참여할 수 있습니다 (파티면 파티원 모두). 배치고사 없이 스토커 4부터 시작합니다.`,
       `티어는 스토커 · 헌터 · 슬레이어 · 리퍼 · 오버로드 5종, 각 4 → 3 → 2 → 1 단계(한 단계 100 RP). 오버로드 1부터는 RP만 쌓입니다.`,
       `봇은 전원 익스트림. 일반 랭크보다 티어 세금과 하위권·탈주 감점이 큽니다. 슬레이어 · 리퍼 · 오버로드에 오르면 그 티어의 칭호와 테두리를 얻습니다(최고 기록 기준, 계정 정보에서 장착).`,
+      `순위 점수는 싸운 만큼만 받습니다 — 처치 2(또는 피해 300)면 전부, 한 번도 싸우지 않았으면 20%만. 숨어서 순위만 올려서는 RP가 오르지 않습니다. 한곳에 숨어 있으면 봇들이 찾아옵니다(잠수 추적).`,
       ok ? `현재 ${hcur.label} · ${H.rp} RP · 최고 ${Rank.hcTierOf(H.peak || 0).label} · 하드코어 ${H.games || 0}판 ${H.wins || 0}승` : `잠김 — 일반 랭크 최고 ${Rank.placed() ? Rank.peakTier().label : '배치고사 전'}`].forEach((t) => hl.appendChild(h('li', '', t)));
   }
   function showResult(win, p, total) {
@@ -1373,7 +1375,10 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
         $('resEmb').src = Rank.embOf(a, 160); box.classList.add('series', R.ok ? 'ok' : 'fail');
         $('resRkKicker').textContent = R.passed ? '승급전 통과 · 티어 승급!' : R.ok ? `승급전 성공 · ${R.streak} / ${R.need}` : '승급전 실패';
         $('resRkLabel').textContent = R.passed ? a.label : `${b.label} · 승급전`;
-        $('resRkSub').textContent = R.passed ? `${RANK_TIERS[a.t].name} 5단계부터 · 0 / ${SUP.div} RP` : `${mp} ${R.lim}위 안 · 이번 #${place} → ${R.ok ? `성공 (${R.need - R.streak}번 더 연속이면 ${RANK_TIERS[b.t + 1].name})` : '실패 — 연속 기록이 0부터 (RP는 그대로)'}`;
+        // v23 잠수 막기: 순위 안 + 처치 2 이상 (우승은 처치 상관없이) — 실패 까닭(why)을 함께
+        const nk = R.needK || SERIES_KILLS, kl = R.kills !== undefined ? R.kills : p.kills, cond = `${mp} ${R.lim}위 안 + 처치 ${nk} · 이번 #${place} · ${kl}킬`;
+        const fw = R.why === 'quit' ? '탈주' : R.why === 'place' ? `${R.lim}위 밖` : R.why === 'kills' ? `처치 부족 (${kl} / ${nk})` : '';
+        $('resRkSub').textContent = R.passed ? `${RANK_TIERS[a.t].name} 5단계부터 · 0 / ${SUP.div} RP` : `${cond} → ${R.ok ? `${win && kl < nk ? '우승 · ' : ''}성공 (${R.need - R.streak}번 더 연속이면 ${RANK_TIERS[b.t + 1].name})` : `실패${fw ? ' — ' + fw : ''} · 연속 기록이 0부터 (RP는 그대로)`}`;
         if (pips) { pips.hidden = R.passed; pips.innerHTML = pipsHTML(R.streak, R.need, !R.ok); }
         dEl.textContent = R.ok ? '✓' : '✕'; dEl.classList.add(R.ok ? 'up' : 'down');
         bar.style.transition = 'none'; bar.style.width = (R.passed ? 0 : (R.ok ? R.streak - 1 : 0) / R.need * 100) + '%'; void bar.offsetWidth; bar.style.transition = 'width 1.2s ease-out'; bar.style.width = (R.passed ? a.pct : R.streak / R.need * 100) + '%';
@@ -1382,7 +1387,8 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
         const a = R.after; $('resEmb').src = Rank.embOf(a, 160);
         $('resRkKicker').textContent = (R.hc ? '하드코어 · ' : '') + (R.tierUp ? '티어 승급!' : R.seriesStart ? '승급전 시작!' : R.promoted ? '승급' : R.demoted ? '강등' : R.guard ? '강등 보호' : '랭크');
         $('resRkLabel').textContent = a.label + (a.series ? ' · 승급전' : '');
-        $('resRkSub').textContent = a.series ? `${RANK_TIERS[a.t + 1].name} 승급전 — 맵마다 정한 순위 안에 ${SUP.need[a.sg]}번 연속으로 들면 승급 · 총 ${a.rp} RP` : a.top ? `${a.rp} RP` : `${a.into} / ${a.need} RP · 총 ${a.rp} RP` + (R.guard ? ' · 상위 티어 밑으로는 떨어지지 않습니다' : '');
+        $('resRkSub').textContent = (a.series ? `${RANK_TIERS[a.t + 1].name} 승급전 — 맵마다 정한 순위 안 + 처치 ${SERIES_KILLS} 이상을 ${SUP.need[a.sg]}번 연속으로 하면 승급 · 총 ${a.rp} RP` : a.top ? `${a.rp} RP` : `${a.into} / ${a.need} RP · 총 ${a.rp} RP` + (R.guard ? ' · 상위 티어 밑으로는 떨어지지 않습니다' : ''))
+          + (R.hc && R.lazy ? ` · 싸운 게 적어 순위 점수 −${R.lazy}` : '');   // v23 하드코어: 숨어서 받은 순위 점수는 20%만
         dEl.textContent = (R.delta >= 0 ? '+' : '') + R.delta; dEl.classList.add(R.delta >= 0 ? 'up' : 'down');
         // 막대: 이전 값에서 새 값으로
         const bar = $('resRkBar'); bar.style.transition = 'none'; bar.style.width = (R.promoted || R.demoted ? (R.promoted ? 0 : 100) : (R.before.pct != null ? R.before.pct : R.before.into)) + '%'; void bar.offsetWidth; bar.style.transition = 'width 1.2s ease-out'; bar.style.width = (a.pct != null ? a.pct : a.into) + '%';

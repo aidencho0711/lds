@@ -331,7 +331,7 @@ const RankFx = (() => {
     pend = null;
     $('rkCutFrom').textContent = `${(C.from || 0).toLocaleString()} RP`;
     $('rkCutTo').textContent = `${SUP.base.toLocaleString()} RP`;
-    $('rkCutText').textContent = `이터널 위에 격이 다른 상위 티어 4개(노바 · 셀레스티얼 · 이클립스 · 제니스)가 생기면서, 4,000 RP를 넘던 기록은 4,000 RP(이터널 1 · 승급전 대기)로 조정됐습니다. 다음 랭크전부터 노바 승급전이 시작됩니다 — 맵마다 정해진 순위 안에 ${SUP.need[0]}번 연속으로 들면 노바 5로 오릅니다.`;
+    $('rkCutText').textContent = `이터널 위에 격이 다른 상위 티어 4개(노바 · 셀레스티얼 · 이클립스 · 제니스)가 생기면서, 4,000 RP를 넘던 기록은 4,000 RP(이터널 1 · 승급전 대기)로 조정됐습니다. 다음 랭크전부터 노바 승급전이 시작됩니다 — 맵마다 정해진 순위 안에 들고 처치 ${SERIES_KILLS} 이상을 ${SUP.need[0]}번 연속으로 하면 노바 5로 오릅니다.`;
     const tr = $('rkCutTiers'); tr.innerHTML = '';
     for (let t = SUP.t0; t < RANK_TIERS.length; t++) { const d = document.createElement('div'); d.className = 'rkc-tier'; d.innerHTML = `<img alt="" src="${Rank.emblem(t, 5, 128)}"><b>${RANK_TIERS[t].name}</b>`; tr.appendChild(d); }
     const gl = $('rkCutGifts'); gl.innerHTML = '';
