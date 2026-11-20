@@ -190,9 +190,9 @@ const Victory = (() => {
     }
   }
   // 동상 하나 세우기 (나·파티원 공통): x·z 자리, yaw = 동상이 바라볼 방향
-  function raise(c, x, z, yaw, info, remote) {
+  function raise(c, x, z, yaw, info, remote, gy0) {
     if (!G.scene) return null;
-    const gy = groundAt(x, z, c.pos.y + 1.5), root = buildStatue(info);
+    const gy = gy0 !== undefined && gy0 !== null ? gy0 : groundAt(x, z, c.pos.y + 1.5), root = buildStatue(info);
     root.position.set(x, gy - DEPTH, z); root.rotation.y = yaw; G.scene.add(root);
     // 땅 갈라짐
     const ck = new THREE.Mesh(new THREE.CircleGeometry(2.0, 40), new THREE.MeshBasicMaterial({ map: crackTex(), transparent: true, depthWrite: false, opacity: 0, polygonOffset: true, polygonOffsetFactor: -3 }));
@@ -269,16 +269,21 @@ const Victory = (() => {
     if (p.inWater) return `물 밖에서 ${what}`;
     return null;
   }
-  // 동상 자리: 바라보는 쪽 3.4m → 2.8m → 2.3m 중 벽이 없고 땅이 평평하며 지붕 아래가 아닌 곳
+  // 동상 자리: 바라보는 쪽부터(막혔으면 옆 → 뒤로 돌려 가며) 4.2 → 3.6 → 3.1m 중 벽·물·지붕이 없는 곳
+  //  비탈이면 받침을 낮은 쪽 땅에 맞춰 높은 쪽은 땅에 묻히게 (받침 안 높이 차 1m 까지)
   function statueSpot(p) {
-    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
-    for (const d of [4.2, 3.6, 3.1]) {
-      const x = p.pos.x + fx * d, z = p.pos.z + fz * d, gy = groundAt(x, z, p.pos.y + 1.5);
-      if (Math.abs(gy - p.pos.y) > 0.8 || gy < WATER_Y + 0.05) continue;
-      if (rayBoxes(p.pos.x, p.pos.y + 1.2, p.pos.z, fx, 0, fz, d + 1.1, true).t < d + 1.05) continue;
-      if (isIndoor(x, z, gy + 0.5) || rayBoxes(x, gy + 0.6, z, 0, 1, 0, 5.2, true).t < 5.1) continue;
-      let ok = true; for (const [ox, oz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) if (Math.abs(groundAt(x + ox, z + oz, gy + 1) - gy) > 0.55) ok = false;
-      if (ok) return { x, z, yaw: Math.atan2(-fx, -fz) };   // 동상은 나를 바라봄
+    for (const da of [0, 0.6, -0.6, 1.2, -1.2, 1.9, -1.9, Math.PI]) {
+      const fx = Math.sin(p.yaw + da), fz = Math.cos(p.yaw + da);
+      for (const d of [4.2, 3.6, 3.1]) {
+        const x = p.pos.x + fx * d, z = p.pos.z + fz * d, g0 = groundAt(x, z, p.pos.y + 2);
+        if (Math.abs(g0 - p.pos.y) > 1.6 || g0 < WATER_Y + 0.05) continue;
+        if (rayBoxes(p.pos.x, p.pos.y + 1.2, p.pos.z, fx, 0, fz, d + 1.1, true).t < d + 1.05) continue;
+        if (isIndoor(x, z, g0 + 0.5) || rayBoxes(x, g0 + 0.6, z, 0, 1, 0, 5.2, true).t < 5.1) continue;
+        let lo = g0, hi = g0;
+        for (const [ox, oz] of [[1, 1], [-1, 1], [1, -1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]]) { const h = groundAt(x + ox, z + oz, g0 + 2); if (h < lo) lo = h; if (h > hi) hi = h; }
+        if (hi - lo > 1.0 || lo < WATER_Y + 0.05) continue;
+        return { x, z, gy: lo - 0.04, yaw: Math.atan2(p.pos.x - x, p.pos.z - z) };   // 동상은 나를 바라봄
+      }
     }
     return null;
   }
@@ -290,9 +295,9 @@ const Victory = (() => {
     if (p.dance) stopDance(p);
     const w = p.weapon || p.inv.weapons.find(Boolean) || null;
     const info = statueInfo(p, w);
-    const st = raise(p, spot.x, spot.z, spot.yaw, info, false); if (!st) return;
+    const st = raise(p, spot.x, spot.z, spot.yaw, info, false, spot.gy); if (!st) return;
     S.raised = true; S.cine = { st, t: 0, dur: CINE, yaw: Math.atan2(p.pos.x - spot.x, p.pos.z - spot.z) + 0.6 };
-    if (G.net) Net.ev({ k: 'vic', a: 'st', c: p.id, x: +spot.x.toFixed(2), z: +spot.z.toFixed(2), y: +spot.yaw.toFixed(3), g: info.gear, w: w ? { id: w.id, att: w.att, skin: p.skinOf(w.id) } : null, m: p.inv.melee || null, n: info.name, k: p.kills });
+    if (G.net) Net.ev({ k: 'vic', a: 'st', c: p.id, x: +spot.x.toFixed(2), z: +spot.z.toFixed(2), gy: +spot.gy.toFixed(2), y: +spot.yaw.toFixed(3), g: info.gear, w: w ? { id: w.id, att: w.att, skin: p.skinOf(w.id) } : null, m: p.inv.melee || null, n: info.name, k: p.kills });
     showHud();
   }
   function statueInfo(c, w) {
@@ -379,7 +384,7 @@ const Victory = (() => {
     if (e.a === 'd') { c.dance = e.d ? { kind: e.d, t: 0 } : null; c.setVisibleGear(); }
     else if (e.a === 'st') {
       const d = new Date(), pad = (n) => String(n).padStart(2, '0'), mp = MAPS[SETTINGS.map] ? MAPS[SETTINGS.map].name.replace(/\s*\(.*\)$/, '') : '';
-      raise(c, e.x, e.z, e.y, { look: c.look, gear: e.g || [0, 0, 0], gun: e.w || null, melee: e.m || null, title: G.teamSize > 1 ? '최후의 팀' : '최후의 1인', name: e.n || c.name, line: `처치 ${e.k || 0} · ${mp} · ${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}` }, true);
+      raise(c, e.x, e.z, e.y, { look: c.look, gear: e.g || [0, 0, 0], gun: e.w || null, melee: e.m || null, title: G.teamSize > 1 ? '최후의 팀' : '최후의 1인', name: e.n || c.name, line: `처치 ${e.k || 0} · ${mp} · ${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}` }, true, e.gy);
     }
   }
 

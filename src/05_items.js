@@ -322,6 +322,7 @@ function pickupItem(c, it, scene, opts = {}) {
   const id = it.id, drop = !!it.drop, r = pickupItemRaw(c, it, scene, opts);
   if (r.ok) {
     if (!(opts.auto && c.pickT > PICK_T * 0.4)) c.pickT = PICK_T;   // 자동 줍기로 여러 개를 연달아 주우면 허리를 한 번만 굽힌다
+    c.pickId = id;   // v23 1인칭 줍기: 줍는 손에 잠깐 보여 줄 물건
     if (c.isPlayer) { c.lootN = (c.lootN || 0) + 1; if (drop) c.dropN = (c.dropN || 0) + 1; }
     if (c.isPlayer || (G.player && Math.hypot(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z) < 22)) Audio.pickup(pickupKind(id), c.pos, c.isPlayer);
   }
@@ -344,7 +345,7 @@ function pickupItemRaw(c, it, scene, opts = {}) {
     return { ok: true, msg: Recall.useful(it) ? `${nm}의 리콜 카드 — 지도의 리콜 타워에서 등록하세요` : `${nm}의 리콜 카드 (리콜할 수 없음)` };
   }
   if (d.type === 'weapon') {
-    const inst = it.inst || newWeapon(it.id, 0);
+    const inst = it.inst || newWeapon(it.id, 0), had = inv.weapons.some(Boolean);
     let slot;
     if (d.slot === 'secondary') slot = 2;
     else if (opts.slot !== undefined) slot = opts.slot;
@@ -358,7 +359,8 @@ function pickupItemRaw(c, it, scene, opts = {}) {
       dropAt(old.id, 1, old);
     }
     inv.weapons[slot] = inst; removeItem(it);
-    if (inv.cur < 0 || inv.cur === slot || !old) { inv.cur = slot; c.equipT = 0.6; c.reloadT = 0; c.cycle = null; if (c.isPlayer) setTimeout(() => Audio.mech('equip', null, it.id, true), 260); }
+    // v23 자동 줍기로 두 번째 총을 주우면 손에 든 것은 그대로 (총이 하나도 없었을 때만 바로 든다)
+    if (!(opts.auto && had && inv.cur !== slot) && (inv.cur < 0 || inv.cur === slot || !old)) { inv.cur = slot; c.equipT = 0.6; c.reloadT = 0; c.cycle = null; if (c.isPlayer) setTimeout(() => Audio.mech('equip', null, it.id, true), 260); }
     c.setVisibleGear();
     return { ok: true, msg: d.name + ' 획득' };
   }
@@ -383,7 +385,7 @@ function pickupItemRaw(c, it, scene, opts = {}) {
     for (const i of order) {
       const wi = inv.weapons[i]; if (!wi || !attFits(it.id, wi.id)) continue;
       const cur = wi.att[d.slot];
-      if (!cur || (d.slot === 'scope' && (ITEMS[cur].zoom < d.zoom) && !opts.keep)) {
+      if (!cur || (d.slot === 'scope' && (ITEMS[cur].zoom < d.zoom) && !opts.keep && !opts.auto)) {   // 자동 줍기는 빈자리에만 단다
         if (cur) { if (!inv.add(cur, 1)) dropAt(cur, 1); }
         wi.att[d.slot] = it.id; removeItem(it); c.setVisibleGear(); if (c.isPlayer) setTimeout(() => Audio.attach(), 180);
         return { ok: true, msg: `${d.name} → ${ITEMS[wi.id].name}` };
@@ -399,57 +401,78 @@ function pickupItemRaw(c, it, scene, opts = {}) {
 }
 function dropFromInventory(c, scene, what) {
   const inv = c.inv, x = c.pos.x + rnd(-0.5, 0.5), z = c.pos.z + rnd(-0.5, 0.5), y = c.pos.y;
+  // v23 내가 버린 것은 내 자동 줍기가 다시 줍지 않는다 (손으로는 주울 수 있음 · 파티원의 자동 줍기는 주움)
+  const put = (id, n, inst) => { const it = spawnItem(scene, id, n, x, y, z, inst); if (c.isPlayer) it.autoNo = Infinity; return it; };
   if (what.weapon !== undefined) {
     const wi = inv.weapons[what.weapon]; if (!wi) return;
     inv.weapons[what.weapon] = null;
-    spawnItem(scene, wi.id, 1, x, y, z, wi);
+    put(wi.id, 1, wi);
     if (inv.cur === what.weapon) { inv.cur = inv.weapons.findIndex(Boolean); c.cycle = null; }   // 버린 총의 볼트·펌프 동작이 다른 총으로 이어지지 않게 (장전은 아래 reloadT = 0이 끊음)
     c.reloadT = 0;
   } else if (what.melee) {
-    if (!inv.melee) return; spawnItem(scene, inv.melee, 1, x, y, z); inv.melee = null; c.swing = null;
+    if (!inv.melee) return; put(inv.melee, 1); inv.melee = null; c.swing = null;
   } else if (what.gear) {
     const g = inv.gear[what.gear]; if (!g) return;
     if (what.gear === 'bag' && inv.weight() > BASE_CAP) return { ok: false, msg: '가방을 벗기 전에 짐을 줄이세요' };
-    inv.gear[what.gear] = null; spawnItem(scene, g.id, 1, x, y, z, g);
+    inv.gear[what.gear] = null; put(g.id, 1, g);
   } else if (what.item) {
     const n = inv.take(what.item, what.count || inv.count(what.item));
-    if (n > 0) spawnItem(scene, what.item, n, x, y, z);
+    if (n > 0) put(what.item, n);
   } else if (what.att) {
     const wi = inv.weapons[what.att.w]; const id = wi && wi.att[what.att.slot]; if (!id) return;
     wi.att[what.att.slot] = null;
-    if (!inv.add(id, 1)) spawnItem(scene, id, 1, x, y, z);
+    if (!inv.add(id, 1)) put(id, 1);
     if (what.att.slot === 'mag') { const m = inv.magSize(wi); if (wi.mag > m) { inv.add(ITEMS[wi.id].ammo, wi.mag - m); wi.mag = m; } }
   }
   c.setVisibleGear();
   return { ok: true };
 }
 // ---------- 자동 줍기 규칙 (v22 · 09_player.js autoPickup 이 쓴다) ----------
-//  총: 총이 하나도 없을 때(주무기 칸이 비면 주무기, 아무 총도 없으면 권총도) · 탄: 가진 총에 맞는 것만 (총을 바꾸면 줍는 탄도 바뀜)
-//  투척 무기: 종류마다 2개 · 근접 무기: 없으면 1개 · 회복: 붕대 5 · 드링크 2 · 구급상자 3 · 의료 키트 3 · 진통제 3
+//  총: 빈 주무기 칸이 있으면 (v23 — 첫 총도, 두 번째 총도. 들고 있는 것과 같은 총은 또 줍지 않음) · 아무 총도 없으면 권총도
+//  탄: 가진 총에 맞는 것만 (총을 바꾸면 줍는 탄도 바뀜) · 투척 무기: 종류마다 2개 · 근접 무기: 없으면 1개
+//  회복: 붕대 5 · 드링크 2 · 구급상자 3 · 의료 키트 3 · 진통제 3
+//  v23 헬멧·조끼·가방: 없거나 더 높은 레벨 · 부착물: 가진 총의 빈자리에 맞는 것 (이미 단 것을 바꾸지는 않음)
 const AUTO_KEEP = { bandage: 5, drink: 2, firstaid: 3, medkit: 3, pills: 3 }, AUTO_THROW = 2;
 const AUTO_AMMO = { a556: 180, a762: 150, a9: 150, a45: 120, a12: 40, a300: 30, a50: 20 };
+// 헬멧·조끼·가방이 지금 것보다 나은가: 없으면 무엇이든 · 더 높은 레벨(헬멧·조끼는 내구도 25% 이상) · 같은 레벨이면 내구도가 40%p 이상 많을 때
+const durF = (g, d) => (g && g.dur !== undefined && d.dur ? g.dur / d.dur : 1);
+function gearBetter(c, it) {
+  const d = ITEMS[it.id], g = c.inv.gear[d.type]; if (!g) return true;
+  const gd = ITEMS[g.id]; if (!gd) return true;
+  if (d.type === 'bag') return d.lvl > gd.lvl;
+  const nf = durF(it.inst, d);
+  return d.lvl > gd.lvl ? nf >= 0.25 : d.lvl === gd.lvl && nf - durF(g, gd) >= 0.4;
+}
+// 이 부착물을 달 빈자리가 있는 총
+const attFree = (c, it) => { const d = ITEMS[it.id]; return c.inv.weapons.some((w) => w && attFits(it.id, w.id) && !w.att[d.slot]); };
 // 몇 개 주울지 (0 = 안 주움)
 function autoWant(c, it) {
   const inv = c.inv, d = ITEMS[it.id]; if (!d) return 0;
   switch (d.type) {
-    case 'weapon': if (d.rocket) return 0; if (d.slot === 'secondary') return inv.weapons.some(Boolean) ? 0 : 1; return inv.weapons[0] || inv.weapons[1] ? 0 : 1;
+    case 'weapon': {
+      if (d.rocket) return 0;
+      const W = inv.weapons; if (d.slot === 'secondary') return W.some(Boolean) ? 0 : 1;
+      if (W[0] && W[1]) return 0; const has = W[0] || W[1];
+      return has && has.id === it.id ? 0 : 1;
+    }
     case 'ammo': return inv.weapons.some((w) => w && ITEMS[w.id].ammo === it.id) ? Math.max(0, (AUTO_AMMO[it.id] || 60) - inv.count(it.id)) : 0;
     case 'throw': return Math.max(0, AUTO_THROW - inv.count(it.id));
     case 'melee': return inv.melee ? 0 : 1;
     case 'heal': case 'boost': return Math.max(0, (AUTO_KEEP[it.id] || 0) - inv.count(it.id));
+    case 'vest': case 'helmet': case 'bag': return gearBetter(c, it) ? 1 : 0;
+    case 'att': return attFree(c, it) ? 1 : 0;
     case 'gold': return it.count;
     case 'card': return Recall.canTake(c, it) ? 1 : 0;
   }
   return 0;
 }
-// 줍는 순서 (클수록 먼저): 총(좋은 총부터) > 리콜 카드·골드 > 근접 무기 > 탄 > 회복 > 투척
-function autoRank(it) { const d = ITEMS[it.id]; return d.type === 'weapon' ? 100 + weaponScore(it.inst || newWeapon(it.id)) : { card: 90, gold: 85, melee: 60, ammo: 50, heal: 40, boost: 38, throw: 30 }[d.type] || 0; }
+// 줍는 순서 (클수록 먼저): 총(좋은 총부터) > 리콜 카드·골드 > 조끼·헬멧·가방(높은 레벨부터) > 근접 무기 > 탄 > 부착물 > 회복 > 투척
+function autoRank(it) { const d = ITEMS[it.id]; return d.type === 'weapon' ? 100 + weaponScore(it.inst || newWeapon(it.id)) : ({ card: 90, gold: 85, vest: 72, helmet: 71, bag: 70, melee: 60, ammo: 50, att: 45, heal: 40, boost: 38, throw: 30 }[d.type] || 0) + (d.lvl || 0); }
 // 노란색 표시 = 주워야 할 것: 자동으로 줍는 것 + 지금보다 좋은 장비 (헬멧·조끼·가방 레벨 · 빈 주무기 칸 · 더 좋은 총 · 비어 있는 부착물 자리 · 더 높은 배율)
 function lootWant(c, it) {
   const inv = c.inv, d = ITEMS[it.id]; if (!d) return false;
-  if (autoWant(c, it) > 0 && (d.type === 'weapon' || d.type === 'melee' || d.type === 'gold' || d.type === 'card' || inv.room(it.id) > 0)) return true;
-  if (d.type === 'vest' || d.type === 'helmet') { const g = inv.gear[d.type]; return !g || d.lvl > ITEMS[g.id].lvl; }
-  if (d.type === 'bag') { const g = inv.gear.bag; return !g || d.lvl > ITEMS[g.id].lvl; }
+  if (autoWant(c, it) > 0 && (d.type === 'weapon' || d.type === 'melee' || d.type === 'gold' || d.type === 'card' || d.type === 'vest' || d.type === 'helmet' || d.type === 'bag' || d.type === 'att' || inv.room(it.id) > 0)) return true;
+  if (d.type === 'vest' || d.type === 'helmet' || d.type === 'bag') return false;
   if (d.type === 'weapon' && !d.rocket) {
     if (d.slot === 'secondary') return !inv.weapons[2];
     const a = inv.weapons[0], b = inv.weapons[1]; if (!a || !b) return !((a || b) && (a || b).id === it.id);

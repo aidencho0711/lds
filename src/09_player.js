@@ -123,6 +123,41 @@ function vmResetArms(R) {
   for (const Ar of [R.L, R.R]) { const T = Body.REST['thumb1' + (Ar.side > 0 ? 'L' : 'R')]; Ar.thumb1.rotation.set(T[0], T[1], T[2]); }
   R.root.updateMatrixWorld(true);
 }
+// ---------- v23 1인칭 줍기 ----------
+//  줍는 동안(pickT, 0.5초) 화면이 살짝 숙여지고, 손 하나가 화면 아래로 뻗어 내려가 펴진 손으로 집은 뒤 쥐고 돌아온다
+//  총 = 총을 조금 내리고 왼손이 앞손잡이에서 떨어져 내려감 · 근접 무기·주먹 = 왼손 · 빈손 = 오른손이 화면 아래에서 올라와 집음
+//  VM.pk = { u: 진행(0~1, 안 줍는 중 -1), w: 손이 내려간 정도, d: 화면 숙임 } — updateCamera 가 매 프레임 부드럽게 갱신
+const _pkP = new THREE.Vector3(), _pkQ = new THREE.Quaternion(), _pkD = new THREE.Vector3(), _pkN = new THREE.Vector3(), _pkF = [0, 0, 0, 0, 0];
+function pickTick(dt, p, on) {
+  const S = VM.pk || (VM.pk = { u: -1, w: 0, d: 0 });
+  const u = on && p.pickT > 0 ? clamp(1 - p.pickT / PICK_T, 0, 1) : -1;
+  const tw = u >= 0 ? sstep(0, 0.32, u) * (1 - sstep(0.64, 1, u)) : 0, td = u >= 0 ? Math.sin(Math.PI * u) : 0;
+  S.u = u; S.w = lerp(S.w, tw, clamp(dt * 18, 0, 1)); S.d = lerp(S.d, td, clamp(dt * 14, 0, 1));
+  if (S.w < 1e-3) S.w = 0; if (S.d < 1e-3) S.d = 0;
+  return S;
+}
+// 손 하나의 목표(pos·q·손가락)를 '바닥에서 집는 자리'로 섞는다 — 내려가는 동안 손을 펴고, 바닥에서 쥔 채 돌아옴. 섞은 손가락 배열을 돌려줌
+function pickBlend(Ar, pos, q, fing, w, lift = 0) {
+  const x = -Ar.side, S = VM.pk, grab = S.u >= 0 ? sstep(0.36, 0.5, S.u) : 1;
+  _pkP.set(x * 0.03, -0.185 + lift, -0.45);   // 화면 아래 가운데 (숙인 화면에서 발 앞 바닥 쪽)
+  handQuat(_pkQ, _pkD.set(x * 0.15, -0.62, -0.77), _pkN.set(-x * 0.1, -0.77, 0.62), Ar.side);   // 손가락은 앞아래, 손바닥은 바닥 쪽
+  pos.lerp(_pkP, w); q.slerp(_pkQ, w);
+  for (let i = 0; i < 5; i++) _pkF[i] = lerp(fing[i], lerp(FING.open[i], FING.hold[i], grab), w);
+  return _pkF;
+}
+// 집은 물건을 줍는 손에 잠깐 보여 줌 (작은 것만 — 회복·부스트·투척·탄약·부착물·골드·리콜 카드), 아니면 빈손
+const PICK_SHOW = { heal: 1, boost: 1, throw: 1, ammo: 1, att: 1, gold: 1, card: 1 };
+function pickHeld(Ar, p) { const S = VM.pk, id = p.pickId, d = id && ITEMS[id]; vmHeld(Ar, S && S.u > 0.44 && S.u < 0.8 && S.w > 0.25 && d && PICK_SHOW[d.type] ? id : null); }
+// 빈손으로 줍기: 오른손이 화면 아래에서 올라와 집고 내려감 (왼손은 화면 밖)
+function updatePickVM(dt, p) {
+  const A = vmArms(); A.root.visible = true; vmResetArms(A); vmHeld(A.L, null); pickHeld(A.R, p);
+  _fvP.set(0.2, -0.62, -0.3); handQuat(_fvQ, _fvD.set(0.1, 0.5, -0.86), _fvN.set(-0.3, -0.8, -0.4), -1);
+  const f = pickBlend(A.R, _fvP, _fvQ, FING.relax, VM.pk.w, 0.03);
+  vmReach(A.R, _fvP, _fvQ, _vpole.set(0.55, -0.7, 0.1), f);
+  _fvP.set(-0.24, -0.72, -0.24); handQuat(_fvQ, _fvD.set(-0.1, 0.5, -0.86), _fvN.set(0.3, -0.8, -0.4), 1);
+  vmReach(A.L, _fvP, _fvQ, _vpole.set(-0.55, -0.7, 0.1), FING.relax);
+  if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
+}
 // v22 1인칭 던지기: 놓은 뒤 손 궤적 [u, 오른손(x,y,d), 왼손(x,y,d), 오른손가락 방향(x,y,z), 손바닥 방향(x,y,z)] — 카메라 공간(z+ = 뒤)
 //  핀을 뽑으면 오른손을 오른쪽 위 뒤로 젖히고 왼팔은 앞으로 뻗어 겨눔 → 놓으면 머리 위를 지나 화면 가운데 위에서 손을 떠나 왼쪽 아래로 휘둘러 내림
 const VMT_HOLD = [0.13, -0.12, 0.38, -0.03, -0.14, 0.4, 0.35, 0.45, -0.85, -0.9, 0.2, 0.2], VMT_WIND = [0.23, 0.07, 0.26, -0.07, -0.03, 0.5, 0.1, 0.9, 0.35, -0.2, 0.1, -0.95];
@@ -167,7 +202,7 @@ function updateHoldVM(dt, p) {
 // 1인칭 맨손: 가드(두 주먹을 화면 아래 양쪽, 손등이 보이게 — 손바닥이 보이면 갈고리처럼 보임) → 지르기(화면 가운데로 뻗음) → 복귀
 const _fvP = new THREE.Vector3(), _fvJ = new THREE.Vector3(), _fvD = new THREE.Vector3(), _fvN = new THREE.Vector3(), _fvQ = new THREE.Quaternion(), _fvQ2 = new THREE.Quaternion();
 function updateFistVM(dt, p) {
-  const A = vmArms(); A.root.visible = true; vmResetArms(A); vmHeld(A.L, null); vmHeld(A.R, null);
+  const A = vmArms(); A.root.visible = true; vmResetArms(A); pickHeld(A.L, p); vmHeld(A.R, null);
   const pu = p.punch, low = 1 - smoothstep01(clamp(p.anim.guard, 0, 1));   // 가드를 내리면 화면 아래로
   const bobAmp = clamp(p.anim.speed / 5, 0, 1), bobX = Math.sin(p.anim.phase) * 0.008 * bobAmp, bobY = -Math.abs(Math.cos(p.anim.phase)) * 0.01 * bobAmp;
   for (const Ar of [A.L, A.R]) {
@@ -179,7 +214,8 @@ function updateFistVM(dt, p) {
     //  가드 = 마디가 위·앞(팔뚝이 서 있음), 손등이 카메라 쪽 / 지르기 = 어깨→주먹 방향, 손바닥은 아래
     handQuat(_fvQ, _fvD.set(x * 0.03, 0.72, -0.69), _fvN.set(-x * 0.4, -0.85, 0.25), s);
     if (e > 0) { _fvD.copy(_fvJ).sub(_fvN.setFromMatrixPosition(Ar.sh.matrixWorld)).normalize(); handQuat(_fvQ2, _fvD, _fvN.set(-x * 0.22, -1, 0), s); _fvQ.slerp(_fvQ2, e); }
-    vmReach(Ar, _fvP, _fvQ, _vpole.set(x * 0.5, -0.8, 0.1), FING.fist); setFist(Ar);
+    const pw = s > 0 && VM.pk ? VM.pk.w : 0;   // v23 줍기: 왼손이 내려가 집음
+    vmReach(Ar, _fvP, _fvQ, _vpole.set(x * 0.5, -0.8, 0.1), pw > 0 ? pickBlend(Ar, _fvP, _fvQ, FING.fist, pw) : FING.fist); if (pw < 0.05) setFist(Ar);
   }
   if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
 }
@@ -208,12 +244,13 @@ function updateMeleeVM(dt, p) {
   _mvP.set(_mv9[0] + Math.sin(p.anim.phase) * 0.012 * bobAmp + S.run * 0.05, _mv9[1] - Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp - eq * 0.36 - S.run * 0.14, -_mv9[2]);
   _mvB.set(_mv9[3], _mv9[4] - S.run * 0.55, -_mv9[5]); _mvE.set(_mv9[6], _mv9[7], -_mv9[8]);
   bladeQuat(_mvQ, _mvB, _mvE);
-  vmHeld(A.R, id); vmHeld(A.L, null);
+  vmHeld(A.R, id); pickHeld(A.L, p);
   vmReach(A.R, _mvP, _mvQ, _vpole.set(0.6, -0.7, 0.15), FING.fist); setFist(A.R);
   const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0, pull = sw ? Math.sin(Math.PI * clamp((u - 0.2) / 0.55, 0, 1)) : 0;
   _fvP.set(-0.17 - pull * 0.09, -0.31 - pull * 0.1 - eq * 0.2 - S.run * 0.1, -0.42 + pull * 0.1);
   handQuat(_fvQ, _fvD.set(0.03, 0.72, -0.69), _fvN.set(0.4, -0.85, 0.25), 1);
-  vmReach(A.L, _fvP, _fvQ, _vpole.set(-0.5, -0.8, 0.1), FING.fist); setFist(A.L);
+  const pw = VM.pk ? VM.pk.w : 0;   // v23 줍기: 왼손이 내려가 집음
+  vmReach(A.L, _fvP, _fvQ, _vpole.set(-0.5, -0.8, 0.1), pw > 0 ? pickBlend(A.L, _fvP, _fvQ, FING.fist, pw) : FING.fist); if (pw < 0.05) setFist(A.L);
   if (sw && sw.t > D.wind * 0.85 && sw.t < D.wind + D.strike * 1.4) {
     A.R.hold.updateWorldMatrix(true, false);
     _mvT.set(0, 0, MEL_TIP[id] || 0.3).applyMatrix4(A.R.hold.matrixWorld); _mvT2.set(0, 0, 0.1).applyMatrix4(A.R.hold.matrixWorld);
@@ -262,6 +299,7 @@ function updateCamera(dt) {
   if (adsE < 0.02) Cam.wasAds = false;
   Cam.zoom = lerp(1, si.zoom, adsE);
   const fppBase = G.firstPerson && p.mode === 'ground' && p.alive;
+  const PK = pickTick(dt, p, fppBase && !p.veh && !p.knocked);   // v23 1인칭 줍기 진행
   cam.fov = (fppBase ? 78 : lerp(72, 78, adsE)) / Cam.zoom; cam.updateProjectionMatrix();
   // 배율 조준경 흔들림 (호흡). PC는 Shift로 잠시 숨참기
   const swayBase = adsE > 0.5 ? ({ x3: 0.0011, x4: 0.0017, x6: 0.0027, w94: 0.001 }[si.key] || 0) : 0;
@@ -302,6 +340,7 @@ function updateCamera(dt) {
   let fxP = 0, fxR = 0;
   if (p.throwAnim > 0) { const u = 1 - p.throwAnim / THROW_ANIM; fxP -= Math.sin(Math.PI * clamp((u - 0.12) / 0.45, 0, 1)) * 0.028; }
   if (p.swing && ITEMS[p.swing.id]) { const D = ITEMS[p.swing.id], u = (p.swing.t - D.wind * 0.6) / (D.strike + D.wind * 0.4 + D.rec * 0.4); if (u > 0 && u < 1) { const kk = Math.sin(Math.PI * u); if (D.style === 'chop') fxP -= kk * 0.05; else if (D.style === 'stab') fxP -= kk * 0.014; else fxR += kk * 0.04 * (D.style === 'slash' ? p.swing.side : 1); } }
+  if (fppBase && PK.d > 0) { const kd = PK.d * (1 - adsE); fxP -= 0.16 * kd; fxR -= 0.025 * kd; cam.position.y -= 0.05 * kd; }   // v23 줍기: 바닥을 보며 살짝 숙임
   if (!fppBase) { fxP *= 0.4; fxR *= 0.35; }
   cam.rotation.order = 'YXZ'; cam.rotation.set(pitch + fxP, yaw + Math.PI, -(p.leanA || 0) * lerp(fppBase ? 0.13 : 0.045, 0.1, adsE) + fxR);   // 기울이면 화면도 살짝 기운다(1인칭·조준 때 더)
   if (G.shake > 0) { G.shake = Math.max(0, G.shake - dt * 2.5); cam.position.x += rnd(-1, 1) * G.shake * 0.15; cam.position.y += rnd(-1, 1) * G.shake * 0.15; }
@@ -311,10 +350,11 @@ function updateCamera(dt) {
   const holding = p.alive && !p.knocked && p.mode === 'ground' && !p.veh && (p.heal || p.throwMode || p.throwAnim > 0 || p.nadeQ);
   const mel = !holding && !p.weapon && !!p.melee && p.alive && p.mode === 'ground' && !p.veh;   // v22 근접 무기
   const fists = !holding && !mel && !p.weapon && p.alive && !p.knocked && p.mode === 'ground' && !p.veh && p.anim.guard > 0.02;   // 맨손 가드·주먹
-  VM.active = holding || fists || mel ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
+  const pickOnly = !holding && !mel && !fists && !p.weapon && PK.w > 0 && p.alive && !p.knocked && p.mode === 'ground' && !p.veh;   // v23 빈손으로 줍기
+  VM.active = holding || fists || mel || pickOnly ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
   VM.root.visible = VM.active;
-  if (VM.pivot) VM.pivot.visible = !holding && !fists && !mel;
-  if (VM.active) { if (holding) updateHoldVM(dt, p); else if (mel) updateMeleeVM(dt, p); else if (fists) updateFistVM(dt, p); else updateViewModel(dt, p, adsE); }
+  if (VM.pivot) VM.pivot.visible = !holding && !fists && !mel && !pickOnly;
+  if (VM.active) { if (holding) updateHoldVM(dt, p); else if (mel) updateMeleeVM(dt, p); else if (fists) updateFistVM(dt, p); else if (pickOnly) updatePickVM(dt, p); else updateViewModel(dt, p, adsE); }
 }
 function updateViewModel(dt, p, adsE) {
   const w = p.weapon, sk = p.skinOf(w.id);
@@ -342,11 +382,13 @@ function updateViewModel(dt, p, adsE) {
   const RP = VM.rp[A.rk] || VM.rp.L;
   // 살펴보기: 총을 몸 앞으로 들어 한쪽 옆면 → 반대쪽 옆면·윗면을 차례로 보여 줌
   const insU = p.inspectT > 0 ? 1 - p.inspectT / INSPECT_DUR : 0, insE = insU > 0 ? smoothstep01(clamp(insU / 0.16, 0, 1)) * smoothstep01(clamp((1 - insU) / 0.16, 0, 1)) : 0, insB = smoothstep01(clamp((insU - 0.42) / 0.18, 0, 1));
-  const tx = lerp(hx, ax, adsE) + bobX + sprintK * 0.03 + RP.x * rw - 0.05 * insE, ty = lerp(hy, ay, adsE) + bobY - eq * 0.25 - sprintK * 0.03 + RP.y * rw + 0.03 * insE, tz = lerp(hz, az, adsE) + Cam.kick * (1 - adsE * 0.5) + RP.z * rw;
+  const pkD = VM.pk ? VM.pk.d * (1 - adsE) : 0, pkW = VM.pk ? VM.pk.w * (1 - adsE) : 0;   // v23 줍기: 총을 조금 내려 비키고 왼손이 내려감
+  const tx = lerp(hx, ax, adsE) + bobX + sprintK * 0.03 + RP.x * rw - 0.05 * insE + 0.035 * pkD, ty = lerp(hy, ay, adsE) + bobY - eq * 0.25 - sprintK * 0.03 + RP.y * rw + 0.03 * insE - 0.07 * pkD, tz = lerp(hz, az, adsE) + Cam.kick * (1 - adsE * 0.5) + RP.z * rw + 0.03 * pkD;
   const k = clamp(dt * 22, 0, 1);
   VM.pivot.position.x = lerp(VM.pivot.position.x, tx, k); VM.pivot.position.y = lerp(VM.pivot.position.y, ty, k); VM.pivot.position.z = lerp(VM.pivot.position.z, tz, k);
   VM.pivot.rotation.set(0, Math.PI + sprintK * 0.5, sprintK * -0.25);
   VM.tilt.rotation.set(-(A.tiltX + Cam.kickRot * (1 - adsE * 0.6)) - eq * 0.6 + RP.rx * rw, RP.ry * rw, clamp(A.tiltZ * (1 + RP.rz * rw), -0.95, 0.95));
+  if (pkD > 0) { VM.tilt.rotation.x += 0.12 * pkD; VM.tilt.rotation.z += 0.24 * pkD; }
   if (insE > 0) { VM.tilt.rotation.x += lerp(0.32, -0.1, insB) * insE; VM.tilt.rotation.y += lerp(0.3, -0.55, insB) * insE; VM.tilt.rotation.z += lerp(-0.42, 0.55, insB) * insE;
     // 엡실론 전용 살펴보기: 두 자세 사이에서 총이 총열 축으로 한 바퀴 휙 돎
     // 크리스마스 EXCLUSIVE(v21): 돌리지 않고 종을 흔들듯 세 번 살랑 + 살짝 들어 올림 (흔들 때마다 방울 소리 — GunSkin.xmInsp)
@@ -361,13 +403,13 @@ function updateViewModel(dt, p, adsE) {
   // 손: 총의 anchor(손바닥 가운데)로 팔 IK
   VM.root.updateMatrixWorld(true);
   const R = vmArms(), gsI = VM.gun.userData.skin, spinHide = !!(gsI && gsI.spinHide);   // 테스터 스킨 꺼내기: 총이 공중에서 도는 동안 손은 숨김
-  R.root.visible = !spinHide; vmResetArms(R); vmHeld(R.L, null); vmHeld(R.R, null);
+  R.root.visible = !spinHide; vmResetArms(R); pickHeld(R.L, p); vmHeld(R.R, null);
   VM.tilt.matrixWorld.decompose(_vs, _vq, _vt);
   if (!spinHide) for (const [Ar, anc, info] of [[R.R, A.right, A.ri], [R.L, A.left, A.li]]) {
     gripQuat(_vh, info, Ar.side, _vq);
     anchorAdj(info, _hw.copy(anc)).applyMatrix4(VM.tilt.matrixWorld);
-    const sl = Ar.side > 0 && info.a === 'fore' && info.b === 'fore' ? _cf.set(0, 0, -1).applyQuaternion(_vq) : null;
-    vmReach(Ar, _hw, _vh, _ew.set(Ar.side > 0 ? -0.5 : 0.45, -0.75, 0.05), gripFing(info), sl);
+    const pw = Ar.side > 0 ? pkW : 0, sl = pw < 0.1 && Ar.side > 0 && info.a === 'fore' && info.b === 'fore' ? _cf.set(0, 0, -1).applyQuaternion(_vq) : null;
+    vmReach(Ar, _hw, _vh, _ew.set(Ar.side > 0 ? -0.5 : 0.45, -0.75, 0.05), pw > 0 ? pickBlend(Ar, _hw, _vh, gripFing(info), pw) : gripFing(info), sl);
   }
   // 조명: 태양 방향을 카메라 공간으로
   if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
