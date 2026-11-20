@@ -16,10 +16,14 @@ const OutfitFx = (() => {
       { rate: 3.5, emit(E, P, o, k) { const a = Math.random() * TAU, r = 0.15 + Math.random() * 0.2; _q.set(o.x + Math.cos(a) * r, o.y + 0.08, o.z + Math.sin(a) * r); E(P, _q, Math.cos(a) * 0.25, 0.05, Math.sin(a) * 0.25, 0xdff4ff, (0.16 + Math.random() * 0.1) * k, 1.3, { grow: 1.2, a: 0.22, drag: 1.2 }); } },
     ],
   };
-  // 입은 옷에서 효과 종류 (중복 없이)
-  function kindsOf(look) {
+  // 입은 옷에서 효과 종류 (중복 없이) — v23 헬멧·가방 스킨은 그 장비를 실제로 썼을 때만 (gear = [헬멧, 조끼, 가방] 레벨)
+  function kindsOf(look, gear) {
     if (!look || typeof Body === 'undefined') return [];
-    const out = new Set(); for (const sl of ['hat', 'top', 'bottom', 'shoes', 'gloves']) { const S = look[sl] && Body.SKINS[look[sl]]; if (S && S.fx && KIND[S.fx]) out.add(S.fx); }
+    const out = new Set();
+    for (const sl of ['hat', 'top', 'bottom', 'shoes', 'gloves', 'helmet', 'pack']) {
+      if ((sl === 'helmet' && !(gear && gear[0])) || (sl === 'pack' && !(gear && gear[2]))) continue;
+      const S = look[sl] && Body.SKINS[look[sl]]; if (S && S.fx && KIND[S.fx]) out.add(S.fx);
+    }
     return [...out];
   }
   const sceneOf = (o) => { while (o.parent) o = o.parent; return o.isScene ? o : null; };

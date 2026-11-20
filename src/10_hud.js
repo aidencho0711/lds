@@ -976,6 +976,9 @@ const HUD = (() => {
     gloves: (c) => `<path d="M7 21v-8L5 9.5 6.5 8 9 11V4h2v6h1V3h2v7h1V4h2v9c0 4-2 8-6 8z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/>`,
     chute: (c, k) => `<path d="M2 10c3-5.5 17-5.5 20 0l-1 1.2H3z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M8 5.6 7 11M16 5.6l1 5.4M12 4.8v6.4" stroke="${k || '#555'}" stroke-width="1.6"/><path d="M4 11.5l7.4 8.5M20 11.5l-7.4 8.5M12 11.5V20" stroke="#bbb" stroke-width="0.6"/><circle cx="12" cy="20.5" r="1.2" fill="#ddd"/>`,
     none: () => `<circle cx="12" cy="12" r="7.5" fill="none" stroke="#777" stroke-width="1.4" stroke-dasharray="3 2"/><path d="M7 17 17 7" stroke="#777" stroke-width="1.4"/>`,
+    // v23 헬멧·가방 (창고·상점은 3D 썸네일을 쓰고, 이것은 그림이 없을 때 대신)
+    helmet: (c, k) => `<path d="M4 15.5c0-6 3.6-10 8.4-10S20.6 9.5 20.6 15.5z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M3.4 15.5h17.8v2H3.4z" fill="${k || '#333'}"/><path d="M8 18.8 6.5 22M16.6 18.8l1.5 3.2" stroke="${k || '#333'}" stroke-width="1.2"/>`,
+    pack: (c, k) => `<path d="M6.5 7.5c0-2.6 2.4-4.5 5.5-4.5s5.5 1.9 5.5 4.5V20a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M8.5 13.5h7v5.5h-7z" fill="${k || 'rgba(0,0,0,.25)'}"/><path d="M9.5 5.5h5" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>`,
   };
   function ownedSkins() { return Eco.ownedSkins(); }
   function equipSkin(slot, id) {
@@ -984,7 +987,7 @@ const HUD = (() => {
   }
   // 무늬 옷은 SVG 패턴(index.html의 pt-*)으로 칠한다
   const skinFill = (S) => (S.ico ? `url(#${S.ico})` : hexs(S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888)));
-  let whVeh = 'sedan', whGun = null;
+  let whVeh = 'sedan', whGun = null, whLv = 3;   // whLv: 헬멧·가방 탭에서 미리 볼 레벨 (v23)
   function renderWarehouse() {
     const eq = Body.normEquip(SETTINGS.look), own = ownedSkins(), cats = $('whCats'), grid = $('whGrid');
     if (!cats || !grid) return;
@@ -998,9 +1001,11 @@ const HUD = (() => {
       const b = h('button', 'wh-item' + (on ? ' on' : '') + (S && S.rar ? ' rar' : '')); b.type = 'button';
       if (R) b.style.setProperty('--rc', R.color);
       const ico = h('i', 'wh-ico');
-      ico.innerHTML = `<svg viewBox="0 0 24 24">${S ? SKIN_ICON[slot.id](skinFill(S), S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null) : SKIN_ICON.none()}</svg>`;
-      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : slot.name + ' 없음')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + slot.name + ' · ' + (on ? '장착 중' : S ? '장착하기' : '벗기')));
-      b.title = S ? `${S.name} — ${S.desc || ''}` : `${slot.name} 벗기`;
+      // v23 헬멧·가방: 그 레벨 모양의 3D 썸네일 · '없음' 대신 기본 모습
+      if (slot.gear) ico.appendChild(Shop.gearImgEl(slot.id, id, whLv));
+      else ico.innerHTML = `<svg viewBox="0 0 24 24">${S ? SKIN_ICON[slot.id](skinFill(S), S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null) : SKIN_ICON.none()}</svg>`;
+      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : slot.gear ? '기본 ' + slot.name : slot.name + ' 없음')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + slot.name + ' · ' + (on ? '장착 중' : S || slot.gear ? '장착하기' : '벗기')));
+      b.title = S ? `${S.name} — ${S.desc || ''}` + (slot.gear ? ' (경기에서 주운 모든 레벨의 ' + slot.name + '에 적용)' : '') : slot.gear ? `기본 ${slot.name} 모습` : `${slot.name} 벗기`;
       b.addEventListener('click', () => { if (!on) equipSkin(slot.id, id || null); });
       return b;
     };
@@ -1051,14 +1056,22 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     } else for (const slot of Body.SLOTS) {
       if (whCat !== 'all' && whCat !== slot.id) continue;
       const ids = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === slot.id && own.has(k)).sort((a, b) => (Body.SKINS[b].rar || 0) - (Body.SKINS[a].rar || 0));
+      // v23 헬멧·가방 탭: 1·2·3 레벨 중 무엇으로 미리 볼지 (로비 캐릭터도 그 레벨을 씀)
+      if (slot.gear && whCat === slot.id) {
+        const tabs = h('div', 'wh-vtabs');
+        for (const lv of [1, 2, 3]) { const b = h('button', whLv === lv ? 'on' : '', `${lv}레벨`); b.type = 'button'; b.addEventListener('click', () => { whLv = lv; renderWarehouse(); showcase(); Audio.init(); Audio.ui(); }); tabs.appendChild(b); }
+        grid.appendChild(tabs);
+      }
       if (slot.optional) grid.appendChild(card(slot, null));
       for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
-      if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자에서 얻을 수 있습니다.`));
+      if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자(크리스마스·배틀로얄·스페셜·보급)에서 얻을 수 있습니다.`));
     }
-    $('whCount').textContent = `옷 ${own.size}벌 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${Eco.gskinsOwned().length}종`;
+    const gearN = [...own].filter((k) => Body.SKINS[k] && (Body.SKINS[k].slot === 'helmet' || Body.SKINS[k].slot === 'pack')).length;
+    $('whCount').textContent = `옷 ${own.size - gearN}벌 · 헬멧·가방 스킨 ${gearN}종 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${Eco.gskinsOwned().length}종`;
   }
   // 창고 3D: 차량 분류면 장착한(없으면 기본) 차량을, 아니면 캐릭터
   function showcase() {
+    Lobby.gearView = (whCat === 'helmet' || whCat === 'pack') ? { k: whCat, lv: whLv } : null;   // v23 창고에서 헬멧·가방 보기
     if (lobbyTab !== 'custom') return;
     if (whCat === 'veh') { const vl = Eco.vlook(); Lobby.show({ kind: 'veh', type: whVeh, skin: vl[whVeh] }); }
     else if (whCat === 'gun') { const gun = whGun || Eco.showGun(); Lobby.show({ kind: 'gun', gun, skin: Eco.glook()[gun] || null }); }

@@ -40,6 +40,7 @@ function buildRig(look) {
   const backGuns = new THREE.Group(); B.chest.add(backGuns);   // 등에 멘 주무기(손에 없는 것)
   const meleeHip = new THREE.Group(); B.hips.add(meleeHip);     // v22 허리에 찬 근접 무기(손에 없을 때)
   const helmet = new THREE.Group(), vest = new THREE.Group(), pack = new THREE.Group(); B.head.add(helmet); B.chest.add(vest); B.chest.add(pack);
+  const vestL = new THREE.Group(), vestR = new THREE.Group(); B.shL.add(vestL); B.shR.add(vestR);   // v23 위팔에 붙는 조끼 부품 (3레벨 어깨 보호대)
   // 모자 스킨: 머리 뼈에 붙는 단단한 메시. 헬멧을 쓰면 숨긴다
   const hat = new THREE.Group(); B.head.add(hat);
   if (L.hat) { const hm = Body.hatMesh(L.hat); if (hm) hat.add(hm); }
@@ -47,22 +48,24 @@ function buildRig(look) {
   const rig = { root, body, hips: B.hips, spine: B.spine, chest: B.chest, neck: B.neck, head: B.head, armL: arm('L'), armR: arm('R'), legL: leg('L'), legR: leg('R'),
     gunMount, backGuns, backKey: ['', ''], meleeHip, meleeKey: '', chute, helmet, vest, pack, hat, mesh: I.hi, meshLo: I.lo, skel: I.skel, bones: I.list, look: L, gunId: null, gunObj: null, gearKey: '', lod: 0, shadow: true,
     ofx: typeof OutfitFx !== 'undefined' ? OutfitFx.kindsOf(L) : [],   // EXCLUSIVE 옷 효과 종류 (08_outfitfx.js)
-    // 장비 단계(0 = 없음): 바뀔 때만 메시 교체
+    // 장비 단계(0 = 없음): 바뀔 때만 메시 교체 · v23 헬멧·가방 스킨(look.helmet·look.pack) · 멀리(lod 1)는 간략 모델 · 가방은 조끼 레벨에 맞춰 뒤로
+    gearLv: [0, 0, 0],
     setGear(h, v, p) {
-      const key = h + '|' + v + '|' + p; if (this.gearKey === key) return; this.gearKey = key;
-      for (const [grp, lvl, fn] of [[helmet, h, Gear.helmet], [vest, v, Gear.vest], [pack, p, Gear.pack]]) {
+      const lo = this.lod !== 0, key = h + '|' + v + '|' + p + (lo ? '|lo' : ''); if (this.gearKey === key) return; this.gearKey = key; this.gearLv = [h, v, p];
+      for (const [grp, m] of [[helmet, h ? Gear.helmet(h, L.helmet, lo) : null], [vest, v ? Gear.vest(v, lo) : null], [pack, p ? Gear.pack(p, L.pack, lo, v) : null], [vestL, v ? Gear.vestArm(v, 'L', lo) : null], [vestR, v ? Gear.vestArm(v, 'R', lo) : null]]) {
         while (grp.children.length) grp.remove(grp.children[0]);
-        const m = lvl ? fn(lvl) : null; if (m) { m.traverse((o) => { if (o.isMesh) o.castShadow = this.shadow; }); grp.add(m); }
+        if (m) { m.traverse((o) => { if (o.isMesh) o.castShadow = this.shadow; }); grp.add(m); }
       }
       hat.visible = !h;
+      if (typeof OutfitFx !== 'undefined') this.ofx = OutfitFx.kindsOf(L, this.gearLv);   // EXCLUSIVE 헬멧·가방 효과는 그 장비를 썼을 때만
     },
     setShadow(on) {
       if (this.shadow === on) return; this.shadow = on;
       this.mesh.castShadow = this.meshLo.castShadow = on;
-      for (const grp of [helmet, vest, pack, hat, gunMount, backGuns, meleeHip]) grp.traverse((o) => { if (o.isMesh) o.castShadow = on; });
+      for (const grp of [helmet, vest, pack, vestL, vestR, hat, gunMount, backGuns, meleeHip]) grp.traverse((o) => { if (o.isMesh) o.castShadow = on; });
     },
     // 0 = 가까이(정밀), 1 = 멀리(간략)
-    setLod(l) { if (this.lod === l) return; this.lod = l; this.mesh.visible = l === 0; this.meshLo.visible = l !== 0; },
+    setLod(l) { if (this.lod === l) return; this.lod = l; this.mesh.visible = l === 0; this.meshLo.visible = l !== 0; const g = this.gearLv; this.setGear(g[0], g[1], g[2]); },
   };
   return rig;
 }
@@ -123,12 +126,13 @@ class Character {
     // 등에 멘 주무기: 1번은 왼쪽 어깨 위로, 2번은 오른쪽 어깨 위로 비스듬히 (가방이 있으면 가방 위)
     for (let i = 0; i < 2; i++) {
       const bw = inv.weapons[i], inHand = i === inv.cur && this.equipT <= 0.25 && !this.knocked;
-      const bsk = bw ? this.skinOf(bw.id) : null, key = bw && !inHand ? bw.id + '|' + [bw.att.scope, bw.att.muzzle, bw.att.mag, bw.att.grip].join(',') + '|' + (inv.gear.bag ? 1 : 0) + '|' + (bsk || '') : '';
+      const bsk = bw ? this.skinOf(bw.id) : null, key = bw && !inHand ? bw.id + '|' + [bw.att.scope, bw.att.muzzle, bw.att.mag, bw.att.grip].join(',') + '|' + lv(inv.gear.bag) + lv(inv.gear.vest) + '|' + (bsk || '') : '';
       if (r.backKey[i] === key) continue;
       r.backKey[i] = key;
       const old = r.backGuns.getObjectByName('back' + i); if (old) r.backGuns.remove(old);
       if (!key) continue;
-      const g = buildGunMesh(bw.id, bw.att, bsk), s = i === 0 ? 1 : -1, zb = (inv.gear.bag ? -0.36 : -0.16) - i * 0.045;
+      // 등 뒤 거리: 가방(레벨·조끼에 따라 두께가 다름) 바깥 → 없으면 조끼 등판 바깥 → 맨몸
+      const g = buildGunMesh(bw.id, bw.att, bsk), s = i === 0 ? 1 : -1, zb = (inv.gear.bag ? Gear.packBack(lv(inv.gear.bag), lv(inv.gear.vest)) - 0.012 : inv.gear.vest ? Gear.vestBack(lv(inv.gear.vest)) - 0.03 : -0.16) - i * 0.045;
       g.name = 'back' + i; g.traverse((o) => { if (o.isMesh) o.castShadow = r.shadow; });
       _bz.set(s * 0.42, 0.9, 0).normalize(); _bx.set(0, 0, -1); _by.crossVectors(_bz, _bx);
       g.quaternion.setFromRotationMatrix(_bm.makeBasis(_bx, _by, _bz));
