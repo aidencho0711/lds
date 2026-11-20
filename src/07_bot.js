@@ -474,6 +474,13 @@ class Brain {
       const iv = this.intel, di = Math.hypot(iv.x - c.pos.x, iv.z - c.pos.z);
       if (di < 160 && (!pm || Math.hypot(iv.x - pm.pos.x, iv.z - pm.pos.z) < 35)) this.investigate = { x: iv.x + rnd(-5, 5), z: iv.z + rnd(-5, 5), t: G.time, kind: 'intel' };
     }
+    // v23 잠수 추적 (07_bot_hunt.js): 숨어 있는 플레이어의 대략적인 위치를 받았으면 그쪽을 수색 — 보이기 전엔 쏘지 않는다
+    //  도착해서 못 찾으면(MOVE 가 investigate 를 비움) 그 둘레 10m 안 다른 곳을 다시 · 새 위치를 받으면 바로 그쪽으로
+    const hu = this.hunt;
+    if (hu && G.time - hu.t < 12 && usable && !cautious && Zone.inside(hu.x, hu.z, Zone.cur, 0)) {
+      const iv = this.investigate;
+      if (!iv || (iv.kind === 'hunt' ? iv.src !== hu : G.time - iv.t > 4)) { const j = hu.used ? 10 : 0; hu.used = true; this.investigate = { x: hu.x + rnd(-j, j), z: hu.z + rnd(-j, j), t: G.time, kind: 'hunt', src: hu }; }
+    }
     const ivOk = this.investigate && (!pm || this.investigate.kind === 'order' || Math.hypot(this.investigate.x - pm.pos.x, this.investigate.z - pm.pos.z) < 35);
     if (ivOk && G.time - this.investigate.t < 14 && (usable || this.investigate.kind === 'crate') && !cautious) { this.setState('MOVE'); return; }
     if (c.boost < 40 && (c.inv.count('drink') || c.inv.count('pills')) && !tgt && c.hp < 100 && Math.random() < 0.3) this.startBoost();
