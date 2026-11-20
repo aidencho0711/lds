@@ -127,7 +127,7 @@ const RARITY = [
     pack_x_knit: { slot: 'pack', box: 'xmas', rar: 0, name: '초록 니트 가방', desc: '털실로 뜬 초록 배낭 · 빨간 끈', cell: 'knit', color: 0x245a34, strap: 0xb3202c, dark: 0x163a22, roll: 0xb3202c },
     helm_x_snowflake: { slot: 'helmet', box: 'xmas', rar: 1, name: '눈꽃 헬멧', desc: '흰 눈꽃 띠 빨간 니트 커버', cell: 'xknit', strap: 0xf2efe6, dark: 0x7a1018 },
     pack_x_gift: { slot: 'pack', box: 'xmas', rar: 1, name: '선물 포장 가방', desc: '금 리본을 두른 빨간 선물 상자', color: 0xc8202e, color2: 0xa8182a, strap: 0x2a7a3a, dark: 0x1a1a1a, deco: 'bow', ribbon: 0xe8c45a, roll: 0x2a7a3a },
-    helm_x_rudolph: { slot: 'helmet', box: 'xmas', rar: 3, name: '루돌프 헬멧', desc: '뿔 달린 갈색 헬멧 · 빛나는 빨간 코', kind: 'cloth', color: 0x7a5232, color2: 0x5e3e24, strap: 0xc8202e, dark: 0x2a1c12, deco: 'antlers' },
+    helm_x_rudolph: { slot: 'helmet', box: 'xmas', rar: 3, name: '루돌프 헬멧', desc: '뿔 달린 갈색 헬멧 · 빛나는 빨간 코', kind: 'cloth', color: 0x6a4428, color2: 0x523420, strap: 0xc8202e, dark: 0x2a1c12, deco: 'antlers' },
     pack_x_candy: { slot: 'pack', box: 'xmas', rar: 3, name: '캔디 케인 가방', desc: '빨강·흰 사선 줄무늬 배낭', cell: 'xcandy', strap: 0xc8141e, dark: 0x1a1a1a, roll: 0xf4f0e8 },
     helm_x_santa: { slot: 'helmet', box: 'xmas', rar: 4, name: '산타 헬멧', desc: '흰 털 테두리와 방울 꼬리', cell: 'knit', color: 0xc41a24, strap: 0xf4f2ee, dark: 0x2a1012, deco: 'santa' },
     pack_x_sack: { slot: 'pack', box: 'xmas', rar: 4, name: '산타 선물 자루', desc: '흰 털 테 · 금 버클 붉은 자루', color: 0xb8141e, color2: 0x9a1018, strap: 0x141414, dark: 0xf2c84a, darkKind: 'brass', deco: 'santa', roll: 0xf4f2ee },

@@ -205,8 +205,8 @@ const Lobby = {
     if (typeof PartyFx !== 'undefined') PartyFx.update(dt, this);   // 파티 입장·퇴장 연출: 쉬는 자세 위에 동작을 덮어 쓰고 효과를 진행 (10_partyfx.js)
     // 캐릭터를 화면 가운데에 (왼쪽 패널은 배경 위에 겹친다)
     const a = t * 0.08, f = smoothstep01(this.fk), hk = smoothstep01(this.hk || 0);
-    this.cam.position.set(lerp(Math.sin(a) * 0.5 + 0.2, lerp(-0.55, -0.3, hk), f), lerp(1.45 + Math.sin(t * 0.3) * 0.05, lerp(1.32, 1.62, hk), f), lerp(4.9 + Math.cos(a) * 0.2, lerp(3.05, 1.65, hk), f));
-    this.cam.lookAt(lerp(0.05, lerp(-0.62, -0.34, hk), f), lerp(1.02, lerp(1.05, 1.52, hk), f), 0);
+    this.cam.position.set(lerp(Math.sin(a) * 0.5 + 0.2, lerp(-0.55, -0.3, hk), f), lerp(1.45 + Math.sin(t * 0.3) * 0.05, lerp(1.32, 1.72, hk), f), lerp(4.9 + Math.cos(a) * 0.2, lerp(3.05, 1.6, hk), f));
+    this.cam.lookAt(lerp(0.05, lerp(-0.62, -0.34, hk), f), lerp(1.02, lerp(1.05, 1.64, hk), f), 0);
     if (typeof PartyFx !== 'undefined') PartyFx.cam(this.cam, dt);   // 착지 충격 흔들림
   },
 };
