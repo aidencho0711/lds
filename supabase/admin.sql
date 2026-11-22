@@ -305,7 +305,8 @@ create or replace function public.staff_roles(p_ids uuid[]) returns jsonb
 language sql stable security definer set search_path = '' as $$
   select coalesce(jsonb_object_agg(a.id::text, a.role), '{}'::jsonb)
     from public.admins a
-   where a.id = any ((coalesce(p_ids, '{}'::uuid[]))[1:16]);
+   where array_ndims(p_ids) = 1   -- 1차원 배열만 (중첩 배열로 16명 제한을 넘기지 못하게 · null·빈 배열은 {})
+     and a.id = any (p_ids[1:16]);
 $$;
 
 revoke execute on function public.is_admin() from public, anon;

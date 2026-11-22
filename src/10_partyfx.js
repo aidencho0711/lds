@@ -6,7 +6,8 @@
 //  주변 효과(빛기둥·충격파·바닥 문양·입자·번개·불기둥·일식)가 함께 터진다
 //  · 내 연출(자동 = 가진 것 중 가장 높은 것 · 직접 고르기 · 끄기)은 파티 정보 memberInfo.ent 로 전해져 같은 파티의 모든 기기에서 보인다
 //  · 들어온 사람: 다른 기기에서는 그 파티원 자리에서 입장, 들어온 기기에서는 가운데 내 캐릭터가 입장
-//  · 나간 사람: 남은 기기에서는 그 캐릭터가 퇴장 동작을 하고 사라지고(유령 리그), 나간 기기에서는 내 캐릭터가 작별 몸짓
+//  · 나간 사람: 남은 기기에서는 그 캐릭터가 퇴장 동작을 하고 사라지고(유령 리그), 나간 기기에서도 내 캐릭터가 같은 퇴장 동작을 한 뒤 다시 나타난다
+//    (예전에는 나간 기기에서 짧은 작별 몸짓만 했다 — 정작 본인은 자기 퇴장 연출을 볼 수 없었음)
 //  · 캐릭터: 열쇠 자세(KP — 팔은 IK/FK, 디딘 발은 다리 IK) 사이를 이어 붙인 동작(MOT) + 몸 채널(높이·회전·크기·깜빡임)
 //  · 효과: 로비 장면 전용 시간 효과(고리·기둥·바닥 문양·빛 판·빛줄기·번개) + 총기 스킨 입자 풀(GunSkin.fx)
 //    새 조명을 더하지 않고(셰이더를 다시 만들지 않게) 해·하늘 밝기만 잠깐 바꾸고, 재료는 로비를 만들 때 미리 한 번 그려 둔다
@@ -16,21 +17,21 @@
 const PartyFx = (() => {
   // ---------- 대상 (자동 선택은 위에서부터) ----------
   //  t: 새 티어 번호(RANK_TIERS — 10_rank.js, 최고 도달은 칭호 tier_<id> 로 판단) · 없으면 같은 id 의 칭호(10_ui_profile.js TI)
-  //  mo: [입장, 퇴장, 작별 몸짓] · c: [주색, 보조색, 밝은 색] · pal: 입자 색
+  //  mo: [입장, 퇴장] · c: [주색, 보조색, 밝은 색] · pal: 입자 색
   //  staff: 관리자(개발자·부개발자) 계정 전용 — 칭호·티어와 상관없이 그 계정만 (다른 기기는 서버에 확인: Cloud.staffRole)
   const ENT = [
-    { id: 'dev', staff: true, name: '개발자', mo: ['devIn', 'devOut', 'devBye'], c: [0x4de8ff, 0x7dffb0, 0xffffff], pal: [0x4de8ff, 0x7dffb0, 0xffd866, 0xff7ab8, 0xc9a0ff, 0xffffff] },
-    { id: 'champ_tier', name: '랭크 챔피언', mo: ['ceremony', 'curtain', 'bow'], c: [0xffc93a, 0xff6a3a, 0xfff4c8], pal: [0xffd65a, 0xfff0b0, 0xff4a5a, 0x4ab8ff, 0x6aff9a, 0xffffff] },
-    { id: 'zenith', t: 13, name: '제니스', mo: ['armillary', 'ascendStar', 'salute'], c: [0xffd76a, 0xa47cff, 0xffffff], pal: [0xffd76a, 0xfff2c8, 0xc8a8ff, 0xffffff] },
-    { id: 'champ_hc', name: '하드코어 패왕', mo: ['crater', 'devour', 'flex'], c: [0xff3a1e, 0xffa030, 0xffe2c8], pal: [0xff3a1e, 0xff7a20, 0xffc04a, 0xffe2c8] },
-    { id: 'eclipse', t: 12, name: '이클립스', mo: ['eclipse', 'umbra', 'cross'], c: [0xff4a2e, 0x8a0c1a, 0xffd8c8], pal: [0xff4a2e, 0xff8a5a, 0xffd0b0, 0xc8102a] },
-    { id: 'champ_lv', name: '정점의 베테랑', mo: ['smokeIn', 'smokeOut', 'salute'], c: [0xcfe4ff, 0x7fb8ff, 0xffffff], pal: [0xcfe4ff, 0x9fd0ff, 0xffffff, 0xffe9a8] },
-    { id: 'celestial', t: 11, name: '셀레스티얼', mo: ['wingsIn', 'wingsOut', 'open'], c: [0xf3d98b, 0xfff4d8, 0xffffff], pal: [0xf3d98b, 0xffe9b0, 0xfffaf0, 0xffffff] },
-    { id: 'nova', t: 10, name: '노바', mo: ['nova', 'novaOut', 'wave'], c: [0x8fe3ff, 0x2f86ff, 0xffffff], pal: [0x8fe3ff, 0x4fb0ff, 0xd8f6ff, 0xffffff] },
-    { id: 'hc_overlord', name: '오버로드', mo: ['throne', 'throneOut', 'fistPalm'], c: [0xff7a18, 0xffc040, 0xfff0c8], pal: [0xff6a12, 0xff9a2a, 0xffc04a, 0xfff0c0] },
-    { id: 'tier_eternal', name: '이터널', mo: ['clockIn', 'clockOut', 'open'], c: [0xc58cff, 0x7a3cff, 0xf6eaff], pal: [0xc58cff, 0xe6c8ff, 0x9a6aff, 0xffffff] },
-    { id: 'br_all', name: '백룸 정복자', mo: ['escape', 'noclip', 'shrug'], c: [0xffe066, 0xc9b27a, 0xfffbe0], pal: [0xffe066, 0xe8d8a0, 0xc9b27a, 0xfff8d0] },
-    { id: 'wargod', name: '전쟁의 신', mo: ['bladeRain', 'swordOut', 'armUp'], c: [0xff2a3a, 0xff8a8a, 0xffeef0], pal: [0xff2a3a, 0xff6a6a, 0xffd0d0, 0xffffff] },
+    { id: 'dev', staff: true, name: '개발자', mo: ['devIn', 'devOut'], c: [0x4de8ff, 0x7dffb0, 0xffffff], pal: [0x4de8ff, 0x7dffb0, 0xffd866, 0xff7ab8, 0xc9a0ff, 0xffffff] },
+    { id: 'champ_tier', name: '랭크 챔피언', mo: ['ceremony', 'curtain'], c: [0xffc93a, 0xff6a3a, 0xfff4c8], pal: [0xffd65a, 0xfff0b0, 0xff4a5a, 0x4ab8ff, 0x6aff9a, 0xffffff] },
+    { id: 'zenith', t: 13, name: '제니스', mo: ['armillary', 'ascendStar'], c: [0xffd76a, 0xa47cff, 0xffffff], pal: [0xffd76a, 0xfff2c8, 0xc8a8ff, 0xffffff] },
+    { id: 'champ_hc', name: '하드코어 패왕', mo: ['crater', 'devour'], c: [0xff3a1e, 0xffa030, 0xffe2c8], pal: [0xff3a1e, 0xff7a20, 0xffc04a, 0xffe2c8] },
+    { id: 'eclipse', t: 12, name: '이클립스', mo: ['eclipse', 'umbra'], c: [0xff4a2e, 0x8a0c1a, 0xffd8c8], pal: [0xff4a2e, 0xff8a5a, 0xffd0b0, 0xc8102a] },
+    { id: 'champ_lv', name: '정점의 베테랑', mo: ['smokeIn', 'smokeOut'], c: [0xcfe4ff, 0x7fb8ff, 0xffffff], pal: [0xcfe4ff, 0x9fd0ff, 0xffffff, 0xffe9a8] },
+    { id: 'celestial', t: 11, name: '셀레스티얼', mo: ['wingsIn', 'wingsOut'], c: [0xf3d98b, 0xfff4d8, 0xffffff], pal: [0xf3d98b, 0xffe9b0, 0xfffaf0, 0xffffff] },
+    { id: 'nova', t: 10, name: '노바', mo: ['nova', 'novaOut'], c: [0x8fe3ff, 0x2f86ff, 0xffffff], pal: [0x8fe3ff, 0x4fb0ff, 0xd8f6ff, 0xffffff] },
+    { id: 'hc_overlord', name: '오버로드', mo: ['throne', 'throneOut'], c: [0xff7a18, 0xffc040, 0xfff0c8], pal: [0xff6a12, 0xff9a2a, 0xffc04a, 0xfff0c0] },
+    { id: 'tier_eternal', name: '이터널', mo: ['clockIn', 'clockOut'], c: [0xc58cff, 0x7a3cff, 0xf6eaff], pal: [0xc58cff, 0xe6c8ff, 0x9a6aff, 0xffffff] },
+    { id: 'br_all', name: '백룸 정복자', mo: ['escape', 'noclip'], c: [0xffe066, 0xc9b27a, 0xfffbe0], pal: [0xffe066, 0xe8d8a0, 0xc9b27a, 0xfff8d0] },
+    { id: 'wargod', name: '전쟁의 신', mo: ['bladeRain', 'swordOut'], c: [0xff2a3a, 0xff8a8a, 0xffeef0], pal: [0xff2a3a, 0xff6a6a, 0xffd0d0, 0xffffff] },
   ];
   const byId = (id) => ENT.find((e) => e.id === id) || null;
   const tiOf = (id) => (typeof Prof !== 'undefined' && Prof.TI ? Prof.TI.find((x) => x.id === id) || null : null);
@@ -310,8 +311,6 @@ const PartyFx = (() => {
     salute(r) { KP.att(r); up(r); hand(r, r.armR, r.head, [-0.115, 0.06, 0.07], [0.62, 0.32, 0.55], [0.12, -0.9, -0.35], [-0.55, 0.22, 0.12], 'flat'); },
     // 손 흔들기 (o.t 로 흔듦)
     wave(r, o) { KP.stand(r); const w = Math.sin(o.t * 11); up(r); r.head.rotation.set(-0.06, -0.12, 0.06); hand(r, r.armR, r.chest, [-0.36 + w * 0.06, 0.44, 0.14], [w * 0.35, 1, 0], [0, 0, 1], [-0.62, -0.12, -0.05], 'open'); },
-    // 가슴에 손 얹고 인사
-    bow(r) { r.hips.position.set(0, 0.93, -0.04); spineSet(r, [-0.06], [0.42], [0.2], [0.12], [0.12]); up(r); legsStand(r, 0.09); hand(r, r.armR, r.chest, [0.07, 0.06, 0.18], [1, 0.3, 0], [0, 0, -1], [-0.36, -0.32, 0.25], 'flat'); fk(r.armL, -0.55, 0, 0.12, -0.12); },
     // 축복: 두 손을 벌려 손바닥을 위로 · 하늘을 봄
     open(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [-0.08], [-0.08], [-0.15], [-0.18]); up(r); legsStand(r, 0.1); hands(r, r.chest, [-0.42, -0.2, 0.26], [-0.3, 0.1, 1], [0, 1, 0], [-0.6, -0.25, -0.1], 'open'); },
     // 한 무릎 착지: 왼발 앞 · 오른 무릎 바닥 · 오른 주먹으로 땅 · 왼팔은 뒤로 벌려 균형 · 고개 숙임
@@ -340,8 +339,6 @@ const PartyFx = (() => {
     burst(r) { r.hips.position.set(0, 0.93, 0); spineSet(r, [0], [-0.14], [-0.14], [-0.12], [-0.18]); up(r); legsStand(r, 0.2); fk(r.armL, -0.2, 0.3, 0.85, -0.12, 'fist'); fk(r.armR, -0.2, 0.3, 0.85, -0.12, 'fist'); },
     // 두 주먹 들어 힘자랑 (전쟁의 신)
     flex(r) { r.hips.position.set(0, 0.94, 0); spineSet(r, [0], [-0.1], [-0.12], [-0.12], [-0.2]); up(r); legsStand(r, 0.2); hands(r, r.chest, [-0.43, 0.44, 0.02], null, null, [-0.65, 0.12, -0.08], 'fist'); },
-    // 오른팔을 하늘로 뻗음
-    armUp(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [-0.08], [-0.1], [-0.25], [-0.3]); up(r); legsStand(r, 0.13); hand(r, r.armR, r.chest, [-0.16, 0.86, 0.12], [0, 1, 0.1], [-0.5, 0, 1], [-0.6, 0.2, 0], 'flat'); fk(r.armL, 0.05, 0, 0.3, -0.2, 'fist'); },
     // 깊게 웅크림 (뛰어오르기 직전 · 팔을 뒤로)
     charge(r) { r.hips.position.set(0, 0.6, -0.04); spineSet(r, [0.4], [0.3], [0.12], [-0.25], [-0.25]); up(r); plant(r, r.legL, [0.13, 0.085, 0.08], [0.15, 0.3, 1], 0.2); plant(r, r.legR, [-0.13, 0.085, 0.04], [-0.15, 0.3, 1], 0.2); fk(r.armL, 1.0, 0, 0.2, -0.25, 'fist'); fk(r.armR, 1.0, 0, 0.2, -0.25, 'fist'); },
     // 솟구침: 몸을 쭉 펴고 팔은 머리 위로
@@ -352,8 +349,6 @@ const PartyFx = (() => {
     fistPalm(r) { r.hips.position.set(0, 0.94, 0); spineSet(r, [0.03], [0.05], [0], [0.04], [0.04]); up(r); legsStand(r, 0.18); hand(r, r.armR, r.chest, [-0.06, 0.04, 0.27], null, null, [-0.5, -0.32, 0.05], 'fist'); hand(r, r.armL, r.chest, [0.07, 0.02, 0.3], [-0.2, 0.75, 0.6], [-1, 0, 0.15], [0.5, -0.32, 0.05], 'flat'); },
     // 두리번 (o.t 로 좌우)
     look(r, o) { KP.stand(r); const s = Math.sin(o.t * 2.6); r.neck.rotation.y = s * 0.35; r.head.rotation.set(-0.05, s * 0.45, s * 0.05); r.chest.rotation.y = s * 0.12; },
-    // 어깨 으쓱: 손바닥을 위로 · 고개 갸웃
-    shrug(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [0], [-0.02], [0], [0.02, 0, 0.18]); up(r); legsStand(r, 0.11); r.armL.clav.rotation.set(0, 0, 0.22); r.armR.clav.rotation.set(0, 0, -0.22); up(r); hands(r, r.chest, [-0.34, -0.18, 0.22], [-0.6, 0, 1], [0, 1, 0], [-0.55, -0.3, -0.2], 'open'); },
     // 차렷 + 고개 들기 (이터널 · 베테랑 등장 순간)
     tall(r) { KP.att(r); r.head.rotation.x = -0.12; },
     // 몸을 던짐 (몸 채널에서 앞으로 크게 기울임): 두 팔을 머리 위로 쭉 · 한 다리는 뒤로 뻗고 한 다리는 굽힘 · 앞을 봄
@@ -1206,11 +1201,7 @@ const PartyFx = (() => {
           EM(Q, _b, (_a.x - _b.x) * 2.2, (_a.y - _b.y) * 2.2, (_a.z - _b.z) * 2.2, pk(E), rnd(0.03, 0.05), rnd(0.3, 0.5), { sq: 1, so: 0.85, g: 0, drag: 1.5 }); }
       }
     } };
-  // ===== 작별 몸짓 (내가 파티에서 나왔을 때 내 캐릭터): 대상의 몸짓 + 바닥 문양 · 위로 흩어지는 빛 =====
-  function byeMot(g) { return { kind: 'bye', dur: 2.4, keys: [[0, 'stand'], [0.4, g, 0.4], [1.8, g], [2.1, 'stand', 0.3]],
-    fx(a) { const E = a.E, gp = a.gp; sigil(gp, sigilTex(), 2.2, 2.2, E.c[0], 0.6, 0.1); ring(gp, E.c[0], 2.0, 0.6, 0.45); glow(hipsAt(a, 0.7).clone(), E.c[2], 2.4, 0.4, 0.45); label(E, gp, 0.3, 1.9);
-      at(0.45, () => { const Q = P(); for (let i = 0; i < 40; i++) { const an = Math.random() * TAU, rr = rnd(0.2, 0.9); EM(Q, _a.set(gp.x + Math.cos(an) * rr, gp.y + 0.1, gp.z + Math.sin(an) * rr), 0, rnd(0.8, 2.2), 0, pk(E), rnd(0.03, 0.055), rnd(0.8, 1.4), { drag: 0.6, so: 0.5 }); } }); } }; }
-  // 퇴장 미리 보기 뒤 내 캐릭터가 다시 나타남: 빛 속에서 작게 → 원래 크기
+  // 내 캐릭터의 퇴장이 끝난 뒤(파티에서 나왔을 때 · 퇴장 미리 보기) 다시 나타남: 빛 속에서 작게 → 원래 크기
   MOT.back = { kind: 'in', dur: 1.0, keys: [[0, 'stand']], body(t, B) { B.s = Math.max(0.01, eout(seg(t, 0.05, 0.45))); B.vis = t > 0.05; },
     fx(a) { const E = a.E, gp = a.gp; glow(hipsAt(a, 0.9).clone(), E.c[2], 2.4, 0.4); ring(gp, E.c[0], 1.6, 0.5);
       at(0.05, () => { const Q = P(); for (let i = 0; i < 26; i++) { const an = Math.random() * TAU; EM(Q, hipsAt(a, rnd(0.2, 1.2)), Math.cos(an) * rnd(0.6, 1.6), rnd(0.2, 1.2), Math.sin(an) * rnd(0.6, 1.6), pk(E), rnd(0.025, 0.05), rnd(0.4, 0.8), { drag: 2, so: 0.5 }); } }); } };
@@ -1222,12 +1213,12 @@ const PartyFx = (() => {
   const GH = [];          // 퇴장 중인 유령 리그
   function rigOf(L, k, a) { return a.ghost || (k === 'me' ? L.rig : (L.mates || []).find((m) => m.uid === k)); }
   function play(L, k, E, dir, rig) {
-    const mo = E.mo[dir === 'in' ? 0 : dir === 'out' ? 1 : 2], M = dir === 'back' ? MOT.back : dir === 'bye' ? byeMot(mo) : MOT[mo]; if (!M || !rig) return;
+    const mo = E.mo[dir === 'in' ? 0 : 1], M = dir === 'back' ? MOT.back : MOT[mo]; if (!M || !rig) return;
     const old = AN.get(k); if (old) stop(L, k, old);
     SC = L.scene; CAM = L.cam; LOB = L;
     const p = rig.root.position, a = { k, E, M, dir, t: 0, rig, yaw: rig.baseYaw != null ? rig.baseYaw : 0.3, gp: { x: p.x, y: p.y, z: p.z, snow: p.y < 0.05 && typeof WINTER !== 'undefined' && WINTER.on() }, o: { t: 0 }, ghost: dir === 'out' && k !== 'me' ? rig : null, back: dir === 'out' && k === 'me', gunShown: false, fin: [] };
     AN.set(k, a); M.fx(a);
-    if (typeof Audio !== 'undefined' && Audio.partyFx) Audio.partyFx(dir === 'bye' || dir === 'back' ? 'bye' : mo);
+    if (typeof Audio !== 'undefined' && Audio.partyFx) Audio.partyFx(dir === 'back' ? 'back' : mo);
   }
   // 동작이 리그에 걸어 둔 것(철사 모델 · 바꿔 낀 재료 · 숨긴 장비)을 되돌린다 — 끝났을 때 · 중간에 끊겼을 때 · 리그가 사라졌을 때
   function fin(a) { a.dead = true; const F = a.fin; a.fin = []; for (const f of F || []) { try { f(); } catch (e) { /* */ } } }
@@ -1244,8 +1235,8 @@ const PartyFx = (() => {
     r.root.rotation.y = a.yaw; a.o.t = t;
     if (!k1 || w <= 0) evalKey(r, k0[1], B, a.o); else if (w >= 1) evalKey(r, k1[1], B, a.o);
     else { evalKey(r, k0[1], B, a.o); grab(r, KA); evalKey(r, k1[1], B, a.o); mixTo(r, KA, 1 - w); }
-    // 쉬는 자세와 섞기: 입장은 끝에서, 퇴장·작별은 처음에서(작별은 끝에서도)
-    const wI = M.kind === 'in' ? sstep(M.dur - 0.55, M.dur - 0.05, t) : M.kind === 'out' ? 1 - sstep(0, 0.3, t) : Math.max(1 - sstep(0, 0.3, t), sstep(M.dur - 0.45, M.dur - 0.05, t));
+    // 쉬는 자세와 섞기: 입장은 끝에서, 퇴장은 처음에서
+    const wI = M.kind === 'in' ? sstep(M.dur - 0.55, M.dur - 0.05, t) : 1 - sstep(0, 0.3, t);
     if (wI > 0) { mixTo(r, IDL, wI); r.root.rotation.y = a.yaw + angleDiff(a.yaw, iy) * wI; r.body.position.multiplyScalar(1 - wI); r.body.rotation.set(r.body.rotation.x * (1 - wI), r.body.rotation.y * (1 - wI), r.body.rotation.z * (1 - wI)); r.body.scale.lerp(_a.set(1, 1, 1), wI); }
     const gun = wI > 0.5; r.gunMount.visible = gun;
     if (gun && !a.gunShown && M.kind !== 'out') { a.gunShown = true; if (r.gunObj && r.gunObj.userData.skin) GunSkin.draw(r.gunObj, 0.55, null, true); }
@@ -1268,7 +1259,7 @@ const PartyFx = (() => {
       for (const [u, f] of prev) if (!ids.has(u)) { const E = valid(f.ent, f.name, u); if (E) gone.set(u, E); }
     }
     if (ok && pid && pid !== lastPid && !Party.isLeader()) { const E = mineE(); if (E) pend.push(['me', E, 'in']); }   // 내가 남의 파티에 들어감
-    if (ok && lastPid && !pid) { const E = mineE(); if (E) pend.push(['me', E, 'bye']); }   // 내가 파티에서 나옴
+    if (ok && lastPid && !pid) { const E = mineE(); if (E) pend.push(['me', E, 'out']); }   // 내가 파티에서 나옴(나가기·내보내짐): 내 화면에서도 퇴장 연출 → 끝나면 다시 나타남 (MOT.back)
     lastPid = pid;
     return gone;
   }
@@ -1320,7 +1311,7 @@ const PartyFx = (() => {
   function clear(L) { WAIT.clear(); for (const [k, a] of [...AN]) stop(L, k, a); for (const b of BAN) b.el.remove(); BAN.length = 0; for (const e of LIVE) if (e.o) { if (e.o.parent) e.o.parent.remove(e.o); free(e.o); } LIVE.length = 0; ENV.length = 0; tickEnv(0, L); }
   // 카메라 흔들림 (Lobby.update 끝에서)
   function cam(c, dt) { if (SHK < 0.002) { SHK = 0; return; } c.position.x += (Math.random() - 0.5) * SHK; c.position.y += (Math.random() - 0.5) * SHK; SHK *= Math.pow(0.015, dt); }
-  // 미리 보기: 내 캐릭터로 입장(in)·작별(bye) — 계정 창에서
+  // 미리 보기: 내 캐릭터로 입장(in)·퇴장(out) — 계정 창에서
   function preview(id, dir = 'in') { const E = withRole(byId(id), myRole()), L = LOB || (typeof Lobby !== 'undefined' ? Lobby : null); if (!E || !L || !L.rig) return false; play(L, 'me', E, dir, L.rig); return true; }
 
   // ---------- 계정 창 탭: 입장 연출 고르기 ----------
@@ -1348,7 +1339,7 @@ const PartyFx = (() => {
         (d) => { if (typeof Prof !== 'undefined') Prof.close(); setTimeout(() => preview(E.id, d), 120); });
     }
     B.appendChild(L);
-    const tail = document.createElement('p'); tail.className = 'micro'; tail.textContent = '미리 보기는 내 화면에서만 보입니다 (퇴장 미리 보기가 끝나면 캐릭터가 다시 나타남). 파티에 들어가거나 나가면 파티원 모두에게 보입니다.'; B.appendChild(tail);
+    const tail = document.createElement('p'); tail.className = 'micro'; tail.textContent = '미리 보기는 내 화면에서만 보입니다. 파티에 들어가거나 나가면 파티원 모두에게 보이고, 나갈 때는 내 화면에서도 퇴장 연출이 나온 뒤 캐릭터가 다시 나타납니다.'; B.appendChild(tail);
   }
   const owned = () => ENT.filter(ok);
   // 연출 한 줄 설명 (계정 창)
