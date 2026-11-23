@@ -903,7 +903,7 @@ const Audio = (() => {
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
     // v23 파티 입장·퇴장 연출 (10_partyfx.js): 동작마다 그 순간(착지·번개·불기둥 …)에 맞춘 소리 · kind = 동작 이름, 'back' = 내 캐릭터가 퇴장 뒤 다시 나타남
     partyFx(kind) {
-      if (!ctx || !voice(2)) return; const t = ctx.currentTime, o = sfxBus;
+      if (!ctx || !voice(2)) return null; const t = ctx.currentTime, o = ctx.createGain(); o.connect(sfxBus);   // 이 연출만의 출력 — 동작이 끝나기 전에 다른 동작으로 바뀌면 이것만 끈다 (돌려주는 손잡이의 stop)
       const boom = (t0, k = 1) => { tone(o, t0, 0.7, 'sine', 95, 32, 0.42 * k); noise(o, t0, 0.8, 'lowpass', 340, 0.8, 0.34 * k); noise(o, t0 + 0.02, 0.5, 'highpass', 3200, 0.7, 0.08 * k); };
       const whoosh = (t0, d, f0, f1, g = 0.22) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; const f = ctx.createBiquadFilter(), gn = ctx.createGain(); f.type = 'bandpass'; f.Q.value = 0.9; f.frequency.setValueAtTime(f0, t0); f.frequency.exponentialRampToValueAtTime(f1, t0 + d); gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(g, t0 + d * 0.7); gn.gain.exponentialRampToValueAtTime(0.001, t0 + d); s.connect(f); f.connect(gn); gn.connect(o); s.start(t0, Math.random()); s.stop(t0 + d + 0.05); };
       const chord = (t0, fs, d, type = 'sine', g = 0.05, gap = 0) => fs.forEach((f, i) => tone(o, t0 + i * gap, d, type, f, f * 1.002, g));
@@ -981,6 +981,8 @@ const Audio = (() => {
         }
         case 'back': chord(t + 0.4, [1318, 1568, 2093], 0.9, 'sine', 0.035, 0.07); noise(o, t + 0.42, 0.5, 'highpass', 4500, 0.8, 0.05); break;
       }
+      const cut = () => { try { o.disconnect(); } catch (e) { /* 이미 끊김 */ } }, tm = setTimeout(cut, 9000);   // 가장 긴 연출 소리(약 6초)가 끝난 뒤 출력 정리
+      return { stop() { clearTimeout(tm); try { o.gain.setTargetAtTime(0, ctx.currentTime, 0.04); } catch (e) { /* */ } setTimeout(cut, 400); } };
     },
     engine(id, pos, type, rpm, load, own, skid) {
       if (!ctx) return;

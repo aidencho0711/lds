@@ -79,6 +79,8 @@ const PartyFx = (() => {
 
   // ---------- 효과 (로비 장면 전용 · 시간 진행) ----------
   let SC = null, CAM = null, LOB = null, SHK = 0, alive = 0, warmed = false;
+  let CUR = null;   // 지금 효과를 만들고 있는 동작 — 효과·밝기·이름 띠마다 주인을 적어 두고, 그 동작이 끝나기 전에 다른 동작으로 바뀌면 그것만 치운다 (purge)
+  let meHid = false; // 연출이 내 캐릭터를 숨긴 프레임인가 (로비의 내 칭호 표시가 빈자리에 떠 있지 않게 — 10_ui_profile.js lobbyTags)
   const LIVE = [], ENV = [], TX = {};
   const kit = () => SkinFx.kit, tex = () => SkinFx.kit.tex;
   const UP = new THREE.Vector3(0, 1, 0);
@@ -92,7 +94,7 @@ const PartyFx = (() => {
   function add(o, dur, upd, delay = 0) {
     if (!SC) return null;
     if (o) { o.visible = false; o.frustumCulled = false; SC.add(o); }
-    const e = { o, t: -delay, dur, upd, dt: 0, on: false }; LIVE.push(e); return e;
+    const e = { o, t: -delay, dur, upd, dt: 0, on: false, own: CUR }; LIVE.push(e); return e;
   }
   const at = (delay, fn) => add(null, 0.001, (e) => { if (!e.done) { e.done = true; fn(); } }, delay);
   function free(o) { o.traverse((m) => { if (m.material && !m.userData.keep) { if (m.userData.ownMap && m.material.map) m.material.map.dispose(); m.material.dispose(); } if (m.geometry && m.userData.own) m.geometry.dispose(); }); }   // keep: 같이 쓰는 재료(백룸 손)
@@ -100,7 +102,7 @@ const PartyFx = (() => {
     for (let i = LIVE.length - 1; i >= 0; i--) {
       const e = LIVE[i]; e.t += dt; e.dt = dt; if (e.t < 0) continue;
       if (!e.on) { e.on = true; if (e.o) e.o.visible = true; }
-      const u = Math.min(1, e.t / e.dur); e.upd(e, u, dt);
+      const u = Math.min(1, e.t / e.dur); CUR = e.own; e.upd(e, u, dt); CUR = null;   // 효과가 만든 효과(at 안에서 더한 것)도 같은 주인
       if (u >= 1) { if (e.o) { if (e.o.parent) e.o.parent.remove(e.o); free(e.o); } LIVE.splice(i, 1); }
     }
   }
@@ -194,7 +196,7 @@ const PartyFx = (() => {
       const box = document.getElementById('lobbyTags'); if (!box) return;
       const el = document.createElement('div'); el.className = 'ent-ban' + (opt && opt.cls ? ' ' + opt.cls : ''); el.style.setProperty('--ec', '#' + E.c[0].toString(16).padStart(6, '0'));
       el.innerHTML = opt && opt.html ? opt.html : `<i></i><b>${nameOf(E)}</b><i></i>`; box.appendChild(el);
-      const top = document.querySelector('#lobby .lb-top'); BAN.push({ el, gp: { x: gp.x, y: gp.y, z: gp.z }, t: 0, dur, top: top ? top.getBoundingClientRect().bottom : 60, upd: opt && opt.upd });
+      const top = document.querySelector('#lobby .lb-top'); BAN.push({ el, gp: { x: gp.x, y: gp.y, z: gp.z }, t: 0, dur, top: top ? top.getBoundingClientRect().bottom : 60, upd: opt && opt.upd, own: CUR });
     });
   }
   function tickBan(dt) {
@@ -247,7 +249,7 @@ const PartyFx = (() => {
   // 곧은 빛줄기 (a → b, 굵기 w)
   function beam(a, b, color, w, dur, delay = 0) { const g = ribbon(1), m = new THREE.Mesh(g, mat(boltTex(), color)); m.userData.own = true; m.renderOrder = 8; const pts = [a.clone(), b.clone()]; add(m, dur, (e, u) => { face(g, pts, w * (1 - u * 0.6)); m.material.opacity = u < 0.1 ? u / 0.1 : 1 - (u - 0.1) / 0.9; }, delay); }
   // 밝기 (해·반구광 배율, 하늘 배율): f(u) → [k, sky]
-  const envFx = (dur, f, delay = 0) => ENV.push({ t: -delay, dur, f });
+  const envFx = (dur, f, delay = 0) => ENV.push({ t: -delay, dur, f, own: CUR });
   const flash = (k, dur, delay = 0) => envFx(dur, (u) => { const v = 1 + (k - 1) * (1 - u) * (1 - u); return [v, 1 + (v - 1) * 0.5]; }, delay);
   const shake = (k, delay = 0) => (delay ? at(delay, () => { SHK = Math.max(SHK, k); }) : (SHK = Math.max(SHK, k)));
   let envOn = false;
@@ -1114,15 +1116,16 @@ const PartyFx = (() => {
   function holo(a) {
     const r = a.rig, up = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), dn = new THREE.Plane(new THREE.Vector3(0, -1, 0), 999), clay = holoMat(up, false), wire = holoMat(up, true), base = r.mesh.material, body = bodyMat(base, dn), lo = r.meshLo.geometry;
     const ms = [[lo, clay], [wireGeo(lo), wire]].map(([geo, mt], i) => { const m = new THREE.SkinnedMesh(geo, mt); m.bind(r.skel, IDM); m.frustumCulled = false; m.visible = false; m.renderOrder = i; r.root.add(m); return m; });
-    const gear = [r.helmet, r.hat, r.vest, r.pack, r.vestL, r.vestR].filter(Boolean).map((g) => ({ g, v: g.visible, y: g === r.helmet || g === r.hat ? 1.8 : 1.5, on: true }));
+    const gear = [r.helmet, r.hat, r.vest, r.pack, r.vestL, r.vestR].filter(Boolean).map((g) => ({ g, y: g === r.helmet || g === r.hat ? 1.8 : 1.5, on: true }));
+    const want = (g) => (g === r.hat ? !(r.gearLv && r.gearLv[0]) : true);   // 그 장비 묶음이 원래 보여야 하는가: 모자는 헬멧을 쓰면 숨김(setGear), 나머지는 늘 보임 — 찍어 둔 값이 아니라 지금 기준 (연출 도중 창고 탭을 오가도 맞게)
     r.mesh.material = body; clipUse(1);
-    a.fin.push(() => { for (const m of ms) if (m.parent) m.parent.remove(m); clay.dispose(); wire.dispose(); if (r.mesh.material === body) r.mesh.material = base; body.dispose(); for (const q of gear) q.g.visible = q.v; clipUse(-1); });
-    a.holo = { up, dn, ms, gear };
+    a.fin.push(() => { for (const m of ms) if (m.parent) m.parent.remove(m); clay.dispose(); wire.dispose(); if (r.mesh.material === body) r.mesh.material = base; body.dispose(); for (const q of gear) q.g.visible = want(q.g); clipUse(-1); });
+    a.holo = { up, dn, ms, gear, want };
   }
   // y(발바닥 기준) 위쪽이 재질 없는 모델 · on: 모델을 쓰는 중인가 · 장비(조끼·가방·헬멧)는 면이 그 높이를 지나야 보이고, 달리는 순간 반짝
   function holoCut(a, y, on) {
     const H = a.holo; if (!H || a.dead) return; const h = on ? a.gp.y + y : 999, show = on && y < 2.05; H.up.constant = -h; H.dn.constant = h; for (const m of H.ms) m.visible = show;
-    for (const q of H.gear) { const vis = !on || y > q.y; if (vis && !q.on && q.v) { q.g.getWorldPosition(_c); glow(_c, 0xffffff, 0.7, 0.25); burst(_c, a.E, 8, 1.2, { sq: 1, g: 0 }); } q.on = vis; q.g.visible = q.v && vis; }
+    for (const q of H.gear) { const vis = !on || y > q.y, w = H.want(q.g); if (vis && !q.on && w) { q.g.getWorldPosition(_c); glow(_c, 0xffffff, 0.7, 0.25); burst(_c, a.E, 8, 1.2, { sq: 1, g: 0 }); } q.on = vis; q.g.visible = w && vis; }
   }
   // 개발자 연출 재료를 미리 한 번 그려 둔다 (관리자 계정 · 관리자 파티원이 보일 때만): 그림 올리기 + '자르는 면'이 붙은 셰이더 둘(덩어리·진짜 몸)
   function warmDev(L) {
@@ -1213,12 +1216,21 @@ const PartyFx = (() => {
   const GH = [];          // 퇴장 중인 유령 리그
   function rigOf(L, k, a) { return a.ghost || (k === 'me' ? L.rig : (L.mates || []).find((m) => m.uid === k)); }
   function play(L, k, E, dir, rig) {
+    if (dir !== 'in' && dir !== 'out' && dir !== 'back') return;
     const mo = E.mo[dir === 'in' ? 0 : 1], M = dir === 'back' ? MOT.back : MOT[mo]; if (!M || !rig) return;
-    const old = AN.get(k); if (old) stop(L, k, old);
+    const old = AN.get(k); if (old) { stop(L, k, old); purge(old); }   // 끝나기 전에 바뀜: 예약해 둔 소품·밝기·이름 띠·소리도 치운다 (안 그러면 새 동작 위에 겹쳐 나옴)
     SC = L.scene; CAM = L.cam; LOB = L;
     const p = rig.root.position, a = { k, E, M, dir, t: 0, rig, yaw: rig.baseYaw != null ? rig.baseYaw : 0.3, gp: { x: p.x, y: p.y, z: p.z, snow: p.y < 0.05 && typeof WINTER !== 'undefined' && WINTER.on() }, o: { t: 0 }, ghost: dir === 'out' && k !== 'me' ? rig : null, back: dir === 'out' && k === 'me', gunShown: false, fin: [] };
-    AN.set(k, a); M.fx(a);
-    if (typeof Audio !== 'undefined' && Audio.partyFx) Audio.partyFx(dir === 'back' ? 'back' : mo);
+    AN.set(k, a); CUR = a; M.fx(a); CUR = null;
+    if (typeof Audio !== 'undefined' && Audio.partyFx) a.snd = Audio.partyFx(dir === 'back' ? 'back' : mo);
+  }
+  // 끝나기 전에 끊긴 동작이 남긴 것 치우기: 그 동작이 만든 효과(소품) · 밝기 변화 · 이름 띠 · 소리. 제 시간에 끝난 동작에는 부르지 않는다 (끝자락 효과는 이어짐)
+  function purge(a) {
+    for (let i = LIVE.length - 1; i >= 0; i--) { const e = LIVE[i]; if (e.own !== a) continue; if (e.o) { if (e.o.parent) e.o.parent.remove(e.o); free(e.o); } LIVE.splice(i, 1); }
+    for (let i = ENV.length - 1; i >= 0; i--) if (ENV[i].own === a) ENV.splice(i, 1);
+    for (let i = BAN.length - 1; i >= 0; i--) if (BAN[i].own === a) { BAN[i].el.remove(); BAN.splice(i, 1); }
+    if (a.snd && a.snd.stop) a.snd.stop(); a.snd = null;
+    if (a.tail) { const t = a.tail; a.tail = null; purge(t); }
   }
   // 동작이 리그에 걸어 둔 것(철사 모델 · 바꿔 낀 재료 · 숨긴 장비)을 되돌린다 — 끝났을 때 · 중간에 끊겼을 때 · 리그가 사라졌을 때
   function fin(a) { a.dead = true; const F = a.fin; a.fin = []; for (const f of F || []) { try { f(); } catch (e) { /* */ } } }
@@ -1240,8 +1252,8 @@ const PartyFx = (() => {
     if (wI > 0) { mixTo(r, IDL, wI); r.root.rotation.y = a.yaw + angleDiff(a.yaw, iy) * wI; r.body.position.multiplyScalar(1 - wI); r.body.rotation.set(r.body.rotation.x * (1 - wI), r.body.rotation.y * (1 - wI), r.body.rotation.z * (1 - wI)); r.body.scale.lerp(_a.set(1, 1, 1), wI); }
     const gun = wI > 0.5; r.gunMount.visible = gun;
     if (gun && !a.gunShown && M.kind !== 'out') { a.gunShown = true; if (r.gunObj && r.gunObj.userData.skin) GunSkin.draw(r.gunObj, 0.55, null, true); }
-    if (!B.vis && wI < 0.5) r.root.visible = false;
-    if (M.tick && SC) M.tick(a, r, t, dt);
+    if (!B.vis && wI < 0.5) { r.root.visible = false; if (a.k === 'me') meHid = true; }
+    if (M.tick && SC) { CUR = a; M.tick(a, r, t, dt); CUR = null; }
   }
 
   // ---------- 로비 연동 ----------
@@ -1259,7 +1271,10 @@ const PartyFx = (() => {
       for (const [u, f] of prev) if (!ids.has(u)) { const E = valid(f.ent, f.name, u); if (E) gone.set(u, E); }
     }
     if (ok && pid && pid !== lastPid && !Party.isLeader()) { const E = mineE(); if (E) pend.push(['me', E, 'in']); }   // 내가 남의 파티에 들어감
-    if (ok && lastPid && !pid) { const E = mineE(); if (E) pend.push(['me', E, 'out']); }   // 내가 파티에서 나옴(나가기·내보내짐): 내 화면에서도 퇴장 연출 → 끝나면 다시 나타남 (MOT.back)
+    // 내가 파티에서 나옴(나가기·내보내짐): 내 화면에서도 퇴장 연출 → 끝나면 다시 나타남 (MOT.back)
+    //  · 같이 있던 사람이 있을 때만 (초대만 해 둔 1인 파티를 닫을 때는 볼 사람도 떠날 사람도 없다)
+    //  · 조용히 나갈 때는 건너뜀: 다른 파티의 초대를 수락하느라 나가는 중(바로 입장 연출이 이어짐) · 로그아웃 (Party.silent — 10_social.js leave)
+    if (ok && lastPid && !pid && prev && prev.size && !Party.silent) { const E = mineE(); if (E) pend.push(['me', E, 'out']); }
     lastPid = pid;
     return gone;
   }
@@ -1267,7 +1282,7 @@ const PartyFx = (() => {
   function ghost(L, rig, E) { if (!E || !rig) return false; GH.push(rig); play(L, rig.uid, E, 'out', rig); return true; }
   // 새 리그가 만들어진 뒤: 같은 uid 의 유령은 바로 치우고, 들어온 사람은 입장
   function bound(L) {
-    for (const m of L.mates) { const a = AN.get(m.uid); if (m.uid && a && a.ghost) stop(L, m.uid, a); }
+    for (const m of L.mates) { const a = AN.get(m.uid); if (m.uid && a && a.ghost) { stop(L, m.uid, a); purge(a); } }
     for (const [u, E, dir, f] of pend) { if (u === 'me') play(L, 'me', E, dir, L.rig); else { const r = L.mates.find((m) => m.uid === u); if (!r) continue; if (dir === 'wait') { WAIT.set(u, { f, t: 0 }); r.root.visible = false; } else play(L, u, E, 'in', r); } }
     pend = [];
   }
@@ -1292,7 +1307,7 @@ const PartyFx = (() => {
   }
   function update(dt, L) {
     const now = performance.now(); if (alive && now - alive > 1500 && (AN.size || LIVE.length || BAN.length)) clear(L);   // 경기·숨긴 탭에서 돌아옴: 하다 만 연출은 끝냄
-    alive = now; SC = L.scene; CAM = L.cam; LOB = L;
+    alive = now; SC = L.scene; CAM = L.cam; LOB = L; meHid = false;
     if (!warmed) warm(L);
     if (!devWarm && myRole()) warmDev(L);   // 관리자 계정: 개발자 연출 재료도 미리 (로그인이 끝난 뒤 한 번)
     P();   // 로비 입자 풀을 계속 써 둔다 (안 쓰면 치워졌다가 다음 연출 때 셰이더를 다시 만들어 멈칫함)
@@ -1300,15 +1315,15 @@ const PartyFx = (() => {
     if (WAIT.size) tickWait(dt, L);
     for (const [k, a] of AN) {
       const r = rigOf(L, k, a);
-      if (!r || !r.root.parent) { fin(a); AN.delete(k); if (a.ghost) dropGhost(L, a.ghost); continue; }
+      if (!r || !r.root.parent) { fin(a); purge(a); AN.delete(k); if (a.ghost) dropGhost(L, a.ghost); continue; }
       if (a.ghost) { L.pose(r, L.t + (r.ph || 0), r.baseYaw || 0); r.root.visible = L.fk < 0.5; }
       drive(a, r, dt);
-      if (a.t >= a.M.dur) { stop(L, k, a); if (a.back) play(L, 'me', a.E, 'back', L.rig); }   // 퇴장 미리 보기: 사라진 내 캐릭터가 다시 나타남 (같은 프레임에 이어서 돌아 깜빡이지 않음)
+      if (a.t >= a.M.dur) { stop(L, k, a); if (a.back) { play(L, 'me', a.E, 'back', L.rig); const b = AN.get('me'); if (b) b.tail = a; } }   // tail: 다시 나타나는 중에 바뀌면 끝난 퇴장의 꼬리(이름 띠·소리)도 함께 치움   // 내 퇴장(파티에서 나옴 · 퇴장 미리 보기)이 끝남: 사라진 내 캐릭터가 다시 나타남 (같은 프레임에 이어서 돌아 깜빡이지 않음)
     }
     tickFx(dt); tickEnv(dt, L); tickBan(dt);
     for (const [u] of SPOT) if (!(lastIds && lastIds.has(u)) && !GH.some((g) => g.uid === u)) SPOT.delete(u);
   }
-  function clear(L) { WAIT.clear(); for (const [k, a] of [...AN]) stop(L, k, a); for (const b of BAN) b.el.remove(); BAN.length = 0; for (const e of LIVE) if (e.o) { if (e.o.parent) e.o.parent.remove(e.o); free(e.o); } LIVE.length = 0; ENV.length = 0; tickEnv(0, L); }
+  function clear(L) { WAIT.clear(); for (const [k, a] of [...AN]) { stop(L, k, a); purge(a); } for (const b of BAN) b.el.remove(); BAN.length = 0; for (const e of LIVE) if (e.o) { if (e.o.parent) e.o.parent.remove(e.o); free(e.o); } LIVE.length = 0; ENV.length = 0; tickEnv(0, L); }
   // 카메라 흔들림 (Lobby.update 끝에서)
   function cam(c, dt) { if (SHK < 0.002) { SHK = 0; return; } c.position.x += (Math.random() - 0.5) * SHK; c.position.y += (Math.random() - 0.5) * SHK; SHK *= Math.pow(0.015, dt); }
   // 미리 보기: 내 캐릭터로 입장(in)·퇴장(out) — 계정 창에서
@@ -1350,6 +1365,6 @@ const PartyFx = (() => {
     devOut: '■ 정지에 T 자세로 굳어 철사 모델이 되고, 커서에 집혀 나가면 글자 커서만 깜빡',
     wingsOut: '광륜과 날개를 펴고 날갯짓하며 빛기둥을 따라 날아오름', novaOut: '가슴에 빛을 모아 솟구치고 하늘에서 다시 별로 터짐', throneOut: '옥좌에 앉아 턱을 괸 채 용암 속으로 가라앉음', clockOut: '시계가 빨리 돌고 몸이 보랏빛 모래로 흘러내림', noclip: '바닥에 열린 백룸 구멍으로 떨어짐', swordOut: '꽂힌 큰 검을 뽑아 치켜들자 번개를 맞고 사라짐' };
 
-  return { ENT, MOT, KP, mine, mineList, valid, ok, avail, nameOf, owned, team, ghost, bound, spot, update, cam, clear, preview, profTab, play, get anims() { return AN; }, get ghosts() { return GH; }, get live() { return LIVE.length; },
+  return { ENT, MOT, KP, mine, mineList, valid, ok, avail, nameOf, owned, team, ghost, bound, spot, update, cam, clear, preview, profTab, play, get anims() { return AN; }, get ghosts() { return GH; }, get live() { return LIVE.length; }, get meHidden() { return meHid; },
     _rigPose(r, name, t = 0) { evalKey(r, name, Object.assign(BB, B0), { t }); } };
 })();
