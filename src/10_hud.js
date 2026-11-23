@@ -1249,20 +1249,21 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   const NEWS = [
     { tag: 'v23 랭크 개편', title: '이터널 위 상위 티어 4종 — 노바 · 셀레스티얼 · 이클립스 · 제니스 · 승급전 · 티어 승급 컷신 · 전용 칭호와 테두리 (티어표 보기)', img: () => rankBanner, act: () => G.ui('ranks') },
     { tag: '새 이벤트', title: `백룸 완전 탈출 — THE BACKROOMS 를 12가지 방법으로 모두 탈출하면 골드 탄피 ${BR_EVENT.gold12.toLocaleString()} + 칭호·테두리 ‘${BR_EVENT.title12}’ + 사진 ‘Level 0’ (계정마다 1번)`, img: () => EvBR.banner('all'), act: () => EvBR.open() },
+    { tag: 'v23 경기 이어하기', title: '새로고침·뒤로가기로 나가도 아직 끝나지 않은 경기라면 다시 들어갈지 물어봄 — 같이 하던 경기도 이어서 (업데이트 로그 보기)', img: () => LOBBY_ART.kalden, act: () => ChangeLog.open() },
+    { tag: 'v22 투척·근접 무기', title: '화염병 · 섬광탄 · 충격 수류탄 · 자기장 수류탄 · 근접 무기 4종(4번) · 진통제 · 자동 줍기 (업데이트 로그 보기)', img: () => { try { return Models.icon('molotov') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: 'v22 새 아레나', title: '데스매치·대결 아레나 3곳 추가 — 녹슨 공장 · 모래 사원 · 골목 마을 (72×72m, 맵 선택에서 고르거나 무작위)', img: () => LOBBY_ART.factory || LOBBY_ART.arena, act: () => G.ui('mapPick') },
     { tag: 'v22 새 맵', title: '크리스마스 섬(1.5km) — 눈 덮인 섬 · 북극성 광장 큰 트리 · 산타 공방 · 얼어붙은 호수 · 모든 맵의 집 외형 개편 (맵 선택)', img: () => LOBBY_ART.xmas || LOBBY_ART.kalden, act: () => G.ui('mapPick') },
     { tag: 'v22 온라인 매칭', title: '온라인 매칭 · 스타트 섬 — 같은 모드를 고른 사람끼리 한 경기로, 빈자리는 AI · 시작 전 25초 스타트 섬 (업데이트 로그 보기)', img: () => LOBBY_ART.kalden, act: () => ChangeLog.open() },
     { tag: 'v21 판처파우스트 스킨', title: "핵탄두 · SANTA'S DELIVERY · EVENT HORIZON — 터지면 버섯구름 · 큰 선물 상자 · 큰 블랙홀 (업데이트 로그 보기)", img: () => { try { return Shop.gunThumb('pzf', 'e_pzf_horizon') || Models.icon('pzf'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
-    { tag: 'v21 신규 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
+    { tag: 'v21 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: '크리스마스', title: '크리스마스 상자 — 겨울 옷·총기·차량 스킨 · 새 등급 EXCLUSIVE (루돌프 썰매 · 전용 처치 효과 총 · 빛나는 옷)', img: () => { try { return Shop.crateThumb('xmas'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=gacha]'); if (b) b.click(); } },
     { tag: '콜라보 이벤트', title: `THE BACKROOMS 탈출 이벤트 — 어떤 방법으로든 탈출 1회 → 골드 탄피 ${BR_EVENT.gold.toLocaleString()} + 칭호 ‘${BR_EVENT.title}’ (계정마다 1번)`, img: () => EvBR.banner(), act: () => EvBR.open() },
     { tag: '이벤트', title: '골드 탄피 이벤트 — 골드 러시 · 행운의 골드 상자 · 매치 보너스 · 주간 챌린지 · 현상금', img: () => LOBBY_ART.vehicles, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=event]'); if (b) b.click(); } },
-    { tag: '신규', title: '상점 오픈 — 상자 3종 · 차량 뽑기 · 교환소, 미션·출석 보상', img: () => LOBBY_ART.vehicles, act: () => setTab('shop') },
-    { tag: '신규', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
-    { tag: '신규 모드', title: '팀 데스매치 · 웨폰 데스매치 — 4 대 4, 먼저 40킬', img: () => LOBBY_ART.arena, act: () => G.ui('mapPick') },
-    { tag: '업데이트', title: '팀원과 함께 차량 탑승 — 동승석에서 사격', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
-    { tag: '신규 모드', title: '듀오·스쿼드 — 기절·부활, 핑(Y)으로 팀원 지휘', img: () => LOBBY_ART.kalden, act: () => G.ui('matchCfg') },
-    { tag: '업데이트', title: '차량 5종 출격 — 말부터 오토바이까지', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
+    { tag: '상점', title: '상점 — 총기·옷·차량·크리스마스 상자 · 교환소 · 미션·출석 보상', img: () => LOBBY_ART.vehicles, act: () => setTab('shop') },
+    { tag: '친구·파티', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
+    { tag: '모드', title: '팀 데스매치 · 웨폰 데스매치 — 4 대 4, 먼저 40킬', img: () => LOBBY_ART.arena, act: () => G.ui('mapPick') },
+    { tag: '차량', title: '말부터 오토바이까지 여러 차량 — 팀원과 함께 타고 동승석에서 사격', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
+    { tag: '모드', title: '듀오·스쿼드 — 기절·부활, 핑(Y)으로 팀원 지휘', img: () => LOBBY_ART.kalden, act: () => G.ui('matchCfg') },
     { tag: '대형 맵', title: '8×8km 노르덴 — 봇 99명과 출격', img: () => LOBBY_ART.norden, act: () => G.ui('mapPick') },
     { tag: '랭크전', title: '배치고사 3판 · 아이언부터 제니스까지', img: () => rankBanner, act: () => G.ui('ranks') },
   ];
@@ -1301,8 +1302,15 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     const tot = ph.reduce((a, q) => a + q.wait + q.shrink, 0) * sc, w0 = ph[0].wait * sc;
     return (tot + Math.max(0, (M.wait0Min || 0) - w0)) / 60 + 1;
   }
-  let noteT = null;
-  function showLobbyNote(msg) { const n = $('lbNote'); n.hidden = false; n.textContent = msg; clearTimeout(noteT); noteT = setTimeout(() => { n.hidden = true; }, 3500); }
+  // 로비 알림: 한 칸을 덮어쓰지 않고 최대 3줄까지 쌓아 보여 줌 (예전에는 새 알림이 오면 읽기 전의 긴 알림이 지워졌다)
+  //  · 글이 길수록 오래(3.5~10초) · 같은 글이 이미 떠 있으면 시간만 다시 잼 · 넘치면 가장 오래된 줄부터 내림
+  const notes = [];
+  function dropLobbyNote(it) { const i = notes.indexOf(it); if (i < 0) return; notes.splice(i, 1); clearTimeout(it.t); it.el.remove(); if (!notes.length) $('lbNote').hidden = true; }
+  function showLobbyNote(msg) {
+    const box = $('lbNote'); msg = String(msg); let it = notes.find((x) => x.msg === msg);
+    if (!it) { it = { msg, el: h('div', '', msg) }; notes.push(it); box.appendChild(it.el); while (notes.length > 3) dropLobbyNote(notes[0]); }
+    clearTimeout(it.t); it.t = setTimeout(() => dropLobbyNote(it), Math.min(10000, Math.max(3500, 1200 + msg.length * 70))); box.hidden = false;
+  }
   // 승급전 연속 성공 칸: 채운 칸 n / 전체 need (fail: 이번에 실패한 칸을 빨갛게)
   const pipsHTML = (n, need, fail) => Array.from({ length: need }, (_, i) => `<i class="${i < n ? 'on' : fail && i === n ? 'x' : ''}"></i>`).join('');
   // 티어표 — v23: 이터널 위 상위 티어 4종은 따로 (승급전 · 단계 5→1 · 200 RP)

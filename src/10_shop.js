@@ -269,7 +269,7 @@ const Shop = (() => {
     if (tab !== 'gacha' && exSub === 'gun') {
       for (const r of [7, 5, 4, 3, 1]) {
         const ids = Object.keys(GSKINS).filter((id) => GSKINS[id].rar === r && Eco.gunPrice(id)); if (!ids.length) continue;
-        const R = rarOf(r), sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', `` + (r === 7 ? ' · 전용 디자인·꺼내기·살펴보기·처치 연출 · 획득 컷신' : r === 5 ? ' · 사격·교체 효과' : '')));
+        const R = rarOf(r), sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', R.name + (r === 7 ? ' · 전용 디자인·꺼내기·살펴보기·처치 연출 · 획득 컷신' : r === 5 ? ' · 사격·교체 효과' : '')));
         const grid = h('div', 'ex-grid gun');
         for (const id of ids) {
           const S = GSKINS[id], own = Eco.ownsGun(id), price = Eco.gunPrice(id), key = 'exg:' + id;
