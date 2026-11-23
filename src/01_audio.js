@@ -901,7 +901,7 @@ const Audio = (() => {
       else if (kind === 'nuke') { noise(out, t, 0.18, 'bandpass', 1200, 0.8, 0.12); for (let i = 0; i < 4; i++) noise(out, t + 0.04 + i * 0.03, 0.01, 'highpass', 4500, 1, 0.08); }
     },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
-    // v23 파티 입장·퇴장 연출 (10_partyfx.js): 동작마다 그 순간(착지·번개·불기둥 …)에 맞춘 소리 · kind = 동작 이름, 'bye' = 작별 몸짓
+    // v23 파티 입장·퇴장 연출 (10_partyfx.js): 동작마다 그 순간(착지·번개·불기둥 …)에 맞춘 소리 · kind = 동작 이름, 'back' = 내 캐릭터가 퇴장 뒤 다시 나타남
     partyFx(kind) {
       if (!ctx || !voice(2)) return; const t = ctx.currentTime, o = sfxBus;
       const boom = (t0, k = 1) => { tone(o, t0, 0.7, 'sine', 95, 32, 0.42 * k); noise(o, t0, 0.8, 'lowpass', 340, 0.8, 0.34 * k); noise(o, t0 + 0.02, 0.5, 'highpass', 3200, 0.7, 0.08 * k); };
@@ -979,7 +979,7 @@ const Audio = (() => {
           tone(o, t + 1.75, 0.8, 'sawtooth', 720, 180, 0.028); tone(o, t + 1.75, 0.8, 'sine', 1440, 360, 0.035); for (let i = 0; i < 12; i++) blip(t + 1.77 + i * 0.065, 2700 - (i % 5) * 240, 0.02, 0.016);
           blip(t + 2.75, 880, 0.03, 0.05); whoosh(t + 2.78, 0.5, 600, 2400, 0.14); tone(o, t + 3.3, 0.1, 'sine', 900, 1500, 0.07); blip(t + 3.36, 1760, 0.03, 0.028); blip(t + 3.62, 1760, 0.03, 0.028); break;
         }
-        case 'bye': chord(t + 0.4, [1318, 1568, 2093], 0.9, 'sine', 0.035, 0.07); noise(o, t + 0.42, 0.5, 'highpass', 4500, 0.8, 0.05); break;
+        case 'back': chord(t + 0.4, [1318, 1568, 2093], 0.9, 'sine', 0.035, 0.07); noise(o, t + 0.42, 0.5, 'highpass', 4500, 0.8, 0.05); break;
       }
     },
     engine(id, pos, type, rpm, load, own, skid) {

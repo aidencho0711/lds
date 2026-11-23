@@ -63,7 +63,8 @@ kbd { font-family: var(--f-display); font-size: 0.8em; border: 1px solid var(--l
 .lb-sub button.ranked.on { color: #e2c8ff; }
 .lb-sub button.ranked.on::before { background: #b98bff; }
 .lb-sub button.lock { opacity: 0.6; }
-.lb-note { align-self: flex-start; margin-top: 4px; font-size: 0.76rem; color: #ffd9a0; background: rgba(13, 17, 19, 0.75); border: 1px solid rgba(240, 164, 58, 0.5); border-radius: 3px; padding: 3px 8px; animation: kfIn 0.2s; }
+.lb-note { align-self: flex-start; margin-top: 4px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.lb-note > div { font-size: 0.76rem; color: #ffd9a0; background: rgba(13, 17, 19, 0.75); border: 1px solid rgba(240, 164, 58, 0.5); border-radius: 3px; padding: 3px 8px; animation: kfIn 0.2s; }
 .lb-right { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
 .lv-chip { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px 0 6px; border: 1px solid var(--line); background: rgba(13, 17, 19, 0.6); border-radius: 4px; cursor: pointer; }
 .lv-chip:hover { border-color: var(--line-2); }
@@ -346,6 +347,8 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .res-grid div { display: flex; flex-direction: column; border-left: 2px solid var(--line-2); padding-left: 8px; }
 .res-grid span { font-size: 0.7rem; color: var(--dim); }
 .res-grid b { font-family: var(--f-display); font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.res-grid small { font-size: 0.66rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+.res-grid small:empty { display: none; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .set-row { display: flex; flex-direction: column; gap: 4px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 0.8rem; color: var(--dim); }
 .set-row .hdr { display: flex; justify-content: space-between; }
@@ -1033,7 +1036,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .lb-nav { align-items: center; }
 .lb-tabs { justify-content: center; }
 .lb-sub { justify-content: center; }
-.lb-note { align-self: center; }
+.lb-note { align-self: center; align-items: center; }
 .lb-right { justify-self: end; }
 @media (max-width: 600px) { .lb-top { grid-template-columns: auto 1fr auto; } .lb-who .lv-chip { display: none; } }
 
@@ -2551,23 +2554,26 @@ body.touch #victoryHud button { padding: 8px 12px; font-size: 0.8rem; }</style>
           <tr><td><kbd>Shift</kbd> (3·4·6배 조준 중)</td><td>숨 참기 — 조준경 흔들림 감소</td></tr>
           <tr><td><kbd>Shift</kbd></td><td>달리기</td></tr><tr><td><kbd>Space</kbd></td><td>점프 · 일어서기 · 창문·담 넘기 / 상자 오르기 (앞에 넘을 수 있는 턱이 있으면 자동)</td></tr>
           <tr><td><kbd>C</kbd> / <kbd>Z</kbd></td><td>앉기 / 엎드리기 — 그 자세로 천천히 이동 (달리기를 누르면 조금 빨라짐 · 다시 누르거나 점프하면 일어남)</td></tr><tr><td><kbd>Q</kbd> / <kbd>E</kbd></td><td>기울이기 — 누르는 동안 왼쪽 / 오른쪽으로 상체를 내밀어 벽 옆으로 보고 쏘기 (모바일: ◀기울 · 기울▶ 버튼)</td></tr><tr><td><kbd>R</kbd></td><td>재장전</td></tr><tr><td><kbd>N</kbd></td><td>총 살펴보기 (모바일: 무기 칸 누르기)</td></tr><tr><td><kbd>B</kbd></td><td>사격 모드 (연사·단발·점사)</td></tr>
-          <tr><td><kbd>1 2 3</kbd> / <kbd>X</kbd></td><td>무기 선택 / 무기 집어넣기</td></tr>
+          <tr><td><kbd>1 2 3 4</kbd> / <kbd>X</kbd></td><td>무기 선택 (<kbd>4</kbd> = 근접 무기 — 좌클릭으로 휘두르기, 머리는 1.5배) / 무기 집어넣기</td></tr>
           <tr><td><kbd>F</kbd></td><td>줍기 · 강하 · 낙하산 · 차량 탑승/하차 · 기절한 팀원 부활(10초, 움직이면 취소) · 리콜 타워 단말기에서 리콜 등록(8초)</td></tr>
           <tr><td>리콜 (듀오·스쿼드)</td><td>탈락한 팀원의 리콜 카드를 주워 지도의 리콜 타워(하늘색 삼각형) 단말기 앞에서 <kbd>F</kbd> — 8초 등록하면 팀원이 수송기로 돌아와 강하합니다 (권총·붕대 지급 · 한 사람당 한 번 · 자기장 절반 단계까지)</td></tr>
-          <tr><td>운전 중 <kbd>W S</kbd> / <kbd>A D</kbd></td><td>가속·브레이크·후진 / 조향 (<kbd>Space</kbd> 핸드브레이크, 마우스로 둘러보기)</td></tr><tr><td><kbd>G</kbd> / <kbd>T</kbd></td><td>투척 준비(궤적 표시, 다시 누르면 취소) / 투척물 전환 — 준비 중 좌클릭을 누르면 핀 뽑기, 떼면 투척. 수류탄은 핀을 뽑고 7초, 연막탄은 3초 뒤 터짐</td></tr>
+          <tr><td>운전 중 <kbd>W S</kbd> / <kbd>A D</kbd></td><td>가속·브레이크·후진 / 조향 (<kbd>Space</kbd> 핸드브레이크, 마우스로 둘러보기)</td></tr><tr><td><kbd>G</kbd> / <kbd>T</kbd></td><td>투척 준비(궤적 표시, 다시 누르면 취소) / 가진 투척 무기 차례로 바꾸기 — 준비 중 좌클릭을 누르면 핀 뽑기, 떼면 투척. 핀을 뽑고 세열 수류탄 7초 · 연막탄 3초 · 자기장 수류탄 2.5초 · 섬광탄 2.2초 뒤 터지고, 화염병·충격 수류탄은 닿으면 바로 터짐 (화염병 9초 불바다 · 자기장 수류탄 10초 작은 자기장 · 섬광탄은 터지는 쪽을 보고 있으면 최대 5초 눈이 멂)</td></tr>
           <tr><td><kbd>Y</kbd> (듀오·스쿼드)</td><td>핑 — 적을 조준하면 팀원 '공격', 땅·건물이면 '이동'. 빠르게 두 번 = '위험' 표시(팀원이 그쪽을 경계하며 엄폐), 길게 누르기 = '모여'</td></tr>
           <tr><td>차량에서 <kbd>C</kbd></td><td>다음 빈 좌석으로 이동 (운전석 ↔ 동승석). 동승석에서는 마우스로 조준·사격·장전 가능</td></tr>
-          <tr><td><kbd>H</kbd> / <kbd>J</kbd></td><td>회복(상황에 맞는 아이템 자동) / 에너지 드링크 — 모바일은 회복·투척 버튼을 누르면 위에 아이템 선택이 뜹니다</td></tr>
+          <tr><td><kbd>H</kbd> / <kbd>J</kbd></td><td>회복(상황에 맞는 아이템 자동) / 부스트 — 에너지 드링크·진통제 (부스트가 낮으면 진통제부터) — 모바일은 회복·투척 버튼을 누르면 위에 아이템 선택이 뜹니다</td></tr>
+          <tr><td>자동 줍기</td><td>지나가기만 해도 총(없을 때) · 가진 총에 맞는 탄 · 투척 무기 종류마다 2개 · 근접 무기 · 회복·부스트 아이템을 주움 (설정에서 끌 수 있음). 주워야 할 물건은 줍기 목록에서 노란색 · 처치한 적의 소지품은 시체 옆 상자에 모임</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>경기 중 문자 (파티원·관전자가 있을 때) — 입력하고 <kbd>Enter</kbd> 로 보내기, <kbd>Esc</kbd> 닫기</td></tr>
           <tr><td><kbd>Tab</kbd> / <kbd>M</kbd></td><td>인벤토리 / 지도 (미니맵 클릭으로도 열림 · 휠로 확대, 끌어서 이동)</td></tr><tr><td><kbd>V</kbd></td><td>1인칭 ↔ 3인칭</td></tr><tr><td><kbd>Esc</kbd></td><td>메뉴</td></tr>
         </table></div>
         <div><h3>모바일 (가로 화면)</h3><table class="keys">
           <tr><td>왼쪽 화면</td><td>조이스틱 이동 (위로 끝까지 밀면 달리기)</td></tr>
-          <tr><td>오른쪽 빈 화면</td><td>드래그로 시점</td></tr>
+          <tr><td>오른쪽 빈 화면</td><td>드래그로 시점 (사격 버튼·무기 칸 등 다른 버튼을 누른 채 끌어도 돌아감)</td></tr>
+          <tr><td>무기 칸</td><td>누르면 그 무기로 바꿈 (근접 무기 칸 포함) · 들고 있는 무기 칸을 다시 누르면 살펴보기</td></tr>
           <tr><td>사격 버튼</td><td>누른 채 드래그하면 조준점이 따라감. 이동 중 사격 가능(달리기는 자동 해제)</td></tr>
           <tr><td>조준</td><td>누를 때마다 조준 켜기/끄기</td></tr>
           <tr><td>줍기</td><td>가장 가까운 아이템 줍기 (오른쪽 목록을 눌러도 됨) · 상황에 따라 탑승/부활 버튼으로 바뀜</td></tr>
           <tr><td>미니맵</td><td>누르면 전체 지도 — 두 손가락으로 확대·축소, 한 손가락으로 끌어서 이동, 짧게 눌러 마커</td></tr>
-          <tr><td>상단 버튼</td><td>가방 · 메뉴</td></tr>
+          <tr><td>상단 버튼</td><td>가방 · 메뉴 · 💬 문자(파티원·관전자가 있을 때 — 빠른 문구 또는 직접 입력)</td></tr>
           <tr><td>핑 버튼 (듀오·스쿼드)</td><td>조준점의 적 → 팀원 공격, 지면 → 이동, 두 번 빠르게 → 위험 표시, 길게 → 모여. 팀 목록 위 ✕로 지시 취소</td></tr>
           <tr><td>좌석 버튼 (차량)</td><td>다음 빈 좌석으로. 동승석에서는 사격·조준·장전 버튼이 나타남</td></tr>
           <tr><td>버튼 배치</td><td>메뉴 또는 설정 → 모바일 버튼 배치 편집: 버튼·가방/메뉴·킬 로그·팀 목록을 끌어서 이동, 각각 크기 조절</td></tr>
@@ -2586,7 +2592,7 @@ body.touch #victoryHud button { padding: 8px 12px; font-size: 0.8rem; }</style>
       <div class="res-rank"><b id="resRank">#12</b><span id="resOf">/ 25</span></div>
       <div class="res-grid">
         <div><span>처치</span><b id="resKills">0</b></div><div><span>생존 시간</span><b id="resTime">0:00</b></div>
-        <div><span>가한 피해</span><b id="resDmg">0</b></div><div><span>획득 경험치</span><b id="resXp">+0</b></div>
+        <div><span>가한 피해</span><b id="resDmg">0</b><small id="resAcc"></small></div><div><span>획득 경험치</span><b id="resXp">+0</b></div>
       </div>
       <div class="res-ranked" id="resRanked" hidden><img id="resEmb" alt=""><div class="rr-info"><div class="eyebrow" id="resRkKicker">랭크</div><b id="resRkLabel"></b><div class="bar"><i id="resRkBar"></i></div><div class="rk-pips" id="resRkPips" hidden></div><span class="micro" id="resRkSub"></span></div><b class="rp-delta" id="resRkDelta"></b></div>
       <p class="micro" id="resNote"></p>
@@ -3757,7 +3763,7 @@ const Audio = (() => {
       else if (kind === 'nuke') { noise(out, t, 0.18, 'bandpass', 1200, 0.8, 0.12); for (let i = 0; i < 4; i++) noise(out, t + 0.04 + i * 0.03, 0.01, 'highpass', 4500, 1, 0.08); }
     },
     lose() { if (!ctx) return; const t = ctx.currentTime; [392, 330, 262].forEach((f, i) => tone(sfxBus, t + i * 0.2, 0.6, 'triangle', f, f * 0.98, 0.18)); },
-    // v23 파티 입장·퇴장 연출 (10_partyfx.js): 동작마다 그 순간(착지·번개·불기둥 …)에 맞춘 소리 · kind = 동작 이름, 'bye' = 작별 몸짓
+    // v23 파티 입장·퇴장 연출 (10_partyfx.js): 동작마다 그 순간(착지·번개·불기둥 …)에 맞춘 소리 · kind = 동작 이름, 'back' = 내 캐릭터가 퇴장 뒤 다시 나타남
     partyFx(kind) {
       if (!ctx || !voice(2)) return; const t = ctx.currentTime, o = sfxBus;
       const boom = (t0, k = 1) => { tone(o, t0, 0.7, 'sine', 95, 32, 0.42 * k); noise(o, t0, 0.8, 'lowpass', 340, 0.8, 0.34 * k); noise(o, t0 + 0.02, 0.5, 'highpass', 3200, 0.7, 0.08 * k); };
@@ -3835,7 +3841,7 @@ const Audio = (() => {
           tone(o, t + 1.75, 0.8, 'sawtooth', 720, 180, 0.028); tone(o, t + 1.75, 0.8, 'sine', 1440, 360, 0.035); for (let i = 0; i < 12; i++) blip(t + 1.77 + i * 0.065, 2700 - (i % 5) * 240, 0.02, 0.016);
           blip(t + 2.75, 880, 0.03, 0.05); whoosh(t + 2.78, 0.5, 600, 2400, 0.14); tone(o, t + 3.3, 0.1, 'sine', 900, 1500, 0.07); blip(t + 3.36, 1760, 0.03, 0.028); blip(t + 3.62, 1760, 0.03, 0.028); break;
         }
-        case 'bye': chord(t + 0.4, [1318, 1568, 2093], 0.9, 'sine', 0.035, 0.07); noise(o, t + 0.42, 0.5, 'highpass', 4500, 0.8, 0.05); break;
+        case 'back': chord(t + 0.4, [1318, 1568, 2093], 0.9, 'sine', 0.035, 0.07); noise(o, t + 0.42, 0.5, 'highpass', 4500, 0.8, 0.05); break;
       }
     },
     engine(id, pos, type, rpm, load, own, skid) {
@@ -19452,13 +19458,15 @@ function gunWorldPoint(c, lx, ly, lz, out) {
   if (g === VM.gun) G.camera.localToWorld(out);
   return out;
 }
+// 결과 화면 명중률: 내가 쏜 총알 중 적을 맞힌 발 (산탄은 한 알이라도 맞으면 1발 · 근접·투척·로켓은 셈하지 않음)
+const accText = () => { const s = G.stats; return s && s.shots ? `명중 ${Math.round(100 * s.hits / s.shots)}% · ${s.hits}/${s.shots}발` : ''; };
 function fireWeapon(c, origin, dir) {
   const wi = c.weapon; if (!wi || c.rl || c.cycle || c.equipT > 0 || c.inWater || c.heal || c.knocked || c.revive || (c.veh && !c.seat)) return false;
   const d = ITEMS[wi.id];
   if (wi.mag <= 0) { if (c.isPlayer) Audio.dryfire(); return false; }
   // 남은 시간을 이어 받아 프레임 단위 반올림으로 연사 속도가 떨어지지 않게 한다
   if (!(c.isPlayer && Dev.cheat('ammo'))) wi.mag--;   // 개발자 도구: 무한 탄약
-  c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); G.stats.shots++;
+  c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); if (c.isPlayer && !d.rocket) G.stats.shots++;   // 명중률: 내 총알만 (예전에는 봇까지 모든 캐릭터를 셌다 · 로켓은 뺌)
   if (c.spawnProt) c.spawnProt = 0; // 데스매치: 쏘면 부활 보호 해제
   if (d.rocket) return fireRocket(c, wi, d, origin, dir);   // 판처파우스트: 히트스캔 대신 날아가는 로켓
   const spread = weaponSpread(c) * DEG;
@@ -19474,7 +19482,7 @@ function fireWeapon(c, origin, dir) {
   const ax = rx / rl, ay = ry / rl, az = rz / rl;
   const bx = dir.y * az - dir.z * ay, by = dir.z * ax - dir.x * az, bz = dir.x * ay - dir.y * ax;
   // 산탄: 가운데 1발 + 안쪽·바깥쪽 고리를 번갈아 (무작위 원판보다 구멍·뭉침이 적어 근거리 피해가 고르다)
-  const T = Math.tan(spread), a0 = Math.random() * TAU, ring = pellets - 1;
+  const T = Math.tan(spread), a0 = Math.random() * TAU, ring = pellets - 1; let hitFoe = false;   // hitFoe: 이 발(산탄은 여러 알 중 하나라도)이 적을 맞혔나 — 명중률은 발 단위
   for (let p = 0; p < pellets; p++) {
     let a, r;
     if (pellets === 1) { a = Math.random() * TAU; r = Math.sqrt(Math.random()) * T; }
@@ -19491,7 +19499,8 @@ function fireWeapon(c, origin, dir) {
     const fall = h.t > d.range ? clamp(1 - (h.t - d.range) / (d.range * 1.4), 0.35, 1) : 1;
     if (h.type === 'char') {
       if (skFx && h.char.alive && !sameTeam(c, h.char) && !(G.dm && h.char.spawnProt > G.time)) SkinFx.hit(h.char, ex, ey, ez, dx, dy, dz, skFx, c);
-      applyDamage(h.char, d.dmg * fall, h.part, c, wi.id, ex, ey, ez); G.stats.hits++;
+      if (h.char.alive && !sameTeam(c, h.char)) hitFoe = true;
+      applyDamage(h.char, d.dmg * fall, h.part, c, wi.id, ex, ey, ez);
       FX.impact(ex, ey, ez, 'blood');
     } else if (h.type === 'veh') {
       Veh.damage(h.veh, d.dmg * fall, c, wi.id);
@@ -19499,6 +19508,7 @@ function fireWeapon(c, origin, dir) {
       if (c.isPlayer && !h.veh.dead) HUD.hitmarker(false, false);
     } else if (h.type) { FX.impact(ex, ey, ez, h.type === 'terrain' ? 'dirt' : 'spark'); if (p === 0) Audio.impact({ x: ex, y: ey, z: ez }, false); }
   }
+  if (hitFoe && c.isPlayer) G.stats.hits++;
   // 이 발로 처치해 웨폰 데스매치 총이 바뀌었으면(applyDamage → swapWeapon) 새 총에 레버·볼트 순환·탄피·반동을 넘기지 않는다
   const swapped = c.weapon !== wi;
   if (!swapped) c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : d.cls === 'SG' ? 0.5 : 1) * 0.22, 4);
@@ -24918,6 +24928,26 @@ const CHANGELOG = [
     '크리스마스·배틀로얄·스페셜·보급 상자에서 나옴 · 창고 「근접 무기」 탭에서 무기별로 장착 (받침대에 돌아가는 모습으로 미리 보기)',
     '장착한 모양은 손에 들 때(1인칭·3인칭) · 허리에 찰 때 · 무기 칸 그림 · 휘두르는 자국 길이까지 적용 · 파티원과 봇도 자기 스킨 모양으로 보임 · 바닥에 떨어진 무기는 기본 모양',
   ] },
+  { v: 'v23', d: '2026-11-23', t: '결과 화면에 명중률', items: [
+    '경기가 끝나면 "가한 피해" 아래에 내 명중률이 나옴 (명중 37% · 52/140발) — 적을 맞힌 발 ÷ 쏜 발, 산탄총은 한 알이라도 맞으면 1발',
+    '명중 기록이 봇들이 쏜 총알까지 모두 세던 문제를 고침 — 이제 내 총알만 셈 (근접 무기·투척 무기·로켓은 빼고)',
+  ] },
+  { v: 'v23', d: '2026-11-23', t: '조작법 도움말 최신화', items: [
+    '메뉴 → 조작법에 빠져 있던 것들을 더함: 4 = 근접 무기 · 새 투척 무기 4종의 터지는 시간과 효과 · J 부스트(진통제) · 자동 줍기와 시체 상자 · Enter 경기 중 문자',
+    '모바일 표에도 무기 칸(근접 무기 · 다시 누르면 살펴보기) · 💬 문자 버튼 · 버튼을 누른 채 끌어도 화면이 돌아가는 것을 적음',
+  ] },
+  { v: 'v23', d: '2026-11-23', t: '로비 손질 — 교환소 등급 제목 · 소식 정리 · 알림이 서로 지우지 않음', items: [
+    '상점 → 교환소 → 총기 스킨: 칸 제목에 등급 이름이 다시 나옴 (희귀·초희귀·슈퍼레어 칸 제목이 비어 있고, 울트라·엡실론 칸은 " · " 로 시작하던 문제)',
+    '로비 소식: 오래된 기능에 붙어 있던 "신규" 표시를 떼고, 최근 기능(경기 이어하기 · 투척·근접 무기) 소식을 더함',
+    '로비 알림이 한 칸을 덮어쓰지 않고 최대 3줄까지 쌓여 보임 — 배틀패스 보상처럼 긴 알림이 다른 알림에 지워지지 않고, 글이 길수록 오래 보임',
+  ] },
+  { v: 'v23', d: '2026-11-23', t: '배포 안전장치 — 문법이 깨진 버전은 올라가지 않음', items: [
+    '게임 코드를 하나로 합칠 때 문법부터 검사해, 깨진 곳이 있으면 배포를 멈춤 — 그동안은 이전 버전이 그대로 서비스되어 "게임이 아예 안 켜지는" 일이 생기지 않음',
+  ] },
+  { v: 'v23', d: '2026-11-23', t: '파티에서 나갈 때 내 화면에서도 퇴장 연출이 나옴', items: [
+    '파티에서 나가면(나가기 · 내보내짐) 나간 사람 본인 화면에서도 진짜 퇴장 연출이 나오고, 끝나면 캐릭터가 빛 속에서 다시 나타남 — 예전에는 본인 화면에는 짧은 작별 몸짓과 마법진만 나와서, 정작 자기 퇴장 연출은 미리 보기로만 볼 수 있었음',
+    '연출 12가지 모두에 적용 — 개발자 전용 연출도 본인 화면에서 ■ 정지 → 철사 모델 → 커서에 끌려 나감까지 그대로 · 남은 파티원 화면에 보이는 것은 예전과 같음',
+  ] },
   { v: 'v23', d: '2026-11-21', t: '개발자 전용 파티 입장 연출 — 로비가 편집기가 된다 · 개발자·부개발자는 모든 테두리·칭호·입장 연출 보유', items: [
     '개발자 전용 입장 연출 (개발자·부개발자 계정): 바닥에 청사진 눈금이 깔리고, 마우스 커서가 모델을 끌어다 놓으면 T 자세의 철사 모델이 선택 상자·이동 축과 함께 나타남 → 커서가 훑는 틀을 끌어 올리면 아래부터 텍스처가 입혀지고 조끼·가방·헬멧이 차례로 달림 → 커서가 ▶ 를 누르는 순간 뚝뚝 끊기며 깨어나 자기 두 손을 내려다봄 → 허공의 자판으로 명령을 치고 실행 키를 내리찍으면 캐릭터 양옆에 < /> 가 서고 코드 글자가 터져 나옴 → 팔짱 끼고 끄덕',
     '퇴장: 검지 경례 → 커서가 ■ 를 누르면 T 자세로 굳고, 틀이 내려오며 텍스처가 벗겨져 철사 모델로 → 커서가 집어 조그맣게 줄여 끌고 나감 → 빈자리에 글자 커서만 깜빡',
@@ -25623,29 +25653,35 @@ const Cloud = (() => {
   //  파티 로비에서 개발자 전용 입장 연출과 관리자가 단 칭호를 '그 계정이 정말 관리자일 때만' 보여 주려고 다른 기기가 확인한다 (10_partyfx.js · 10_ranking.js)
   //  서버 staff_roles(supabase/admin.sql)에 계정 고유번호를 물어 { 고유번호: 'dev' | 'sub' } 를 받아 10분 동안 기억 (관리자가 아니면 '')
   //  서버에 그 함수가 아직 없으면 예약 아이디('개발자'·'부개발자' — 그 관리자 계정만 쓸 수 있음)로 본다
-  const STAFF = new Map(), STAFF_NAMES = { '개발자': 'dev', '부개발자': 'sub' }, staffWant = new Set();
-  let staffSrv = null, staffT = null;   // staffSrv: 서버에 staff_roles 가 있는가 (null = 아직 모름 · false = 없음)
+  const STAFF = new Map(), staffWant = new Set(), UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let staffSrv = null, staffOffT = 0, staffT = null;   // staffSrv: 서버에 staff_roles 가 있는가 (null = 아직 모름 · false = 없음 — staffOffT 에 확인한 시각)
+  // 예약 아이디로 보는 역할 (직접 비교 — 객체에서 찾으면 '__proto__' 같은 아이디가 참으로 나온다)
+  const staffByName = (nm) => { const k = String(nm || '').normalize('NFC').trim().toLowerCase(); return k === '개발자' ? 'dev' : k === '부개발자' ? 'sub' : ''; };
   const staffFresh = (uid) => { const c = STAFF.get(uid); return !!c && Date.now() - c.t < (c.ok ? 600e3 : 20e3); };
   // 그 계정의 역할: 'dev' · 'sub' · ''(관리자가 아님 또는 아직 모름)
   function staffRole(uid, nm) {
     if (!uid || !user) return '';
     if (uid === user.id) return admin ? role || 'dev' : '';
-    if (staffSrv === false) return STAFF_NAMES[String(nm || '').normalize('NFC').trim().toLowerCase()] || '';
+    if (staffSrv === false) return staffByName(nm);
     const c = STAFF.get(uid); return c ? c.r : '';
   }
   // 서버에 물어본 답이 있는가 (없으면 연출을 잠깐 미룬다)
   const staffKnown = (uid) => !uid || !user || uid === user.id || staffSrv === false || !!(STAFF.get(uid) && STAFF.get(uid).ok);
   // 모르는 계정을 모아 한 번에 묻는다 (16명씩)
   function staffAsk(uids) {
-    if (!sb || !user || staffSrv === false) return;
-    for (const u of uids || []) if (u && u !== user.id && !staffFresh(u)) staffWant.add(u);
+    if (!sb || !user) return;
+    if (staffSrv === false) { if (Date.now() - staffOffT < 600e3) return; staffOffT = Date.now(); }   // 함수가 없던 서버: 10분마다 한 번 다시 물어본다 (그사이 설치됐으면 새로 고치지 않아도 넘어감 · 그동안은 계속 아이디로 봄)
+    for (const u of uids || []) {
+      if (!u || u === user.id || staffFresh(u)) continue;
+      if (UUID_RE.test(u)) staffWant.add(u); else STAFF.set(u, { r: '', t: Date.now(), ok: true });   // 계정 고유번호 모양이 아니면 묻지 않고 관리자가 아닌 것으로 (하나라도 섞이면 서버가 묶음 전체를 거부한다)
+    }
     if (!staffWant.size || staffT) return;
     staffT = setTimeout(async () => {
       const ids = [...staffWant].slice(0, 16); for (const u of ids) staffWant.delete(u);
       const miss = () => { for (const u of ids) STAFF.set(u, { r: (STAFF.get(u) || {}).r || '', t: Date.now(), ok: false }); };   // 연결 실패: 20초 뒤 다시
       try {
         const { data, error } = await sb.rpc('staff_roles', { p_ids: ids });
-        if (error) { const m = String(error.message || '').toLowerCase(); if (error.code === 'PGRST202' || m.includes('could not find') || m.includes('does not exist')) staffSrv = false; else miss(); }
+        if (error) { const m = String(error.message || '').toLowerCase(); if (error.code === 'PGRST202' || m.includes('could not find') || m.includes('does not exist')) { staffSrv = false; staffOffT = Date.now(); } else miss(); }
         else { staffSrv = true; for (const u of ids) STAFF.set(u, { r: data && (data[u] === 'dev' || data[u] === 'sub') ? data[u] : '', t: Date.now(), ok: true }); }
       } catch (e) { miss(); }
       staffT = null; if (staffWant.size) staffAsk([]);
@@ -25723,7 +25759,7 @@ const Cloud = (() => {
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
     if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
     user = null; name = null; admin = false; role = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
-    STAFF.clear(); staffWant.clear(); staffSrv = null;
+    STAFF.clear(); staffWant.clear(); staffSrv = null; staffOffT = 0;
     store.set('account', null);
     restoreGuest();
     refreshUi();
@@ -26603,7 +26639,7 @@ const DM = (() => {
     $('resRank').textContent = `${S.score[my]} : ${S.score[en]}`; $('resOf').textContent = S.duel ? '라운드' : '';
     setResLabels(true);
     $('resKills').textContent = p.kills; $('resTime').textContent = S.myDeaths;
-    $('resDmg').textContent = Math.round(p.damageDealt); $('resXp').textContent = '+' + G.lastXp;
+    $('resDmg').textContent = Math.round(p.damageDealt); $('resAcc').textContent = accText(); $('resXp').textContent = '+' + G.lastXp;
     $('resRanked').hidden = true;
   }
   function setResLabels(dm) {
@@ -28686,20 +28722,21 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   const NEWS = [
     { tag: 'v23 랭크 개편', title: '이터널 위 상위 티어 4종 — 노바 · 셀레스티얼 · 이클립스 · 제니스 · 승급전 · 티어 승급 컷신 · 전용 칭호와 테두리 (티어표 보기)', img: () => rankBanner, act: () => G.ui('ranks') },
     { tag: '새 이벤트', title: `백룸 완전 탈출 — THE BACKROOMS 를 12가지 방법으로 모두 탈출하면 골드 탄피 ${BR_EVENT.gold12.toLocaleString()} + 칭호·테두리 ‘${BR_EVENT.title12}’ + 사진 ‘Level 0’ (계정마다 1번)`, img: () => EvBR.banner('all'), act: () => EvBR.open() },
+    { tag: 'v23 경기 이어하기', title: '새로고침·뒤로가기로 나가도 아직 끝나지 않은 경기라면 다시 들어갈지 물어봄 — 같이 하던 경기도 이어서 (업데이트 로그 보기)', img: () => LOBBY_ART.kalden, act: () => ChangeLog.open() },
+    { tag: 'v22 투척·근접 무기', title: '화염병 · 섬광탄 · 충격 수류탄 · 자기장 수류탄 · 근접 무기 4종(4번) · 진통제 · 자동 줍기 (업데이트 로그 보기)', img: () => { try { return Models.icon('molotov') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: 'v22 새 아레나', title: '데스매치·대결 아레나 3곳 추가 — 녹슨 공장 · 모래 사원 · 골목 마을 (72×72m, 맵 선택에서 고르거나 무작위)', img: () => LOBBY_ART.factory || LOBBY_ART.arena, act: () => G.ui('mapPick') },
     { tag: 'v22 새 맵', title: '크리스마스 섬(1.5km) — 눈 덮인 섬 · 북극성 광장 큰 트리 · 산타 공방 · 얼어붙은 호수 · 모든 맵의 집 외형 개편 (맵 선택)', img: () => LOBBY_ART.xmas || LOBBY_ART.kalden, act: () => G.ui('mapPick') },
     { tag: 'v22 온라인 매칭', title: '온라인 매칭 · 스타트 섬 — 같은 모드를 고른 사람끼리 한 경기로, 빈자리는 AI · 시작 전 25초 스타트 섬 (업데이트 로그 보기)', img: () => LOBBY_ART.kalden, act: () => ChangeLog.open() },
     { tag: 'v21 판처파우스트 스킨', title: "핵탄두 · SANTA'S DELIVERY · EVENT HORIZON — 터지면 버섯구름 · 큰 선물 상자 · 큰 블랙홀 (업데이트 로그 보기)", img: () => { try { return Shop.gunThumb('pzf', 'e_pzf_horizon') || Models.icon('pzf'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
-    { tag: 'v21 신규 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
+    { tag: 'v21 무기', title: '판처파우스트 — 보급상자에서만 나오는 1회용 대전차 로켓 · 직격하면 사람·차량을 한 번에 파괴 (업데이트 로그 보기)', img: () => { try { return Models.icon('pzf') || LOBBY_ART.vehicles; } catch (e) { return LOBBY_ART.vehicles; } }, act: () => ChangeLog.open() },
     { tag: '크리스마스', title: '크리스마스 상자 — 겨울 옷·총기·차량 스킨 · 새 등급 EXCLUSIVE (루돌프 썰매 · 전용 처치 효과 총 · 빛나는 옷)', img: () => { try { return Shop.crateThumb('xmas'); } catch (e) { return LOBBY_ART.vehicles; } }, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=gacha]'); if (b) b.click(); } },
     { tag: '콜라보 이벤트', title: `THE BACKROOMS 탈출 이벤트 — 어떤 방법으로든 탈출 1회 → 골드 탄피 ${BR_EVENT.gold.toLocaleString()} + 칭호 ‘${BR_EVENT.title}’ (계정마다 1번)`, img: () => EvBR.banner(), act: () => EvBR.open() },
     { tag: '이벤트', title: '골드 탄피 이벤트 — 골드 러시 · 행운의 골드 상자 · 매치 보너스 · 주간 챌린지 · 현상금', img: () => LOBBY_ART.vehicles, act: () => { setTab('shop'); const b = document.querySelector('#shopTabs [data-st=event]'); if (b) b.click(); } },
-    { tag: '신규', title: '상점 오픈 — 상자 3종 · 차량 뽑기 · 교환소, 미션·출석 보상', img: () => LOBBY_ART.vehicles, act: () => setTab('shop') },
-    { tag: '신규', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
-    { tag: '신규 모드', title: '팀 데스매치 · 웨폰 데스매치 — 4 대 4, 먼저 40킬', img: () => LOBBY_ART.arena, act: () => G.ui('mapPick') },
-    { tag: '업데이트', title: '팀원과 함께 차량 탑승 — 동승석에서 사격', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
-    { tag: '신규 모드', title: '듀오·스쿼드 — 기절·부활, 핑(Y)으로 팀원 지휘', img: () => LOBBY_ART.kalden, act: () => G.ui('matchCfg') },
-    { tag: '업데이트', title: '차량 5종 출격 — 말부터 오토바이까지', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
+    { tag: '상점', title: '상점 — 총기·옷·차량·크리스마스 상자 · 교환소 · 미션·출석 보상', img: () => LOBBY_ART.vehicles, act: () => setTab('shop') },
+    { tag: '친구·파티', title: '친구·파티 — 친구와 같은 팀으로 출격 (로그인 후 친구 버튼)', img: () => LOBBY_ART.kalden, act: () => Social.openPanel() },
+    { tag: '모드', title: '팀 데스매치 · 웨폰 데스매치 — 4 대 4, 먼저 40킬', img: () => LOBBY_ART.arena, act: () => G.ui('mapPick') },
+    { tag: '차량', title: '말부터 오토바이까지 여러 차량 — 팀원과 함께 타고 동승석에서 사격', img: () => LOBBY_ART.vehicles, act: () => G.ui('help') },
+    { tag: '모드', title: '듀오·스쿼드 — 기절·부활, 핑(Y)으로 팀원 지휘', img: () => LOBBY_ART.kalden, act: () => G.ui('matchCfg') },
     { tag: '대형 맵', title: '8×8km 노르덴 — 봇 99명과 출격', img: () => LOBBY_ART.norden, act: () => G.ui('mapPick') },
     { tag: '랭크전', title: '배치고사 3판 · 아이언부터 제니스까지', img: () => rankBanner, act: () => G.ui('ranks') },
   ];
@@ -28738,8 +28775,15 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     const tot = ph.reduce((a, q) => a + q.wait + q.shrink, 0) * sc, w0 = ph[0].wait * sc;
     return (tot + Math.max(0, (M.wait0Min || 0) - w0)) / 60 + 1;
   }
-  let noteT = null;
-  function showLobbyNote(msg) { const n = $('lbNote'); n.hidden = false; n.textContent = msg; clearTimeout(noteT); noteT = setTimeout(() => { n.hidden = true; }, 3500); }
+  // 로비 알림: 한 칸을 덮어쓰지 않고 최대 3줄까지 쌓아 보여 줌 (예전에는 새 알림이 오면 읽기 전의 긴 알림이 지워졌다)
+  //  · 글이 길수록 오래(3.5~10초) · 같은 글이 이미 떠 있으면 시간만 다시 잼 · 넘치면 가장 오래된 줄부터 내림
+  const notes = [];
+  function dropLobbyNote(it) { const i = notes.indexOf(it); if (i < 0) return; notes.splice(i, 1); clearTimeout(it.t); it.el.remove(); if (!notes.length) $('lbNote').hidden = true; }
+  function showLobbyNote(msg) {
+    const box = $('lbNote'); msg = String(msg); let it = notes.find((x) => x.msg === msg);
+    if (!it) { it = { msg, el: h('div', '', msg) }; notes.push(it); box.appendChild(it.el); while (notes.length > 3) dropLobbyNote(notes[0]); }
+    clearTimeout(it.t); it.t = setTimeout(() => dropLobbyNote(it), Math.min(10000, Math.max(3500, 1200 + msg.length * 70))); box.hidden = false;
+  }
   // 승급전 연속 성공 칸: 채운 칸 n / 전체 need (fail: 이번에 실패한 칸을 빨갛게)
   const pipsHTML = (n, need, fail) => Array.from({ length: need }, (_, i) => `<i class="${i < n ? 'on' : fail && i === n ? 'x' : ''}"></i>`).join('');
   // 티어표 — v23: 이터널 위 상위 티어 4종은 따로 (승급전 · 단계 5→1 · 200 RP)
@@ -28790,7 +28834,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     $('resTitle').textContent = win ? (team ? (p.alive ? '우승! 팀이 마지막까지 살아남았습니다' : '팀 우승! 팀원이 끝까지 버텼습니다') : '우승! 마지막까지 살아남았습니다') : (place <= Math.max(2, Math.round(total / 5)) ? '아깝습니다. 상위권 생존' : '다음 강하에서 다시 도전하세요');
     $('resRank').textContent = '#' + place; $('resOf').textContent = '/ ' + total + (team ? '팀' : '');
     $('resKills').textContent = p.kills; $('resTime').textContent = fmtTime(p.alive ? G.matchT || G.time : p.deathTime);   // v23 우승 축하 시간은 빼고
-    $('resDmg').textContent = Math.round(p.damageDealt); $('resXp').textContent = '+' + G.lastXp;
+    $('resDmg').textContent = Math.round(p.damageDealt); $('resAcc').textContent = accText(); $('resXp').textContent = '+' + G.lastXp;
     let note = G.statsSaved ? '기록이 저장되었습니다.' : '이 브라우저에서는 기록이 저장되지 않았습니다 (게임은 계속 가능).';
     if (team) { const ms = G.teams[p.team].members; note = `팀 처치 ${ms.reduce((a, m) => a + m.kills, 0)} · 내가 기절시킴 ${p.knocks} · 부활시킴 ${p.revives} — ` + note; }
     if (G.hostGone) note = '방장의 연결이 끊겨 경기가 끝났습니다. ' + note;
@@ -29935,7 +29979,8 @@ const Net = (() => {
 //  주변 효과(빛기둥·충격파·바닥 문양·입자·번개·불기둥·일식)가 함께 터진다
 //  · 내 연출(자동 = 가진 것 중 가장 높은 것 · 직접 고르기 · 끄기)은 파티 정보 memberInfo.ent 로 전해져 같은 파티의 모든 기기에서 보인다
 //  · 들어온 사람: 다른 기기에서는 그 파티원 자리에서 입장, 들어온 기기에서는 가운데 내 캐릭터가 입장
-//  · 나간 사람: 남은 기기에서는 그 캐릭터가 퇴장 동작을 하고 사라지고(유령 리그), 나간 기기에서는 내 캐릭터가 작별 몸짓
+//  · 나간 사람: 남은 기기에서는 그 캐릭터가 퇴장 동작을 하고 사라지고(유령 리그), 나간 기기에서도 내 캐릭터가 같은 퇴장 동작을 한 뒤 다시 나타난다
+//    (예전에는 나간 기기에서 짧은 작별 몸짓만 했다 — 정작 본인은 자기 퇴장 연출을 볼 수 없었음)
 //  · 캐릭터: 열쇠 자세(KP — 팔은 IK/FK, 디딘 발은 다리 IK) 사이를 이어 붙인 동작(MOT) + 몸 채널(높이·회전·크기·깜빡임)
 //  · 효과: 로비 장면 전용 시간 효과(고리·기둥·바닥 문양·빛 판·빛줄기·번개) + 총기 스킨 입자 풀(GunSkin.fx)
 //    새 조명을 더하지 않고(셰이더를 다시 만들지 않게) 해·하늘 밝기만 잠깐 바꾸고, 재료는 로비를 만들 때 미리 한 번 그려 둔다
@@ -29945,21 +29990,21 @@ const Net = (() => {
 const PartyFx = (() => {
   // ---------- 대상 (자동 선택은 위에서부터) ----------
   //  t: 새 티어 번호(RANK_TIERS — 10_rank.js, 최고 도달은 칭호 tier_<id> 로 판단) · 없으면 같은 id 의 칭호(10_ui_profile.js TI)
-  //  mo: [입장, 퇴장, 작별 몸짓] · c: [주색, 보조색, 밝은 색] · pal: 입자 색
+  //  mo: [입장, 퇴장] · c: [주색, 보조색, 밝은 색] · pal: 입자 색
   //  staff: 관리자(개발자·부개발자) 계정 전용 — 칭호·티어와 상관없이 그 계정만 (다른 기기는 서버에 확인: Cloud.staffRole)
   const ENT = [
-    { id: 'dev', staff: true, name: '개발자', mo: ['devIn', 'devOut', 'devBye'], c: [0x4de8ff, 0x7dffb0, 0xffffff], pal: [0x4de8ff, 0x7dffb0, 0xffd866, 0xff7ab8, 0xc9a0ff, 0xffffff] },
-    { id: 'champ_tier', name: '랭크 챔피언', mo: ['ceremony', 'curtain', 'bow'], c: [0xffc93a, 0xff6a3a, 0xfff4c8], pal: [0xffd65a, 0xfff0b0, 0xff4a5a, 0x4ab8ff, 0x6aff9a, 0xffffff] },
-    { id: 'zenith', t: 13, name: '제니스', mo: ['armillary', 'ascendStar', 'salute'], c: [0xffd76a, 0xa47cff, 0xffffff], pal: [0xffd76a, 0xfff2c8, 0xc8a8ff, 0xffffff] },
-    { id: 'champ_hc', name: '하드코어 패왕', mo: ['crater', 'devour', 'flex'], c: [0xff3a1e, 0xffa030, 0xffe2c8], pal: [0xff3a1e, 0xff7a20, 0xffc04a, 0xffe2c8] },
-    { id: 'eclipse', t: 12, name: '이클립스', mo: ['eclipse', 'umbra', 'cross'], c: [0xff4a2e, 0x8a0c1a, 0xffd8c8], pal: [0xff4a2e, 0xff8a5a, 0xffd0b0, 0xc8102a] },
-    { id: 'champ_lv', name: '정점의 베테랑', mo: ['smokeIn', 'smokeOut', 'salute'], c: [0xcfe4ff, 0x7fb8ff, 0xffffff], pal: [0xcfe4ff, 0x9fd0ff, 0xffffff, 0xffe9a8] },
-    { id: 'celestial', t: 11, name: '셀레스티얼', mo: ['wingsIn', 'wingsOut', 'open'], c: [0xf3d98b, 0xfff4d8, 0xffffff], pal: [0xf3d98b, 0xffe9b0, 0xfffaf0, 0xffffff] },
-    { id: 'nova', t: 10, name: '노바', mo: ['nova', 'novaOut', 'wave'], c: [0x8fe3ff, 0x2f86ff, 0xffffff], pal: [0x8fe3ff, 0x4fb0ff, 0xd8f6ff, 0xffffff] },
-    { id: 'hc_overlord', name: '오버로드', mo: ['throne', 'throneOut', 'fistPalm'], c: [0xff7a18, 0xffc040, 0xfff0c8], pal: [0xff6a12, 0xff9a2a, 0xffc04a, 0xfff0c0] },
-    { id: 'tier_eternal', name: '이터널', mo: ['clockIn', 'clockOut', 'open'], c: [0xc58cff, 0x7a3cff, 0xf6eaff], pal: [0xc58cff, 0xe6c8ff, 0x9a6aff, 0xffffff] },
-    { id: 'br_all', name: '백룸 정복자', mo: ['escape', 'noclip', 'shrug'], c: [0xffe066, 0xc9b27a, 0xfffbe0], pal: [0xffe066, 0xe8d8a0, 0xc9b27a, 0xfff8d0] },
-    { id: 'wargod', name: '전쟁의 신', mo: ['bladeRain', 'swordOut', 'armUp'], c: [0xff2a3a, 0xff8a8a, 0xffeef0], pal: [0xff2a3a, 0xff6a6a, 0xffd0d0, 0xffffff] },
+    { id: 'dev', staff: true, name: '개발자', mo: ['devIn', 'devOut'], c: [0x4de8ff, 0x7dffb0, 0xffffff], pal: [0x4de8ff, 0x7dffb0, 0xffd866, 0xff7ab8, 0xc9a0ff, 0xffffff] },
+    { id: 'champ_tier', name: '랭크 챔피언', mo: ['ceremony', 'curtain'], c: [0xffc93a, 0xff6a3a, 0xfff4c8], pal: [0xffd65a, 0xfff0b0, 0xff4a5a, 0x4ab8ff, 0x6aff9a, 0xffffff] },
+    { id: 'zenith', t: 13, name: '제니스', mo: ['armillary', 'ascendStar'], c: [0xffd76a, 0xa47cff, 0xffffff], pal: [0xffd76a, 0xfff2c8, 0xc8a8ff, 0xffffff] },
+    { id: 'champ_hc', name: '하드코어 패왕', mo: ['crater', 'devour'], c: [0xff3a1e, 0xffa030, 0xffe2c8], pal: [0xff3a1e, 0xff7a20, 0xffc04a, 0xffe2c8] },
+    { id: 'eclipse', t: 12, name: '이클립스', mo: ['eclipse', 'umbra'], c: [0xff4a2e, 0x8a0c1a, 0xffd8c8], pal: [0xff4a2e, 0xff8a5a, 0xffd0b0, 0xc8102a] },
+    { id: 'champ_lv', name: '정점의 베테랑', mo: ['smokeIn', 'smokeOut'], c: [0xcfe4ff, 0x7fb8ff, 0xffffff], pal: [0xcfe4ff, 0x9fd0ff, 0xffffff, 0xffe9a8] },
+    { id: 'celestial', t: 11, name: '셀레스티얼', mo: ['wingsIn', 'wingsOut'], c: [0xf3d98b, 0xfff4d8, 0xffffff], pal: [0xf3d98b, 0xffe9b0, 0xfffaf0, 0xffffff] },
+    { id: 'nova', t: 10, name: '노바', mo: ['nova', 'novaOut'], c: [0x8fe3ff, 0x2f86ff, 0xffffff], pal: [0x8fe3ff, 0x4fb0ff, 0xd8f6ff, 0xffffff] },
+    { id: 'hc_overlord', name: '오버로드', mo: ['throne', 'throneOut'], c: [0xff7a18, 0xffc040, 0xfff0c8], pal: [0xff6a12, 0xff9a2a, 0xffc04a, 0xfff0c0] },
+    { id: 'tier_eternal', name: '이터널', mo: ['clockIn', 'clockOut'], c: [0xc58cff, 0x7a3cff, 0xf6eaff], pal: [0xc58cff, 0xe6c8ff, 0x9a6aff, 0xffffff] },
+    { id: 'br_all', name: '백룸 정복자', mo: ['escape', 'noclip'], c: [0xffe066, 0xc9b27a, 0xfffbe0], pal: [0xffe066, 0xe8d8a0, 0xc9b27a, 0xfff8d0] },
+    { id: 'wargod', name: '전쟁의 신', mo: ['bladeRain', 'swordOut'], c: [0xff2a3a, 0xff8a8a, 0xffeef0], pal: [0xff2a3a, 0xff6a6a, 0xffd0d0, 0xffffff] },
   ];
   const byId = (id) => ENT.find((e) => e.id === id) || null;
   const tiOf = (id) => (typeof Prof !== 'undefined' && Prof.TI ? Prof.TI.find((x) => x.id === id) || null : null);
@@ -30239,8 +30284,6 @@ const PartyFx = (() => {
     salute(r) { KP.att(r); up(r); hand(r, r.armR, r.head, [-0.115, 0.06, 0.07], [0.62, 0.32, 0.55], [0.12, -0.9, -0.35], [-0.55, 0.22, 0.12], 'flat'); },
     // 손 흔들기 (o.t 로 흔듦)
     wave(r, o) { KP.stand(r); const w = Math.sin(o.t * 11); up(r); r.head.rotation.set(-0.06, -0.12, 0.06); hand(r, r.armR, r.chest, [-0.36 + w * 0.06, 0.44, 0.14], [w * 0.35, 1, 0], [0, 0, 1], [-0.62, -0.12, -0.05], 'open'); },
-    // 가슴에 손 얹고 인사
-    bow(r) { r.hips.position.set(0, 0.93, -0.04); spineSet(r, [-0.06], [0.42], [0.2], [0.12], [0.12]); up(r); legsStand(r, 0.09); hand(r, r.armR, r.chest, [0.07, 0.06, 0.18], [1, 0.3, 0], [0, 0, -1], [-0.36, -0.32, 0.25], 'flat'); fk(r.armL, -0.55, 0, 0.12, -0.12); },
     // 축복: 두 손을 벌려 손바닥을 위로 · 하늘을 봄
     open(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [-0.08], [-0.08], [-0.15], [-0.18]); up(r); legsStand(r, 0.1); hands(r, r.chest, [-0.42, -0.2, 0.26], [-0.3, 0.1, 1], [0, 1, 0], [-0.6, -0.25, -0.1], 'open'); },
     // 한 무릎 착지: 왼발 앞 · 오른 무릎 바닥 · 오른 주먹으로 땅 · 왼팔은 뒤로 벌려 균형 · 고개 숙임
@@ -30269,8 +30312,6 @@ const PartyFx = (() => {
     burst(r) { r.hips.position.set(0, 0.93, 0); spineSet(r, [0], [-0.14], [-0.14], [-0.12], [-0.18]); up(r); legsStand(r, 0.2); fk(r.armL, -0.2, 0.3, 0.85, -0.12, 'fist'); fk(r.armR, -0.2, 0.3, 0.85, -0.12, 'fist'); },
     // 두 주먹 들어 힘자랑 (전쟁의 신)
     flex(r) { r.hips.position.set(0, 0.94, 0); spineSet(r, [0], [-0.1], [-0.12], [-0.12], [-0.2]); up(r); legsStand(r, 0.2); hands(r, r.chest, [-0.43, 0.44, 0.02], null, null, [-0.65, 0.12, -0.08], 'fist'); },
-    // 오른팔을 하늘로 뻗음
-    armUp(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [-0.08], [-0.1], [-0.25], [-0.3]); up(r); legsStand(r, 0.13); hand(r, r.armR, r.chest, [-0.16, 0.86, 0.12], [0, 1, 0.1], [-0.5, 0, 1], [-0.6, 0.2, 0], 'flat'); fk(r.armL, 0.05, 0, 0.3, -0.2, 'fist'); },
     // 깊게 웅크림 (뛰어오르기 직전 · 팔을 뒤로)
     charge(r) { r.hips.position.set(0, 0.6, -0.04); spineSet(r, [0.4], [0.3], [0.12], [-0.25], [-0.25]); up(r); plant(r, r.legL, [0.13, 0.085, 0.08], [0.15, 0.3, 1], 0.2); plant(r, r.legR, [-0.13, 0.085, 0.04], [-0.15, 0.3, 1], 0.2); fk(r.armL, 1.0, 0, 0.2, -0.25, 'fist'); fk(r.armR, 1.0, 0, 0.2, -0.25, 'fist'); },
     // 솟구침: 몸을 쭉 펴고 팔은 머리 위로
@@ -30281,8 +30322,6 @@ const PartyFx = (() => {
     fistPalm(r) { r.hips.position.set(0, 0.94, 0); spineSet(r, [0.03], [0.05], [0], [0.04], [0.04]); up(r); legsStand(r, 0.18); hand(r, r.armR, r.chest, [-0.06, 0.04, 0.27], null, null, [-0.5, -0.32, 0.05], 'fist'); hand(r, r.armL, r.chest, [0.07, 0.02, 0.3], [-0.2, 0.75, 0.6], [-1, 0, 0.15], [0.5, -0.32, 0.05], 'flat'); },
     // 두리번 (o.t 로 좌우)
     look(r, o) { KP.stand(r); const s = Math.sin(o.t * 2.6); r.neck.rotation.y = s * 0.35; r.head.rotation.set(-0.05, s * 0.45, s * 0.05); r.chest.rotation.y = s * 0.12; },
-    // 어깨 으쓱: 손바닥을 위로 · 고개 갸웃
-    shrug(r) { r.hips.position.set(0, 0.95, 0); spineSet(r, [0], [0], [-0.02], [0], [0.02, 0, 0.18]); up(r); legsStand(r, 0.11); r.armL.clav.rotation.set(0, 0, 0.22); r.armR.clav.rotation.set(0, 0, -0.22); up(r); hands(r, r.chest, [-0.34, -0.18, 0.22], [-0.6, 0, 1], [0, 1, 0], [-0.55, -0.3, -0.2], 'open'); },
     // 차렷 + 고개 들기 (이터널 · 베테랑 등장 순간)
     tall(r) { KP.att(r); r.head.rotation.x = -0.12; },
     // 몸을 던짐 (몸 채널에서 앞으로 크게 기울임): 두 팔을 머리 위로 쭉 · 한 다리는 뒤로 뻗고 한 다리는 굽힘 · 앞을 봄
@@ -31135,11 +31174,7 @@ const PartyFx = (() => {
           EM(Q, _b, (_a.x - _b.x) * 2.2, (_a.y - _b.y) * 2.2, (_a.z - _b.z) * 2.2, pk(E), rnd(0.03, 0.05), rnd(0.3, 0.5), { sq: 1, so: 0.85, g: 0, drag: 1.5 }); }
       }
     } };
-  // ===== 작별 몸짓 (내가 파티에서 나왔을 때 내 캐릭터): 대상의 몸짓 + 바닥 문양 · 위로 흩어지는 빛 =====
-  function byeMot(g) { return { kind: 'bye', dur: 2.4, keys: [[0, 'stand'], [0.4, g, 0.4], [1.8, g], [2.1, 'stand', 0.3]],
-    fx(a) { const E = a.E, gp = a.gp; sigil(gp, sigilTex(), 2.2, 2.2, E.c[0], 0.6, 0.1); ring(gp, E.c[0], 2.0, 0.6, 0.45); glow(hipsAt(a, 0.7).clone(), E.c[2], 2.4, 0.4, 0.45); label(E, gp, 0.3, 1.9);
-      at(0.45, () => { const Q = P(); for (let i = 0; i < 40; i++) { const an = Math.random() * TAU, rr = rnd(0.2, 0.9); EM(Q, _a.set(gp.x + Math.cos(an) * rr, gp.y + 0.1, gp.z + Math.sin(an) * rr), 0, rnd(0.8, 2.2), 0, pk(E), rnd(0.03, 0.055), rnd(0.8, 1.4), { drag: 0.6, so: 0.5 }); } }); } }; }
-  // 퇴장 미리 보기 뒤 내 캐릭터가 다시 나타남: 빛 속에서 작게 → 원래 크기
+  // 내 캐릭터의 퇴장이 끝난 뒤(파티에서 나왔을 때 · 퇴장 미리 보기) 다시 나타남: 빛 속에서 작게 → 원래 크기
   MOT.back = { kind: 'in', dur: 1.0, keys: [[0, 'stand']], body(t, B) { B.s = Math.max(0.01, eout(seg(t, 0.05, 0.45))); B.vis = t > 0.05; },
     fx(a) { const E = a.E, gp = a.gp; glow(hipsAt(a, 0.9).clone(), E.c[2], 2.4, 0.4); ring(gp, E.c[0], 1.6, 0.5);
       at(0.05, () => { const Q = P(); for (let i = 0; i < 26; i++) { const an = Math.random() * TAU; EM(Q, hipsAt(a, rnd(0.2, 1.2)), Math.cos(an) * rnd(0.6, 1.6), rnd(0.2, 1.2), Math.sin(an) * rnd(0.6, 1.6), pk(E), rnd(0.025, 0.05), rnd(0.4, 0.8), { drag: 2, so: 0.5 }); } }); } };
@@ -31151,12 +31186,12 @@ const PartyFx = (() => {
   const GH = [];          // 퇴장 중인 유령 리그
   function rigOf(L, k, a) { return a.ghost || (k === 'me' ? L.rig : (L.mates || []).find((m) => m.uid === k)); }
   function play(L, k, E, dir, rig) {
-    const mo = E.mo[dir === 'in' ? 0 : dir === 'out' ? 1 : 2], M = dir === 'back' ? MOT.back : dir === 'bye' ? byeMot(mo) : MOT[mo]; if (!M || !rig) return;
+    const mo = E.mo[dir === 'in' ? 0 : 1], M = dir === 'back' ? MOT.back : MOT[mo]; if (!M || !rig) return;
     const old = AN.get(k); if (old) stop(L, k, old);
     SC = L.scene; CAM = L.cam; LOB = L;
     const p = rig.root.position, a = { k, E, M, dir, t: 0, rig, yaw: rig.baseYaw != null ? rig.baseYaw : 0.3, gp: { x: p.x, y: p.y, z: p.z, snow: p.y < 0.05 && typeof WINTER !== 'undefined' && WINTER.on() }, o: { t: 0 }, ghost: dir === 'out' && k !== 'me' ? rig : null, back: dir === 'out' && k === 'me', gunShown: false, fin: [] };
     AN.set(k, a); M.fx(a);
-    if (typeof Audio !== 'undefined' && Audio.partyFx) Audio.partyFx(dir === 'bye' || dir === 'back' ? 'bye' : mo);
+    if (typeof Audio !== 'undefined' && Audio.partyFx) Audio.partyFx(dir === 'back' ? 'back' : mo);
   }
   // 동작이 리그에 걸어 둔 것(철사 모델 · 바꿔 낀 재료 · 숨긴 장비)을 되돌린다 — 끝났을 때 · 중간에 끊겼을 때 · 리그가 사라졌을 때
   function fin(a) { a.dead = true; const F = a.fin; a.fin = []; for (const f of F || []) { try { f(); } catch (e) { /* */ } } }
@@ -31173,8 +31208,8 @@ const PartyFx = (() => {
     r.root.rotation.y = a.yaw; a.o.t = t;
     if (!k1 || w <= 0) evalKey(r, k0[1], B, a.o); else if (w >= 1) evalKey(r, k1[1], B, a.o);
     else { evalKey(r, k0[1], B, a.o); grab(r, KA); evalKey(r, k1[1], B, a.o); mixTo(r, KA, 1 - w); }
-    // 쉬는 자세와 섞기: 입장은 끝에서, 퇴장·작별은 처음에서(작별은 끝에서도)
-    const wI = M.kind === 'in' ? sstep(M.dur - 0.55, M.dur - 0.05, t) : M.kind === 'out' ? 1 - sstep(0, 0.3, t) : Math.max(1 - sstep(0, 0.3, t), sstep(M.dur - 0.45, M.dur - 0.05, t));
+    // 쉬는 자세와 섞기: 입장은 끝에서, 퇴장은 처음에서
+    const wI = M.kind === 'in' ? sstep(M.dur - 0.55, M.dur - 0.05, t) : 1 - sstep(0, 0.3, t);
     if (wI > 0) { mixTo(r, IDL, wI); r.root.rotation.y = a.yaw + angleDiff(a.yaw, iy) * wI; r.body.position.multiplyScalar(1 - wI); r.body.rotation.set(r.body.rotation.x * (1 - wI), r.body.rotation.y * (1 - wI), r.body.rotation.z * (1 - wI)); r.body.scale.lerp(_a.set(1, 1, 1), wI); }
     const gun = wI > 0.5; r.gunMount.visible = gun;
     if (gun && !a.gunShown && M.kind !== 'out') { a.gunShown = true; if (r.gunObj && r.gunObj.userData.skin) GunSkin.draw(r.gunObj, 0.55, null, true); }
@@ -31197,7 +31232,7 @@ const PartyFx = (() => {
       for (const [u, f] of prev) if (!ids.has(u)) { const E = valid(f.ent, f.name, u); if (E) gone.set(u, E); }
     }
     if (ok && pid && pid !== lastPid && !Party.isLeader()) { const E = mineE(); if (E) pend.push(['me', E, 'in']); }   // 내가 남의 파티에 들어감
-    if (ok && lastPid && !pid) { const E = mineE(); if (E) pend.push(['me', E, 'bye']); }   // 내가 파티에서 나옴
+    if (ok && lastPid && !pid) { const E = mineE(); if (E) pend.push(['me', E, 'out']); }   // 내가 파티에서 나옴(나가기·내보내짐): 내 화면에서도 퇴장 연출 → 끝나면 다시 나타남 (MOT.back)
     lastPid = pid;
     return gone;
   }
@@ -31249,7 +31284,7 @@ const PartyFx = (() => {
   function clear(L) { WAIT.clear(); for (const [k, a] of [...AN]) stop(L, k, a); for (const b of BAN) b.el.remove(); BAN.length = 0; for (const e of LIVE) if (e.o) { if (e.o.parent) e.o.parent.remove(e.o); free(e.o); } LIVE.length = 0; ENV.length = 0; tickEnv(0, L); }
   // 카메라 흔들림 (Lobby.update 끝에서)
   function cam(c, dt) { if (SHK < 0.002) { SHK = 0; return; } c.position.x += (Math.random() - 0.5) * SHK; c.position.y += (Math.random() - 0.5) * SHK; SHK *= Math.pow(0.015, dt); }
-  // 미리 보기: 내 캐릭터로 입장(in)·작별(bye) — 계정 창에서
+  // 미리 보기: 내 캐릭터로 입장(in)·퇴장(out) — 계정 창에서
   function preview(id, dir = 'in') { const E = withRole(byId(id), myRole()), L = LOB || (typeof Lobby !== 'undefined' ? Lobby : null); if (!E || !L || !L.rig) return false; play(L, 'me', E, dir, L.rig); return true; }
 
   // ---------- 계정 창 탭: 입장 연출 고르기 ----------
@@ -31277,7 +31312,7 @@ const PartyFx = (() => {
         (d) => { if (typeof Prof !== 'undefined') Prof.close(); setTimeout(() => preview(E.id, d), 120); });
     }
     B.appendChild(L);
-    const tail = document.createElement('p'); tail.className = 'micro'; tail.textContent = '미리 보기는 내 화면에서만 보입니다 (퇴장 미리 보기가 끝나면 캐릭터가 다시 나타남). 파티에 들어가거나 나가면 파티원 모두에게 보입니다.'; B.appendChild(tail);
+    const tail = document.createElement('p'); tail.className = 'micro'; tail.textContent = '미리 보기는 내 화면에서만 보입니다. 파티에 들어가거나 나가면 파티원 모두에게 보이고, 나갈 때는 내 화면에서도 퇴장 연출이 나온 뒤 캐릭터가 다시 나타납니다.'; B.appendChild(tail);
   }
   const owned = () => ENT.filter(ok);
   // 연출 한 줄 설명 (계정 창)
@@ -33809,7 +33844,7 @@ const Shop = (() => {
     if (tab !== 'gacha' && exSub === 'gun') {
       for (const r of [7, 5, 4, 3, 1]) {
         const ids = Object.keys(GSKINS).filter((id) => GSKINS[id].rar === r && Eco.gunPrice(id)); if (!ids.length) continue;
-        const R = rarOf(r), sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', `` + (r === 7 ? ' · 전용 디자인·꺼내기·살펴보기·처치 연출 · 획득 컷신' : r === 5 ? ' · 사격·교체 효과' : '')));
+        const R = rarOf(r), sec = h('div', 'ex-sec'); sec.appendChild(h('h4', '', R.name + (r === 7 ? ' · 전용 디자인·꺼내기·살펴보기·처치 연출 · 획득 컷신' : r === 5 ? ' · 사격·교체 효과' : '')));
         const grid = h('div', 'ex-grid gun');
         for (const id of ids) {
           const S = GSKINS[id], own = Eco.ownsGun(id), price = Eco.gunPrice(id), key = 'exg:' + id;
@@ -37376,6 +37411,7 @@ async function startMatch(cfg) {
   G.focusRing = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.36, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf0c060, transparent: true, opacity: 0.6, depthWrite: false }));
   G.focusRing.visible = false; sc.add(G.focusRing);
   setMapSize(SETTINGS.map);
+  if (net && cfg.humans && typeof Cloud !== 'undefined' && Cloud.staffAsk) Cloud.staffAsk(cfg.humans.map((hm) => hm.uid));   // v23 스타트 섬 머리 위 칭호(한 번만 그려짐): 관리자 계정이 단 칭호가 보이게, 맵을 만드는 동안 답이 오도록 미리 확인 (10_cloud.js)
   try { await generateWorld(SETTINGS.map, sc, prog); }
   catch (e) { console.error(e); fatal('맵 생성 중 오류: ' + e.message); return; }
   prog(0.97, '아이템 배치');
@@ -37422,7 +37458,6 @@ async function startMatch(cfg) {
   });
   // 사람이 장착한 차량 스킨 모델은 로딩 중에 미리 만들어 둠 (운전석에 앉는 순간 처음 만들면 큰 모델은 한 박자 멈춤 · 모델은 종류마다 한 번 만들어 공유)
   for (const c of CHARS) if (c.vlook) for (const t in c.vlook) { const id = c.vlook[t]; if (id && VehModels.has(id)) try { VehModels.instance(t, id); } catch (e) { console.warn(e); } }
-  if (net && typeof Cloud !== 'undefined' && Cloud.staffAsk) Cloud.staffAsk(humans.map((hm) => hm.uid));   // v23 스타트 섬 머리 위 칭호: 관리자 계정이 단 칭호를 보여 주려고 미리 확인 (10_cloud.js)
   G.player = player;
   const srand = mulberry32(ms ^ 0x2545f491);        // 봇 이름·얼굴: 시드가 같으면 같게 (같이 하기는 모든 기기에서 · 혼자는 이어하기가 다시 만들 때)
   const names = BOT_NAMES.slice(); for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(srand() * (i + 1)); const t0 = names[i]; names[i] = names[j]; names[j] = t0; }

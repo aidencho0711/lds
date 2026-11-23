@@ -286,29 +286,35 @@ const Cloud = (() => {
   //  파티 로비에서 개발자 전용 입장 연출과 관리자가 단 칭호를 '그 계정이 정말 관리자일 때만' 보여 주려고 다른 기기가 확인한다 (10_partyfx.js · 10_ranking.js)
   //  서버 staff_roles(supabase/admin.sql)에 계정 고유번호를 물어 { 고유번호: 'dev' | 'sub' } 를 받아 10분 동안 기억 (관리자가 아니면 '')
   //  서버에 그 함수가 아직 없으면 예약 아이디('개발자'·'부개발자' — 그 관리자 계정만 쓸 수 있음)로 본다
-  const STAFF = new Map(), STAFF_NAMES = { '개발자': 'dev', '부개발자': 'sub' }, staffWant = new Set();
-  let staffSrv = null, staffT = null;   // staffSrv: 서버에 staff_roles 가 있는가 (null = 아직 모름 · false = 없음)
+  const STAFF = new Map(), staffWant = new Set(), UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let staffSrv = null, staffOffT = 0, staffT = null;   // staffSrv: 서버에 staff_roles 가 있는가 (null = 아직 모름 · false = 없음 — staffOffT 에 확인한 시각)
+  // 예약 아이디로 보는 역할 (직접 비교 — 객체에서 찾으면 '__proto__' 같은 아이디가 참으로 나온다)
+  const staffByName = (nm) => { const k = String(nm || '').normalize('NFC').trim().toLowerCase(); return k === '개발자' ? 'dev' : k === '부개발자' ? 'sub' : ''; };
   const staffFresh = (uid) => { const c = STAFF.get(uid); return !!c && Date.now() - c.t < (c.ok ? 600e3 : 20e3); };
   // 그 계정의 역할: 'dev' · 'sub' · ''(관리자가 아님 또는 아직 모름)
   function staffRole(uid, nm) {
     if (!uid || !user) return '';
     if (uid === user.id) return admin ? role || 'dev' : '';
-    if (staffSrv === false) return STAFF_NAMES[String(nm || '').normalize('NFC').trim().toLowerCase()] || '';
+    if (staffSrv === false) return staffByName(nm);
     const c = STAFF.get(uid); return c ? c.r : '';
   }
   // 서버에 물어본 답이 있는가 (없으면 연출을 잠깐 미룬다)
   const staffKnown = (uid) => !uid || !user || uid === user.id || staffSrv === false || !!(STAFF.get(uid) && STAFF.get(uid).ok);
   // 모르는 계정을 모아 한 번에 묻는다 (16명씩)
   function staffAsk(uids) {
-    if (!sb || !user || staffSrv === false) return;
-    for (const u of uids || []) if (u && u !== user.id && !staffFresh(u)) staffWant.add(u);
+    if (!sb || !user) return;
+    if (staffSrv === false) { if (Date.now() - staffOffT < 600e3) return; staffOffT = Date.now(); }   // 함수가 없던 서버: 10분마다 한 번 다시 물어본다 (그사이 설치됐으면 새로 고치지 않아도 넘어감 · 그동안은 계속 아이디로 봄)
+    for (const u of uids || []) {
+      if (!u || u === user.id || staffFresh(u)) continue;
+      if (UUID_RE.test(u)) staffWant.add(u); else STAFF.set(u, { r: '', t: Date.now(), ok: true });   // 계정 고유번호 모양이 아니면 묻지 않고 관리자가 아닌 것으로 (하나라도 섞이면 서버가 묶음 전체를 거부한다)
+    }
     if (!staffWant.size || staffT) return;
     staffT = setTimeout(async () => {
       const ids = [...staffWant].slice(0, 16); for (const u of ids) staffWant.delete(u);
       const miss = () => { for (const u of ids) STAFF.set(u, { r: (STAFF.get(u) || {}).r || '', t: Date.now(), ok: false }); };   // 연결 실패: 20초 뒤 다시
       try {
         const { data, error } = await sb.rpc('staff_roles', { p_ids: ids });
-        if (error) { const m = String(error.message || '').toLowerCase(); if (error.code === 'PGRST202' || m.includes('could not find') || m.includes('does not exist')) staffSrv = false; else miss(); }
+        if (error) { const m = String(error.message || '').toLowerCase(); if (error.code === 'PGRST202' || m.includes('could not find') || m.includes('does not exist')) { staffSrv = false; staffOffT = Date.now(); } else miss(); }
         else { staffSrv = true; for (const u of ids) STAFF.set(u, { r: data && (data[u] === 'dev' || data[u] === 'sub') ? data[u] : '', t: Date.now(), ok: true }); }
       } catch (e) { miss(); }
       staffT = null; if (staffWant.size) staffAsk([]);
@@ -386,7 +392,7 @@ const Cloud = (() => {
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
     if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
     user = null; name = null; admin = false; role = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
-    STAFF.clear(); staffWant.clear(); staffSrv = null;
+    STAFF.clear(); staffWant.clear(); staffSrv = null; staffOffT = 0;
     store.set('account', null);
     restoreGuest();
     refreshUi();

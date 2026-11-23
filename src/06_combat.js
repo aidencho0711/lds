@@ -118,13 +118,15 @@ function gunWorldPoint(c, lx, ly, lz, out) {
   if (g === VM.gun) G.camera.localToWorld(out);
   return out;
 }
+// 결과 화면 명중률: 내가 쏜 총알 중 적을 맞힌 발 (산탄은 한 알이라도 맞으면 1발 · 근접·투척·로켓은 셈하지 않음)
+const accText = () => { const s = G.stats; return s && s.shots ? `명중 ${Math.round(100 * s.hits / s.shots)}% · ${s.hits}/${s.shots}발` : ''; };
 function fireWeapon(c, origin, dir) {
   const wi = c.weapon; if (!wi || c.rl || c.cycle || c.equipT > 0 || c.inWater || c.heal || c.knocked || c.revive || (c.veh && !c.seat)) return false;
   const d = ITEMS[wi.id];
   if (wi.mag <= 0) { if (c.isPlayer) Audio.dryfire(); return false; }
   // 남은 시간을 이어 받아 프레임 단위 반올림으로 연사 속도가 떨어지지 않게 한다
   if (!(c.isPlayer && Dev.cheat('ammo'))) wi.mag--;   // 개발자 도구: 무한 탄약
-  c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); G.stats.shots++;
+  c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); if (c.isPlayer && !d.rocket) G.stats.shots++;   // 명중률: 내 총알만 (예전에는 봇까지 모든 캐릭터를 셌다 · 로켓은 뺌)
   if (c.spawnProt) c.spawnProt = 0; // 데스매치: 쏘면 부활 보호 해제
   if (d.rocket) return fireRocket(c, wi, d, origin, dir);   // 판처파우스트: 히트스캔 대신 날아가는 로켓
   const spread = weaponSpread(c) * DEG;
@@ -140,7 +142,7 @@ function fireWeapon(c, origin, dir) {
   const ax = rx / rl, ay = ry / rl, az = rz / rl;
   const bx = dir.y * az - dir.z * ay, by = dir.z * ax - dir.x * az, bz = dir.x * ay - dir.y * ax;
   // 산탄: 가운데 1발 + 안쪽·바깥쪽 고리를 번갈아 (무작위 원판보다 구멍·뭉침이 적어 근거리 피해가 고르다)
-  const T = Math.tan(spread), a0 = Math.random() * TAU, ring = pellets - 1;
+  const T = Math.tan(spread), a0 = Math.random() * TAU, ring = pellets - 1; let hitFoe = false;   // hitFoe: 이 발(산탄은 여러 알 중 하나라도)이 적을 맞혔나 — 명중률은 발 단위
   for (let p = 0; p < pellets; p++) {
     let a, r;
     if (pellets === 1) { a = Math.random() * TAU; r = Math.sqrt(Math.random()) * T; }
@@ -157,7 +159,8 @@ function fireWeapon(c, origin, dir) {
     const fall = h.t > d.range ? clamp(1 - (h.t - d.range) / (d.range * 1.4), 0.35, 1) : 1;
     if (h.type === 'char') {
       if (skFx && h.char.alive && !sameTeam(c, h.char) && !(G.dm && h.char.spawnProt > G.time)) SkinFx.hit(h.char, ex, ey, ez, dx, dy, dz, skFx, c);
-      applyDamage(h.char, d.dmg * fall, h.part, c, wi.id, ex, ey, ez); G.stats.hits++;
+      if (h.char.alive && !sameTeam(c, h.char)) hitFoe = true;
+      applyDamage(h.char, d.dmg * fall, h.part, c, wi.id, ex, ey, ez);
       FX.impact(ex, ey, ez, 'blood');
     } else if (h.type === 'veh') {
       Veh.damage(h.veh, d.dmg * fall, c, wi.id);
@@ -165,6 +168,7 @@ function fireWeapon(c, origin, dir) {
       if (c.isPlayer && !h.veh.dead) HUD.hitmarker(false, false);
     } else if (h.type) { FX.impact(ex, ey, ez, h.type === 'terrain' ? 'dirt' : 'spark'); if (p === 0) Audio.impact({ x: ex, y: ey, z: ez }, false); }
   }
+  if (hitFoe && c.isPlayer) G.stats.hits++;
   // 이 발로 처치해 웨폰 데스매치 총이 바뀌었으면(applyDamage → swapWeapon) 새 총에 레버·볼트 순환·탄피·반동을 넘기지 않는다
   const swapped = c.weapon !== wi;
   if (!swapped) c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : d.cls === 'SG' ? 0.5 : 1) * 0.22, 4);

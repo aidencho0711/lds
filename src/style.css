@@ -60,7 +60,8 @@ kbd { font-family: var(--f-display); font-size: 0.8em; border: 1px solid var(--l
 .lb-sub button.ranked.on { color: #e2c8ff; }
 .lb-sub button.ranked.on::before { background: #b98bff; }
 .lb-sub button.lock { opacity: 0.6; }
-.lb-note { align-self: flex-start; margin-top: 4px; font-size: 0.76rem; color: #ffd9a0; background: rgba(13, 17, 19, 0.75); border: 1px solid rgba(240, 164, 58, 0.5); border-radius: 3px; padding: 3px 8px; animation: kfIn 0.2s; }
+.lb-note { align-self: flex-start; margin-top: 4px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.lb-note > div { font-size: 0.76rem; color: #ffd9a0; background: rgba(13, 17, 19, 0.75); border: 1px solid rgba(240, 164, 58, 0.5); border-radius: 3px; padding: 3px 8px; animation: kfIn 0.2s; }
 .lb-right { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
 .lv-chip { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px 0 6px; border: 1px solid var(--line); background: rgba(13, 17, 19, 0.6); border-radius: 4px; cursor: pointer; }
 .lv-chip:hover { border-color: var(--line-2); }
@@ -343,6 +344,8 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .res-grid div { display: flex; flex-direction: column; border-left: 2px solid var(--line-2); padding-left: 8px; }
 .res-grid span { font-size: 0.7rem; color: var(--dim); }
 .res-grid b { font-family: var(--f-display); font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.res-grid small { font-size: 0.66rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+.res-grid small:empty { display: none; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .set-row { display: flex; flex-direction: column; gap: 4px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 0.8rem; color: var(--dim); }
 .set-row .hdr { display: flex; justify-content: space-between; }
@@ -1030,7 +1033,7 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .lb-nav { align-items: center; }
 .lb-tabs { justify-content: center; }
 .lb-sub { justify-content: center; }
-.lb-note { align-self: center; }
+.lb-note { align-self: center; align-items: center; }
 .lb-right { justify-self: end; }
 @media (max-width: 600px) { .lb-top { grid-template-columns: auto 1fr auto; } .lb-who .lv-chip { display: none; } }
 
