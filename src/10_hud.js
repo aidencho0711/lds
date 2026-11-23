@@ -344,7 +344,7 @@ const HUD = (() => {
     // v22 근접 무기 칸 (보조무기 왼쪽): 누르면 총을 넣고 근접 무기를 든다
     if (inv.melee) {
       const cur = inv.cur < 0, mb = h('button', 'ws-slot melee' + (cur ? ' cur' : '')); mb.type = 'button';
-      const im = h('img', 'ws-sil'); im.alt = ''; im.draggable = false; iconInto(im, inv.melee); mb.appendChild(im);
+      const im = h('img', 'ws-sil'); im.alt = ''; im.draggable = false; { const ms = meleeSkinSrc(p, inv.melee); if (ms) im.src = ms; else iconInto(im, inv.melee); } mb.appendChild(im);
       mb.appendChild(h('span', 'ws-n', '4')); mb.setAttribute('aria-label', ITEMS[inv.melee].name + (cur ? ' (든 무기)' : ' 들기'));
       mb.addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); try { Audio.init(); } catch (e) { /* 소리 없이도 */ } mb.classList.add('down'); setTimeout(() => mb.classList.remove('down'), 140); Input.press('w4'); });
       Touch.dragLook(mb); sec.appendChild(mb);
@@ -384,6 +384,10 @@ const HUD = (() => {
   }
   // 아이콘을 img 에 넣는다 — 경기 중 처음 보는 부착물 조합은 잠시 기본 아이콘을 보여 주다가 다 그려지면 바꾼다 (05_models.js)
   function iconInto(im, id, att) { const src = Models.icon(id, att, (u) => { if (u) im.src = u; }); if (src) im.src = src; }
+  // v23 근접 무기 스킨: 내 무기 칸 그림도 그 모양으로 (스킨이 없거나 아직 그림이 없으면 기본 아이콘)
+  //  그림은 경기 시작 때 MeleeSkin.warm 이 미리 그려 둔 것만 씀 — 경기 중에 그 자리에서 그리면 화면이 멈춤
+  const meleeSkinSrc = (p, id) => { const sk = id && p ? MeleeSkin.ofChar(p, id) : null; return sk ? Shop.meleeThumbCached(id, sk) : null; };
+  const meleeIco = (p, id, cls) => { const u = meleeSkinSrc(p, id); if (!u) return ico(id, null, cls); const w = h('span', cls), im = h('img'); im.alt = ''; im.draggable = false; im.src = u; w.appendChild(im); return w; };
   function update(dt) {
     const p = G.player; if (!p) return;
     const spec = !p.alive && G.spec && G.spec.alive && !G.over;
@@ -437,7 +441,7 @@ const HUD = (() => {
       });
       // v22 근접 무기 줄 (4)
       if (inv.melee) {
-        const e = h('div', 'wslot melee' + (inv.cur < 0 ? ' cur' : '')); e.appendChild(ico(inv.melee, null, 'ico wide wi'));
+        const e = h('div', 'wslot melee' + (inv.cur < 0 ? ' cur' : '')); e.appendChild(meleeIco(p, inv.melee, 'ico wide wi'));
         e.appendChild(h('span', 'wn', `4  ${ITEMS[inv.melee].name}`)); e.appendChild(h('span', 'wm', '근접'));
         if (inv.cur >= 0) e.title = '눌러서 들기 (4)'; e.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); if (inv.cur >= 0) Input.press('w4'); });
         wp.appendChild(e);
@@ -807,7 +811,7 @@ const HUD = (() => {
     const ma = h('div', 'acts'); ma.style.display = 'flex'; ma.style.gap = '4px';
     if (inv.cur >= 0) ma.appendChild(btn('들기', () => drawMelee(p, true)));
     ma.appendChild(btn('버리기', () => dropFromInventory(p, G.scene, { melee: true })));
-    mt.appendChild(ma); mc.appendChild(mt); mc.appendChild(ico(inv.melee, null, 'ico wide big'));
+    mt.appendChild(ma); mc.appendChild(mt); mc.appendChild(meleeIco(p, inv.melee, 'ico wide big'));
     mc.appendChild(h('div', 'micro', `근접 무기 · 피해 ${md.dmg} (머리 1.5배) · 거리 ${md.reach}m · ${{ stab: '찌르기', slash: '베기 (이어 휘두르면 되베기)', bash: '크게 휘두르기', chop: '내려찍기' }[md.style]} · 하나만 들 수 있음`));
     wb.appendChild(mc);
   }
@@ -980,32 +984,37 @@ const HUD = (() => {
     helmet: (c, k) => `<path d="M4 15.5c0-6 3.6-10 8.4-10S20.6 9.5 20.6 15.5z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M3.4 15.5h17.8v2H3.4z" fill="${k || '#333'}"/><path d="M8 18.8 6.5 22M16.6 18.8l1.5 3.2" stroke="${k || '#333'}" stroke-width="1.2"/>`,
     pack: (c, k) => `<path d="M6.5 7.5c0-2.6 2.4-4.5 5.5-4.5s5.5 1.9 5.5 4.5V20a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M8.5 13.5h7v5.5h-7z" fill="${k || 'rgba(0,0,0,.25)'}"/><path d="M9.5 5.5h5" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>`,
   };
+  // v23 근접 무기 4칸 (창고·상점은 3D 썸네일을 쓰고, 이것은 그림이 없을 때 대신 — 칼 실루엣)
+  for (const sl of ['m_knife', 'm_machete', 'm_pan', 'm_crowbar']) SKIN_ICON[sl] = (c) => `<path d="M4 20l3-3 2 2-3 3zM8.5 15.5 18 4.5c1-1 2.5-.5 2 1L10.5 17.5z" fill="${c && c[0] === '#' ? c : '#c9cdd1'}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/>`;
   function ownedSkins() { return Eco.ownedSkins(); }
   function equipSkin(slot, id) {
     const eq = Body.normEquip(SETTINGS.look); eq[slot] = id; SETTINGS.look = eq; saveSettings();
-    Lobby.setLook(SETTINGS.look); renderWarehouse(); Audio.init(); Audio.ui();
+    Lobby.setLook(SETTINGS.look); renderWarehouse(); showcase(); Audio.init(); Audio.ui();   // 근접 무기 진열대도 바로 새 모양으로
   }
   // 무늬 옷은 SVG 패턴(index.html의 pt-*)으로 칠한다
   const skinFill = (S) => (S.ico ? `url(#${S.ico})` : hexs(S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888)));
-  let whVeh = 'sedan', whGun = null, whLv = 3;   // whLv: 헬멧·가방 탭에서 미리 볼 레벨 (v23)
+  let whVeh = 'sedan', whGun = null, whLv = 3, whMel = 'm_knife';   // whLv: 헬멧·가방 탭에서 미리 볼 레벨 · whMel: 근접 무기 탭에서 고른 무기 (v23)
   function renderWarehouse() {
     const eq = Body.normEquip(SETTINGS.look), own = ownedSkins(), cats = $('whCats'), grid = $('whGrid');
     if (!cats || !grid) return;
     cats.innerHTML = ''; grid.innerHTML = '';
-    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.map((s) => [s.id, s.name]), [['gun', '총기'], ['veh', '차량']])) {
+    // 근접 무기 4칸은 '근접 무기' 탭 하나로 묶음 (안에서 무기별 작은 탭)
+    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.filter((s) => !s.melee).map((s) => [s.id, s.name]), [['melee', '근접 무기'], ['gun', '총기'], ['veh', '차량']])) {
       const b = h('button', whCat === k ? 'on' : '', n); b.type = 'button';
       b.addEventListener('click', () => { whCat = k; renderWarehouse(); Audio.init(); Audio.ui(); showcase(); }); cats.appendChild(b);
     }
     const card = (slot, id) => {
       const S = id ? Body.SKINS[id] : null, on = (eq[slot.id] || null) === (id || null), R = S ? rarOf(S.rar || 0) : null;
-      const b = h('button', 'wh-item' + (on ? ' on' : '') + (S && S.rar ? ' rar' : '')); b.type = 'button';
+      const b = h('button', 'wh-item' + (slot.melee ? ' mel' : '') + (on ? ' on' : '') + (S && S.rar ? ' rar' : '')); b.type = 'button';
       if (R) b.style.setProperty('--rc', R.color);
       const ico = h('i', 'wh-ico');
-      // v23 헬멧·가방: 그 레벨 모양의 3D 썸네일 · '없음' 대신 기본 모습
+      // v23 헬멧·가방: 그 레벨 모양의 3D 썸네일 · 근접 무기: 그 모양의 옆모습 썸네일 · '없음' 대신 기본 모습
+      const base = slot.gear || slot.melee;
       if (slot.gear) ico.appendChild(Shop.gearImgEl(slot.id, id, whLv));
+      else if (slot.melee) ico.appendChild(Shop.meleeImgEl(slot.melee, id));
       else ico.innerHTML = `<svg viewBox="0 0 24 24">${S ? SKIN_ICON[slot.id](skinFill(S), S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null) : SKIN_ICON.none()}</svg>`;
-      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : slot.gear ? '기본 ' + slot.name : slot.name + ' 없음')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + slot.name + ' · ' + (on ? '장착 중' : S || slot.gear ? '장착하기' : '벗기')));
-      b.title = S ? `${S.name} — ${S.desc || ''}` + (slot.gear ? ' (경기에서 주운 모든 레벨의 ' + slot.name + '에 적용)' : '') : slot.gear ? `기본 ${slot.name} 모습` : `${slot.name} 벗기`;
+      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : base ? '기본 ' + slot.name : slot.name + ' 없음')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + slot.name + ' · ' + (on ? '장착 중' : S || base ? '장착하기' : '벗기')));
+      b.title = S ? `${S.name} — ${S.desc || ''}` + (slot.gear ? ' (경기에서 주운 모든 레벨의 ' + slot.name + '에 적용)' : slot.melee ? ` (경기에서 ${slot.name}을 들면 이 모양 · 피해·거리는 같음)` : '') : base ? `기본 ${slot.name} 모습` : `${slot.name} 벗기`;
       b.addEventListener('click', () => { if (!on) equipSkin(slot.id, id || null); });
       return b;
     };
@@ -1053,7 +1062,18 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       const ids = Object.keys(VSKINS).filter((k) => VSKINS[k].veh === whVeh && Eco.ownsVeh(k));
       for (const id of ids) grid.appendChild(vcard(id));
       if (!ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${VEH_SKIN_TYPES[whVeh]} 스킨이 없습니다. 상점의 차량 뽑기나 교환소에서 얻을 수 있습니다.`));
+    } else if (whCat === 'melee') {
+      // v23 근접 무기: 무기별 작은 탭 → '기본' + 가진 스킨 (모양이 바뀜). 장착하면 경기에서 그 무기를 들 때·허리에 찰 때 그 모양
+      const MS = Body.SLOTS.filter((s) => s.melee), tabs = h('div', 'wh-vtabs');
+      if (!MS.some((s) => s.id === whMel)) whMel = MS[0].id;
+      for (const s of MS) { const cnt = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === s.id && own.has(k)).length, b = h('button', whMel === s.id ? 'on' : '', s.name + (cnt ? ` ${cnt}` : '')); b.type = 'button'; b.addEventListener('click', () => { whMel = s.id; renderWarehouse(); showcase(); Audio.init(); Audio.ui(); }); tabs.appendChild(b); }
+      grid.appendChild(tabs);
+      const slot = MS.find((s) => s.id === whMel), ids = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === slot.id && own.has(k)).sort((a, b) => (Body.SKINS[b].rar || 0) - (Body.SKINS[a].rar || 0));
+      grid.appendChild(card(slot, null));
+      for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
+      if (!ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자(크리스마스·배틀로얄·스페셜·보급)에서 얻을 수 있습니다.`));
     } else for (const slot of Body.SLOTS) {
+      if (slot.melee) continue;   // 근접 무기는 자기 탭에서만
       if (whCat !== 'all' && whCat !== slot.id) continue;
       const ids = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === slot.id && own.has(k)).sort((a, b) => (Body.SKINS[b].rar || 0) - (Body.SKINS[a].rar || 0));
       // v23 헬멧·가방 탭: 1·2·3 레벨 중 무엇으로 미리 볼지 (로비 캐릭터도 그 레벨을 씀)
@@ -1066,8 +1086,8 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
       if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자(크리스마스·배틀로얄·스페셜·보급)에서 얻을 수 있습니다.`));
     }
-    const gearN = [...own].filter((k) => Body.SKINS[k] && (Body.SKINS[k].slot === 'helmet' || Body.SKINS[k].slot === 'pack')).length;
-    $('whCount').textContent = `옷 ${own.size - gearN}벌 · 헬멧·가방 스킨 ${gearN}종 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${Eco.gskinsOwned().length}종`;
+    const gearN = [...own].filter((k) => Body.SKINS[k] && (Body.SKINS[k].slot === 'helmet' || Body.SKINS[k].slot === 'pack')).length, melN = [...own].filter((k) => Body.SKINS[k] && /^m_/.test(Body.SKINS[k].slot)).length;
+    $('whCount').textContent = `옷 ${own.size - gearN - melN}벌 · 헬멧·가방 스킨 ${gearN}종 · 근접 무기 스킨 ${melN}종 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${Eco.gskinsOwned().length}종`;
   }
   // 창고 3D: 차량 분류면 장착한(없으면 기본) 차량을, 아니면 캐릭터
   function showcase() {
@@ -1075,6 +1095,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     if (lobbyTab !== 'custom') return;
     if (whCat === 'veh') { const vl = Eco.vlook(); Lobby.show({ kind: 'veh', type: whVeh, skin: vl[whVeh] }); }
     else if (whCat === 'gun') { const gun = whGun || Eco.showGun(); Lobby.show({ kind: 'gun', gun, skin: Eco.glook()[gun] || null }); }
+    else if (whCat === 'melee') { const sl = Body.SLOTS.find((s) => s.id === whMel) || Body.SLOTS.find((s) => s.melee); Lobby.show({ kind: 'melee', melee: sl.melee, skin: Body.normEquip(SETTINGS.look)[sl.id] || null }); }   // v23 근접 무기 진열
     else Lobby.show(null);
   }
   // 로비 탭: 플레이 / 전적 / 창고 / 상점 / 미션
@@ -1398,5 +1419,5 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       if (R.tierUp && !R.placement && R.before && R.after) setTimeout(() => { if (G.state === 'result' && !$('resultPanel').hidden) RankFx.play(R.before, R.after, { series: !!R.series }); }, 650);
     }
   }
-  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
+  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { if (/^m_/.test(cat || '')) { whMel = cat; cat = 'melee'; } whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); else if (cat === 'melee' && skin) Lobby.show({ kind: 'melee', melee: whMel.slice(2), skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();

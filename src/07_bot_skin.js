@@ -62,6 +62,8 @@ const BotSkin = (() => {
     // v23 헬멧·가방 스킨: 위의 뽑기 순서 뒤에 붙여 기존 스킨 결과는 그대로 · 희귀 이상만 · 난이도가 높을수록 자주
     const gp = [0.2, 0.35, 0.5, 0.65][KEYS.indexOf(dk)] || 0.3, gearPick = (sl) => (R() < gp ? pickRar(R, (OUT[sl] || []).filter((x) => x.rar >= 1), rarPick(R, dk), null) : null);
     eq.helmet = gearPick('helmet'); eq.pack = gearPick('pack');
+    // v23 근접 무기 스킨(모양이 바뀜): 다시 그 뒤에 붙여 위의 결과는 그대로
+    for (const sl of ['m_knife', 'm_machete', 'm_pan', 'm_crowbar']) eq[sl] = gearPick(sl);
     return { look: Body.makeLook(eq, o.body), gun, veh };
   }
   // 난이도 하나 고르기 (하드코어 = 전원 익스트림, 랭크전 = 내 티어 비율, 아니면 설정. '섞어서'는 쉬움·보통·보통·어려움)

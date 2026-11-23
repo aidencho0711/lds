@@ -1349,8 +1349,9 @@ const FX = (() => {
     if (G.muzzleLight) { G.muzzleLight.position.set(x, y + 0.5, z); G.muzzleLight.intensity = 14 * k; }
   }
   // 휘두르기 자국 (v22 근접 무기): 날 끝·뿌리의 최근 위치로 만든 띠 — 가산 혼합, 오래된 쪽일수록 어둡게(= 투명) · sc: 그릴 장면(1인칭은 뷰모델 장면)
-  const TRN = 10;
-  function trail(key, sc, tip, base) {
+  //  color: v23 근접 무기 스킨(네온·얼음)은 날 빛 색 자국 (없으면 흰빛)
+  const TRN = 10, TR_WHITE = [1, 0.97, 0.92];
+  function trail(key, sc, tip, base, color) {
     let tr = trails.find((o) => o.key === key);
     if (!tr) {
       if (trails.length > 6) { const o = trails.shift(); if (o.m.parent) o.m.parent.remove(o.m); }
@@ -1362,14 +1363,15 @@ const FX = (() => {
     }
     if (tr.m.parent !== sc) sc.add(tr.m);
     tr.pts.unshift([tip.x, tip.y, tip.z, base.x, base.y, base.z, G.time]); if (tr.pts.length > TRN) tr.pts.length = TRN;
+    tr.col = color !== undefined && color !== null ? [((color >> 16) & 255) / 255 * 1.25, ((color >> 8) & 255) / 255 * 1.25, (color & 255) / 255 * 1.25] : TR_WHITE;
     tr.idle = 0; tr.m.visible = true; drawTrail(tr);
   }
   function drawTrail(tr) {
-    const P = tr.m.geometry.attributes.position, C = tr.m.geometry.attributes.color, n = tr.pts.length;
+    const P = tr.m.geometry.attributes.position, C = tr.m.geometry.attributes.color, n = tr.pts.length, cl = tr.col || TR_WHITE;
     for (let i = 0; i < TRN; i++) {
       const q = tr.pts[Math.min(i, n - 1)], age = G.time - q[6], k = i < n ? clamp(1 - age / 0.14, 0, 1) * (1 - i / TRN) : 0;
       P.setXYZ(i * 2, q[0], q[1], q[2]); P.setXYZ(i * 2 + 1, q[3] * 0.4 + q[0] * 0.6, q[4] * 0.4 + q[1] * 0.6, q[5] * 0.4 + q[2] * 0.6);
-      const w = 0.55 * k; C.setXYZ(i * 2, w, w * 0.97, w * 0.92); C.setXYZ(i * 2 + 1, 0, 0, 0);
+      const w = 0.55 * k; C.setXYZ(i * 2, w * cl[0], w * cl[1], w * cl[2]); C.setXYZ(i * 2 + 1, 0, 0, 0);
     }
     P.needsUpdate = true; C.needsUpdate = true;
   }

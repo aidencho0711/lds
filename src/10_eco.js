@@ -13,12 +13,12 @@ const GOLD_NAME = '골드 탄피', COIN_NAME = '차량 교환 코인', GCOIN_NAM
 // 상점 진열 순서 = 이 순서 (총기 상자 → 옷 상자 → 차량)
 const BOXES = {
   // v20 크리스마스: 겨울 테마 옷·총기·차량 스킨 + EXCLUSIVE (확률은 XMAS_P)
-  xmas: { name: '크리스마스 상자', theme: '겨울 테마 옷·총기·차량 스킨', cost: 300, accent: '#e8384a', hex: 0xc8202e, isNew: true, xmas: true },
+  xmas: { name: '크리스마스 상자', theme: '겨울 테마 옷·헬멧·가방·근접 무기·총기·차량 스킨', cost: 300, accent: '#e8384a', hex: 0xc8202e, isNew: true, xmas: true },
   g1: { name: '아스널 상자', theme: '전술 테마 총기 스킨', cost: 200, accent: '#d9a441', hex: 0x8a6a2a, gun: true, isNew: true },
   g2: { name: '네온 상자', theme: '사이버 테마 총기 스킨', cost: 200, accent: '#ff3d9a', hex: 0xd0307a, gun: true, isNew: true },
-  br: { name: '배틀로얄 상자', theme: '전장 테마 옷', cost: 100, accent: '#9db35e', hex: 0x6f8a3a },
-  sp: { name: '스페셜 상자', theme: '스트리트 테마 옷', cost: 100, accent: '#ff6fb0', hex: 0xd0457f },
-  sup: { name: '보급 상자', theme: '엘리트 테마 옷', cost: 100, accent: '#f0a43a', hex: 0xd07a1e },
+  br: { name: '배틀로얄 상자', theme: '전장 테마 옷·헬멧·가방·근접 무기', cost: 100, accent: '#9db35e', hex: 0x6f8a3a },
+  sp: { name: '스페셜 상자', theme: '스트리트 테마 옷·헬멧·가방·근접 무기', cost: 100, accent: '#ff6fb0', hex: 0xd0457f },
+  sup: { name: '보급 상자', theme: '엘리트 테마 옷·헬멧·가방·근접 무기', cost: 100, accent: '#f0a43a', hex: 0xd07a1e },
   eps: { name: '엡실론 금고', theme: 'EPSILON 총기 스킨 9종 · 엡실론 차량 4종 · 울트라레어 이하 총기 스킨', cost: 600, accent: '#c084fc', hex: 0x7a3cff, gun: true, isNew: true, eps: true },
   veh: { name: '차량 뽑기', theme: '교환 코인 · 차량 스킨', cost: 200, accent: '#46c8ff', hex: 0x2a8ac0 },
 };

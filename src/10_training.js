@@ -50,6 +50,7 @@ const Training = (() => {
     p.vlook = Eco.vlook(); p.glook = Eco.glook();   // 훈련장에서도 내 차량 스킨으로 시험 운전
     for (const t in p.vlook) { const id = p.vlook[t]; if (id && VehModels.has(id)) try { VehModels.instance(t, id); } catch (e) { console.warn(e); } }   // 스킨 모델 미리 만들기 (타는 순간 멈춤 방지)
     G.teams[0].members.push(p); CHARS.push(p); G.player = p; sc.add(p.root);
+    try { MeleeSkin.warm([p], p); } catch (e) { console.warn(e); }   // v23 근접 무기 스킨 모양·무기 칸 그림 미리
     setup(sc);
     respawnPlayer(p, true);
     G.total = 1;

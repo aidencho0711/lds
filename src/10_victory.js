@@ -95,7 +95,7 @@ const Victory = (() => {
   function pose(c, dt) {
     const r = c.rig, D = c.dance; D.t += dt;
     c.root.position.copy(c.pos); c.root.rotation.set(0, c.bodyYaw, 0);
-    resetPose(r); setHeld(c, null, null); setSheath(r, c.inv.melee || null);
+    resetPose(r); setHeld(c, null, null); setSheath(r, c.inv.melee || null, c.inv.melee ? MeleeSkin.ofChar(c, c.inv.melee) : null);
     (POSES[D.kind] || POSES.cheer)(r, D.t, Math.max(0, D.t) / BEAT, c.bodyYaw, c.pos.y);
   }
 
@@ -186,7 +186,8 @@ const Victory = (() => {
       g.position.copy(palm).sub(new THREE.Vector3(gp[0], gp[1], gp[2]).applyQuaternion(g.quaternion));
       r.root.add(g);
     } else if (info.melee) {
-      const m = Models.display(info.melee); m.position.copy(palm); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0.05, 1, 0.12).normalize()); r.root.add(m);
+      // v23 근접 무기 스킨 모양 그대로 (동상 재질로 칠해짐)
+      const m = MeleeSkin.model(info.melee, MeleeSkin.ofLook(info.look, info.melee)); m.position.copy(palm); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0.05, 1, 0.12).normalize()); r.root.add(m);
     }
   }
   // 동상 하나 세우기 (나·파티원 공통): x·z 자리, yaw = 동상이 바라볼 방향

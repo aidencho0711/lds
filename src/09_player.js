@@ -99,12 +99,13 @@ function vmArms() {
   VM.root.add(root); VM.armsKey = key;
   return VM.arms;
 }
-// 1인칭 손에 든 물건
-function vmHeld(Ar, id) {
-  if (Ar.itemId === id) return; Ar.itemId = id;
+// 1인칭 손에 든 물건 (skin: v23 근접 무기 스킨 — 모양이 바뀜)
+function vmHeld(Ar, id, skin) {
+  const key = id && skin ? id + '~' + skin : id;
+  if (Ar.itemId === key) return; Ar.itemId = key;
   while (Ar.hold.children.length) Ar.hold.remove(Ar.hold.children[0]);
   if (!id) return;
-  const o = heldModel(id), P = HOLD_POSE[id] || [0, 0, 0, 0, 0, 0, 1];
+  const o = heldModel(id, skin), P = HOLD_POSE[id] || [0, 0, 0, 0, 0, 0, 1];
   o.position.set(-Ar.side * P[0], P[1], P[2]); o.rotation.set(P[3], P[4], P[5]); o.scale.setScalar(P[6] / VM_SC);
   o.traverse((m) => { if (m.isMesh) m.castShadow = false; }); Ar.hold.add(o);
 }
@@ -244,7 +245,8 @@ function updateMeleeVM(dt, p) {
   _mvP.set(_mv9[0] + Math.sin(p.anim.phase) * 0.012 * bobAmp + S.run * 0.05, _mv9[1] - Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp - eq * 0.36 - S.run * 0.14, -_mv9[2]);
   _mvB.set(_mv9[3], _mv9[4] - S.run * 0.55, -_mv9[5]); _mvE.set(_mv9[6], _mv9[7], -_mv9[8]);
   bladeQuat(_mvQ, _mvB, _mvE);
-  vmHeld(A.R, id); pickHeld(A.L, p);
+  const msk = MeleeSkin.ofChar(p, id);   // v23 근접 무기 스킨 (모양이 바뀜)
+  vmHeld(A.R, id, msk); pickHeld(A.L, p);
   vmReach(A.R, _mvP, _mvQ, _vpole.set(0.6, -0.7, 0.15), FING.fist); setFist(A.R);
   const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0, pull = sw ? Math.sin(Math.PI * clamp((u - 0.2) / 0.55, 0, 1)) : 0;
   _fvP.set(-0.17 - pull * 0.09, -0.31 - pull * 0.1 - eq * 0.2 - S.run * 0.1, -0.42 + pull * 0.1);
@@ -253,8 +255,8 @@ function updateMeleeVM(dt, p) {
   vmReach(A.L, _fvP, _fvQ, _vpole.set(-0.5, -0.8, 0.1), pw > 0 ? pickBlend(A.L, _fvP, _fvQ, FING.fist, pw) : FING.fist); if (pw < 0.05) setFist(A.L);
   if (sw && sw.t > D.wind * 0.85 && sw.t < D.wind + D.strike * 1.4) {
     A.R.hold.updateWorldMatrix(true, false);
-    _mvT.set(0, 0, MEL_TIP[id] || 0.3).applyMatrix4(A.R.hold.matrixWorld); _mvT2.set(0, 0, 0.1).applyMatrix4(A.R.hold.matrixWorld);
-    FX.trail('vm', VM.scene, _mvT, _mvT2);
+    _mvT.set(0, 0, MeleeSkin.tip(id, msk)).applyMatrix4(A.R.hold.matrixWorld); _mvT2.set(0, 0, 0.1).applyMatrix4(A.R.hold.matrixWorld);
+    FX.trail('vm', VM.scene, _mvT, _mvT2, MeleeSkin.trail(id, msk));
   }
   if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
 }

@@ -171,8 +171,13 @@ const Lobby = {
       gun = buildGunMesh(spec.gun, {}, spec.skin || null); const bb = new THREE.Box3().setFromObject(gun), c = bb.getCenter(new THREE.Vector3());
       gun.position.sub(c); obj = new THREE.Group(); obj.add(gun); obj.scale.setScalar(2.4); size = Math.max(1.5, (bb.max.z - bb.min.z) * 2.6);
     }
+    else if (spec.kind === 'melee') {
+      // v23 근접 무기(스킨이면 그 모양): 총처럼 가운데를 축으로 돌도록 감싸 받침대 위에 띄움
+      const m = MeleeSkin.model(spec.melee, spec.skin || null), bb = new THREE.Box3().setFromObject(m), c = bb.getCenter(new THREE.Vector3());
+      m.position.sub(c); obj = new THREE.Group(); obj.add(m); obj.scale.setScalar(2.6); size = Math.max(1.5, Math.max(bb.max.z - bb.min.z, bb.max.y - bb.min.y) * 2.8);
+    }
     else { const VP = VehModels.instance(spec.type, spec.skin || null); obj = VP.root; size = spec.type === 'sedan' ? 5.5 : spec.type === 'uaz' ? 6.2 : spec.type === 'pickup' ? 7.0 : spec.type === 'moto' ? 2.4 : 2.9; if (VP.fx) { VehFx.attach(VP); obj.userData.efxP = VP; } }   // 엡실론 차량: 시동이 걸린 채 진열
-    obj.position.set(0, spec.kind === 'gun' ? 1.05 : 0.2, 0); obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    obj.position.set(0, spec.kind === 'gun' || spec.kind === 'melee' ? 1.05 : 0.2, 0); obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this.scene.add(obj); this.sc = { obj, size, t0: this.t, kind: spec.kind };
     if (gun && spec.skin) { GunSkin.draw(gun, 0.8, null); GunSkin.inspect(gun, null, 1.4, 5.5); }   // 테스터 스킨: 진열장에서 살펴보기 연출을 몇 초마다
   },
@@ -456,6 +461,7 @@ async function startMatch(cfg) {
     CHARS.push(b);
   }
   G.total = CHARS.length; Hunt.reset();   // v23 잠수 추적 (승급전 · 하드코어 — 07_bot_hunt.js)
+  try { MeleeSkin.warm(CHARS, G.player); } catch (e) { console.warn('근접 무기 스킨 미리 만들기 실패', e); }   // v23 이번 경기의 근접 무기 스킨 모양·내 무기 칸 그림을 미리 (주울 때 끊기지 않게)
   for (const c of CHARS) { c.root.visible = false; c.pos.copy(G.plane.pos); sc.add(c.root); c.yaw = Math.atan2(G.plane.dx, G.plane.dz); }
   G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
   HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();

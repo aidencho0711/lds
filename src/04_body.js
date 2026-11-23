@@ -1005,6 +1005,9 @@ const Body = (() => {
     { id: 'hat', name: '모자', optional: true }, { id: 'top', name: '상의' }, { id: 'bottom', name: '하의' },
     { id: 'shoes', name: '신발' }, { id: 'gloves', name: '장갑', optional: true }, { id: 'chute', name: '낙하산' },
     { id: 'helmet', name: '헬멧', optional: true, gear: true }, { id: 'pack', name: '가방', optional: true, gear: true },
+    // v23 근접 무기 스킨(모양이 바뀜, 05_models_mskin.js) — 창고에서는 '근접 무기' 탭 하나에 무기별 작은 탭으로 묶음
+    { id: 'm_knife', name: '식칼', optional: true, melee: 'knife' }, { id: 'm_machete', name: '마체테', optional: true, melee: 'machete' },
+    { id: 'm_pan', name: '프라이팬', optional: true, melee: 'pan' }, { id: 'm_crowbar', name: '쇠지렛대', optional: true, melee: 'crowbar' },
   ];
   const SKINS = {
     top_basic: { slot: 'top', name: '기본 티셔츠', desc: '면 반팔 티셔츠', kind: 'tee', color: 0x6b7067 },
@@ -1012,7 +1015,7 @@ const Body = (() => {
     shoes_basic: { slot: 'shoes', name: '기본 전투화', desc: '끈으로 묶는 가죽 부츠', kind: 'boots', color: 0x4b3a2a, sole: 0x24211d },
     chute_basic: { slot: 'chute', name: '기본 낙하산', desc: '올리브·모래색 사각 낙하산', kind: 'ramair', colors: [0x55603f, 0xa48d68] },
   };
-  const DEFAULT_LOOK = { hat: null, top: 'top_basic', bottom: 'bottom_basic', shoes: 'shoes_basic', gloves: null, chute: 'chute_basic', helmet: null, pack: null };
+  const DEFAULT_LOOK = { hat: null, top: 'top_basic', bottom: 'bottom_basic', shoes: 'shoes_basic', gloves: null, chute: 'chute_basic', helmet: null, pack: null, m_knife: null, m_machete: null, m_pan: null, m_crowbar: null };
   // 사람마다 다른 몸(스킨 아님): 피부·머리 모양·머리 색·수염·눈 색
   const TONES = [0xf1c9a5, 0xe0ac86, 0xc98f6b, 0xa8714f, 0x7d5034, 0x5a3825];
   const HAIR_COLORS = [0x15110e, 0x2a2019, 0x3d2b1d, 0x5a3e26, 0x8a6a45, 0x6d6862];

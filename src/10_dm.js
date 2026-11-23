@@ -95,6 +95,7 @@ const DM = (() => {
     });
     for (const c of CHARS) if (!c.net || c.net.mine) spawn(c, true);
     G.total = CHARS.length;
+    try { MeleeSkin.warm(CHARS, G.player); } catch (e) { console.warn(e); }   // v23 근접 무기 스킨 모양·내 무기 칸 그림 미리
     G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
     HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
     document.body.classList.add('dm'); $('quitBtn').textContent = '경기 나가기 (로비로)';

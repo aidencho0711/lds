@@ -957,6 +957,9 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .wh-item.veh { grid-template-columns: 64px 1fr; } .wh-item.veh .wh-ico { width: 64px; }
 .wh-item.gun { grid-template-columns: 1fr; grid-template-rows: auto auto auto; row-gap: 2px; } .wh-item.gun .wh-ico { grid-row: auto; width: 100%; height: 46px; } .wh-item.gun .wh-ico img { max-height: 46px; }
 @media (max-height: 520px), (max-width: 860px) { .wh-item.gun { grid-template-columns: 72px 1fr; grid-template-rows: auto auto; } .wh-item.gun .wh-ico { grid-row: 1 / 3; width: 72px; height: 34px; } .wh-item.gun .wh-ico img { max-height: 34px; } }
+/* v23 근접 무기 스킨 카드: 옆모습 그림(2:1)을 총 카드처럼 넓게 */
+.wh-item.mel { grid-template-columns: 1fr; grid-template-rows: auto auto auto; row-gap: 2px; } .wh-item.mel .wh-ico { grid-row: auto; width: 100%; height: 46px; } .wh-item.mel .wh-ico img { max-height: 46px; }
+@media (max-height: 520px), (max-width: 860px) { .wh-item.mel { grid-template-columns: 72px 1fr; grid-template-rows: auto auto; } .wh-item.mel .wh-ico { grid-row: 1 / 3; width: 72px; height: 34px; } .wh-item.mel .wh-ico img { max-height: 34px; } }
 .wh-ghead { grid-column: 1 / -1; margin-top: 4px; font-size: 0.74rem; font-weight: 700; color: var(--sand); letter-spacing: 0.02em; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
 .wh-vtabs { grid-column: 1 / -1; display: flex; gap: 4px; }
 .wh-vtabs button { appearance: none; flex: 1; border: 1px solid var(--line); background: transparent; color: var(--dim); border-radius: 4px; padding: 4px; font-size: 0.74rem; cursor: pointer; }

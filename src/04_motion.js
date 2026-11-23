@@ -277,11 +277,12 @@ const HOLD_POSE = {   // [손바닥 쪽, 위아래, 앞뒤, rx, ry, rz, 크기] 
 };
 // v22 허리에 찬 근접 무기 (엉덩이 뼈 로컬: x 왼쪽, y 위, z 앞) [x, y, z, rx, ry, rz] — 날이 아래·조금 뒤로
 const SHEATH = { knife: [0.175, -0.06, -0.05, 1.85, 0, 0.12], machete: [0.18, -0.05, -0.07, 1.82, 0, 0.16], crowbar: [0.19, 0.04, -0.09, 1.72, 0, 0.12], pan: [-0.13, -0.02, -0.16, 1.68, 0, -0.18] };
-function setSheath(r, id) {
-  id = id || ''; if (r.meleeKey === id) return; r.meleeKey = id;
+//  skin: v23 근접 무기 스킨(05_models_mskin.js) — 허리에 찬 것도 그 사람의 스킨 모양
+function setSheath(r, id, skin) {
+  id = id || ''; const key = id + (skin ? '|' + skin : ''); if (r.meleeKey === key) return; r.meleeKey = key;
   while (r.meleeHip.children.length) r.meleeHip.remove(r.meleeHip.children[0]);
   if (!id) return;
-  const o = Models.display(id), P = SHEATH[id] || SHEATH.knife;
+  const o = MeleeSkin.model(id, skin), P = SHEATH[id] || SHEATH.knife;
   o.position.set(P[0], P[1], P[2]); o.rotation.set(P[3], P[4], P[5]); o.traverse((m) => { if (m.isMesh) m.castShadow = r.shadow; });
   r.meleeHip.add(o);
 }
@@ -373,19 +374,22 @@ function actPose(c, a, tm, sw, busy, dt) {
   return { kind: 'melee', w: mw, v: _kv, sw };
 }
 let _rollGeo = null;
-function heldModel(id) {
+// skin: 근접 무기 스킨이면 그 모양 (05_models_mskin.js — 없거나 다른 무기 것이면 기본 모델)
+function heldModel(id, skin) {
+  if (skin) return MeleeSkin.model(id, skin);
   if (id !== 'bandage') return Models.display(id);
   if (!_rollGeo) _rollGeo = [new THREE.CylinderGeometry(0.03, 0.03, 0.07, 16).rotateZ(Math.PI / 2), new THREE.BoxGeometry(0.06, 0.003, 0.11).translate(0, -0.03, 0.05)];
   const g = new THREE.Group(), m = new THREE.MeshLambertMaterial({ color: 0xe9e3d2 });
   g.add(new THREE.Mesh(_rollGeo[0], m)); g.add(new THREE.Mesh(_rollGeo[1], m)); return g;
 }
 function setHeld(c, R, L) {
-  const r = c.rig, key = (R || '') + '|' + (L || '');
+  const r = c.rig, sk = R && ITEMS[R] && ITEMS[R].type === 'melee' ? MeleeSkin.ofChar(c, R) : null;   // v23 오른손 근접 무기는 그 사람의 스킨 모양
+  const key = (R || '') + (sk ? '~' + sk : '') + '|' + (L || '');
   if (r.heldKey === key) return; r.heldKey = key;
   for (const [arm, id] of [[r.armR, R], [r.armL, L]]) {
     while (arm.hold.children.length) arm.hold.remove(arm.hold.children[0]);
     if (!id) continue;
-    const o = heldModel(id), P = HOLD_POSE[id] || [0, 0, 0, 0, 0, 0, 1];
+    const o = heldModel(id, arm === r.armR ? sk : null), P = HOLD_POSE[id] || [0, 0, 0, 0, 0, 0, 1];
     o.position.set(-arm.side * P[0], P[1], P[2]); o.rotation.set(P[3], P[4], P[5]); o.scale.setScalar(P[6]);
     o.traverse((m) => { if (m.isMesh) m.castShadow = false; });
     arm.hold.add(o);
@@ -657,8 +661,9 @@ function animateChar(c, dt) {
       const D = ITEMS[s2.id], u = s2.t;
       if (u > D.wind * 0.85 && u < D.wind + D.strike * 1.35) {
         r.armR.hold.updateWorldMatrix(true, false);
-        _t4.set(0, 0, MEL_TIP[s2.id] || 0.3).applyMatrix4(r.armR.hold.matrixWorld); _t5.set(0, 0, 0.08).applyMatrix4(r.armR.hold.matrixWorld);
-        FX.trail('c' + c.id, G.scene, _t4, _t5);
+        const sk2 = MeleeSkin.ofChar(c, s2.id);   // v23 근접 무기 스킨: 날 길이·자국 색
+        _t4.set(0, 0, MeleeSkin.tip(s2.id, sk2)).applyMatrix4(r.armR.hold.matrixWorld); _t5.set(0, 0, 0.08).applyMatrix4(r.armR.hold.matrixWorld);
+        FX.trail('c' + c.id, G.scene, _t4, _t5, MeleeSkin.trail(s2.id, sk2));
       }
     }
   }
@@ -736,7 +741,7 @@ function animateChar(c, dt) {
     const hid = a.heal > 0.3 ? a.healId : null, nid = a.nade > 0.3 && (c.throwAnim <= 0 || c.throwAnim > THROW_ANIM * (1 - 0.28)) ? (a.nadeId || 'frag') : null;
     const mid = !nid && !hid && md && a.mel > 0.3 ? md : null;   // v22 근접 무기는 오른손에
     setHeld(c, nid || (hid === 'bandage' || hid === 'drink' || hid === 'pills' ? hid : null) || mid, !nid && (hid === 'firstaid' || hid === 'medkit') ? hid : null);
-    setSheath(r, c.alive && c.inv.melee && !mid ? c.inv.melee : null);   // 손에 없으면 허리에
+    { const sh = c.alive && c.inv.melee && !mid ? c.inv.melee : null; setSheath(r, sh, sh ? MeleeSkin.ofChar(c, sh) : null); }   // 손에 없으면 허리에 (스킨 모양 그대로)
   } else if (r.heldKey && r.heldKey !== '|') setHeld(c, null, null);
   // ----- 낙하산 -----
   r.chute.visible = a.chute > 0.05; r.chute.scale.set(Math.max(0.05, a.chute), Math.max(0.05, Math.min(1, a.chute * 1.3)), Math.max(0.05, a.chute));

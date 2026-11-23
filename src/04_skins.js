@@ -135,6 +135,31 @@ const RARITY = [
     pack_x_lights: { slot: 'pack', box: 'xmas', rar: 5, name: '트리 라이트 가방', desc: '색색 전구 줄이 빛나는 배낭', cell: 'xlights', strap: 0x0e1a12, dark: 0x0e1a12, deco: 'lights', roll: 0x13281a },
     helm_x_santa8: { slot: 'helmet', box: 'xmas', rar: 8, name: 'SANTA CLAUS 헬멧', desc: '금빛 방울 산타 헬멧 · 쓰면 금빛 반짝임과 눈송이가 몸 둘레를 돎', cell: 'knit', color: 0xb8141e, strap: 0xf6f4ee, dark: 0x1a1a1a, trim: 0xf2c84a, trimKind: 'brass', lens: 0xf2c84a, pom: 0xf2c84a, deco: 'santa', fx: 'santa' },
     pack_x_frost8: { slot: 'pack', box: 'xmas', rar: 8, name: 'FROST QUEEN 가방', desc: '서리 결정이 빛나는 배낭 · 메면 얼음 결정과 찬 기운이 몸 둘레에 맴돎', cell: 'xfrost', strap: 0x1a2a3a, dark: 0x9fe8ff, darkKind: 'metal', deco: 'frost', roll: 0x9fd8f0, fx: 'frost' },
+
+    // ---------- v23 근접 무기 스킨 (slot 'm_knife'·'m_machete'·'m_pan'·'m_crowbar') — 색이 아니라 모양이 바뀐다 ----------
+    //  shape = 05_models_mskin_<무기>.js 의 모양 생성기 · 휘두르는 동작·피해·사거리는 원래 무기 그대로
+    // 배틀로얄 상자: 전장
+    knife_br_hunt: { slot: 'm_knife', box: 'br', rar: 1, name: '사냥칼', desc: '나무 손잡이 · 놋쇠 가드의 넓은 날 사냥칼', shape: 'hunter' },
+    pan_br_skillet: { slot: 'm_pan', box: 'br', rar: 1, name: '무쇠 스킬렛', desc: '따르는 홈 · 보조 손잡이가 달린 두꺼운 무쇠 팬', shape: 'skillet' },
+    knife_br_bowie: { slot: 'm_knife', box: 'br', rar: 3, name: '전투 대검', desc: '등에 톱니가 난 큰 클립포인트 날 · 끈을 감은 손잡이', shape: 'bowie' },
+    mach_br_kukri: { slot: 'm_machete', box: 'br', rar: 3, name: '쿠크리', desc: '앞으로 꺾인 묵직한 날 · 나무 손잡이', shape: 'kukri' },
+    crow_br_axe: { slot: 'm_crowbar', box: 'br', rar: 4, name: '소방 도끼', desc: '빨간 도끼머리 · 뒤쪽 곡괭이 · 노란 자루', shape: 'fireaxe' },
+    // 스페셜 상자: 스트리트
+    pan_sp_wok: { slot: 'm_pan', box: 'sp', rar: 3, name: '웍', desc: '깊고 둥근 중화 팬 · 긴 나무 손잡이', shape: 'wok' },
+    crow_sp_wrench: { slot: 'm_crowbar', box: 'sp', rar: 3, name: '대형 렌치', desc: '톱니 턱이 달린 커다란 파이프 렌치', shape: 'wrench' },
+    knife_sp_bfly: { slot: 'm_knife', box: 'sp', rar: 4, name: '나비 나이프', desc: '두 갈래 손잡이가 날을 감싸는 무지갯빛 나이프', shape: 'balisong' },
+    pan_sp_waffle: { slot: 'm_pan', box: 'sp', rar: 4, name: '와플 팬', desc: '격자 무늬 네모 와플 판', shape: 'waffle' },
+    mach_sp_neon: { slot: 'm_machete', box: 'sp', rar: 5, name: '네온 블레이드', desc: '빛나는 날끝과 회로 선이 흐르는 각진 칼', shape: 'neon' },
+    // 보급 상자: 엘리트
+    mach_sup_saw: { slot: 'm_machete', box: 'sup', rar: 3, name: '톱날 정글도', desc: '등에 톱날 · 손을 감싸는 고리 손잡이', shape: 'sawback' },
+    knife_sup_karam: { slot: 'm_knife', box: 'sup', rar: 4, name: '카람빗', desc: '갈고리처럼 휜 검은 날 · 손가락 고리 · 금 테', shape: 'karambit' },
+    crow_sup_hammer: { slot: 'm_crowbar', box: 'sup', rar: 4, name: '전쟁 망치', desc: '납작한 망치머리 · 뒤 가시 · 가죽 손잡이', shape: 'warhammer' },
+    pan_sup_gold: { slot: 'm_pan', box: 'sup', rar: 5, name: '황금 프라이팬', desc: '덩굴무늬를 새긴 금빛 팬 · 손잡이 끝 보석', shape: 'golden' },
+    // 크리스마스 상자: 겨울
+    crow_x_candy: { slot: 'm_crowbar', box: 'xmas', rar: 3, name: '사탕 지팡이', desc: '빨강·흰 줄무늬 지팡이 · 초록 리본', shape: 'candy' },
+    knife_x_icicle: { slot: 'm_knife', box: 'xmas', rar: 4, name: '고드름 단검', desc: '빛나는 얼음 결정 날 · 눈꽃 손잡이 끝', shape: 'icicle' },
+    pan_x_ginger: { slot: 'm_pan', box: 'xmas', rar: 4, name: '진저브레드 팬', desc: '진저브레드 쿠키 모양 머리 · 하얀 아이싱 · 사탕 손잡이', shape: 'ginger' },
+    mach_x_frost: { slot: 'm_machete', box: 'xmas', rar: 5, name: '서리 결정 검', desc: '들쭉날쭉 빛나는 얼음 결정 칼날 · 눈꽃 가드', shape: 'frost' },
   };
   // 기본 옷도 레어도(기본)를 갖는다
   for (const k of ['top_basic', 'bottom_basic', 'shoes_basic', 'chute_basic']) Body.SKINS[k].rar = 0;

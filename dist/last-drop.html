@@ -960,6 +960,9 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 .wh-item.veh { grid-template-columns: 64px 1fr; } .wh-item.veh .wh-ico { width: 64px; }
 .wh-item.gun { grid-template-columns: 1fr; grid-template-rows: auto auto auto; row-gap: 2px; } .wh-item.gun .wh-ico { grid-row: auto; width: 100%; height: 46px; } .wh-item.gun .wh-ico img { max-height: 46px; }
 @media (max-height: 520px), (max-width: 860px) { .wh-item.gun { grid-template-columns: 72px 1fr; grid-template-rows: auto auto; } .wh-item.gun .wh-ico { grid-row: 1 / 3; width: 72px; height: 34px; } .wh-item.gun .wh-ico img { max-height: 34px; } }
+/* v23 근접 무기 스킨 카드: 옆모습 그림(2:1)을 총 카드처럼 넓게 */
+.wh-item.mel { grid-template-columns: 1fr; grid-template-rows: auto auto auto; row-gap: 2px; } .wh-item.mel .wh-ico { grid-row: auto; width: 100%; height: 46px; } .wh-item.mel .wh-ico img { max-height: 46px; }
+@media (max-height: 520px), (max-width: 860px) { .wh-item.mel { grid-template-columns: 72px 1fr; grid-template-rows: auto auto; } .wh-item.mel .wh-ico { grid-row: 1 / 3; width: 72px; height: 34px; } .wh-item.mel .wh-ico img { max-height: 34px; } }
 .wh-ghead { grid-column: 1 / -1; margin-top: 4px; font-size: 0.74rem; font-weight: 700; color: var(--sand); letter-spacing: 0.02em; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
 .wh-vtabs { grid-column: 1 / -1; display: flex; gap: 4px; }
 .wh-vtabs button { appearance: none; flex: 1; border: 1px solid var(--line); background: transparent; color: var(--dim); border-radius: 4px; padding: 4px; font-size: 0.74rem; cursor: pointer; }
@@ -8748,6 +8751,9 @@ const Body = (() => {
     { id: 'hat', name: '모자', optional: true }, { id: 'top', name: '상의' }, { id: 'bottom', name: '하의' },
     { id: 'shoes', name: '신발' }, { id: 'gloves', name: '장갑', optional: true }, { id: 'chute', name: '낙하산' },
     { id: 'helmet', name: '헬멧', optional: true, gear: true }, { id: 'pack', name: '가방', optional: true, gear: true },
+    // v23 근접 무기 스킨(모양이 바뀜, 05_models_mskin.js) — 창고에서는 '근접 무기' 탭 하나에 무기별 작은 탭으로 묶음
+    { id: 'm_knife', name: '식칼', optional: true, melee: 'knife' }, { id: 'm_machete', name: '마체테', optional: true, melee: 'machete' },
+    { id: 'm_pan', name: '프라이팬', optional: true, melee: 'pan' }, { id: 'm_crowbar', name: '쇠지렛대', optional: true, melee: 'crowbar' },
   ];
   const SKINS = {
     top_basic: { slot: 'top', name: '기본 티셔츠', desc: '면 반팔 티셔츠', kind: 'tee', color: 0x6b7067 },
@@ -8755,7 +8761,7 @@ const Body = (() => {
     shoes_basic: { slot: 'shoes', name: '기본 전투화', desc: '끈으로 묶는 가죽 부츠', kind: 'boots', color: 0x4b3a2a, sole: 0x24211d },
     chute_basic: { slot: 'chute', name: '기본 낙하산', desc: '올리브·모래색 사각 낙하산', kind: 'ramair', colors: [0x55603f, 0xa48d68] },
   };
-  const DEFAULT_LOOK = { hat: null, top: 'top_basic', bottom: 'bottom_basic', shoes: 'shoes_basic', gloves: null, chute: 'chute_basic', helmet: null, pack: null };
+  const DEFAULT_LOOK = { hat: null, top: 'top_basic', bottom: 'bottom_basic', shoes: 'shoes_basic', gloves: null, chute: 'chute_basic', helmet: null, pack: null, m_knife: null, m_machete: null, m_pan: null, m_crowbar: null };
   // 사람마다 다른 몸(스킨 아님): 피부·머리 모양·머리 색·수염·눈 색
   const TONES = [0xf1c9a5, 0xe0ac86, 0xc98f6b, 0xa8714f, 0x7d5034, 0x5a3825];
   const HAIR_COLORS = [0x15110e, 0x2a2019, 0x3d2b1d, 0x5a3e26, 0x8a6a45, 0x6d6862];
@@ -9468,11 +9474,12 @@ const HOLD_POSE = {   // [손바닥 쪽, 위아래, 앞뒤, rx, ry, rz, 크기] 
 };
 // v22 허리에 찬 근접 무기 (엉덩이 뼈 로컬: x 왼쪽, y 위, z 앞) [x, y, z, rx, ry, rz] — 날이 아래·조금 뒤로
 const SHEATH = { knife: [0.175, -0.06, -0.05, 1.85, 0, 0.12], machete: [0.18, -0.05, -0.07, 1.82, 0, 0.16], crowbar: [0.19, 0.04, -0.09, 1.72, 0, 0.12], pan: [-0.13, -0.02, -0.16, 1.68, 0, -0.18] };
-function setSheath(r, id) {
-  id = id || ''; if (r.meleeKey === id) return; r.meleeKey = id;
+//  skin: v23 근접 무기 스킨(05_models_mskin.js) — 허리에 찬 것도 그 사람의 스킨 모양
+function setSheath(r, id, skin) {
+  id = id || ''; const key = id + (skin ? '|' + skin : ''); if (r.meleeKey === key) return; r.meleeKey = key;
   while (r.meleeHip.children.length) r.meleeHip.remove(r.meleeHip.children[0]);
   if (!id) return;
-  const o = Models.display(id), P = SHEATH[id] || SHEATH.knife;
+  const o = MeleeSkin.model(id, skin), P = SHEATH[id] || SHEATH.knife;
   o.position.set(P[0], P[1], P[2]); o.rotation.set(P[3], P[4], P[5]); o.traverse((m) => { if (m.isMesh) m.castShadow = r.shadow; });
   r.meleeHip.add(o);
 }
@@ -9564,19 +9571,22 @@ function actPose(c, a, tm, sw, busy, dt) {
   return { kind: 'melee', w: mw, v: _kv, sw };
 }
 let _rollGeo = null;
-function heldModel(id) {
+// skin: 근접 무기 스킨이면 그 모양 (05_models_mskin.js — 없거나 다른 무기 것이면 기본 모델)
+function heldModel(id, skin) {
+  if (skin) return MeleeSkin.model(id, skin);
   if (id !== 'bandage') return Models.display(id);
   if (!_rollGeo) _rollGeo = [new THREE.CylinderGeometry(0.03, 0.03, 0.07, 16).rotateZ(Math.PI / 2), new THREE.BoxGeometry(0.06, 0.003, 0.11).translate(0, -0.03, 0.05)];
   const g = new THREE.Group(), m = new THREE.MeshLambertMaterial({ color: 0xe9e3d2 });
   g.add(new THREE.Mesh(_rollGeo[0], m)); g.add(new THREE.Mesh(_rollGeo[1], m)); return g;
 }
 function setHeld(c, R, L) {
-  const r = c.rig, key = (R || '') + '|' + (L || '');
+  const r = c.rig, sk = R && ITEMS[R] && ITEMS[R].type === 'melee' ? MeleeSkin.ofChar(c, R) : null;   // v23 오른손 근접 무기는 그 사람의 스킨 모양
+  const key = (R || '') + (sk ? '~' + sk : '') + '|' + (L || '');
   if (r.heldKey === key) return; r.heldKey = key;
   for (const [arm, id] of [[r.armR, R], [r.armL, L]]) {
     while (arm.hold.children.length) arm.hold.remove(arm.hold.children[0]);
     if (!id) continue;
-    const o = heldModel(id), P = HOLD_POSE[id] || [0, 0, 0, 0, 0, 0, 1];
+    const o = heldModel(id, arm === r.armR ? sk : null), P = HOLD_POSE[id] || [0, 0, 0, 0, 0, 0, 1];
     o.position.set(-arm.side * P[0], P[1], P[2]); o.rotation.set(P[3], P[4], P[5]); o.scale.setScalar(P[6]);
     o.traverse((m) => { if (m.isMesh) m.castShadow = false; });
     arm.hold.add(o);
@@ -9848,8 +9858,9 @@ function animateChar(c, dt) {
       const D = ITEMS[s2.id], u = s2.t;
       if (u > D.wind * 0.85 && u < D.wind + D.strike * 1.35) {
         r.armR.hold.updateWorldMatrix(true, false);
-        _t4.set(0, 0, MEL_TIP[s2.id] || 0.3).applyMatrix4(r.armR.hold.matrixWorld); _t5.set(0, 0, 0.08).applyMatrix4(r.armR.hold.matrixWorld);
-        FX.trail('c' + c.id, G.scene, _t4, _t5);
+        const sk2 = MeleeSkin.ofChar(c, s2.id);   // v23 근접 무기 스킨: 날 길이·자국 색
+        _t4.set(0, 0, MeleeSkin.tip(s2.id, sk2)).applyMatrix4(r.armR.hold.matrixWorld); _t5.set(0, 0, 0.08).applyMatrix4(r.armR.hold.matrixWorld);
+        FX.trail('c' + c.id, G.scene, _t4, _t5, MeleeSkin.trail(s2.id, sk2));
       }
     }
   }
@@ -9927,7 +9938,7 @@ function animateChar(c, dt) {
     const hid = a.heal > 0.3 ? a.healId : null, nid = a.nade > 0.3 && (c.throwAnim <= 0 || c.throwAnim > THROW_ANIM * (1 - 0.28)) ? (a.nadeId || 'frag') : null;
     const mid = !nid && !hid && md && a.mel > 0.3 ? md : null;   // v22 근접 무기는 오른손에
     setHeld(c, nid || (hid === 'bandage' || hid === 'drink' || hid === 'pills' ? hid : null) || mid, !nid && (hid === 'firstaid' || hid === 'medkit') ? hid : null);
-    setSheath(r, c.alive && c.inv.melee && !mid ? c.inv.melee : null);   // 손에 없으면 허리에
+    { const sh = c.alive && c.inv.melee && !mid ? c.inv.melee : null; setSheath(r, sh, sh ? MeleeSkin.ofChar(c, sh) : null); }   // 손에 없으면 허리에 (스킨 모양 그대로)
   } else if (r.heldKey && r.heldKey !== '|') setHeld(c, null, null);
   // ----- 낙하산 -----
   r.chute.visible = a.chute > 0.05; r.chute.scale.set(Math.max(0.05, a.chute), Math.max(0.05, Math.min(1, a.chute * 1.3)), Math.max(0.05, a.chute));
@@ -10153,6 +10164,31 @@ const RARITY = [
     pack_x_lights: { slot: 'pack', box: 'xmas', rar: 5, name: '트리 라이트 가방', desc: '색색 전구 줄이 빛나는 배낭', cell: 'xlights', strap: 0x0e1a12, dark: 0x0e1a12, deco: 'lights', roll: 0x13281a },
     helm_x_santa8: { slot: 'helmet', box: 'xmas', rar: 8, name: 'SANTA CLAUS 헬멧', desc: '금빛 방울 산타 헬멧 · 쓰면 금빛 반짝임과 눈송이가 몸 둘레를 돎', cell: 'knit', color: 0xb8141e, strap: 0xf6f4ee, dark: 0x1a1a1a, trim: 0xf2c84a, trimKind: 'brass', lens: 0xf2c84a, pom: 0xf2c84a, deco: 'santa', fx: 'santa' },
     pack_x_frost8: { slot: 'pack', box: 'xmas', rar: 8, name: 'FROST QUEEN 가방', desc: '서리 결정이 빛나는 배낭 · 메면 얼음 결정과 찬 기운이 몸 둘레에 맴돎', cell: 'xfrost', strap: 0x1a2a3a, dark: 0x9fe8ff, darkKind: 'metal', deco: 'frost', roll: 0x9fd8f0, fx: 'frost' },
+
+    // ---------- v23 근접 무기 스킨 (slot 'm_knife'·'m_machete'·'m_pan'·'m_crowbar') — 색이 아니라 모양이 바뀐다 ----------
+    //  shape = 05_models_mskin_<무기>.js 의 모양 생성기 · 휘두르는 동작·피해·사거리는 원래 무기 그대로
+    // 배틀로얄 상자: 전장
+    knife_br_hunt: { slot: 'm_knife', box: 'br', rar: 1, name: '사냥칼', desc: '나무 손잡이 · 놋쇠 가드의 넓은 날 사냥칼', shape: 'hunter' },
+    pan_br_skillet: { slot: 'm_pan', box: 'br', rar: 1, name: '무쇠 스킬렛', desc: '따르는 홈 · 보조 손잡이가 달린 두꺼운 무쇠 팬', shape: 'skillet' },
+    knife_br_bowie: { slot: 'm_knife', box: 'br', rar: 3, name: '전투 대검', desc: '등에 톱니가 난 큰 클립포인트 날 · 끈을 감은 손잡이', shape: 'bowie' },
+    mach_br_kukri: { slot: 'm_machete', box: 'br', rar: 3, name: '쿠크리', desc: '앞으로 꺾인 묵직한 날 · 나무 손잡이', shape: 'kukri' },
+    crow_br_axe: { slot: 'm_crowbar', box: 'br', rar: 4, name: '소방 도끼', desc: '빨간 도끼머리 · 뒤쪽 곡괭이 · 노란 자루', shape: 'fireaxe' },
+    // 스페셜 상자: 스트리트
+    pan_sp_wok: { slot: 'm_pan', box: 'sp', rar: 3, name: '웍', desc: '깊고 둥근 중화 팬 · 긴 나무 손잡이', shape: 'wok' },
+    crow_sp_wrench: { slot: 'm_crowbar', box: 'sp', rar: 3, name: '대형 렌치', desc: '톱니 턱이 달린 커다란 파이프 렌치', shape: 'wrench' },
+    knife_sp_bfly: { slot: 'm_knife', box: 'sp', rar: 4, name: '나비 나이프', desc: '두 갈래 손잡이가 날을 감싸는 무지갯빛 나이프', shape: 'balisong' },
+    pan_sp_waffle: { slot: 'm_pan', box: 'sp', rar: 4, name: '와플 팬', desc: '격자 무늬 네모 와플 판', shape: 'waffle' },
+    mach_sp_neon: { slot: 'm_machete', box: 'sp', rar: 5, name: '네온 블레이드', desc: '빛나는 날끝과 회로 선이 흐르는 각진 칼', shape: 'neon' },
+    // 보급 상자: 엘리트
+    mach_sup_saw: { slot: 'm_machete', box: 'sup', rar: 3, name: '톱날 정글도', desc: '등에 톱날 · 손을 감싸는 고리 손잡이', shape: 'sawback' },
+    knife_sup_karam: { slot: 'm_knife', box: 'sup', rar: 4, name: '카람빗', desc: '갈고리처럼 휜 검은 날 · 손가락 고리 · 금 테', shape: 'karambit' },
+    crow_sup_hammer: { slot: 'm_crowbar', box: 'sup', rar: 4, name: '전쟁 망치', desc: '납작한 망치머리 · 뒤 가시 · 가죽 손잡이', shape: 'warhammer' },
+    pan_sup_gold: { slot: 'm_pan', box: 'sup', rar: 5, name: '황금 프라이팬', desc: '덩굴무늬를 새긴 금빛 팬 · 손잡이 끝 보석', shape: 'golden' },
+    // 크리스마스 상자: 겨울
+    crow_x_candy: { slot: 'm_crowbar', box: 'xmas', rar: 3, name: '사탕 지팡이', desc: '빨강·흰 줄무늬 지팡이 · 초록 리본', shape: 'candy' },
+    knife_x_icicle: { slot: 'm_knife', box: 'xmas', rar: 4, name: '고드름 단검', desc: '빛나는 얼음 결정 날 · 눈꽃 손잡이 끝', shape: 'icicle' },
+    pan_x_ginger: { slot: 'm_pan', box: 'xmas', rar: 4, name: '진저브레드 팬', desc: '진저브레드 쿠키 모양 머리 · 하얀 아이싱 · 사탕 손잡이', shape: 'ginger' },
+    mach_x_frost: { slot: 'm_machete', box: 'xmas', rar: 5, name: '서리 결정 검', desc: '들쭉날쭉 빛나는 얼음 결정 칼날 · 눈꽃 가드', shape: 'frost' },
   };
   // 기본 옷도 레어도(기본)를 갖는다
   for (const k of ['top_basic', 'bottom_basic', 'shoes_basic', 'chute_basic']) Body.SKINS[k].rar = 0;
@@ -16810,6 +16846,616 @@ const SkinFx = (() => {
   };
 })();
 
+// ---------- 05_models_mskin.js ----------
+// ============================================================
+// 05_models_mskin.js — v23 근접 무기 스킨: 색이 아니라 모양이 바뀐다 (식칼·마체테·프라이팬·쇠지렛대)
+//  · 스킨 표는 04_skins.js (Body.SKINS — slot 'm_knife'·'m_machete'·'m_pan'·'m_crowbar', shape = 아래 MSHAPE 의 열쇠)
+//  · 모양 생성기는 무기마다 05_models_mskin_<무기>.js 가 MSHAPE 에 등록한다
+//    좌표 = 손 좌표계 그대로(05_models.js 기본 모델과 같음): 손잡이 가운데 = 원점, 날·머리는 +z, 때리는 쪽(날·팬 바닥·도끼날)은 -y, 두께는 x
+//  · 캐릭터가 낀 스킨 = c.look['m_' + 무기] (창고에서 장착 → SETTINGS.look → 파티원·봇도 같은 길)
+//  · 바닥에 떨어진 무기·시체 상자 속 무기는 기본 모양 (스킨은 그 사람의 꾸밈) · 맞히는 거리(ITEMS.reach)는 모양과 상관없음
+// ============================================================
+const MSHAPE = {};   // 모양 id → { melee: 무기 id, tip: 휘두르기 자국 끝(손잡이 가운데부터 m), build(g, K, S) }
+const MeleeSkin = (() => {
+  const MELEES_ = ['knife', 'machete', 'pan', 'crowbar'];
+  const slotOf = (meleeId) => 'm_' + meleeId;
+  // 이 무기의 스킨이면 스킨 표 항목, 아니면 null
+  function skinOf(meleeId, skinId) {
+    const S = skinId && Body.SKINS[skinId], D = S && MSHAPE[S.shape];
+    return S && S.slot === slotOf(meleeId) && D && D.melee === meleeId ? S : null;
+  }
+  const ofLook = (look, meleeId) => { const id = look && meleeId ? look[slotOf(meleeId)] : null; return skinOf(meleeId, id) ? id : null; };
+  const ofChar = (c, meleeId) => (c ? ofLook(c.look, meleeId) : null);
+
+  // ---------- 모양 생성기가 쓰는 도구 (K) ----------
+  //  Models.kit(A, BX, CY, RB, PF, SPH, TOR, PL, M, tube …) + put({glow}) · lathe · slab · rod · glow · shade
+  let GLOW = null;
+  const glowMat = () => { if (!GLOW) { GLOW = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }); GLOW.userData.clsKey = 'mskin:glow'; } return GLOW; };
+  function tint(geo, color) {
+    const c = new THREE.Color(color), n = geo.attributes.position.count, a = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
+    geo.setAttribute('color', new THREE.BufferAttribute(a, 3)); return geo;
+  }
+  // 메시 추가: m = M(kind, color) 또는 glow(색) — 스스로 빛나는 부분(네온 날·얼음 결정)
+  function put(g, geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
+    if (m && m.glow !== undefined) { tint(geo, m.glow); return Models.kit.A(g, geo, glowMat(), x, y, z, rx, ry, rz); }
+    return Models.kit.A(g, geo, m, x, y, z, rx, ry, rz);
+  }
+  const glow = (hex) => ({ glow: hex });
+  const shade = (hex, k) => { const c = new THREE.Color(hex); c.multiplyScalar(k); return c.getHex(); };
+  // 회전체: pts = [[반지름, 높이], …] (아래 → 위) — axis 'y'(기본) · 'z'(앞으로 눕힘) · 'x'
+  function lathe(pts, seg = 24, axis = 'y') {
+    const geo = new THREE.LatheGeometry(pts.map(([r, h]) => new THREE.Vector2(Math.max(0, r), h)), seg);
+    if (axis === 'z') geo.rotateX(Math.PI / 2); else if (axis === 'x') geo.rotateZ(-Math.PI / 2);
+    return geo;
+  }
+  // 납작한 판(팬 머리·도끼날 옆모습이 아닌 '위에서 본' 모양): pts = [[x, z], …] 윤곽 → 두께 th 는 y 방향(가운데 0)
+  //  holes = [[[x, z], …], …] 구멍 윤곽들
+  function slab(pts, th, bev = 0.0012, holes = null, curveSegs = 4) {
+    const s = new THREE.Shape(); s.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) s.lineTo(pts[i][0], pts[i][1]); s.closePath();
+    if (holes) for (const hp of holes) { const p = new THREE.Path(); p.moveTo(hp[0][0], hp[0][1]); for (let i = 1; i < hp.length; i++) p.lineTo(hp[i][0], hp[i][1]); p.closePath(); s.holes.push(p); }
+    const d = Math.max(0.0005, th - 2 * bev);
+    const geo = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelSegments: 1, curveSegments: curveSegs });
+    geo.rotateX(Math.PI / 2); geo.translate(0, d / 2, 0);   // 도형 (x, y) → (x, z) 평면, 압출은 -y 로 → 가운데로
+    return geo;
+  }
+  // 원 둘레 점 (slab 구멍·고리용): 가운데 (cx, cz), 반지름 r
+  const circlePts = (cx, cz, r, n = 18) => { const o = []; for (let i = 0; i < n; i++) { const a = i / n * TAU; o.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]); } return o; };
+  // 두 점 사이 원통(막대·자루): 반지름 r0 → r1
+  const _ra = new THREE.Vector3(0, 1, 0), _rb = new THREE.Vector3();
+  function rod(g, m, p0, p1, r0, r1 = r0, seg = 8) {
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2], L = Math.hypot(dx, dy, dz) || 1e-4;
+    const o = put(g, new THREE.CylinderGeometry(r1, r0, L, seg), m, (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2);
+    o.quaternion.setFromUnitVectors(_ra, _rb.set(dx / L, dy / L, dz / L)); return o;
+  }
+  // 곡선을 따라 가는 관 (휜 손잡이·고리·사탕 지팡이 줄무늬)
+  function tubeAlong(pts, r, seg = 0, rad = 8, closed = false) {
+    const cv = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(p[0], p[1], p[2])), closed);
+    return new THREE.TubeGeometry(cv, seg || Math.max(8, pts.length * 4), r, rad, closed);
+  }
+  const KIT = Object.assign({}, Models.kit, { put, glow, shade, lathe, slab, circlePts, rod, tubeAlong, tint });
+
+  // ---------- 모델 ----------
+  // 이 무기 + 스킨의 손에 드는 모델 (스킨이 없거나 다른 무기 것이면 기본 모델) — 같은 스킨은 지오메트리를 한 번만 만들어 공유
+  const BAD = new Set();   // 만들다 실패한 스킨 → 기본 모델로 (한 번만 경고)
+  function model(meleeId, skinId) {
+    const S = skinOf(meleeId, skinId);
+    if (!S || BAD.has(skinId)) return Models.display(meleeId);
+    try { return Models.cluster('mskin:' + skinId, (g) => MSHAPE[S.shape].build(g, KIT, S)); }
+    catch (e) { BAD.add(skinId); console.warn('근접 무기 스킨 모양 실패', skinId, e); return Models.display(meleeId); }
+  }
+  // 경기 시작(로딩 화면) 때 이번 경기에 나오는 스킨 모양을 미리 만들고, 내 무기 칸 그림도 미리 그려 둠
+  //  — 경기 중에는 그림을 그 자리에서 그리지 않는다(화면 멈춤). 10_hud.js 는 미리 그린 것만 씀(Shop.meleeThumbCached)
+  function warm(chars, me) {
+    for (const c of chars || []) for (const m of MELEES_) { const s = ofChar(c, m); if (s) model(m, s); }
+    if (me && typeof Shop !== 'undefined') for (const m of MELEES_) { const s = ofChar(me, m); if (s) try { Shop.meleeThumb(m, s); } catch (e) { console.warn(e); } }
+  }
+  // 휘두르기 자국 끝 거리 (모양마다 날 길이가 조금씩 다름)
+  const tip = (meleeId, skinId) => { const S = skinOf(meleeId, skinId); return (S && MSHAPE[S.shape].tip) || MEL_TIP[meleeId] || 0.3; };
+  // 휘두르기 자국 색: 빛나는 날(네온·얼음)은 그 빛 색, 나머지는 null(흰빛) — 모양 생성기에 trail 이 있으면 그것
+  const TRAIL = { neon: 0x46f2ff, frost: 0x9fe8ff, icicle: 0x9fe8ff };
+  const trail = (meleeId, skinId) => { const S = skinOf(meleeId, skinId); if (!S) return null; const D = MSHAPE[S.shape]; return D.trail !== undefined ? D.trail : (TRAIL[S.shape] !== undefined ? TRAIL[S.shape] : null); };
+  return { model, tip, trail, warm, ofChar, ofLook, skinOf, slotOf, KIT, MELEES: MELEES_ };
+})();
+
+// ---------- 05_models_mskin_crowbar.js ----------
+// ============================================================
+// 05_models_mskin_crowbar.js — v23 쇠지렛대 스킨 모양 4종: 소방 도끼 · 대형 렌치 · 전쟁 망치 · 사탕 지팡이 (모두 자체 디자인)
+//  · MSHAPE(05_models_mskin.js)에 등록 → 04_skins.js 의 crow_br_axe · crow_sp_wrench · crow_sup_hammer · crow_x_candy 가 shape 로 부른다
+//  · 손 좌표계는 기본 쇠지렛대(05_models.js crowbar)와 같다: 손잡이 가운데 = 원점, 머리는 +z, 때리는 쪽(도끼날·렌치 입·망치 면·갈고리)은 -y, 두께는 x
+//    기본 = 빨간 자루 z -0.14 ~ 0.38 · 끝 납작날 z -0.23 · 갈고리 끝 y -0.09 → 길이는 그 ±20% 안 (휘두르는 동작·자국이 그대로 맞게)
+//  · 재질은 K.M(종류, 색)만 → Models.cluster 가 재질 계열마다 한 메시로 합친다 · 병합 후 정점은 모양마다 3,500 개 아래
+// ============================================================
+
+// 소방 도끼: 노란 유리섬유 자루(날 방향으로 조금 긴 타원) + 손 부분 검은 고무 + 빨간 도끼머리
+//  아래(-y)로 넓게 벌어진 날(끝은 맨 강철) · 위(+y)로 가늘어지는 곡괭이 · 머리 밑 검은 보호대 · 자루 끝 고무 마개
+MSHAPE.fireaxe = { melee: 'crowbar', tip: 0.45, build(g, K, S) {
+  const { put, M, CY, PF, lathe } = K;
+  const yl = M('polymer', 0xd8b02a), bk = M('rubber', 0x161616), rd = M('polymer', 0xb3201c), st = M('metal', 0xdfe3e8);
+  const ov = (geo) => geo.scale(0.84, 1.12, 1);   // 타원 단면 (x 얇게 · y 길게)
+  put(g, ov(CY(0.0125, 0.0125, 0.65, 10, 'z')), yl, 0, 0, 0.08);   // 자루 z -0.245 ~ 0.405 (끝은 도끼머리 눈 속에 숨김)
+  put(g, ov(lathe([[0, -0.252], [0.0135, -0.252], [0.0158, -0.245], [0.016, -0.232], [0.0136, -0.214], [0.0122, -0.2]], 8, 'z')), bk);
+  put(g, ov(CY(0.0142, 0.0142, 0.15, 10, 'z')), bk);   // 손잡이 고무 z ±0.075 + 양 끝 테 + 미끄럼 막는 가는 고리
+  for (const z of [-0.072, 0.072]) put(g, ov(CY(0.0156, 0.0156, 0.009, 10, 'z')), bk, 0, 0, z);
+  for (const z of [-0.036, -0.012, 0.012, 0.036]) put(g, ov(CY(0.0149, 0.0149, 0.004, 8, 'z')), bk, 0, 0, z);
+  put(g, ov(CY(0.0158, 0.0136, 0.05, 10, 'z')), bk, 0, 0, 0.31);   // 머리 밑 보호대 (위로 넓어짐)
+  // 도끼머리 옆모습(z-y): 자루를 감싼 눈(두께 0.028) → 날(0.019) → 맨 강철 날끝(0.009) — 두께가 계단처럼 줄어 날을 세운 면으로 보인다
+  put(g, PF([[0.333, -0.03], [0.413, -0.03], [0.417, 0], [0.413, 0.03], [0.333, 0.03], [0.329, 0]], 0.028), rd);
+  put(g, PF([[0.4, -0.028], [0.418, -0.06], [0.43, -0.09], [0.437, -0.108], [0.405, -0.111], [0.372, -0.112], [0.344, -0.108], [0.322, -0.1], [0.326, -0.075], [0.334, -0.05], [0.342, -0.028]], 0.019), rd);
+  put(g, PF([[0.43, -0.1], [0.442, -0.124], [0.428, -0.131], [0.4, -0.135], [0.37, -0.136], [0.343, -0.132], [0.322, -0.125], [0.316, -0.118], [0.321, -0.094], [0.345, -0.103], [0.372, -0.107], [0.405, -0.106]], 0.009, 0.0008), st);
+  // 곡괭이: 마름모 단면 뿔(x 얇고 z 넓게)이 끝으로 가늘어지며 손 쪽(-z)으로 조금 숙인다 · 끝 한 마디는 맨 강철(같은 기울기로 살짝 크게 덮음)
+  const pk = (rt, rb, h) => new THREE.CylinderGeometry(rt, rb, h, 4).scale(0.52, 1, 1.25);
+  put(g, pk(0.0015, 0.023, 0.1), rd, 0, 0.074, 0.373, -0.14);
+  put(g, pk(0.0013, 0.0074, 0.028), st, 0, 0.1116, 0.3677, -0.14);
+} };
+
+// 대형 렌치(파이프 렌치): 빨간 I 빔 자루(끝에 걸이 구멍) + 머리 틀 · 위 갈고리 턱과 아래 뒤꿈치 턱이 톱니를 마주 보고 입은 -y 로 열린다 · 틀 창 속 톱니 조절 너트
+MSHAPE.wrench = { melee: 'crowbar', tip: 0.44, build(g, K, S) {
+  const { put, M, BX, CY, PF, slab, circlePts } = K;
+  const rd = M('polymer', 0xb02a20), jw = M('gunmetal', 0x5b5f64), th = M('metal', 0xc2c6ca), nt = M('metal', 0xa3a7ac), sh = M('gunmetal', 0x45484d);
+  // 자루 끝: 걸이 구멍 뚫린 둥근 판 — slab(위에서 본 판)을 z 축으로 돌려 옆모습(y-z) 판으로 (점 = [y, z])
+  put(g, slab([[-0.0158, -0.19], [-0.0158, -0.222], [-0.012, -0.236], [-0.0045, -0.2435], [0.0045, -0.2435], [0.012, -0.236], [0.0158, -0.222], [0.0158, -0.19]], 0.019, 0.0012, [circlePts(0, -0.221, 0.0062, 10)]).rotateZ(Math.PI / 2), rd);
+  // I 빔: 얇은 가운데 판 + 위아래 넓은 날개 (머리 쪽에서 틀로 벌어짐)
+  put(g, PF([[-0.2, -0.0145], [0.205, -0.0185], [0.262, -0.03], [0.28, -0.03], [0.28, 0.038], [0.262, 0.038], [0.205, 0.0195], [-0.2, 0.0145]], 0.009), rd);
+  put(g, PF([[-0.2, -0.0145], [0.205, -0.0185], [0.262, -0.0305], [0.266, -0.025], [0.205, -0.0128], [-0.2, -0.0088]], 0.021), rd);
+  put(g, PF([[-0.2, 0.0145], [0.205, 0.0195], [0.262, 0.0385], [0.266, 0.032], [0.205, 0.0138], [-0.2, 0.0088]], 0.021), rd);
+  // 머리 틀: 아래·위 덩어리 + 앞(-y)·뒤 기둥 → 가운데 창에 너트 · 옆으로 보이는 핀 둘
+  put(g, BX(0.03, 0.076, 0.028), rd, 0, 0.005, 0.279);
+  put(g, BX(0.03, 0.076, 0.016), rd, 0, 0.005, 0.343);
+  put(g, BX(0.03, 0.0125, 0.06), rd, 0, -0.02675, 0.314);
+  put(g, BX(0.03, 0.012, 0.06), rd, 0, 0.037, 0.314);
+  for (const [y, z] of [[-0.027, 0.3], [0.03, 0.279]]) put(g, CY(0.0042, 0.0042, 0.033, 8, 'x'), nt, 0, y, z);
+  // 갈고리 턱 자루(틀을 꿰뚫고 아래로 조금 나옴) + 조절 너트: 톱니 24 개 별 모양 판을 z 축으로 세움 (겉에 세로 홈 = 널링)
+  put(g, CY(0.0078, 0.0078, 0.15, 8, 'z'), sh, 0, 0.008, 0.33);
+  const np = []; for (let i = 0; i < 24; i++) { const a = i / 24 * TAU, r = i % 2 ? 0.0188 : 0.0205; np.push([Math.cos(a) * r, Math.sin(a) * r]); }
+  put(g, slab(np, 0.034, 0).rotateX(Math.PI / 2), nt, 0, 0.008, 0.314);
+  // 턱: 위 갈고리 턱(뒤 기둥 + 앞으로 뻗은 팔) · 아래 뒤꿈치 턱(틀 앞에 박힘)
+  put(g, PF([[0.35, 0.022], [0.43, 0.022], [0.442, 0.01], [0.442, -0.066], [0.434, -0.08], [0.412, -0.082], [0.412, -0.004], [0.35, -0.004]], 0.024), jw);
+  put(g, PF([[0.338, -0.006], [0.338, -0.058], [0.347, -0.075], [0.364, -0.079], [0.364, -0.006]], 0.024), jw);
+  // 톱니 띠 (밑변 zb · 골 zv · 이 끝 zt, y0 → y1 에 n 개, k = 이 끝 자리): 위 턱은 -z 로 · 아래 턱은 +z 로 이가 나 서로 마주 본다
+  const teeth = (zb, zv, zt, y0, y1, n, k) => { const p = (y1 - y0) / n, o = [[zb, y1], [zb, y0], [zv, y0]]; for (let i = 0; i < n; i++) o.push([zt, y0 + (i + k) * p], [zv, y0 + (i + 1) * p]); return o; };
+  put(g, PF(teeth(0.414, 0.408, 0.401, -0.081, -0.004, 6, 0.35), 0.0225, 0.0005), th);
+  put(g, PF(teeth(0.362, 0.369, 0.377, -0.079, -0.006, 6, 0.65), 0.0225, 0.0005), th);
+} };
+
+// 전쟁 망치: 검은 쇠 팔각 자루 + 가죽 끈 감은 손잡이 + 금 띠 · 무거운 머리 — 아래(-y) 평평한 네모 망치 면 · 위(+y) 손 쪽으로 휜 부리 가시 · 끝(+z) 짧은 가시
+//  머리에서 자루 양옆(±x)으로 내려오는 쇠 띠(랑게트)와 금 리벳 · 금 자루끝
+MSHAPE.warhammer = { melee: 'crowbar', tip: 0.45, build(g, K, S) {
+  const { put, M, BX, CY, PF, SPH, lathe } = K;
+  const sf = M('gunmetal', 0x3a3c40), hd = M('gunmetal', 0x575b61), st = M('metal', 0xa9adb2), fc = M('metal', 0xc4c8cd), au = M('brass', 0xc9a24a);
+  const oc = (geo) => geo.rotateZ(Math.PI / 8);   // 팔각 단면: 평평한 면이 ±x·±y 로 (랑게트가 면에 붙게)
+  put(g, oc(CY(0.0115, 0.0115, 0.635, 8, 'z')), sf, 0, 0, 0.0825);   // 자루 z -0.235 ~ 0.4
+  put(g, oc(lathe([[0, -0.268], [0.008, -0.266], [0.0165, -0.255], [0.0185, -0.243], [0.015, -0.232], [0.0125, -0.224]], 8, 'z')), au);   // 금 자루끝
+  // 가죽 끈: 같은 쪽으로 기운 고리 8 개를 이어 비스듬히 감은 것처럼 (사이 틈이 끈 자국)
+  for (let i = 0; i < 8; i++) put(g, oc(CY(0.0138, 0.0138, 0.0215, 8, 'z')), M('cloth', i % 2 ? 0x5a3a22 : 0x4f321d), 0, 0, -0.077 + i * 0.022, 0.14);
+  for (const z of [-0.093, 0.093, -0.22]) put(g, oc(CY(0.0148, 0.0148, 0.008, 8, 'z')), au, 0, 0, z);
+  put(g, oc(CY(0.0158, 0.0158, 0.01, 8, 'z')), au, 0, 0, 0.352);   // 머리 밑 금 띠 (랑게트 위로 감음)
+  for (const s of [-1, 1]) put(g, PF([[0.372, -0.0065], [0.235, -0.0055], [0.215, 0], [0.235, 0.0055], [0.372, 0.0065]], 0.003, 0.0005), st, s * 0.0121, 0, 0);
+  for (const z of [0.25, 0.31]) put(g, CY(0.0026, 0.0026, 0.029, 6, 'x'), au, 0, 0, z);
+  // 머리 몸통 + 위아래 금 테 · 옆 금 징
+  put(g, BX(0.032, 0.04, 0.06), hd, 0, 0, 0.393);
+  for (const z of [0.366, 0.42]) put(g, BX(0.034, 0.042, 0.006), au, 0, 0, z);
+  for (const s of [-1, 1]) put(g, SPH(0.0042, 6, 4), au, s * 0.016, 0, 0.393);
+  // 망치(-y): 면 쪽으로 굵어지는 네모 목 + 평평한 네모 면(맨 강철, 가운데가 살짝 도드라짐)
+  put(g, new THREE.CylinderGeometry(0.02, 0.0265, 0.04, 4).rotateY(Math.PI / 4), hd, 0, -0.039, 0.393);
+  put(g, BX(0.042, 0.014, 0.042), fc, 0, -0.0655, 0.393);
+  put(g, BX(0.036, 0.004, 0.036), fc, 0, -0.074, 0.393);
+  // 부리 가시(+y): 마름모 단면 뿔을 높이를 따라 반지름 rho 인 호로 굽혀 끝이 손 쪽(-z)으로 휜다 (꺾인 마디 없이 매끈하게 · 면은 각지게)
+  //  밑면 가운데 = 원점 → 높이 y 의 점은 휜 중심(z = -rho)을 y / rho 만큼 돈 자리로
+  const horn = (rb, h, rho, n) => { const geo = new THREE.CylinderGeometry(0.0008, rb, h, 4, n).toNonIndexed(); geo.translate(0, h / 2, 0); geo.scale(0.75, 1, 1); const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i), z = p.getZ(i), f = y / rho; p.setXYZ(i, p.getX(i), (rho + z) * Math.sin(f), (rho + z) * Math.cos(f) - rho); } geo.computeVertexNormals(); return geo; };
+  put(g, horn(0.0205, 0.1, 0.18, 6), st, 0, 0.018, 0.393);
+  // 끝 가시(+z) + 금 받침
+  put(g, new THREE.CylinderGeometry(0.0008, 0.011, 0.05, 4).rotateX(Math.PI / 2), st, 0, 0, 0.448);
+  put(g, oc(CY(0.0125, 0.0125, 0.006, 8, 'z')), au, 0, 0, 0.426);
+} };
+
+// 사탕 지팡이: 곧은 자루 + 끝에서 -y 로 굽는 둥근 갈고리(반원보다 조금 더 감김) · 빨강·흰 나선 줄무늬 · 갈고리 바로 밑 초록 리본
+//  관은 직접 짠다: 중심선을 따라 8각 단면을 PITCH 마다 한 바퀴씩 비틀며 이으면 단면의 띠 j 하나하나가 나선이 된다
+//  → 띠마다 빨강/흰 메시에 나눠 담아 경계가 깔끔한 줄무늬 · 양 끝은 평평한 단면(줄무늬 색 그대로 부채꼴)
+MSHAPE.candy = { melee: 'crowbar', tip: 0.42, build(g, K, S) {
+  const { put, M, CY, PF, SPH, TOR } = K;
+  const NR = 8, PITCH = 0.12, CR = 0.016, Z0 = -0.24, ZH = 0.335, HR = 0.05, AE = Math.PI + 0.4, RED = [0, 1, 4];   // 빨간 띠: 굵은 줄(0·1) + 가는 줄(4)
+  const L1 = ZH - Z0, L = L1 + HR * AE, NS = Math.ceil(L / (PITCH / NR));   // 한 마디에 띠 하나 폭까지만 비틀어 면이 꺾여 들어가지 않게
+  // 중심선 s → [중심 x, y, z, 법선 N(y, z), 접선 T(y, z)] (종법선 B = +x) — 자루는 +z 로 곧게, 갈고리는 (0, -HR, ZH) 를 중심으로 돈다
+  const at = (s) => { if (s <= L1) return [0, 0, Z0 + s, -1, 0, 0, 1]; const a = (s - L1) / HR, c = Math.cos(a), n = Math.sin(a); return [0, -HR + HR * c, ZH + HR * n, -c, -n, -n, c]; };
+  const V = [];
+  for (let i = 0; i <= NS; i++) {
+    const s = L * i / NS, f = at(s), row = [];
+    for (let j = 0; j <= NR; j++) { const t = (j / NR + s / PITCH) * TAU, nx = Math.sin(t), ny = Math.cos(t) * f[3], nz = Math.cos(t) * f[4]; row.push([f[0] + CR * nx, f[1] + CR * ny, f[2] + CR * nz, nx, ny, nz]); }
+    V.push(row);
+  }
+  const pos = [[], []], nor = [[], []], col = (j) => (RED.includes(j) ? 0 : 1);
+  const push = (k, v, n) => { pos[k].push(v[0], v[1], v[2]); nor[k].push(n[0], n[1], n[2]); };
+  // 옆면: 마디 i · 띠 j 의 사각형 = 삼각형 둘 (밖에서 보아 반시계)
+  for (let i = 0; i < NS; i++) for (let j = 0; j < NR; j++) { const a = V[i][j], b = V[i][j + 1], c = V[i + 1][j], d = V[i + 1][j + 1], k = col(j); for (const v of [a, b, c, b, d, c]) push(k, v, [v[3], v[4], v[5]]); }
+  // 양 끝 평평한 단면: 아래 끝은 -T, 갈고리 끝은 +T 를 보게 감는다
+  for (const [i, sg] of [[0, -1], [NS, 1]]) {
+    const f = at(L * i / NS), o = [f[0], f[1], f[2]], tn = [0, f[5] * sg, f[6] * sg];
+    for (let j = 0; j < NR; j++) { const k = col(j), a = V[i][j], b = V[i][j + 1]; if (sg > 0) { push(k, o, tn); push(k, a, tn); push(k, b, tn); } else { push(k, o, tn); push(k, b, tn); push(k, a, tn); } }
+  }
+  const mk = (k) => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos[k], 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor[k], 3)); return geo; };
+  put(g, mk(0), M('anod', 0xf01822)); put(g, mk(1), M('polymer', 0xf6f3ee));   // 빨강은 반광(사탕 윤기) · 흰색은 밝게
+  // 초록 리본: 자루를 감은 띠 + 옆(-x)의 매듭 · 위로 살짝 들린 고리 둘 · 끝이 V 로 파인 꼬리 둘 (리본 면은 y-z — 옆모습에서 잘 보이고 고리는 자루 밖으로 삐져나와 반대쪽에서도 보임)
+  const gr = M('polymer', 0x1f8f3e), ZB = 0.3, XB = -0.0195;
+  put(g, CY(0.0178, 0.0178, 0.012, 8, 'z'), gr, 0, 0, ZB);
+  put(g, SPH(0.0075, 6, 4).scale(0.7, 1, 1.1), gr, XB, 0, ZB);
+  for (const s of [-1, 1]) {
+    put(g, TOR(0.015, 0.0036, 4, 8).scale(0.8, 1.35, 0.7).rotateY(Math.PI / 2), gr, XB - 0.001, s * 0.0215, ZB + 0.004, s * 0.35);
+    put(g, PF([[0.2952, -0.0001], [0.2432, 0.0219], [0.2505, 0.0237], [0.2468, 0.0301], [0.2988, 0.0081]].map(([z, y]) => [z, y * s]), 0.0035, 0.0006), gr, XB);
+  }
+} };
+
+// ---------- 05_models_mskin_knife.js ----------
+// ============================================================
+// 05_models_mskin_knife.js — v23 식칼 스킨 모양 5종: 사냥칼 · 전투 대검 · 나비 나이프 · 카람빗 · 고드름 단검
+//  · 05_models_mskin.js 의 MSHAPE 에 등록 (스킨 표 = 04_skins.js 의 slot 'm_knife' 항목 shape)
+//  · 손 좌표계는 기본 식칼(05_models.js knife)과 같다: 손잡이 가운데 = 원점, 날은 +z, 베는 날은 -y, 두께는 x
+//    손이 감싸는 곳 z -0.05 ~ 0.05 · 손잡이 굵기 0.021 ~ 0.03 · tip = 손잡이 가운데부터 날 끝까지(휘두르기 자국)
+//  · 난수 없이 고정된 숫자·반복 번호로만 만든다 (같은 스킨 = 언제나 같은 모양) · 모양마다 합친 뒤 정점 3,500 개 안쪽
+//  · 날 띠(band): 날 선 E([z, y] … 손잡이 쪽 → 끝, 날 몸통이 왼쪽)를 바깥으로 o, 안으로 w 만큼 띄운 띠 윤곽
+//    (첫 점·끝 점의 안쪽 폭은 a·b 배) — 날보다 조금 두껍게 압출해 양면에 밝은 줄로 보이게
+// ============================================================
+
+// 사냥칼: 등이 끝으로 둥글게 떨어지는 넓은 드롭 포인트 날 · 위쪽 어두운 홈(fuller) · 밝게 간 날 띠 · 가드 앞 작은 초(choil)
+//  · 위아래로 튀어나온 놋쇠 가드(끝마다 둥근 알) + 검은 받침 · 검지 홈이 진 따뜻한 갈색 나무 손잡이 · 놋쇠 핀 2개 · 놋쇠 끝 캡 + 끈 고리
+MSHAPE.hunter = { melee: 'knife', tip: 0.27, build(g, K, S) {
+  const { put, M, PF, BX, CY, TOR } = K;
+  const st = M('metal', 0xc4c8cc), ed = M('metal', 0xf0f3f6), fl = M('gunmetal', 0x33363a), br = M('brass', 0xc9a24a), wd = M('wood', 0x6b4224), sp = M('polymer', 0x16120e), Y = -0.005;
+  const band = (E, o, w, a = 1, b = 0) => { const L = [], R = [], n = E.length; E.forEach((p, i) => { const s = E[Math.max(0, i - 1)], e = E[Math.min(n - 1, i + 1)], dz = e[0] - s[0], dy = e[1] - s[1], d = Math.hypot(dz, dy) || 1, k = w * (i === 0 ? a : i === n - 1 ? b : 1); L.push([p[0] + dy / d * o, p[1] - dz / d * o]); R.push([p[0] - dy / d * k, p[1] + dz / d * k]); }); return L.concat(R.reverse()); };
+  // 날: 등(뒤 → 끝) + 날(끝 → 초) + 초 홈 · 날 띠 · 등 쪽 어두운 홈
+  const E = [[0.0895, -0.0326], [0.115, -0.0345], [0.16, -0.0355], [0.2, -0.0345], [0.228, -0.0305], [0.25, -0.0235], [0.264, -0.0145], [0.27, -0.0055]];
+  put(g, PF([[0.071, 0.0125], [0.16, 0.0135], [0.205, 0.0118], [0.235, 0.0075], [0.256, 0.0015]].concat(E.slice().reverse(), [[0.0845, -0.0268], [0.0795, -0.0268], [0.0772, -0.0305], [0.071, -0.0305]]), 0.0036, 0.0006), st);
+  put(g, PF(band(E, 0.0004, 0.0075), 0.0042, 0.0003), ed);
+  put(g, PF([[0.09, 0.0036], [0.094, 0.0068], [0.176, 0.0068], [0.194, 0.0038], [0.176, 0.0009], [0.094, 0.0009]], 0.0042, 0.0004), fl);
+  // 놋쇠 가드: 위아래로 튀어나온 막대 + 끝마다 둥근 알(x 로 누운 원판) · 손잡이와 사이의 검은 받침
+  put(g, BX(0.012, 0.08, 0.0075), br, 0, -0.0115, 0.0672);
+  for (const y of [0.0285, -0.0515]) put(g, CY(0.0056, 0.0056, 0.0138, 8, 'x'), br, 0, y, 0.0672);
+  put(g, BX(0.0222, 0.0335, 0.0024), sp, 0, Y, 0.0621);
+  // 나무 손잡이: 가드 뒤 검지 홈 · 손바닥 쪽 불룩 · 끝이 살짝 벌어짐 (옆모습 압출 + 깎은 모서리) · 놋쇠 핀 2개
+  put(g, PF([[0.058, 0.0082], [0.02, 0.0088], [-0.02, 0.0086], [-0.058, 0.0076], [-0.0612, 0.004], [-0.0612, -0.0152], [-0.057, -0.0188], [-0.03, -0.0184], [-0.006, -0.0188], [0.018, -0.0178], [0.034, -0.0152], [0.045, -0.0141], [0.055, -0.0152], [0.058, -0.0168]], 0.0215, 0.0028), wd);
+  for (const z of [-0.031, 0.019]) put(g, CY(0.0034, 0.0034, 0.0229, 8, 'x'), br, 0, Y, z);
+  // 놋쇠 끝 캡 + 뒤로 나온 끈 고리(y-z 평면에 세움)
+  put(g, PF([[-0.0625, 0.0098], [-0.0705, 0.0088], [-0.075, 0.0035], [-0.0755, -0.0135], [-0.0712, -0.0198], [-0.0625, -0.0205]], 0.0236, 0.0016), br);
+  put(g, TOR(0.0062, 0.0017, 5, 12).rotateY(Math.PI / 2), br, 0, Y, -0.0795);
+} };
+
+// 전투 대검: 길고 넓은 클립 포인트 날(어두운 무광) — 등은 곧게 가다 끝 쪽을 오목하게 깎아 내림(밝은 거짓 날) · 밝게 간 날 띠 · 가드 앞 초
+//  · 등에 밝은 톱니 8개(z 0.1 ~ 0.2) · 위 갈래는 앞으로, 아래 갈래는 뒤로 말린 S자 강철 가드(끝마다 둥근 알)
+//  · 올리브 낙하산 줄을 엇갈려 감은 손잡이(불룩한 고리 10줄, 번갈아 기울임) · 강철 앞 고리 · 묵직한 강철 손잡이 끝
+MSHAPE.bowie = { melee: 'knife', tip: 0.31, build(g, K, S) {
+  const { put, M, PF, BX, CY, SPH, lathe, tubeAlong } = K;
+  const bl = M('gunmetal', 0x33363a), ed = M('metal', 0xe0e4e8), th = M('metal', 0xb0b4b8), sg = M('metal', 0xa6aaae), pm = M('metal', 0xb4b8bc), cd = M('cloth', 0x4a5236), cd2 = M('cloth', 0x3d442c), ck = M('cloth', 0x262a1c), Y = -0.003;
+  const band = (E, o, w, a = 1, b = 0) => { const L = [], R = [], n = E.length; E.forEach((p, i) => { const s = E[Math.max(0, i - 1)], e = E[Math.min(n - 1, i + 1)], dz = e[0] - s[0], dy = e[1] - s[1], d = Math.hypot(dz, dy) || 1, k = w * (i === 0 ? a : i === n - 1 ? b : 1); L.push([p[0] + dy / d * o, p[1] - dz / d * o]); R.push([p[0] - dy / d * k, p[1] + dz / d * k]); }); return L.concat(R.reverse()); };
+  // 날: 등 → 오목한 클립 → 끝 → 날 → 초 홈 · 날 띠 · 클립의 거짓 날 띠(끝 쪽으로 가늘게)
+  const C = [[0.31, -0.0035], [0.282, -0.0005], [0.255, 0.0035], [0.232, 0.0095], [0.215, 0.0155]];   // 클립(끝 → 등)
+  const E = [[0.0895, -0.0345], [0.15, -0.036], [0.21, -0.036], [0.243, -0.0345], [0.27, -0.0302], [0.29, -0.0225], [0.303, -0.0125], [0.31, -0.0035]];   // 날(초 → 끝)
+  put(g, PF([[0.074, 0.0155]].concat(C.slice().reverse().slice(0, -1), E.slice().reverse(), [[0.0865, -0.0285], [0.0815, -0.0285], [0.079, -0.0325], [0.074, -0.0325]]), 0.0044, 0.0007), bl);
+  put(g, PF(band(E, 0.0004, 0.0078), 0.0052, 0.0004), ed);
+  put(g, PF(band(C, 0.0004, 0.0042, 0, 1), 0.005, 0), ed);
+  // 등 톱니: 아래쪽 띠는 날 등에 겹쳐 밝은 줄로 보이고 그 위로 비스듬한 톱니가 솟음
+  const tp = [[0.097, 0.0105]];
+  for (let i = 0; i < 8; i++) { const z = 0.1 + i * 0.0125; tp.push([z, 0.0166], [z + 0.0088, 0.0232]); }
+  tp.push([0.2, 0.0166], [0.2015, 0.0105]); put(g, PF(tp, 0.005, 0), th);
+  // S자 가드: y-z 평면의 곡선 관(x 로 넓혀 납작하게) + 날이 꽂히는 가운데 받침 + 갈래 끝 알
+  const sP = [[0, 0.043, 0.087], [0, 0.038, 0.0755], [0, 0.026, 0.0688], [0, 0.008, 0.0672], [0, -0.03, 0.0668], [0, -0.048, 0.0645], [0, -0.0585, 0.0565], [0, -0.0615, 0.0465]];
+  put(g, tubeAlong(sP, 0.0042, 14, 6).scale(1.45, 1, 1), sg);
+  put(g, BX(0.0146, 0.058, 0.0136), sg, 0, -0.0095, 0.0687);   // 날 뿌리(z 0.074)까지 덮어 틈이 보이지 않게
+  for (const p of [sP[0], sP[sP.length - 1]]) put(g, SPH(0.0058, 6, 4).scale(1.35, 1, 1), sg, p[0], p[1], p[2]);
+  // 손잡이: 어두운 심 + 낙하산 줄 고리 10줄(번갈아 기울여 엮은 무늬) + 강철 앞 고리 + 묵직한 강철 손잡이 끝
+  put(g, CY(0.0118, 0.0118, 0.114, 8, 'z'), ck, 0, Y, -0.003);
+  for (let i = 0; i < 10; i++) put(g, lathe([[0.0119, -0.0052], [0.0153, 0], [0.0119, 0.0052]], 8, 'z'), i % 2 ? cd : cd2, 0, Y, -0.0505 + i * 0.0108, (i % 2 ? 1 : -1) * 0.17, 0, 0);
+  put(g, CY(0.0146, 0.0152, 0.0105, 8, 'z'), sg, 0, Y, 0.057);
+  put(g, lathe([[0, -0.0792], [0.0082, -0.0782], [0.0138, -0.0742], [0.0162, -0.0675], [0.0156, -0.0595], [0.0128, -0.055]], 8, 'z'), pm, 0, Y, 0);   // 회전체 윤곽은 높이가 커지는 순서(뒤 → 앞)여야 겉면이 바깥을 봄
+} };
+
+// 나비 나이프: 가는 탄토 날(앞 날이 꺾여 가파르게 올라가 등 쪽에서 끝을 만듦) + 밝은 날 띠 · 날 뿌리(둥근 슴베)는 두 손잡이 사이에
+//  · 손잡이 = 따로 노는 두 쪽(x ±0.0088)의 뼈대만 남긴 ㄷ자 홈통(옆판 + 안쪽 위아래 날개) — 쪽마다 4 토막(뒤 → 앞: 파랑 · 보라 · 자홍 · 금, 무지갯빛 양극산화), 토막마다 길쭉한 육각 구멍
+//  · 날 뿌리를 꿰는 회전 핀 2개 · 손잡이 끝 걸쇠(두 쪽을 잇는 가로 막대 + 핀)
+MSHAPE.balisong = { melee: 'knife', tip: 0.24, build(g, K, S) {
+  const { put, M, PF, BX, CY, slab } = K;
+  const AN = [0x2e6be6, 0x7b45e8, 0xd03fa8, 0xe3b03a].map((c) => M('metal', c)), bl = M('metal', 0xcfd3d7), ed = M('metal', 0xf2f5f8), pn = M('gunmetal', 0x222428);
+  const T = 0.0085, B = -0.0135;   // 손잡이 위 · 아래 (y)
+  const hole = (z0, z1) => [[-0.0025, z0 + 0.0042], [0.0045, z0 + 0.0085], [0.0045, z1 - 0.0085], [-0.0025, z1 - 0.0042], [-0.0095, z1 - 0.0085], [-0.0095, z0 + 0.0085]];
+  // 토막 윤곽 [y, z] → 판을 z 축으로 90° 돌려 y-z 평면에 세움(두께 = x) · 뒤 토막은 모서리를 깎고, 앞 토막은 회전 핀을 감싸게 둥글게
+  //  날개: 옆판 안쪽 위·아래 가장자리를 따라 가운데로 접힌 띠(같은 색) → 위·아래에서 보면 ㄷ자 홈통 두 개, 사이로 날이 들어갈 틈
+  const SEG = [
+    [[B, -0.0335], [T, -0.0335], [T, -0.0635], [0.005, -0.067], [-0.0095, -0.067], [B, -0.0635]],
+    [[B, -0.0335], [T, -0.0335], [T, -0.0005], [B, -0.0005]],
+    [[B, -0.0005], [T, -0.0005], [T, 0.0325], [B, 0.0325]],
+    [[B, 0.0325], [T, 0.0325], [T, 0.0535], [0.0068, 0.0605], [0.0012, 0.0648], [-0.0062, 0.0648], [-0.0118, 0.0605], [B, 0.0535]],
+  ], HZ = [[-0.0635, -0.0335], [-0.0335, -0.0005], [-0.0005, 0.0325], [0.0325, 0.05]];
+  for (let k = 0; k < 4; k++) {
+    const geo = slab(SEG[k], 0.0055, 0, [hole(HZ[k][0], HZ[k][1])]), z0 = HZ[k][0], z1 = k === 3 ? 0.0535 : HZ[k][1];
+    for (const sd of [-1, 1]) { put(g, geo, AN[k], sd * 0.0088, 0, 0, 0, 0, Math.PI / 2); for (const y of [T - 0.0011, B + 0.0011]) put(g, BX(0.0031, 0.0022, z1 - z0), AN[k], sd * 0.0047, y, (z0 + z1) / 2); }
+  }
+  // 회전 핀 2개(두 손잡이 + 슴베를 꿰뚫어 양쪽으로 머리가 보임) · 걸쇠: 핀 + 두 쪽 끝을 잇는 살짝 기운 가로 막대
+  for (const y of [0.0028, -0.0078]) put(g, CY(0.0027, 0.0027, 0.0262, 8, 'x'), pn, 0, y, 0.0548);
+  put(g, CY(0.0022, 0.0022, 0.0258, 6, 'x'), pn, 0, 0.0035, -0.0625);
+  put(g, BX(0.0258, 0.0062, 0.008), pn, 0, -0.0035, -0.0705, 0.18, 0, 0);
+  // 탄토 날: 둥근 슴베 → 곧은 등 → 끝에서 살짝 내려옴 / 꺾인 앞 날 → 곧은 날 → 초 홈 · 밝은 날 띠(곧은 날 + 앞 날)
+  put(g, PF([[0.047, 0.004], [0.054, 0.0085], [0.064, 0.0108], [0.205, 0.0108], [0.24, 0.0062], [0.2215, -0.0148], [0.084, -0.016], [0.0795, -0.0118], [0.0745, -0.0118], [0.072, -0.0145], [0.064, -0.0152], [0.054, -0.013], [0.047, -0.0075]], 0.0032, 0.0005), bl);
+  put(g, PF([[0.086, -0.0164], [0.2219, -0.0153], [0.2404, 0.0063], [0.2364, 0.0043], [0.2203, -0.0118], [0.088, -0.0126]], 0.0038, 0), ed);
+} };
+
+// 카람빗: 손잡이에서 나와 앞-아래로 갈고리처럼 휘어 내려가는 짧은 검은 날(끝 z 0.19 · y -0.07) — 안쪽(오목한 쪽)이 날, 가는 금빛 날 선
+//  · 뒤로 갈수록 살짝 처지는 검은 손잡이 + 둘레의 금빛 테(가운데 끼운 조금 큰 라이너) · 손잡이 끝의 큰 금빛 손가락 고리(구멍은 x 방향)
+//  · 금빛 회전 핀(날 뿌리) + 나사 2개
+MSHAPE.karambit = { melee: 'knife', tip: 0.2, build(g, K, S) {
+  const { put, M, PF, CY, TOR } = K;
+  const bk = M('gunmetal', 0x1c1d1f), au = M('brass', 0xd6aa48), hd = M('polymer', 0x17181a);
+  const band = (E, o, w, a = 1, b = 0) => { const L = [], R = [], n = E.length; E.forEach((p, i) => { const s = E[Math.max(0, i - 1)], e = E[Math.min(n - 1, i + 1)], dz = e[0] - s[0], dy = e[1] - s[1], d = Math.hypot(dz, dy) || 1, k = w * (i === 0 ? a : i === n - 1 ? b : 1); L.push([p[0] + dy / d * o, p[1] - dz / d * o]); R.push([p[0] - dy / d * k, p[1] + dz / d * k]); }); return L.concat(R.reverse()); };
+  // 닫힌 윤곽 P 를 바깥으로 d 만큼 키움(모서리는 이음매 길이로) — 금 테 라이너
+  const grow = (P, d) => { const n = P.length; let A = 0; P.forEach((p, i) => { const q = P[(i + 1) % n]; A += p[0] * q[1] - q[0] * p[1]; }); const sg = A > 0 ? 1 : -1, nrm = (p, q) => { const dz = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dz, dy) || 1; return [sg * dy / L, -sg * dz / L]; }; return P.map((p, i) => { const n1 = nrm(P[(i + n - 1) % n], p), n2 = nrm(p, P[(i + 1) % n]), mz = n1[0] + n2[0], my = n1[1] + n2[1], t = d / Math.max(0.3, mz * n1[0] + my * n1[1]); return [p[0] + mz * t, p[1] + my * t]; }); };
+  // 날: 바깥 등(뿌리 → 끝, 볼록) + 안쪽 날(끝 → 뿌리, 오목) · 안쪽 날을 따라 가는 금빛 선(양 끝이 가늘어짐)
+  const E = [[0.046, -0.0115], [0.065, -0.0098], [0.085, -0.0092], [0.108, -0.0108], [0.13, -0.0148], [0.149, -0.0225], [0.164, -0.0335], [0.1755, -0.0465], [0.1835, -0.0615], [0.1895, -0.0715]];   // 안쪽 날(뿌리 → 끝)
+  put(g, PF([[0.046, 0.0095], [0.07, 0.0125], [0.097, 0.0128], [0.122, 0.0085], [0.145, -0.0005], [0.164, -0.0135], [0.178, -0.0295], [0.187, -0.047], [0.1905, -0.0625]].concat(E.slice().reverse()), 0.004, 0.0006), bk);
+  put(g, PF(band(E.slice(1), 0.0004, 0.0024, 0, 0), 0.0046, 0), au);
+  // 손잡이: 검은 판(깎은 모서리) + 그보다 조금 큰 얇은 금빛 라이너(가운데 끼워 둘레에 금 테로 보임)
+  const H = [[0.058, 0.0082], [0.025, 0.0095], [-0.005, 0.0082], [-0.035, 0.004], [-0.062, -0.0035], [-0.064, -0.0205], [-0.035, -0.0195], [0, -0.0175], [0.035, -0.0158], [0.058, -0.0138]];
+  put(g, PF(H, 0.021, 0.0028), hd);
+  put(g, PF(grow(H, 0.0038), 0.006, 0.0005), au);
+  // 손가락 고리: y-z 평면에 세운 고리(x 로 넓혀 납작한 띠) — 손잡이 끝에 겹쳐 붙음
+  put(g, TOR(0.0155, 0.0048, 6, 14).rotateY(Math.PI / 2).scale(1.7, 1, 1), au, 0, -0.0125, -0.0778);
+  // 금빛 회전 핀(날 뿌리) + 나사 2개 [y, z, 반지름]
+  for (const [y, z, r] of [[-0.0028, 0.044, 0.0043], [-0.0058, -0.012, 0.0032], [-0.0098, -0.046, 0.0032]]) put(g, CY(r, r, 0.0222, 8, 'x'), au, 0, y, z);
+} };
+
+// 고드름 단검: 길고 가늘어지는 육각 얼음 결정 날(6각 회전체를 x 로 눌러 납작하게, 면마다 각진 법선) · 날 양면 가운데로 빛나는 심이 비침
+//  · 날 뿌리의 은빛 육각 고리 + 사방으로 뻗어 앞으로 누운 얼음 결정 6개(위·아래 둘은 빛남) · 서리 낀 흰 손잡이 + 은빛 감은 줄 4개
+//  · 손잡이 끝: 6갈래 눈꽃 판(갈래마다 V 가지 · 마름모 끝 · 끝마다 빛 결정) + 가운데에서 뒤로 뾰족한 육각 빛 결정
+MSHAPE.icicle = { melee: 'knife', tip: 0.33, build(g, K, S) {
+  const { put, M, CY, slab, lathe, glow } = K;
+  const ic = M('metal', 0xcfefff), iw = M('metal', 0xeaf8ff), sv = M('metal', 0xc9d3dc), wh = M('cloth', 0xe8f4fa), gl = glow(0x9fe8ff), gw = glow(0xd2f6ff), Y = -0.005;
+  const facet = (geo) => { const f = geo.toNonIndexed(); f.computeVertexNormals(); return f; };   // 면마다 법선 → 결정처럼 각진 면
+  // 날: 6각 결정(꼭짓점이 날 -y · 등 +y, 옆은 납작한 면) · 심 = 반지름 0.42 배의 6각 결정을 누르지 않아 날 양면 가운데로 솟은 빛 줄
+  put(g, facet(lathe([[0.0075, 0.058], [0.0168, 0.072], [0.0176, 0.098], [0.0158, 0.15], [0.0128, 0.205], [0.0092, 0.255], [0.0052, 0.296], [0, 0.33]], 6, 'z').scale(0.34, 1, 1)), ic, 0, Y, 0);
+  put(g, lathe([[0.003, 0.06], [0.0071, 0.073], [0.0074, 0.098], [0.0066, 0.15], [0.0054, 0.205], [0.0039, 0.255], [0.0022, 0.293], [0, 0.322]], 6, 'z'), gl, 0, Y, 0);
+  // 가드: 은빛 육각 고리 + 앞으로 누운 얼음 결정 6개 [방향각(+y 부터 x-y 평면에서), 길이, 굵기, 앞 기울기, 재질] — 늘인 8면체를 그 방향으로 돌림
+  put(g, CY(0.0112, 0.0134, 0.008, 6, 'z'), sv, 0, Y, 0.0615);
+  const up = new THREE.Vector3(0, 1, 0), dv = new THREE.Vector3();
+  for (const [a, ln, w, tl, m] of [[0, 0.026, 0.0064, 0.5, gl], [Math.PI, 0.033, 0.007, 0.5, gl], [0.95, 0.017, 0.0048, 0.75, iw], [-0.95, 0.017, 0.0048, 0.75, iw], [Math.PI - 0.9, 0.02, 0.005, 0.7, ic], [Math.PI + 0.9, 0.02, 0.005, 0.7, ic]]) {
+    const sa = Math.sin(a), ca = Math.cos(a), dx = sa * Math.cos(tl), dy = ca * Math.cos(tl), dz = Math.sin(tl), h = ln * 0.45;
+    const o = put(g, new THREE.OctahedronGeometry(1, 0).scale(w / 2, ln / 2, w * 0.4), m, sa * 0.0075 + dx * h, Y + ca * 0.0075 + dy * h, 0.064 + dz * h);
+    o.quaternion.setFromUnitVectors(up, dv.set(dx, dy, dz));
+  }
+  // 손잡이: 서리 낀 흰 천(가운데가 살짝 불룩) + 은빛 감은 줄 4개(번갈아 기울임) + 뒤 은 고리
+  put(g, lathe([[0.0119, -0.058], [0.0131, -0.034], [0.0136, -0.004], [0.0131, 0.028], [0.012, 0.058]], 8, 'z'), wh, 0, Y, 0);
+  for (let i = 0; i < 4; i++) put(g, lathe([[0.0126, -0.0024], [0.0151, 0], [0.0126, 0.0024]], 8, 'z'), sv, 0, Y, -0.04 + i * 0.026, i % 2 ? 0.2 : -0.2, 0, 0);
+  put(g, CY(0.0128, 0.0138, 0.008, 8, 'z'), sv, 0, Y, -0.0605);
+  // 눈꽃 손잡이 끝: 위에서 본 판(slab) = 갈래 6개 × 13점(뿌리 · V 가지 · 마름모 끝) → x 축으로 세워 x-y 평면에 (갈래 0 = 아래) · 갈래 끝 빛 결정
+  const ARM = [[0.0055, -0.002], [0.0122, -0.002], [0.0172, -0.0078], [0.0152, -0.002], [0.0216, -0.002], [0.0242, -0.0041], [0.0288, 0], [0.0242, 0.0041], [0.0216, 0.002], [0.0152, 0.002], [0.0172, 0.0078], [0.0122, 0.002], [0.0055, 0.002]], sf = [];
+  for (let k = 0; k < 6; k++) { const a = Math.PI / 2 + k * Math.PI / 3, c = Math.cos(a), s = Math.sin(a); for (const [u, v] of ARM) sf.push([c * u - s * v, s * u + c * v]); put(g, new THREE.OctahedronGeometry(0.0034, 0), gw, c * 0.0292, Y - s * 0.0292, -0.0705); }
+  put(g, slab(sf, 0.0045, 0), iw, 0, Y, -0.0705, Math.PI / 2, 0, 0);
+  // 가운데: 눈꽃을 꿰고 뒤로 뾰족한 육각 빛 결정
+  put(g, lathe([[0, -0.0855], [0.0064, -0.0715], [0.0058, -0.0645]], 6, 'z'), gl, 0, Y, 0);   // 뒤 끝 → 앞 (겉면이 바깥을 보게)
+} };
+
+// ---------- 05_models_mskin_machete.js ----------
+// ============================================================
+// 05_models_mskin_machete.js — v23 마체테 스킨 모양 4종: 쿠크리 · 톱날 정글도 · 네온 블레이드 · 서리 결정 검
+//  · 05_models_mskin.js 의 MSHAPE 에 등록 (스킨 표 = 04_skins.js 의 slot 'm_machete' 항목 shape)
+//  · 손 좌표계는 기본 마체테(05_models.js machete)와 같다: 손잡이 가운데 = 원점, 날은 +z, 베는 날은 -y, 두께는 x
+//    기본: 고무 손잡이 z ±0.065 · 가드 z 0.069 · 날 z 0.072 → 끝 0.478 (y -0.04 ~ 0.019) · 손이 감싸는 곳 z -0.05 ~ 0.05
+//  · 날은 두 겹: 두꺼운 몸통 + 얇고 밝은 날 띠 (띠가 몸통보다 얇아 몸통 밖으로 나온 날 쪽만 보이고 나머지는 속에 숨음)
+//  · 난수 없이 고정된 숫자·반복 번호로만 만든다 · 모양마다 합친 뒤 정점 3,500 개 안쪽 (쿠크리 ≈2.4k · 톱날 ≈2.6k · 네온 ≈1.6k · 서리 ≈2.2k)
+// ============================================================
+
+// 쿠크리: 처음 1/3 은 곧다가 z 0.205 에서 통째로 아래(-y)로 꺾여 넓은 배와 끝이 앞아래를 향하는 묵직한 날 (끝 0.42, -0.083)
+//  · 광낸 강철 몸통 + 배를 따라 밝은 날 띠 · 등을 따라가는 어두운 홈 선 · 날 밑동의 V 홈(초) · 놋쇠 볼스터(홈 고리) · 벌어진 놋쇠 손잡이 끝 + 꼬리 너트 · 고리 두 줄의 나무 손잡이
+MSHAPE.kukri = { melee: 'machete', tip: 0.42, build(g, K, S) {
+  const { put, M, PF, SPH, lathe } = K;
+  const st = M('metal', 0xb3b8bd), ed = M('metal', 0xe8ecef), fu = M('gunmetal', 0x3c3f43), wd = M('wood', 0x5a3a20), br = M('brass', 0xc9a24a);
+  // 날 몸통: 등(앞으로) → 끝 → 날 띠 위 선(뒤로) → 밑동 리카소의 V 홈
+  put(g, PF([[0.072, 0.013], [0.12, 0.0175], [0.165, 0.0205], [0.205, 0.0195], [0.25, 0.0085], [0.295, -0.0085], [0.335, -0.0275], [0.368, -0.047], [0.396, -0.065], [0.42, -0.083],
+    [0.404, -0.0845], [0.388, -0.0905], [0.362, -0.0895], [0.328, -0.0795], [0.293, -0.064], [0.258, -0.046], [0.226, -0.0315], [0.196, -0.023], [0.155, -0.02], [0.112, -0.0197], [0.106, -0.0197],
+    [0.104, -0.0268], [0.097, -0.0255], [0.0915, -0.0115], [0.086, -0.024], [0.072, -0.0215]], 0.0062, 0.0008), st);
+  // 날 띠: 아래 선 = 실제 날(오목하게 휘었다가 배로 불룩) · 위 선은 몸통 속
+  put(g, PF([[0.104, -0.0272], [0.112, -0.0272], [0.155, -0.0275], [0.196, -0.0305], [0.226, -0.039], [0.258, -0.0535], [0.293, -0.0715], [0.328, -0.087], [0.362, -0.097], [0.392, -0.0985], [0.412, -0.093], [0.42, -0.083],
+    [0.403, -0.0805], [0.386, -0.0865], [0.362, -0.0855], [0.328, -0.0755], [0.293, -0.06], [0.258, -0.042], [0.226, -0.0275], [0.196, -0.019], [0.155, -0.016], [0.112, -0.0157], [0.104, -0.0157]], 0.003, 0), ed);
+  // 등을 따라 꺾이는 어두운 홈 선 (양 끝 뾰족)
+  put(g, PF([[0.098, 0.0068], [0.12, 0.0098], [0.165, 0.0129], [0.205, 0.0119], [0.25, 0.0009], [0.292, -0.0165], [0.25, -0.0019], [0.205, 0.0091], [0.165, 0.0101], [0.12, 0.007]], 0.0068, 0), fu);
+  // 나무 손잡이: 가운데 불룩한 고리 두 줄 · 뒤로 갈수록 벌어짐 · 타원 단면 (양 끝은 볼스터·손잡이 끝 속으로)
+  const hd = lathe([[0.016, -0.0625], [0.0152, -0.052], [0.0142, -0.034], [0.0147, -0.02], [0.0166, -0.012], [0.0147, -0.004], [0.0147, 0.005], [0.0166, 0.013], [0.0147, 0.021], [0.0142, 0.038], [0.0158, 0.062]], 10, 'z');
+  hd.scale(0.8, 1, 1); put(g, hd, wd, 0, -0.004, 0);
+  // 놋쇠 볼스터 (홈 하나를 사이에 둔 고리 두 단, 앞면에서 날이 나옴)
+  const bo = lathe([[0.0152, 0.0575], [0.0172, 0.06], [0.0172, 0.0645], [0.016, 0.0665], [0.0178, 0.0688], [0.0178, 0.0728], [0.0146, 0.0768], [0, 0.0775]], 10, 'z');
+  bo.scale(0.8, 1, 1); put(g, bo, br, 0, -0.004, 0);
+  // 벌어진 놋쇠 손잡이 끝 + 둥근 꼬리 너트
+  const pm = lathe([[0, -0.082], [0.0175, -0.0815], [0.021, -0.078], [0.0205, -0.072], [0.0175, -0.067], [0.0158, -0.0605]], 10, 'z');
+  pm.scale(0.8, 1, 1); put(g, pm, br, 0, -0.004, 0);
+  put(g, SPH(0.0048, 8, 3, 0, Math.PI / 2), br, 0, -0.004, -0.0818, -Math.PI / 2);
+} };
+
+// 톱날 정글도: 넓고 곧은 검은 날 + 모서리를 깎은 네모 끝 · 밝은 날 띠(앞 모서리까지) · 등에 손잡이 쪽으로 누운 톱니 14개
+//  · 가드 아래에서 나와 손가락 밑(y≈-0.066)을 지나 손잡이 끝(z≈-0.08)에 붙는 D 고리 (납작한 띠) · 손가락 홈 진 올리브 고무 손잡이 + 고정 핀 2개
+MSHAPE.sawback = { melee: 'machete', tip: 0.48, build(g, K, S) {
+  const { put, M, PF, CY, tubeAlong } = K;
+  const bk = M('gunmetal', 0x26282a), ed = M('metal', 0xdadee2), fr = M('gunmetal', 0x1d1f21), rb = M('rubber', 0x4b5320), pin = M('metal', 0x8a8e92);
+  // 날 몸통: 밑동(리카소) → 곧은 등 → 깎은 모서리 → 네모 끝 → 날 띠 위 선
+  put(g, PF([[0.072, 0.019], [0.09, 0.022], [0.455, 0.022], [0.47, 0.0175], [0.4805, 0.004], [0.479, -0.03], [0.467, -0.0395], [0.45, -0.0435], [0.4, -0.0445], [0.3, -0.044], [0.2, -0.0405], [0.13, -0.0355], [0.094, -0.0285], [0.091, -0.0355], [0.072, -0.033]], 0.0048, 0.0008), bk);
+  // 날 띠: 아랫날 + 앞 아래 모서리
+  put(g, PF([[0.089, -0.0365], [0.13, -0.0435], [0.2, -0.0485], [0.3, -0.052], [0.4, -0.0525], [0.455, -0.0512], [0.472, -0.0467], [0.4805, -0.038], [0.4815, -0.029],
+    [0.474, -0.027], [0.465, -0.0355], [0.45, -0.0395], [0.4, -0.0405], [0.3, -0.04], [0.2, -0.0365], [0.13, -0.0315], [0.092, -0.025]], 0.0028, 0), ed);
+  // 등 톱니: 검은 이 (골은 등 바로 아래, 밑변은 날 몸통 속) + 이마다 끝 절반을 갈아낸 밝은 강철 (이 면보다 0.0003 크게 → 겹친 면이 깜빡이지 않음)
+  const tp = [[0.12, 0.0165], [0.12, 0.021]];
+  for (let i = 0; i < 14; i++) { const z = 0.12 + i * 0.018; tp.push([z + 0.007, 0.032], [z + 0.018, 0.021]); put(g, PF([[z + 0.00283, 0.026], [z + 0.00695, 0.03248], [z + 0.01342, 0.026]], 0.0042, 0), ed); }
+  tp.push([0.372, 0.0165]); put(g, PF(tp, 0.0036, 0), bk);
+  // 가드 판 (위로 살짝, 아래로 길게) + D 고리: 관을 x 로 두 배 늘려 손가락을 덮는 납작한 띠로
+  put(g, PF([[0.0625, 0.0245], [0.0755, 0.0245], [0.0765, -0.044], [0.0725, -0.0575], [0.0635, -0.0595], [0.062, -0.042]], 0.03, 0.0015), fr);
+  const bow = tubeAlong([[0, -0.05, 0.069], [0, -0.062, 0.05], [0, -0.066, 0.015], [0, -0.066, -0.02], [0, -0.061, -0.052], [0, -0.047, -0.071], [0, -0.03, -0.079]], 0.0042, 16, 6);
+  bow.scale(2, 1, 1); put(g, bow, fr);
+  // 올리브 고무 손잡이: 아래(손가락 쪽)에 홈 4개 (PF 모서리 0.0035 만큼 바깥으로 커짐 → 가드·손잡이 끝 속으로) + 고정 핀 2개
+  put(g, PF([[-0.064, 0.0085], [-0.03, 0.0098], [0.02, 0.0098], [0.06, 0.0085], [0.062, -0.0145], [0.05, -0.0185], [0.038, -0.0148], [0.026, -0.0182], [0.013, -0.0148], [0, -0.0182], [-0.012, -0.0148], [-0.024, -0.018], [-0.036, -0.0148], [-0.05, -0.0185], [-0.064, -0.017]], 0.026, 0.0035), rb);
+  for (const z of [-0.03, 0.03]) put(g, CY(0.0042, 0.0042, 0.0275, 6, 'x'), pin, 0, -0.003, z);
+  // 손잡이 끝 (D 고리가 아래로 들어와 붙음)
+  put(g, PF([[-0.0625, 0.0125], [-0.074, 0.0135], [-0.0825, 0.006], [-0.0845, -0.022], [-0.0785, -0.0335], [-0.0655, -0.0295]], 0.03, 0.0015), fr);
+} };
+
+// 네온 블레이드: 등에 계단이 진 각진 탄토 날 (무광 검정) · 아랫날 + 비스듬한 앞날을 따라 빛나는 하늘색 띠가 끝을 이룸
+//  · 양면에 45° 로 꺾이는 빛나는 회로 선 3줄 + 마름모 패드 · 빛나는 육각 고리 셋의 육각 손잡이 · 각진 가드(빛나는 세로 줄) · 30° 엇갈린 육각 손잡이 끝 + 빛나는 심
+MSHAPE.neon = { melee: 'machete', tip: 0.5, build(g, K, S) {
+  const { put, M, PF, BX, CY, lathe, glow } = K;
+  const bd = M('anod', 0x15171b), dk = M('polymer', 0x101114), mt = M('gunmetal', 0x2a2d33), gl = glow(0x46f2ff);
+  const flat = (geo) => { const o = geo.toNonIndexed(); o.computeVertexNormals(); return o; };   // 면마다 법선 → 각진 면
+  // 날 몸통: 아랫날·앞날에서 0.006 안쪽까지 (밖은 빛나는 띠)
+  put(g, PF([[0.074, 0.016], [0.1, 0.022], [0.33, 0.022], [0.345, 0.0165], [0.43, 0.0165], [0.4923, 0.0045], [0.4439, -0.034], [0.14, -0.034], [0.105, -0.0275], [0.074, -0.0245]], 0.005, 0.0007), bd);
+  // 빛나는 날 띠: 아랫날 (밑동에서 0 → 0.006 으로 넓어짐) + 앞날 → 끝 (0.5, 0.003) · 안쪽 선은 몸통 속
+  put(g, PF([[0.09, -0.0262], [0.11, -0.0335], [0.14, -0.04], [0.446, -0.04], [0.5, 0.003], [0.4877, 0.0054], [0.4427, -0.0305], [0.14, -0.0305], [0.105, -0.024], [0.09, -0.0222]], 0.0028, 0), gl);
+  // 회로 선: 상자가 날을 뚫고 나가 양면에 보임 (마디 끝을 선 굵기만큼 늘려 꺾인 곳을 메움) · 끝은 마름모 패드
+  const tw = 0.0058, lw = 0.0022;
+  const seg = (a, b) => { const dz = b[0] - a[0], dy = b[1] - a[1]; put(g, BX(tw, lw, Math.hypot(dz, dy) + lw), gl, 0, (a[1] + b[1]) / 2, (a[0] + b[0]) / 2, -Math.atan2(dy, dz)); };
+  for (const tr of [[[0.085, 0.009], [0.25, 0.009], [0.262, -0.003], [0.38, -0.003]], [[0.085, -0.016], [0.2, -0.016], [0.208, -0.024], [0.32, -0.024]], [[0.1, 0.0155], [0.3, 0.0155], [0.31, 0.0055], [0.42, 0.0055]]]) {
+    for (let i = 1; i < tr.length; i++) seg(tr[i - 1], tr[i]);
+    const e = tr[tr.length - 1]; put(g, BX(tw, 0.0052, 0.0052), gl, 0, e[1], e[0] + 0.004, Math.PI / 4);
+  }
+  // 육각 손잡이 (가운데 잘록, 위아래가 모서리) + 빛나는 육각 고리 셋 (손 앞뒤 + 가운데 가는 것)
+  const hx = lathe([[0.0165, -0.064], [0.0155, -0.045], [0.0148, -0.01], [0.0152, 0.03], [0.0165, 0.062]], 6, 'z'); hx.scale(0.85, 1, 1); put(g, flat(hx), dk, 0, -0.004, 0);
+  for (const [z, r, w] of [[-0.056, 0.0178, 0.004], [-0.002, 0.0162, 0.0025], [0.054, 0.0178, 0.004]]) { const rg = CY(r, r, w, 6, 'z'); rg.scale(0.85, 1, 1); put(g, rg, gl, 0, -0.004, z); }
+  // 각진 가드 판 + 옆면의 빛나는 세로 줄
+  put(g, PF([[0.061, 0.026], [0.072, 0.0305], [0.0795, 0.021], [0.0795, -0.033], [0.0725, -0.048], [0.063, -0.0445], [0.061, -0.03]], 0.03, 0.0012), mt);
+  put(g, BX(0.0322, 0.05, 0.0024), gl, 0, -0.008, 0.0705);
+  // 육각 손잡이 끝 (30° 돌려 옆이 모서리, 앞은 손잡이 속으로 오므림) + 끝면의 빛나는 육각
+  const pk = lathe([[0, -0.0845], [0.0135, -0.084], [0.02, -0.079], [0.0205, -0.068], [0.0195, -0.0605], [0.013, -0.0585]], 6, 'z'); put(g, flat(pk), mt, 0, -0.004, 0, 0, 0, Math.PI / 6);
+  put(g, CY(0.0085, 0.0085, 0.0024, 6, 'z'), gl, 0, -0.004, -0.0846, 0, 0, Math.PI / 6);
+} };
+
+// 서리 결정 검: 4각 회전체를 얇게 눌러 만든 마름모 단면 얼음 날 (위아래 모두 날) — 반지름이 톱니처럼 줄어 앞으로 뻗은 결정 마디 · 날 면 가운데 빛나는 심
+//  · 날끝·등에 반쯤 묻혀 앞으로 비스듬히 튀어나온 얼음 조각 11개 (일부 빛남) · 팔 6개 눈꽃 가드 + 빛나는 육각 심 · 흰 천을 감은 손잡이 + 은빛 고리 · 빛나는 결정 손잡이 끝
+MSHAPE.frost = { melee: 'machete', tip: 0.52, build(g, K, S) {
+  const { put, M, CY, lathe, slab, glow } = K;
+  const ic = M('metal', 0xbfe9ff), ic2 = M('metal', 0xe2f5ff), sv = M('metal', 0xdde7ef), sn = M('anod', 0xe8f2f9), wr = M('cloth', 0xf0f4f8), gl = glow(0x9fe8ff);
+  const Y = -0.006, flat = (geo) => { const o = geo.toNonIndexed(); o.computeVertexNormals(); return o; };   // Y = 날 가운데 높이
+  // 날 심: [반지름, z] — x 를 0.2 배로 눌러 마름모 단면 · 면마다 법선이라 결정처럼 각짐
+  const P = [[0, 0.064], [0.02, 0.07], [0.026, 0.09], [0.034, 0.135], [0.025, 0.138], [0.033, 0.19], [0.024, 0.193], [0.031, 0.245], [0.022, 0.248], [0.029, 0.3], [0.02, 0.303], [0.025, 0.36], [0.017, 0.363], [0.019, 0.42], [0, 0.52]];
+  const core = lathe(P, 4, 'z'); core.scale(0.2, 1, 1); put(g, flat(core), ic, 0, Y, 0);
+  // 빛나는 심: 날보다 좁고(y) 두꺼운(x) 마름모 → 날 면 가운데로만 솟아 보이고 끝 쪽에선 날 속으로 사라짐
+  const rid = lathe([[0, 0.072], [0.008, 0.085], [0.009, 0.3], [0.0075, 0.4], [0, 0.48]], 4, 'z'); rid.scale(0.95, 1, 1); put(g, rid, gl, 0, Y, 0);
+  // 얼음 조각: 길쭉한 팔면체 가운데를 날끝(s -1)·등(s +1) 가까이 두고 앞으로 b 만큼 기울임 (rz 로 옆으로 살짝 엇갈림)
+  const rAt = (z) => { for (let i = 1; i < P.length; i++) if (z <= P[i][1]) { const a = P[i - 1], b = P[i]; return a[0] + (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]); } return 0; };
+  const oc = new THREE.OctahedronGeometry(1, 0), og = new THREE.OctahedronGeometry(1, 0);
+  for (const [z, s, L, b, rz, lit] of [[0.11, -1, 0.04, 0.75, 0.2, 1], [0.175, -1, 0.05, 0.62, -0.25, 0], [0.235, -1, 0.042, 0.8, 0.15, 1], [0.29, -1, 0.046, 0.68, -0.2, 0], [0.345, -1, 0.036, 0.85, 0.25, 1], [0.398, -1, 0.028, 0.9, -0.15, 0],
+    [0.128, 1, 0.034, 0.8, -0.2, 0], [0.2, 1, 0.042, 0.7, 0.25, 1], [0.262, 1, 0.034, 0.85, -0.15, 0], [0.322, 1, 0.03, 0.8, 0.2, 1], [0.378, 1, 0.024, 0.9, -0.25, 0]])
+    put(g, lit ? og : oc, lit ? gl : ic2, 0, Y + s * rAt(z) * 0.8, z, s * b, 0, rz).scale.set(0.0038, L / 2, 0.0062);
+  // 눈꽃 가드: 팔 6개(곁가지 한 쌍씩)를 날에 수직인 판으로 (팔 둘은 위아래) + 가운데 빛나는 육각 심 (판보다 두꺼워 양면에 보임)
+  const arm = [[0.0095, -0.0042], [0.021, -0.0042], [0.031, -0.0125], [0.0275, -0.0036], [0.047, 0], [0.0275, 0.0036], [0.031, 0.0125], [0.021, 0.0042], [0.0095, 0.0042]], sf = [];
+  for (let i = 0; i < 6; i++) { const a = Math.PI / 2 + i * Math.PI / 3, c = Math.cos(a), s = Math.sin(a); for (const [u, v] of arm) sf.push([u * c - v * s, u * s + v * c]); }
+  put(g, slab(sf, 0.007, 0), sn, 0, Y, 0.066, Math.PI / 2);
+  put(g, CY(0.011, 0.011, 0.0095, 6, 'z'), gl, 0, Y, 0.066);
+  // 손잡이: 흰 천을 감은 마디 (타원 단면) + 양 끝 은빛 고리 (앞은 가드 쪽, 뒤는 끝 쪽으로 벌어짐)
+  const hp = []; for (let i = 0; i <= 10; i++) hp.push([i % 2 ? 0.0157 : 0.0145, -0.058 + i * 0.0114]);
+  const hw = lathe(hp, 8, 'z'); hw.scale(0.82, 1, 1); put(g, hw, wr, 0, Y + 0.002, 0);
+  for (const [z, r0, r1] of [[0.06, 0.0168, 0.0176], [-0.063, 0.0178, 0.0166]]) { const f = CY(r1, r0, 0.011, 10, 'z'); f.scale(0.82, 1, 1); put(g, f, sv, 0, Y + 0.002, z); }
+  // 빛나는 결정 손잡이 끝 (뒤로 길쭉) + 둘레로 뒤·바깥을 향해 뻗은 작은 결정 셋 (120° 간격)
+  put(g, og, gl, 0, Y + 0.002, -0.084, 0, 0, Math.PI / 4).scale.set(0.0095, 0.0095, 0.022);
+  for (let i = 0; i < 3; i++) { const sub = new THREE.Group(); sub.position.set(0, Y + 0.002, 0); sub.rotation.z = i * TAU / 3; g.add(sub); put(sub, og, gl, 0, 0.009, -0.074, 0.55).scale.set(0.003, 0.003, 0.011); }
+} };
+
+// ---------- 05_models_mskin_pan.js ----------
+// ============================================================
+// 05_models_mskin_pan.js — v23 프라이팬 스킨 모양 5종: 무쇠 스킬렛 · 웍 · 와플 팬 · 황금 프라이팬 · 진저브레드 팬 (모두 자체 디자인)
+//  · MSHAPE(05_models_mskin.js)에 등록 → 04_skins.js 의 pan_br_skillet · pan_sp_wok · pan_sp_waffle · pan_sup_gold · pan_x_ginger 가 shape 로 부른다
+//  · 손 좌표계는 기본 팬(05_models.js pan)과 같다: 손잡이 가운데 = 원점, 머리는 +z, 요리하는 면은 +y, 때리는 바닥은 -y, 두께는 x
+//    기본 = 손잡이 z -0.1 ~ 0.145 · 머리 가운데 z 0.268 · 반지름 0.142 → 모양마다 머리 끝(tip) 0.40 ~ 0.47 (휘두르는 동작·자국이 그대로 맞게)
+//  · 손잡이 굵기 0.02 ~ 0.03 (손이 감싸는 z -0.05 ~ 0.05) · 손잡이·부리가 벽에 붙는 끝은 벽 두께 안에 숨김 (팬 안쪽으로 삐져나오지 않게)
+//  · 재질은 K.M(종류, 색)만 → Models.cluster 가 재질 계열마다 한 메시로 합친다 · 병합 후 정점(삼각형 × 3)은 모양마다 3,500 개 아래
+// ============================================================
+
+// 무쇠 스킬렛: 깊고 벽이 두꺼운 무쇠 팬 · 바닥 열 고리 · 테 위 ±x 에 V 자 따르는 부리 · 뿌리가 넓고 거는 구멍 뚫린 납작 손잡이 + 밑 덧살 · 맞은편 보조 손잡이
+MSHAPE.skillet = { melee: 'pan', tip: 0.42, build(g, K, S) {
+  const { put, M, PF, lathe, slab, circlePts } = K;
+  const ir = M('gunmetal', 0x252627), oil = M('metal', 0x303234), c = 0.25;
+  // 몸통 단면(반지름, 높이): 바닥 → 열 고리(아래로 4mm) → 바깥 벽 → 둥근 테(위 0.02) → 안쪽 벽 · 안쪽 바닥은 길든 기름 광택으로 따로
+  put(g, lathe([[0, -0.039], [0.094, -0.039], [0.097, -0.043], [0.106, -0.043], [0.113, -0.036], [0.134, 0.014], [0.129, 0.02], [0.122, 0.014], [0.106, -0.022], [0.096, -0.028]], 28), ir, 0, 0, c);
+  put(g, lathe([[0.096, -0.028], [0, -0.028]], 28), oil, 0, 0, c);
+  // 손잡이(두께 0.02 · y -0.004 ~ 0.016): 벽 쪽으로 넓게 벌어진 뿌리(폭 0.048) → 손 부분 폭 0.032 → 끝 둥근 곳(0.038)에 거는 구멍 · 벽에 붙는 끝은 벽 속 원호(r 0.1252) · 밑에 벽까지 붙는 덧살
+  const hp = [[0.024, 0.1271], [0.02, 0.105], [0.0168, 0.075], [0.0158, 0.03], [0.0158, -0.02], [0.0168, -0.045], [0.019, -0.065], [0.0165, -0.0815], [0.0085, -0.0905], [0, -0.093]];
+  put(g, slab(hp.concat(hp.slice(0, -1).reverse().map(([x, z]) => [-x, z]), [[-0.012, 0.1254], [0, 0.1248], [0.012, 0.1254]]), 0.02, 0.002, [circlePts(0, -0.0705, 0.0068, 8)]), ir, 0, 0.006, 0);
+  put(g, PF([[0.06, -0.002], [0.128, -0.002], [0.1335, -0.017], [0.112, -0.017]], 0.012), ir);
+  // 따르는 부리 2개: 테 꼭대기(r 0.129) 원호에서 V 자로 모여 끝이 둥근 입술(테보다 1.5cm) · 바깥쪽으로 살짝 숙인다
+  const sp = [[0.003, -0.034], [0.008, -0.022], [0.0125, -0.0105], [0.017, -0.0045], [0.0195, 0], [0.017, 0.0045], [0.0125, 0.0105], [0.008, 0.022], [0.003, 0.034], [-0.0036, 0.034], [-0.0001, 0.017], [0.001, 0], [-0.0001, -0.017], [-0.0036, -0.034]];
+  for (const s of [-1, 1]) put(g, slab(sp.map(([x, z]) => [x * s, z]), 0.007), ir, s * 0.128, 0.0155, c, 0, 0, -s * 0.18);
+  // 보조 손잡이: 맞은편 테 바로 아래 넓적한 혀 (안쪽 가장자리는 벽 속 원호 r 0.1255)
+  put(g, slab([[0.0371, c + 0.1199], [0.03, c + 0.152], [0.02, c + 0.168], [0, c + 0.173], [-0.02, c + 0.168], [-0.03, c + 0.152], [-0.0371, c + 0.1199], [-0.015, c + 0.1246], [0, c + 0.1255], [0.015, c + 0.1246]], 0.011, 0.0015), ir, 0, 0.009, 0);
+} };
+
+// 웍: 둥근 바닥의 깊은 중화 팬(구면 껍데기) · 말린 테 · 긴 나무 손잡이 + 쇠 소켓·대롱·받침판·리벳 · 맞은편 D자 고리
+MSHAPE.wok = { melee: 'pan', tip: 0.47, build(g, K, S) {
+  const { put, M, BX, CY, TOR, SPH, lathe, slab, rod } = K;
+  const ox = M('gunmetal', 0x232427), inn = M('metal', 0x4a4e54), st = M('metal', 0x8e9298), wd = M('wood', 0x7a5230), c = 0.3;
+  // 그릇: 반지름 0.2414 구면(가운데 y 0.1914)을 테 반지름 0.17 · 깊이 0.07 로 자른 두께 4mm 껍데기 — 바깥은 그을린 검정, 안쪽은 강철 광택
+  put(g, lathe([[0, -0.05], [0.035, -0.0475], [0.07, -0.0396], [0.105, -0.026], [0.14, -0.0053], [0.17, 0.02], [0.1718, 0.0228], [0.1695, 0.0252]], 24), ox, 0, 0, c);
+  put(g, lathe([[0.1695, 0.0252], [0.1672, 0.0229], [0.14, -0.0003], [0.105, -0.0215], [0.07, -0.0355], [0.035, -0.0434], [0, -0.046]], 24), inn, 0, 0, c);
+  // 긴 나무 손잡이(z -0.1 ~ 0.105, 주먹 앞뒤로 나무가 보이게) · 뒤 끝 쇠 마개와 거는 고리 · 앞 쇠 소켓(테 바로 밑) → 짧은 쇠 대롱 → 벽에 붙인 받침판(벽 기울기 0.655 rad)
+  put(g, CY(0.0125, 0.0138, 0.205, 10, 'z'), wd, 0, 0.002, 0.0025);
+  put(g, CY(0.0138, 0.0122, 0.012, 10, 'z'), st, 0, 0.002, -0.106);
+  put(g, TOR(0.0085, 0.0022, 5, 10), st, 0, 0.002, -0.121, 0, Math.PI / 2, 0);
+  put(g, CY(0.0145, 0.0148, 0.035, 10, 'z'), st, 0, 0.002, 0.1175);
+  rod(g, st, [0, 0.002, 0.13], [0, -0.003, 0.15], 0.0085, 0.0085, 8);
+  put(g, BX(0.034, 0.006, 0.03), ox, 0, -0.0024, 0.1511, 0.655, 0, 0);
+  for (const x of [-0.011, 0.011]) put(g, SPH(0.0042, 6, 3), st, x, 0.0032, 0.1557);   // 받침판을 박은 리벳 머리 (그릇 안쪽 면)
+  // 고리 손잡이: 맞은편 테 바로 아래 D자 납작 고리 (구멍은 테 밖)
+  put(g, slab([[0.0334, c + 0.1647], [0.034, c + 0.178], [0.026, c + 0.191], [0.012, c + 0.1975], [-0.012, c + 0.1975], [-0.026, c + 0.191], [-0.034, c + 0.178], [-0.0334, c + 0.1647], [0, c + 0.168]], 0.006, 0.0012,
+    [[[-0.012, c + 0.1735], [0.012, c + 0.1735], [0.021, c + 0.177], [0.015, c + 0.186], [0, c + 0.1885], [-0.015, c + 0.186], [-0.021, c + 0.177]]]), st, 0, 0.019, 0);
+} };
+
+// 와플 팬: 0.24 × 0.24 네모 판 · 위(+y)는 검은 코팅 바닥에 은빛 격자 4×4 · 아래 살 3줄 · +x 쪽 경첩 · 검은 손잡이
+MSHAPE.waffle = { melee: 'pan', tip: 0.4, build(g, K, S) {
+  const { put, M, BX, CY, slab } = K;
+  const rd = M('anod', 0xc23a2a), bk = M('polymer', 0x161618), gr = M('alu', 0x9aa0a8), st = M('metal', 0xb8bcc2), hd = M('polymer', 0x141414);
+  const c = 0.27, a = 0.12, rc = 0.018, q = a - rc, b = 0.106, sq = [];
+  // 둥근 모서리 네모 윤곽 (위에서 본 모양, 반시계 · 모서리마다 4점)
+  [[1, 1], [-1, 1], [-1, -1], [1, -1]].forEach(([sx, sz], k) => { for (let i = 0; i <= 3; i++) { const t = (k + i / 3) * Math.PI / 2; sq.push([sx * q + Math.cos(t) * rc, c + sz * q + Math.sin(t) * rc]); } });
+  put(g, slab(sq, 0.021, 0.0015), rd, 0, -0.0115, 0);                                                     // 판 몸통 (y -0.022 ~ -0.001)
+  put(g, slab(sq, 0.009, 0.0012, [[[-b, c - b], [b, c - b], [b, c + b], [-b, c + b]]]), rd, 0, 0.0035, 0);   // 둘레 턱 (y -0.001 ~ 0.008)
+  put(g, BX(0.214, 0.002, 0.214), bk, 0, 0, c);                                                            // 검은 코팅 바닥
+  for (const d of [-0.0545, 0, 0.0545]) { put(g, BX(0.008, 0.0065, 0.21), gr, d, 0.00425, c); put(g, BX(0.21, 0.0065, 0.008), gr, 0, 0.00425, c + d); }   // 격자 (칸 4×4)
+  for (const x of [-0.06, 0, 0.06]) put(g, BX(0.01, 0.006, 0.2), M('anod', 0x9a2a1e), x, -0.024, c);       // 바닥(때리는 면) 살
+  // +x 쪽 경첩: 받침 + 마디 2개 + 축 (덮개 판이 붙던 자리)
+  put(g, BX(0.014, 0.016, 0.13), st, a + 0.004, -0.004, c);
+  for (const dz of [-0.042, 0.042]) put(g, CY(0.0085, 0.0085, 0.036, 10, 'z'), st, a + 0.012, 0.006, c + dz);
+  put(g, CY(0.0035, 0.0035, 0.122, 6, 'z'), M('gunmetal', 0x5a5e64), a + 0.012, 0.006, c);
+  // 손잡이: 검은 자루 + 쇠 고리 + 판에 박힌 쇠 받침 + 빨간 끝 마개
+  put(g, CY(0.0108, 0.0125, 0.2, 10, 'z'), hd, 0, 0, 0);
+  put(g, CY(0.0126, 0.0126, 0.012, 10, 'z'), st, 0, 0, 0.098);
+  put(g, BX(0.022, 0.012, 0.056), st, 0, -0.001, 0.127);
+  put(g, CY(0.0125, 0.0105, 0.012, 10, 'z'), rd, 0, 0, -0.106);
+} };
+
+// 황금 프라이팬: 기본 팬 모양을 금으로 · 테 위 구슬 띠(길쭉한 구슬·작은 구슬 번갈아) · 바깥 벽을 두른 덩굴 잎 · 바닥은 가운데 원판·별 + 햇살 돋을새김 · 금 손잡이 고리 장식 · 끝에 빨간 보석
+MSHAPE.golden = { melee: 'pan', tip: 0.41, build(g, K, S) {
+  const { put, M, BX, CY, TOR, PF, lathe } = K;
+  const au = M('brass', 0xe0b040), hi = M('metal', 0xf2c650), dp = M('brass', 0xc8962e), pol = M('brass', 0xeab846), c = 0.268;
+  // 머리: 기본 팬과 같은 크기(테 반지름 0.141) · 안쪽 바닥은 닦은 금
+  put(g, lathe([[0, -0.026], [0.118, -0.026], [0.126, -0.021], [0.141, 0.012], [0.139, 0.017], [0.136, 0.015], [0.123, -0.013], [0.113, -0.017]], 24), au, 0, 0, c);
+  put(g, lathe([[0.113, -0.017], [0, -0.017]], 24), pol, 0, 0, c);
+  // 테 구슬 띠: 테를 따라 길쭉한 구슬(접선 방향으로 늘린 팔면체)과 작은 구슬이 번갈아
+  for (let i = 0; i < 24; i++) { const t = i / 24 * TAU, b = new THREE.OctahedronGeometry(1, 0); if (i % 2) b.scale(0.004, 0.004, 0.004); else b.scale(0.0095, 0.0045, 0.0045); b.rotateY(t); put(g, b, hi, Math.sin(t) * 0.1392, 0.0178, c + Math.cos(t) * 0.1392); }
+  // 덩굴 잎: 바깥 벽(바깥으로 24.5° 기운 면) 가운데 높이를 따라 위아래로 엇갈린 잎 20장 (납작한 팔면체를 벽에 눕힘)
+  for (let i = 0; i < 20; i++) {
+    const t = (i + 0.5) / 20 * TAU, u = i % 2 ? 1 : -1, y = -0.0045 + u * 0.0035, r = 0.126 + (y + 0.021) / 0.033 * 0.015 + 0.0008;
+    const lf = new THREE.OctahedronGeometry(1, 0); lf.scale(0.0085, 0.0036, 0.0016); lf.rotateZ(u * 0.6); lf.rotateX(0.427); lf.rotateY(t);
+    put(g, lf, hi, Math.sin(t) * r, y, c + Math.cos(t) * r);
+  }
+  // 바닥(때리는 면): 햇살처럼 뻗은 돋을새김 10줄 + 가운데 원판 + 납작한 별
+  for (let i = 0; i < 10; i++) { const t = (i + 0.5) / 10 * TAU; put(g, BX(0.0036, 0.003, 0.068), dp, Math.sin(t) * 0.071, -0.0268, c + Math.cos(t) * 0.071, 0, t, 0); }
+  put(g, CY(0.03, 0.026, 0.004, 10, 'y'), dp, 0, -0.0275, c);
+  const star = new THREE.OctahedronGeometry(0.013, 0); star.scale(1, 0.4, 1); put(g, star, hi, 0, -0.0295, c, 0, Math.PI / 4, 0);
+  // 목(앞끝을 벽 기울기대로 비스듬히 잘라 벽 두께 안에) · 손잡이 · 고리 장식 3개 · 끝 받침과 빨간 보석
+  put(g, PF([[0.098, -0.005], [0.138, -0.005], [0.1302, 0.012], [0.098, 0.012]], 0.024), au);
+  put(g, CY(0.0105, 0.0122, 0.2, 10, 'z'), dp, 0, 0.005, 0.01);
+  for (const [z, r] of [[0.072, 0.0108], [0.093, 0.0106], [-0.068, 0.012]]) put(g, TOR(r + 0.0006, 0.0024, 3, 8), hi, 0, 0.005, z);
+  put(g, CY(0.0124, 0.0135, 0.014, 10, 'z'), au, 0, 0.005, -0.096);
+  const gem = new THREE.OctahedronGeometry(0.0115, 0); gem.scale(1, 1, 0.75); put(g, gem, M('metal', 0xb01020), 0, 0.005, -0.104);
+} };
+
+// 진저브레드 팬: 머리 = 납작하게 누운 진저브레드 맨 쿠키(머리 +z · 팔 ±x · 다리는 손잡이 쪽) · 하얀 아이싱 테두리·눈·웃는 입 · 젤리 단추 · 빨강·흰 사탕 막대 손잡이
+MSHAPE.ginger = { melee: 'pan', tip: 0.43, build(g, K, S) {
+  const { put, M, CY, SPH, slab, tubeAlong } = K;
+  const ck = M('wood', 0x9a5a2a), ic = M('polymer', 0xf6f2ea), y0 = 0.004, top = y0 + 0.012;
+  const arc = (cx, cz, r, a0, a1, n) => { const o = []; for (let i = 0; i <= n; i++) { const a = (a0 + (a1 - a0) * i / n) * Math.PI / 180; o.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]); } return o; };   // 원호 점 (도 단위, n 조각)
+  // 쿠키 윤곽 오른쪽 절반(머리 꼭대기 → 가랑이): 머리 원(0, 0.372 · r 0.058) · 손 원(0.106, 0.281 · 0.028) · 발 원(0.064, 0.147 · 0.03) → 좌우 대칭 전체
+  const RH = [].concat(arc(0, 0.372, 0.058, 90, -40, 6), [[0.03, 0.318], [0.046, 0.311]], arc(0.106, 0.281, 0.028, 90, -90, 4), [[0.05, 0.252], [0.056, 0.205]], arc(0.064, 0.147, 0.03, 30, -150, 4), [[0.022, 0.172], [0, 0.19]]);
+  const P = RH.concat(RH.slice(1, -1).reverse().map(([x, z]) => [-x, z]));
+  put(g, slab(P, 0.024, 0.003), ck, 0, y0, 0);   // 쿠키 (두께 0.024 · 둥글린 가장자리)
+  // 아이싱 테두리: 윤곽을 0.009 안으로 줄인 길(꼭짓점마다 양 옆 변의 안쪽 법선 평균 방향 — 마이터)을 따라 윗면에 얹은 관
+  const n = P.length; let ar = 0; for (let i = 0; i < n; i++) { const p = P[i], q = P[(i + 1) % n]; ar += p[0] * q[1] - q[0] * p[1]; }
+  const sg = ar > 0 ? 1 : -1, nv = (a, b) => { const ex = b[0] - a[0], ez = b[1] - a[1], l = Math.hypot(ex, ez) || 1; return [-ez / l * sg, ex / l * sg]; };
+  const ice = P.map((p, i) => {
+    const n1 = nv(P[(i + n - 1) % n], p), n2 = nv(p, P[(i + 1) % n]); let mx = n1[0] + n2[0], mz = n1[1] + n2[1]; const ml = Math.hypot(mx, mz) || 1; mx /= ml; mz /= ml;
+    const k = 0.009 / Math.max(0.35, mx * n1[0] + mz * n1[1]); return [p[0] + mx * k, top + 0.0004, p[1] + mz * k];
+  });
+  put(g, tubeAlong(ice, 0.0035, 56, 4, true), ic);
+  // 눈 · 웃는 입 (입 양 끝은 쿠키 속으로 파고들어 관 끝이 안 보인다)
+  for (const x of [-0.019, 0.019]) { const e = SPH(0.0062, 6, 3); e.scale(1, 0.55, 1); put(g, e, ic, x, top + 0.0005, 0.385); }
+  put(g, tubeAlong([[-0.026, top - 0.004, 0.362], [-0.022, top + 0.0004, 0.358], [-0.012, top + 0.0004, 0.3495], [0, top + 0.0004, 0.3468], [0.012, top + 0.0004, 0.3495], [0.022, top + 0.0004, 0.358], [0.026, top - 0.004, 0.362]], 0.0028, 8, 4), ic);
+  // 젤리 단추 3개 (빨강·초록·빨강 반구, 밑은 쿠키에 살짝 묻힘)
+  [[0.291, 0xd8202a], [0.257, 0x2aa040], [0.223, 0xd8202a]].forEach(([z, col]) => { const d = SPH(0.0105, 6, 3, 0, Math.PI / 2); d.scale(1, 0.9, 1); put(g, d, M('polymer', col), 0, top - 0.0008, z); });
+  // 손잡이: 빨강·흰 마디 7개 사탕 막대(z -0.085 ~ 0.205, 가랑이 사이로 쿠키 속까지) + 뒤 끝 둥근 마개
+  const red = M('polymer', 0xd8202a), wh = M('polymer', 0xf4f0ea), L = 0.0414;
+  for (let i = 0; i < 7; i++) put(g, CY(0.0112, 0.0112, L, 8, 'z', true), i % 2 ? red : wh, 0, y0, -0.085 + L * (i + 0.5));
+  put(g, CY(0.0112, 0.0075, 0.007, 8, 'z'), red, 0, y0, -0.0885);
+} };
+
 // ---------- 05_models_veh.js ----------
 // ============================================================
 // 05_models_veh.js — 차량 3D 모델 (말·오토바이·UAZ·세단·픽업트럭)
@@ -20037,8 +20683,9 @@ const FX = (() => {
     if (G.muzzleLight) { G.muzzleLight.position.set(x, y + 0.5, z); G.muzzleLight.intensity = 14 * k; }
   }
   // 휘두르기 자국 (v22 근접 무기): 날 끝·뿌리의 최근 위치로 만든 띠 — 가산 혼합, 오래된 쪽일수록 어둡게(= 투명) · sc: 그릴 장면(1인칭은 뷰모델 장면)
-  const TRN = 10;
-  function trail(key, sc, tip, base) {
+  //  color: v23 근접 무기 스킨(네온·얼음)은 날 빛 색 자국 (없으면 흰빛)
+  const TRN = 10, TR_WHITE = [1, 0.97, 0.92];
+  function trail(key, sc, tip, base, color) {
     let tr = trails.find((o) => o.key === key);
     if (!tr) {
       if (trails.length > 6) { const o = trails.shift(); if (o.m.parent) o.m.parent.remove(o.m); }
@@ -20050,14 +20697,15 @@ const FX = (() => {
     }
     if (tr.m.parent !== sc) sc.add(tr.m);
     tr.pts.unshift([tip.x, tip.y, tip.z, base.x, base.y, base.z, G.time]); if (tr.pts.length > TRN) tr.pts.length = TRN;
+    tr.col = color !== undefined && color !== null ? [((color >> 16) & 255) / 255 * 1.25, ((color >> 8) & 255) / 255 * 1.25, (color & 255) / 255 * 1.25] : TR_WHITE;
     tr.idle = 0; tr.m.visible = true; drawTrail(tr);
   }
   function drawTrail(tr) {
-    const P = tr.m.geometry.attributes.position, C = tr.m.geometry.attributes.color, n = tr.pts.length;
+    const P = tr.m.geometry.attributes.position, C = tr.m.geometry.attributes.color, n = tr.pts.length, cl = tr.col || TR_WHITE;
     for (let i = 0; i < TRN; i++) {
       const q = tr.pts[Math.min(i, n - 1)], age = G.time - q[6], k = i < n ? clamp(1 - age / 0.14, 0, 1) * (1 - i / TRN) : 0;
       P.setXYZ(i * 2, q[0], q[1], q[2]); P.setXYZ(i * 2 + 1, q[3] * 0.4 + q[0] * 0.6, q[4] * 0.4 + q[1] * 0.6, q[5] * 0.4 + q[2] * 0.6);
-      const w = 0.55 * k; C.setXYZ(i * 2, w, w * 0.97, w * 0.92); C.setXYZ(i * 2 + 1, 0, 0, 0);
+      const w = 0.55 * k; C.setXYZ(i * 2, w * cl[0], w * cl[1], w * cl[2]); C.setXYZ(i * 2 + 1, 0, 0, 0);
     }
     P.needsUpdate = true; C.needsUpdate = true;
   }
@@ -21387,6 +22035,8 @@ const BotSkin = (() => {
     // v23 헬멧·가방 스킨: 위의 뽑기 순서 뒤에 붙여 기존 스킨 결과는 그대로 · 희귀 이상만 · 난이도가 높을수록 자주
     const gp = [0.2, 0.35, 0.5, 0.65][KEYS.indexOf(dk)] || 0.3, gearPick = (sl) => (R() < gp ? pickRar(R, (OUT[sl] || []).filter((x) => x.rar >= 1), rarPick(R, dk), null) : null);
     eq.helmet = gearPick('helmet'); eq.pack = gearPick('pack');
+    // v23 근접 무기 스킨(모양이 바뀜): 다시 그 뒤에 붙여 위의 결과는 그대로
+    for (const sl of ['m_knife', 'm_machete', 'm_pan', 'm_crowbar']) eq[sl] = gearPick(sl);
     return { look: Body.makeLook(eq, o.body), gun, veh };
   }
   // 난이도 하나 고르기 (하드코어 = 전원 익스트림, 랭크전 = 내 티어 비율, 아니면 설정. '섞어서'는 쉬움·보통·보통·어려움)
@@ -23393,12 +24043,13 @@ function vmArms() {
   VM.root.add(root); VM.armsKey = key;
   return VM.arms;
 }
-// 1인칭 손에 든 물건
-function vmHeld(Ar, id) {
-  if (Ar.itemId === id) return; Ar.itemId = id;
+// 1인칭 손에 든 물건 (skin: v23 근접 무기 스킨 — 모양이 바뀜)
+function vmHeld(Ar, id, skin) {
+  const key = id && skin ? id + '~' + skin : id;
+  if (Ar.itemId === key) return; Ar.itemId = key;
   while (Ar.hold.children.length) Ar.hold.remove(Ar.hold.children[0]);
   if (!id) return;
-  const o = heldModel(id), P = HOLD_POSE[id] || [0, 0, 0, 0, 0, 0, 1];
+  const o = heldModel(id, skin), P = HOLD_POSE[id] || [0, 0, 0, 0, 0, 0, 1];
   o.position.set(-Ar.side * P[0], P[1], P[2]); o.rotation.set(P[3], P[4], P[5]); o.scale.setScalar(P[6] / VM_SC);
   o.traverse((m) => { if (m.isMesh) m.castShadow = false; }); Ar.hold.add(o);
 }
@@ -23538,7 +24189,8 @@ function updateMeleeVM(dt, p) {
   _mvP.set(_mv9[0] + Math.sin(p.anim.phase) * 0.012 * bobAmp + S.run * 0.05, _mv9[1] - Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp - eq * 0.36 - S.run * 0.14, -_mv9[2]);
   _mvB.set(_mv9[3], _mv9[4] - S.run * 0.55, -_mv9[5]); _mvE.set(_mv9[6], _mv9[7], -_mv9[8]);
   bladeQuat(_mvQ, _mvB, _mvE);
-  vmHeld(A.R, id); pickHeld(A.L, p);
+  const msk = MeleeSkin.ofChar(p, id);   // v23 근접 무기 스킨 (모양이 바뀜)
+  vmHeld(A.R, id, msk); pickHeld(A.L, p);
   vmReach(A.R, _mvP, _mvQ, _vpole.set(0.6, -0.7, 0.15), FING.fist); setFist(A.R);
   const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0, pull = sw ? Math.sin(Math.PI * clamp((u - 0.2) / 0.55, 0, 1)) : 0;
   _fvP.set(-0.17 - pull * 0.09, -0.31 - pull * 0.1 - eq * 0.2 - S.run * 0.1, -0.42 + pull * 0.1);
@@ -23547,8 +24199,8 @@ function updateMeleeVM(dt, p) {
   vmReach(A.L, _fvP, _fvQ, _vpole.set(-0.5, -0.8, 0.1), pw > 0 ? pickBlend(A.L, _fvP, _fvQ, FING.fist, pw) : FING.fist); if (pw < 0.05) setFist(A.L);
   if (sw && sw.t > D.wind * 0.85 && sw.t < D.wind + D.strike * 1.4) {
     A.R.hold.updateWorldMatrix(true, false);
-    _mvT.set(0, 0, MEL_TIP[id] || 0.3).applyMatrix4(A.R.hold.matrixWorld); _mvT2.set(0, 0, 0.1).applyMatrix4(A.R.hold.matrixWorld);
-    FX.trail('vm', VM.scene, _mvT, _mvT2);
+    _mvT.set(0, 0, MeleeSkin.tip(id, msk)).applyMatrix4(A.R.hold.matrixWorld); _mvT2.set(0, 0, 0.1).applyMatrix4(A.R.hold.matrixWorld);
+    FX.trail('vm', VM.scene, _mvT, _mvT2, MeleeSkin.trail(id, msk));
   }
   if (G.sunDir) { _q.copy(G.camera.quaternion).invert(); VM.dir.position.copy(G.sunDir).applyQuaternion(_q).multiplyScalar(5); }
 }
@@ -24257,6 +24909,15 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-23', t: '근접 무기 스킨 18종 — 색이 아니라 모양이 바뀜', items: [
+    '근접 무기 스킨: 색만 바뀌는 게 아니라 무기 모양 자체가 바뀜 (휘두르는 동작·피해·거리는 원래 무기 그대로)',
+    '식칼: 사냥칼 · 전투 대검(등 톱니) · 나비 나이프(무지갯빛 두 갈래 손잡이) · 카람빗(갈고리 날 · 손가락 고리) · 고드름 단검(빛나는 얼음 결정 날)',
+    '마체테: 쿠크리(앞으로 꺾인 날) · 톱날 정글도(손 감싸는 고리) · 네온 블레이드(빛나는 날끝·회로 선) · 서리 결정 검(빛나는 얼음 조각 칼날)',
+    '프라이팬: 무쇠 스킬렛 · 웍 · 와플 팬 · 황금 프라이팬(덩굴무늬·보석) · 진저브레드 팬(쿠키 사람 모양 · 아이싱)',
+    '쇠지렛대: 소방 도끼 · 대형 렌치 · 전쟁 망치 · 사탕 지팡이(빨강·흰 줄무늬 · 초록 리본)',
+    '크리스마스·배틀로얄·스페셜·보급 상자에서 나옴 · 창고 「근접 무기」 탭에서 무기별로 장착 (받침대에 돌아가는 모습으로 미리 보기)',
+    '장착한 모양은 손에 들 때(1인칭·3인칭) · 허리에 찰 때 · 무기 칸 그림 · 휘두르는 자국 길이까지 적용 · 파티원과 봇도 자기 스킨 모양으로 보임 · 바닥에 떨어진 무기는 기본 모양',
+  ] },
   { v: 'v23', d: '2026-11-21', t: '개발자 전용 파티 입장 연출 — 로비가 편집기가 된다 · 개발자·부개발자는 모든 테두리·칭호·입장 연출 보유', items: [
     '개발자 전용 입장 연출 (개발자·부개발자 계정): 바닥에 청사진 눈금이 깔리고, 마우스 커서가 모델을 끌어다 놓으면 T 자세의 철사 모델이 선택 상자·이동 축과 함께 나타남 → 커서가 훑는 틀을 끌어 올리면 아래부터 텍스처가 입혀지고 조끼·가방·헬멧이 차례로 달림 → 커서가 ▶ 를 누르는 순간 뚝뚝 끊기며 깨어나 자기 두 손을 내려다봄 → 허공의 자판으로 명령을 치고 실행 키를 내리찍으면 캐릭터 양옆에 < /> 가 서고 코드 글자가 터져 나옴 → 팔짱 끼고 끄덕',
     '퇴장: 검지 경례 → 커서가 ■ 를 누르면 T 자세로 굳고, 틀이 내려오며 텍스처가 벗겨져 철사 모델로 → 커서가 집어 조그맣게 줄여 끌고 나감 → 빈자리에 글자 커서만 깜빡',
@@ -25665,6 +26326,7 @@ const DM = (() => {
     });
     for (const c of CHARS) if (!c.net || c.net.mine) spawn(c, true);
     G.total = CHARS.length;
+    try { MeleeSkin.warm(CHARS, G.player); } catch (e) { console.warn(e); }   // v23 근접 무기 스킨 모양·내 무기 칸 그림 미리
     G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
     HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
     document.body.classList.add('dm'); $('quitBtn').textContent = '경기 나가기 (로비로)';
@@ -25987,12 +26649,12 @@ const GOLD_NAME = '골드 탄피', COIN_NAME = '차량 교환 코인', GCOIN_NAM
 // 상점 진열 순서 = 이 순서 (총기 상자 → 옷 상자 → 차량)
 const BOXES = {
   // v20 크리스마스: 겨울 테마 옷·총기·차량 스킨 + EXCLUSIVE (확률은 XMAS_P)
-  xmas: { name: '크리스마스 상자', theme: '겨울 테마 옷·총기·차량 스킨', cost: 300, accent: '#e8384a', hex: 0xc8202e, isNew: true, xmas: true },
+  xmas: { name: '크리스마스 상자', theme: '겨울 테마 옷·헬멧·가방·근접 무기·총기·차량 스킨', cost: 300, accent: '#e8384a', hex: 0xc8202e, isNew: true, xmas: true },
   g1: { name: '아스널 상자', theme: '전술 테마 총기 스킨', cost: 200, accent: '#d9a441', hex: 0x8a6a2a, gun: true, isNew: true },
   g2: { name: '네온 상자', theme: '사이버 테마 총기 스킨', cost: 200, accent: '#ff3d9a', hex: 0xd0307a, gun: true, isNew: true },
-  br: { name: '배틀로얄 상자', theme: '전장 테마 옷', cost: 100, accent: '#9db35e', hex: 0x6f8a3a },
-  sp: { name: '스페셜 상자', theme: '스트리트 테마 옷', cost: 100, accent: '#ff6fb0', hex: 0xd0457f },
-  sup: { name: '보급 상자', theme: '엘리트 테마 옷', cost: 100, accent: '#f0a43a', hex: 0xd07a1e },
+  br: { name: '배틀로얄 상자', theme: '전장 테마 옷·헬멧·가방·근접 무기', cost: 100, accent: '#9db35e', hex: 0x6f8a3a },
+  sp: { name: '스페셜 상자', theme: '스트리트 테마 옷·헬멧·가방·근접 무기', cost: 100, accent: '#ff6fb0', hex: 0xd0457f },
+  sup: { name: '보급 상자', theme: '엘리트 테마 옷·헬멧·가방·근접 무기', cost: 100, accent: '#f0a43a', hex: 0xd07a1e },
   eps: { name: '엡실론 금고', theme: 'EPSILON 총기 스킨 9종 · 엡실론 차량 4종 · 울트라레어 이하 총기 스킨', cost: 600, accent: '#c084fc', hex: 0x7a3cff, gun: true, isNew: true, eps: true },
   veh: { name: '차량 뽑기', theme: '교환 코인 · 차량 스킨', cost: 200, accent: '#46c8ff', hex: 0x2a8ac0 },
 };
@@ -27098,7 +27760,7 @@ const HUD = (() => {
     // v22 근접 무기 칸 (보조무기 왼쪽): 누르면 총을 넣고 근접 무기를 든다
     if (inv.melee) {
       const cur = inv.cur < 0, mb = h('button', 'ws-slot melee' + (cur ? ' cur' : '')); mb.type = 'button';
-      const im = h('img', 'ws-sil'); im.alt = ''; im.draggable = false; iconInto(im, inv.melee); mb.appendChild(im);
+      const im = h('img', 'ws-sil'); im.alt = ''; im.draggable = false; { const ms = meleeSkinSrc(p, inv.melee); if (ms) im.src = ms; else iconInto(im, inv.melee); } mb.appendChild(im);
       mb.appendChild(h('span', 'ws-n', '4')); mb.setAttribute('aria-label', ITEMS[inv.melee].name + (cur ? ' (든 무기)' : ' 들기'));
       mb.addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); try { Audio.init(); } catch (e) { /* 소리 없이도 */ } mb.classList.add('down'); setTimeout(() => mb.classList.remove('down'), 140); Input.press('w4'); });
       Touch.dragLook(mb); sec.appendChild(mb);
@@ -27138,6 +27800,10 @@ const HUD = (() => {
   }
   // 아이콘을 img 에 넣는다 — 경기 중 처음 보는 부착물 조합은 잠시 기본 아이콘을 보여 주다가 다 그려지면 바꾼다 (05_models.js)
   function iconInto(im, id, att) { const src = Models.icon(id, att, (u) => { if (u) im.src = u; }); if (src) im.src = src; }
+  // v23 근접 무기 스킨: 내 무기 칸 그림도 그 모양으로 (스킨이 없거나 아직 그림이 없으면 기본 아이콘)
+  //  그림은 경기 시작 때 MeleeSkin.warm 이 미리 그려 둔 것만 씀 — 경기 중에 그 자리에서 그리면 화면이 멈춤
+  const meleeSkinSrc = (p, id) => { const sk = id && p ? MeleeSkin.ofChar(p, id) : null; return sk ? Shop.meleeThumbCached(id, sk) : null; };
+  const meleeIco = (p, id, cls) => { const u = meleeSkinSrc(p, id); if (!u) return ico(id, null, cls); const w = h('span', cls), im = h('img'); im.alt = ''; im.draggable = false; im.src = u; w.appendChild(im); return w; };
   function update(dt) {
     const p = G.player; if (!p) return;
     const spec = !p.alive && G.spec && G.spec.alive && !G.over;
@@ -27191,7 +27857,7 @@ const HUD = (() => {
       });
       // v22 근접 무기 줄 (4)
       if (inv.melee) {
-        const e = h('div', 'wslot melee' + (inv.cur < 0 ? ' cur' : '')); e.appendChild(ico(inv.melee, null, 'ico wide wi'));
+        const e = h('div', 'wslot melee' + (inv.cur < 0 ? ' cur' : '')); e.appendChild(meleeIco(p, inv.melee, 'ico wide wi'));
         e.appendChild(h('span', 'wn', `4  ${ITEMS[inv.melee].name}`)); e.appendChild(h('span', 'wm', '근접'));
         if (inv.cur >= 0) e.title = '눌러서 들기 (4)'; e.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); if (inv.cur >= 0) Input.press('w4'); });
         wp.appendChild(e);
@@ -27561,7 +28227,7 @@ const HUD = (() => {
     const ma = h('div', 'acts'); ma.style.display = 'flex'; ma.style.gap = '4px';
     if (inv.cur >= 0) ma.appendChild(btn('들기', () => drawMelee(p, true)));
     ma.appendChild(btn('버리기', () => dropFromInventory(p, G.scene, { melee: true })));
-    mt.appendChild(ma); mc.appendChild(mt); mc.appendChild(ico(inv.melee, null, 'ico wide big'));
+    mt.appendChild(ma); mc.appendChild(mt); mc.appendChild(meleeIco(p, inv.melee, 'ico wide big'));
     mc.appendChild(h('div', 'micro', `근접 무기 · 피해 ${md.dmg} (머리 1.5배) · 거리 ${md.reach}m · ${{ stab: '찌르기', slash: '베기 (이어 휘두르면 되베기)', bash: '크게 휘두르기', chop: '내려찍기' }[md.style]} · 하나만 들 수 있음`));
     wb.appendChild(mc);
   }
@@ -27734,32 +28400,37 @@ const HUD = (() => {
     helmet: (c, k) => `<path d="M4 15.5c0-6 3.6-10 8.4-10S20.6 9.5 20.6 15.5z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M3.4 15.5h17.8v2H3.4z" fill="${k || '#333'}"/><path d="M8 18.8 6.5 22M16.6 18.8l1.5 3.2" stroke="${k || '#333'}" stroke-width="1.2"/>`,
     pack: (c, k) => `<path d="M6.5 7.5c0-2.6 2.4-4.5 5.5-4.5s5.5 1.9 5.5 4.5V20a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20z" fill="${c}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/><path d="M8.5 13.5h7v5.5h-7z" fill="${k || 'rgba(0,0,0,.25)'}"/><path d="M9.5 5.5h5" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>`,
   };
+  // v23 근접 무기 4칸 (창고·상점은 3D 썸네일을 쓰고, 이것은 그림이 없을 때 대신 — 칼 실루엣)
+  for (const sl of ['m_knife', 'm_machete', 'm_pan', 'm_crowbar']) SKIN_ICON[sl] = (c) => `<path d="M4 20l3-3 2 2-3 3zM8.5 15.5 18 4.5c1-1 2.5-.5 2 1L10.5 17.5z" fill="${c && c[0] === '#' ? c : '#c9cdd1'}" stroke="rgba(0,0,0,.45)" stroke-width="0.8"/>`;
   function ownedSkins() { return Eco.ownedSkins(); }
   function equipSkin(slot, id) {
     const eq = Body.normEquip(SETTINGS.look); eq[slot] = id; SETTINGS.look = eq; saveSettings();
-    Lobby.setLook(SETTINGS.look); renderWarehouse(); Audio.init(); Audio.ui();
+    Lobby.setLook(SETTINGS.look); renderWarehouse(); showcase(); Audio.init(); Audio.ui();   // 근접 무기 진열대도 바로 새 모양으로
   }
   // 무늬 옷은 SVG 패턴(index.html의 pt-*)으로 칠한다
   const skinFill = (S) => (S.ico ? `url(#${S.ico})` : hexs(S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888)));
-  let whVeh = 'sedan', whGun = null, whLv = 3;   // whLv: 헬멧·가방 탭에서 미리 볼 레벨 (v23)
+  let whVeh = 'sedan', whGun = null, whLv = 3, whMel = 'm_knife';   // whLv: 헬멧·가방 탭에서 미리 볼 레벨 · whMel: 근접 무기 탭에서 고른 무기 (v23)
   function renderWarehouse() {
     const eq = Body.normEquip(SETTINGS.look), own = ownedSkins(), cats = $('whCats'), grid = $('whGrid');
     if (!cats || !grid) return;
     cats.innerHTML = ''; grid.innerHTML = '';
-    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.map((s) => [s.id, s.name]), [['gun', '총기'], ['veh', '차량']])) {
+    // 근접 무기 4칸은 '근접 무기' 탭 하나로 묶음 (안에서 무기별 작은 탭)
+    for (const [k, n] of [['all', '전체']].concat(Body.SLOTS.filter((s) => !s.melee).map((s) => [s.id, s.name]), [['melee', '근접 무기'], ['gun', '총기'], ['veh', '차량']])) {
       const b = h('button', whCat === k ? 'on' : '', n); b.type = 'button';
       b.addEventListener('click', () => { whCat = k; renderWarehouse(); Audio.init(); Audio.ui(); showcase(); }); cats.appendChild(b);
     }
     const card = (slot, id) => {
       const S = id ? Body.SKINS[id] : null, on = (eq[slot.id] || null) === (id || null), R = S ? rarOf(S.rar || 0) : null;
-      const b = h('button', 'wh-item' + (on ? ' on' : '') + (S && S.rar ? ' rar' : '')); b.type = 'button';
+      const b = h('button', 'wh-item' + (slot.melee ? ' mel' : '') + (on ? ' on' : '') + (S && S.rar ? ' rar' : '')); b.type = 'button';
       if (R) b.style.setProperty('--rc', R.color);
       const ico = h('i', 'wh-ico');
-      // v23 헬멧·가방: 그 레벨 모양의 3D 썸네일 · '없음' 대신 기본 모습
+      // v23 헬멧·가방: 그 레벨 모양의 3D 썸네일 · 근접 무기: 그 모양의 옆모습 썸네일 · '없음' 대신 기본 모습
+      const base = slot.gear || slot.melee;
       if (slot.gear) ico.appendChild(Shop.gearImgEl(slot.id, id, whLv));
+      else if (slot.melee) ico.appendChild(Shop.meleeImgEl(slot.melee, id));
       else ico.innerHTML = `<svg viewBox="0 0 24 24">${S ? SKIN_ICON[slot.id](skinFill(S), S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null) : SKIN_ICON.none()}</svg>`;
-      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : slot.gear ? '기본 ' + slot.name : slot.name + ' 없음')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + slot.name + ' · ' + (on ? '장착 중' : S || slot.gear ? '장착하기' : '벗기')));
-      b.title = S ? `${S.name} — ${S.desc || ''}` + (slot.gear ? ' (경기에서 주운 모든 레벨의 ' + slot.name + '에 적용)' : '') : slot.gear ? `기본 ${slot.name} 모습` : `${slot.name} 벗기`;
+      b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : base ? '기본 ' + slot.name : slot.name + ' 없음')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + slot.name + ' · ' + (on ? '장착 중' : S || base ? '장착하기' : '벗기')));
+      b.title = S ? `${S.name} — ${S.desc || ''}` + (slot.gear ? ' (경기에서 주운 모든 레벨의 ' + slot.name + '에 적용)' : slot.melee ? ` (경기에서 ${slot.name}을 들면 이 모양 · 피해·거리는 같음)` : '') : base ? `기본 ${slot.name} 모습` : `${slot.name} 벗기`;
       b.addEventListener('click', () => { if (!on) equipSkin(slot.id, id || null); });
       return b;
     };
@@ -27807,7 +28478,18 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       const ids = Object.keys(VSKINS).filter((k) => VSKINS[k].veh === whVeh && Eco.ownsVeh(k));
       for (const id of ids) grid.appendChild(vcard(id));
       if (!ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${VEH_SKIN_TYPES[whVeh]} 스킨이 없습니다. 상점의 차량 뽑기나 교환소에서 얻을 수 있습니다.`));
+    } else if (whCat === 'melee') {
+      // v23 근접 무기: 무기별 작은 탭 → '기본' + 가진 스킨 (모양이 바뀜). 장착하면 경기에서 그 무기를 들 때·허리에 찰 때 그 모양
+      const MS = Body.SLOTS.filter((s) => s.melee), tabs = h('div', 'wh-vtabs');
+      if (!MS.some((s) => s.id === whMel)) whMel = MS[0].id;
+      for (const s of MS) { const cnt = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === s.id && own.has(k)).length, b = h('button', whMel === s.id ? 'on' : '', s.name + (cnt ? ` ${cnt}` : '')); b.type = 'button'; b.addEventListener('click', () => { whMel = s.id; renderWarehouse(); showcase(); Audio.init(); Audio.ui(); }); tabs.appendChild(b); }
+      grid.appendChild(tabs);
+      const slot = MS.find((s) => s.id === whMel), ids = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === slot.id && own.has(k)).sort((a, b) => (Body.SKINS[b].rar || 0) - (Body.SKINS[a].rar || 0));
+      grid.appendChild(card(slot, null));
+      for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
+      if (!ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자(크리스마스·배틀로얄·스페셜·보급)에서 얻을 수 있습니다.`));
     } else for (const slot of Body.SLOTS) {
+      if (slot.melee) continue;   // 근접 무기는 자기 탭에서만
       if (whCat !== 'all' && whCat !== slot.id) continue;
       const ids = Object.keys(Body.SKINS).filter((k) => Body.SKINS[k].slot === slot.id && own.has(k)).sort((a, b) => (Body.SKINS[b].rar || 0) - (Body.SKINS[a].rar || 0));
       // v23 헬멧·가방 탭: 1·2·3 레벨 중 무엇으로 미리 볼지 (로비 캐릭터도 그 레벨을 씀)
@@ -27820,8 +28502,8 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       for (const id of ids) { grid.appendChild(card(slot, id)); n++; }
       if (whCat === slot.id && !ids.length) grid.appendChild(h('div', 'wh-empty', `아직 가진 ${slot.name} 스킨이 없습니다. 상점의 상자(크리스마스·배틀로얄·스페셜·보급)에서 얻을 수 있습니다.`));
     }
-    const gearN = [...own].filter((k) => Body.SKINS[k] && (Body.SKINS[k].slot === 'helmet' || Body.SKINS[k].slot === 'pack')).length;
-    $('whCount').textContent = `옷 ${own.size - gearN}벌 · 헬멧·가방 스킨 ${gearN}종 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${Eco.gskinsOwned().length}종`;
+    const gearN = [...own].filter((k) => Body.SKINS[k] && (Body.SKINS[k].slot === 'helmet' || Body.SKINS[k].slot === 'pack')).length, melN = [...own].filter((k) => Body.SKINS[k] && /^m_/.test(Body.SKINS[k].slot)).length;
+    $('whCount').textContent = `옷 ${own.size - gearN - melN}벌 · 헬멧·가방 스킨 ${gearN}종 · 근접 무기 스킨 ${melN}종 · 차량 스킨 ${(STATS.vskins || []).length}종 · 총기 스킨 ${Eco.gskinsOwned().length}종`;
   }
   // 창고 3D: 차량 분류면 장착한(없으면 기본) 차량을, 아니면 캐릭터
   function showcase() {
@@ -27829,6 +28511,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     if (lobbyTab !== 'custom') return;
     if (whCat === 'veh') { const vl = Eco.vlook(); Lobby.show({ kind: 'veh', type: whVeh, skin: vl[whVeh] }); }
     else if (whCat === 'gun') { const gun = whGun || Eco.showGun(); Lobby.show({ kind: 'gun', gun, skin: Eco.glook()[gun] || null }); }
+    else if (whCat === 'melee') { const sl = Body.SLOTS.find((s) => s.id === whMel) || Body.SLOTS.find((s) => s.melee); Lobby.show({ kind: 'melee', melee: sl.melee, skin: Body.normEquip(SETTINGS.look)[sl.id] || null }); }   // v23 근접 무기 진열
     else Lobby.show(null);
   }
   // 로비 탭: 플레이 / 전적 / 창고 / 상점 / 미션
@@ -28152,7 +28835,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       if (R.tierUp && !R.placement && R.before && R.after) setTimeout(() => { if (G.state === 'result' && !$('resultPanel').hidden) RankFx.play(R.before, R.after, { series: !!R.series }); }, 650);
     }
   }
-  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
+  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { if (/^m_/.test(cat || '')) { whMel = cat; cat = 'melee'; } whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); else if (cat === 'melee' && skin) Lobby.show({ kind: 'melee', melee: whMel.slice(2), skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();
 
 // ---------- 10_mm.js ----------
@@ -33043,14 +33726,24 @@ const Shop = (() => {
   const gearSrc = (slot, id, lv = 3) => queued(grKey(slot, id, lv), () => thumb(grKey(slot, id, lv), () => Gear.thumb(slot, lv, id), 200, 200, slot === 'pack' ? [-0.7, 0.32, -1] : [0.75, 0.38, 1]));
   const gearImg = (slot, id, lv = 3) => `<img data-th="${grKey(slot, id, lv)}" src="${gearSrc(slot, id, lv)}" alt="">`;
   function gearImgEl(slot, id, lv = 3) { const im = document.createElement('img'); im.dataset.th = grKey(slot, id, lv); im.src = gearSrc(slot, id, lv); im.alt = ''; return im; }
+  // v23 근접 무기 스킨 썸네일 (모양이 바뀌므로 옆모습 그림 · id 없으면 기본 무기) — 목록은 대기열, 경기 중 내 무기 칸은 바로(meleeThumb)
+  const msKey = (melee, id) => 'ms:' + melee + ':' + (id || '');
+  const meleeThumb = (melee, id) => thumb(msKey(melee, id), () => MeleeSkin.model(melee, id || null), 240, 120, [-1, 0.3, 0.08]);
+  const meleeThumbCached = (melee, id) => THUMB[msKey(melee, id)] || null;   // 경기 중: 미리 그려 둔 것만 (없으면 null → 기본 아이콘)
+  const meleeSrc = (melee, id) => queued(msKey(melee, id), () => meleeThumb(melee, id));
+  const meleeImg = (melee, id) => `<img data-th="${msKey(melee, id)}" src="${meleeSrc(melee, id)}" alt="">`;
+  function meleeImgEl(melee, id) { const im = document.createElement('img'); im.dataset.th = msKey(melee, id); im.src = meleeSrc(melee, id); im.alt = ''; return im; }
+  const meleeOfSlot = (slot) => (/^m_/.test(slot || '') ? slot.slice(2) : null);
   function pump() { if (!TQ.length) return; const [k, make] = TQ.shift(), src = make() || BLANK; document.querySelectorAll(`img[data-th="${k}"]`).forEach((im) => { im.src = src; }); }
   // ---------- 아이콘 ----------
-  const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산', helmet: '헬멧 스킨 · 모든 레벨', pack: '가방 스킨 · 모든 레벨' };
+  const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산', helmet: '헬멧 스킨 · 모든 레벨', pack: '가방 스킨 · 모든 레벨',
+    m_knife: '식칼 스킨 · 모양이 바뀜', m_machete: '마체테 스킨 · 모양이 바뀜', m_pan: '프라이팬 스킨 · 모양이 바뀜', m_crowbar: '쇠지렛대 스킨 · 모양이 바뀜' };
   const hexs = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
   function skinFill(S) { if (S.ico) return `url(#${S.ico})`; const c = S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888); return hexs(c); }
   function skinSvg(id) {
     const S = Body.SKINS[id]; if (!S) return '';
     if (S.slot === 'helmet' || S.slot === 'pack') return gearImg(S.slot, id);
+    if (meleeOfSlot(S.slot)) return meleeImg(meleeOfSlot(S.slot), id);   // v23 근접 무기: 모양 그림
     const second = S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null;
     return `<svg viewBox="0 0 24 24">${HUD.skinIcon(S.slot, skinFill(S), second)}</svg>`;
   }
@@ -33061,6 +33754,7 @@ const Shop = (() => {
     if (o.k === 'gskin') return gunImg(GSKINS[o.id].gun, o.id);
     if (o.k === 'vskin') { const src = vehThumb(o.id); return src ? `<img src="${src}" alt="">` : coinIco(); }
     const S = Body.SKINS[o.id]; if (S && (S.slot === 'helmet' || S.slot === 'pack')) return gearImg(S.slot, o.id);   // v23 헬멧·가방: 3D 썸네일
+    if (S && meleeOfSlot(S.slot)) return meleeImg(meleeOfSlot(S.slot), o.id);   // v23 근접 무기: 모양 그림
     return skinSvg(o.id);
   }
   function itemName(o) {
@@ -33208,8 +33902,9 @@ const Shop = (() => {
     $('gresNote').innerHTML = (r.cost ? `사용 ${curHtml('gold', r.cost)} · ` : '') + (gotG ? `받은 ${GOLD_NAME} ${curHtml('gold', gotG)} · ` : '') + (gotC ? `받은 차량 코인 ${curHtml('coin', gotC)} · ` : '') + (gotGC ? `받은 총기 코인 ${curHtml('gcoin', gotGC)} · ` : '') + `남은 ${curHtml('gold', Eco.gold)} ${curHtml('coin', Eco.coin)} ${curHtml('gcoin', Eco.gcoin)}`;
     // 새로 얻은 것이 있으면 창고로: 총기 스킨이면 창고 → 총기(그 총)로 바로
     const nw = r.res.filter((o) => o.isNew && (o.k === 'skin' || o.k === 'vskin' || o.k === 'gskin')), ng = nw.find((o) => o.k === 'gskin');
-    whGo = ng && !nw.some((o) => o.k === 'skin') ? { cat: 'gun', gun: GSKINS[ng.id].gun, skin: ng.id } : nw.some((o) => o.k === 'vskin') && !nw.some((o) => o.k === 'skin') ? { cat: 'veh' } : null;
-    $('gresAgain').hidden = !lastPull; $('gresWh').hidden = !nw.length; $('gresWh').textContent = whGo && whGo.cat === 'gun' ? '창고에서 장착' : '창고에서 입기';
+    const ns = nw.filter((o) => o.k === 'skin'), nm = ns.filter((o) => meleeOfSlot(Body.SKINS[o.id].slot));   // v23 새로 얻은 옷이 모두 근접 무기 스킨이면 창고 → 근접 무기(그 무기)로
+    whGo = ng && !ns.length ? { cat: 'gun', gun: GSKINS[ng.id].gun, skin: ng.id } : nm.length && nm.length === ns.length && !ng ? { cat: Body.SKINS[nm[0].id].slot, skin: nm[0].id } : nw.some((o) => o.k === 'vskin') && !ns.length ? { cat: 'veh' } : null;
+    $('gresAgain').hidden = !lastPull; $('gresWh').hidden = !nw.length; $('gresWh').textContent = whGo && (whGo.cat === 'gun' || /^m_/.test(whGo.cat)) ? '창고에서 장착' : '창고에서 입기';
     P.hidden = false;
     if (r.best >= 3) Audio.gacha && Audio.gacha('show', r.best); else Audio.gacha && Audio.gacha('small', r.best);
   }
@@ -33222,7 +33917,8 @@ const Shop = (() => {
       const rows = P.filter((x) => x.rar === r); if (!rows.length) continue;
       const R = rarOf(r), sum = rows.reduce((a, x) => a + x.p, 0), sec = h('div', 'od-sec'); sec.style.setProperty('--rc', R.color);
       sec.appendChild(h('div', 'od-head', `<b>${R.name}</b><span>${sum.toFixed(2)}%</span>`));
-      for (const x of rows) { const row = h('div', 'od-row' + (x.k === 'gskin' ? ' gun' : '')); row.innerHTML = `<span class="od-ico">${itemIcon(x)}</span><span class="od-name">${esc(itemName(x))}<small>${esc(itemSub(x))}</small></span><span class="od-p">${x.p.toFixed(x.p < 1 ? 3 : 2)}%</span>`; sec.appendChild(row); }
+      // 근접 무기 스킨도 총처럼 넓은 그림 칸 (' gun')
+      for (const x of rows) { const row = h('div', 'od-row' + (x.k === 'gskin' || (x.k === 'skin' && Body.SKINS[x.id] && meleeOfSlot(Body.SKINS[x.id].slot)) ? ' gun' : '')); row.innerHTML = `<span class="od-ico">${itemIcon(x)}</span><span class="od-name">${esc(itemName(x))}<small>${esc(itemSub(x))}</small></span><span class="od-p">${x.p.toFixed(x.p < 1 ? 3 : 2)}%</span>`; sec.appendChild(row); }
       grid.appendChild(sec);
     }
     $('oddsPanel').hidden = false;
@@ -33317,7 +34013,7 @@ const Shop = (() => {
   }
   // 경기가 시작되면 상점 창·컷신을 닫는다 (파티 방장이 시작하는 경우 등)
   function closeAll() { if (Cutscene.active) Cutscene.skip(); for (const id of ['gachaRes', 'oddsPanel']) { const e = $(id); if (e) e.hidden = true; } armed = null; }
-  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, gunThumb, gunImgEl, gearImgEl, gearImg, pump, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, gcoinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh, gun: selGun, ex: exSub }; } };
+  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, gunThumb, gunImgEl, gearImgEl, gearImg, meleeThumb, meleeThumbCached, meleeImgEl, meleeImg, pump, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, gcoinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh, gun: selGun, ex: exSub }; } };
 })();
 
 // ============================================================
@@ -34621,6 +35317,7 @@ const Training = (() => {
     p.vlook = Eco.vlook(); p.glook = Eco.glook();   // 훈련장에서도 내 차량 스킨으로 시험 운전
     for (const t in p.vlook) { const id = p.vlook[t]; if (id && VehModels.has(id)) try { VehModels.instance(t, id); } catch (e) { console.warn(e); } }   // 스킨 모델 미리 만들기 (타는 순간 멈춤 방지)
     G.teams[0].members.push(p); CHARS.push(p); G.player = p; sc.add(p.root);
+    try { MeleeSkin.warm([p], p); } catch (e) { console.warn(e); }   // v23 근접 무기 스킨 모양·무기 칸 그림 미리
     setup(sc);
     respawnPlayer(p, true);
     G.total = 1;
@@ -35329,7 +36026,7 @@ const Victory = (() => {
   function pose(c, dt) {
     const r = c.rig, D = c.dance; D.t += dt;
     c.root.position.copy(c.pos); c.root.rotation.set(0, c.bodyYaw, 0);
-    resetPose(r); setHeld(c, null, null); setSheath(r, c.inv.melee || null);
+    resetPose(r); setHeld(c, null, null); setSheath(r, c.inv.melee || null, c.inv.melee ? MeleeSkin.ofChar(c, c.inv.melee) : null);
     (POSES[D.kind] || POSES.cheer)(r, D.t, Math.max(0, D.t) / BEAT, c.bodyYaw, c.pos.y);
   }
 
@@ -35420,7 +36117,8 @@ const Victory = (() => {
       g.position.copy(palm).sub(new THREE.Vector3(gp[0], gp[1], gp[2]).applyQuaternion(g.quaternion));
       r.root.add(g);
     } else if (info.melee) {
-      const m = Models.display(info.melee); m.position.copy(palm); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0.05, 1, 0.12).normalize()); r.root.add(m);
+      // v23 근접 무기 스킨 모양 그대로 (동상 재질로 칠해짐)
+      const m = MeleeSkin.model(info.melee, MeleeSkin.ofLook(info.look, info.melee)); m.position.copy(palm); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0.05, 1, 0.12).normalize()); r.root.add(m);
     }
   }
   // 동상 하나 세우기 (나·파티원 공통): x·z 자리, yaw = 동상이 바라볼 방향
@@ -36470,8 +37168,13 @@ const Lobby = {
       gun = buildGunMesh(spec.gun, {}, spec.skin || null); const bb = new THREE.Box3().setFromObject(gun), c = bb.getCenter(new THREE.Vector3());
       gun.position.sub(c); obj = new THREE.Group(); obj.add(gun); obj.scale.setScalar(2.4); size = Math.max(1.5, (bb.max.z - bb.min.z) * 2.6);
     }
+    else if (spec.kind === 'melee') {
+      // v23 근접 무기(스킨이면 그 모양): 총처럼 가운데를 축으로 돌도록 감싸 받침대 위에 띄움
+      const m = MeleeSkin.model(spec.melee, spec.skin || null), bb = new THREE.Box3().setFromObject(m), c = bb.getCenter(new THREE.Vector3());
+      m.position.sub(c); obj = new THREE.Group(); obj.add(m); obj.scale.setScalar(2.6); size = Math.max(1.5, Math.max(bb.max.z - bb.min.z, bb.max.y - bb.min.y) * 2.8);
+    }
     else { const VP = VehModels.instance(spec.type, spec.skin || null); obj = VP.root; size = spec.type === 'sedan' ? 5.5 : spec.type === 'uaz' ? 6.2 : spec.type === 'pickup' ? 7.0 : spec.type === 'moto' ? 2.4 : 2.9; if (VP.fx) { VehFx.attach(VP); obj.userData.efxP = VP; } }   // 엡실론 차량: 시동이 걸린 채 진열
-    obj.position.set(0, spec.kind === 'gun' ? 1.05 : 0.2, 0); obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    obj.position.set(0, spec.kind === 'gun' || spec.kind === 'melee' ? 1.05 : 0.2, 0); obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this.scene.add(obj); this.sc = { obj, size, t0: this.t, kind: spec.kind };
     if (gun && spec.skin) { GunSkin.draw(gun, 0.8, null); GunSkin.inspect(gun, null, 1.4, 5.5); }   // 테스터 스킨: 진열장에서 살펴보기 연출을 몇 초마다
   },
@@ -36755,6 +37458,7 @@ async function startMatch(cfg) {
     CHARS.push(b);
   }
   G.total = CHARS.length; Hunt.reset();   // v23 잠수 추적 (승급전 · 하드코어 — 07_bot_hunt.js)
+  try { MeleeSkin.warm(CHARS, G.player); } catch (e) { console.warn('근접 무기 스킨 미리 만들기 실패', e); }   // v23 이번 경기의 근접 무기 스킨 모양·내 무기 칸 그림을 미리 (주울 때 끊기지 않게)
   for (const c of CHARS) { c.root.visible = false; c.pos.copy(G.plane.pos); sc.add(c.root); c.yaw = Math.atan2(G.plane.dx, G.plane.dz); }
   G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
   HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();

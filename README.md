@@ -24,6 +24,8 @@ Three.js r128 기반, 서버 없이 브라우저에서 실행되는 싱글플레
 | 05_models_guns.js | 총기 12종 모델(M416·AUG·AKM·ASM Abakan·Mini14·SLR·M24·AWM·S686·S12K·M249·MG3), 급탄 덮개·꺾이는 총열·기울어진 탄창 등 |
 | 05_models_guns2.js | v16 총기 10종 모델(Beryl M762·M16A4·Vector·PP-19 Bizon·Tommy Gun·Kar98k·Win94·S1897·DP-28·Deagle): 예비 탄창(mag2)·클립(+탄 5발)·레버·접히는 장전손잡이·원판/드럼/나선 탄창 |
 | 05_models_gear.js | 헬멧·조끼·가방 3단계(착용·바닥·아이콘 공용), 사각(램에어) 낙하산과 조종줄 |
+| 05_models_mskin.js | **v23** 근접 무기 스킨(모양이 바뀜): 모양 등록표 `MSHAPE` · `MeleeSkin`(model·tip·trail·warm·ofChar) · 생성 도구(lathe·slab·rod·tubeAlong·glow) |
+| 05_models_mskin_knife/machete/pan/crowbar.js | **v23** 근접 무기 스킨 모양 18종 생성기 (무기별 파일, 손 좌표계) |
 | 05_models_veh.js | 차량 5종 모델(말·오토바이·UAZ·세단·픽업트럭). 종류별 지오메트리 1벌을 모든 차량이 공유, 옆모습 윤곽 돌출+바퀴 아치, 회전 바퀴·조향 축·오토바이 핸들 뭉치·말 다리 관절, 불탄 잔해 재질 |
 | 05_models_gskin.js | 총기 스킨 30종 목록(`GSKINS`)·무늬 텍스처(캔버스 생성)·스킨 재질(정점별 재질 종류 + 삼평면 무늬 + 빛 지도 셰이더)·울트라레어 효과(사격·꺼내기·넣기, 점 구름 입자) — `GunSkin` |
 | 05_models_gdeco.js | **v20** 테스터 총기 스킨의 각인·엠블럼·홀로그램: 육각 BETA 엠블럼과 고유 번호, 발광·금 각인·경고 띠 글자, 비스듬히 볼 때만 보이는 글자, 조준 장치 홀로그램, 조준경 금테, 살펴보기 홀로그램 창(모두 캔버스로 그림) |
@@ -1218,3 +1220,13 @@ Three.js r128 기반, 서버 없이 브라우저에서 실행되는 싱글플레
   - 게스트로는 계속 플레이할 수 있다 (계정 기록·온라인 기능만 막힘)
 - 서버에 새 SQL 이 없으면: 목록은 `admin_list` 로, 밴은 '서버 설정 필요' 안내 · 부개발자는 아직 일반 계정
 - 검증 (가짜 서버 · 숨은 창 · 개발자/부개발자/일반 계정 3개 iframe): 역할(dev·sub·없음) · 부개발자 패널(골드 칸·버튼 없음 · 개발자 줄 버튼 없음 · 모든 스킨) · 서버 거부(부개발자 골드 'devonly' · 개발자 대상 초기화·베타·아이디·밴 'admin' · 자기 밴 'self' · 0분 'amount' · 일반 계정 'denied') · 개발자는 부개발자 밴·해제 가능 · UI 로 2분 밴(사유) → 로비에 있던 계정이 바로 로그아웃 + 창 · 밴 중 로그인 거부 + 창 · 해제 뒤 로그인 · 경기 중 1일 밴 → 로비로 · 로그아웃 · 이어하기 저장 없음 · 접속 안 한 사이 밴 → 다시 열면 로그아웃 + 창(1시간 30분 · 사유) · 예약 아이디 · 옛 서버(새 함수 없음)에서 목록·안내 · 휴대폰 크기(915×412) 밴 줄·안내 창
+
+### 근접 무기 스킨 18종 — 모양이 바뀜 (2026-11-23 · `05_models_mskin*.js` · `04_skins.js` · `04_body.js`)
+- **표**: `Body.SKINS` 에 slot `m_knife`·`m_machete`·`m_pan`·`m_crowbar` (`Body.SLOTS` 에 `optional`·`melee: '<무기>'`), 항목의 `shape` = `MSHAPE` 열쇠. 상자는 옷처럼 `Eco.pool` 이 자동으로 (크리스마스·배틀로얄·스페셜·보급)
+- **모양**: `MSHAPE[id] = { melee, tip, build(g, K, S) }` — 무기별 파일(`05_models_mskin_<무기>.js`)이 등록. 기본 모델과 같은 손 좌표계(손잡이 가운데 = 원점, 날·머리 +z, 때리는 쪽 -y, 두께 x)라 `HOLD_POSE`·휘두르는 키프레임을 그대로 씀. 맞히는 거리·각(`ITEMS.reach/arc`)은 모양과 상관없음
+  - `K` = `Models.kit` + `put`(`glow(색)` 이면 정점 색 `MeshBasicMaterial`, 열쇠 `mskin:glow`) · `lathe`(회전체) · `slab`(x-z 평면 윤곽 + y 두께, 구멍) · `circlePts` · `rod`(두 점 사이 원통) · `tubeAlong` · `shade`
+  - 모양 18종 꼭짓점(합친 뒤) 1.6천~3.5천 (기본 식칼 1.1천 · 팬 2.6천)
+- **`MeleeSkin`**: `ofChar(c, 무기)` = `c.look['m_' + 무기]` 를 그 무기 스킨인지 확인해 돌려줌 → `model(무기, 스킨)`(없으면 `Models.display` · 만들다 실패하면 경고 한 번 + 기본 모델) · `tip`(자국 끝 거리, 없으면 `MEL_TIP`) · `trail`(네온·얼음 = 날 빛 색) · `warm(CHARS)`(경기 시작 때 이번 경기 스킨 모양을 미리)
+- **쓰는 곳**: 3인칭 손 `setHeld`(열쇠에 스킨) · 허리 `setSheath(r, id, skin)`(승리 동상도) · 1인칭 `vmHeld(Ar, id, skin)` · 휘두르기 자국(`FX.trail` 색 인자) · 내 무기 칸 그림(`Shop.meleeThumb` — 바로 그려 캐시) · 바닥 아이템·시체 상자는 기본 모양
+- **창고**: '근접 무기' 탭 하나(`whCat 'melee'`) 안에 무기별 작은 탭(`whMel`) → 기본 + 가진 스킨 카드(`.wh-item.mel`, 옆모습 썸네일 `Shop.meleeImgEl` 대기열) · 장착하면 받침대 진열(`Lobby.show({ kind: 'melee', melee, skin })`) · `HUD.whOpen('m_<무기>', null, 스킨)` · 뽑기 결과에 근접 무기 스킨만 새로 나오면 그 무기 탭으로
+- **동기화**: 장착 = `SETTINGS.look` 의 `m_*` → 파티원은 look 으로 그대로(`normEquip` 이 받는 쪽에서 검사) · 봇은 `BotSkin.forBot` 의 헬멧·가방 뒤에 무기별 뽑기(희귀 이상) — 같이 하기에서 다른 봇 스킨 결과는 그대로

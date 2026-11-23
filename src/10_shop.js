@@ -197,14 +197,24 @@ const Shop = (() => {
   const gearSrc = (slot, id, lv = 3) => queued(grKey(slot, id, lv), () => thumb(grKey(slot, id, lv), () => Gear.thumb(slot, lv, id), 200, 200, slot === 'pack' ? [-0.7, 0.32, -1] : [0.75, 0.38, 1]));
   const gearImg = (slot, id, lv = 3) => `<img data-th="${grKey(slot, id, lv)}" src="${gearSrc(slot, id, lv)}" alt="">`;
   function gearImgEl(slot, id, lv = 3) { const im = document.createElement('img'); im.dataset.th = grKey(slot, id, lv); im.src = gearSrc(slot, id, lv); im.alt = ''; return im; }
+  // v23 근접 무기 스킨 썸네일 (모양이 바뀌므로 옆모습 그림 · id 없으면 기본 무기) — 목록은 대기열, 경기 중 내 무기 칸은 바로(meleeThumb)
+  const msKey = (melee, id) => 'ms:' + melee + ':' + (id || '');
+  const meleeThumb = (melee, id) => thumb(msKey(melee, id), () => MeleeSkin.model(melee, id || null), 240, 120, [-1, 0.3, 0.08]);
+  const meleeThumbCached = (melee, id) => THUMB[msKey(melee, id)] || null;   // 경기 중: 미리 그려 둔 것만 (없으면 null → 기본 아이콘)
+  const meleeSrc = (melee, id) => queued(msKey(melee, id), () => meleeThumb(melee, id));
+  const meleeImg = (melee, id) => `<img data-th="${msKey(melee, id)}" src="${meleeSrc(melee, id)}" alt="">`;
+  function meleeImgEl(melee, id) { const im = document.createElement('img'); im.dataset.th = msKey(melee, id); im.src = meleeSrc(melee, id); im.alt = ''; return im; }
+  const meleeOfSlot = (slot) => (/^m_/.test(slot || '') ? slot.slice(2) : null);
   function pump() { if (!TQ.length) return; const [k, make] = TQ.shift(), src = make() || BLANK; document.querySelectorAll(`img[data-th="${k}"]`).forEach((im) => { im.src = src; }); }
   // ---------- 아이콘 ----------
-  const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산', helmet: '헬멧 스킨 · 모든 레벨', pack: '가방 스킨 · 모든 레벨' };
+  const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산', helmet: '헬멧 스킨 · 모든 레벨', pack: '가방 스킨 · 모든 레벨',
+    m_knife: '식칼 스킨 · 모양이 바뀜', m_machete: '마체테 스킨 · 모양이 바뀜', m_pan: '프라이팬 스킨 · 모양이 바뀜', m_crowbar: '쇠지렛대 스킨 · 모양이 바뀜' };
   const hexs = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
   function skinFill(S) { if (S.ico) return `url(#${S.ico})`; const c = S.color !== undefined ? S.color : (S.colors ? S.colors[0] : 0x888888); return hexs(c); }
   function skinSvg(id) {
     const S = Body.SKINS[id]; if (!S) return '';
     if (S.slot === 'helmet' || S.slot === 'pack') return gearImg(S.slot, id);
+    if (meleeOfSlot(S.slot)) return meleeImg(meleeOfSlot(S.slot), id);   // v23 근접 무기: 모양 그림
     const second = S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null;
     return `<svg viewBox="0 0 24 24">${HUD.skinIcon(S.slot, skinFill(S), second)}</svg>`;
   }
@@ -215,6 +225,7 @@ const Shop = (() => {
     if (o.k === 'gskin') return gunImg(GSKINS[o.id].gun, o.id);
     if (o.k === 'vskin') { const src = vehThumb(o.id); return src ? `<img src="${src}" alt="">` : coinIco(); }
     const S = Body.SKINS[o.id]; if (S && (S.slot === 'helmet' || S.slot === 'pack')) return gearImg(S.slot, o.id);   // v23 헬멧·가방: 3D 썸네일
+    if (S && meleeOfSlot(S.slot)) return meleeImg(meleeOfSlot(S.slot), o.id);   // v23 근접 무기: 모양 그림
     return skinSvg(o.id);
   }
   function itemName(o) {
@@ -362,8 +373,9 @@ const Shop = (() => {
     $('gresNote').innerHTML = (r.cost ? `사용 ${curHtml('gold', r.cost)} · ` : '') + (gotG ? `받은 ${GOLD_NAME} ${curHtml('gold', gotG)} · ` : '') + (gotC ? `받은 차량 코인 ${curHtml('coin', gotC)} · ` : '') + (gotGC ? `받은 총기 코인 ${curHtml('gcoin', gotGC)} · ` : '') + `남은 ${curHtml('gold', Eco.gold)} ${curHtml('coin', Eco.coin)} ${curHtml('gcoin', Eco.gcoin)}`;
     // 새로 얻은 것이 있으면 창고로: 총기 스킨이면 창고 → 총기(그 총)로 바로
     const nw = r.res.filter((o) => o.isNew && (o.k === 'skin' || o.k === 'vskin' || o.k === 'gskin')), ng = nw.find((o) => o.k === 'gskin');
-    whGo = ng && !nw.some((o) => o.k === 'skin') ? { cat: 'gun', gun: GSKINS[ng.id].gun, skin: ng.id } : nw.some((o) => o.k === 'vskin') && !nw.some((o) => o.k === 'skin') ? { cat: 'veh' } : null;
-    $('gresAgain').hidden = !lastPull; $('gresWh').hidden = !nw.length; $('gresWh').textContent = whGo && whGo.cat === 'gun' ? '창고에서 장착' : '창고에서 입기';
+    const ns = nw.filter((o) => o.k === 'skin'), nm = ns.filter((o) => meleeOfSlot(Body.SKINS[o.id].slot));   // v23 새로 얻은 옷이 모두 근접 무기 스킨이면 창고 → 근접 무기(그 무기)로
+    whGo = ng && !ns.length ? { cat: 'gun', gun: GSKINS[ng.id].gun, skin: ng.id } : nm.length && nm.length === ns.length && !ng ? { cat: Body.SKINS[nm[0].id].slot, skin: nm[0].id } : nw.some((o) => o.k === 'vskin') && !ns.length ? { cat: 'veh' } : null;
+    $('gresAgain').hidden = !lastPull; $('gresWh').hidden = !nw.length; $('gresWh').textContent = whGo && (whGo.cat === 'gun' || /^m_/.test(whGo.cat)) ? '창고에서 장착' : '창고에서 입기';
     P.hidden = false;
     if (r.best >= 3) Audio.gacha && Audio.gacha('show', r.best); else Audio.gacha && Audio.gacha('small', r.best);
   }
@@ -376,7 +388,8 @@ const Shop = (() => {
       const rows = P.filter((x) => x.rar === r); if (!rows.length) continue;
       const R = rarOf(r), sum = rows.reduce((a, x) => a + x.p, 0), sec = h('div', 'od-sec'); sec.style.setProperty('--rc', R.color);
       sec.appendChild(h('div', 'od-head', `<b>${R.name}</b><span>${sum.toFixed(2)}%</span>`));
-      for (const x of rows) { const row = h('div', 'od-row' + (x.k === 'gskin' ? ' gun' : '')); row.innerHTML = `<span class="od-ico">${itemIcon(x)}</span><span class="od-name">${esc(itemName(x))}<small>${esc(itemSub(x))}</small></span><span class="od-p">${x.p.toFixed(x.p < 1 ? 3 : 2)}%</span>`; sec.appendChild(row); }
+      // 근접 무기 스킨도 총처럼 넓은 그림 칸 (' gun')
+      for (const x of rows) { const row = h('div', 'od-row' + (x.k === 'gskin' || (x.k === 'skin' && Body.SKINS[x.id] && meleeOfSlot(Body.SKINS[x.id].slot)) ? ' gun' : '')); row.innerHTML = `<span class="od-ico">${itemIcon(x)}</span><span class="od-name">${esc(itemName(x))}<small>${esc(itemSub(x))}</small></span><span class="od-p">${x.p.toFixed(x.p < 1 ? 3 : 2)}%</span>`; sec.appendChild(row); }
       grid.appendChild(sec);
     }
     $('oddsPanel').hidden = false;
@@ -471,7 +484,7 @@ const Shop = (() => {
   }
   // 경기가 시작되면 상점 창·컷신을 닫는다 (파티 방장이 시작하는 경우 등)
   function closeAll() { if (Cutscene.active) Cutscene.skip(); for (const id of ['gachaRes', 'oddsPanel']) { const e = $(id); if (e) e.hidden = true; } armed = null; }
-  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, gunThumb, gunImgEl, gearImgEl, gearImg, pump, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, gcoinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh, gun: selGun, ex: exSub }; } };
+  return { render, renderMissions, setup, onTab, closeAll, crate, crateThumb, vehThumb, vehBaseThumb, gunThumb, gunImgEl, gearImgEl, gearImg, meleeThumb, meleeThumbCached, meleeImgEl, meleeImg, pump, itemIcon, itemName, skinSvg, wallet, openOdds, badge, goldIco, coinIco, gcoinIco, curHtml, get sel() { return { tab, box: selBox, veh: selVeh, gun: selGun, ex: exSub }; } };
 })();
 
 // ============================================================
