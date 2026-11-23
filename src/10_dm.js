@@ -371,7 +371,7 @@ const DM = (() => {
     $('resRank').textContent = `${S.score[my]} : ${S.score[en]}`; $('resOf').textContent = S.duel ? '라운드' : '';
     setResLabels(true);
     $('resKills').textContent = p.kills; $('resTime').textContent = S.myDeaths;
-    $('resDmg').textContent = Math.round(p.damageDealt); $('resXp').textContent = '+' + G.lastXp;
+    $('resDmg').textContent = Math.round(p.damageDealt); $('resAcc').textContent = accText(); $('resXp').textContent = '+' + G.lastXp;
     $('resRanked').hidden = true;
   }
   function setResLabels(dm) {

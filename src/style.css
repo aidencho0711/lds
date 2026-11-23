@@ -344,6 +344,8 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .res-grid div { display: flex; flex-direction: column; border-left: 2px solid var(--line-2); padding-left: 8px; }
 .res-grid span { font-size: 0.7rem; color: var(--dim); }
 .res-grid b { font-family: var(--f-display); font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.res-grid small { font-size: 0.66rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+.res-grid small:empty { display: none; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .set-row { display: flex; flex-direction: column; gap: 4px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 0.8rem; color: var(--dim); }
 .set-row .hdr { display: flex; justify-content: space-between; }

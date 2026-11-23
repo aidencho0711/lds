@@ -347,6 +347,8 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .res-grid div { display: flex; flex-direction: column; border-left: 2px solid var(--line-2); padding-left: 8px; }
 .res-grid span { font-size: 0.7rem; color: var(--dim); }
 .res-grid b { font-family: var(--f-display); font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.res-grid small { font-size: 0.66rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+.res-grid small:empty { display: none; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .set-row { display: flex; flex-direction: column; gap: 4px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 0.8rem; color: var(--dim); }
 .set-row .hdr { display: flex; justify-content: space-between; }
@@ -2587,7 +2589,7 @@ body.touch #victoryHud button { padding: 8px 12px; font-size: 0.8rem; }</style>
       <div class="res-rank"><b id="resRank">#12</b><span id="resOf">/ 25</span></div>
       <div class="res-grid">
         <div><span>처치</span><b id="resKills">0</b></div><div><span>생존 시간</span><b id="resTime">0:00</b></div>
-        <div><span>가한 피해</span><b id="resDmg">0</b></div><div><span>획득 경험치</span><b id="resXp">+0</b></div>
+        <div><span>가한 피해</span><b id="resDmg">0</b><small id="resAcc"></small></div><div><span>획득 경험치</span><b id="resXp">+0</b></div>
       </div>
       <div class="res-ranked" id="resRanked" hidden><img id="resEmb" alt=""><div class="rr-info"><div class="eyebrow" id="resRkKicker">랭크</div><b id="resRkLabel"></b><div class="bar"><i id="resRkBar"></i></div><div class="rk-pips" id="resRkPips" hidden></div><span class="micro" id="resRkSub"></span></div><b class="rp-delta" id="resRkDelta"></b></div>
       <p class="micro" id="resNote"></p>
@@ -18810,13 +18812,15 @@ function gunWorldPoint(c, lx, ly, lz, out) {
   if (g === VM.gun) G.camera.localToWorld(out);
   return out;
 }
+// 결과 화면 명중률: 내가 쏜 총알 중 적을 맞힌 발 (산탄은 한 알이라도 맞으면 1발 · 근접·투척·로켓은 셈하지 않음)
+const accText = () => { const s = G.stats; return s && s.shots ? `명중 ${Math.round(100 * s.hits / s.shots)}% · ${s.hits}/${s.shots}발` : ''; };
 function fireWeapon(c, origin, dir) {
   const wi = c.weapon; if (!wi || c.rl || c.cycle || c.equipT > 0 || c.inWater || c.heal || c.knocked || c.revive || (c.veh && !c.seat)) return false;
   const d = ITEMS[wi.id];
   if (wi.mag <= 0) { if (c.isPlayer) Audio.dryfire(); return false; }
   // 남은 시간을 이어 받아 프레임 단위 반올림으로 연사 속도가 떨어지지 않게 한다
   if (!(c.isPlayer && Dev.cheat('ammo'))) wi.mag--;   // 개발자 도구: 무한 탄약
-  c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); G.stats.shots++;
+  c.fireCd = Math.max(c.fireCd, -0.05) + 60 / fireRpm(wi); if (c.isPlayer && !d.rocket) G.stats.shots++;   // 명중률: 내 총알만 (예전에는 봇까지 모든 캐릭터를 셌다 · 로켓은 뺌)
   if (c.spawnProt) c.spawnProt = 0; // 데스매치: 쏘면 부활 보호 해제
   if (d.rocket) return fireRocket(c, wi, d, origin, dir);   // 판처파우스트: 히트스캔 대신 날아가는 로켓
   const spread = weaponSpread(c) * DEG;
@@ -18832,7 +18836,7 @@ function fireWeapon(c, origin, dir) {
   const ax = rx / rl, ay = ry / rl, az = rz / rl;
   const bx = dir.y * az - dir.z * ay, by = dir.z * ax - dir.x * az, bz = dir.x * ay - dir.y * ax;
   // 산탄: 가운데 1발 + 안쪽·바깥쪽 고리를 번갈아 (무작위 원판보다 구멍·뭉침이 적어 근거리 피해가 고르다)
-  const T = Math.tan(spread), a0 = Math.random() * TAU, ring = pellets - 1;
+  const T = Math.tan(spread), a0 = Math.random() * TAU, ring = pellets - 1; let hitFoe = false;   // hitFoe: 이 발(산탄은 여러 알 중 하나라도)이 적을 맞혔나 — 명중률은 발 단위
   for (let p = 0; p < pellets; p++) {
     let a, r;
     if (pellets === 1) { a = Math.random() * TAU; r = Math.sqrt(Math.random()) * T; }
@@ -18849,7 +18853,8 @@ function fireWeapon(c, origin, dir) {
     const fall = h.t > d.range ? clamp(1 - (h.t - d.range) / (d.range * 1.4), 0.35, 1) : 1;
     if (h.type === 'char') {
       if (skFx && h.char.alive && !sameTeam(c, h.char) && !(G.dm && h.char.spawnProt > G.time)) SkinFx.hit(h.char, ex, ey, ez, dx, dy, dz, skFx, c);
-      applyDamage(h.char, d.dmg * fall, h.part, c, wi.id, ex, ey, ez); G.stats.hits++;
+      if (h.char.alive && !sameTeam(c, h.char)) hitFoe = true;
+      applyDamage(h.char, d.dmg * fall, h.part, c, wi.id, ex, ey, ez);
       FX.impact(ex, ey, ez, 'blood');
     } else if (h.type === 'veh') {
       Veh.damage(h.veh, d.dmg * fall, c, wi.id);
@@ -18857,6 +18862,7 @@ function fireWeapon(c, origin, dir) {
       if (c.isPlayer && !h.veh.dead) HUD.hitmarker(false, false);
     } else if (h.type) { FX.impact(ex, ey, ez, h.type === 'terrain' ? 'dirt' : 'spark'); if (p === 0) Audio.impact({ x: ex, y: ey, z: ez }, false); }
   }
+  if (hitFoe && c.isPlayer) G.stats.hits++;
   // 이 발로 처치해 웨폰 데스매치 총이 바뀌었으면(applyDamage → swapWeapon) 새 총에 레버·볼트 순환·탄피·반동을 넘기지 않는다
   const swapped = c.weapon !== wi;
   if (!swapped) c.bloom = Math.min(c.bloom + d.recoil * (wi.att.muzzle ? ITEMS.comp.recoilMul : 1) * (d.cls === 'LMG' && c.stance === 'prone' ? 0.45 : d.cls === 'SG' ? 0.5 : 1) * 0.22, 4);
@@ -24261,6 +24267,10 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-23', t: '결과 화면에 명중률', items: [
+    '경기가 끝나면 "가한 피해" 아래에 내 명중률이 나옴 (명중 37% · 52/140발) — 적을 맞힌 발 ÷ 쏜 발, 산탄총은 한 알이라도 맞으면 1발',
+    '명중 기록이 봇들이 쏜 총알까지 모두 세던 문제를 고침 — 이제 내 총알만 셈 (근접 무기·투척 무기·로켓은 빼고)',
+  ] },
   { v: 'v23', d: '2026-11-23', t: '조작법 도움말 최신화', items: [
     '메뉴 → 조작법에 빠져 있던 것들을 더함: 4 = 근접 무기 · 새 투척 무기 4종의 터지는 시간과 효과 · J 부스트(진통제) · 자동 줍기와 시체 상자 · Enter 경기 중 문자',
     '모바일 표에도 무기 칸(근접 무기 · 다시 누르면 살펴보기) · 💬 문자 버튼 · 버튼을 누른 채 끌어도 화면이 돌아가는 것을 적음',
@@ -25967,7 +25977,7 @@ const DM = (() => {
     $('resRank').textContent = `${S.score[my]} : ${S.score[en]}`; $('resOf').textContent = S.duel ? '라운드' : '';
     setResLabels(true);
     $('resKills').textContent = p.kills; $('resTime').textContent = S.myDeaths;
-    $('resDmg').textContent = Math.round(p.damageDealt); $('resXp').textContent = '+' + G.lastXp;
+    $('resDmg').textContent = Math.round(p.damageDealt); $('resAcc').textContent = accText(); $('resXp').textContent = '+' + G.lastXp;
     $('resRanked').hidden = true;
   }
   function setResLabels(dm) {
@@ -28141,7 +28151,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     $('resTitle').textContent = win ? (team ? (p.alive ? '우승! 팀이 마지막까지 살아남았습니다' : '팀 우승! 팀원이 끝까지 버텼습니다') : '우승! 마지막까지 살아남았습니다') : (place <= Math.max(2, Math.round(total / 5)) ? '아깝습니다. 상위권 생존' : '다음 강하에서 다시 도전하세요');
     $('resRank').textContent = '#' + place; $('resOf').textContent = '/ ' + total + (team ? '팀' : '');
     $('resKills').textContent = p.kills; $('resTime').textContent = fmtTime(p.alive ? G.matchT || G.time : p.deathTime);   // v23 우승 축하 시간은 빼고
-    $('resDmg').textContent = Math.round(p.damageDealt); $('resXp').textContent = '+' + G.lastXp;
+    $('resDmg').textContent = Math.round(p.damageDealt); $('resAcc').textContent = accText(); $('resXp').textContent = '+' + G.lastXp;
     let note = G.statsSaved ? '기록이 저장되었습니다.' : '이 브라우저에서는 기록이 저장되지 않았습니다 (게임은 계속 가능).';
     if (team) { const ms = G.teams[p.team].members; note = `팀 처치 ${ms.reduce((a, m) => a + m.kills, 0)} · 내가 기절시킴 ${p.knocks} · 부활시킴 ${p.revives} — ` + note; }
     if (G.hostGone) note = '방장의 연결이 끊겨 경기가 끝났습니다. ' + note;
