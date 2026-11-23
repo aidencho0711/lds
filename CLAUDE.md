@@ -16,7 +16,7 @@
 ## 명령
 
 ```bash
-node build.js        # src/*.js 를 합쳐 dist/index.html, dist/last-drop.html 생성
+node build.js        # src/*.js 를 합쳐 dist/index.html, dist/last-drop.html 생성 (쓰기 전에 문법 검사 — 오류면 dist 를 쓰지 않고 실패)
 npm install          # three (테스트용), 실행 자체는 cdnjs 에서 three 로드
 ```
 
