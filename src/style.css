@@ -1544,7 +1544,6 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 .kf.mku .kf-mu { position: relative; display: inline-flex; align-items: center; gap: 4px; margin: 0 2px; color: var(--sk2); font-size: 0.74rem; font-weight: 800; letter-spacing: 0.03em; text-shadow: 0 0 8px var(--sk1), 0 1px 2px #000; }
 .kf.mku .kf-mu b { font-weight: 800; display: inline-block; }
 .kf.mku .mku-ico { color: var(--sk1); filter: drop-shadow(0 0 4px var(--sk1)); }
-.kf.mku.mine { box-shadow: 0 0 0 1px var(--sk2), 0 0 18px color-mix(in srgb, var(--sk1) 65%, transparent); }
 /* 나비 나이프: 무지갯빛이 흐르는 바탕 · 날갯짓하며 색이 바뀌는 나비 · 무지갯빛 글자 */
 .kf.mku.k-m-balisong { border-left-color: #ff5ad8; background: linear-gradient(100deg, rgba(8, 7, 14, 0.3), rgba(8, 7, 14, 0.86) 34%, rgba(8, 7, 14, 0.86) 66%, rgba(8, 7, 14, 0.4)), linear-gradient(100deg, #ff5ad8, #9b6bff, #5a8cff, #6ae8ff, #ffc85a, #ff5ad8); background-size: 100% 100%, 300% 100%; animation: kfEpsIn 0.45s cubic-bezier(0.2, 1.4, 0.4, 1), mkIri 3.2s linear infinite; }
 .kf.mku.k-m-balisong .mku-ico { animation: mkFlut 0.42s ease-in-out infinite, mkHue 2.4s linear infinite; }
@@ -1564,17 +1563,19 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 .kf.mku.k-m-neon .mku-ico { color: #46f2ff; filter: drop-shadow(0 0 4px #46f2ff) drop-shadow(1px 0 0 rgba(255, 79, 216, 0.8)); }
 @keyframes mkScan { to { background-position: 22px 0, 0 14px, 0 0; } }
 @keyframes mkFlick { 0%, 100% { opacity: 1; transform: none; } 7% { opacity: 0.35; transform: translateX(1px); } 10% { opacity: 1; transform: none; } 46% { opacity: 0.6; } 48% { opacity: 1; } }
-/* 서리 결정 검: 서리 낀 얼음 바탕(흰 결정 점) · 얼음 결정 문양이 숨 쉬듯 빛남 */
-.kf.mku.k-m-frost { border-left-color: #cff6ff; background: radial-gradient(circle at calc(100% - 7px) 28%, rgba(255, 255, 255, 0.8) 0 1px, transparent 2px), radial-gradient(circle at calc(100% - 3px) 72%, rgba(255, 255, 255, 0.6) 0 1px, transparent 2px), linear-gradient(100deg, rgba(159, 232, 255, 0.55) 0%, rgba(12, 26, 38, 0.9) 40%, rgba(12, 26, 38, 0.9) 66%, rgba(220, 245, 255, 0.35) 100%); box-shadow: 0 0 0 1px rgba(207, 246, 255, 0.7), 0 0 14px rgba(159, 232, 255, 0.45), inset 0 0 10px rgba(159, 232, 255, 0.25); }
+/* 서리 결정 검: 서리 낀 얼음 바탕(흰 결정 점 · 위아래 서리 띠) · 이름 아래는 짙은 얼음색(밝은 하늘·눈 위에서도 흰 이름이 읽히게) · 얼음 결정 문양이 숨 쉬듯 빛남 */
+.kf.mku.k-m-frost { border-left-color: #cff6ff; background: radial-gradient(circle at calc(100% - 7px) 28%, rgba(255, 255, 255, 0.8) 0 1px, transparent 2px), radial-gradient(circle at calc(100% - 3px) 72%, rgba(255, 255, 255, 0.6) 0 1px, transparent 2px), linear-gradient(180deg, rgba(220, 248, 255, 0.6) 0 1px, transparent 2px calc(100% - 2px), rgba(159, 232, 255, 0.45) calc(100% - 1px)), linear-gradient(100deg, rgba(34, 78, 102, 0.94) 0%, rgba(12, 26, 38, 0.92) 40%, rgba(12, 26, 38, 0.92) 66%, rgba(28, 64, 84, 0.93) 100%); box-shadow: 0 0 0 1px rgba(207, 246, 255, 0.7), 0 0 14px rgba(159, 232, 255, 0.45), inset 0 0 8px rgba(159, 232, 255, 0.22); }
 .kf.mku.k-m-frost .kf-mu b { color: #effcff; text-shadow: 0 0 6px #9fe8ff, 0 1px 2px #000; }
 .kf.mku.k-m-frost .mku-ico { color: #cff6ff; animation: mkFrost 2.4s ease-in-out infinite; }
 @keyframes mkFrost { 50% { transform: scale(1.18) rotate(8deg); filter: drop-shadow(0 0 7px #fff); } }
-/* 황금 프라이팬: 금빛 바탕 · 흐르는 금빛 글자 · 반짝이는 팬 문양 · 자주 지나가는 금빛 광택 */
-.kf.mku.k-m-golden { border-left-color: #ffc23a; background: linear-gradient(100deg, rgba(255, 194, 58, 0.62) 0%, rgba(26, 18, 4, 0.92) 40%, rgba(26, 18, 4, 0.9) 68%, rgba(255, 232, 160, 0.4) 100%); box-shadow: 0 0 0 1px rgba(255, 214, 110, 0.85), 0 0 16px rgba(255, 194, 58, 0.5); }
+/* 황금 프라이팬: 진한 금빛 바탕(이름 아래는 어둡게 · 위아래 금 띠) · 흐르는 금빛 글자 · 반짝이는 팬 문양 · 자주 지나가는 금빛 광택 */
+.kf.mku.k-m-golden { border-left-color: #ffc23a; background: linear-gradient(180deg, rgba(255, 222, 130, 0.75) 0 1px, transparent 2px calc(100% - 2px), rgba(255, 194, 58, 0.55) calc(100% - 1px)), linear-gradient(100deg, rgba(104, 70, 10, 0.94) 0%, rgba(26, 18, 4, 0.92) 40%, rgba(26, 18, 4, 0.92) 68%, rgba(88, 64, 18, 0.93) 100%); box-shadow: 0 0 0 1px rgba(255, 214, 110, 0.85), 0 0 16px rgba(255, 194, 58, 0.5), inset 0 0 8px rgba(255, 194, 58, 0.2); }
 .kf.mku.k-m-golden::after { background: linear-gradient(105deg, transparent 30%, rgba(255, 240, 190, 0.75) 48%, transparent 62%); animation: kfSheen 1.6s ease-in-out 0.15s 5; }
 .kf.mku.k-m-golden .kf-mu b { background: linear-gradient(90deg, #ffb22a, #fff6d0, #ffc23a, #ffb22a); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; animation: kfGold 1.6s linear infinite; }
 .kf.mku.k-m-golden .mku-ico { color: #ffd65a; animation: mkGlint 1.3s ease-in-out infinite; }
 @keyframes mkGlint { 50% { transform: scale(1.2) rotate(-10deg); filter: drop-shadow(0 0 7px #fff3c0); } }
+/* 내가 처치한 줄: 주제마다 테두리 빛(box-shadow)을 따로 정해 덮어쓰므로, 주제가 쓰지 않는 바깥 테(outline)로 표시 — 다섯 모양 모두 밝은 두 겹 테 */
+.kf.mku.mine { outline: 1.5px solid color-mix(in srgb, var(--sk2) 65%, #fff); outline-offset: 2px; }
 body.touch.teammode .kf.mku:nth-child(n+3) { display: none; }
 /* 처치 휘장(조준점 아래) — 울트라레어 근접 무기: 도는 테 · 문양이 모양마다 다름 */
 #skinKill.mel { width: 136px; height: 136px; margin-left: -68px; top: 59%; }
@@ -1602,7 +1603,8 @@ body.touch.teammode .kf.mku:nth-child(n+3) { display: none; }
 #skinKill.k-m-golden b { color: #fff6d8; text-shadow: 0 0 10px #ffc23a, 0 1px 2px #000; }
 #skinKill.k-m-golden .mku-ico { animation: mkGlint 1s ease-in-out infinite; }
 @media (max-height: 500px) { #skinKill.mel { width: 104px; height: 104px; margin-left: -52px; } #skinKill.mel::after { inset: 16px; } #skinKill.mel .sk-ico { font-size: 17px; } #skinKill.mel b { font-size: 1.05rem; } }
-@media (prefers-reduced-motion: reduce) { .kf.mku, .kf.mku::after, .kf.mku .mku-ico, .kf.mku .kf-mu b, #skinKill.mel .sk-ring, #skinKill.mel .mku-ico { animation: none; } }
+/* 움직임 줄이기: 주제 규칙(.kf.mku.k-m-…)이 더 구체적이라 킬 로그 줄은 !important 로 모두 멈춤 (.pf · .pfx 와 같은 방식) · 휘장은 같은 구체성이고 뒤에 있어 그대로 */
+@media (prefers-reduced-motion: reduce) { .kf.mku, .kf.mku *, .kf.mku::after { animation: none !important; } #skinKill.mel .sk-ring, #skinKill.mel .mku-ico { animation: none; } }
 
 /* ---------- v20 랭킹 (로비 '랭킹' 탭 · 10_ranking.js) ---------- */
 .lb-left.tab-ladder { width: min(620px, 56vw); }

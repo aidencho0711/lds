@@ -7,6 +7,7 @@
 //    내가 처치하면 조준점 아래 휘장(10_hud.js skinKill — 모양마다 다른 테·문양) · 킬 로그 줄도 모양마다 꾸밈(10_hud.js killfeed)
 //  · 슈퍼레어(rar 4): 스킨 색의 작은 바닥 고리·빛·조각 (휘장 없음) — 총 스킨의 '약한 효과'처럼
 //  · 기절에는 효과 없음(킬 로그만) · 피해·거리·동작은 그대로 — 보이기만
+//  · 엎드린 몸(기절한 적을 마무리)은 몸 가운데 바닥 0.75m 위에서 · 카메라가 가까우면(1인칭 ≈ 1.5m) 큰 판(빛·베기·갈고리)을 줄여 조준을 가리지 않게 · 입자 수는 화면 주사율과 관계없이 초당 같은 양
 //  · 판 메시 32장을 장면에 두고 돌려 씀(풀) → 처치할 때 지오메트리·재질을 새로 만들지 않는다 · 입자는 GunSkin 점 구름(총 스킨 효과와 같은 그리기 1번)
 //    재질 설정이 총 스킨 효과(05_models_gskinfx.js addMat)와 같아 같은 셰이더 프로그램을 쓰고, 경기 시작 첫 두 프레임에 모든 그림을 투명하게 그려 텍스처까지 미리 올린다
 //  · FX.init(경기·훈련장·데스매치 시작) → init · FX.update → update · disposeMatch → dispose (06_combat.js · 11_game.js)
@@ -166,8 +167,10 @@ const MeleeFx = (() => {
     LIVE.length = 0; warmLeft = 0; SC = null;
     if (GRP) { if (GRP.parent) GRP.parent.remove(GRP); for (const m of ALL) { m.visible = false; m.frustumCulled = true; } FREE.length = 0; FREE.push(...ALL); }
   }
-  // 효과 하나 = 시간 진행 하나: dur 초 동안 매 프레임 upd(e, T 지난 초, dt) → 끝나면 빌린 판을 돌려줌
-  const fx = (dur) => ({ t: 0, dur, ms: [], upd: null });
+  // 효과 하나 = 시간 진행 하나: dur 초 동안 매 프레임 upd(e, T 지난 초, dt) → 끝나면 빌린 판을 돌려줌 · acc: 초당 몇 개씩 내는 입자의 소수 자리 (화면 주사율과 관계없이 같은 양)
+  const fx = (dur) => ({ t: 0, dur, ms: [], upd: null, acc: 0 });
+  // 초당 rate 개를 dt 만큼 → 이번 프레임에 낼 개수 (남은 소수는 다음 프레임으로)
+  const emitN = (e, dt, rate) => { e.acc += dt * rate; const n = Math.floor(e.acc); e.acc -= n; return n; };
   function go(e, upd) { e.upd = upd; LIVE.push(e); upd(e, 0, 0); }
   // 판 하나 빌리기: tex 그림 · col 색 · add false = 덮어 그리기(검은 갈고리·금화) · ord 그리기 순서 (풀이 바닥나면 null)
   function take(e, tex, col, add, ord) {
@@ -198,7 +201,8 @@ const MeleeFx = (() => {
   const fade = (T, a, b, c) => (T < a ? T / a : T < b ? 1 : Math.max(0, 1 - (T - b) / c));
   const easeOut = (x, p = 3) => 1 - Math.pow(1 - clamp(x, 0, 1), p);
 
-  // ---------- 처치 효과 (t 쓰러진 캐릭터 · th 주제 · gp 바닥 {x,y,z,n} · cp 가슴 · k 입자 배율) ----------
+  // ---------- 처치 효과 (t 쓰러진 캐릭터 · th 주제 · gp 바닥 {x,y,z,n} · cp 가슴 · k 입자 배율 · ks 큰 판 배율 · kg 바닥 판 배율) ----------
+  //  ks: 카메라가 가까우면(1인칭 근접 처치 ≈ 1.5m) 빛·베기·갈고리·세로 빛 판을 줄여 화면을 덮지 않게 — 3인칭(≈ 4.8m)은 1 · kg: 바닥 고리·자국은 덜 줄임
   const FXS = {};
   // 베기 자국 하나: at 초에 나타나 0.3초 동안 조금 커지고 돌며 사라짐 (rz: 화면 기울기 · fl: −1 이면 좌우 뒤집음)
   function slash(m, p, T, at, rz, size, fl) {
@@ -207,7 +211,7 @@ const MeleeFx = (() => {
     bill(m, p, rz + v * 0.4 * fl); const s = size * (0.8 + 0.3 * Math.sqrt(v)); m.scale.set(s * fl, s, 1); m.material.opacity = v < 0.12 ? v / 0.12 : 1 - (v - 0.12) / 0.88;
   }
   // 나비 나이프: 엇갈린 두 번의 베기(자홍 → 하늘색) · 무지갯빛 나비 다섯 마리가 날갯짓하며 나선으로 날아오름(색이 계속 바뀌고 반짝이를 흘림) · 무지개 반짝이
-  FXS.balisong = (t, th, gp, cp, k) => {
+  FXS.balisong = (t, th, gp, cp, k, ks) => {
     const e = fx(1.5), P = K().pool(), E = K().E, rot = (Math.random() - 0.5) * 0.5;
     const s1 = take(e, slashTex(), 0xff5ad8, true, 8), s2 = take(e, slashTex(), 0x6ae8ff, true, 8), gl = take(e, K().tex.glow(), 0xffd6f6, true, 7);
     const fl = [];
@@ -215,8 +219,8 @@ const MeleeFx = (() => {
     flash(cp, th);
     for (let i = 0; i < 28; i++) { _v.set(rnd(-1, 1), rnd(-0.3, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(1.5, 4.2)); E(P, cp, _v.x, _v.y, _v.z, i % 7 === 0 ? 0xffffff : IRI[i % IRI.length], rnd(0.035, 0.065) * k, rnd(0.35, 0.75), { sq: i % 3 === 0, drag: 3, so: 0.45 }); }
     go(e, (e, T, dt) => {
-      slash(s1, cp, T, 0, 0.62 + rot, 2.4, 1); slash(s2, cp, T, 0.12, -0.62 + rot, 2.4, -1);
-      if (gl) { bill(gl, cp); gl.scale.setScalar(1.9 * (0.5 + 0.5 * easeOut(T / 0.1))); gl.material.opacity = fade(T, 0.04, 0.08, 0.3); }
+      slash(s1, cp, T, 0, 0.62 + rot, 2.4 * ks, 1); slash(s2, cp, T, 0.12, -0.62 + rot, 2.4 * ks, -1);
+      if (gl) { bill(gl, cp); gl.scale.setScalar(1.9 * ks * (0.5 + 0.5 * easeOut(T / 0.1))); gl.material.opacity = fade(T, 0.04, 0.08, 0.3); }
       for (const b of fl) {
         const tt = T - b.d, M = b.m.material; if (tt < 0) { M.opacity = 0; continue; }
         const ang = b.a + b.w * tt, rr = b.r + 0.55 * Math.sqrt(Math.min(1, tt / 1.1));
@@ -228,54 +232,55 @@ const MeleeFx = (() => {
     });
   };
   // 카람빗: 검은 갈고리 초승달(금빛 날 선)이 몸 둘레를 한 바퀴 가까이 휙 감아 돎 — 카메라 쪽으로 조금 기울여 잘 보이게 · 갈고리 끝을 따라 금 불티 · 바닥에 검은 고리와 금 고리
-  FXS.karambit = (t, th, gp, cp, k) => {
+  FXS.karambit = (t, th, gp, cp, k, ks, kg) => {
     const e = fx(1.3), P = K().pool(), E = K().E;
     const dk = take(e, hookTex(), 0x0a0807, false, 6), au = take(e, hookEdgeTex(), 0xf2c25a, true, 7);
     const rk = take(e, K().tex.ring(), 0x000000, false, 3), rg = take(e, K().tex.ring(), 0xe2b04a, true, 4), gl = take(e, K().tex.glow(), 0xffd890, true, 7);
     const n = new THREE.Vector3().subVectors(G.camera.position, cp).setY(0); if (n.lengthSq() < 1e-4) n.set(0, 0, 1);
     n.normalize().multiplyScalar(0.55).add(UP).normalize();
-    const a0 = Math.random() * TAU, sp = Math.random() < 0.5 ? -1 : 1, y = cp.y - 0.1, tip = hookTip();
+    // 갈고리 판은 카메라 쪽으로 기울어 그쪽 끝(바깥 반지름 ≈ 판 크기 × 0.43)이 판 크기 × 0.21 만큼 내려감 → 낮은 몸(엎드림·웅크림)이면 가운데를 올려 땅에 묻히지 않게
+    const S0 = 2.4 * ks, a0 = Math.random() * TAU, sp = Math.random() < 0.5 ? -1 : 1, y = Math.max(cp.y - 0.1, gp.y + 0.21 * S0 + 0.06), tip = hookTip();
     flash(cp, th);
     for (let i = 0; i < 26; i++) { _v.set(rnd(-1, 1), rnd(0, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(2, 5)); E(P, cp, _v.x, _v.y, _v.z, i % 4 ? 0xffc85a : 0xffffff, rnd(0.03, 0.05) * k, rnd(0.3, 0.6), { g: -6, drag: 2, so: 0.5 }); }
     go(e, (e, T, dt) => {
-      const sw = easeOut(T / 0.55), ang = a0 + sp * sw * TAU * 0.9, op = fade(T, 0.05, 0.62, 0.45), s = 2.4 * (0.82 + 0.18 * sw);
+      const sw = easeOut(T / 0.55), ang = a0 + sp * sw * TAU * 0.9, op = fade(T, 0.05, 0.62, 0.45), s = S0 * (0.82 + 0.18 * sw);
       for (const m of [dk, au]) if (m) { m.position.set(cp.x, y, cp.z); m.quaternion.setFromUnitVectors(ZZ, n); m.rotateZ(ang); m.scale.set(s * sp, s, 1); }
       if (dk) dk.material.opacity = op * 0.92;
       if (au) au.material.opacity = op;
-      // 갈고리 끝의 금 불티 (도는 동안)
+      // 갈고리 끝의 금 불티 (도는 동안 · 초당 120개)
       if (au && dt && T < 0.6) {
         au.updateMatrixWorld(); _a.set(tip[0], tip[1], 0).applyMatrix4(au.matrixWorld); _b.subVectors(_a, cp).normalize();
-        for (let i = 0, c = Math.max(1, Math.round(dt * 90)); i < c; i++) E(P, _a, _b.x * rnd(0.8, 2) + rnd(-0.5, 0.5), rnd(0.2, 1.4), _b.z * rnd(0.8, 2) + rnd(-0.5, 0.5), Math.random() < 0.25 ? 0xffffff : Math.random() < 0.5 ? 0xffd27a : 0xe2a83a, rnd(0.03, 0.055) * k, rnd(0.25, 0.5), { g: -5, drag: 1.5, so: 0.5 });
+        for (let i = 0, c = emitN(e, dt, 120); i < c; i++) E(P, _a, _b.x * rnd(0.8, 2) + rnd(-0.5, 0.5), rnd(0.2, 1.4), _b.z * rnd(0.8, 2) + rnd(-0.5, 0.5), Math.random() < 0.25 ? 0xffffff : Math.random() < 0.5 ? 0xffd27a : 0xe2a83a, rnd(0.03, 0.055) * k, rnd(0.25, 0.5), { g: -5, drag: 1.5, so: 0.5 });
       }
-      if (rk) { flat(rk, gp, 0.04); rk.scale.setScalar(2 * (0.35 + 1.4 * easeOut(T / 0.6, 2))); rk.material.opacity = 0.65 * fade(T, 0.08, 0.75, 0.5); }
-      if (rg) { flat(rg, gp, 0.06); const v = (T - 0.1) / 0.6; rg.scale.setScalar(2 * (0.4 + 1.8 * easeOut(v, 2.4))); rg.material.opacity = v < 0 ? 0 : 1 - Math.min(1, v); }
-      if (gl) { bill(gl, cp); gl.scale.setScalar(2 * (0.5 + 0.5 * easeOut(T / 0.1))); gl.material.opacity = 0.8 * fade(T, 0.04, 0.06, 0.25); }
+      if (rk) { flat(rk, gp, 0.04); rk.scale.setScalar(2 * kg * (0.35 + 1.4 * easeOut(T / 0.6, 2))); rk.material.opacity = 0.65 * fade(T, 0.08, 0.75, 0.5); }
+      if (rg) { flat(rg, gp, 0.06); const v = (T - 0.1) / 0.6; rg.scale.setScalar(2 * kg * (0.4 + 1.8 * easeOut(v, 2.4))); rg.material.opacity = v < 0 ? 0 : 1 - Math.min(1, v); }
+      if (gl) { bill(gl, cp); gl.scale.setScalar(2 * ks * (0.5 + 0.5 * easeOut(T / 0.1))); gl.material.opacity = 0.8 * fade(T, 0.04, 0.06, 0.25); }
     });
   };
   // 네온 블레이드: 바닥에 시안 회로선이 두 겹으로 퍼져 나감(45° 어긋나게) · 가는 세로 빛이 위에서 바닥까지 몸을 가름(흰 심 + 시안 번짐) · 몸 둘레에 깨진 네모(판 2장 + 네모 입자)가 깜빡임
-  FXS.neon = (t, th, gp, cp, k) => {
+  FXS.neon = (t, th, gp, cp, k, ks, kg) => {
     const e = fx(1.3), P = K().pool(), E = K().E, r0 = Math.random() * TAU, top = gp.y + 3.2;
     const c1 = take(e, circTex('circ1', 14), 0x46f2ff, true, 3), c2 = take(e, circTex('circ2', 9), 0xb8fbff, true, 3);
     const bw = take(e, beamTex(), 0x46f2ff, true, 8), bc = take(e, beamTex(), 0xf2feff, true, 9), q1 = take(e, sqTex(), 0x46f2ff, true, 8), q2 = take(e, sqTex(), 0xff4fd8, true, 8), gl = take(e, K().tex.glow(), 0x8ff8ff, true, 7);
     let nq = 0;
     flash(cp, th);
     go(e, (e, T, dt) => {
-      if (c1) { flat(c1, gp, 0.05, r0); c1.scale.setScalar(0.6 + 3.9 * easeOut(T / 0.42)); c1.material.opacity = fade(T, 0.04, 0.7, 0.55); }
-      if (c2) { flat(c2, gp, 0.06, r0 + Math.PI / 4); const v = T - 0.12; c2.scale.setScalar(0.4 + 2.8 * easeOut(v / 0.4)); c2.material.opacity = v < 0 ? 0 : fade(v, 0.04, 0.55, 0.5); }
+      if (c1) { flat(c1, gp, 0.05, r0); c1.scale.setScalar(kg * (0.6 + 3.9 * easeOut(T / 0.42))); c1.material.opacity = fade(T, 0.04, 0.7, 0.55); }
+      if (c2) { flat(c2, gp, 0.06, r0 + Math.PI / 4); const v = T - 0.12; c2.scale.setScalar(kg * (0.4 + 2.8 * easeOut(v / 0.4))); c2.material.opacity = v < 0 ? 0 : fade(v, 0.04, 0.55, 0.5); }
       // 세로 빛 베기: 0.04초부터 0.12초 동안 위에서 바닥까지 그어지고, 0.5초 동안 넓어지며 사라짐
       const v = T - 0.04, L = (top - gp.y) * easeOut(v / 0.12, 2), wd = v < 0.12 ? 1 : 1 + (v - 0.12) * 2.2, op = v < 0 ? 0 : v < 0.12 ? 1 : Math.max(0, 1 - (v - 0.12) / 0.5);
-      if (bw) { stand(bw, cp.x, top - L / 2, cp.z); bw.scale.set(0.3 * wd, Math.max(0.01, L), 1); bw.material.opacity = op * 0.85; }
-      if (bc) { stand(bc, cp.x, top - L / 2, cp.z); bc.scale.set(0.055 * wd, Math.max(0.01, L), 1); bc.material.opacity = op; }
+      if (bw) { stand(bw, cp.x, top - L / 2, cp.z); bw.scale.set(0.3 * ks * wd, Math.max(0.01, L), 1); bw.material.opacity = op * 0.85; }
+      if (bc) { stand(bc, cp.x, top - L / 2, cp.z); bc.scale.set(0.055 * ks * wd, Math.max(0.01, L), 1); bc.material.opacity = op; }
       // 깨진 네모: 0.05초마다 몸 둘레 다른 자리로 튀며 깜빡임 (0.65초 동안)
       if (T < 0.65) {
         if (T >= nq) { nq = T + 0.05; for (const [m, s] of [[q1, 0.32], [q2, 0.22]]) if (m) { bill(m, _a.set(cp.x + rnd(-0.45, 0.45), cp.y + rnd(-0.7, 0.55), cp.z + rnd(-0.45, 0.45))); m.scale.setScalar(s * rnd(0.7, 1.3)); m.material.opacity = Math.random() < 0.8 ? 1 : 0; } }
       } else for (const m of [q1, q2]) if (m) m.material.opacity = 0;
-      if (dt && T < 0.6) for (let i = 0, c = Math.round(dt * 70); i < c; i++) { _a.set(cp.x + rnd(-0.35, 0.35), gp.y + rnd(0.15, 1.75), cp.z + rnd(-0.35, 0.35)); E(P, _a, 0, rnd(0, 0.4), 0, Math.random() < 0.6 ? 0x46f2ff : Math.random() < 0.5 ? 0xffffff : 0xff4fd8, rnd(0.05, 0.11) * k, rnd(0.06, 0.18), { sq: 1, so: 0.85 }); }
-      if (gl) { bill(gl, cp); gl.scale.setScalar(1.6); gl.material.opacity = 0.7 * fade(T, 0.03, 0.05, 0.25); }
+      if (dt && T < 0.6) for (let i = 0, c = emitN(e, dt, 70); i < c; i++) { _a.set(cp.x + rnd(-0.35, 0.35), gp.y + rnd(0.15, 1.75), cp.z + rnd(-0.35, 0.35)); E(P, _a, 0, rnd(0, 0.4), 0, Math.random() < 0.6 ? 0x46f2ff : Math.random() < 0.5 ? 0xffffff : 0xff4fd8, rnd(0.05, 0.11) * k, rnd(0.06, 0.18), { sq: 1, so: 0.85 }); }
+      if (gl) { bill(gl, cp); gl.scale.setScalar(1.6 * ks); gl.material.opacity = 0.7 * fade(T, 0.03, 0.05, 0.25); }
     });
   };
   // 서리 결정 검: 얼음 조각(길쭉한 결정 판 6장 + 네모 얼음 입자)이 사방으로 튀었다 떨어짐 · 바닥에 서리 고리(가시 결정)가 퍼지며 돌고 얼음 금이 깔림 · 하얀 눈 안개
-  FXS.frost = (t, th, gp, cp, k) => {
+  FXS.frost = (t, th, gp, cp, k, ks, kg) => {
     const e = fx(1.45), P = K().pool(), E = K().E, r0 = Math.random() * TAU;
     const fr = take(e, fringTex(), 0x9fe8ff, true, 4), ic = take(e, K().tex.ice(), 0xeafcff, true, 3), gl = take(e, K().tex.glow(), 0xeafcff, true, 7);
     const sh = [];
@@ -284,9 +289,9 @@ const MeleeFx = (() => {
     for (let i = 0; i < 36; i++) { _v.set(rnd(-1, 1), rnd(-0.1, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(2, 5)); E(P, cp, _v.x, _v.y, _v.z, i % 3 ? 0x9fe8ff : 0xffffff, rnd(0.04, 0.08) * k, rnd(0.5, 0.9), { sq: 1, g: -9.8, drag: 0.6, so: 0.85 }); }
     for (let i = 0; i < 34; i++) { const a = Math.random() * TAU, r = rnd(0.2, 1.1); _a.set(gp.x + Math.cos(a) * r, gp.y + rnd(0.1, 1.1), gp.z + Math.sin(a) * r); E(P, _a, Math.cos(a) * rnd(0.3, 0.9), rnd(0, 0.35), Math.sin(a) * rnd(0.3, 0.9), 0xeaf8ff, rnd(0.12, 0.24) * k, rnd(0.9, 1.4), { grow: 1.4, drag: 1.4, so: 0.5, a: 0.45 }); }
     go(e, (e, T, dt) => {
-      if (fr) { flat(fr, gp, 0.06, r0 + T * 0.4); fr.scale.setScalar(2 * (0.25 + 1.35 * easeOut(T / 0.45))); fr.material.opacity = fade(T, 0.05, 0.6, 0.75); }
-      if (ic) { flat(ic, gp, 0.04, r0); ic.scale.setScalar(3.6); ic.material.opacity = fade(T, 0.06, 0.7, 0.7); ic.material.color.setHex(0xeafcff).lerp(_c.setHex(0x4a9ad0), Math.min(1, T / 1.2)); }
-      if (gl) { bill(gl, cp); gl.scale.setScalar(2.2 * (0.5 + 0.5 * easeOut(T / 0.08))); gl.material.opacity = fade(T, 0.03, 0.05, 0.28); }
+      if (fr) { flat(fr, gp, 0.06, r0 + T * 0.4); fr.scale.setScalar(2 * kg * (0.25 + 1.35 * easeOut(T / 0.45))); fr.material.opacity = fade(T, 0.05, 0.6, 0.75); }
+      if (ic) { flat(ic, gp, 0.04, r0); ic.scale.setScalar(3.6 * kg); ic.material.opacity = fade(T, 0.06, 0.7, 0.7); ic.material.color.setHex(0xeafcff).lerp(_c.setHex(0x4a9ad0), Math.min(1, T / 1.2)); }
+      if (gl) { bill(gl, cp); gl.scale.setScalar(2.2 * ks * (0.5 + 0.5 * easeOut(T / 0.08))); gl.material.opacity = fade(T, 0.03, 0.05, 0.28); }
       for (const b of sh) {
         if (dt && !b.st) { b.vy -= 9.8 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.r += b.w * dt; if (b.y < gp.y + 0.08 && b.vy < 0) { b.y = gp.y + 0.08; b.st = 1; } }
         bill(b.m, _a.set(b.x, b.y, b.z), b.r); b.m.scale.set(b.s * 0.5, b.s, 1); b.m.material.opacity = fade(T, 0.03, 0.8, 0.6);
@@ -294,7 +299,7 @@ const MeleeFx = (() => {
     });
   };
   // 황금 프라이팬: 금화 일곱 닢이 몸에서 튀어 올라 빙글빙글 돌며 쏟아져 바닥에 한 번 튀고 · 위에서 금빛 반짝이 비 · 바닥에 밝은 고리 섬광 두 겹
-  FXS.golden = (t, th, gp, cp, k) => {
+  FXS.golden = (t, th, gp, cp, k, ks, kg) => {
     const e = fx(1.5), P = K().pool(), E = K().E;
     const r1 = take(e, K().tex.ring(), 0xfff0b8, true, 4), r2 = take(e, K().tex.ring(), 0xffb830, true, 4), gl = take(e, K().tex.glow(), 0xfff0c0, true, 7);
     const co = [];
@@ -303,27 +308,29 @@ const MeleeFx = (() => {
     for (let i = 0; i < 50; i++) { const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 1.1; _a.set(cp.x + Math.cos(a) * r, cp.y + rnd(0.4, 1.9), cp.z + Math.sin(a) * r); E(P, _a, rnd(-0.3, 0.3), rnd(-0.4, 0.9), rnd(-0.3, 0.3), i % 4 === 0 ? 0xffffff : i % 2 ? 0xffd65a : 0xffb22a, rnd(0.045, 0.08) * k, rnd(0.8, 1.35), { sq: Math.random() < 0.5, g: -3.2, drag: 1.1, so: 0.75 }); }
     for (let i = 0; i < 18; i++) { _v.set(rnd(-1, 1), rnd(0.2, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(2.5, 5)); E(P, cp, _v.x, _v.y, _v.z, 0xfff0b0, rnd(0.04, 0.07) * k, rnd(0.25, 0.45), { drag: 4, so: 0.3 }); }
     go(e, (e, T, dt) => {
-      if (r1) { flat(r1, gp, 0.06); r1.scale.setScalar(2 * (0.2 + 1.5 * easeOut(T / 0.35, 2.4))); r1.material.opacity = 1 - Math.min(1, T / 0.45); }
-      if (r2) { flat(r2, gp, 0.07); const v = T - 0.1; r2.scale.setScalar(2 * (0.3 + 2 * easeOut(v / 0.55, 2.4))); r2.material.opacity = v < 0 ? 0 : 1 - Math.min(1, v / 0.65); }
-      if (gl) { bill(gl, cp); gl.scale.setScalar(2.8 * (0.4 + 0.6 * easeOut(T / 0.08))); gl.material.opacity = fade(T, 0.03, 0.06, 0.3); }
+      if (r1) { flat(r1, gp, 0.06); r1.scale.setScalar(2 * kg * (0.2 + 1.5 * easeOut(T / 0.35, 2.4))); r1.material.opacity = 1 - Math.min(1, T / 0.45); }
+      if (r2) { flat(r2, gp, 0.07); const v = T - 0.1; r2.scale.setScalar(2 * kg * (0.3 + 2 * easeOut(v / 0.55, 2.4))); r2.material.opacity = v < 0 ? 0 : 1 - Math.min(1, v / 0.65); }
+      if (gl) { bill(gl, cp); gl.scale.setScalar(2.8 * ks * (0.4 + 0.6 * easeOut(T / 0.08))); gl.material.opacity = fade(T, 0.03, 0.06, 0.3); }
       for (const c of co) {
         const tt = T - c.d, M = c.m.material; if (tt < 0) { M.opacity = 0; continue; }
         if (dt && !c.st) {
           c.vy -= 9.8 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt; c.fa += c.w * dt;
           const fl = gp.y + c.s * 0.5; if (c.y < fl && c.vy < 0) { c.y = fl; if (c.b++ < 1) { c.vy = -c.vy * 0.38; c.vx *= 0.5; c.vz *= 0.5; } else c.st = 1; }
         }
-        bill(c.m, _a.set(c.x, c.y, c.z), Math.sin(c.fa * 0.3) * 0.3); c.m.scale.set(c.s * Math.max(0.14, Math.abs(Math.cos(c.fa))), c.s, 1); M.opacity = fade(tt, 0.05, 1.05, 0.35);
+        bill(c.m, _a.set(c.x, c.y, c.z), Math.sin(c.fa * 0.3) * 0.3); c.m.scale.set(c.s * Math.max(0.14, Math.abs(Math.cos(c.fa))), c.s, 1);
+        // 늦게 나온 금화도 효과가 끝나기 전(1.4초)에 다 사라지게 (끝 프레임에 한꺼번에 툭 꺼지지 않게)
+        M.opacity = fade(tt, 0.05, 1.05 - c.d, 0.35);
       }
     });
   };
   // 슈퍼레어(약한 효과): 스킨 색 작은 바닥 고리 + 빛 + 조각 몇 개 — 휘장·조명 없음
-  function lite(t, col, gp, cp, k) {
+  function lite(t, col, gp, cp, k, ks, kg) {
     const e = fx(0.6), P = K().pool(), E = K().E;
     const rg = take(e, K().tex.ring(), col, true, 4), gl = take(e, K().tex.glow(), col, true, 7);
     for (let i = 0; i < 14; i++) { const a = Math.random() * TAU; E(P, cp, Math.cos(a) * rnd(0.4, 1.3), rnd(0.8, 2.6), Math.sin(a) * rnd(0.4, 1.3), i % 3 ? col : 0xffffff, rnd(0.04, 0.07) * k, rnd(0.35, 0.6), { g: -4, drag: 1.5, so: 0.7 }); }
     go(e, (e, T) => {
-      if (rg) { flat(rg, gp, 0.05); rg.scale.setScalar(2 * 1.4 * (0.1 + 0.9 * easeOut(T / 0.5, 2.4))); rg.material.opacity = 1 - T / 0.6; }
-      if (gl) { bill(gl, cp); gl.scale.setScalar(1.4 * (0.4 + 0.6 * easeOut(T / 0.1))); gl.material.opacity = 0.85 * fade(T, 0.03, 0.05, 0.22); }
+      if (rg) { flat(rg, gp, 0.05); rg.scale.setScalar(2 * 1.4 * kg * (0.1 + 0.9 * easeOut(T / 0.5, 2.4))); rg.material.opacity = 1 - T / 0.6; }
+      if (gl) { bill(gl, cp); gl.scale.setScalar(1.4 * ks * (0.4 + 0.6 * easeOut(T / 0.1))); gl.material.opacity = 0.85 * fade(T, 0.03, 0.05, 0.22); }
     });
   }
   // t: 쓰러진 캐릭터 · by: 처치한 캐릭터 · cause: 무기 id — 그 근접 무기에 낀 스킨이 울트라레어면 큰 효과(+ 내가 처치했으면 휘장), 슈퍼레어면 약한 효과
@@ -337,9 +344,16 @@ const MeleeFx = (() => {
     if (!G.camera) return;
     const cp = new THREE.Vector3(); t.chest(cp);
     if (cp.distanceTo(G.camera.position) > (th ? 220 : 120)) return;
-    const gp = K().ground(t.pos.x, t.pos.y, t.pos.z), k = farK(cp, 25, 2.5);
+    // 엎드린 몸(기절한 적을 마무리 — 팀전 근접 처치는 대부분 이것): 가슴이 바닥 0.28m 위 · 발에서 1.05m 앞이라 갈고리·베기가 땅에 묻히고 바닥 고리가 몸과 어긋남
+    //  → 효과 자리를 몸 가운데(발과 가슴 사이)로 옮기고 바닥에서 0.75m 위로 올림 · 바닥 고리도 그 아래 · 몸이 낮으니 큰 판도 조금 작게
+    const low = !!(t.anim && t.anim.prone > 0.5);
+    if (low) { cp.x = (cp.x + t.pos.x) / 2; cp.z = (cp.z + t.pos.z) / 2; }
+    const gp = low ? K().ground(cp.x, t.pos.y, cp.z) : K().ground(t.pos.x, t.pos.y, t.pos.z);
     if (t.inWater) gp.y = t.pos.y + 0.3;
-    if (th) FXS[S.shape](t, th, gp, cp, k); else lite(t, L ? L[0] : rarOf(S.rar).hex, gp, cp, k);
+    if (low) cp.y = Math.max(cp.y, gp.y + 0.75);
+    // 큰 판 배율: 카메라가 4.8m(3인칭 근접 처치) 이상이면 1, 가까울수록 작게(1인칭 ≈ 1.5m → 0.45) · 바닥 판은 반만 줄임
+    const kd = clamp(cp.distanceTo(G.camera.position) / 4.8, 0.45, 1), ks = kd * (low ? 0.85 : 1), kg = 0.5 + 0.5 * kd, k = farK(cp, 25, 2.5);
+    if (th) FXS[S.shape](t, th, gp, cp, k, ks, kg); else lite(t, L ? L[0] : rarOf(S.rar).hex, gp, cp, k, ks, kg);
     if (typeof Audio !== 'undefined' && Audio.skinFx) Audio.skinFx('kill', th ? th.snd : L ? L[1] : 'frontier', by.isPlayer ? null : cp, !!by.isPlayer, !th);
   }
   return { init, update, dispose, kill, ofKill, info, tier, perk, THEME, LITE, _live: LIVE, _free: FREE };
