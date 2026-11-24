@@ -5,6 +5,7 @@ Three.js r128 기반, 서버 없이 브라우저에서 실행되는 싱글플레
 ## 실행
 - `dist/index.html` 을 브라우저로 열면 바로 실행됩니다 (three.js는 cdnjs에서 로드).
 - 소스 수정 후 `node build.js` → `dist/last-drop.html`(아티팩트용), `dist/index.html`(단독 실행용) 재생성. 합치기 전에 문법을 검사해, 깨진 코드면 dist 를 쓰지 않고 실패한다(아래 「빌드 문법 검사」).
+- 빌드는 `src/head.html` 을 `dist/index.html` 의 `<head>` 에 넣고 `public/**`(manifest.webmanifest · sw.js)를 `dist/` 로 복사한다. 앱 아이콘 `dist/icons` 는 로고에서 코드로 만들어 커밋해 둔 것 (아래 「앱 설치(PWA)」).
 
 ## 모듈 구조 (`src/`)
 | 파일 | 내용 |
@@ -71,6 +72,7 @@ Three.js r128 기반, 서버 없이 브라우저에서 실행되는 싱글플레
 | 10_chat.js | **v22** 문자: 파티 채널 `{k:'chat'}`(로비 파티 막대 · 경기 중 화면 왼쪽) · 경기 중 입력(PC Enter · 모바일 💬 + 빠른 문구) · 관전자와 주고받기 · 80자·도배 제한 |
 | 10_resume.js | **v23** 경기 이어하기: 경기 중 새로고침·뒤로가기로 나갔다 들어오면 「다시 들어가기 · 포기하기」 — 혼자 하는 경기는 5초마다·떠날 때 저장(시드 + 바뀐 것만)했다가 그대로 되살리고, 같이 하기·온라인 매칭은 지금 방장에게 다시 연결해 봇이 맡던 내 캐릭터를 돌려받음 (`10_net.js` rj·rjok·rjs) |
 | 10_hud.js | HUD, 미니맵/전체지도(마커), 인벤토리, 설정, 로비(일반/랭크 선택·랭크 카드·대형 맵 경고), 티어표, 결과 화면(RP 변화·승급 연출) |
+| 10_app.js | **v23** 앱 설치(PWA): 서비스 워커 등록(https · 로컬 http 는 localStorage `lastdrop.sw`=`1` · manifest 가 있는 맨 위 창에서만) · `beforeinstallprompt` 붙잡기 → 로비 메뉴 ▾ 「앱 설치」(빨간 점) · 소식 카드(`HUD.news`) · 설치 창(가로 휴대폰 애니메이션) · 아이폰(기록이 따로라는 안내 + 가입·로그인)/앱 안 브라우저/그 밖 안내 · 설치한 앱이면 `body.app` · 앱 아이콘·og 그림을 로고 기호에서 코드로 (`__LD.App.exportIcons()`) |
 | 11_game.js | 렌더러, 로비 3D, 로딩→지도 미리보기→수송기→강하→낙하산→착지→전투→결과 흐름, 통계 저장 · **v20**: FPS 제한 30·60·120·무제한(일정 기반 — 다음 프레임 목표 시각, 허용 오차 20%)·FPS 표시 |
 
 ## v2 업데이트 내용
@@ -1720,3 +1722,130 @@ Three.js r128 기반, 서버 없이 브라우저에서 실행되는 싱글플레
 - 빠른 기기에서 로비가 300 m 전에 준비되면 300 m 까지를 짧게(0.5초 이하) 하고 낙하산을 편 뒤 착지 → 사라짐 끝까지 최대 약 2.2초(300 m 뒤면 1.5초) · 누르면 바로.
 - 인라인 스크립트 30KB(주석 줄 빼면 22KB) — 대부분 절차적 그림 · 블록 gzip 약 17KB(한국어 주석 포함).
 - 진짜 기기(S26 Ultra)에서 초기화 중 움직임·GPU 메모리는 아직 못 봄.
+
+### 앱 설치(PWA) · 앱 아이콘 · 오프라인 시작 (2026-11-24 · `10_app.js` · `public/sw.js` · `public/manifest.webmanifest` · `src/head.html` · `build.js` · `10_ver.js` · `10_hud.js` · `10_touch.js` · `11_game.js` · `index.html` · `style.css`)
+
+**무엇·왜**
+- 브라우저 탭에서만 돌던 게임을 홈 화면·앱 목록에 설치해 앱처럼(전체 화면 · 가로) 실행. 앱 아이콘·파비콘·링크 미리보기 그림이 없었다(파비콘 404).
+- 한 번 받은 뒤에는 인터넷 없이도 게임이 켜지게 (혼자 하는 경기·훈련장 — 로그인·온라인은 연결 필요).
+
+**어떻게**
+- `src/head.html`
+  - theme-color · color-scheme dark · description · manifest · 파비콘 PNG 32/16 + 192 · apple-touch-icon · mobile-web-app-capable.
+  - apple-mobile-web-app-capable / status-bar-style(black-translucent) / title('Last Drop') · application-name · Open Graph + 트위터 카드.
+  - og:image·twitter:image·og:url 만 배포 절대 주소 (`https://lds-training.vercel.app/icons/og.jpg` · 1200×630 JPEG). 나머지는 상대 경로라 file:// · 하위 경로에서도 그대로.
+- `build.js`
+  - head.html 을 trim 해서 viewport meta 바로 뒤 `</head>` 앞에 넣는다 (index.html 만 — last-drop.html 은 그대로).
+  - `public/**` 를 `dist/` 로 재귀 복사한다 (폴더 생성 · 덮어쓰기 · 다른 dist 파일은 안 지움).
+  - 문법 검사·exit(1) 은 그대로.
+  - `dist/icons/SOURCE.txt` 의 `ldrDefs-fnv1a32:` 가 지금 로고 블록 해시와 다르거나 파일이 없으면 경고만 한다 (빌드는 계속).
+  - 해시 정의
+    - src/index.html 에서 CR 을 지우고, HTML 주석을 같은 길이 공백으로 바꾼다.
+    - 그 글에서 `/<svg\b[^>]*\bid=["']ldrDefs["'][^>]*>/` 로 여는 태그를 찾는다 (속성 순서·따옴표 무관).
+    - 거기서 svg 여닫기 짝(자기 닫는 `<svg/>` 제외)이 맞는 `</svg>` 까지, 원래 글(주석 포함) 구간의 UTF-8 바이트를 FNV-1a 32비트로 → 16진수 8자리.
+    - `ldrDefsText`·`fnv1a32` 는 build.js 와 10_app.js 에 글자까지 같은 코드로 둔다.
+- `public/manifest.webmanifest`
+  - id "/" · start_url·scope "./" · display fullscreen (+ display_override fullscreen → standalone) · orientation landscape · #0d1113 · categories games.
+  - 아이콘: any 192·512 + maskable 192·512.
+  - launch_handler focus-existing: 이미 열려 있으면 그 창을 앞으로 (두 번째 게임이 뜨지 않게).
+- `public/sw.js` (캐시 `ldr-v1` — 저장 방식을 바꾸면 V 를 올린다)
+  - 캐시는 덤
+    - 모든 요청이 네트워크를 먼저 쓴다 (버전 고정 CDN 만 저장본 먼저 — 읽기 오류는 '없음').
+    - 캐시 열기·읽기·쓰기 실패는 삼킨다 (`cs()` 가 바로 나는 오류도 거절로 바꿈). 캐시 저장소가 고장 나도 온라인이면 게임이 뜬다.
+    - 설치·활성화도 캐시 오류로 실패하지 않는다.
+  - 설치 때 게임 페이지(HOME = 등록 범위)와 cdnjs three.js 를 미리 저장한다.
+  - 같은 출처 페이지 이동은 네트워크 먼저. 게임 페이지(범위 맨 위·index.html)는 주소 꼬리를 떼고 HOME 한 칸에 저장한다. 네트워크가 안 되면 어느 페이지든 HOME.
+  - 캐시 먼저: 주소에 정확한 버전이 박힌 three(cdnjs r128 · jsdelivr/unpkg three@x.y.z) · supabase-js@x.y.z · fonts.gstatic.com.
+  - 구글 글꼴 CSS(fonts.googleapis.com/css2?)
+    - 페이지는 no-cors(불투명)로 부르므로 워커가 cors·쿠키 없이 받아 저장하고, 그 사본으로 답한다.
+    - 안 되면 저장본, 그것도 없으면 페이지의 원래 요청 그대로 (저장 안 함).
+  - 같은 출처의 다른 GET: 네트워크 먼저, 안 되면 저장본.
+  - 건드리지 않음: GET 이 아닌 요청(10_ver.js 의 HEAD) · *.supabase.co · 그 밖의 다른 출처.
+  - 200 · basic/cors 응답만 저장한다 (opaque·리디렉트 안 함). activate 에서 옛 ldr- 캐시를 지우고 clients.claim · skipWaiting. 페이지를 억지로 새로고침하지 않는다.
+- `10_app.js` (`App`)
+  - 설치할 수 있는 곳 `installable()` = 맨 위 창(iframe 아님) + https 또는 로컬 개발 주소 + `<link rel="manifest">` (last-drop.html 제외). 설치 메뉴와 서비스 워커 등록 모두 이 조건.
+  - 서비스 워커 등록
+    - https 에서 load 1.5초 뒤.
+    - 로컬 http 는 localStorage `lastdrop.sw` === '1' 일 때만 — 아니면 남은 등록을 지운다.
+    - `navigator.serviceWorker` 읽기는 try 안에서.
+  - `beforeinstallprompt` 는 모듈이 실행될 때부터 붙잡는다 (preventDefault — 미니 안내 막대 없음).
+    - 메뉴 ▾ 맨 아래 「앱 설치」 + 빨간 점 (#appDot · ▾ 위 #appMoreDot — 업데이트 로그 점과 따로). 점은 설치 창을 한 번 열면 끈다 (store 'appSeen').
+    - 소식 카드를 맨 앞에 넣는다 (`HUD.news` · 그림은 `bannerArt` 720×200 JPEG). 휴대폰 가로 화면에서는 기존 CSS 가 소식 카드를 숨기므로 메뉴의 점이 입구.
+  - 설치하기 → `prompt()`
+    - 이벤트는 누르기 전에 비워 두 번 눌러도 한 번만 부른다.
+    - NotAllowedError(누른 동작 없음)면 이벤트를 되돌려 두고 「한 번 더 눌러 주세요」.
+    - accepted/dismissed 를 로비 알림으로. 취소한 뒤 다시 열면 「설치 창은 접속할 때마다 한 번만」 + 브라우저 메뉴 안내.
+  - 설치 창 #appPanel (`data-nofs`)
+    - 왼쪽: 가로 휴대폰 SVG — 홈 화면 → 아이콘 누름 → 둥글게 퍼지는 실행 → 스플래시 → 전체 화면 게임, 6초 반복. 아래 단계 칩이 같이 켜지고, 움직임 줄이기면 멈춘다.
+    - 오른쪽 — prompt(설치 이벤트 있음): 장점 4줄 + 「설치하기」.
+    - 오른쪽 — ios: 공유 → 홈 화면에 추가 → 추가 (코드로 그린 공유 아이콘).
+      - 아래에 「홈 화면 앱은 Safari 와 기록이 따로」 안내 (iOS 홈 화면 앱은 localStorage·로그인 세션이 Safari 와 따로라 로그아웃 상태로 열림).
+      - 게스트: 가입해 두면 지금 기록이 계정으로 옮겨짐(10_cloud.js afterLogin) + 「가입 · 로그인」 단추 → `Cloud.open()`.
+      - 로그인한 사람: 앱에서 같은 아이디로 로그인. 계정 기능이 꺼져 있으면: 기록이 넘어가지 않음.
+    - 오른쪽 — inapp(카카오톡·네이버·인스타그램·페이스북·라인·다음·에브리타임·밴드): 다른 브라우저로 열기 + 주소 복사.
+    - 오른쪽 — generic: 지금 브라우저 줄 강조 (Chrome·Edge·웨일 / 삼성 인터넷 / Safari Mac / Firefox Android).
+    - 열린 채 설치 이벤트가 오면 바로 prompt 모드로. Esc·바깥·✕ 로 닫히고, 경기가 시작되면 닫힌다.
+    - 높이 420px 이하(휴대폰 가로)에서는 단계 안내를 작게 — 아이폰 Safari(주소 막대·홈 표시줄 → 300px 남짓)에서도 스크롤 없이 292px.
+  - `appinstalled` → 알림 + 메뉴·점·소식 카드 숨김 (store 'appInst' — 지웠다가 다시 설치할 수 있게 되면 브라우저가 이벤트를 다시 보낸다). PC 파이어폭스·file:·일반 http 에는 메뉴가 없다.
+  - 설치한 앱으로 실행 중이면 `body.app` + 설치 UI 없음
+    - 판정: display-mode standalone·minimal-ui·window-controls-overlay, fullscreen(Fullscreen API 로 맞는 경우 제외), navigator.standalone.
+    - 처음 열릴 때의 판정(`LAUNCH`)을 기억한다 — standalone 앱 안에서 게임이 전체 화면을 켜 display-mode 가 fullscreen 으로 바뀌어도 앱으로 봄.
+    - display-mode 가 바뀌면 다시 판정한다 (PC Chrome 은 설치하면 탭을 앱 창으로 옮김).
+  - 오프라인 시작(서비스 워커가 저장본으로 띄움 = navigation transferSize 0)이면 저장본의 ETag 로 `Ver.seed`. 다시 연결되면 새 배포 막대가 뜬다 (그대로 두면 첫 HEAD 의 새 ETag 가 기준이 되어 옛 화면인 줄 모른다).
+- 다른 파일
+  - `10_touch.js`: display-mode fullscreen(설치한 앱)이거나 `[data-nofs]` 안(설치 창)을 누를 때는 전체 화면을 요청하지 않는다. 그 요청이 누름의 사용자 활성화를 써 버리면 설치하기의 `prompt()`·주소 복사가 거절된다.
+  - `10_ver.js`: `Ver.seed(etag)` (기준이 없을 때만).
+  - `10_hud.js`: `HUD.news(card, on)` (같은 tag 는 한 장 · on 이면 맨 앞에 넣고 바로 보여 줌).
+  - `11_game.js`: boot 에서 `App.setup()` · `__LD.App`.
+  - `index.html`: #lbMenu 맨 아래 #appBtn(+#appDot) · #moreBtn 의 #appMoreDot · #appPanel(clPanel 다음 · data-nofs).
+  - `style.css` (로비 메뉴 블록 바로 뒤): 메뉴 4·5번째 펼침 지연 · .app-* · .app-note · .apx-* · 높이 420px 이하 축소.
+
+**앱 아이콘 다시 만들기 (로고가 바뀌면)**
+- 순서: 다시 빌드 → 로컬 서버에서 게임을 열고 콘솔에 `await __LD.App.exportIcons()` → dist/icons 커밋.
+  - 서버가 `POST /put?p=icons/이름` 으로 dist/icons 에 쓴다.
+  - 그림·해시 모두 그때 서버에서 새로 받은 페이지의 #ldrDefs 로 만든다 (화면 DOM 이 아님 — 빌드 전에 열어 둔 탭이어도 새 로고).
+- 옵션
+  - 링크 미리보기 글꼴(IBM Plex Sans KR · Saira Condensed)을 받지 못하면 멈춘다 — 그래도 만들려면 `exportIcons({ anyFont: true })`.
+  - `/put` 이 없는 서버면 `exportIcons({ download: true })` 로 내려받아 dist/icons 에 넣는다.
+- 만드는 파일
+  - icon-192/512 — any · 모서리 투명 · ldr-icon
+  - maskable-192/512 — 꽉 찬 불투명 · ldr-icon-mask (그림은 가운데 지름 80% 원 안)
+  - apple-touch-icon 180 — 불투명 · ldr-icon-mask 를 1.25배 (iOS 는 모서리만 둥글게 자르므로 · 안전 원이 칸에 꼭 맞아 잘리지 않음)
+  - favicon-32/16 — ldr-icon-micro (로고의 16~32px 단순판 — 캐노피 · 굵은 고리 · 강하 표식만)
+  - og.jpg 1200×630 (JPEG 0.86 · 약 90KB) — 등고선 작전 지도 · 자기장 · 수송기 항로 · 강하 핀 + ldr-logo-h 600×150 + 소개 글
+  - SOURCE.txt — 해시 · 크기
+- 그리는 법
+  - #ldrDefs 의 defs·symbol 을 XMLSerializer 로 통째로 넣은 독립 SVG → Image → 캔버스(목표 크기에서 바로 벡터 래스터) → PNG/JPEG.
+  - 확대는 viewBox 를 가운데 1/k 로. 같은 로고면 바이트까지 같은 파일이 나온다.
+- 로고를 바꾸고 다시 만들지 않으면 `node build.js` 가 「경고: 앱 아이콘이 지금 로고와 다름 …」 (빌드는 계속).
+- 주소에 버전이 없으므로 한 번 퍼진 그림은 남는다: 카카오톡·페이스북 미리보기 캐시는 카카오 공유 디버거에서 초기화하고, 아이폰 홈 화면 아이콘은 추가할 때 한 번 받는다.
+  - 그래서 진짜 로고로 다시 만든 뒤에 배포한다.
+
+**확인 (헤드리스 Chrome · SwiftShader · CDP)**
+- `Page.getInstallabilityErrors` = [] · `Page.getAppManifest` errors [] · 실제 `beforeinstallprompt` 를 받음.
+- 갤럭시 915×412 · 터치 · 실제 설치 이벤트 · 실제 터치로 설치하기 → `prompt()` 가 사용자 활성화가 있는 채로 불림 (설치 창 안 누름은 전체 화면 요청 0).
+- 서비스 워커: lastdrop.sw=1 → 등록·claim.
+  - 다시 열면 navigation workerStart > 0 · three.js transfer 0 · 글꼴 CSS 가 cors 로 저장(규칙 291).
+  - HEAD 는 fromServiceWorker false, manifest GET 은 true.
+- 캐시 고장 흉내: 워커 안 caches.open/match/keys 가 UnknownError → 이동·three(cdnjs·jsdelivr)·글꼴 CSS·manifest·페이지 모두 200 (워커 경유) · 다시 불러도 로비.
+- 오프라인: 브라우저 캐시를 비우고 워커·페이지 모두 끊음 → 저장본으로 로비 (three r128 · Ver.base = 저장본 ETag) · 글꼴 CSS 도 저장본 (웹 글꼴 그대로).
+- build.js 를 브라우저에서 실제 소스 + fs 흉내로 실행
+  - dist/index.html · last-drop.html 이 PowerShell 빌드와 글자까지 같음 · public 복사.
+  - 해시 같음 = 경고 없음 · 다름·없음 = 경고 · 속성 순서·따옴표가 바뀌어도 블록을 찾음 · head.html 없음 = 예전 head · 문법 오류 = exit(1)·dist 안 씀.
+  - FNV-1a 시험값 ("" 811c9dc5 · "a" e40c292c · "foobar" bf9cf968).
+- 아이콘
+  - 크기 모두 맞음 · any 모서리 알파 0 · maskable·apple·og 완전 불투명.
+  - 마스커블 그림 최대 반지름 26.4% (안전 40%) · 80% 원 밖 0픽셀 · 애플 33.1%.
+  - 화면의 #ldrDefs 를 비워도 내보낸 파일이 바이트까지 같음.
+- 설치 흐름 (합성 이벤트): NotAllowedError → 이벤트 유지 · dismissed 알림 · 다시 열면 안내 · appinstalled 로 숨김 · manifest 없으면 메뉴 없음 · iframe 은 메뉴·등록 없음.
+- 아이폰 UA 844×390 · 844×330 · 667×330: 게스트·로그인 모두 292px 로 스크롤 없이.
+- standalone 으로 뜬 앱 + Fullscreen API 뒤에도 `body.app`.
+
+**한계**
+- 설치 이벤트는 게임 코드가 시작된 뒤(three.js 를 받은 뒤)부터 받는다. 그 전에 오면 다음 방문까지는 메뉴 안내(브라우저 메뉴)로.
+- 아이폰 시작 화면(apple-touch-startup-image)은 없다. iOS 는 가로 고정을 하지 않는다.
+- 아이폰 홈 화면 앱의 기록은 Safari 와 따로다 — 계정 로그인으로만 이어진다 (자동 옮기기 없음).
+- PC 브라우저 F11 전체 화면으로 연 접속은 앱으로 봐서 그동안 설치 메뉴가 숨는다.
+- 오프라인 시작 판정(navigation transferSize 0)은 Chrome 기준 — 값을 주지 않는 브라우저는 예전 동작.
+- 아이콘·og 주소에 버전이 없다 (build.js 가 PowerShell 빌드와 같은 결과를 내야 해서 빌드가 주소를 바꾸지 않음).
+- 통합 때: 진짜 로고가 들어온 뒤 아이콘을 다시 만듦 (`ldrDefs-fnv1a32: 6d40bb22`) · 파비콘은 `ldr-icon-micro` 로 바꿈 (16·32px 에서 앱 아이콘 전체는 뭉개짐) · CDP 로 설치 가능 확인 `installabilityErrors: []` · 오프라인 시작 · 캐시 고장 시작 다시 확인

@@ -1,0 +1,13 @@
+# Last Drop Royale 앱 아이콘 — 로고 기호(src/index.html #ldrDefs)에서 코드로 그림 (src/10_app.js App.exportIcons)
+# 로고를 바꾸면: 다시 빌드 → 로컬 서버에서 게임을 열고 콘솔에 await __LD.App.exportIcons() → dist/icons 커밋
+# build.js 는 아래 해시가 지금 로고 블록의 해시(FNV-1a 32비트 · UTF-8 · CR 제외)와 다르면 경고한다
+ldrDefs-fnv1a32: 6d40bb22
+generated: 2026-11-24T14:36:38.881Z
+icon-192.png 192x192 57KB
+icon-512.png 512x512 279KB
+maskable-192.png 192x192 57KB
+maskable-512.png 512x512 321KB
+apple-touch-icon.png 180x180 55KB
+favicon-32.png 32x32 3KB
+favicon-16.png 16x16 1KB
+og.jpg 1200x630 94KB

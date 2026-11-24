@@ -9,8 +9,12 @@
 // ============================================================
 (() => {
   if (!IS_TOUCH || typeof document === 'undefined') return;
-  const go = () => {
+  const go = (e) => {
     const d = document, el = d.documentElement; if (d.fullscreenElement || d.webkitFullscreenElement) return;
+    // v23 설치한 앱(manifest display: fullscreen)으로 실행 중이면 이미 전체 화면 — 다시 요청하지 않음 (Android '전체 화면 종료' 안내가 누를 때마다 뜨지 않게)
+    if (typeof matchMedia === 'function' && matchMedia('(display-mode: fullscreen)').matches) return;
+    // v23 data-nofs 안(앱 설치 창 #appPanel)을 누를 때도 요청하지 않음 — 전체 화면 요청이 그 누름의 사용자 활성화를 써 버려 그 단추의 설치 창(prompt())·주소 복사가 거절되므로
+    const t = e && e.target; if (t && t.closest && t.closest('[data-nofs]')) return;
     const rq = el.requestFullscreen || el.webkitRequestFullscreen; if (!rq) return;
     try { const p = rq.call(el, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => { /* 거절되면 다음 터치에서 다시 */ }); } catch (e) { /* 지원 안 함 */ }
   };

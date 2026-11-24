@@ -482,12 +482,14 @@
         <button class="icon-btn dev-btn" id="devBtn" type="button" hidden title="개발자 도구"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5.2 5.2L4 16l4 4 5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>DEV</span></button>
         <!-- 오른쪽 위 화살표: 누르면 경기 설정 · 조작법 · 설정이 차례로 펼쳐짐 -->
         <div class="lb-more" id="lbMore">
-          <button class="icon-btn more-btn" id="moreBtn" type="button" aria-expanded="false" aria-controls="lbMenu" title="메뉴"><svg viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></svg><i class="tab-dot" id="moreDot" hidden></i></button>
+          <button class="icon-btn more-btn" id="moreBtn" type="button" aria-expanded="false" aria-controls="lbMenu" title="메뉴"><svg viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></svg><i class="tab-dot" id="moreDot" hidden></i><i class="tab-dot" id="appMoreDot" hidden></i></button>
           <div class="lb-menu" id="lbMenu" hidden>
             <button class="icon-btn" type="button" id="clBtn" title="업데이트 로그"><svg viewBox="0 0 24 24"><path d="M6 3.5h9l4 4v13H6z"/><path d="M15 3.5v4h4M9 11h7M9 14.5h7M9 18h4"/></svg><span>업데이트 로그</span><i class="tab-dot" id="clDot" hidden></i></button>
             <button class="icon-btn hl" type="button" data-ui="matchCfg" title="경기 설정"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>경기 설정</span></button>
             <button class="icon-btn" type="button" data-ui="help" title="조작법"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h1M9.5 10h1M13 10h1M16.5 10h1M7 14h10"/></svg><span>조작법</span></button>
             <button class="icon-btn" type="button" data-ui="settings" title="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg><span>설정</span></button>
+            <!-- v23 앱 설치 (10_app.js): 설치할 수 있을 때만 보임 · 처음엔 빨간 점 -->
+            <button class="icon-btn" type="button" id="appBtn" title="앱 설치 — 홈 화면에 추가" hidden><svg viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><path d="M12 6.8v6.6M9.3 10.7 12 13.4l2.7-2.7M10.6 18.3h2.8"/></svg><span>앱 설치</span><i class="tab-dot" id="appDot" hidden></i></button>
           </div>
         </div>
       </div>
@@ -861,6 +863,17 @@
     <div class="menu wide cl-menu">
       <div class="acct-head"><div class="eyebrow">업데이트 로그</div><button class="map-x acct-x" type="button" id="clClose" aria-label="닫기">✕</button></div>
       <div id="clBody" class="cl-body"></div>
+    </div>
+  </section>
+  <!-- v23 앱 설치 (10_app.js): 설치 창 · 아이폰·아이패드는 '홈 화면에 추가' 안내 · 앱 안 브라우저·그 밖의 브라우저는 메뉴 안내 (내용은 열 때 채움)
+       data-nofs: 이 안을 누를 때는 10_touch.js 가 전체 화면을 요청하지 않음 (설치하기 단추의 prompt() 가 그 누름의 사용자 활성화를 써야 함) -->
+  <section id="appPanel" class="overlay" data-nofs hidden>
+    <div class="menu app-box" role="dialog" aria-modal="true" aria-labelledby="appTitle">
+      <div class="acct-head"><div class="eyebrow">앱 설치</div><button class="map-x acct-x" type="button" id="appClose" aria-label="닫기">✕</button></div>
+      <div class="app-grid">
+        <div class="app-art" id="appArt" aria-hidden="true"></div>
+        <div class="app-main"><h2 class="app-h" id="appTitle">앱으로 설치하기</h2><div id="appBody"></div><p class="app-msg" id="appMsg" role="status" hidden></p><div class="app-btns" id="appBtns"></div></div>
+      </div>
     </div>
   </section>
   <!-- 이벤트 (10_event.js) -->
