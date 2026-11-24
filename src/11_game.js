@@ -396,6 +396,9 @@ function dropCands() {
 }
 function pickDropTarget() {
   const C = W.big ? dropCands() : null;
+  // 착지 분산: 한 지점에 봇이 몰리면 착지하자마자 난투로 절반이 1분 안에 죽는다 → 이미 고른 착지점이 대형 맵은 80m 안에 2곳,
+  //  v23 작은 맵은 40m 안에 3곳이면 다른 곳 (교전 템포를 쓰는 일반 경기만 — 랭크전·하드코어는 예전처럼 분산 없음, 07_bot_pace.js)
+  const T = C || (!Pace.live() ? null : G.dropCands && G.dropCands.plane === G.plane ? G.dropCands : (G.dropCands = { plane: G.plane, taken: [] })), tR = C ? 80 : 40, tN = C ? 2 : 3;
   for (let i = 0; i < 60; i++) {
     let x, z;
     // 대형 맵: 빈 들판에 내리면 무기를 못 찾아 맨손 싸움이 된다 → 거의 항상 마을/건물 근처
@@ -412,9 +415,8 @@ function pickDropTarget() {
     const h = heightAt(x, z); if (h < 0.8) continue;
     if (groundAt(x, z, 9999) - h > 1.0) continue; // 지붕/구조물 위 제외
     if (Math.abs(x - G.plane.ax) + Math.abs(z - G.plane.az) < 1) continue;
-    // 대형 맵: 한 지점에 봇이 몰리면 맨손 난투로 절반이 1분 안에 죽는다 → 80m 안에 이미 2명이면 다른 곳
-    if (C && i < 50) { let n = 0; for (const t of C.taken) if (Math.abs(t.x - x) < 80 && Math.abs(t.z - z) < 80 && ++n >= 2) break; if (n >= 2) continue; }
-    if (C) C.taken.push({ x, z });
+    if (T && i < 50) { let n = 0; for (const t of T.taken) if (Math.abs(t.x - x) < tR && Math.abs(t.z - z) < tR && ++n >= tN) break; if (n >= tN) continue; }
+    if (T) T.taken.push({ x, z });
     return { x, z };
   }
   return { x: rnd(-150, 150), z: rnd(-150, 150) };
@@ -532,9 +534,8 @@ async function startMatch(cfg) {
     }
     CHARS.push(b);
   }
-  G.total = CHARS.length; Hunt.reset();   // v23 잠수 추적 (승급전 · 하드코어 — 07_bot_hunt.js)
+  G.total = CHARS.length; Hunt.reset(); Pace.reset();   // v23 잠수 추적 (승급전 · 하드코어 — 07_bot_hunt.js) · 교전 템포 (07_bot_pace.js)
   try { MeleeSkin.warm(CHARS, G.player); } catch (e) { console.warn('근접 무기 스킨 미리 만들기 실패', e); }   // v23 이번 경기의 근접 무기 스킨 모양·내 무기 칸 그림을 미리 (주울 때 끊기지 않게)
-  for (const c of CHARS) { c.root.visible = false; c.pos.copy(G.plane.pos); sc.add(c.root); c.yaw = Math.atan2(G.plane.dx, G.plane.dz); }
   warmFar(sc);   // v23 먼 캐릭터용 셰이더·점 색을 로딩 중에 미리
   G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
   HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
@@ -792,6 +793,7 @@ G.update = function (dt) {
   const camP = G.camera.position, lodR = W.big ? 600 : Math.max(QUALITY[SETTINGS.quality].botDraw, 220);
   let hum = null; if (G.net) for (const h of CHARS) if (h.human && h.alive && h.net && !h.net.mine && !h.botized) (hum || (hum = [])).push(h);
   const nearHum = (c) => { if (!hum) return false; for (const h of hum) if (Math.abs(h.pos.x - c.pos.x) < lodR && Math.abs(h.pos.z - c.pos.z) < lodR) return true; return false; };
+  if (!G.island && !G.training && !G.dm) Pace.update(dt);   // v23 교전 템포(일반 경기만): 봇을 움직이기 전에 — 사람·이 기기 화면이 볼 수 있는 봇 표시 · 0.5초마다 k (07_bot_pace.js)
   for (const c of CHARS) {
     if (c.net && !c.net.mine) { Net.updateProxy(c, dt); continue; } // 다른 기기가 움직이는 캐릭터: 받은 상태 보간
     if (c.isPlayer || !c.alive) continue;
@@ -1087,7 +1089,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들 — 로컬 파일·개발 주소이거나 서버가 확인한 관리자 계정일 때만 window 에 붙는다 (10_dev.js Dev.hooks · 배포 사이트의 콘솔 치트 막기)
-  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
+  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, Pace, PACE, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } } }));

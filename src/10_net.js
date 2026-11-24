@@ -805,7 +805,7 @@ const Net = (() => {
       if (mate) b.followC = mate;
       if (G.island || c.mode === 'plane') G.planDrop(b, mate);
       else if (c.mode === 'fall' || c.mode === 'chute') { b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0; }
-      else { b.setState('EXPLORE'); b.landT = G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; }
+      else { b.setState('EXPLORE'); b.landT = G.time - 999; b.dropTarget = { x: c.pos.x, z: c.pos.z }; }   // 이미 내린 캐릭터: 착지 뒤 파밍 우선(07_bot.js lootPhase)을 다시 주지 않게
     }
     if (c.knocked) b.onKnocked();
   }
@@ -836,7 +836,7 @@ const Net = (() => {
     if (c.alive) {
       const wi = c.weapon; if (wi && ITEMS[wi.id].ammo) { const a = ITEMS[wi.id].ammo; c.inv.items[a] = (c.inv.items[a] || 0) + ITEMS[wi.id].mag * 3; }
       if (!c.inv.items.bandage) c.inv.items.bandage = 3;
-      const b = new Brain(c, 'normal'); b.state = c.mode === 'ground' ? 'EXPLORE' : 'LANDING'; b.landT = G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0;
+      const b = new Brain(c, 'normal'); b.state = c.mode === 'ground' ? 'EXPLORE' : 'LANDING'; b.landT = c.mode === 'ground' ? G.time - 999 : G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0;   // (이미 내렸으면 착지 뒤 파밍 우선을 다시 주지 않게)
     }
   }
   function hostGone() {

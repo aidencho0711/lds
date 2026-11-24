@@ -69,9 +69,9 @@ class Brain {
     const blind = c.blindT > G.time;   // v22 섬광탄: 눈이 먼 동안은 아무것도 못 본다 (소리는 들림)
     if (!blind) for (const o of CHARS) {
       if (o === c || !o.alive || o.mode !== 'ground' || o.team === c.team) continue;
-      const dx = o.pos.x - c.pos.x, dz = o.pos.z - c.pos.z, dist = Math.hypot(dx, dz);
-      let range = d.view * (o.stance === 'prone' ? 0.5 : o.stance === 'crouch' ? 0.8 : 1);
-      if (G.time - (o.lastShotT || -99) < 1.5) range = Math.max(range, d.view); // 사격 중이면 잘 보임
+      const dx = o.pos.x - c.pos.x, dz = o.pos.z - c.pos.z, dist = Math.hypot(dx, dz), vk = Pace.vk(c, o);   // v23 교전 템포: 사람·관전 화면에서 먼 봇끼리는 시야 ×(0.6 + 0.4k) (07_bot_pace.js)
+      let range = d.view * vk * (o.stance === 'prone' ? 0.5 : o.stance === 'crouch' ? 0.8 : 1);
+      if (G.time - (o.lastShotT || -99) < 1.5) range = Math.max(range, d.view * vk); // 사격 중이면 잘 보임
       if (dist > range) continue;
       const ang = Math.abs(angleDiff(c.yaw, Math.atan2(dx, dz)));
       if (ang > d.fov * DEG && dist > 5) continue;
@@ -94,7 +94,7 @@ class Brain {
         if (n.kind === 'shot' && dist > 12 && dist < 170 && !c.knocked && (!this.investigate || G.time - this.investigate.t > 3)) this.investigate = { x: n.x + rnd(-6, 6), z: n.z + rnd(-6, 6), t: G.time, kind: 'mate' };
         continue;
       }
-      if (dist > n.r * d.hear) continue;
+      if (dist > n.r * d.hear * (n.kind === 'shot' ? Pace.vk(c, n.by) : 1)) continue;   // v23 교전 템포: 먼 봇끼리는 총성을 듣는 반경도 ×(0.6 + 0.4k)
       const err = dist * (n.kind === 'step' ? 0.15 : 0.1);
       const r = this.aware.get(n.by);
       if (r && r.visible) continue;
@@ -140,6 +140,7 @@ class Brain {
     this.lookYaw = Math.atan2(this.investigate.x - this.c.pos.x, this.investigate.z - this.c.pos.z);
     let r = this.aware.get(attacker);
     if (!r) { r = { first: G.time, last: -99, x: this.investigate.x, y: attacker.pos.y, z: this.investigate.z, react: 0.3, heard: G.time }; this.aware.set(attacker, r); }
+    if (Pace.on && (r.pS || !(r.pT > G.time))) { r.pS = false; r.pT = G.time + rnd(8, 12); }   // v23 교전 템포: 쏜 상대와는 바로 8~12초 동안 맞서 싸운다 — 모른 척하던 중이거나 아직 정하지 않았으면 (07_bot_pace.js · 랭크전·하드코어는 꺼짐)
     if (this.c.knocked) { this.thinkT = Math.min(this.thinkT, 0.1); return; }
     if (this.state === 'HEAL') this.setState('RETREAT');
     this.thinkT = Math.min(this.thinkT, 0.05);
@@ -335,6 +336,9 @@ class Brain {
     this.perceive();
     const tgt = this.pickTarget();
     const tr = tgt ? this.aware.get(tgt) : null;
+    // v23 교전 템포 (07_bot_pace.js): 사람·관전 화면에서 먼 봇끼리는 상대마다 8~12초 동안 (1−k) 확률로 모른 척하고 하던 일(파밍·이동·회복·차·부활)을 계속
+    //  (맨손 주먹싸움도 — 착지 직후 봇끼리 처치의 1/3 이 맨손·근접 무기)
+    const pskip = !!tgt && Pace.skip(this, tgt, tr);
     const usable = this.usableWeapons().length > 0;
     const healable = c.inv.bestHeal(c.hp);
     // 플레이어 팀원: 자기장 판단은 플레이어에게 맡긴다 (플레이어와 60m 안이면 자기장으로 따로 가지 않고 따라감)
@@ -353,7 +357,7 @@ class Brain {
     if (!tgt && c.weapon && c.reloadT <= 0 && c.weapon.mag < c.inv.magSize(c.weapon) * 0.5) startReload(c);
 
     // 팀원 부활: 서 있는 적이 안 보이거나 멀고(기절한 팀원이 바로 옆이면 30m), 최근 3초간 맞지 않았으면 (진행 중이면 유지)
-    let threatD = Infinity; for (const [o, r] of this.aware) if (r.visible && !o.knocked && r.dist < threatD) threatD = r.dist;
+    let threatD = Infinity; for (const [o, r] of this.aware) if (r.visible && !o.knocked && r.dist < threatD && !Pace.ign(c, o, r)) threatD = r.dist;   // (서로 모른 척하는 먼 봇은 빼고 — 07_bot_pace.js)
     let calm = false;
     if (G.teamSize > 1 && G.time - c.lastDamageT > 3) {
       if (threatD > 60) calm = true;
@@ -376,7 +380,7 @@ class Brain {
       const ok = m && (!recovering || (!healable && Math.hypot(m.pos.x - c.pos.x, m.pos.z - c.pos.z) < 15));
       if (ok && !(Zone.dps > 3 && !Zone.inside(m.pos.x, m.pos.z, Zone.cur, 0))) { this.reviveTgt = m; c.heal = null; this.setState('REVIVE'); return; }
     }
-    if (c.heal && (!tgt || !tr.visible)) { this.setState('HEAL'); return; }
+    if (c.heal && (!tgt || !tr.visible || pskip)) { this.setState('HEAL'); return; }
     // 대형 맵: 맨손이면 자기장으로 이동 중이라도 가까운 무기는 줍고 간다 (안 그러면 끝까지 맨손). 적이 보이면 아래 판단에 맡김
     if (W.big && !usable && !(tgt && tr.visible) && (inZoneNow || Zone.dps <= 1.5)) {
       if (this.state === 'LOOT' && this.lootTarget && this.lootTarget.alive && this.stateT < 12) { if (c.hp > 30) return; }
@@ -384,7 +388,7 @@ class Brain {
     }
     // 안전구역 밖에서 자기장이 조여 오면 무엇보다 우선
     // 차량: 자기장이 멀면 근처 차량을 타러 간다 (적이 안 보일 때)
-    const noEnemy = !tgt || !tr.visible;
+    const noEnemy = !tgt || !tr.visible || pskip;
     // 동승: 팀원이 운전 중이거나 플레이어가 탄 차에 빈자리가 있으면 타러 간다
     const rcb = this.rcBusy();
     if (noEnemy && !recovering && !rcb) {
@@ -397,10 +401,14 @@ class Brain {
       const v = Veh.nearestFree(c.pos.x, c.pos.z, W.big ? 90 : 60, (o) => Math.hypot(o.vx, o.vz) < 1 && o.seats.length >= Math.min(crew, 4) && !(this.badVeh && this.badVeh.has(o)));
       if (v) { this.vehTarget = v; this.setState('TOVEH'); return; }
     }
-    if (!inZoneNow && (Zone.state === 'shrink' || c.outsideZoneT > 3) && (!tgt || !tr.visible || c.hp < 60)) { this.setState('ZONE'); return; }
+    // (v23 교전 템포로 늦춘 봇끼리 싸움은 길어지므로 그 상대면 자기장부터 — 안 그러면 자기장 밖에서 싸우다 자기장에 죽는다, 07_bot_pace.js)
+    if (!inZoneNow && (Zone.state === 'shrink' || c.outsideZoneT > 3) && (!tgt || !tr.visible || c.hp < 60 || Pace.pk(c, tgt) < 1)) { this.setState('ZONE'); return; }
     const threatArmed = tgt && !tgt.knocked && tgt.weapon && tgt.weapon.mag > 0;
-    // 대형 맵 초반(착지 후 100초): 먼 적보다 파밍 우선 — 맞거나 28m 안에 들어오면 교전 (99명이 4분 안에 2/3 탈락하던 문제)
-    const lootPhase = W.big && G.time - this.landT < 100 && G.time - c.lastDamageT > 4;
+    // 착지 뒤 파밍 우선: 먼 적보다 파밍 — 맞거나 가까이 들어오면 교전
+    //  대형 맵: 착지 후 100초 · 28m (99명이 4분 안에 2/3 탈락하던 문제)
+    //  v23 작은 맵: 교전 템포로 늦추는 봇끼리만(둘 다 c._pf — 사람·사람의 팀원·사람을 상대하는 봇, 랭크전·하드코어는 예전 그대로),
+    //   첫 자기장 단계에 착지 뒤 45~60초(공격적인 봇일수록 짧게) · 18m (75명이 착지 2분 만에 10명이 되던 문제 — 07_bot_pace.js)
+    const lootPhase = G.time - c.lastDamageT > 4 && (W.big ? G.time - this.landT < 100 : !!(tgt && c._pf && tgt._pf) && !Zone.phase && G.time - this.landT < 60 - 15 * this.personal), lootD = W.big ? 28 : 18;
     if (tgt && tr.visible && !usable) {
       // 비무장: 무장한 적이 가까우면 잠시 이탈, 둘 다 맨손이고 가까우면 근접전, 아니면 파밍 계속
       if (threatArmed && tr.dist < 35 && (G.time - c.lastDamageT < 3 || tr.dist < 15)) {
@@ -409,8 +417,8 @@ class Brain {
         this.setState('RETREAT'); return;
       }
       // 맨손끼리 주먹싸움은 성향이 공격적인 봇만, 아주 가까울 때만 (대형 맵은 더 드물게 — 초반 1~2분에 절반이 죽는 문제)
-      if (!threatArmed && tr.dist < (W.big ? 5 : 7) && this.personal > (W.big ? 0.6 : 0.35) && (G.time - tr.first > tr.react)) { this.setState('COMBAT'); return; }
-    } else if (tgt && tr.visible && !(lootPhase && tr.dist > 28)) {
+      if (!threatArmed && tr.dist < (W.big ? 5 : 7) && this.personal > (W.big ? 0.6 : 0.35) && (G.time - tr.first > tr.react) && !pskip) { this.setState('COMBAT'); return; }
+    } else if (tgt && tr.visible && !(lootPhase && tr.dist > lootD) && !pskip) {
       if (G.time - tr.first < tr.react && this.state !== 'COMBAT' && this.state !== 'COVER') { this.setState('DETECT'); return; }
       if (this.state === 'COMBAT' && tr.dist !== undefined && Math.random() < 0.15) this.chooseWeapon(tr.dist);
       if (c.hp < d.retreatHp && healable && tr.dist > 12) { this.setState('RETREAT'); return; }
@@ -430,14 +438,14 @@ class Brain {
       this.setState('COMBAT'); return;
     }
     // 최근에 본 적 → 수색 / 무기 상황 따라 판단
-    if (tgt && G.time - tr.last < 2.5 && usable && !lootPhase && !cautious) {
+    if (tgt && G.time - tr.last < 2.5 && usable && !lootPhase && !cautious && !pskip) {
       if (this.state === 'COVER' && this.coverT < 3) return;
       const nt = this.grenadeCd <= 0 ? this.nadePick(tr.dist) : null;
       if (nt && Math.random() < d.grenade) this.throwAt(tr, nt);
       this.investigate = { x: tr.x, z: tr.z, t: G.time };
     }
     if (this.state === 'RETREAT' && this.stateT < (usable ? 4 : 2.5)) return;
-    if (healable && c.hp < 80 && G.time - c.lastDamageT > (cautious ? 1.5 : 2.5) && (!tgt || G.time - tr.last > (cautious ? 1.5 : 3))) { this.startHeal(); this.setState('HEAL'); return; }
+    if (healable && c.hp < 80 && G.time - c.lastDamageT > (cautious ? 1.5 : 2.5) && (!tgt || pskip || G.time - tr.last > (cautious ? 1.5 : 3))) { this.startHeal(); this.setState('HEAL'); return; }
     if (!inZoneNow && (Zone.state === 'shrink' || c.outsideZoneT > 1)) { this.setState('ZONE'); return; }
     if (zonePressure && !(this.state === 'LOOT' && this.lootTarget && Math.hypot(this.lootTarget.x - c.pos.x, this.lootTarget.z - c.pos.z) < 8)) { this.setState('ZONE'); return; }
     // 리콜 (듀오·스쿼드): 팀원 카드 줍기 / 카드를 들고 리콜 타워로 — 플레이어 지시·따라가기보다 먼저
@@ -575,7 +583,7 @@ class Brain {
     let why = null;
     if (v.burnT > 0 || v.hp < v.T.hp * 0.3) why = 'damaged';
     else if (G.time - c.lastDamageT < 1.5 && Math.hypot(v.vx, v.vz) < 7) why = 'shot';   // 빠르게 달리는 중이면 그대로 도주
-    else if (tgt && tr.visible && this.usableWeapons().length && (tr.dist < 25 || (tr.dist < 60 && Math.hypot(v.vx, v.vz) < 6 && G.time - this.driveT > 3))) why = 'enemy';
+    else if (tgt && tr.visible && this.usableWeapons().length && (tr.dist < 25 || (tr.dist < 60 && Math.hypot(v.vx, v.vz) < 6 && G.time - this.driveT > 3)) && !Pace.skip(this, tgt, tr)) why = 'enemy';   // (v23 서로 모른 척하는 먼 봇이면 계속 달림 — 07_bot_pace.js)
     else if (dd < 30 || (z && Math.hypot(c.pos.x - z.x, c.pos.z - z.z) < z.r * 0.55)) why = 'arrived';
     else if (G.time - this.driveT > 150) why = 'timeout';
     else if (this.stuckN >= 4) why = 'stuck';
@@ -1122,7 +1130,8 @@ class Brain {
     const fsc = ITEMS[c.weapon.id].fixedScope, zk = c.weapon.att.scope ? ITEMS[c.weapon.att.scope].zoom : fsc ? fsc.zoom : 1, dist0 = tr.dist || 50;
     const scopeK = dist0 > 60 ? (zk >= 3 ? 0.65 : zk >= 2 ? 0.8 : 1) : (dist0 < 15 && zk >= 4 ? 1.25 : 1);
     const cls0 = ITEMS[c.weapon.id].cls, wk = cls0 === 'SR' ? 0.45 : cls0 === 'DMR' ? 0.6 : 1, still = Math.hypot(c.vel.x, c.vel.z) < 0.5 && c.stance !== 'stand' ? 0.8 : 1;
-    const err = d.aimErr * DEG * settle * scopeK * wk * still * (1 + tsp / 5) * (Math.hypot(c.vel.x, c.vel.z) > 1 ? 1.4 : 1);
+    const pk = Pace.pk(c, tgt);   // v23 교전 템포: 사람·관전 화면에서 먼 봇끼리는 조준 오차 ÷k · 사격 쉬는 시간이 k 배 느리게 줄어듦 (07_bot_pace.js)
+    const err = d.aimErr * DEG * settle * scopeK * wk * still * (1 + tsp / 5) * (Math.hypot(c.vel.x, c.vel.z) > 1 ? 1.4 : 1) / pk;
     c.aiming = true; // 사격할 때는 정조준 (엄폐 중에도)
     // 부드러운 랜덤 워크 조준 오차
     this.errYaw = clamp(this.errYaw + rnd(-1, 1) * err * dt * 6, -err, err);
@@ -1143,7 +1152,7 @@ class Brain {
     // 산탄총·볼트액션을 한 발씩 넣는 중이라도 적이 보이고 탄이 있으면 장전을 멈추고 쏜다
     if (c.rl && c.rl.canCancel && c.weapon.mag > 0 && tr.visible && dist < wd.range) cancelReload(c);
     if (c.fireCd > 0 || c.reloadT > 0 || c.equipT > 0 || c.heal) return;
-    if (this.pauseT > 0) { this.pauseT -= dt; return; }
+    if (this.pauseT > 0) { this.pauseT -= dt * pk; return; }   // (쉬는 시간은 예전 길이로 두고 줄어드는 빠르기만 — 사람이 다가오거나 사람을 겨누면 남은 시간은 바로 예전 빠르기로)
     if (c.weapon.mag <= 0) { startReload(c); return; }
     _d.set(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch));
     if (fireWeapon(c, _e, _d)) {

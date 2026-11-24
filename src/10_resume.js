@@ -89,7 +89,7 @@ const Resume = (() => {
       if (c.rplane) { b.followJump = false; b.jumpAt = c.rplane.t + rnd(1, 3); b.dropTarget = { x: c.rplane.tw.ix, z: c.rplane.tw.iz }; b.chuteH = rnd(80, 125); }
       else if (b.followJump && b.followC && b.followC.mode !== 'plane' && G.plane) b.jumpAt = G.plane.t + rnd(0.3, 1.4);   // 따라 뛸 사람은 이미 뛰었다
     } else if (c.mode === 'fall' || c.mode === 'chute') { if (!b.followJump) b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0; }
-    else { b.setState('EXPLORE'); b.landT = G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; }
+    else { b.setState('EXPLORE'); b.landT = G.time - 999; b.dropTarget = { x: c.pos.x, z: c.pos.z }; }   // 이미 내린 봇: 착지 뒤 파밍 우선(07_bot.js lootPhase)을 다시 주지 않게
     if (c.knocked) b.onKnocked();
   }
 

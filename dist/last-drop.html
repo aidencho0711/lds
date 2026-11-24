@@ -21145,9 +21145,9 @@ class Brain {
     const blind = c.blindT > G.time;   // v22 섬광탄: 눈이 먼 동안은 아무것도 못 본다 (소리는 들림)
     if (!blind) for (const o of CHARS) {
       if (o === c || !o.alive || o.mode !== 'ground' || o.team === c.team) continue;
-      const dx = o.pos.x - c.pos.x, dz = o.pos.z - c.pos.z, dist = Math.hypot(dx, dz);
-      let range = d.view * (o.stance === 'prone' ? 0.5 : o.stance === 'crouch' ? 0.8 : 1);
-      if (G.time - (o.lastShotT || -99) < 1.5) range = Math.max(range, d.view); // 사격 중이면 잘 보임
+      const dx = o.pos.x - c.pos.x, dz = o.pos.z - c.pos.z, dist = Math.hypot(dx, dz), vk = Pace.vk(c, o);   // v23 교전 템포: 사람·관전 화면에서 먼 봇끼리는 시야 ×(0.6 + 0.4k) (07_bot_pace.js)
+      let range = d.view * vk * (o.stance === 'prone' ? 0.5 : o.stance === 'crouch' ? 0.8 : 1);
+      if (G.time - (o.lastShotT || -99) < 1.5) range = Math.max(range, d.view * vk); // 사격 중이면 잘 보임
       if (dist > range) continue;
       const ang = Math.abs(angleDiff(c.yaw, Math.atan2(dx, dz)));
       if (ang > d.fov * DEG && dist > 5) continue;
@@ -21170,7 +21170,7 @@ class Brain {
         if (n.kind === 'shot' && dist > 12 && dist < 170 && !c.knocked && (!this.investigate || G.time - this.investigate.t > 3)) this.investigate = { x: n.x + rnd(-6, 6), z: n.z + rnd(-6, 6), t: G.time, kind: 'mate' };
         continue;
       }
-      if (dist > n.r * d.hear) continue;
+      if (dist > n.r * d.hear * (n.kind === 'shot' ? Pace.vk(c, n.by) : 1)) continue;   // v23 교전 템포: 먼 봇끼리는 총성을 듣는 반경도 ×(0.6 + 0.4k)
       const err = dist * (n.kind === 'step' ? 0.15 : 0.1);
       const r = this.aware.get(n.by);
       if (r && r.visible) continue;
@@ -21216,6 +21216,7 @@ class Brain {
     this.lookYaw = Math.atan2(this.investigate.x - this.c.pos.x, this.investigate.z - this.c.pos.z);
     let r = this.aware.get(attacker);
     if (!r) { r = { first: G.time, last: -99, x: this.investigate.x, y: attacker.pos.y, z: this.investigate.z, react: 0.3, heard: G.time }; this.aware.set(attacker, r); }
+    if (Pace.on && (r.pS || !(r.pT > G.time))) { r.pS = false; r.pT = G.time + rnd(8, 12); }   // v23 교전 템포: 쏜 상대와는 바로 8~12초 동안 맞서 싸운다 — 모른 척하던 중이거나 아직 정하지 않았으면 (07_bot_pace.js · 랭크전·하드코어는 꺼짐)
     if (this.c.knocked) { this.thinkT = Math.min(this.thinkT, 0.1); return; }
     if (this.state === 'HEAL') this.setState('RETREAT');
     this.thinkT = Math.min(this.thinkT, 0.05);
@@ -21411,6 +21412,9 @@ class Brain {
     this.perceive();
     const tgt = this.pickTarget();
     const tr = tgt ? this.aware.get(tgt) : null;
+    // v23 교전 템포 (07_bot_pace.js): 사람·관전 화면에서 먼 봇끼리는 상대마다 8~12초 동안 (1−k) 확률로 모른 척하고 하던 일(파밍·이동·회복·차·부활)을 계속
+    //  (맨손 주먹싸움도 — 착지 직후 봇끼리 처치의 1/3 이 맨손·근접 무기)
+    const pskip = !!tgt && Pace.skip(this, tgt, tr);
     const usable = this.usableWeapons().length > 0;
     const healable = c.inv.bestHeal(c.hp);
     // 플레이어 팀원: 자기장 판단은 플레이어에게 맡긴다 (플레이어와 60m 안이면 자기장으로 따로 가지 않고 따라감)
@@ -21429,7 +21433,7 @@ class Brain {
     if (!tgt && c.weapon && c.reloadT <= 0 && c.weapon.mag < c.inv.magSize(c.weapon) * 0.5) startReload(c);
 
     // 팀원 부활: 서 있는 적이 안 보이거나 멀고(기절한 팀원이 바로 옆이면 30m), 최근 3초간 맞지 않았으면 (진행 중이면 유지)
-    let threatD = Infinity; for (const [o, r] of this.aware) if (r.visible && !o.knocked && r.dist < threatD) threatD = r.dist;
+    let threatD = Infinity; for (const [o, r] of this.aware) if (r.visible && !o.knocked && r.dist < threatD && !Pace.ign(c, o, r)) threatD = r.dist;   // (서로 모른 척하는 먼 봇은 빼고 — 07_bot_pace.js)
     let calm = false;
     if (G.teamSize > 1 && G.time - c.lastDamageT > 3) {
       if (threatD > 60) calm = true;
@@ -21452,7 +21456,7 @@ class Brain {
       const ok = m && (!recovering || (!healable && Math.hypot(m.pos.x - c.pos.x, m.pos.z - c.pos.z) < 15));
       if (ok && !(Zone.dps > 3 && !Zone.inside(m.pos.x, m.pos.z, Zone.cur, 0))) { this.reviveTgt = m; c.heal = null; this.setState('REVIVE'); return; }
     }
-    if (c.heal && (!tgt || !tr.visible)) { this.setState('HEAL'); return; }
+    if (c.heal && (!tgt || !tr.visible || pskip)) { this.setState('HEAL'); return; }
     // 대형 맵: 맨손이면 자기장으로 이동 중이라도 가까운 무기는 줍고 간다 (안 그러면 끝까지 맨손). 적이 보이면 아래 판단에 맡김
     if (W.big && !usable && !(tgt && tr.visible) && (inZoneNow || Zone.dps <= 1.5)) {
       if (this.state === 'LOOT' && this.lootTarget && this.lootTarget.alive && this.stateT < 12) { if (c.hp > 30) return; }
@@ -21460,7 +21464,7 @@ class Brain {
     }
     // 안전구역 밖에서 자기장이 조여 오면 무엇보다 우선
     // 차량: 자기장이 멀면 근처 차량을 타러 간다 (적이 안 보일 때)
-    const noEnemy = !tgt || !tr.visible;
+    const noEnemy = !tgt || !tr.visible || pskip;
     // 동승: 팀원이 운전 중이거나 플레이어가 탄 차에 빈자리가 있으면 타러 간다
     const rcb = this.rcBusy();
     if (noEnemy && !recovering && !rcb) {
@@ -21473,10 +21477,14 @@ class Brain {
       const v = Veh.nearestFree(c.pos.x, c.pos.z, W.big ? 90 : 60, (o) => Math.hypot(o.vx, o.vz) < 1 && o.seats.length >= Math.min(crew, 4) && !(this.badVeh && this.badVeh.has(o)));
       if (v) { this.vehTarget = v; this.setState('TOVEH'); return; }
     }
-    if (!inZoneNow && (Zone.state === 'shrink' || c.outsideZoneT > 3) && (!tgt || !tr.visible || c.hp < 60)) { this.setState('ZONE'); return; }
+    // (v23 교전 템포로 늦춘 봇끼리 싸움은 길어지므로 그 상대면 자기장부터 — 안 그러면 자기장 밖에서 싸우다 자기장에 죽는다, 07_bot_pace.js)
+    if (!inZoneNow && (Zone.state === 'shrink' || c.outsideZoneT > 3) && (!tgt || !tr.visible || c.hp < 60 || Pace.pk(c, tgt) < 1)) { this.setState('ZONE'); return; }
     const threatArmed = tgt && !tgt.knocked && tgt.weapon && tgt.weapon.mag > 0;
-    // 대형 맵 초반(착지 후 100초): 먼 적보다 파밍 우선 — 맞거나 28m 안에 들어오면 교전 (99명이 4분 안에 2/3 탈락하던 문제)
-    const lootPhase = W.big && G.time - this.landT < 100 && G.time - c.lastDamageT > 4;
+    // 착지 뒤 파밍 우선: 먼 적보다 파밍 — 맞거나 가까이 들어오면 교전
+    //  대형 맵: 착지 후 100초 · 28m (99명이 4분 안에 2/3 탈락하던 문제)
+    //  v23 작은 맵: 교전 템포로 늦추는 봇끼리만(둘 다 c._pf — 사람·사람의 팀원·사람을 상대하는 봇, 랭크전·하드코어는 예전 그대로),
+    //   첫 자기장 단계에 착지 뒤 45~60초(공격적인 봇일수록 짧게) · 18m (75명이 착지 2분 만에 10명이 되던 문제 — 07_bot_pace.js)
+    const lootPhase = G.time - c.lastDamageT > 4 && (W.big ? G.time - this.landT < 100 : !!(tgt && c._pf && tgt._pf) && !Zone.phase && G.time - this.landT < 60 - 15 * this.personal), lootD = W.big ? 28 : 18;
     if (tgt && tr.visible && !usable) {
       // 비무장: 무장한 적이 가까우면 잠시 이탈, 둘 다 맨손이고 가까우면 근접전, 아니면 파밍 계속
       if (threatArmed && tr.dist < 35 && (G.time - c.lastDamageT < 3 || tr.dist < 15)) {
@@ -21485,8 +21493,8 @@ class Brain {
         this.setState('RETREAT'); return;
       }
       // 맨손끼리 주먹싸움은 성향이 공격적인 봇만, 아주 가까울 때만 (대형 맵은 더 드물게 — 초반 1~2분에 절반이 죽는 문제)
-      if (!threatArmed && tr.dist < (W.big ? 5 : 7) && this.personal > (W.big ? 0.6 : 0.35) && (G.time - tr.first > tr.react)) { this.setState('COMBAT'); return; }
-    } else if (tgt && tr.visible && !(lootPhase && tr.dist > 28)) {
+      if (!threatArmed && tr.dist < (W.big ? 5 : 7) && this.personal > (W.big ? 0.6 : 0.35) && (G.time - tr.first > tr.react) && !pskip) { this.setState('COMBAT'); return; }
+    } else if (tgt && tr.visible && !(lootPhase && tr.dist > lootD) && !pskip) {
       if (G.time - tr.first < tr.react && this.state !== 'COMBAT' && this.state !== 'COVER') { this.setState('DETECT'); return; }
       if (this.state === 'COMBAT' && tr.dist !== undefined && Math.random() < 0.15) this.chooseWeapon(tr.dist);
       if (c.hp < d.retreatHp && healable && tr.dist > 12) { this.setState('RETREAT'); return; }
@@ -21506,14 +21514,14 @@ class Brain {
       this.setState('COMBAT'); return;
     }
     // 최근에 본 적 → 수색 / 무기 상황 따라 판단
-    if (tgt && G.time - tr.last < 2.5 && usable && !lootPhase && !cautious) {
+    if (tgt && G.time - tr.last < 2.5 && usable && !lootPhase && !cautious && !pskip) {
       if (this.state === 'COVER' && this.coverT < 3) return;
       const nt = this.grenadeCd <= 0 ? this.nadePick(tr.dist) : null;
       if (nt && Math.random() < d.grenade) this.throwAt(tr, nt);
       this.investigate = { x: tr.x, z: tr.z, t: G.time };
     }
     if (this.state === 'RETREAT' && this.stateT < (usable ? 4 : 2.5)) return;
-    if (healable && c.hp < 80 && G.time - c.lastDamageT > (cautious ? 1.5 : 2.5) && (!tgt || G.time - tr.last > (cautious ? 1.5 : 3))) { this.startHeal(); this.setState('HEAL'); return; }
+    if (healable && c.hp < 80 && G.time - c.lastDamageT > (cautious ? 1.5 : 2.5) && (!tgt || pskip || G.time - tr.last > (cautious ? 1.5 : 3))) { this.startHeal(); this.setState('HEAL'); return; }
     if (!inZoneNow && (Zone.state === 'shrink' || c.outsideZoneT > 1)) { this.setState('ZONE'); return; }
     if (zonePressure && !(this.state === 'LOOT' && this.lootTarget && Math.hypot(this.lootTarget.x - c.pos.x, this.lootTarget.z - c.pos.z) < 8)) { this.setState('ZONE'); return; }
     // 리콜 (듀오·스쿼드): 팀원 카드 줍기 / 카드를 들고 리콜 타워로 — 플레이어 지시·따라가기보다 먼저
@@ -21651,7 +21659,7 @@ class Brain {
     let why = null;
     if (v.burnT > 0 || v.hp < v.T.hp * 0.3) why = 'damaged';
     else if (G.time - c.lastDamageT < 1.5 && Math.hypot(v.vx, v.vz) < 7) why = 'shot';   // 빠르게 달리는 중이면 그대로 도주
-    else if (tgt && tr.visible && this.usableWeapons().length && (tr.dist < 25 || (tr.dist < 60 && Math.hypot(v.vx, v.vz) < 6 && G.time - this.driveT > 3))) why = 'enemy';
+    else if (tgt && tr.visible && this.usableWeapons().length && (tr.dist < 25 || (tr.dist < 60 && Math.hypot(v.vx, v.vz) < 6 && G.time - this.driveT > 3)) && !Pace.skip(this, tgt, tr)) why = 'enemy';   // (v23 서로 모른 척하는 먼 봇이면 계속 달림 — 07_bot_pace.js)
     else if (dd < 30 || (z && Math.hypot(c.pos.x - z.x, c.pos.z - z.z) < z.r * 0.55)) why = 'arrived';
     else if (G.time - this.driveT > 150) why = 'timeout';
     else if (this.stuckN >= 4) why = 'stuck';
@@ -22198,7 +22206,8 @@ class Brain {
     const fsc = ITEMS[c.weapon.id].fixedScope, zk = c.weapon.att.scope ? ITEMS[c.weapon.att.scope].zoom : fsc ? fsc.zoom : 1, dist0 = tr.dist || 50;
     const scopeK = dist0 > 60 ? (zk >= 3 ? 0.65 : zk >= 2 ? 0.8 : 1) : (dist0 < 15 && zk >= 4 ? 1.25 : 1);
     const cls0 = ITEMS[c.weapon.id].cls, wk = cls0 === 'SR' ? 0.45 : cls0 === 'DMR' ? 0.6 : 1, still = Math.hypot(c.vel.x, c.vel.z) < 0.5 && c.stance !== 'stand' ? 0.8 : 1;
-    const err = d.aimErr * DEG * settle * scopeK * wk * still * (1 + tsp / 5) * (Math.hypot(c.vel.x, c.vel.z) > 1 ? 1.4 : 1);
+    const pk = Pace.pk(c, tgt);   // v23 교전 템포: 사람·관전 화면에서 먼 봇끼리는 조준 오차 ÷k · 사격 쉬는 시간이 k 배 느리게 줄어듦 (07_bot_pace.js)
+    const err = d.aimErr * DEG * settle * scopeK * wk * still * (1 + tsp / 5) * (Math.hypot(c.vel.x, c.vel.z) > 1 ? 1.4 : 1) / pk;
     c.aiming = true; // 사격할 때는 정조준 (엄폐 중에도)
     // 부드러운 랜덤 워크 조준 오차
     this.errYaw = clamp(this.errYaw + rnd(-1, 1) * err * dt * 6, -err, err);
@@ -22219,7 +22228,7 @@ class Brain {
     // 산탄총·볼트액션을 한 발씩 넣는 중이라도 적이 보이고 탄이 있으면 장전을 멈추고 쏜다
     if (c.rl && c.rl.canCancel && c.weapon.mag > 0 && tr.visible && dist < wd.range) cancelReload(c);
     if (c.fireCd > 0 || c.reloadT > 0 || c.equipT > 0 || c.heal) return;
-    if (this.pauseT > 0) { this.pauseT -= dt; return; }
+    if (this.pauseT > 0) { this.pauseT -= dt * pk; return; }   // (쉬는 시간은 예전 길이로 두고 줄어드는 빠르기만 — 사람이 다가오거나 사람을 겨누면 남은 시간은 바로 예전 빠르기로)
     if (c.weapon.mag <= 0) { startReload(c); return; }
     _d.set(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch));
     if (fireWeapon(c, _e, _d)) {
@@ -22287,6 +22296,130 @@ const Hunt = {
   },
   // 지금 상태 (테스트·개발자 도구)
   info() { const s = this.s; return { on: this.on, idle: s ? Math.round(G.time - s.t0) : 0, warned: !!(s && s.warned), exposed: !!(s && s.exposed), pings: s ? s.pings : 0 }; },
+};
+
+// ---------- 07_bot_pace.js ----------
+// ============================================================
+// 07_bot_pace.js — v23 교전 템포 감독: 봇끼리 너무 빨리 싸워 칼덴 75명이 착지 2분 만에 10명으로 줄던 문제
+//  (경기의 2/3 이상이 10명 이하로 진행되어 중반·막판 자기장이 텅 비었다)
+//  · 일반 경기만 — 랭크전·하드코어는 예전 템포 그대로(Pace.on = false: k 1 · 봇 표시 없음 · 작은 맵 착지 분산·파밍 우선도 없음).
+//    RP·배치 점수·승급전 순위 조건이 예전 탈락 속도에 맞춰져 있어서 — 다시 맞추는 것은 따로 정한다
+//  · 목표 생존 곡선(PACE.curve): 자기장 단계가 끝날 때 70% → 45% → 28% → 16% → 8% → 최종 3% — 단계 안은 그 단계 시간(대기 + 축소)으로 잇고,
+//    단계 수가 다른 맵(대형 맵 7~8단계)은 단계 진행 비율로 같은 곡선에 맞춘다. 첫 단계는 수송기가 섬을 다 지나간 뒤부터 잇는다
+//    (그 전엔 아무도 죽을 수 없으니 곡선을 미리 깎아 두면 착지 난투를 그만큼 봐주게 된다)
+//  · 0.5초마다 실제 생존 비율과 비교해 템포 k (0.25 ~ 1.15): 목표보다 빨리 줄면 1 아래(봇끼리 싸움을 늦춤), 많이 남으면 1 위로 조금.
+//    지금 비율과 최근 10초 빠르기로 본 10초 뒤 비율 중 낮은 쪽으로 정하고, 빨리 내리고 천천히 올린다. 첫 원이 닫히기 전에는 1 위로 올리지 않고,
+//    마지막 두 단계(칼덴 반지름 34m → 14m → 7m)와 최종 원에서는 1 아래로 내리지 않는다 — 남은 사람끼리는 예전처럼 싸운다
+//    (바닥 0.25 — 사람 대신 움직이는 봇 하나를 기준점으로 둔 칼덴 75명 솔로: 착지 뒤 10명까지 평균 2.1분 → 2.5분(폰 '낮음' 화질 기준 2.2 → 2.7분),
+//     경기 길이 4.9 → 5.3분. 사람 둘레의 봇은 예전 그대로라 사람이 안 보는 곳의 싸움만 늦출 수 있어 효과가 그만큼 작다 · 듀오는 차이 없음.
+//     사람이 경기에 없을 때(맵 밖에 세워 둠)는 2.2 → 4.5분)
+//  · k 는 봇 대 봇에만 — 두 봇 모두 사람이 보고 있을 수 있는 곳 밖일 때만(c._pf, 매 프레임 봇을 움직이기 전에):
+//    - 이 기기 화면(G.viewChar): 화질 설정의 봇 표시 거리(낮음 160 · 보통 230 · 높음 320 · 엑스트라 420m, 최소 150m) 안 — 화면에 그려지는 봇은 늘 예전 그대로.
+//      배율 조준경으로 볼 때는 바라보는 쪽 ±40° 를 안개 거리까지 (봇은 표시 거리 밖엔 그리지 않지만 차량·폭발은 보인다)
+//    - 사람 팀의 살아 있는 캐릭터(사람 · 사람의 팀원 봇 — 죽은 사람은 팀원을 관전한다): 150m 안 + 바라보는 쪽 ±40° 는 230m 까지
+//      (다른 기기의 화질은 모른다 — 폰 기본 '낮음' 160m · PC 기본 '보통' 230m)
+//    - 예전 그대로가 된 봇은 25m 더 멀어져야(시야는 10° 더 벗어나야) 다시 늦춘다 — 경계에서 싸웠다 멈췄다 하지 않게
+//    사람의 팀원 봇과 사람을 상대하는 봇은 늘 예전 그대로.
+//    적용하는 곳(07_bot.js): think 교전 분기(상대마다 8~12초 동안 (1−k) 확률로 모른 척하고 하던 일 — 파밍·이동·회복·차·부활 — 을 계속,
+//    그 상대에게 맞으면 바로 풀고 맞서 싸움) · 조준 오차 ÷k · 사격 쉬는 시간이 k 배 느리게 줄어듦 · 시야 거리와 봇 총성을 듣는 반경 ×(0.6 + 0.4k)
+//    · 작은 맵 착지 뒤 파밍 우선 · 자기장 밖에서는 싸우기보다 자기장으로
+//  · 봇을 움직이는 기기에서만 (혼자 · 같이 하기·온라인 매칭은 방장 — 다른 기기에는 봇 뇌가 없다)
+// ============================================================
+const PACE = { curve: [1, 0.7, 0.45, 0.28, 0.16, 0.08, 0.03], kMin: 0.25, kMax: 1.15, R: 150, Rr: 230, hys: 25, cone: 40, every: 0.5, down: 5, up: 1, dead: 0.05, fall: 0.5, rise: 0.1, lastN: 2 };
+const Pace = {
+  on: true, k: 1, raw: 1, acc: 0, tgt: 1, act: 1, paced: 0, near: 0, e0: -1, A: new Float64Array(8 * 16), an: 0, hist: [],
+  // 랭크전·하드코어는 예전 템포 그대로 (11_game.js pickDropTarget 도 이것으로 — startMatch 에서 reset 보다 먼저 불린다)
+  live() { return !G.ranked && !G.hc; },
+  reset() {
+    this.on = this.live(); this.k = this.raw = this.tgt = this.act = 1; this.acc = 0; this.e0 = -1; this.paced = this.near = this.an = 0; this.hist.length = 0;
+    for (const c of CHARS) c._pf = false;
+  },
+  // 자기장 진행도 → 목표 생존 비율 (곡선 점 사이를 단계 진행 비율로 잇는다)
+  target() {
+    const Z = Zone, P = Z.phases, C = PACE.curve; if (!Z.cur || !P || !P.length) return 1;
+    const n = P.length, sc = Z.scale || 1; let u = n;
+    if (Z.state !== 'final' && Z.phase < n) {
+      const i = Z.phase, w = i ? P[i].wait * sc : Math.max(P[0].wait * sc, (MAPS[SETTINGS.map] || {}).wait0Min || 0), s = P[i].shrink * sc;
+      let el = Z.state === 'wait' ? w - Z.timer : w + s - Z.timer, len = w + s;
+      // 첫 단계: 수송기가 날고 있는 동안은 1, 다 지나간 뒤부터 이 단계 끝까지 잇는다
+      //  (이어하기·방장 넘겨받기로 수송기가 다 지나간 뒤에 맡았으면 수송기 비행 시간 + 비행 경로 보기 4.5초로 한 번 정함)
+      if (!i) { if (G.plane && G.plane.active) { this.e0 = el; return 1; } if (this.e0 < 0) this.e0 = G.plane ? Math.min(el, G.plane.t + 4.5) : 0; el -= this.e0; len -= this.e0; }
+      u = i + clamp(el / Math.max(1, len), 0, 1);
+    }
+    u *= (C.length - 1) / n; const j = Math.min(C.length - 2, Math.floor(u));
+    return lerp(C[j], C[j + 1], u - j);
+  },
+  update(dt) {
+    if (!this.on || (G.net && !Net.isHost())) return;
+    this.mark();
+    if ((this.acc += dt) < PACE.every) return;
+    this.acc = 0;
+    let n = 0; for (const c of CHARS) if (c.alive) n++;
+    this.act = n / Math.max(1, G.total); this.tgt = this.target();
+    // 비율 r (1 아래 = 목표보다 빨리 줄어듦): 지금, 또는 최근 10초 빠르기로 10초 뒤 — 착지하자마자 몰려 죽는 것에 늦지 않게
+    const h = this.hist; h.push(this.act, this.tgt); if (h.length > 40) h.splice(0, 2);
+    const r = Math.min(this.act / Math.max(0.005, this.tgt), (2 * this.act - h[0]) / Math.max(0.005, 2 * this.tgt - h[1]));
+    let kr = r < 1 ? 1 - (1 - r) * PACE.down : 1 + Math.max(0, r - 1 - PACE.dead) * PACE.up;
+    // 마지막 원들은 늦추지 않는다 — 천천히 올리지 않고 바로 (작은 원 안에서 2m 앞의 적을 모른 척하다 둘 다 자기장에 죽던 것)
+    const late = Zone.state === 'final' || Zone.phase >= (Zone.phases || []).length - PACE.lastN;
+    if (Zone.phase < 1) kr = Math.min(kr, 1); else if (late) kr = Math.max(kr, 1);
+    this.raw = clamp(kr, PACE.kMin, PACE.kMax); this.k += (this.raw - this.k) * (this.raw < this.k ? PACE.fall : PACE.rise);
+    if (late) this.k = Math.max(this.k, 1);
+  },
+  // 기준점 하나 = 숫자 8개 [x, z, 반지름², (반지름 + 25)², 바라보는 방향 x, z, 시야 거리², (시야 거리 + 25)²] — 시야 거리가 반지름 이하면 원만.
+  //  매 프레임 새 배열을 만들지 않게 한 Float64Array 에 (모자라면 두 배로)
+  ap(n, x, z, r, fx, fz, rc) {
+    if (n + 8 > this.A.length) { const B = new Float64Array(this.A.length * 2); B.set(this.A); this.A = B; }
+    const A = this.A, h = PACE.hys, cn = rc > r;
+    A[n] = x; A[n + 1] = z; A[n + 2] = r * r; A[n + 3] = (r + h) * (r + h); A[n + 4] = fx; A[n + 5] = fz; A[n + 6] = cn ? rc * rc : 0; A[n + 7] = cn ? (rc + h) * (rc + h) : 0;
+    return n + 8;
+  },
+  // 봇마다 k 를 쓸지(_pf) — 매 프레임 봇을 움직이기 전에 (봇 75 × 기준점 몇 개, 거리 비교와 내적 하나씩이라 가볍다 · 관전 대상이 바뀌거나 차로 다가와도 바로 예전 그대로)
+  mark() {
+    const T = G.teams, v = G.viewChar(), R = PACE.R; let n = 0;
+    // 이 기기 화면: 봇 표시 거리 안 전부 · 배율 조준경이면 카메라가 보는 쪽 ±40° 를 안개 거리까지
+    if (v) {
+      const Q = QUALITY[SETTINGS.quality] || QUALITY.medium, q = G.camera.quaternion, fx = -2 * (q.x * q.z + q.w * q.y), fz = 2 * (q.x * q.x + q.y * q.y) - 1, fl = Math.hypot(fx, fz) || 1;
+      n = this.ap(n, v.pos.x, v.pos.z, Math.max(R, Q.botDraw), fx / fl, fz / fl, Cam.zoom > 1.5 ? Math.max(Q.far * (G.fogK ? G.fogK[1] : 1), BOT_SCOPE + 25) : 0);   // 배율 조준: 조준경으로 캐릭터를 그리는 거리(BOT_SCOPE 320m — 11_game.js charView)까지 + 25m
+    }
+    // 사람 팀의 살아 있는 캐릭터 (다른 기기 사람 · 사람의 팀원 봇): 150m 안 + 바라보는 쪽(차에 타면 차의 방향 — 관전 카메라와 같게) ±40° 230m 까지
+    for (const c of CHARS) if (c.alive && c !== v && (c.human || (T && T[c.team] && T[c.team].human))) { const y = c.veh ? c.veh.yaw : c.yaw; n = this.ap(n, c.pos.x, c.pos.z, R, Math.sin(y), Math.cos(y), PACE.Rr); }
+    this.an = n;
+    const A = this.A, c1 = Math.cos(PACE.cone * DEG), c2 = Math.cos((PACE.cone + 10) * DEG), k1 = c1 * c1, k2 = c2 * c2;
+    let pc = 0, nr = 0;
+    for (const c of CHARS) {
+      if (!c.brain || !c.alive || c.human || (T && T[c.team] && T[c.team].human)) { c._pf = false; continue; }
+      // 지금 예전 그대로인 봇(h = 1)은 반지름·시야 거리 + 25m, 시야각 + 10° 밖이어야 다시 늦춘다
+      const h = c._pf ? 0 : 1, kc = h ? k2 : k1; let f = true;
+      for (let i = 0; i < n; i += 8) {
+        const dx = c.pos.x - A[i], dz = c.pos.z - A[i + 1], d2 = dx * dx + dz * dz;
+        if (d2 < A[i + 2 + h]) { f = false; break; }
+        if (d2 < A[i + 6 + h]) { const dp = dx * A[i + 4] + dz * A[i + 5]; if (dp > 0 && dp * dp > kc * d2) { f = false; break; } }
+      }
+      c._pf = f; if (f) pc++; else nr++;
+    }
+    this.paced = pc; this.near = nr;
+  },
+  // 봇 a 가 봇 o 를 상대할 때의 k (둘 중 하나라도 사람 가까이 있거나 사람이면 1 — 예전 그대로)
+  pk(a, o) { return a._pf && o._pf ? this.k : 1; },
+  // 시야 거리·총성을 듣는 반경 배율
+  vk(a, o) { return a._pf && o._pf ? 0.6 + 0.4 * this.k : 1; },
+  // 이 상대와의 교전을 미룰지: 상대마다 8~12초 동안 같은 결정(aware 기록 r.pT·r.pS) — 판단(0.1~0.34초)마다 다시 굴리면 1초 안에 거의 확실히 교전하게 된다.
+  //  상대가 나에 대해 내린 결정이 아직 유효하면 그것을 따른다 (둘이 같이 모른 척하거나 같이 싸움 — 한쪽만 모른 척하면 다른 쪽이 쏘는 순간 풀려 결국 싸운다).
+  //  그 상대에게 맞으면 onDamaged 가 바로 '싸움'으로 8~12초 (모른 척하던 중이거나 아직 정하지 않았을 때 — 맞고도 모른 척하지 않게)
+  skip(b, o, r) {
+    if (this.k >= 1 || !b.c._pf || !o._pf) return false;
+    if (G.time >= (r.pT || 0)) {
+      if (!r.visible) return false;
+      const q = o.brain && o.brain.aware.get(b.c);
+      if (q && q.pT > G.time) { r.pT = q.pT; r.pS = q.pS; } else { r.pT = G.time + rnd(8, 12); r.pS = Math.random() >= this.k; }
+    }
+    return !!r.pS;
+  },
+  // 모른 척하기로 한 상대인지 (새로 정하지 않고 보기만 — 07_bot.js think 의 가장 가까운 적 거리: 회복·부활을 막지 않게)
+  ign(a, o, r) { return this.k < 1 && !!a._pf && !!o._pf && !!r.pS && r.pT > G.time; },
+  // 지금 상태 (테스트·개발자 도구): 켜짐 · k · 목표/실제 생존 비율 · 자기장 단계 · k 를 쓰는 봇/쓰지 않는 봇 수
+  info() { return { on: this.on, k: +this.k.toFixed(3), raw: +this.raw.toFixed(3), target: +this.tgt.toFixed(3), actual: +this.act.toFixed(3), phase: Zone.phase + 1, zone: Zone.state, paced: this.paced, near: this.near, host: !G.net || Net.isHost() }; },
 };
 
 // ---------- 07_bot_skin.js ----------
@@ -25652,6 +25785,14 @@ const KAnim = (() => {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-24', t: '교전 템포 — 일반 경기에서 내가 보지 않는 먼 봇끼리의 싸움을 조금 늦춤', items: [
+    '일반 경기에서 내 화면에 보이지 않는 먼 곳의 봇끼리 싸움을 자기장 단계에 맞춰 늦춤 — 칼덴 섬 솔로 75명 기준 착지 뒤 10명이 남기까지 평균 약 2분 → 2분 반 (내 주변은 예전 그대로라 경기 길이는 거의 같고, 듀오는 거의 차이 없음)',
+    '내 화면에 그려지는 거리(화질 설정의 봇 표시 거리)와 관전 화면 주변, 같이 하는 사람 주변 150m와 그 사람이 바라보는 쪽 230m 안의 봇은 예전 그대로 싸움 · 봇이 나와 내 팀원을 상대할 때도 예전 그대로',
+    '랭크전·하드코어는 예전 템포 그대로 (RP·승급전 조건이 예전 탈락 속도에 맞춰져 있어서)',
+    '마지막 두 원과 최종 원에서는 늦추지 않아 남은 사람끼리 예전처럼 싸움',
+    '작은 맵 일반 경기: 사람에게서 먼 봇끼리는 착지 뒤 45~60초 동안 파밍을 먼저 함 · 한곳에 봇이 너무 많이 내리지 않게 착지 지점을 나눔',
+    '이어하기·방장 넘겨받기 뒤 이미 내린 봇들이 착지 직후처럼 다시 한동안 파밍만 하던 것 고침 (대형 맵)',
+  ] },
   { v: 'v23', d: '2026-11-24', t: '휴대폰(그래픽 낮음)에서도 나를 쏘는 적이 보임 · 배율 조준경으로 320m 까지', items: [
     '그래픽 「낮음」(휴대폰 기본)에서 160m 밖 적이 안 보이던 문제 수정 — 이제 모든 그래픽 품질에서 봇이 나를 보고 쏠 수 있는 거리(익스트림 200m)보다 10% 먼 220m 까지 캐릭터를 그림 · 팀원 관전 화면도 같음',
     '2배 이상 배율 조준경으로 조준하면 조준 방향의 캐릭터를 320m(봇 시야의 1.6배)까지 그림 — 모든 그래픽 품질에서 같은 거리(높음·엑스트라는 원래 보이던 거리 그대로) · 그 안의 차도 엄폐물로 보이게 「낮음」에서 330m 까지 그림',
@@ -31011,7 +31152,7 @@ const Net = (() => {
       if (mate) b.followC = mate;
       if (G.island || c.mode === 'plane') G.planDrop(b, mate);
       else if (c.mode === 'fall' || c.mode === 'chute') { b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0; }
-      else { b.setState('EXPLORE'); b.landT = G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; }
+      else { b.setState('EXPLORE'); b.landT = G.time - 999; b.dropTarget = { x: c.pos.x, z: c.pos.z }; }   // 이미 내린 캐릭터: 착지 뒤 파밍 우선(07_bot.js lootPhase)을 다시 주지 않게
     }
     if (c.knocked) b.onKnocked();
   }
@@ -31042,7 +31183,7 @@ const Net = (() => {
     if (c.alive) {
       const wi = c.weapon; if (wi && ITEMS[wi.id].ammo) { const a = ITEMS[wi.id].ammo; c.inv.items[a] = (c.inv.items[a] || 0) + ITEMS[wi.id].mag * 3; }
       if (!c.inv.items.bandage) c.inv.items.bandage = 3;
-      const b = new Brain(c, 'normal'); b.state = c.mode === 'ground' ? 'EXPLORE' : 'LANDING'; b.landT = G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0;
+      const b = new Brain(c, 'normal'); b.state = c.mode === 'ground' ? 'EXPLORE' : 'LANDING'; b.landT = c.mode === 'ground' ? G.time - 999 : G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0;   // (이미 내렸으면 착지 뒤 파밍 우선을 다시 주지 않게)
     }
   }
   function hostGone() {
@@ -34473,7 +34614,7 @@ const Resume = (() => {
       if (c.rplane) { b.followJump = false; b.jumpAt = c.rplane.t + rnd(1, 3); b.dropTarget = { x: c.rplane.tw.ix, z: c.rplane.tw.iz }; b.chuteH = rnd(80, 125); }
       else if (b.followJump && b.followC && b.followC.mode !== 'plane' && G.plane) b.jumpAt = G.plane.t + rnd(0.3, 1.4);   // 따라 뛸 사람은 이미 뛰었다
     } else if (c.mode === 'fall' || c.mode === 'chute') { if (!b.followJump) b.dropTarget = { x: c.pos.x, z: c.pos.z }; b.chuteH = 90; b.jumpAt = 0; }
-    else { b.setState('EXPLORE'); b.landT = G.time; b.dropTarget = { x: c.pos.x, z: c.pos.z }; }
+    else { b.setState('EXPLORE'); b.landT = G.time - 999; b.dropTarget = { x: c.pos.x, z: c.pos.z }; }   // 이미 내린 봇: 착지 뒤 파밍 우선(07_bot.js lootPhase)을 다시 주지 않게
     if (c.knocked) b.onKnocked();
   }
 
@@ -38709,6 +38850,9 @@ function dropCands() {
 }
 function pickDropTarget() {
   const C = W.big ? dropCands() : null;
+  // 착지 분산: 한 지점에 봇이 몰리면 착지하자마자 난투로 절반이 1분 안에 죽는다 → 이미 고른 착지점이 대형 맵은 80m 안에 2곳,
+  //  v23 작은 맵은 40m 안에 3곳이면 다른 곳 (교전 템포를 쓰는 일반 경기만 — 랭크전·하드코어는 예전처럼 분산 없음, 07_bot_pace.js)
+  const T = C || (!Pace.live() ? null : G.dropCands && G.dropCands.plane === G.plane ? G.dropCands : (G.dropCands = { plane: G.plane, taken: [] })), tR = C ? 80 : 40, tN = C ? 2 : 3;
   for (let i = 0; i < 60; i++) {
     let x, z;
     // 대형 맵: 빈 들판에 내리면 무기를 못 찾아 맨손 싸움이 된다 → 거의 항상 마을/건물 근처
@@ -38725,9 +38869,8 @@ function pickDropTarget() {
     const h = heightAt(x, z); if (h < 0.8) continue;
     if (groundAt(x, z, 9999) - h > 1.0) continue; // 지붕/구조물 위 제외
     if (Math.abs(x - G.plane.ax) + Math.abs(z - G.plane.az) < 1) continue;
-    // 대형 맵: 한 지점에 봇이 몰리면 맨손 난투로 절반이 1분 안에 죽는다 → 80m 안에 이미 2명이면 다른 곳
-    if (C && i < 50) { let n = 0; for (const t of C.taken) if (Math.abs(t.x - x) < 80 && Math.abs(t.z - z) < 80 && ++n >= 2) break; if (n >= 2) continue; }
-    if (C) C.taken.push({ x, z });
+    if (T && i < 50) { let n = 0; for (const t of T.taken) if (Math.abs(t.x - x) < tR && Math.abs(t.z - z) < tR && ++n >= tN) break; if (n >= tN) continue; }
+    if (T) T.taken.push({ x, z });
     return { x, z };
   }
   return { x: rnd(-150, 150), z: rnd(-150, 150) };
@@ -38845,9 +38988,8 @@ async function startMatch(cfg) {
     }
     CHARS.push(b);
   }
-  G.total = CHARS.length; Hunt.reset();   // v23 잠수 추적 (승급전 · 하드코어 — 07_bot_hunt.js)
+  G.total = CHARS.length; Hunt.reset(); Pace.reset();   // v23 잠수 추적 (승급전 · 하드코어 — 07_bot_hunt.js) · 교전 템포 (07_bot_pace.js)
   try { MeleeSkin.warm(CHARS, G.player); } catch (e) { console.warn('근접 무기 스킨 미리 만들기 실패', e); }   // v23 이번 경기의 근접 무기 스킨 모양·내 무기 칸 그림을 미리 (주울 때 끊기지 않게)
-  for (const c of CHARS) { c.root.visible = false; c.pos.copy(G.plane.pos); sc.add(c.root); c.yaw = Math.atan2(G.plane.dx, G.plane.dz); }
   warmFar(sc);   // v23 먼 캐릭터용 셰이더·점 색을 로딩 중에 미리
   G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
   HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
@@ -39105,6 +39247,7 @@ G.update = function (dt) {
   const camP = G.camera.position, lodR = W.big ? 600 : Math.max(QUALITY[SETTINGS.quality].botDraw, 220);
   let hum = null; if (G.net) for (const h of CHARS) if (h.human && h.alive && h.net && !h.net.mine && !h.botized) (hum || (hum = [])).push(h);
   const nearHum = (c) => { if (!hum) return false; for (const h of hum) if (Math.abs(h.pos.x - c.pos.x) < lodR && Math.abs(h.pos.z - c.pos.z) < lodR) return true; return false; };
+  if (!G.island && !G.training && !G.dm) Pace.update(dt);   // v23 교전 템포(일반 경기만): 봇을 움직이기 전에 — 사람·이 기기 화면이 볼 수 있는 봇 표시 · 0.5초마다 k (07_bot_pace.js)
   for (const c of CHARS) {
     if (c.net && !c.net.mine) { Net.updateProxy(c, dt); continue; } // 다른 기기가 움직이는 캐릭터: 받은 상태 보간
     if (c.isPlayer || !c.alive) continue;
@@ -39400,7 +39543,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들 — 로컬 파일·개발 주소이거나 서버가 확인한 관리자 계정일 때만 window 에 붙는다 (10_dev.js Dev.hooks · 배포 사이트의 콘솔 치트 막기)
-  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
+  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, Pace, PACE, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } } }));
