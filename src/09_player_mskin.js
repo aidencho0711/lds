@@ -127,11 +127,11 @@ const KAnim = (() => {
       else if (ka.st === 'attack' && !sw) enter(ka, 'idle', 0.1);
       if (ka.req) {
         ka.req = 0;
-        if (ka.st === 'idle' && S.inspect.length && !c.sprint && !sw && !c.heal && !c.throwMode) { ka.iv = ka.reqV >= 0 && ka.reqV < S.inspect.length ? ka.reqV : pickOther(S.inspect.length, ka.il); ka.il = ka.iv; enter(ka, 'inspect', 0.16); }
+        if (ka.st === 'idle' && S.inspect.length && !c.sprint && !sw && !c.heal && !c.throwMode && !c.revive && !c.dance) { ka.iv = ka.reqV >= 0 && ka.reqV < S.inspect.length ? ka.reqV : pickOther(S.inspect.length, ka.il); ka.il = ka.iv; enter(ka, 'inspect', 0.16); }
         ka.reqV = -1;
       }
-      // 살펴보기는 달리면 · 꺼내기·살펴보기는 회복·투척을 시작하면 끊고 대기로 (손은 회복·투척 동작이 차지 — 꺼내는 소리가 붕대 위로 나지 않게)
-      if ((ka.st === 'inspect' && c.sprint) || ((ka.st === 'inspect' || ka.st === 'equip') && (c.heal || c.throwMode || c.throwAnim > 0 || c.nadeQ))) enter(ka, 'idle', 0.2);
+      // 살펴보기는 달리면 · 꺼내기·살펴보기는 회복·투척·부활·춤을 시작하면 끊고 대기로 (손은 그 동작이 차지 — 꺼내는·돌리는 소리가 붕대 위로 나지 않게)
+      if ((ka.st === 'inspect' && c.sprint) || ((ka.st === 'inspect' || ka.st === 'equip') && (c.heal || c.throwMode || c.throwAnim > 0 || c.nadeQ || c.revive || c.dance))) enter(ka, 'idle', 0.2);
     } else if (ka.held) {
       // 넣기(1인칭에서 보이는 손만): 근접 무기를 아직 가지고 있는 채 총·투척·회복으로 바꿈 — 손이 무기와 함께 내려간다
       //  바로 앞 프레임에 근접 무기 뷰모델을 실제로 그렸을 때만 (회복·투척 뷰모델 중이었으면 보이지 않던 무기를 꺼내 보이지 않게)
@@ -160,7 +160,8 @@ const KAnim = (() => {
       if (I.part) _tg[IP] += Math.sin(it * 1.5) * I.part * a;
       // 가끔 손을 고쳐 쥠: 몇 초마다 동작표의 짧은 손장난 하나를 더한다 (방금 한 것은 빼고)
       //  손이 다른 일을 할 때(회복·투척·부활·춤)는 손장난을 멈추고 시작하지 않음 — 그 사이 손장난 소리가 나지 않게
-      if (c.heal || c.throwMode || c.throwAnim > 0 || c.nadeQ || c.revive || c.dance) ka.fi = -1;
+      //  (손장난 중이었으면 지금 자세에서 섞어 풀어 줌 — 부활처럼 근접 무기 화면이 그대로 보일 때 한 프레임에 튀지 않게)
+      if (c.heal || c.throwMode || c.throwAnim > 0 || c.nadeQ || c.revive || c.dance) { if (ka.fi >= 0) enter(ka, 'idle', 0.15); }
       else if (S.fid.length) {
         if (ka.fi < 0) { ka.fn -= dt; if (ka.fn <= 0) { ka.fi = pickOther(S.fid.length, ka.fl); ka.ft = 0; ka.fu0 = -1; } }
         if (ka.fi >= 0) {
