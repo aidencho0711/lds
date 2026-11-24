@@ -908,7 +908,7 @@ const _apE = new THREE.Vector3();
 let autoT = 0, autoMsg = new Map(), autoMsgT = 0;   // 알림: 이름 → 개수 (같은 것은 합침)
 function autoPickup(p, dt) {
   if (autoMsg.size && (autoMsgT -= dt) <= 0) { HUD.toast('자동 줍기 · ' + [...autoMsg].map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join(', '), 'ok'); autoMsg = new Map(); }
-  if (SETTINGS.autoPick === false) return;
+  if (SETTINGS.autoPick === false || G.training) return;   // v23 훈련장에서는 자동 줍기 안 함 (무기고를 지나가기만 해도 줍던 것 — 손으로 줍기는 그대로)
   autoT -= dt; if (autoT > 0) return; autoT = 0.12;
   if (p.knocked || p.veh || p.vault || p.throwMode || p.nadeQ || p.fireHold || p.aiming || p.revive || p.recall || p.mode !== 'ground' || p.inWater || HUD.modalOpen()) return;
   let best = null, bs = -1e9, bn = 0;

@@ -25305,7 +25305,7 @@ const _apE = new THREE.Vector3();
 let autoT = 0, autoMsg = new Map(), autoMsgT = 0;   // 알림: 이름 → 개수 (같은 것은 합침)
 function autoPickup(p, dt) {
   if (autoMsg.size && (autoMsgT -= dt) <= 0) { HUD.toast('자동 줍기 · ' + [...autoMsg].map(([k, n]) => k + (n > 1 ? ' ×' + n : '')).join(', '), 'ok'); autoMsg = new Map(); }
-  if (SETTINGS.autoPick === false) return;
+  if (SETTINGS.autoPick === false || G.training) return;   // v23 훈련장에서는 자동 줍기 안 함 (무기고를 지나가기만 해도 줍던 것 — 손으로 줍기는 그대로)
   autoT -= dt; if (autoT > 0) return; autoT = 0.12;
   if (p.knocked || p.veh || p.vault || p.throwMode || p.nadeQ || p.fireHold || p.aiming || p.revive || p.recall || p.mode !== 'ground' || p.inWater || HUD.modalOpen()) return;
   let best = null, bs = -1e9, bn = 0;
@@ -25785,6 +25785,10 @@ const KAnim = (() => {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-24', t: '훈련장에서는 자동 줍기 안 함', items: [
+    '훈련장에서는 자동 줍기를 하지 않음 — 무기고 앞을 지나가기만 해도 총·탄·장비를 마구 줍던 것을 고침 (줍기 버튼·F 로 직접 줍기는 그대로)',
+    '배틀로얄 등 다른 경기에서는 설정(자동 줍기 켬·끔)대로',
+  ] },
   { v: 'v23', d: '2026-11-24', t: '긴급 수정 — 경기에서 나와 적이 투명하게 보이던 문제', items: [
     '오늘 교전 템포 업데이트 뒤로 배틀로얄 경기(스타트 섬부터)에서 나·적·팀원의 몸과 총이 그려지지 않고 이름표만 보이던 문제를 고침',
     '원인: 업데이트를 합치는 과정에서 경기 시작 때 캐릭터를 화면에 넣는 줄이 빠졌었음 (데스매치·훈련장은 영향 없음)',
