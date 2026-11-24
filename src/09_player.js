@@ -254,7 +254,9 @@ function updateMeleeVM(dt, p) {
     vmHeld(A.R, id, msk); pickHeld(A.L, p);
     vmReach(A.R, _mvP, _mvQ, _vpole.set(0.6, -0.7, 0.15), FING.fist); setFist(A.R);
   }
-  const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0, pull = ks ? ks.pull : sw ? Math.sin(Math.PI * clamp((u - 0.2) / 0.55, 0, 1)) : 0, low = ks ? ks.low * 0.22 : 0;
+  // v23 살펴보기 중 왼손을 내린 정도는 부드럽게 따라감 (살펴보기를 휘두르기·달리기로 끊어도 왼손이 한 프레임에 튀어 오르지 않게)
+  S.low = lerp(S.low || 0, ks ? ks.low : 0, clamp(dt * 10, 0, 1));
+  const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0, pull = ks ? ks.pull : sw ? Math.sin(Math.PI * clamp((u - 0.2) / 0.55, 0, 1)) : 0, low = S.low * 0.22;
   _fvP.set(-0.17 - pull * 0.09, -0.31 - pull * 0.1 - eq * 0.2 - S.run * 0.1 - low, -0.42 + pull * 0.1);
   handQuat(_fvQ, _fvD.set(0.03, 0.72, -0.69), _fvN.set(0.4, -0.85, 0.25), 1);
   const pw = VM.pk ? VM.pk.w : 0;   // v23 줍기: 왼손이 내려가 집음

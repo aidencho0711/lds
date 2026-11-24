@@ -100,6 +100,8 @@ const KAnim = (() => {
     const S = SPEC[ka.kind];
     if (!ka.st || low) { for (let i = 0; i < NV; i++) ka.from[i] = S.rest[i + 1]; if (low) ka.from[1] -= 0.42; }
     else for (let i = 0; i < NV; i++) ka.from[i] = ka.row[i];
+    // 손장난 중이었거나 손장난 시간이 다 됐으면 다음 손장난까지 시간을 새로 (휘두르기·살펴보기가 끝나자마자 손장난이 붙지 않게)
+    if (ka.fi >= 0 || ka.fn <= 0) { const ev = S.idle.every || [4, 8]; ka.fn = ev[0] + Math.random() * (ev[1] - ev[0]); }
     ka.st = st; ka.t = 0; ka.bt = 0; ka.bd = bd; ka.u0 = -1; ka.fi = -1;
     const t = trackOf(ka, st), r0 = t ? t.R[0] : S.rest;
     for (const i of SPIN) ka.from[i] += P2 * Math.round((r0[i + 1] - ka.from[i]) / P2);
@@ -157,7 +159,9 @@ const KAnim = (() => {
       _tg[IF + 4] += Math.sin(it * 2.6) * 0.09 * a; _tg[IF + 2] += Math.sin(it * 1.9 + 1.5) * 0.05 * a;
       if (I.part) _tg[IP] += Math.sin(it * 1.5) * I.part * a;
       // 가끔 손을 고쳐 쥠: 몇 초마다 동작표의 짧은 손장난 하나를 더한다 (방금 한 것은 빼고)
-      if (S.fid.length) {
+      //  손이 다른 일을 할 때(회복·투척·부활·춤)는 손장난을 멈추고 시작하지 않음 — 그 사이 손장난 소리가 나지 않게
+      if (c.heal || c.throwMode || c.throwAnim > 0 || c.nadeQ || c.revive || c.dance) ka.fi = -1;
+      else if (S.fid.length) {
         if (ka.fi < 0) { ka.fn -= dt; if (ka.fn <= 0) { ka.fi = pickOther(S.fid.length, ka.fl); ka.ft = 0; ka.fu0 = -1; } }
         if (ka.fi >= 0) {
           const F = S.fid[ka.fi]; ka.ft += dt; const fu = ka.ft / (F.dur || 0.8);
@@ -286,7 +290,9 @@ const KAnim = (() => {
   }
   function ghostClear() { for (const m of GH.list) if (m.parent) m.parent.remove(m); GH.list.length = 0; GH.ms = []; GH.ring = []; GH.n = 0; GH.src = null; GH.lt = false; }
   function ghosts(src, dt, speed, th) {
-    if (SETTINGS.quality === 'low' || !th) { if (GH.list.length) ghostClear(); return; }
+    if (SETTINGS.quality === 'low') { if (GH.list.length) ghostClear(); return; }
+    // 잔상을 쓰지 않는 상태(휘두르기·넣기·잔상 없는 스킨): 숨기기만 — 다시 만들지 않게 메시·행렬 고리는 그대로
+    if (!th) { vmOff(); return; }
     if (GH.src !== src) {
       ghostClear(); GH.src = src; ghostMats();
       src.traverse((m) => { if (m.isMesh) GH.ms.push(m); });
