@@ -241,7 +241,7 @@ const Social = (() => {
 })();
 
 const Party = (() => {
-  let P = null, ch = null, chOk = false, own = null, joining = null, pushT = 0, lastShared = '', absent = new Map(), present = new Set();
+  let P = null, ch = null, chOk = false, own = null, joining = null, pushT = 0, lastShared = '', absent = new Map(), present = new Set(), silent = false;   // silent: 조용히 나가는 중 (leave(true)) — 로비의 내 퇴장 연출을 건너뛴다
   const SHARED = ['game', 'map', 'mode', 'squad', 'queue', 'time', 'difficulty', 'bots', 'online', 'arena'];   // online: 온라인 매칭 켬/끔 · arena: 데스매치 아레나 (방장이 정함)
   const me = () => Cloud.uid;
   const sb = () => Cloud.client();
@@ -296,9 +296,8 @@ const Party = (() => {
     }
     close(); MM.partyGone();
     const was = !!P; P = null; joining = null;
-    restoreOwn();
-    if (was && !quiet) HUD.lobbyNote('파티에서 나왔습니다');
-    Social.track(); renderAll();
+    silent = !!quiet;   // 다른 파티의 초대를 수락하느라 나가거나(accept) 로그아웃(Social.stop): 아래 화면 갱신에서 PartyFx 가 내 퇴장 연출을 건너뛴다 (10_partyfx.js team)
+    try { restoreOwn(); if (was && !quiet) HUD.lobbyNote('파티에서 나왔습니다'); Social.track(); renderAll(); } finally { silent = false; }
   }
   function kick(uid) {
     if (!isLeader()) return;
@@ -473,5 +472,5 @@ const Party = (() => {
   }
   function renderAll() { render(); Social.render(); if (G.state === 'lobby') HUD.renderLobby(); }
   return { create, invite, accept, leave, kick, tryStart, lockInfo, settingsChanged, decoratePlay, render, tick, onOnline, send, id, size, has, canInvite, isLeader,
-    get state() { return P; }, get present() { return present; }, members: () => (P ? P.members : []) };
+    get state() { return P; }, get present() { return present; }, get silent() { return silent; }, members: () => (P ? P.members : []), ownSet: () => own };   // ownSet: 파티원일 때 방장 설정에 가려 둔 내 설정 (10_cloud.js 가 내 설정으로 저장)
 })();

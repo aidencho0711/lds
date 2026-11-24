@@ -297,9 +297,9 @@ const Eco = (() => {
     return 'ok';
   }
   // mode 'login': 계정 기록을 막 불러옴 → 기록에 없는 것은 넣고(서버에 저장될 때까지 남김), 이미 있는 것은 지움 / 'saved': 서버 저장 성공 → 기록에 있는 것만 지움
-  function flushGrants(mode) {
+  function flushGrants(mode, eco) {   // eco: 'saved' 일 때 실제로 올린 기록의 eco (올리는 사이 받은 보상은 아직 서버에 없으므로 대기열에 남김)
     const P = pend(); if (!P.length) return;
-    const e = E(), left = [];
+    const e = (eco && typeof eco === 'object' && eco) || E(), left = [];
     for (const g of P) {
       const had = Array.isArray(e.gr) && e.gr.includes(g.id);
       if (mode === 'login' && !had) { grantApply(g); left.push(g); }

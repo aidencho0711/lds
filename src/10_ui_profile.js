@@ -333,7 +333,7 @@ const Prof = (() => {
     const items = [];
     if (show) {
       const m = Cloud.user ? my() : null;
-      if (m && m.ti) items.push({ obj: L.rig.root, html: titleHTML(m.ti) });
+      if (m && m.ti && !(typeof PartyFx !== 'undefined' && PartyFx.meHidden)) items.push({ obj: L.rig.root, html: titleHTML(m.ti) });   // 입장·퇴장 연출이 내 캐릭터를 숨긴 동안은 칭호도 숨김 (빈자리에 떠 있지 않게)
       (L.mates || []).forEach((r, i) => { const inf = (L.mateInfo || [])[i]; if (!inf || !r.root.visible) return; const pf = inf.pf || {}, ti = pf.ti && Ladder.allowed(pf.ti, inf.name, inf.uid) ? pf.ti : null; items.push({ obj: r.root, html: `<span class="lbtag-name">${esc(inf.name || '')}</span>${ti ? titleHTML(ti) : ''}` }); });
     }
     while (tagEls.length < items.length) { const d = document.createElement('div'); d.className = 'lbtag'; box.appendChild(d); tagEls.push(d); }

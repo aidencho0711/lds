@@ -57,7 +57,8 @@ const Rank = (() => {
   const capOf = (sg) => (sg >= 4 ? Infinity : SUP.base + sg * SUP.span);
   const floorOf = (sg) => (sg > 0 ? SUP.base + (sg - 1) * SUP.span : 0);
   // 기록 정리 + v23 개편 이전 기록(cv 없음) 옮기기: 4000 RP 넘으면 4000으로 (S.cut — 보상·안내는 settle)
-  function norm() {
+  //  S: 정리할 기록 — 지금 기록, 또는 합치기 전의 서버·base 기록 (normOf)
+  function norm(S) {
     if (!Array.isArray(S.history)) S.history = [];
     if (!Array.isArray(S.placements)) S.placements = [];
     S.rp = Math.max(0, Math.floor(+S.rp || 0)); S.sg = clamp(Math.floor(+S.sg || 0), 0, 4); S.ss = Math.max(0, Math.floor(+S.ss || 0));
@@ -69,7 +70,7 @@ const Rank = (() => {
     if (S.rp > cap) S.rp = cap; if (S.rp < fl) S.rp = fl;
     S.peak = Math.min(Math.max(+S.peak || 0, S.rp), cap);
   }
-  norm(); store.set('rank', S);
+  norm(S); store.set('rank', S);
   // RP만 알 때(다른 계정 — 랭킹 서버가 sg 를 안 줄 때) 통과한 승급전 수 짐작: 티어 끝 RP 는 '승급전 대기'로 본다
   const sgGuess = (rp) => (rp > SUP.base ? Math.min(4, Math.ceil((rp - SUP.base) / SUP.span)) : 0);
   function mk(t, div, rp, into, need, top, series, sg) {
@@ -133,7 +134,7 @@ const Rank = (() => {
         S.rp = clamp(Math.round(sum * 3.5), 0, 1999); S.peak = Math.max(S.peak, S.rp);
         out.revealed = true; out.after = mine();
       }
-      S.history.unshift({ placement: true, place: r.place, total: r.total, kills: r.kills });
+      S.history.unshift({ placement: true, place: r.place, total: r.total, kills: r.kills, t: Date.now() });   // t: 끝난 시각 (여러 기기 기록을 합칠 때 순서·같은 판 — mergeRank)
       S.history = S.history.slice(0, 10); save(); return out;
     }
     const before = mine();
@@ -144,14 +145,14 @@ const Rank = (() => {
       const passed = ok && S.ss >= need;
       if (passed) { S.sg++; S.ss = 0; }
       const after = mine();
-      S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta: 0, rp: S.rp, ser: ok ? 1 : -1 });
+      S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta: 0, rp: S.rp, ser: ok ? 1 : -1, t: Date.now() });
       S.history = S.history.slice(0, 10); save();
       return { placement: false, series: true, ok, why, kills: r.kills || 0, needK: SERIES_KILLS, streak: passed ? need : S.ss, need, lim, map: r.map, passed, delta: 0, before, after, promoted: passed, demoted: false, tierUp: passed };
     }
     const raw = rpDelta(r, before.t), rp = clamp(S.rp + raw, floorOf(S.sg), capOf(S.sg)), delta = rp - S.rp;
     S.rp = rp; S.peak = Math.max(S.peak, S.rp);
     const after = mine();
-    S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta, rp: S.rp });
+    S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta, rp: S.rp, t: Date.now() });
     S.history = S.history.slice(0, 10); save();
     return { placement: false, delta, raw, before, after, promoted: ord(after) > ord(before), demoted: ord(after) < ord(before), tierUp: after.t > before.t,
       seriesStart: after.series, guard: delta > raw };   // seriesStart: 이번 판으로 티어 끝에 닿아 승급전 시작 · guard: 강등 보호로 덜 깎임
@@ -166,6 +167,36 @@ const Rank = (() => {
     return true;
   }
   function cutSeen() { if (S.cut && !S.cut.seen) { S.cut.seen = 1; save(); } }
+
+  // ---------- 여러 기기 합치기 (10_cloud.js — 저장·받아오기 때 서버 기록과) ----------
+  //  local 이 기기 · server 서버 · base 마지막으로 서버와 같았던 기록. 랭크는 경기로만 바뀌므로 base 이후 판 수(games)가 늘어난 쪽을 통째로 고른다
+  //  (RP·단계·승급전·배치고사를 한 기록에서 — 칸마다 섞으면 티어와 승급전 상태가 어긋남). 일반 랭크와 하드코어(hc)는 따로 고른다
+  //   · 둘 다 늘었으면 승급전을 더 통과한 쪽(강등 보호) → 판 수가 많은 쪽 → RP 높은 쪽. 다른 쪽에서 한 판·승 수는 더하고, 최고 RP 는 큰 쪽, 최근 기록은 합친다
+  //   · 둘 다 그대로면 판 수가 많은 쪽(옛 기기가 덮어써 줄어든 서버 기록은 버림) → 같으면 이 기기에서 바뀐 것(개발자 도구 등)이 있을 때만 이 기기 것
+  //   · 개편 보상 표식(cut 의 받음·안내 봄)은 양쪽을 합친다
+  const normOf = (o) => { const x = Object.assign(S0(), JSON.parse(JSON.stringify(o && typeof o === 'object' ? o : {}))); norm(x); return x; };
+  // 키 순서와 상관없는 JSON — 서버(jsonb)는 칸 순서를 바꿔 돌려주므로 같은 판·같은 기록인지 볼 때 이것으로
+  const cj = (o) => JSON.stringify(o, (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v).sort().reduce((a, x) => { a[x] = v[x]; return a; }, {}) : v));
+  function mergeRank(local, server, base) {
+    const L = normOf(local), R = normOf(server), B = normOf(base), n = (o, k) => Math.max(0, Math.floor(+o[k] || 0)), arr = (a) => (Array.isArray(a) ? a : []);
+    // 최근 기록: 양쪽에 다 있는 판은 하나만, 늦게 끝난 판부터 10개 (끝난 시각 t 가 없는 옛 기록은 뒤에 그대로)
+    const hist = (a, b) => { const out = arr(a).slice(), ks = out.map(cj); for (const x of arr(b)) { const i = ks.indexOf(cj(x)); if (i >= 0) ks[i] = null; else out.push(x); } return out.sort((x, y) => (y.t || 0) - (x.t || 0)).slice(0, 10); };
+    // 되돌아간 기록: 통과한 승급전 수(sg)·최고 RP(peak)는 관리자 초기화(adoptReset — 합치기 전에 따로 처리) 말고는 줄지 않는다
+    //  → base 보다 작으면 옛 탭·옛 빌드가 덮어쓴 것. 판 수가 더 많아도 그쪽은 고르지 않는다 (승급전 통과가 사라지지 않게)
+    const back = (x, b) => n(x, 'sg') < n(b, 'sg') || n(x, 'peak') < n(b, 'peak');
+    const pick = (l, r, b) => {
+      const bl = back(l, b), br = back(r, b); if (bl !== br) return br ? l : r;
+      const gl = n(l, 'games'), gr = n(r, 'games'), gb = n(b, 'games');
+      if (gl <= gb || gr <= gb) return gl !== gr ? (gl > gr ? l : r) : cj(l) === cj(b) ? r : l;
+      const w = ((n(l, 'sg') - n(r, 'sg')) || (gl - gr) || (n(l, 'rp') - n(r, 'rp'))) > 0 ? l : r, o = w === l ? r : l;
+      return Object.assign({}, w, { games: n(w, 'games') + n(o, 'games') - gb, wins: n(w, 'wins') + Math.max(0, n(o, 'wins') - n(b, 'wins')), peak: Math.max(n(w, 'peak'), n(o, 'peak')), history: hist(w.history, o.history) });
+    };
+    const main = (o) => Object.assign({}, o, { hc: undefined }), hc = (o) => Object.assign(HC0(), o.hc && typeof o.hc === 'object' ? o.hc : {});   // main: 하드코어를 뺀 일반 랭크 (칸 순서는 그대로)
+    const out = pick(main(L), main(R), main(B));
+    if (L.cut || R.cut) out.cut = Object.assign({}, ...[L.cut, R.cut, out.cut].filter((c) => c && typeof c === 'object'));
+    if (L.hc || R.hc) out.hc = pick(hc(L), hc(R), hc(B));
+    return out;
+  }
 
   // ---------- 엠블럼 ----------
   const cache = {};
@@ -553,7 +584,7 @@ const Rank = (() => {
     H.rp = Math.max(0, H.rp + delta); H.peak = Math.max(H.peak || 0, H.rp);
     const after = hcTierOf(H.rp), rank = (x) => x.t * 4 + (4 - x.div);
     const p = (r.place - 1) / Math.max(1, r.total - 1), lazy = r.quit ? 0 : Math.round(52 * (1 - p) ** 2 * 0.8 * (1 - fightK(r)));   // 싸우지 않아 덜 받은 순위 점수
-    H.history = [{ place: r.place, total: r.total, kills: r.kills, delta, rp: H.rp }].concat(H.history || []).slice(0, 10); save();
+    H.history = [{ place: r.place, total: r.total, kills: r.kills, delta, rp: H.rp, t: Date.now() }].concat(H.history || []).slice(0, 10); save();
     return { hc: true, placement: false, delta, lazy: lazy >= 3 ? lazy : 0, before, after, promoted: rank(after) > rank(before), demoted: rank(after) < rank(before), tierUp: after.t > before.t };
   }
   // 하드코어 휘장: 위아래가 뾰족한 각진 판(흑철) + 티어별 장식. 단계는 각진 명판에 로마 숫자
@@ -669,7 +700,7 @@ const Rank = (() => {
     return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${S.rp} RP` : `${ti.into} / ${ti.need} RP`, tier: ti };
   }
   return { get state() { return S; }, get hc() { return hcS(); }, hcOk, hcTierOf, applyHc, hcEmblem, hcStatus, embOf, embCanvas, embParts, rpDeltaHc, unlocked, placed, tierOf, mine, peakTier, viewOf, series, settle, cutSeen, ord, apply, botDifficulty, botCount, mixOf, emblem, status, placementScore, rpDelta,
-    reset() { S = S0(); norm(); save(); }, _set(o) { Object.assign(S, o); norm(); save(); },
+    reset() { S = S0(); norm(S); save(); }, _set(o) { Object.assign(S, o); norm(S); save(); },
     // 계정 전환: 통째로 바꿔 끼움 (저장 알림 없이) — 개편 전 기록이면 norm 이 옮긴다
-    replace(o) { S = Object.assign(S0(), o || {}); norm(); store.set('rank', S); } };
+    replace(o) { S = Object.assign(S0(), o || {}); norm(S); store.set('rank', S); }, normOf, mergeRank };
 })();
