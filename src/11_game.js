@@ -536,6 +536,8 @@ async function startMatch(cfg) {
   }
   G.total = CHARS.length; Hunt.reset(); Pace.reset();   // v23 잠수 추적 (승급전 · 하드코어 — 07_bot_hunt.js) · 교전 템포 (07_bot_pace.js)
   try { MeleeSkin.warm(CHARS, G.player); } catch (e) { console.warn('근접 무기 스킨 미리 만들기 실패', e); }   // v23 이번 경기의 근접 무기 스킨 모양·내 무기 칸 그림을 미리 (주울 때 끊기지 않게)
+  // 모든 캐릭터를 장면에 넣는다 (수송기 안 = 숨김) — v23 교전 템포를 합칠 때 이 줄이 빠져 모든 경기에서 나·적이 그려지지 않았다(이름표만 보임)
+  for (const c of CHARS) { c.root.visible = false; c.pos.copy(G.plane.pos); sc.add(c.root); c.yaw = Math.atan2(G.plane.dx, G.plane.dz); }
   warmFar(sc);   // v23 먼 캐릭터용 셰이더·점 색을 로딩 중에 미리
   G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
   HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
