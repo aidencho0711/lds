@@ -1,0 +1,24 @@
+{
+  "id": "/",
+  "name": "Last Drop Royale",
+  "short_name": "Last Drop",
+  "description": "브라우저에서 바로 즐기는 배틀로얄 — 수송기에서 강하해 무기를 줍고, 좁혀 오는 자기장 속에서 최후의 1인이 되세요.",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#0d1113",
+  "theme_color": "#0d1113",
+  "categories": ["games"],
+  "launch_handler": { "client_mode": ["focus-existing", "auto"] },
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

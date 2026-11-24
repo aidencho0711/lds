@@ -38,13 +38,14 @@ const DM = (() => {
     G.state = 'loading'; G.paused = false; G.over = false; G.training = false; G.dm = null;
     document.body.classList.remove('training');
     Audio.music(false);
-    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
+    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; Shop.closeAll();
     const duel = isDuel(type) ? GAME_TYPES[type].duel : 0, TSZ = dmTeamSize(type);
     const arenaId = cfg.arena && MAPS[cfg.arena] && MAPS[cfg.arena].arena ? cfg.arena : arenaResolve(arenaPick());   // v22: 아레나 4곳 (같이 하기는 방장이 정한 곳)
-    $('loadMap').textContent = `${GAME_TYPES[type].name} · ${MAPS[arenaId].name}`;
-    $('loadTip').textContent = duel ? `${GAME_TYPES[type].name}: 라운드마다 모두 같은 무작위 총으로 싸웁니다. 죽으면 그 라운드는 관전, 먼저 ${DUEL_RULES.win}라운드를 이기는 팀이 승리합니다.`
-      : type === 'tdm' ? '팀 데스매치: 모두 같은 총으로 싸웁니다. 먼저 40킬 하는 팀이 이깁니다.' : '웨폰 데스매치: 적을 처치할 때마다 총과 스코프가 바뀝니다. 먼저 40킬 하는 팀이 이깁니다.';
-    const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
+    // v23 로딩 화면 (10_loading.js): 아레나 이름 + 게임 종류 · 인원 · 시점
+    Loading.show({ title: MAPS[arenaId].name, sub: `${GAME_TYPES[type].name} · ${TSZ} 대 ${TSZ} · ${SETTINGS.view === 'fpp' ? '1인칭' : '3인칭'}`, mapId: arenaId, kind: 'dm',
+      tip: duel ? `${GAME_TYPES[type].name}: 라운드마다 모두 같은 무작위 총으로 싸웁니다. 죽으면 그 라운드는 관전, 먼저 ${DUEL_RULES.win}라운드를 이기는 팀이 승리합니다.`
+        : type === 'tdm' ? '팀 데스매치: 모두 같은 총으로 싸웁니다. 먼저 40킬 하는 팀이 이깁니다.' : '웨폰 데스매치: 적을 처치할 때마다 총과 스코프가 바뀝니다. 먼저 40킬 하는 팀이 이깁니다.' });
+    const prog = Loading.prog;
     disposeMatch();
     G.netCfg = cfg.roster && !cfg.resume && G.net ? G.net.cfg : null;   // 이어하기 저장용 (같이 하기)
     const sc = new THREE.Scene(); G.scene = sc;
@@ -60,7 +61,7 @@ const DM = (() => {
     G.focusRing.visible = false; sc.add(G.focusRing);
     setMapSize(arenaId);
     try { await generateWorld(arenaId, sc, prog); }
-    catch (e) { console.error(e); fatal('맵 생성 중 오류: ' + e.message); return; }
+    catch (e) { console.error(e); Loading.hideNow(); fatal('맵 생성 중 오류: ' + e.message); return; }
     prog(0.98, '부대 배치');
     Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
     Zone.cur = Zone.next = null; Zone.state = 'wait'; Airdrop.init(sc); G.plane = null;
@@ -100,7 +101,9 @@ const DM = (() => {
     HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
     document.body.classList.add('dm'); $('quitBtn').textContent = '경기 나가기 (로비로)';
     $('dmScore').hidden = false; $('dmGoal').textContent = duel ? `먼저 ${DUEL_RULES.win}라운드` : `먼저 ${DM_RULES.killTarget}킬`;
-    $('loading').hidden = true; $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
+    // 로딩 화면: 도장 뒤 사라짐 (경기는 바로 시작) — 빠른 마무리(대결 1라운드 준비 3초 · 데스매치 출현 보호 2초를 가리지 않게) · 같이 하기로 돌아온 사람은 방장 상태를 받을 때까지 가림막 (10_resume.js)
+    if (G.rjHold) Loading.hold(); else Loading.finale({ stamp: '교전 준비 완료', sub: duel ? `먼저 ${DUEL_RULES.win}라운드` : `먼저 ${DM_RULES.killTarget}킬`, quick: true });
+    $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
     G.state = 'play'; G.previewT = 0;
     Audio.wind(0.04);
     const my = G.player.team;

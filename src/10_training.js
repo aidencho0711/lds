@@ -22,9 +22,9 @@ const Training = (() => {
     if (G.state === 'loading') return;
     G.state = 'loading'; G.paused = false; G.over = false; G.training = true;
     Audio.music(false);
-    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
-    $('loadMap').textContent = MAPS.training.name; $('loadTip').textContent = '훈련장: 무기고에서 총을 고르고 사격선에서 더미를 쏴 보세요. 차량과 장애물 코스도 있습니다.';
-    const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
+    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; Shop.closeAll();
+    Loading.show({ title: MAPS.training.name, sub: `훈련 · 자유 사격 · ${SETTINGS.view === 'fpp' ? '1인칭' : '3인칭'}`, tip: '훈련장: 무기고에서 총을 고르고 사격선에서 더미를 쏴 보세요. 차량과 장애물 코스도 있습니다.', mapId: 'training', kind: 'training' });   // v23 로딩 화면 (10_loading.js)
+    const prog = Loading.prog;
     disposeMatch();
     const sc = new THREE.Scene(); G.scene = sc;
     const t = TIMES[SETTINGS.time], far = viewFar();
@@ -39,7 +39,7 @@ const Training = (() => {
     G.focusRing.visible = false; sc.add(G.focusRing);
     setMapSize('training');
     try { await generateWorld('training', sc, prog); }
-    catch (e) { console.error(e); fatal('훈련장 생성 중 오류: ' + e.message); return; }
+    catch (e) { console.error(e); Loading.hideNow(); fatal('훈련장 생성 중 오류: ' + e.message); return; }
     prog(0.97, '무기고 정리');
     Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
     Zone.cur = Zone.next = null; Zone.state = 'wait'; Airdrop.init(sc); G.plane = null;
@@ -57,7 +57,8 @@ const Training = (() => {
     G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
     HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
     document.body.classList.add('training'); $('quitBtn').textContent = '훈련장 나가기 (로비로)';
-    $('loading').hidden = true; $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
+    Loading.finale({ stamp: '훈련 준비 완료', sub: '사격장 개방 · 무기고 점검 끝' });   // 도장 뒤 사라짐 — 훈련은 바로 시작
+    $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
     G.state = 'play'; G.previewT = 0;
     Audio.wind(0.05);
     HUD.toast('훈련장 — 뒤의 무기고 탁자에서 총을 고르세요', 'info');

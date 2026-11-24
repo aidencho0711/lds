@@ -724,6 +724,15 @@ const Audio = (() => {
     },
     attach() { if (!playBuf('attach', null, 0.6, { own: true })) api.pickup('att'); },
     ui() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.05, 'triangle', 700, 760, 0.1); },
+    // v23 로딩 화면 「위성 정찰 스캔」 (10_loading.js): tick 기록 한 줄(작은 전자음) · scan 구조물 식별(올라가는 쓸림) · lock 첫 자기장 표시(두 음) · stamp 도장(낮은 쿵 + 종이 소리)
+    //  dl: 몇 초 뒤에 (화면 연출에 맞춰 WebAudio 시계로 예약 — 주 스레드가 바빠도 제때 남)
+    loadFx(kind, dl) {
+      if (!ctx) return; const t = ctx.currentTime + Math.max(0, dl || 0);
+      if (kind === 'tick') tone(sfxBus, t, 0.035, 'sine', 1560, 1560, 0.028);
+      else if (kind === 'scan') { tone(sfxBus, t, 0.22, 'sine', 520, 1480, 0.035); noise(sfxBus, t, 0.2, 'bandpass', 2800, 3, 0.03); }
+      else if (kind === 'lock') { tone(sfxBus, t, 0.07, 'sine', 880, 900, 0.07); tone(sfxBus, t + 0.09, 0.12, 'sine', 1320, 1340, 0.07); }
+      else if (kind === 'stamp') { tone(sfxBus, t, 0.2, 'sine', 150, 52, 0.32); noise(sfxBus, t, 0.08, 'lowpass', 1500, 0.8, 0.22); }
+    },
     // v23 온라인 매칭 완료 알림 (10_mm.js): 맑게 올라가는 세 음 — 화면을 보고 있지 않아도 알아차리게
     matchFound() { if (!ctx) return; const t = ctx.currentTime; [659, 880, 1319].forEach((f, i) => { tone(sfxBus, t + i * 0.11, 0.34, 'triangle', f, f, 0.17); tone(sfxBus, t + i * 0.11, 0.2, 'sine', f * 2, f * 2, 0.035); }); },
     // 팀 핑: 이동(올라가는 두 음) / 공격(짧고 높은 경고음 두 번) / 모여(내려가는 두 음)

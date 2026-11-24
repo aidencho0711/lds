@@ -54,6 +54,9 @@ const Ver = (() => {
     if (t !== base) { found = true; bar('new'); stop(); }   // 한 번 알면 더 묻지 않음
   }
   function stop() { off = true; clearInterval(iv); iv = null; }
+  // v23 앱 설치(10_app.js): 서비스 워커가 저장본으로 이 페이지를 띄웠을 때(오프라인 시작) 그 저장본의 ETag 를 기준으로 — 다시 연결되면 새 배포를 알아챔
+  //  (그대로 두면 다시 연결된 뒤 처음 받은 새 ETag 가 기준이 되어 옛 화면인 줄 모른다) · 이미 기준이 있으면 그대로
+  function seed(t) { if (base === undefined && t) base = String(t).trim().replace(/^W\//i, ''); }
   // 경기를 마치고 로비로 (11_game.js toLobby): 새 배포를 다시 묻는다 (60초에 한 번까지) · 이미 알았으면 닫아 둔 막대도 다시
   function lobby() { if (found) bar('new'); else check(); }
   function setup() {
@@ -64,5 +67,5 @@ const Ver = (() => {
     iv = setInterval(() => check(), EVERY);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
   }
-  return { setup, tell, mineOld, check, bar, sync, lobby, get base() { return base; }, get off() { return off; }, get found() { return found; }, get want() { return want; } };
+  return { setup, tell, mineOld, check, bar, sync, lobby, seed, get base() { return base; }, get off() { return off; }, get found() { return found; }, get want() { return want; } };
 })();

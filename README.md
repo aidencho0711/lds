@@ -5,6 +5,7 @@ Three.js r128 기반, 서버 없이 브라우저에서 실행되는 싱글플레
 ## 실행
 - `dist/index.html` 을 브라우저로 열면 바로 실행됩니다 (three.js는 cdnjs에서 로드).
 - 소스 수정 후 `node build.js` → `dist/last-drop.html`(아티팩트용), `dist/index.html`(단독 실행용) 재생성. 합치기 전에 문법을 검사해, 깨진 코드면 dist 를 쓰지 않고 실패한다(아래 「빌드 문법 검사」).
+- 빌드는 `src/head.html` 을 `dist/index.html` 의 `<head>` 에 넣고 `public/**`(manifest.webmanifest · sw.js)를 `dist/` 로 복사한다. 앱 아이콘 `dist/icons` 는 로고에서 코드로 만들어 커밋해 둔 것 (아래 「앱 설치(PWA)」).
 
 ## 모듈 구조 (`src/`)
 | 파일 | 내용 |
@@ -75,6 +76,8 @@ Three.js r128 기반, 서버 없이 브라우저에서 실행되는 싱글플레
 | 10_chat.js | **v22** 문자: 파티 채널 `{k:'chat'}`(로비 파티 막대 · 경기 중 화면 왼쪽) · 경기 중 입력(PC Enter · 모바일 💬 + 빠른 문구) · 관전자와 주고받기 · 80자·도배 제한 |
 | 10_resume.js | **v23** 경기 이어하기: 경기 중 새로고침·뒤로가기로 나갔다 들어오면 「다시 들어가기 · 포기하기」 — 혼자 하는 경기는 5초마다·떠날 때 저장(시드 + 바뀐 것만)했다가 그대로 되살리고, 같이 하기·온라인 매칭은 지금 방장에게 다시 연결해 봇이 맡던 내 캐릭터를 돌려받음 (`10_net.js` rj·rjok·rjs) |
 | 10_hud.js | HUD, 미니맵/전체지도(마커), 인벤토리, 설정, 로비(일반/랭크 선택·랭크 카드·대형 맵 경고), 티어표, 결과 화면(RP 변화·승급 연출) |
+| 10_app.js | **v23** 앱 설치(PWA): 서비스 워커 등록(https · 로컬 http 는 localStorage `lastdrop.sw`=`1` · manifest 가 있는 맨 위 창에서만) · `beforeinstallprompt` 붙잡기 → 로비 메뉴 ▾ 「앱 설치」(빨간 점) · 소식 카드(`HUD.news`) · 설치 창(가로 휴대폰 애니메이션) · 아이폰(기록이 따로라는 안내 + 가입·로그인)/앱 안 브라우저/그 밖 안내 · 설치한 앱이면 `body.app` · 앱 아이콘·og 그림을 로고 기호에서 코드로 (`__LD.App.exportIcons()`) |
+| 10_loading.js | **v23** 경기 로딩 화면 「위성 정찰 스캔」 — `Loading.show/prog/hold/finale/zone/hide/hideNow/covers` (배틀로얄 startMatch · 훈련장 · 데스매치·대결 · 같이 하기 다시 들어가기 · 이어하기 공용). generateWorld 진행 보고 `progress(p, label, info)`(info: `{rows}` 끝난 높이맵 줄 · `{trees}` 지금까지 심은 나무)로 진짜 높이맵·표면을 주사선 뒤로 칠함(새 줄만 · 보이는 높이맵 칸 수에 맞춘 96~512 캔버스 · 미니맵과 같은 색·음영·비탈 암석 · 색표는 첫 줄을 칠할 때) → 주사선이 닿는 순간 지역 표식 → 도로 → 건물·구조물(호박색) → 나무 → 진짜 미니맵으로 교차 전환 → 시작 때 첫 자기장(Zone.cur·next — 파티원은 방장 자기장이 온 뒤) + 비행 경로(G.plane) + 도장 → 사라짐. 오른쪽: 맵 이름·모드·생성 기록(CSS 타자 효과·결과 수)·진행률·작전 메모(TIPS 6초) · 아래 원격 측정 줄 · 고도 단면 |
 | 11_game.js | 렌더러, 로비 3D, 로딩→지도 미리보기→수송기→강하→낙하산→착지→전투→결과 흐름, 통계 저장 · **v20**: FPS 제한 30·60·120·무제한(일정 기반 — 다음 프레임 목표 시각, 허용 오차 20%)·FPS 표시 |
 
 ## v2 업데이트 내용
@@ -1686,3 +1689,207 @@ Three.js r128 기반, 서버 없이 브라우저에서 실행되는 싱글플레
   - 사람 셋: 파티원끼리(방장을 거쳐) 서로 · 색 1 노랑 · 2 주황 · 3 파랑
   - 보강 뒤: 방장 봇이 옮긴 공격 위치가 다시 보내기(3초 · 2번) 뒤에도 그대로 · 로비로 나가면 점·링이 장면에서 떨어지고 표식이 숨음 · 이상한 'pg'(객체 세션·문자 좌표·무한대·남의 캐릭터 번호)에 오류 없이 버리고 같은 묶음의 다음 사건은 처리 · 휴대폰 크기(740×360 터치)에서 핑 버튼 → 점·핀 · 경기 시작(섬·섬 건너뛰기·같이 하기 두 기기) 뒤 모든 캐릭터 뿌리가 장면에 있고 3인칭 화면에 나·봇·다른 사람이 그려짐
   - 표식 갱신은 프레임당 약 0.02ms (HUD 갱신 전체 약 0.5ms)
+
+
+### 게임 로고 「공수 존 휘장」 (2026-11-24 · `index.html`)
+- 무엇: 게임에 로고가 없었다(페이지 제목뿐) → 로고 한 벌을 만들어 첫 화면·로비에 붙임. 앞으로 맵 로딩 화면·앱 아이콘도 같은 기호를 쓴다.
+- 어디: `#app` 맨 앞 `<svg class="svg-defs" id="ldrDefs">` 한 곳에 기호(symbol) 6개 — `ldr-emblem`(512, 엠블럼만) · `ldr-logo-h`(1200×300 가로: 엠블럼 + 글자) · `ldr-logo-v`(800×640 세로) · `ldr-icon`(512 앱 아이콘: 앰버 테 둥근 판, 모서리 투명) · `ldr-icon-mask`(512 마스커블: 꽉 찬 배경, 그림은 가운데 지름 80% 원 안) · `ldr-icon-micro`(512, 16~32px 파비콘용 — 캐노피·굵은 고리·V 만). 쓰는 곳은 `<svg viewBox="…"><use href="#ldr-…"/></svg>` 로만 참조한다.
+- 그림: 앰버 낙하산 캐노피(고어 7장, 물결 단) 아래 건메탈 둥근 창 — 24칸 파란 자기장 고리 · 3·9시 수축 표시 · 섬 · 최종 원(흰 고리)과 빨간 착지점 · 줄(3+3)에 하네스 고리로 매달린 앰버 강하 표식(V) · 별 하나 탭(최후의 1인). 캐노피와 창 사이에 하늘 틈(512 기준 약 29)을 두어 버섯·뚜껑처럼 읽히지 않게.
+- 글자: 글꼴 없이 패스로 그림(웹 글꼴이 오기 전 첫 화면에서도 같은 모양) — 캡 100 기준 줄기 22 · 45° 모따기 · A 가로획 = 아래로 꺾인 V · T 기둥 끝 = 강하 화살표 · DROP 의 O 카운터 = 자기장 고리 + 착지점. 아이보리 크롬 면 · 금 테 · 황동 두께 · 잉크 외곽선 → 바다·섬 같은 복잡한 배경에서도 읽힘. ROYALE 은 앰버 판 위 잉크 글자(가로 로고 300px 에서 대문자 높이 10.5px).
+- 정한 과정: 시안 3개(A 공수 휘장 · B 왕관 방패 · C LD 모노그램 스텐실)를 각자 헤드리스 Chrome 으로 렌더하며 다듬음 → 심사 3명(브랜드·독창성 / 작은 크기·아이콘 / 완성도·UI 어울림) 채점 A 23 · C 21 · B 13 → A 에 심사 지적 13가지(ROYALE 크기, 창 안 단순화, 광택 줄이기, 그림자 테, 아이콘 앰버 테(C 에서 가져옴), O 카운터, 파비콘 단순판 등)를 고치고 따로 검증.
+- 규칙: id 는 모두 `ldr-` · `<text>`·`<style>`·class·filter·mask 없음(깊이는 그라데이션만) · 약 30KB · 기호마다 `stroke="none" stroke-linecap="butt"` — 로비 버튼 svg 의 CSS(`fill:none`·stroke·둥근 끝)가 `<use>` 안으로 물려 들어와 빛 원에 모래색 테가 생기던 것을 막음 · `display:none`/`hidden` 으로 숨기면 그라데이션이 안 그려지므로 `.svg-defs`(크기 0)로 숨긴다.
+- 고칠 때: 기호 id·viewBox 를 그대로 두고 블록 안만 바꾸면 쓰는 곳 모두에 반영된다.
+
+### 부팅 화면 「낙하 고도계」 · 로비 로고 (2026-11-24 · `index.html` · `11_game.js` · `style.css`)
+
+**무엇·왜**
+- 3.9MB 페이지와 three.js 를 받고 게임을 초기화하는 동안(휴대폰 수 초) 3D 없는 로비 HTML 만 보이다가 로비가 툭 나타났다. 요청: 로딩 화면도 "로드 바가 채워지는 것"이 아니라 독창적으로.
+- 초기화(run(THREE) → boot → 첫 프레임 셰이더 컴파일)는 1~3초 메인 스레드를 통째로 막는다 — JS 로 움직이는 로딩 화면은 그동안 멈춘다. 그래서 계속 움직이는 것은 전부 합성 스레드(CSS 애니메이션·Web Animations 의 transform·opacity)에 두고, JS 는 단계가 바뀔 때 시간표만 정한다.
+
+**어떻게**
+- `index.html` `#bootSplash`: `#app` 맨 앞(로고 기호 `#ldrDefs` 바로 뒤)에 스타일·마크업·작은 제어 스크립트가 한 블록 → HTML 이 다 오기 전에 첫 화면으로. z-index 45 (회전 안내 50 · 화면 끊김 55 · 실행 오류 60 아래). 끝나면 블록째 지우고 타이머·애니메이션을 취소하고 캔버스를 비운 뒤 `window.LDBoot = undefined`.
+- Google Fonts `<link rel=stylesheet>` 는 이 블록 **뒤**로 옮김: 그 CSS 는 뒤에 오는 스크립트를 막으므로(스크립트를 막는 스타일시트) 앞에 있으면 부팅 화면 스크립트까지 Google 응답을 기다렸다 — fonts.googleapis.com 이 멈춘 망에서 예전엔 빈 화면, 지금은 부팅 화면이 돌고 게임 스크립트만 예전처럼 기다림 (아이콘 미리 그리기가 글꼴을 기다리는 것도 그대로).
+- 장면: 노을 하늘 · 해 · 물결 반짝임 · 구름 3겹(구름 조각 3색을 덩어리로, 위아래가 이어지는 타일) · 바람 줄 · 섬(사인 6개 합 해안선 · 얕은 바다 · 밭 · 숲 · 강 · 능선 26봉우리 · 마을 불빛·길 — perspective 900 + rotateX 61° 판이 translateZ 로 다가옴, 자기장 파란 점선(회전) · 다음 안전 구역 · 착지 지점) · 대기 안개 · 로고 `#ldr-logo-v` · 태그라인 · 단계 글 + 4칸 · 오른쪽 고도계(눈금 · 300 m 낙하산 표시 · 0 m 아래 땅) · v23.
+- 그림 일감(섬 → 구름 → 바람·반짝임 → 구름 2겹 → 캐노피)은 첫 화면이 그려진 뒤(rAF 두 번) 24ms 씩 쉬며 하나씩 · **60% 단계(게임 초기화 직전)에서 남은 일감을 한 번에** 그린다 — 받기가 빠르면(캐시) 섬이 초기화 내내 비어 있던 경쟁을 없앰. 시드 난수라 늘 같은 섬.
+- 그림은 CPU `OffscreenCanvas` 에 그려 `bitmaprenderer` 캔버스로 넘긴다(`put`) → 그림 크기 텍스처 그대로 합성. 보통 CPU 캔버스는 화면 두 배 높이 층에 기기 해상도로 다시 그려져(DPR 2.6 에서 층마다 약 20MB × 4 + 섬) 휴대폰 GPU 메모리를 크게 썼고, GPU 캔버스는 메인 스레드에 GPU 문맥을 새로 만들어 첫 일감이 들쭉날쭉했다. OffscreenCanvas 가 없는 옛 브라우저는 보통 캔버스.
+- 진행도: `step(p, 글)` 이 단계마다 시간표 `[[목표 p, ms, cubic-bezier], …]` 를 정함 — 0 받기(.35 까지 16초 동안 점점 느리게) · .4 3D 엔진(.58/9초) · .6 게임 데이터(300 m = p .8 까지 일정한 자유 낙하 p 1 에 9초 → 낙하산 → .88 까지 천천히) · .9 로비(300 m 전이면 0.9초 안에 300 m → .9 → .97) · done 1(300 m 전이면 0.5초 안에 300 m → 0 m 0.7초, 아니면 0.56초).
+- `plan()` 이 이징을 직접 풀어 시간표를 짧은 직선 조각으로 만든다 → p 에 곧게 비례하는 모습(눈금 translateY · 섬 translateZ · 안개 opacity · 십 자리 숫자 띠)은 구간 끝 키프레임 + 같은 cubic-bezier, 천·백 자리 띠(아래 자리가 0 → 9 로 넘어가는 10 m 동안만 구름 — 기계식 계기)는 조각 키프레임 — 같은 곡선이라 눈금과 숫자가 함께 간다. 끝자리는 도는 북. 숫자 띠는 한 칸 1.4em 간격(이웃 글자가 창에 비치지 않게). `V()`(지금 보이는 p)는 눈금 애니메이션의 `currentTime` 을 시간표에 대어 읽음 — 스타일 계산 없음 (인라인 스크립트 안에서 화면 크기·스타일을 읽으면 214KB style.css 계산·배치를 끌어와 약 350ms 막힘).
+- 낙하산: 시간표에서 p .8(300 m 표시)를 지나는 시각을 계산해 `chuteAt(ms)` — `.bs-chute` 를 미리 붙이고 보이는 것은 모두 CSS 지연 `--cd` 뒤(머리 위 캐노피가 내려와 부풀고 흔들림 · 고도계 아이콘 · 「낙하산 전개」 · 속도 숫자 · 바람 줄 사라짐 · 로고 느린 흔들림 · 끝자리 북 느리게) · 구름은 Web Animation 두 개를 이어 붙여 그 시각부터 .22배. 펼치기 전이면 다음 단계가 와서 앞당길 수 있다(--cd 를 고치면 CSS 애니메이션의 지연도 바뀜).
+- 합성 스레드 규칙(DevTools 트레이스로 확인): **같은 요소에 같은 속성의 애니메이션이 둘 있으면(한쪽이 지연 중이어도) Chrome 은 둘 다 메인 스레드로 돌린다**(compositeFailed 64) → 초기화 동안 멈춤. 그래서 "빠름 → 느림"은 바깥/안쪽 요소로 나눔: 구름(바깥 `.bs-cl` 은 ms 동안 빠르게 · 안쪽 `<i>` 는 그 뒤 느리게) · 로고(바깥 흔들림 = 스크립트, 낙하산 시각에 끝 · 안쪽 svg 느린 흔들림 = CSS) · 끝자리 북(바깥 띠 = 스크립트 · 안쪽 띠 = CSS) · 「낙하산 전개」 글자(바깥이 나타나고 안쪽이 사라짐). 사라짐의 pointer-events 도 따로 한 애니메이션(합성할 수 없는 속성이 섞이면 사라짐까지 메인 스레드로 간다).
+- 착지·사라짐: `done()` 때 한꺼번에 정해 둠 — 눈금 0 까지 · `--ld` 지연 CSS(0 m 주황 고도계 · 「착지」 · 번쩍임 · 쿵) · 루트 opacity 0(Web Animation). 타이머는 글 바꾸기(land)·지우기(kill)만 — 첫 프레임 뒤 로비가 메인 스레드를 오래 잡아도 보이는 것은 제때. 착지 장면 중 누르면 바로 사라짐 · 이미 사라지기 시작했으면 다시 시작하지 않음(불투명으로 튀던 것) · 그때부터 누름은 로비로.
+- `window.LDBoot = { step(p, 글), after(fn), fail(on), done() }`: 부르는 쪽은 **그때그때 `window.LDBoot` 을 읽는다** — `boot()` 가 지역 변수에 담았더니 boot 안의 오래 사는 함수들(리스너 등)과 같은 클로저에 묶여 끝난 부팅 화면(캔버스 포함, 수 MB)이 통째로 남았다(WeakRef + gc 로 확인하고 고침). step·fail·done 은 예외를 삼킴 · `after(fn)` = rAF 두 번(숨은 탭은 120ms) · `performance.mark('ldboot:0|40|chute|60|90|100|end')`.
+- 받기 코드: 시작 `step(.4,'3D 엔진 불러오는 중')` · 예비 CDN 은 글만 · three 도착 `step(.6,'게임 데이터 준비 중')` → `after(go)` · `fatal(on)` → `fail(on)` (SRI·CDN 차례·15초 경쟁·다시 받기·오류 다시 던지기는 그대로). 11_game.js: `fatal()` → `fail(true)` · `boot()`: `step(.9,'로비 입장 중')` → `after(() => { rAF(done); loop(); })` (부팅 화면이 없으면 예전처럼 바로 `loop()`).
+- 실패: `#fatal` 이 위 · 부팅 화면은 `.bs-hold`(CSS 애니메이션·가상 요소 멈춤) + Web Animations 일시정지 · three 를 다시 받아 성공하면 이어서 · 60% 뒤 30초 안에 done 이 없으면 그냥 연다 · 인라인 스크립트가 예외면 부팅 화면만 지움(예전처럼 로비 HTML).
+- 동작 줄이기(`prefers-reduced-motion`): 흐름·흔들림·섬 확대·바람 줄 없음 · 진행은 구간마다 200ms 이하 · 고도 숫자는 10 m 단위로 정확히(끝자리 0) · 낙하산·착지는 바로 · 사라짐은 opacity 만.
+- 휴대폰 가로(높이 500 이하): 섬을 조금 작게·아래로(54vw · 80%) — 다가와도 단계 글자·칸을 덮지 않음.
+- 시험용: 주소에 `?nosplash` 면 부팅 화면 없이 예전처럼 — 정해진 시간 뒤 로비를 찍는 test/*.py 는 이것을 붙이거나 `!document.getElementById('bootSplash')` 를 기다릴 것.
+- 첫 화면 로고 크기: `.bs-logo svg` 너비 min(48vh, 38vw) (통합 때 진짜 로고에 맞춰 키움 — 휴대폰 가로 915×412 에서 약 198px)
+- 로비 로고: `.lb-brief` 맨 앞 `.lb-logo` > `<svg><use href="#ldr-logo-h"/></svg>` (180~250px) · 눈 덮인 로비에서도 보이게 어두운 원형 바탕 + 외곽 그림자 · 경기 안내가 숨는 좁은 화면(높이 520↓ · 폭 860↓)은 로고만 136px.
+
+**확인 (하네스 · 헤드리스 Chrome SwiftShader)**
+- 실제 부팅 1280×720 · 915×412: 오류 0 · ldboot 0→40→chute→60→90→100→end · 섬은 60% 전(게임 초기화 시작 전)에 그려짐 · 끝난 뒤 bs 노드 0 · 스타일 블록 없음 · `LDBoot` undefined · 남은 애니메이션 0 · `__LD` 있음 · G.state lobby · WeakRef + gc: 부팅 화면·구름·섬 캔버스·LDBoot 모두 풀림.
+- 부팅 화면 시험 페이지(게임 스크립트 없이 단계를 직접 주고 모든 애니메이션 시각을 고정): 받기 · 3D 엔진 · 자유 낙하 · 낙하산 · 로비 · 착지 — 1280×720 · 915×412 · 412×915(세로) · 동작 줄이기.
+- DevTools 트레이스(blink.animations, 단계 → 메인 스레드 2.5초 막힘 → 착지): 합성 실패는 바뀌지 않는 천 자리 띠와 pointer-events 애니메이션(합성할 것이 없음)뿐. 헤드리스에서는 합성 애니메이션이 시작되지 않아 "막혀도 움직임"은 눈이 아니라 트레이스로 확인.
+- LayerTree(915×412, DPR 2.625): 구름·바람 층은 그리는 내용 없음 + 캔버스는 따로 작은 텍스처 층 (예전: 층 4개가 각각 2402×2164 기기 픽셀을 그림).
+- 비용: 인라인 스크립트 9~12ms(스레드 시간) · 그림 일감 섬 17~22ms, 나머지 3~9ms · step/done 각 1~3ms.
+- Google Fonts 요청을 멈춘 채(CDP Fetch): 예전 빌드는 빈 화면, 지금은 부팅 화면·그림·진행이 돌고 로비 스크립트만 기다림.
+- 실패 경로: CDN 세 곳 모두 .invalid → #fatal 「3D 라이브러리…」 위 · bs-hold · 오류 0 / `--disable-3d-apis` → #fatal 「WebGL…」 위 · 오류 0 / last-drop.html(쿼크 모드) 정상 / `?nosplash` → 부팅 화면 없이 정상 부팅.
+
+**한계 · 남은 것**
+- 'v23' 글자는 HTML 에 고정 — 버전을 올릴 때 같이 바꾸거나, build.js 가 CHANGELOG 첫 `v:` 로 바꿔 넣게 할 것.
+- 빠른 기기에서 로비가 300 m 전에 준비되면 300 m 까지를 짧게(0.5초 이하) 하고 낙하산을 편 뒤 착지 → 사라짐 끝까지 최대 약 2.2초(300 m 뒤면 1.5초) · 누르면 바로.
+- 인라인 스크립트 30KB(주석 줄 빼면 22KB) — 대부분 절차적 그림 · 블록 gzip 약 17KB(한국어 주석 포함).
+- 진짜 기기(S26 Ultra)에서 초기화 중 움직임·GPU 메모리는 아직 못 봄.
+
+### 앱 설치(PWA) · 앱 아이콘 · 오프라인 시작 (2026-11-24 · `10_app.js` · `public/sw.js` · `public/manifest.webmanifest` · `src/head.html` · `build.js` · `10_ver.js` · `10_hud.js` · `10_touch.js` · `11_game.js` · `index.html` · `style.css`)
+
+**무엇·왜**
+- 브라우저 탭에서만 돌던 게임을 홈 화면·앱 목록에 설치해 앱처럼(전체 화면 · 가로) 실행. 앱 아이콘·파비콘·링크 미리보기 그림이 없었다(파비콘 404).
+- 한 번 받은 뒤에는 인터넷 없이도 게임이 켜지게 (혼자 하는 경기·훈련장 — 로그인·온라인은 연결 필요).
+
+**어떻게**
+- `src/head.html`
+  - theme-color · color-scheme dark · description · manifest · 파비콘 PNG 32/16 + 192 · apple-touch-icon · mobile-web-app-capable.
+  - apple-mobile-web-app-capable / status-bar-style(black-translucent) / title('Last Drop') · application-name · Open Graph + 트위터 카드.
+  - og:image·twitter:image·og:url 만 배포 절대 주소 (`https://lds-training.vercel.app/icons/og.jpg` · 1200×630 JPEG). 나머지는 상대 경로라 file:// · 하위 경로에서도 그대로.
+- `build.js`
+  - head.html 을 trim 해서 viewport meta 바로 뒤 `</head>` 앞에 넣는다 (index.html 만 — last-drop.html 은 그대로).
+  - `public/**` 를 `dist/` 로 재귀 복사한다 (폴더 생성 · 덮어쓰기 · 다른 dist 파일은 안 지움).
+  - 문법 검사·exit(1) 은 그대로.
+  - `dist/icons/SOURCE.txt` 의 `ldrDefs-fnv1a32:` 가 지금 로고 블록 해시와 다르거나 파일이 없으면 경고만 한다 (빌드는 계속).
+  - 해시 정의
+    - src/index.html 에서 CR 을 지우고, HTML 주석을 같은 길이 공백으로 바꾼다.
+    - 그 글에서 `/<svg\b[^>]*\bid=["']ldrDefs["'][^>]*>/` 로 여는 태그를 찾는다 (속성 순서·따옴표 무관).
+    - 거기서 svg 여닫기 짝(자기 닫는 `<svg/>` 제외)이 맞는 `</svg>` 까지, 원래 글(주석 포함) 구간의 UTF-8 바이트를 FNV-1a 32비트로 → 16진수 8자리.
+    - `ldrDefsText`·`fnv1a32` 는 build.js 와 10_app.js 에 글자까지 같은 코드로 둔다.
+- `public/manifest.webmanifest`
+  - id "/" · start_url·scope "./" · display fullscreen (+ display_override fullscreen → standalone) · orientation landscape · #0d1113 · categories games.
+  - 아이콘: any 192·512 + maskable 192·512.
+  - launch_handler focus-existing: 이미 열려 있으면 그 창을 앞으로 (두 번째 게임이 뜨지 않게).
+- `public/sw.js` (캐시 `ldr-v1` — 저장 방식을 바꾸면 V 를 올린다)
+  - 캐시는 덤
+    - 모든 요청이 네트워크를 먼저 쓴다 (버전 고정 CDN 만 저장본 먼저 — 읽기 오류는 '없음').
+    - 캐시 열기·읽기·쓰기 실패는 삼킨다 (`cs()` 가 바로 나는 오류도 거절로 바꿈). 캐시 저장소가 고장 나도 온라인이면 게임이 뜬다.
+    - 설치·활성화도 캐시 오류로 실패하지 않는다.
+  - 설치 때 게임 페이지(HOME = 등록 범위)와 cdnjs three.js 를 미리 저장한다.
+  - 같은 출처 페이지 이동은 네트워크 먼저. 게임 페이지(범위 맨 위·index.html)는 주소 꼬리를 떼고 HOME 한 칸에 저장한다. 네트워크가 안 되면 어느 페이지든 HOME.
+  - 캐시 먼저: 주소에 정확한 버전이 박힌 three(cdnjs r128 · jsdelivr/unpkg three@x.y.z) · supabase-js@x.y.z · fonts.gstatic.com.
+  - 구글 글꼴 CSS(fonts.googleapis.com/css2?)
+    - 페이지는 no-cors(불투명)로 부르므로 워커가 cors·쿠키 없이 받아 저장하고, 그 사본으로 답한다.
+    - 안 되면 저장본, 그것도 없으면 페이지의 원래 요청 그대로 (저장 안 함).
+  - 같은 출처의 다른 GET: 네트워크 먼저, 안 되면 저장본.
+  - 건드리지 않음: GET 이 아닌 요청(10_ver.js 의 HEAD) · *.supabase.co · 그 밖의 다른 출처.
+  - 200 · basic/cors 응답만 저장한다 (opaque·리디렉트 안 함). activate 에서 옛 ldr- 캐시를 지우고 clients.claim · skipWaiting. 페이지를 억지로 새로고침하지 않는다.
+- `10_app.js` (`App`)
+  - 설치할 수 있는 곳 `installable()` = 맨 위 창(iframe 아님) + https 또는 로컬 개발 주소 + `<link rel="manifest">` (last-drop.html 제외). 설치 메뉴와 서비스 워커 등록 모두 이 조건.
+  - 서비스 워커 등록
+    - https 에서 load 1.5초 뒤.
+    - 로컬 http 는 localStorage `lastdrop.sw` === '1' 일 때만 — 아니면 남은 등록을 지운다.
+    - `navigator.serviceWorker` 읽기는 try 안에서.
+  - `beforeinstallprompt` 는 모듈이 실행될 때부터 붙잡는다 (preventDefault — 미니 안내 막대 없음).
+    - 메뉴 ▾ 맨 아래 「앱 설치」 + 빨간 점 (#appDot · ▾ 위 #appMoreDot — 업데이트 로그 점과 따로). 점은 설치 창을 한 번 열면 끈다 (store 'appSeen').
+    - 소식 카드를 맨 앞에 넣는다 (`HUD.news` · 그림은 `bannerArt` 720×200 JPEG). 휴대폰 가로 화면에서는 기존 CSS 가 소식 카드를 숨기므로 메뉴의 점이 입구.
+  - 설치하기 → `prompt()`
+    - 이벤트는 누르기 전에 비워 두 번 눌러도 한 번만 부른다.
+    - NotAllowedError(누른 동작 없음)면 이벤트를 되돌려 두고 「한 번 더 눌러 주세요」.
+    - accepted/dismissed 를 로비 알림으로. 취소한 뒤 다시 열면 「설치 창은 접속할 때마다 한 번만」 + 브라우저 메뉴 안내.
+  - 설치 창 #appPanel (`data-nofs`)
+    - 왼쪽: 가로 휴대폰 SVG — 홈 화면 → 아이콘 누름 → 둥글게 퍼지는 실행 → 스플래시 → 전체 화면 게임, 6초 반복. 아래 단계 칩이 같이 켜지고, 움직임 줄이기면 멈춘다.
+    - 오른쪽 — prompt(설치 이벤트 있음): 장점 4줄 + 「설치하기」.
+    - 오른쪽 — ios: 공유 → 홈 화면에 추가 → 추가 (코드로 그린 공유 아이콘).
+      - 아래에 「홈 화면 앱은 Safari 와 기록이 따로」 안내 (iOS 홈 화면 앱은 localStorage·로그인 세션이 Safari 와 따로라 로그아웃 상태로 열림).
+      - 게스트: 가입해 두면 지금 기록이 계정으로 옮겨짐(10_cloud.js afterLogin) + 「가입 · 로그인」 단추 → `Cloud.open()`.
+      - 로그인한 사람: 앱에서 같은 아이디로 로그인. 계정 기능이 꺼져 있으면: 기록이 넘어가지 않음.
+    - 오른쪽 — inapp(카카오톡·네이버·인스타그램·페이스북·라인·다음·에브리타임·밴드): 다른 브라우저로 열기 + 주소 복사.
+    - 오른쪽 — generic: 지금 브라우저 줄 강조 (Chrome·Edge·웨일 / 삼성 인터넷 / Safari Mac / Firefox Android).
+    - 열린 채 설치 이벤트가 오면 바로 prompt 모드로. Esc·바깥·✕ 로 닫히고, 경기가 시작되면 닫힌다.
+    - 높이 420px 이하(휴대폰 가로)에서는 단계 안내를 작게 — 아이폰 Safari(주소 막대·홈 표시줄 → 300px 남짓)에서도 스크롤 없이 292px.
+  - `appinstalled` → 알림 + 메뉴·점·소식 카드 숨김 (store 'appInst' — 지웠다가 다시 설치할 수 있게 되면 브라우저가 이벤트를 다시 보낸다). PC 파이어폭스·file:·일반 http 에는 메뉴가 없다.
+  - 설치한 앱으로 실행 중이면 `body.app` + 설치 UI 없음
+    - 판정: display-mode standalone·minimal-ui·window-controls-overlay, fullscreen(Fullscreen API 로 맞는 경우 제외), navigator.standalone.
+    - 처음 열릴 때의 판정(`LAUNCH`)을 기억한다 — standalone 앱 안에서 게임이 전체 화면을 켜 display-mode 가 fullscreen 으로 바뀌어도 앱으로 봄.
+    - display-mode 가 바뀌면 다시 판정한다 (PC Chrome 은 설치하면 탭을 앱 창으로 옮김).
+  - 오프라인 시작(서비스 워커가 저장본으로 띄움 = navigation transferSize 0)이면 저장본의 ETag 로 `Ver.seed`. 다시 연결되면 새 배포 막대가 뜬다 (그대로 두면 첫 HEAD 의 새 ETag 가 기준이 되어 옛 화면인 줄 모른다).
+- 다른 파일
+  - `10_touch.js`: display-mode fullscreen(설치한 앱)이거나 `[data-nofs]` 안(설치 창)을 누를 때는 전체 화면을 요청하지 않는다. 그 요청이 누름의 사용자 활성화를 써 버리면 설치하기의 `prompt()`·주소 복사가 거절된다.
+  - `10_ver.js`: `Ver.seed(etag)` (기준이 없을 때만).
+  - `10_hud.js`: `HUD.news(card, on)` (같은 tag 는 한 장 · on 이면 맨 앞에 넣고 바로 보여 줌).
+  - `11_game.js`: boot 에서 `App.setup()` · `__LD.App`.
+  - `index.html`: #lbMenu 맨 아래 #appBtn(+#appDot) · #moreBtn 의 #appMoreDot · #appPanel(clPanel 다음 · data-nofs).
+  - `style.css` (로비 메뉴 블록 바로 뒤): 메뉴 4·5번째 펼침 지연 · .app-* · .app-note · .apx-* · 높이 420px 이하 축소.
+
+**앱 아이콘 다시 만들기 (로고가 바뀌면)**
+- 순서: 다시 빌드 → 로컬 서버에서 게임을 열고 콘솔에 `await __LD.App.exportIcons()` → dist/icons 커밋.
+  - 서버가 `POST /put?p=icons/이름` 으로 dist/icons 에 쓴다.
+  - 그림·해시 모두 그때 서버에서 새로 받은 페이지의 #ldrDefs 로 만든다 (화면 DOM 이 아님 — 빌드 전에 열어 둔 탭이어도 새 로고).
+- 옵션
+  - 링크 미리보기 글꼴(IBM Plex Sans KR · Saira Condensed)을 받지 못하면 멈춘다 — 그래도 만들려면 `exportIcons({ anyFont: true })`.
+  - `/put` 이 없는 서버면 `exportIcons({ download: true })` 로 내려받아 dist/icons 에 넣는다.
+- 만드는 파일
+  - icon-192/512 — any · 모서리 투명 · ldr-icon
+  - maskable-192/512 — 꽉 찬 불투명 · ldr-icon-mask (그림은 가운데 지름 80% 원 안)
+  - apple-touch-icon 180 — 불투명 · ldr-icon-mask 를 1.25배 (iOS 는 모서리만 둥글게 자르므로 · 안전 원이 칸에 꼭 맞아 잘리지 않음)
+  - favicon-32/16 — ldr-icon-micro (로고의 16~32px 단순판 — 캐노피 · 굵은 고리 · 강하 표식만)
+  - og.jpg 1200×630 (JPEG 0.86 · 약 90KB) — 등고선 작전 지도 · 자기장 · 수송기 항로 · 강하 핀 + ldr-logo-h 600×150 + 소개 글
+  - SOURCE.txt — 해시 · 크기
+- 그리는 법
+  - #ldrDefs 의 defs·symbol 을 XMLSerializer 로 통째로 넣은 독립 SVG → Image → 캔버스(목표 크기에서 바로 벡터 래스터) → PNG/JPEG.
+  - 확대는 viewBox 를 가운데 1/k 로. 같은 로고면 바이트까지 같은 파일이 나온다.
+- 로고를 바꾸고 다시 만들지 않으면 `node build.js` 가 「경고: 앱 아이콘이 지금 로고와 다름 …」 (빌드는 계속).
+- 주소에 버전이 없으므로 한 번 퍼진 그림은 남는다: 카카오톡·페이스북 미리보기 캐시는 카카오 공유 디버거에서 초기화하고, 아이폰 홈 화면 아이콘은 추가할 때 한 번 받는다.
+  - 그래서 진짜 로고로 다시 만든 뒤에 배포한다.
+
+**확인 (헤드리스 Chrome · SwiftShader · CDP)**
+- `Page.getInstallabilityErrors` = [] · `Page.getAppManifest` errors [] · 실제 `beforeinstallprompt` 를 받음.
+- 갤럭시 915×412 · 터치 · 실제 설치 이벤트 · 실제 터치로 설치하기 → `prompt()` 가 사용자 활성화가 있는 채로 불림 (설치 창 안 누름은 전체 화면 요청 0).
+- 서비스 워커: lastdrop.sw=1 → 등록·claim.
+  - 다시 열면 navigation workerStart > 0 · three.js transfer 0 · 글꼴 CSS 가 cors 로 저장(규칙 291).
+  - HEAD 는 fromServiceWorker false, manifest GET 은 true.
+- 캐시 고장 흉내: 워커 안 caches.open/match/keys 가 UnknownError → 이동·three(cdnjs·jsdelivr)·글꼴 CSS·manifest·페이지 모두 200 (워커 경유) · 다시 불러도 로비.
+- 오프라인: 브라우저 캐시를 비우고 워커·페이지 모두 끊음 → 저장본으로 로비 (three r128 · Ver.base = 저장본 ETag) · 글꼴 CSS 도 저장본 (웹 글꼴 그대로).
+- build.js 를 브라우저에서 실제 소스 + fs 흉내로 실행
+  - dist/index.html · last-drop.html 이 PowerShell 빌드와 글자까지 같음 · public 복사.
+  - 해시 같음 = 경고 없음 · 다름·없음 = 경고 · 속성 순서·따옴표가 바뀌어도 블록을 찾음 · head.html 없음 = 예전 head · 문법 오류 = exit(1)·dist 안 씀.
+  - FNV-1a 시험값 ("" 811c9dc5 · "a" e40c292c · "foobar" bf9cf968).
+- 아이콘
+  - 크기 모두 맞음 · any 모서리 알파 0 · maskable·apple·og 완전 불투명.
+  - 마스커블 그림 최대 반지름 26.4% (안전 40%) · 80% 원 밖 0픽셀 · 애플 33.1%.
+  - 화면의 #ldrDefs 를 비워도 내보낸 파일이 바이트까지 같음.
+- 설치 흐름 (합성 이벤트): NotAllowedError → 이벤트 유지 · dismissed 알림 · 다시 열면 안내 · appinstalled 로 숨김 · manifest 없으면 메뉴 없음 · iframe 은 메뉴·등록 없음.
+- 아이폰 UA 844×390 · 844×330 · 667×330: 게스트·로그인 모두 292px 로 스크롤 없이.
+- standalone 으로 뜬 앱 + Fullscreen API 뒤에도 `body.app`.
+
+**한계**
+- 설치 이벤트는 게임 코드가 시작된 뒤(three.js 를 받은 뒤)부터 받는다. 그 전에 오면 다음 방문까지는 메뉴 안내(브라우저 메뉴)로.
+- 아이폰 시작 화면(apple-touch-startup-image)은 없다. iOS 는 가로 고정을 하지 않는다.
+- 아이폰 홈 화면 앱의 기록은 Safari 와 따로다 — 계정 로그인으로만 이어진다 (자동 옮기기 없음).
+- PC 브라우저 F11 전체 화면으로 연 접속은 앱으로 봐서 그동안 설치 메뉴가 숨는다.
+- 오프라인 시작 판정(navigation transferSize 0)은 Chrome 기준 — 값을 주지 않는 브라우저는 예전 동작.
+- 아이콘·og 주소에 버전이 없다 (build.js 가 PowerShell 빌드와 같은 결과를 내야 해서 빌드가 주소를 바꾸지 않음).
+- 통합 때: 진짜 로고가 들어온 뒤 아이콘을 다시 만듦 (`ldrDefs-fnv1a32: 6d40bb22`) · 파비콘은 `ldr-icon-micro` 로 바꿈 (16·32px 에서 앱 아이콘 전체는 뭉개짐) · CDP 로 설치 가능 확인 `installabilityErrors: []` · 오프라인 시작 · 캐시 고장 시작 다시 확인
+
+### 맵 로딩 화면 「위성 정찰 스캔」 (2026-11-24 · `10_loading.js` · `02_world*.js` · `11_game.js` · `10_net.js` · `10_resume.js` · `10_dm.js` · `10_training.js` · `01_audio.js` · `index.html` · `style.css`)
+- 흐름: `show(o)` → `prog(p, label, info)` (generateWorld 의 progress + 아이템·차량·무기고·부대 배치 단계) → `finale({ zone, plane, stamp, sub, quick })` (G.state = 'play' 바로 앞 — 경기 진행은 기다리지 않음) → 사라짐(`.out`) → `hideNow` 정리
+- zone: `true` = 지금 Zone 을 그림 · `'wait'` = 같이 하기 파티원(이 기기의 Zone 은 Zone.init 의 임시 무작위) — 10_net.js `applyZone`(welcome·zone)이 부르는 `Loading.zone()` 이 마지막 연출 중이면 그때 그림 (아직 화면에 오르기 전이면 처음부터 자기장 순서 · 도장이 이미 나왔으면 사라짐을 늦춰 자기장이 0.9초는 보이게 — 화면에 오른 뒤 최대 2.1초) · 방장 자기장이 끝내 안 오면 비행 경로·도장만. 구역 이름은 `Zone.phase > 0` 이면 '다음 안전 구역'
+- 연출 시계: 도장 애니메이션의 `startTime`(합성 스레드가 시작하며 알려 줌 = 경기 첫 화면이 그려진 뒤) 기준 — 모르면 finale 뒤 두 번째 화면 시작부터 0.6초까지 기다림 (동작 줄이기는 바로). 자기장 있음: 도장 0.79초 '쾅' → 1.35초에 사라지기 시작(0.5초) · 없음(훈련장): 0.29 → 0.8초 · quick(이어하기·다시 들어오기·데스매치·대결): 0.14 → 0.56초, 0.3초 사라짐 · 경기 화면이 3번 그려진 뒤에만 · 화면이 아예 안 그려지면(탭 숨김) 9초 뒤 그래도 사라짐. 소리(lock·stamp)는 같은 기준으로 WebAudio 시계에 예약 — `Audio.loadFx(kind, dl)`
+- 같이 하기로 돌아온 사람(G.rjHold): `hold(label, onCancel)` 가림막 (0.3초마다 불려도 같음 · onCancel 이 있으면 작전 메모 자리에 '로비로 나가기') → `Resume.rejoined` 가 빠른 finale · 연결 실패·생성 오류·로비로는 `hideNow()`
+- 위성 화면 층(아래→위): 지형 #ldTerr(높이맵 칸 해상도) · 미니맵 #ldMap · 나무 #ldTree · 도로 #ldRoad · 건물 #ldBld(도로·건물·미니맵은 화면 크기 × 배율 최대 2, 256~1024) · 가림막 #ldCur(잡음 캔버스 160² + 주사선 + 감지 머리 + 고도 단면 #ldProf) · 회전 탐지 #ldSweep(256² 부채꼴 캔버스를 돌림 — 앞쪽 또렷한 선은 얇은 요소 .ld-swl 이 같은 회전) · 지역 표식(DOM) · 자기장 .ld-zw(.zon 일 때) + 비행 경로(DOM + SVG) · 덮개 .ld-fx(격자 A~H·1~8 · 주사 줄무늬 · 비네트) · 글(SAT-1 LIVE · REC · 좌표 · GSD/HDG · 상태) · 도장
+- 합성 스레드 움직임(transform·opacity): 주사선 미끄러짐(transition — 진행 보고 간격 60~1600ms 를 그대로, 칠한 곳보다 앞서지 않음) · 지역 표식(animation-delay 를 미리 계산해 주사선이 지나는 순간) · 기록 줄 타자 효과(글자마다 span + animation-delay 26ms · 글은 처음부터 DOM 에 · 커서는 다 친 뒤 `--td`) · 녹화 시계(0~9 숫자 띠를 steps 로 — 분·10초·초·0.1초 · show 마다 새 요소라 0부터) · 잡음·탐지·도장·사라짐 → 생성이 주 스레드를 몇 초씩 막아도 이어짐 (CPU 6배 느리게 한 실시간 화면 녹화로 확인)
+- 진행률: 실제로 지난 시간으로 따라감(1 − e^(−7·dt)) — 화면이 드물게 그려져도 바로 따라잡음 · 작전 메모는 글을 바로 바꾸고 나타나는 움직임만(WAAPI)
+- 기록: PC 6줄 · 휴대폰 4줄 (줄 수로 지움 — 레이아웃을 묻지 않음) · '…완료' 로 끝나는 단계와 마지막 도장 줄은 '완료' 표시 없음(.nok · .fin 호박색) · 마지막 연출 중에는 지역 이름을 감추고 표식만
+- 오류: 밖에서 부르는 함수는 모두 try (`safe`) — 그리기 오류는 `console.warn` + 화면만 걷음, 경기는 그대로
+- 아레나: 가운데 100m 만(view) · 미니맵 뒤에도 구조물 표시를 남김(.zoom) · 칩은 72×72m
+- 이름 규칙: 클래스는 모두 `ld-` · 기록의 현재 줄은 `.now` (전역 `.cur` 재화 칩 스타일과 겹치지 않게) · z-index 45 (HUD·메뉴 위, #rotateHint 50 · #glLost 55 · #fatal 60 아래)
+- 로고: `<svg viewBox="0 0 1200 300"><use href="#ldr-logo-h"/></svg>` 참조만 — 로고 기호를 바꾸면 그대로 따라감
+- 소리: `Audio.loadFx('tick'|'scan'|'lock'|'stamp', dl)` (01_audio.js — 기록 한 줄 · 구조물 식별 · 자기장 표시 · 도장)
+- 동작 줄이기(prefers-reduced-motion): 애니메이션·주사선 미끄러짐·타자 효과 없음 · 녹화 시계는 글(frame) · 사라짐 0.25초
+- 시험 훅: `__LD.Loading` (`marks` = 단계 시작 시각 · `covers()` · `hold()` · `finale()` · `zone()`)
+- 측정 (헤드리스 크롬 GPU d3d11 · 새 프로필 · 8코어를 다른 작업과 나눠 씀 · 칼덴 · 앞뒤 짝 3번의 중앙값): 게임을 켠 뒤 첫 경기 — 아이콘 미리 그리기가 도는 중(기본): generateWorld 전 2.36초 → 후 1.63초 · 경기 시작까지 5.89 → 5.35초 / 미리 그리기를 끈 경우: 생성 1.33 → 1.72초 · 시작까지 4.53 → 5.45초 (로딩 화면을 CSS 로 숨기면 1.13 · 4.28초 — 새 프로필에서 화면을 처음 그리는 비용) · 두 번째 경기부터는 같음(생성 약 1.0~1.1초). 로딩 화면 자체 JS: prog 합 21~50ms(18번) · show 첫 번 68ms(그중 첫 레이아웃 54ms) 뒤로 7~18ms. SwiftShader: 생성 중앙값 약 17.2초 → 4.8초 (전에는 아이콘 미리 그리기가 생성 틈마다 돌았음)
+- 월드 해시(FNV — hf·surf·boxes·lootSpots·buildings·나무 수) 칼덴·크리스마스 섬·키나루 318c117 과 같음
+- 다른 파일:
+  - `02_world.js`: **v23** `yieldUI(p, label, info)` — 로딩 화면용 info 를 progress 로 넘김(높이맵 `{rows}` · 큰 맵·v2·크리스마스 섬 나무 `{trees}` — 읽기만, 생성 난수와 무관) · 표면 색표 `mapPalette(w)` (미니맵·로딩 화면 공용)
+  - `11_game.js`: **v23** 로딩 화면이 덮는 동안(`Loading.covers()`) 로비 3D·아이콘·썸네일 미리 그리기를 쉼 · 경기 시작 때 `Loading.finale` (같이 하기 파티원은 `zone: 'wait'` · 이어하기는 `quick` · 같이 하기로 돌아온 사람은 `Loading.hold`)
+  - `10_net.js`: **v23** `applyZone` 끝에 `Loading.zone()` — 파티원 로딩 화면 마지막 연출에 방장 자기장
+  - `10_resume.js`: **v23** 다시 들어가기 가림막 `Loading.hold(label, onCancel)` — '로비로 나가기' → `failNet(s, msg)` (다시 들어가기 창으로 · 다시 시도 가능) · `rejoined` → `Loading.finale({ zone: true, stamp: '경기 복귀', quick: true })`
+  - `10_dm.js`: **v23** 로딩 화면 `Loading.finale({ stamp: '교전 준비 완료', quick: true })` — 대결 1라운드 준비 3초·출현 보호를 가리지 않게
+- 통합 때: 로고 자리 표시를 진짜 로고(`#ldr-logo-h`)로 바꾼 빌드에서 칼덴 생성 중·마지막 연출을 다시 찍어 확인 (오류 0 · HUD 표시) · 생성기 변경은 진행 정보 인자와 미니맵 색표를 함수로 뺀 것뿐(값 같음 · 난수 호출 그대로)

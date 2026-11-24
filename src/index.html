@@ -3,9 +3,453 @@
 <!-- three.js: 게임 코드와 함께 미리 받기 시작 (실제로 붙이는 것은 맨 아래 받기 코드 — 막히면 다른 CDN)
      crossorigin · integrity 는 받기 코드의 것(SRI)과 똑같아야 이 사본을 그대로 쓴다 (다르면 한 번 더 받음) -->
 <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" as="script" crossorigin="anonymous" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
 <style>/*STYLE*/</style>
 <div id="app">
+  <!-- v23 게임 로고 — 기호(symbol)만 여기 한 곳에 정의하고 첫 화면·로딩·로비·앱 아이콘이 <svg><use href="#ldr-…"/></svg> 로 쓴다 (글자도 패스라 웹 글꼴 없이 똑같이 그려짐)
+       ldr-emblem 512×512 (엠블럼만, 배경 투명) · ldr-logo-h 1200×300 (가로: 엠블럼 + 글자) · ldr-logo-v 800×640 (세로: 엠블럼 위 · 글자 아래)
+       ldr-icon 512×512 (앱 아이콘 — 둥근 사각 배경 포함, 모서리 투명) · ldr-icon-mask 512×512 (마스커블 아이콘 — 꽉 찬 배경 · 그림은 가운데 지름 80% 원 안)
+       ldr-icon-micro 512×512 (16~32px 파비콘용 단순판: 캐노피 · 굵은 자기장 고리 · 강하 표식만)
+       디자인 「공수 존 휘장」: 앰버 낙하산 캐노피 아래 금속 둥근 창 — 24칸 파란 자기장 고리 · 섬 · 최종 원과 빨간 착지점, 줄에 매달린 앰버 강하 표식(V) ·
+         글자 LAST DROP(아이보리 크롬 · 금 테 · 황동 두께, O 안에 자기장 고리와 착지점) + 앰버 판 ROYALE. 3안 + 심사 3명으로 고른 뒤 다듬음
+       그라데이션 등 id 는 모두 ldr- 로 시작 · display:none 이면 그라데이션이 안 그려지므로 .svg-defs(크기 0) 로 숨긴다
+       기호마다 stroke="none" stroke-linecap="butt" — 버튼 등의 svg CSS(fill:none · stroke)가 <use> 안으로 물려 들어오지 않게 -->
+  <svg class="svg-defs" id="ldrDefs" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs><radialGradient id="ldr-g-shadow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity="0.3"/><stop offset="0.86" stop-color="#000" stop-opacity="0.22"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient><linearGradient id="ldr-g-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c8d0d4"/><stop offset="0.06" stop-color="#7e898e"/><stop offset="0.45" stop-color="#363f44"/><stop offset="1" stop-color="#111619"/></linearGradient><linearGradient id="ldr-g-rimL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef2f4"/><stop offset="0.28" stop-color="#a7b1b6"/><stop offset="0.62" stop-color="#58636a"/><stop offset="1" stop-color="#1f262a"/></linearGradient><linearGradient id="ldr-g-rimface" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a767d"/><stop offset="0.4" stop-color="#313a40"/><stop offset="0.78" stop-color="#1d2428"/><stop offset="1" stop-color="#414c53"/></linearGradient><linearGradient id="ldr-g-lip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#040607"/><stop offset="0.6" stop-color="#1b2227"/><stop offset="1" stop-color="#5f6a70"/></linearGradient><radialGradient id="ldr-g-field" cx=".5" cy=".3" r=".7"><stop offset="0" stop-color="#26506f"/><stop offset="0.5" stop-color="#16324b"/><stop offset="1" stop-color="#07111a"/></radialGradient><radialGradient id="ldr-g-zglow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#5aa2ff" stop-opacity="0"/><stop offset="0.66" stop-color="#5aa2ff" stop-opacity="0"/><stop offset="0.88" stop-color="#5aa2ff" stop-opacity="0.5"/><stop offset="1" stop-color="#5aa2ff" stop-opacity="0.12"/></radialGradient><linearGradient id="ldr-g-zone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9e3ff"/><stop offset="0.45" stop-color="#78b5ff"/><stop offset="1" stop-color="#4a8ff7"/></linearGradient><linearGradient id="ldr-g-isl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4d6a3b"/><stop offset="1" stop-color="#2a3c25"/></linearGradient><radialGradient id="ldr-g-tglow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity="0.4"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><linearGradient id="ldr-g-goreA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd789"/><stop offset="0.5" stop-color="#f3a83e"/><stop offset="1" stop-color="#d98a20"/></linearGradient><linearGradient id="ldr-g-goreB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eaa43f"/><stop offset="0.5" stop-color="#cb7a1c"/><stop offset="1" stop-color="#9f5810"/></linearGradient><radialGradient id="ldr-g-dome" cx=".3" cy=".1" r="1"><stop offset="0" stop-color="#fff" stop-opacity="0.35"/><stop offset="0.24" stop-color="#fff" stop-opacity="0.08"/><stop offset="0.46" stop-color="#fff" stop-opacity="0"/><stop offset="0.64" stop-color="#2a1000" stop-opacity="0"/><stop offset="1" stop-color="#2a1000" stop-opacity="0.5"/></radialGradient><linearGradient id="ldr-g-int" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a2804"/><stop offset="0.45" stop-color="#b3590b"/><stop offset="1" stop-color="#ffb347"/></linearGradient><linearGradient id="ldr-g-brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a87430"/><stop offset="0.35" stop-color="#9a621c"/><stop offset="0.7" stop-color="#5e350a"/><stop offset="1" stop-color="#94622a"/></linearGradient><radialGradient id="ldr-g-chglow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#f0a43a" stop-opacity="0.5"/><stop offset="1" stop-color="#f0a43a" stop-opacity="0"/></radialGradient><linearGradient id="ldr-g-tab" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d474d"/><stop offset="0.5" stop-color="#20272b"/><stop offset="1" stop-color="#111619"/></linearGradient><linearGradient id="ldr-g-star" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4d4"/><stop offset="0.55" stop-color="#f2c56c"/><stop offset="1" stop-color="#c4892a"/></linearGradient><linearGradient id="ldr-g-wface" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffbf2"/><stop offset="0.46" stop-color="#eee6d0"/><stop offset="0.5" stop-color="#cdbf9b"/><stop offset="0.56" stop-color="#d9cdac"/><stop offset="1" stop-color="#f2e9d2"/></linearGradient><linearGradient id="ldr-g-trim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9b0"/><stop offset="0.45" stop-color="#f3ac45"/><stop offset="0.55" stop-color="#c97a18"/><stop offset="1" stop-color="#e9a443"/></linearGradient><linearGradient id="ldr-g-wside" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8f5d14"/><stop offset="1" stop-color="#4a2c06"/></linearGradient><linearGradient id="ldr-g-amb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd88f"/><stop offset="0.5" stop-color="#f0a43a"/><stop offset="1" stop-color="#c47616"/></linearGradient><linearGradient id="ldr-g-plate" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e2b34"/><stop offset="1" stop-color="#090e11"/></linearGradient><radialGradient id="ldr-g-pglow" cx=".5" cy=".6" r=".5"><stop offset="0" stop-color="#5aa2ff" stop-opacity="0.32"/><stop offset="0.6" stop-color="#5aa2ff" stop-opacity="0.08"/><stop offset="1" stop-color="#5aa2ff" stop-opacity="0"/></radialGradient><radialGradient id="ldr-g-aglow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#f0a43a" stop-opacity="0.3"/><stop offset="0.55" stop-color="#f0a43a" stop-opacity="0.08"/><stop offset="1" stop-color="#f0a43a" stop-opacity="0"/></radialGradient><linearGradient id="ldr-g-bev1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe9b0"/><stop offset="0.35" stop-color="#f8b851"/><stop offset="0.75" stop-color="#eda036"/><stop offset="1" stop-color="#d98a26"/></linearGradient><linearGradient id="ldr-g-bev2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d48a26"/><stop offset="0.4" stop-color="#eca23a"/><stop offset="0.8" stop-color="#f9c060"/><stop offset="1" stop-color="#ffdc96"/></linearGradient><linearGradient id="ldr-g-mplate" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#48698a"/><stop offset="0.55" stop-color="#25435f"/><stop offset="1" stop-color="#1c344c"/></linearGradient><radialGradient id="ldr-g-mglow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffb54a" stop-opacity="0.55"/><stop offset="0.5" stop-color="#f0a43a" stop-opacity="0.2"/><stop offset="1" stop-color="#f0a43a" stop-opacity="0"/></radialGradient><linearGradient id="ldr-g-mring" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6e4ff"/><stop offset="0.5" stop-color="#78b6ff"/><stop offset="1" stop-color="#4a90ff"/></linearGradient><radialGradient id="ldr-g-ocnt" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#2b5d86"/><stop offset="0.5" stop-color="#143553"/><stop offset="1" stop-color="#07121c"/></radialGradient><clipPath id="ldr-ef-cf"><circle cx="256" cy="328" r="124"/></clipPath><path id="ldr-ef-z" d="M260.3 218.1A110 110 0 0 1 280.3 220.7M288.6 222.9A110 110 0 0 1 307.2 230.7M314.7 235A110 110 0 0 1 330.7 247.2M336.8 253.3A110 110 0 0 1 349 269.3M353.3 276.8A110 110 0 0 1 361.1 295.4M363.3 303.7A110 110 0 0 1 365.9 323.7M365.9 332.3A110 110 0 0 1 363.3 352.3M361.1 360.6A110 110 0 0 1 353.3 379.2M349 386.7A110 110 0 0 1 336.8 402.7M330.7 408.8A110 110 0 0 1 314.7 421M307.2 425.3A110 110 0 0 1 288.6 433.1M280.3 435.3A110 110 0 0 1 260.3 437.9M251.7 437.9A110 110 0 0 1 231.7 435.3M223.4 433.1A110 110 0 0 1 204.8 425.3M197.3 421A110 110 0 0 1 181.3 408.8M175.2 402.7A110 110 0 0 1 163 386.7M158.7 379.2A110 110 0 0 1 150.9 360.6M148.7 352.3A110 110 0 0 1 146.1 332.3M146.1 323.7A110 110 0 0 1 148.7 303.7M150.9 295.4A110 110 0 0 1 158.7 276.8M163 269.3A110 110 0 0 1 175.2 253.3M181.3 247.2A110 110 0 0 1 197.3 235M204.8 230.7A110 110 0 0 1 223.4 222.9M231.7 220.7A110 110 0 0 1 251.7 218.1" fill="none"/><clipPath id="ldr-ef-ci"><path d="M88 124A168 30 0 0 1 424 124A168 12 0 0 1 88 124Z"/></clipPath><clipPath id="ldr-em-cf"><circle cx="256" cy="328" r="124"/></clipPath><path id="ldr-p-ld" d="M0 0L22 0L22 80L52 80L52 100L0 100ZM56 100L56 26L82 0L96 0L122 26L122 100L100 100L100 78L89 86L78 78L78 100ZM78 34L89 23L100 34L100 58L89 66L78 58ZM192 0L192 20L154 20L154 40L178 40L192 54L192 86L178 100L132 100L132 80L170 80L170 60L146 60L132 46L132 14L146 0ZM202 0L262 0L262 20L243 20L243 89L232 100L221 89L221 20L202 20ZM296 0L342 0L360 18L360 82L342 100L296 100ZM318 20L332 20L338 26L338 74L332 80L318 80ZM370 0L416 0L434 18L434 42L426 50L436 100L414 100L406 60L392 60L392 100L370 100ZM392 20L406 20L412 26L412 34L406 40L392 40ZM464 0L498 0L516 18L516 82L498 100L464 100L446 82L446 18ZM474 20L488 20L494 26L494 74L488 80L474 80L468 74L468 26ZM526 0L570 0L588 18L588 44L570 62L548 62L548 100L526 100ZM548 20L560 20L566 26L566 36L560 42L548 42Z" fill-rule="evenodd" clip-rule="evenodd"/><path id="ldr-p-ry" d="M0 0L19.3 0L26.9 7.6L26.9 17.6L23.5 21L27.7 42L18.5 42L15.1 25.2L9.2 25.2L9.2 42L0 42ZM9.2 8.4L15.1 8.4L17.6 10.9L17.6 14.3L15.1 16.8L9.2 16.8ZM52.1 0L66.4 0L73.9 7.6L73.9 34.4L66.4 42L52.1 42L44.5 34.4L44.5 7.6ZM56.3 8.4L62.2 8.4L64.7 10.9L64.7 31.1L62.2 33.6L56.3 33.6L53.8 31.1L53.8 10.9ZM90.7 0L100 0L104.6 10.9L109.2 0L118.4 0L109.2 23.5L109.2 42L100 42L100 23.5ZM131.9 42L131.9 10.9L142.8 0L148.7 0L159.6 10.9L159.6 42L150.4 42L150.4 32.8L145.7 36.1L141.1 32.8L141.1 42ZM141.1 14.3L145.7 9.7L150.4 14.3L150.4 24.4L145.7 27.7L141.1 24.4ZM176.4 0L185.6 0L185.6 33.6L198.2 33.6L198.2 42L176.4 42ZM213.8 0L235.6 0L235.6 8.4L223 8.4L223 16.8L233.1 16.8L233.1 24.8L223 24.8L223 33.6L235.6 33.6L235.6 42L213.8 42Z" fill-rule="evenodd" clip-rule="evenodd"/><clipPath id="ldr-cp-ld"><use href="#ldr-p-ld"/></clipPath><clipPath id="ldr-cp-plate"><rect x="35" y="35" width="442" height="442" rx="85"/></clipPath><g id="ldr-wm"><use href="#ldr-p-ld" transform="translate(0 9)" fill="#05080a" stroke="#05080a" stroke-width="14" stroke-linejoin="round"/><use href="#ldr-p-ld" fill="#05080a" stroke="#05080a" stroke-width="14" stroke-linejoin="round"/><path d="M474 20L488 20L494 26L494 74L488 80L474 80L468 74L468 26Z" fill="url(#ldr-g-ocnt)"/><use href="#ldr-p-ld" transform="translate(0 6.5)" fill="url(#ldr-g-wside)" stroke="url(#ldr-g-wside)" stroke-width="4.4" stroke-linejoin="round"/><use href="#ldr-p-ld" fill="none" stroke="url(#ldr-g-trim)" stroke-width="4.4" stroke-linejoin="round"/><g clip-path="url(#ldr-cp-ld)"><use href="#ldr-p-ld" fill="#fffaf0"/><use href="#ldr-p-ld" transform="translate(0 2.6)" fill="url(#ldr-g-wface)"/></g><circle cx="481" cy="50" r="7.8" fill="none" stroke="url(#ldr-g-zone)" stroke-width="4.2" stroke-dasharray="4.6 1.5" stroke-dashoffset="2.3"/><circle cx="481" cy="50" r="2.9" fill="#e5484d" stroke="#3a0d0e" stroke-width=".8"/></g><g id="ldr-emblem-mid"><circle cx="256" cy="334" r="166" fill="url(#ldr-g-shadow)"/><circle cx="256" cy="328" r="160" fill="url(#ldr-g-rimL)" stroke="#05080a" stroke-width="5"/><circle cx="256" cy="328" r="150" fill="url(#ldr-g-rimface)"/><path d="M124.6 410.1A155 155 0 0 1 116.7 260.1" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="4" stroke-linecap="round"/><path d="M395.3 260.1A155 155 0 0 1 407.6 360.2" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="4" stroke-linecap="round"/><path d="M390 328L407.5 315.8L407.5 340.2ZM122 328L104.5 340.2L104.5 315.8Z" fill="url(#ldr-g-amb)" stroke="#1c0c00" stroke-width="3" stroke-linejoin="round"/><circle cx="256" cy="328" r="133" fill="url(#ldr-g-lip)"/><circle cx="256" cy="328" r="126" fill="url(#ldr-g-field)" stroke="url(#ldr-g-brass)" stroke-width="5"/><path d="M379.9 416C380.7 421.4 361.4 427.6 351.6 432.5C341.8 437.4 333.6 442.5 321.2 445.3C308.8 448.1 291.8 448.2 277.2 449.3C262.5 450.3 249.7 451.4 233.3 451.6C217 451.8 192.3 453.5 179.3 450.5C166.3 447.4 157.4 439.1 155.5 433.4C153.6 427.6 167 421.6 167.9 416C168.7 410.4 157.1 404.5 160.6 399.5C164.1 394.5 177.5 390 189 385.9C200.6 381.8 214.7 376.6 230 375.2C245.2 373.8 266.9 374.8 280.5 377.5C294.1 380.1 300.5 387.2 311.5 391.1C322.5 394.9 335.1 396.2 346.5 400.4C357.9 404.5 379 410.6 379.9 416Z" clip-path="url(#ldr-em-cf)" fill="url(#ldr-g-isl)" stroke="#c9b98f" stroke-opacity=".18" stroke-width="3"/><circle cx="256" cy="328" r="126" fill="url(#ldr-g-zglow)"/><path d="M262.7 218.2A110 110 0 0 1 305.1 229.6M316.7 236.3A110 110 0 0 1 347.7 267.3M354.4 278.9A110 110 0 0 1 365.8 321.3M365.8 334.7A110 110 0 0 1 354.4 377.1M347.7 388.7A110 110 0 0 1 316.7 419.7M305.1 426.4A110 110 0 0 1 262.7 437.8M249.3 437.8A110 110 0 0 1 206.9 426.4M195.3 419.7A110 110 0 0 1 164.3 388.7M157.6 377.1A110 110 0 0 1 146.2 334.7M146.2 321.3A110 110 0 0 1 157.6 278.9M164.3 267.3A110 110 0 0 1 195.3 236.3M206.9 229.6A110 110 0 0 1 249.3 218.2" fill="none" stroke="#10295a" stroke-width="17"/><path d="M262.7 218.2A110 110 0 0 1 305.1 229.6M316.7 236.3A110 110 0 0 1 347.7 267.3M354.4 278.9A110 110 0 0 1 365.8 321.3M365.8 334.7A110 110 0 0 1 354.4 377.1M347.7 388.7A110 110 0 0 1 316.7 419.7M305.1 426.4A110 110 0 0 1 262.7 437.8M249.3 437.8A110 110 0 0 1 206.9 426.4M195.3 419.7A110 110 0 0 1 164.3 388.7M157.6 377.1A110 110 0 0 1 146.2 334.7M146.2 321.3A110 110 0 0 1 157.6 278.9M164.3 267.3A110 110 0 0 1 195.3 236.3M206.9 229.6A110 110 0 0 1 249.3 218.2" fill="none" stroke="url(#ldr-g-zone)" stroke-width="13"/><circle cx="256" cy="400" r="30" fill="url(#ldr-g-tglow)"/><circle cx="256" cy="400" r="18" fill="none" stroke="#f4f7fb" stroke-width="5"/><circle cx="256" cy="400" r="6.5" fill="#e5484d" stroke="#3a0d0e" stroke-width="1.5"/><path d="M88 124A168 30 0 0 1 424 124A168 12 0 0 1 88 124Z" fill="url(#ldr-g-int)" stroke="#1f0d00" stroke-width="4.5" stroke-linejoin="round"/><path d="M256 12C172.4 9.1 104.6 56.9 104.6 118.8Q121.4 97.6 151.3 114.6C151.3 52.8 198.1 6.8 256 12ZM256 12C235.4 5.5 218.6 50.4 218.6 112.3Q256 81.8 293.4 112.3C293.4 50.4 276.6 5.5 256 12ZM256 12C313.9 6.8 360.7 52.8 360.7 114.6Q390.6 97.6 407.4 118.8C407.4 56.9 339.6 9.1 256 12Z" fill="url(#ldr-g-goreA)"/><path d="M256 12C163.2 12 88 62.1 88 124Q88.1 114.3 104.6 118.8C104.6 56.9 172.4 9.1 256 12ZM256 12C198.1 6.8 151.3 52.8 151.3 114.6Q181.3 86 218.6 112.3C218.6 50.4 235.4 5.5 256 12ZM256 12C276.6 5.5 293.4 50.4 293.4 112.3Q330.7 86 360.7 114.6C360.7 52.8 313.9 6.8 256 12ZM256 12C339.6 9.1 407.4 56.9 407.4 118.8Q423.9 114.3 424 124C424 62.1 348.8 12 256 12Z" fill="url(#ldr-g-goreB)"/><path d="M88 124C88 62.1 163.2 12 256 12C348.8 12 424 62.1 424 124Q423.9 114.3 407.4 118.8Q390.6 97.6 360.7 114.6Q330.7 86 293.4 112.3Q256 81.8 218.6 112.3Q181.3 86 151.3 114.6Q121.4 97.6 104.6 118.8Q88.1 114.3 88 124Z" fill="url(#ldr-g-dome)" stroke="#1f0d00" stroke-width="4.5" stroke-linejoin="round"/><path d="M105.6 92.4A158.1 102.1 0 0 1 212.4 25.9" fill="none" stroke="#fff6dc" stroke-opacity="0.4" stroke-width="3.6" stroke-linecap="round"/><path d="M88 124L223 324M151.3 114.6L223 324M360.7 114.6L289 324M424 124L289 324" stroke="#05080a" stroke-opacity=".62" stroke-width="8.4" stroke-linecap="round"/><path d="M88 124L223 324M151.3 114.6L223 324M360.7 114.6L289 324M424 124L289 324" stroke="#fff4dc" stroke-width="4.4" stroke-linecap="round"/><circle cx="256" cy="344.7" r="58" fill="url(#ldr-g-chglow)"/><path d="M210 324L236 324L256 344L276 324L302 324L256 370Z" fill="#1c0c00" stroke="#1c0c00" stroke-width="7" stroke-linejoin="round"/><path d="M236 324L256 344L256 357L223 324Z" fill="#ffe2a0"/><path d="M223 324L256 357L256 370L210 324Z" fill="#f0a43a"/><path d="M276 324L289 324L256 357L256 344Z" fill="#f7bc5e"/><path d="M289 324L302 324L256 370L256 357Z" fill="#c27314"/><circle cx="223" cy="322" r="7.5" fill="#e6ecef" stroke="#05080a" stroke-width="3.5"/><circle cx="289" cy="322" r="7.5" fill="#e6ecef" stroke="#05080a" stroke-width="3.5"/></g><g id="ldr-emblem-lite"><circle cx="256" cy="338" r="134" fill="url(#ldr-g-shadow)"/><circle cx="256" cy="332" r="128" fill="url(#ldr-g-rimL)" stroke="#05080a" stroke-width="6"/><circle cx="256" cy="332" r="118" fill="url(#ldr-g-rimface)"/><path d="M151.7 397.2A123 123 0 0 1 145.4 278.1" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="4" stroke-linecap="round"/><path d="M366.6 278.1A123 123 0 0 1 376.3 357.6" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="4" stroke-linecap="round"/><circle cx="256" cy="332" r="109" fill="url(#ldr-g-lip)"/><circle cx="256" cy="332" r="102" fill="url(#ldr-g-field)" stroke="url(#ldr-g-brass)" stroke-width="5"/><circle cx="256" cy="332" r="102" fill="url(#ldr-g-zglow)"/><path d="M295.7 255.7A86 86 0 0 1 332.3 292.3M338 306.1A86 86 0 0 1 338 357.9M332.3 371.7A86 86 0 0 1 295.7 408.3M281.9 414A86 86 0 0 1 230.1 414M216.3 408.3A86 86 0 0 1 179.7 371.7M174 357.9A86 86 0 0 1 174 306.1M179.7 292.3A86 86 0 0 1 216.3 255.7M230.1 250A86 86 0 0 1 281.9 250" fill="none" stroke="#10295a" stroke-width="21"/><path d="M295.7 255.7A86 86 0 0 1 332.3 292.3M338 306.1A86 86 0 0 1 338 357.9M332.3 371.7A86 86 0 0 1 295.7 408.3M281.9 414A86 86 0 0 1 230.1 414M216.3 408.3A86 86 0 0 1 179.7 371.7M174 357.9A86 86 0 0 1 174 306.1M179.7 292.3A86 86 0 0 1 216.3 255.7M230.1 250A86 86 0 0 1 281.9 250" fill="none" stroke="url(#ldr-g-zone)" stroke-width="17"/><path d="M86 154A170 38 0 0 1 426 154A170 14 0 0 1 86 154Z" fill="url(#ldr-g-int)" stroke="#1f0d00" stroke-width="6" stroke-linejoin="round"/><path d="M256 52C162.1 52 86 97.7 86 154Q86.4 136.1 118.5 145.8C118.5 89.4 180 47.5 256 52ZM256 52C227 44.6 203.5 84.4 203.5 140.7Q256 97.3 308.5 140.7C308.5 84.4 285 44.6 256 52ZM256 52C332 47.5 393.5 89.4 393.5 145.8Q425.6 136.1 426 154C426 97.7 349.9 52 256 52Z" fill="url(#ldr-g-goreA)"/><path d="M256 52C180 47.5 118.5 89.4 118.5 145.8Q151.2 108.1 203.5 140.7C203.5 84.4 227 44.6 256 52ZM256 52C285 44.6 308.5 84.4 308.5 140.7Q360.8 108.1 393.5 145.8C393.5 89.4 332 47.5 256 52Z" fill="url(#ldr-g-goreB)"/><path d="M86 154C86 97.7 162.1 52 256 52C349.9 52 426 97.7 426 154Q425.6 136.1 393.5 145.8Q360.8 108.1 308.5 140.7Q256 97.3 203.5 140.7Q151.2 108.1 118.5 145.8Q86.4 136.1 86 154Z" fill="url(#ldr-g-dome)" stroke="#1f0d00" stroke-width="6" stroke-linejoin="round"/><path d="M106.9 126.6A156.8 88.8 0 0 1 212.8 68.6" fill="none" stroke="#fff6dc" stroke-opacity="0.45" stroke-width="4.8" stroke-linecap="round"/><path d="M86 154L219 324M203.5 140.7L219 324M308.5 140.7L293 324M426 154L293 324" stroke="#05080a" stroke-opacity=".62" stroke-width="11.4" stroke-linecap="round"/><path d="M86 154L219 324M203.5 140.7L219 324M308.5 140.7L293 324M426 154L293 324" stroke="#fff4dc" stroke-width="6.4" stroke-linecap="round"/><circle cx="256" cy="347.4" r="76" fill="url(#ldr-g-chglow)"/><path d="M204 324L234 324L256 346L278 324L308 324L256 376Z" fill="#1c0c00" stroke="#1c0c00" stroke-width="8" stroke-linejoin="round"/><path d="M234 324L256 346L256 361L219 324Z" fill="#ffe2a0"/><path d="M219 324L256 361L256 376L204 324Z" fill="#f0a43a"/><path d="M278 324L293 324L256 361L256 346Z" fill="#f7bc5e"/><path d="M293 324L308 324L256 376L256 361Z" fill="#c27314"/><circle cx="219" cy="322" r="10" fill="#e6ecef" stroke="#05080a" stroke-width="4"/><circle cx="293" cy="322" r="10" fill="#e6ecef" stroke="#05080a" stroke-width="4"/></g><g id="ldr-m-art"><path d="M88 182A168 32.2 0 0 1 424 182A168 9 0 0 1 88 182Z" fill="url(#ldr-g-int)" stroke="#1f0d00" stroke-width="10" stroke-linejoin="round"/><path d="M256 74C209.6 69.7 172 114.6 172 174.2Q256 131.5 340 174.2C340 114.6 302.4 69.7 256 74Z" fill="url(#ldr-g-goreA)"/><path d="M256 74C163.2 74 88 122.4 88 182Q91 156.7 172 174.2C172 114.6 209.6 69.7 256 74ZM256 74C302.4 69.7 340 114.6 340 174.2Q421 156.7 424 182C424 122.4 348.8 74 256 74Z" fill="url(#ldr-g-amb)"/><path d="M256 74C209.6 69.7 172 114.6 172 174.2M256 74C302.4 69.7 340 114.6 340 174.2" fill="none" stroke="#4a2200" stroke-opacity=".38" stroke-width="5"/><path d="M88 182C88 122.4 163.2 74 256 74C348.8 74 424 122.4 424 182Q421 156.7 340 174.2Q256 131.5 172 174.2Q91 156.7 88 182Z" fill="none" stroke="#1f0d00" stroke-width="10" stroke-linejoin="round"/><path d="M117.1 155.4A146 86 0 0 1 215.8 99.3" fill="none" stroke="#fff6dc" stroke-opacity="0.45" stroke-width="8" stroke-linecap="round"/><circle cx="256" cy="346" r="88" fill="none" stroke="#05080a" stroke-width="58"/><circle cx="256" cy="346" r="88" fill="none" stroke="url(#ldr-g-mring)" stroke-width="42"/><path d="M202 316L236 316L256 336L276 316L310 316L256 370Z" fill="#1c0c00" stroke="#1c0c00" stroke-width="12" stroke-linejoin="round"/><path d="M236 316L256 336L256 353L219 316Z" fill="#ffe2a0"/><path d="M219 316L256 353L256 370L202 316Z" fill="#f0a43a"/><path d="M276 316L293 316L256 353L256 336Z" fill="#f7bc5e"/><path d="M293 316L310 316L256 370L256 353Z" fill="#c27314"/></g></defs><symbol id="ldr-emblem" viewBox="0 0 512 512" stroke="none" stroke-linecap="butt"><circle cx="256" cy="334" r="166" fill="url(#ldr-g-shadow)"/><circle cx="256" cy="328" r="160" fill="url(#ldr-g-rim)" stroke="#05080a" stroke-width="3"/><circle cx="256" cy="328" r="152" fill="url(#ldr-g-rimface)"/><path d="M123.7 410.7A156 156 0 0 1 115.8 259.6" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="2.6" stroke-linecap="round"/><path d="M396.2 259.6A156 156 0 0 1 408.6 360.4" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="2.6" stroke-linecap="round"/><path d="M390 328L407.5 315.8L407.5 340.2ZM122 328L104.5 340.2L104.5 315.8Z" fill="url(#ldr-g-amb)" stroke="#1c0c00" stroke-width="2" stroke-linejoin="round"/><circle cx="256" cy="328" r="133" fill="url(#ldr-g-lip)"/><circle cx="256" cy="328" r="126" fill="url(#ldr-g-field)" stroke="url(#ldr-g-brass)" stroke-width="3.4"/><path d="M379.9 416C380.7 421.4 361.4 427.6 351.6 432.5C341.8 437.4 333.6 442.5 321.2 445.3C308.8 448.1 291.8 448.2 277.2 449.3C262.5 450.3 249.7 451.4 233.3 451.6C217 451.8 192.3 453.5 179.3 450.5C166.3 447.4 157.4 439.1 155.5 433.4C153.6 427.6 167 421.6 167.9 416C168.7 410.4 157.1 404.5 160.6 399.5C164.1 394.5 177.5 390 189 385.9C200.6 381.8 214.7 376.6 230 375.2C245.2 373.8 266.9 374.8 280.5 377.5C294.1 380.1 300.5 387.2 311.5 391.1C322.5 394.9 335.1 396.2 346.5 400.4C357.9 404.5 379 410.6 379.9 416Z" clip-path="url(#ldr-ef-cf)" fill="url(#ldr-g-isl)" stroke="#c9b98f" stroke-opacity=".18" stroke-width="2"/><circle cx="256" cy="328" r="126" fill="url(#ldr-g-zglow)"/><use href="#ldr-ef-z" stroke="#10295a" stroke-width="13.5"/><use href="#ldr-ef-z" stroke="url(#ldr-g-zone)" stroke-width="9.5"/><path d="M260.2 220.3A107.8 107.8 0 0 1 279.8 222.9M288 225A107.8 107.8 0 0 1 306.2 232.6M313.5 236.8A107.8 107.8 0 0 1 329.2 248.8M335.2 254.8A107.8 107.8 0 0 1 347.2 270.5M351.4 277.8A107.8 107.8 0 0 1 359 296M361.1 304.2A107.8 107.8 0 0 1 363.7 323.8M363.7 332.2A107.8 107.8 0 0 1 361.1 351.8M359 360A107.8 107.8 0 0 1 351.4 378.2M347.2 385.5A107.8 107.8 0 0 1 335.2 401.2M329.2 407.2A107.8 107.8 0 0 1 313.5 419.2M306.2 423.4A107.8 107.8 0 0 1 288 431M279.8 433.1A107.8 107.8 0 0 1 260.2 435.7M251.8 435.7A107.8 107.8 0 0 1 232.2 433.1M224 431A107.8 107.8 0 0 1 205.8 423.4M198.5 419.2A107.8 107.8 0 0 1 182.8 407.2M176.8 401.2A107.8 107.8 0 0 1 164.8 385.5M160.6 378.2A107.8 107.8 0 0 1 153 360M150.9 351.8A107.8 107.8 0 0 1 148.3 332.2M148.3 323.8A107.8 107.8 0 0 1 150.9 304.2M153 296A107.8 107.8 0 0 1 160.6 277.8M164.8 270.5A107.8 107.8 0 0 1 176.8 254.8M182.8 248.8A107.8 107.8 0 0 1 198.5 236.8M205.8 232.6A107.8 107.8 0 0 1 224 225M232.2 222.9A107.8 107.8 0 0 1 251.8 220.3" fill="none" stroke="#e4f1ff" stroke-opacity=".5" stroke-width="1.3"/><circle cx="256" cy="400" r="30" fill="url(#ldr-g-tglow)"/><circle cx="256" cy="400" r="18" fill="none" stroke="#f4f7fb" stroke-width="3.2"/><circle cx="256" cy="400" r="5" fill="#e5484d" stroke="#3a0d0e" stroke-width="1.5"/><path d="M88 124A168 30 0 0 1 424 124A168 12 0 0 1 88 124Z" fill="url(#ldr-g-int)" stroke="#1f0d00" stroke-width="3" stroke-linejoin="round"/><path d="M104.6 129.2L210.6 73.6M151.3 133.4L224.6 73.6M218.6 135.7L244.8 73.6M293.4 135.7L267.2 73.6M360.7 133.4L287.4 73.6M407.4 129.2L301.4 73.6" clip-path="url(#ldr-ef-ci)" stroke="#6a3205" stroke-opacity=".7" stroke-width="1.4"/><path d="M256 12C172.4 9.1 104.6 56.9 104.6 118.8Q121.4 97.6 151.3 114.6C151.3 52.8 198.1 6.8 256 12ZM256 12C235.4 5.5 218.6 50.4 218.6 112.3Q256 81.8 293.4 112.3C293.4 50.4 276.6 5.5 256 12ZM256 12C313.9 6.8 360.7 52.8 360.7 114.6Q390.6 97.6 407.4 118.8C407.4 56.9 339.6 9.1 256 12Z" fill="url(#ldr-g-goreA)"/><path d="M256 12C163.2 12 88 62.1 88 124Q88.1 114.3 104.6 118.8C104.6 56.9 172.4 9.1 256 12ZM256 12C198.1 6.8 151.3 52.8 151.3 114.6Q181.3 86 218.6 112.3C218.6 50.4 235.4 5.5 256 12ZM256 12C276.6 5.5 293.4 50.4 293.4 112.3Q330.7 86 360.7 114.6C360.7 52.8 313.9 6.8 256 12ZM256 12C339.6 9.1 407.4 56.9 407.4 118.8Q423.9 114.3 424 124C424 62.1 348.8 12 256 12Z" fill="url(#ldr-g-goreB)"/><path d="M256 12C172.4 9.1 104.6 56.9 104.6 118.8M256 12C198.1 6.8 151.3 52.8 151.3 114.6M256 12C235.4 5.5 218.6 50.4 218.6 112.3M256 12C276.6 5.5 293.4 50.4 293.4 112.3M256 12C313.9 6.8 360.7 52.8 360.7 114.6M256 12C339.6 9.1 407.4 56.9 407.4 118.8" fill="none" stroke="#4a2200" stroke-opacity=".38" stroke-width="1.3"/><path d="M88 124C88 62.1 163.2 12 256 12C348.8 12 424 62.1 424 124Q423.9 114.3 407.4 118.8Q390.6 97.6 360.7 114.6Q330.7 86 293.4 112.3Q256 81.8 218.6 112.3Q181.3 86 151.3 114.6Q121.4 97.6 104.6 118.8Q88.1 114.3 88 124Z" fill="url(#ldr-g-dome)" stroke="#1f0d00" stroke-width="3" stroke-linejoin="round"/><path d="M102.5 91.4A161.4 105.4 0 0 1 211.5 22.7" fill="none" stroke="#fff6dc" stroke-opacity="0.4" stroke-width="2.4" stroke-linecap="round"/><path d="M88 124L223 324M151.3 114.6L223 324M218.6 112.3L223 324M293.4 112.3L289 324M360.7 114.6L289 324M424 124L289 324" stroke="#05080a" stroke-opacity=".62" stroke-width="5.2" stroke-linecap="round"/><path d="M88 124L223 324M151.3 114.6L223 324M218.6 112.3L223 324M293.4 112.3L289 324M360.7 114.6L289 324M424 124L289 324" stroke="#fff4dc" stroke-width="2.4" stroke-linecap="round"/><circle cx="256" cy="344.7" r="58" fill="url(#ldr-g-chglow)"/><path d="M210 324L236 324L256 344L276 324L302 324L256 370Z" fill="#1c0c00" stroke="#1c0c00" stroke-width="5" stroke-linejoin="round"/><path d="M236 324L256 344L256 357L223 324Z" fill="#ffe2a0"/><path d="M223 324L256 357L256 370L210 324Z" fill="#f0a43a"/><path d="M276 324L289 324L256 357L256 344Z" fill="#f7bc5e"/><path d="M289 324L302 324L256 370L256 357Z" fill="#c27314"/><circle cx="223" cy="322" r="5.4" fill="none" stroke="#05080a" stroke-width="6"/><circle cx="223" cy="322" r="5.4" fill="none" stroke="#e6ecef" stroke-width="2.6"/><circle cx="289" cy="322" r="5.4" fill="none" stroke="#05080a" stroke-width="6"/><circle cx="289" cy="322" r="5.4" fill="none" stroke="#e6ecef" stroke-width="2.6"/><path d="M212 464L300 464L314 483L300 502L212 502L198 483Z" fill="url(#ldr-g-tab)" stroke="#05080a" stroke-width="7" stroke-linejoin="round"/><path d="M212 464L300 464L314 483L300 502L212 502L198 483Z" fill="none" stroke="url(#ldr-g-amb)" stroke-width="3" stroke-linejoin="round"/><path d="M214 468.5H298" stroke="#fff" stroke-opacity=".2" stroke-width="1.6"/><path d="M256 467.5L260 478.5L271.7 478.9L262.5 486.1L265.7 497.3L256 490.8L246.3 497.3L249.5 486.1L240.3 478.9L252 478.5Z" fill="url(#ldr-g-star)" stroke="#2a1700" stroke-width="1.6" stroke-linejoin="round"/></symbol><symbol id="ldr-logo-h" viewBox="0 0 1200 300" stroke="none" stroke-linecap="butt"><svg x="13.1" y="5" width="297" height="297" viewBox="0 0 512 512"><use href="#ldr-emblem-mid"/></svg><use href="#ldr-wm" transform="translate(304.6 43.6) scale(1.4)"/><path d="M318.6 236.7H537.8M894.6 236.7H1113.8" stroke="#05080a" stroke-width="8"/><path d="M312.6 228.7L320.6 236.7L312.6 244.7L304.6 236.7ZM1119.8 228.7L1127.8 236.7L1119.8 244.7L1111.8 236.7Z" fill="#05080a" stroke="#05080a" stroke-width="5" stroke-linejoin="round"/><path d="M318.6 236.7H537.8M894.6 236.7H1113.8" stroke="#f0a43a" stroke-width="3"/><path d="M312.6 228.7L320.6 236.7L312.6 244.7L304.6 236.7ZM1119.8 228.7L1127.8 236.7L1119.8 244.7L1111.8 236.7Z" fill="url(#ldr-g-amb)"/><path d="M571.4 209.7L861 209.7L882.6 236.7L861 263.7L571.4 263.7L549.8 236.7Z" fill="url(#ldr-g-amb)" stroke="#05080a" stroke-width="5" stroke-linejoin="round"/><path d="M571.4 212.7H861" stroke="#fff3cf" stroke-opacity=".8" stroke-width="2"/><use href="#ldr-p-ry" x="598.4" y="215.7" fill="#0d1113"/></symbol><symbol id="ldr-logo-v" viewBox="0 0 800 640" stroke="none" stroke-linecap="butt"><use href="#ldr-emblem" x="210" y="17.6" width="380" height="380"/><use href="#ldr-wm" transform="translate(47.2 417.2) scale(1.2)"/><path d="M61.2 587.2H223.4M576.6 587.2H738.8" stroke="#05080a" stroke-width="8"/><path d="M55.2 579.2L63.2 587.2L55.2 595.2L47.2 587.2ZM744.8 579.2L752.8 587.2L744.8 595.2L736.8 587.2Z" fill="#05080a" stroke="#05080a" stroke-width="5" stroke-linejoin="round"/><path d="M61.2 587.2H223.4M576.6 587.2H738.8" stroke="#f0a43a" stroke-width="3"/><path d="M55.2 579.2L63.2 587.2L55.2 595.2L47.2 587.2ZM744.8 579.2L752.8 587.2L744.8 595.2L736.8 587.2Z" fill="url(#ldr-g-amb)"/><path d="M256.2 561.2L543.8 561.2L564.6 587.2L543.8 613.2L256.2 613.2L235.4 587.2Z" fill="url(#ldr-g-amb)" stroke="#05080a" stroke-width="5" stroke-linejoin="round"/><path d="M256.2 564.2H543.8" stroke="#fff3cf" stroke-opacity=".8" stroke-width="2"/><use href="#ldr-p-ry" x="282.2" y="566.2" fill="#0d1113"/></symbol><symbol id="ldr-icon" viewBox="0 0 512 512" stroke="none" stroke-linecap="butt"><rect x="6" y="6" width="500" height="500" rx="114" fill="#0b0602"/><rect x="8" y="8" width="496" height="496" rx="112" fill="url(#ldr-g-bev1)"/><rect x="21" y="21" width="470" height="470" rx="99" fill="url(#ldr-g-bev2)"/><rect x="33" y="33" width="446" height="446" rx="87" fill="#1a0e03"/><rect x="35" y="35" width="442" height="442" rx="85" fill="url(#ldr-g-plate)"/><g clip-path="url(#ldr-cp-plate)"><ellipse cx="256" cy="124" rx="214" ry="120" fill="url(#ldr-g-aglow)"/><circle cx="256" cy="334" r="196" fill="url(#ldr-g-pglow)"/></g><use href="#ldr-emblem-lite"/></symbol><symbol id="ldr-icon-mask" viewBox="0 0 512 512" stroke="none" stroke-linecap="butt"><rect width="512" height="512" fill="url(#ldr-g-mplate)"/><ellipse cx="256" cy="120" rx="320" ry="210" fill="url(#ldr-g-mglow)"/><circle cx="256" cy="300" r="250" fill="url(#ldr-g-pglow)"/><svg x="33.7" y="37.9" width="444.7" height="444.7" viewBox="0 0 512 512"><use href="#ldr-emblem-lite"/></svg></symbol><symbol id="ldr-icon-micro" viewBox="0 0 512 512" stroke="none" stroke-linecap="butt"><rect x="6" y="6" width="500" height="500" rx="114" fill="#0b0602"/><rect x="8" y="8" width="496" height="496" rx="112" fill="url(#ldr-g-bev1)"/><rect x="22" y="22" width="468" height="468" rx="98" fill="url(#ldr-g-bev2)"/><rect x="36" y="36" width="440" height="440" rx="84" fill="#1a0e03"/><rect x="38" y="38" width="436" height="436" rx="82" fill="url(#ldr-g-plate)"/><use href="#ldr-m-art"/></symbol>
+  </svg>
+  <!-- v23 부팅 화면 「낙하 고도계」 (#bootSplash) — 페이지 첫 화면부터 로비 3D 가 준비될 때까지
+       노을 진 하늘에서 섬으로 자유 낙하: 구름 3겹·바람 줄이 위로 흐르고 섬(자기장·착지 지점)이 다가온다 · 오른쪽 고도계 1,500 m → 0 m (기계식 숫자 띠 · 끝자리는 돌아가는 북)
+       고도계가 300 m 표시를 지나는 순간 낙하산 전개 (머리 위 캐노피 · 고도계 아이콘 · 구름이 느려짐) → 로비 첫 프레임이 그려지면 0 m 착지 → 사라지며 로비 (그때 화면을 누르면 바로)
+       계속 움직이는 것은 모두 CSS 애니메이션·Web Animations 의 transform·opacity (합성 스레드) — 게임 초기화가 메인 스레드를 1~3초 막아도 숫자까지 멈추지 않는다 · JS 는 단계가 바뀔 때만 시간표를 정함 (낙하산도 그 시각을 미리 — CSS 지연)
+       단계: 게임 파일 받는 중(0→35%, 시간에 따라 점점 느리게) → 3D 엔진 불러오는 중 40%(맨 아래 받기 코드) → 게임 데이터 준비 중 60% → 로비 입장 중 90%(11_game.js boot) → 100%
+       window.LDBoot = { step(p, 글), after(fn), fail(on), done() } — 부르는 쪽은 늘 그때그때 window.LDBoot 을 읽는다 (변수에 담아 두면 끝난 뒤에도 이 블록 전체가 메모리에 남음 · 없어도 게임은 그대로)
+       끝나면 이 블록(스타일·스크립트 포함)을 지우고 타이머·애니메이션을 멈추며 캔버스도 비운다 · 주소에 ?nosplash 면 처음부터 없음 (시험용)
+       구름·섬·물결 반짝임·캐노피는 코드로 그림 (그림 파일 없음, 시드 난수라 늘 같은 모습) · 로고는 위 #ldr-logo-v · z-index 45: 회전 안내(50)·화면 끊김(55)·실행 오류(60) 아래, 실행 오류가 뜨면 멈춤 -->
+  <div id="bootSplash" role="progressbar" aria-label="게임 불러오는 중" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <style>
+      #bootSplash { --hz: 19%; --is: 70vw; position: absolute; inset: 0; z-index: 45; overflow: hidden; contain: strict; background: #070b16; color: #e9e2cf; font-family: var(--f-body); cursor: progress; -webkit-user-select: none; user-select: none; transition: opacity .55s ease, transform .8s cubic-bezier(.25, .7, .35, 1); }
+      #bootSplash.bs-out { opacity: 0; transform: scale(1.06); pointer-events: none; }
+      #bootSplash.bs-hold, #bootSplash.bs-hold *, #bootSplash.bs-hold *::before, #bootSplash.bs-hold *::after { animation-play-state: paused !important; }
+      #bootSplash i, #bootSplash b { font-style: normal; }
+      .bs-w, .bs-sky, .bs-vig, .bs-flash { position: absolute; inset: 0; }
+      .bs-sky { background: linear-gradient(180deg, #050913, #0d1630 calc(var(--hz) * .45), #2a2747 calc(var(--hz) * .74), #6a3a48 calc(var(--hz) - 2.4%), #c2683f calc(var(--hz) - .7%), #e48e4c var(--hz), #4a3842 calc(var(--hz) + .4%), #2a2a3c calc(var(--hz) + 5%), #17212f calc(var(--hz) + 22%), #0c1520 72%, #070d15); }
+      .bs-sk { position: absolute; left: 0; right: 0; top: 0; height: var(--hz); overflow: hidden; }
+      .bs-sun { position: absolute; left: 24%; bottom: -3.6vmin; width: 8vmin; height: 8vmin; margin-left: -4vmin; border-radius: 50%; background: radial-gradient(circle, #fff8e4 0 36%, #ffd58a 54%, rgba(255, 170, 80, 0) 71%); }
+      .bs-glow { position: absolute; left: 24%; top: var(--hz); width: 150vmax; height: 40vmax; transform: translate(-50%, -50%); background: radial-gradient(closest-side, rgba(255, 196, 120, .38), rgba(240, 130, 70, .13) 42%, rgba(240, 130, 70, 0)); }
+      .bs-hl { position: absolute; left: 0; right: 0; top: var(--hz); height: 2px; margin-top: -1px; background: linear-gradient(90deg, rgba(255, 200, 140, .15), rgba(255, 226, 180, .95) 24%, rgba(255, 190, 120, .35) 52%, rgba(255, 190, 120, .08)); }
+      .bs-gl { position: absolute; left: 24%; top: var(--hz); bottom: 0; width: 30vw; transform: translateX(-50%); }
+      .bs-gl canvas { position: absolute; inset: 0; width: 100%; height: 100%; animation: bsTw 1.5s ease-in-out infinite alternate; }
+      .bs-gl canvas + canvas { animation-duration: 1.1s; animation-direction: alternate-reverse; }
+      .bs-iw { position: absolute; left: 50%; top: 71%; perspective: 900px; }
+      .bs-isle { position: absolute; left: calc(var(--is) / -2); top: calc(var(--is) / -2); width: var(--is); height: var(--is); transform: translateZ(-2600px); transform-style: preserve-3d; will-change: transform; }
+      .bs-pl { position: absolute; inset: 0; transform: rotateX(61deg); opacity: 0; transition: opacity 1.1s ease; }
+      .bs-isl .bs-pl { opacity: 1; }
+      .bs-pl canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .bs-zn, .bs-sf, .bs-mk { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); }
+      .bs-zn { border: 3px dashed rgba(90, 162, 255, .9); box-shadow: 0 0 14px rgba(90, 162, 255, .45), inset 0 0 40px rgba(90, 162, 255, .28); animation: bsSpin 60s linear infinite; }
+      .bs-sf { border: 2px solid rgba(255, 255, 255, .88); box-shadow: 0 0 10px rgba(255, 255, 255, .35); }
+      .bs-mk { width: 2.4%; height: 2.4%; background: #f0a43a; box-shadow: 0 0 0 3px rgba(240, 164, 58, .35), 0 0 16px #f0a43a; }
+      .bs-mk::after { content: ''; position: absolute; inset: -90%; border: 3px solid #f0a43a; border-radius: 50%; animation: bsRing 1.6s ease-out infinite; }
+      .bs-hz { position: absolute; left: 0; right: 0; top: var(--hz); bottom: 0; opacity: .62; background: linear-gradient(180deg, rgba(150, 108, 116, .8), rgba(62, 64, 92, .5) 28%, rgba(24, 32, 48, .14) 72%, rgba(10, 16, 26, 0)); }
+      .bs-cl { position: absolute; left: 0; top: 0; width: 100%; height: 200%; opacity: 0; will-change: transform; transition: opacity 1.4s ease; }
+      .bs-cl > i, .bs-cl canvas { display: block; width: 100%; height: 100%; }
+      .bs-ready .bs-cl { opacity: 1; }
+      /* 구름 3겹은 스크립트의 Web Animations 로 위로 흐름 (낙하산 때 그 자리에서 이어 느리게) · 바람 줄은 CSS */
+      #bsWd { animation: bsUp 1.2s linear infinite; }
+      .bs-ready #bsWd { opacity: .85; }
+      .bs-chute #bsWd canvas { animation: bsOut .45s ease var(--cd) forwards; }
+      .bs-vig { background: radial-gradient(125% 95% at 50% 42%, rgba(2, 4, 9, 0) 52%, rgba(2, 4, 9, .62)), linear-gradient(180deg, rgba(2, 4, 9, .42), rgba(2, 4, 9, 0) 15%, rgba(2, 4, 9, 0) 82%, rgba(2, 4, 9, .6)); }
+      .bs-can { position: absolute; left: 50%; top: 0; width: min(96vw, 160vh); margin-left: calc(min(96vw, 160vh) / -2); transform-origin: 50% 340%; visibility: hidden; }
+      .bs-can svg { display: block; width: 100%; height: auto; transform: translateY(-115%); transform-origin: 50% 25%; }
+      /* 낙하산 전개 (.bs-chute 는 미리 붙고, 보이는 것은 모두 --cd 뒤 — 고도계가 300 m 를 지나는 시각) */
+      .bs-chute .bs-can { visibility: visible; animation: bsSw 4.8s ease-in-out calc(var(--cd) + .9s) infinite alternate; }
+      .bs-chute .bs-can svg { transform: translateY(-30%); animation: bsCan .95s cubic-bezier(.2, .85, .3, 1) var(--cd) both; }
+      .bs-mid { position: absolute; left: 0; right: 0; top: 12%; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; pointer-events: none; }
+      .bs-mid::before { content: ''; position: absolute; left: 50%; top: -6vh; z-index: -1; width: min(84vw, 130vh); height: 70vh; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(3, 6, 12, .5), rgba(3, 6, 12, 0)); }
+      .bs-logo svg { display: block; width: min(48vh, 38vw); height: min(38.4vh, 30.4vw); filter: drop-shadow(0 .5vh 1.4vh rgba(0, 0, 0, .65)); }
+      /* 로고: 자유 낙하 중 흔들림은 스크립트(.bs-logo, 낙하산 시각에 끝남) · 낙하산 뒤 느린 흔들림은 안쪽 svg — 같은 요소에 transform 애니메이션이 둘이면 합성 스레드에서 못 돌린다 */
+      .bs-chute .bs-logo svg { animation: bsSway 3.4s ease-in-out var(--cd) infinite alternate; }
+      .bs-tag { margin: 1.3vh 0 0; padding-left: .3em; font-size: clamp(11px, 2vh, 15px); font-weight: 500; letter-spacing: .3em; color: rgba(233, 226, 207, .8); text-shadow: 0 1px 6px #000; }
+      .bs-st { display: flex; align-items: center; gap: 9px; margin: 2.6vh 0 0; font-size: clamp(12px, 2.2vh, 16px); font-weight: 600; letter-spacing: .03em; text-shadow: 0 1px 6px #000; }
+      .bs-st::before { content: ''; width: 7px; height: 7px; background: #f0a43a; transform: rotate(45deg); box-shadow: 0 0 10px #f0a43a; animation: bsBl .8s ease-in-out infinite alternate; }
+      .bs-pips { display: flex; gap: 5px; margin-top: 1.2vh; }
+      .bs-pips i { width: clamp(20px, 4vh, 34px); height: 3px; background: rgba(233, 226, 207, .2); }
+      .bs-pips i.on { background: #f0a43a; }
+      .bs-pips i.cur { background: #f0a43a; animation: bsBl .55s ease-in-out infinite alternate; }
+      .bs-alt { position: absolute; right: calc(3.2vw + var(--sar)); top: 50%; z-index: 2; display: grid; grid-template-columns: auto clamp(48px, 7.6vh, 66px); align-items: center; column-gap: 12px; row-gap: 1.1vh; transform: translateY(-50%); font-family: var(--f-display); pointer-events: none; }
+      .bs-hd { grid-column: 1 / 3; justify-self: end; display: flex; align-items: center; gap: 7px; font-size: clamp(11px, 1.9vh, 14px); font-weight: 700; letter-spacing: .16em; color: #f0a43a; text-shadow: 0 1px 4px #000; }
+      .bs-cg { width: 2.3em; height: 1.7em; fill: #f0a43a; stroke: #f0a43a; opacity: 0; transform: scale(.2, .1); transform-origin: 50% 85%; }
+      .bs-chute .bs-cg { opacity: 1; transform: none; animation: bsPop .65s cubic-bezier(.2, 1.5, .4, 1) var(--cd) both; }
+      /* 같은 칸에 겹친 글자: 자유 낙하(f) → 낙하산(c, --cd) → 착지(l, --ld) */
+      .bs-sw { display: inline-grid; justify-items: end; }
+      .bs-sw > * { grid-area: 1 / 1; }
+      .bs-sw .c, .bs-sw .l { opacity: 0; }
+      .bs-chute .bs-sw .f { animation: bsOut .2s var(--cd) forwards; }
+      .bs-chute .bs-sw .c { animation: bsIn .2s var(--cd) both; }
+      .bs-fin .bs-sw .c > i { animation: bsOut .2s var(--ld) forwards; }
+      .bs-fin .bs-sw .l { animation: bsIn .2s var(--ld) both; }
+      .bs-read { position: relative; grid-column: 1; display: flex; align-items: flex-start; padding: .14em .38em .1em .34em; font-size: clamp(26px, 6.6vh, 52px); font-weight: 800; line-height: 1; letter-spacing: .01em; white-space: nowrap; font-variant-numeric: tabular-nums; background: rgba(5, 9, 15, .66); border: 1px solid rgba(240, 164, 58, .45); border-left: 3px solid #f0a43a; transition: background .2s, color .2s; }
+      .bs-read::after { content: ''; position: absolute; left: 100%; top: 50%; width: 13px; height: 2px; margin-top: -1px; background: #f0a43a; }
+      /* 고도 숫자 띠 (천 · 백 · 십 자리 — 스크립트가 진행 시간표대로 translateY · 앞자리 0 은 흐리게) · 한 칸 1.4em 간격(이웃 글자가 창에 비치지 않게)
+         끝자리 북: 자유 낙하 중엔 바깥 띠를 스크립트가 빠르게 돌리고(낙하산 시각에 끝), 낙하산 뒤엔 안쪽 띠가 CSS 로 느리게 */
+      .bs-dg { display: block; height: 1em; overflow: hidden; }
+      .bs-dg > span { display: block; margin-top: -.2em; line-height: 1.4em; will-change: transform; }
+      .bs-dg u { text-decoration: none; color: rgba(233, 226, 207, .26); }
+      .bs-dr span span { display: block; }
+      .bs-chute .bs-dr span span { animation: bsDrum 1.7s steps(10) var(--cd) infinite; }
+      .bs-read small { align-self: flex-end; margin-left: .2em; font-size: .4em; line-height: 1.5; color: #9ea59b; }
+      .bs-tape { position: relative; grid-column: 2; height: min(54vh, 440px); overflow: hidden; border-left: 1px solid rgba(233, 226, 207, .3); -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent); }
+      .bs-tape::before { content: ''; position: absolute; left: -1px; right: 0; top: 50%; z-index: 1; height: 2px; margin-top: -1px; background: #f0a43a; box-shadow: 0 0 8px rgba(240, 164, 58, .9); }
+      .bs-sc { position: absolute; left: 0; right: 0; top: 50%; height: 300%; will-change: transform; background: repeating-linear-gradient(180deg, rgba(233, 226, 207, .5) 0 1px, transparent 1px calc(100% / 75)) 0 0 / 7px 100% no-repeat, repeating-linear-gradient(180deg, rgba(233, 226, 207, .95) 0 2px, transparent 2px calc(100% / 15)) 0 0 / 14px 100% no-repeat; }
+      .bs-sc b { position: absolute; left: 19px; transform: translateY(-50%); font-size: clamp(10px, 1.7vh, 13px); font-weight: 700; letter-spacing: .04em; color: rgba(233, 226, 207, .75); }
+      .bs-sc b.ch { color: #f0a43a; }
+      .bs-sc b.ch::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 12px; height: 5px; margin-left: -8px; border: 2px solid #f0a43a; border-bottom: 0; border-radius: 9px 9px 0 0; }
+      .bs-sc::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 9%; border-top: 2px solid #f0a43a; background: repeating-linear-gradient(135deg, rgba(240, 164, 58, .5) 0 2px, transparent 2px 7px); }
+      .bs-vs { grid-column: 1 / 3; justify-self: end; font: 600 clamp(10px, 1.7vh, 13px)/1.2 var(--f-body); color: #9ea59b; text-shadow: 0 1px 4px #000; }
+      .bs-vs b { margin: 0 .2em; font: 800 1.3em var(--f-display); color: #e9e2cf; }
+      .bs-ver { position: absolute; left: calc(18px + var(--sal)); bottom: calc(14px + var(--sab)); z-index: 2; font: 700 13px/1 var(--f-display); letter-spacing: .18em; color: rgba(233, 226, 207, .5); }
+      .bs-flash { z-index: 3; opacity: 0; pointer-events: none; background: radial-gradient(circle at 50% 72%, rgba(255, 216, 150, .6), rgba(255, 180, 90, 0) 62%); }
+      .bs-stamp { position: absolute; left: 50%; top: 73%; z-index: 3; padding-left: .45em; font: 800 clamp(26px, 7.5vh, 60px)/1 var(--f-display); letter-spacing: .45em; color: #fff4dc; text-shadow: 0 0 20px rgba(240, 164, 58, .95), 0 2px 0 rgba(0, 0, 0, .45); opacity: 0; transform: translate(-50%, -50%) scale(1.8); pointer-events: none; }
+      .bs-l0 { position: absolute; inset: -1px; display: flex; align-items: center; justify-content: flex-end; padding: 0 .38em; background: #f0a43a; color: #241504; opacity: 0; }
+      .bs-read .bs-l0 small { color: #241504; }
+      /* 착지 장면 (done 뒤 --ld 만큼 기다렸다가): 0 m 주황 고도계 · 「착지」 · 번쩍임 · 쿵 — 모두 opacity·transform 이라 로비가 메인 스레드를 잡아도 제때 */
+      .bs-fin .bs-l0 { animation: bsIn .16s ease-out var(--ld, 0ms) both; }
+      .bs-fin .bs-stamp { animation: bsStamp .4s cubic-bezier(.2, 1.5, .4, 1) var(--ld, 0ms) both; }
+      .bs-fin .bs-flash { animation: bsFl .75s ease-out var(--ld, 0ms) both; }
+      .bs-fin .bs-w { animation: bsBump .5s cubic-bezier(.2, .8, .3, 1) var(--ld, 0ms) both; }
+      @keyframes bsUp { to { transform: translateY(-50%); } }
+      @keyframes bsTw { from { opacity: .12; } to { opacity: .95; } }
+      @keyframes bsSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+      @keyframes bsRing { from { transform: scale(.25); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+      @keyframes bsSway { from { transform: translateY(-.45vh) rotate(-.7deg); } to { transform: translateY(.45vh) rotate(.7deg); } }
+      @keyframes bsBl { to { opacity: .3; } }
+      @keyframes bsPop { 0% { opacity: 0; transform: scale(.2, .1); } 50% { opacity: 1; transform: scale(1.25, .85); } 75% { transform: scale(.92, 1.08); } 100% { opacity: 1; transform: none; } }
+      @keyframes bsDrum { from { transform: none; } to { transform: translateY(-100%); } }
+      @keyframes bsOut { from { opacity: 1; } to { opacity: 0; } }
+      @keyframes bsCan { 0% { transform: translateY(-115%) scale(.5, .3); } 55% { transform: translateY(-24%) scale(1.05, 1.12); } 78% { transform: translateY(-32%) scale(.985, .96); } 100% { transform: translateY(-30%); } }
+      @keyframes bsSw { from { transform: rotate(-1.2deg); } to { transform: rotate(1.2deg); } }
+      @keyframes bsBump { 30% { transform: translateY(1.3vh) scale(1.015); } }
+      @keyframes bsFl { 15% { opacity: 1; } 100% { opacity: 0; } }
+      @keyframes bsIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes bsStamp { from { opacity: 0; transform: translate(-50%, -50%) scale(1.8); } to { opacity: 1; transform: translate(-50%, -50%); } }
+      /* 휴대폰 가로(낮은 화면): 섬을 조금 작게·아래로 — 다가와도 단계 글자·칸을 덮지 않게 */
+      @media (orientation: landscape) and (max-height: 500px) { #bootSplash { --is: 54vw; } .bs-iw { top: 80%; } .bs-stamp { top: 78%; } }
+      @media (orientation: portrait) { #bootSplash { --hz: 15%; --is: 96vw; } .bs-mid { top: 8%; } .bs-logo svg { width: min(32vh, 62vw); height: min(25.6vh, 49.6vw); } .bs-iw { top: 64%; } .bs-alt { top: auto; bottom: calc(6vh + var(--sab)); transform: none; } .bs-tape { height: 28vh; } }
+      @media (prefers-reduced-motion: reduce) { #bootSplash *, #bootSplash *::before, #bootSplash *::after { animation: none !important; } #bsWd { display: none; } #bootSplash.bs-out { transform: none; } .bs-chute .bs-sw .c, .bs-fin .bs-sw .l, .bs-fin .bs-l0, .bs-fin .bs-stamp { opacity: 1; } .bs-chute .bs-sw .f, .bs-fin .bs-sw .c { opacity: 0; } .bs-fin .bs-stamp { transform: translate(-50%, -50%); } }
+    </style>
+    <div class="bs-w" aria-hidden="true">
+      <div class="bs-sky"><div class="bs-sk"><i class="bs-sun"></i></div></div>
+      <i class="bs-glow"></i><i class="bs-hl"></i>
+      <div class="bs-gl" id="bsGl"></div>
+      <div class="bs-iw"><div class="bs-isle" id="bsIsle"><div class="bs-pl" id="bsPl"><i class="bs-zn" id="bsZn"></i><i class="bs-sf" id="bsSf"></i><i class="bs-mk" id="bsMk"></i></div></div></div>
+      <i class="bs-hz" id="bsHz"></i>
+      <div class="bs-cl" id="bsC1"><i></i></div><div class="bs-cl" id="bsC2"><i></i></div><div class="bs-cl" id="bsWd"></div><div class="bs-cl" id="bsC3"><i></i></div>
+      <i class="bs-vig"></i>
+      <div class="bs-can"><svg id="bsCan" viewBox="0 0 1000 420"></svg></div>
+    </div>
+    <div class="bs-mid">
+      <div class="bs-logo"><svg viewBox="0 0 800 640" role="img" aria-label="Last Drop Royale"><use href="#ldr-logo-v"/></svg></div>
+      <p class="bs-tag">뛰어내린 순간부터, 마지막 한 명까지</p>
+      <p class="bs-st"><span id="bsSt" role="status">게임 파일 받는 중</span></p>
+      <div class="bs-pips" id="bsPips"><i class="cur"></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="bs-alt" aria-hidden="true">
+      <div class="bs-hd"><svg class="bs-cg" viewBox="0 0 40 30"><path d="M3 12Q20-2 37 12l-3 3Q20 4 6 15z"/><path d="M6 15 20 27M13 10l7 17M27 10l-7 17M34 15 20 27" fill="none" stroke-width="1.3"/><circle cx="20" cy="27" r="2.2"/></svg><span class="bs-sw"><i class="f">자유 낙하</i><i class="c"><i>낙하산 전개</i></i><i class="l">착지</i></span></div>
+      <div class="bs-read"><i class="bs-dg"><span id="bsK">1,<br><u>0,</u></span></i><i class="bs-dg"><span id="bsH">5<br>4<br>3<br>2<br>1<br>0<br>9<br>8<br>7<br>6<br>5<br>4<br>3<br>2<br>1<br><u>0</u></span></i><i class="bs-dg"><span id="bsD">0</span></i><i class="bs-dg bs-dr"><span><span>0<br>9<br>8<br>7<br>6<br>5<br>4<br>3<br>2<br>1</span></span></i><small>m</small><b class="bs-l0">0<small>m</small></b></div>
+      <div class="bs-tape"><div class="bs-sc" id="bsSc"></div></div>
+      <div class="bs-vs">낙하 속도<span class="bs-sw"><b class="f" id="bsVf">54</b><b class="c"><i id="bsVc">5.0</i></b><b class="l">0</b></span>m/s</div>
+    </div>
+    <div class="bs-ver">v23</div>
+    <i class="bs-flash"></i>
+    <div class="bs-stamp" aria-hidden="true">착지</div>
+    <script>
+    // v23 부팅 화면 제어 — 작게 · 예외를 밖으로 던지지 않음 (망가지면 부팅 화면만 치우고 게임은 예전처럼)
+    (function () {
+      const W = window, D = document, R = D.getElementById('bootSplash');
+      if (!R) return;
+      try {
+        // 시험용: 주소에 ?nosplash 가 있으면 부팅 화면 없이 예전처럼 (정해진 시간 뒤 로비를 찍는 시험 등)
+        if (/[?&]nosplash\b/.test(location.search)) { R.parentNode.removeChild(R); return; }
+        const $ = (i) => D.getElementById(i), ALT = 1500, tms = [], WA = [], now = () => performance.now(), RM = !!(W.matchMedia && W.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        const sc = $('bsSc'), isl = $('bsIsle'), hz = $('bsHz'), st = $('bsSt'), vf = $('bsVf'), vc = $('bsVc'), pips = $('bsPips').children;
+        let P = -1, fin = 0, chute = 0, gone = 0, wd = 0, jv = 0, c0 = 0, dAt = 0, pl = null, t0 = 0, sd = 20261124;
+        const T = (f, ms) => { tms.push(setTimeout(f, ms)); };
+        const mark = (n) => { try { performance.mark('ldboot:' + n); } catch (e) { /* 없음 */ } };
+        const rnd = () => { sd = sd + 0x6d2b79f5 | 0; let t = Math.imul(sd ^ sd >>> 15, 1 | sd); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+        const VW = () => W.innerWidth || 1280, VH = () => W.innerHeight || 720;
+        // 고도 눈금: 100 m 마다 숫자 · 300 m 낙하산 표시 · 0 m 아래는 땅 (눈금 높이 = 창의 3배 = 1,500 m) · 십 자리 숫자 띠 151칸 (1,500 m 의 0 → 9 → … → 0 m 의 0)
+        { let s = ''; for (let a = ALT; a >= 0; a -= 100) s += '<b' + (a === 300 ? ' class="ch"' : '') + ' style="top:' + (100 - a / 15).toFixed(2) + '%">' + a + '</b>'; sc.innerHTML = s; s = '0'; for (let i = 149; i >= 0; i--) s += '<br>' + i % 10; $('bsD').innerHTML = s; }
+        // 진행도 p(0~1) → 모습: 고도 눈금 · 섬(멀리서 다가옴) · 대기 안개 · 고도 숫자 띠 — [요소, p → 키프레임, p 에 곧게 비례하면 1]
+        //  숫자 띠: 천·백 자리는 아래 자리가 0 → 9 로 넘어가는 10 m 동안만 구르고(기계식 계기처럼) 십 자리는 늘 굴러감 · 끝자리는 도는 북 — 모두 합성 스레드라 메인 스레드가 막혀도 눈금과 함께 간다 · 동작 줄이기면 십 자리도 10 m 단위로 딱 맞춤 (끝자리 0)
+        const ty = (n, i) => ({ transform: 'translateY(' + (-i * 100 / n).toFixed(3) + '%)' });
+        const FX = [[sc, (p) => ({ transform: 'translateY(' + (-p * 100).toFixed(3) + '%)' }), 1], [isl, (p) => ({ transform: 'translateZ(' + Math.round(RM ? -1100 : 2650 * p - 2600) + 'px)' }), 1], [hz, (p) => ({ opacity: (.62 * (1 - p)).toFixed(3) }), 1], [$('bsD'), (p) => ty(151, RM ? Math.ceil(p * 150 - 1e-6) : p * 150), 1],
+          [$('bsK'), (p) => ty(2, Math.min(1, Math.max(0, (p * ALT - 500) / 10)))], [$('bsH'), (p) => { const m = p * ALT, k = Math.floor(m / 100); return ty(16, Math.min(15, k + Math.min(1, (m - k * 100) / 10))); }]];
+        // 진행 곡선: v 에서 segs = [[목표 p, ms, 이징 [x1,y1,x2,y2]], …] 를 차례로 → { b: 구간 끝 [ms, p, 다음 이징], s: 짧은 직선 조각 [ms, p] (p .003 또는 400ms 마다) }
+        //  p 에 곧게 비례하는 모습은 구간 끝마다 키프레임 + 같은 cubic-bezier (몇 개뿐) · 천·백 자리 띠는 이징을 여기서 직접 풀어 둔 조각으로 — 같은 곡선이라 함께 간다
+        function plan(v, segs) {
+          const s = [[0, v]], b = [[0, v, segs.length ? segs[0][2] : [0, 0, 1, 1]]]; let t = 0, p = v;
+          segs.forEach((g, n) => {
+            const q = Math.max(p, g[0]), d = Math.max(0, RM ? Math.min(g[1], 200) : g[1]), e = g[2]; let lx = 0, ly = 0;
+            if (d >= 1) {
+              for (let i = 1; i <= 120; i++) {
+                const u = i / 120, w = 1 - u, x = 3 * w * w * u * e[0] + 3 * w * u * u * e[2] + u * u * u, y = 3 * w * w * u * e[1] + 3 * w * u * u * e[3] + u * u * u;
+                if (i === 120 || (y - ly) * (q - p) >= .003 || (x - lx) * d >= 400) { s.push([t + x * d, p + (q - p) * y]); lx = x; ly = y; }
+              }
+              t += d;
+            } else if (q > p) s.push([t, q]);
+            p = q; b.push([t, q, segs[n + 1] ? segs[n + 1][2] : [0, 0, 1, 1]]);
+          });
+          return { b: b, s: s };
+        }
+        // 지금 보이는 진행도: 고도 눈금 애니메이션의 지금 시각을 시간표에 대어 (스타일 계산 없이 — 큰 style.css 를 첫 화면 전에 다시 계산하지 않게)
+        function V() {
+          if (!pl) return Math.max(P, 0);
+          let ct = null; try { ct = sc._a ? sc._a.currentTime : null; } catch (e) { /* 없음 */ }
+          if (ct == null) ct = now() - t0;
+          ct = Math.max(0, ct);
+          for (let i = 1; i < pl.length; i++) if (pl[i][0] >= ct) { const a = pl[i - 1], b = pl[i]; return b[0] > a[0] ? a[1] + (b[1] - a[1]) * (ct - a[0]) / (b[0] - a[0]) : b[1]; }
+          return pl[pl.length - 1][1];
+        }
+        // 지금 보이는 곳(v)에서 segs 를 — 모습마다 Web Animation 한 개(모두 같은 시간표)라 메인 스레드가 막혀도 합성 스레드에서 끝까지 움직인다
+        //  돌려주는 값: 300 m 낙하산 표시(p .8)를 지나는 시각 ms (이미 지났으면 0 · 닿지 않으면 -1)
+        function go(v, segs) {
+          const P2 = plan(v, segs), s = P2.s, tot = Math.max(1, s[s.length - 1][0]), same = (a, b) => (a.transform || a.opacity) === (b.transform || b.opacity);
+          FX.forEach((f) => {
+            const el = f[0]; if (!el) return;
+            let k;
+            if (f[2]) k = P2.b.map((q) => Object.assign(f[1](q[1]), { offset: Math.min(1, q[0] / tot), easing: 'cubic-bezier(' + q[2].join(',') + ')' }));
+            // 천·백 자리: 조각마다 — 같은 값이 이어지는 가운데 점은 뺀다 (대부분 그대로 있다가 10 m 동안만 구름)
+            else { const k0 = s.map((q) => Object.assign(f[1](q[1]), { offset: Math.min(1, q[0] / tot) })); k = k0.filter((o, i) => !i || i === k0.length - 1 || !same(o, k0[i - 1]) || !same(o, k0[i + 1])); }
+            try { if (el._a) el._a.cancel(); el._a = el.animate(k, { duration: tot, fill: 'forwards' }); } catch (e) { Object.assign(el.style, f[1](s[s.length - 1][1])); }
+          });
+          pl = s; t0 = now();
+          if (v >= .8) return 0;
+          for (let i = 1; i < s.length; i++) if (s[i][1] >= .8) { const a = s[i - 1], b = s[i]; return a[0] + (b[0] - a[0]) * (.8 - a[1]) / Math.max(1e-9, b[1] - a[1]); }
+          return -1;
+        }
+        // 단계: 0 받기 · .4 3D 엔진 · .6 게임 데이터 · .9 로비 — 다음 단계가 올 때까지 그 단계의 상한으로 점점 느리게 (얼마나 걸릴지 모르는 기다림)
+        //  .6 부터: 300 m 까지 자유 낙하(일정하게 빠름, FF = p 1 에 9초) → 낙하산 → 천천히(C2 — 처음 빠르기가 낙하산 하강과 같게) · 늦게 온 단계는 300 m 까지를 짧게 (착지가 늦어지지 않게)
+        const E1 = [.33, 1, .68, 1], CR = [.12, .6, .25, 1], C2 = [.25, .55, .6, 1], LN = [0, 0, 1, 1], LD = [.45, .05, .3, 1], FF = 9000;
+        function step(p, txt) {
+          if (fin) return;
+          if (txt) st.textContent = txt;
+          if (!(p > P)) return;
+          const k = p < .4 ? 0 : p < .6 ? 1 : p < .9 ? 2 : 3;
+          for (let i = 0; i < 4; i++) pips[i].className = i < k ? 'on' : i === k ? 'cur' : '';
+          // 게임 초기화(메인 스레드를 1~3초 막음)가 곧 시작: 남은 그림을 지금 다 그려 둔다 — 막혀 있는 동안 섬·구름이 비어 있지 않게 (after 가 한 번 그린 뒤 시작)
+          if (p >= .6) while (jobs.length) { try { jobs.shift()(); } catch (e) { /* 그림 하나 없이 */ } }
+          const v = V(), ff = (cap) => (v < .8 ? [[.8, Math.min((.8 - v) * FF, cap), LN]] : []);
+          chuteAt(go(v, p < .4 ? (p > 0 ? [[p, 420, E1]] : []).concat([[.35, 16000, CR]]) : p < .6 ? [[p, 420, E1], [.58, 9000, CR]] : p < .9 ? ff(1e9).concat([[.88, 9000, C2]]) : ff(900).concat([[.9, Math.max(800, (.9 - Math.max(v, .8)) * 50000), LN], [.97, 6500, C2]])));
+          P = p; mark(Math.round(p * 100)); R.setAttribute('aria-valuenow', Math.round(p * 100));
+          // 감시: 게임이 끝(done)을 알리지 못하면 30초 뒤 그냥 연다 (아무것도 없는 위에서 계속 돌지 않게)
+          if (p >= .6 && !wd) wd = setTimeout(() => api.done(), 30000);
+        }
+        // 낙하산 전개를 ms 뒤로 정해 둔다: CSS 지연 --cd(.bs-chute 를 붙인 때부터) · 구름은 Web Animations — 메인 스레드가 막혀 있어도 그 시각에 펼쳐진다
+        //  아직 펼쳐지기 전이면 다시 정할 수 있음 (다음 단계가 일찍 오면 앞당김) · 이미 펼쳐졌으면 그대로
+        function chuteAt(ms) {
+          if (ms < 0 || (dAt && now() >= dAt)) return;
+          if (!chute) { chute = 1; c0 = now(); try { canopy(); } catch (e) { /* 캐노피 그림 없이 */ } R.classList.add('bs-chute'); mark('chute'); }
+          dAt = now() + ms; R.style.setProperty('--cd', Math.round(dAt - c0) + 'ms'); slow(ms);
+        }
+        // 자유 낙하의 빠른 움직임 — 구름 3겹 [id, 한 바퀴 ms, 처음 위상, 지금 애니메이션들] · 로고 흔들림 · 고도 끝자리 북: Web Animations, slow(Infinity) 로 시작
+        //  slow(ms): 지금 위치에서 이어 ms 동안만 빠르게 → 그 뒤(낙하산)는 구름 .22배 · 로고는 svg 의 느린 흔들림 · 북은 안쪽 띠가 느리게 (CSS --cd)
+        //  느린 쪽은 늘 안쪽 요소에: 같은 요소에 같은 속성 애니메이션이 둘 있으면(지연 중이어도) Chrome 이 합성 스레드에서 돌리지 않아 초기화 동안 멈춘다
+        //  위상은 내가 만든 애니메이션에서 읽음 (getAnimations 는 스타일 계산을 강제)
+        const UP = [{ transform: 'none' }, { transform: 'translateY(-50%)' }], DRM = [{ transform: 'none' }, { transform: 'translateY(-100%)' }], CLD = [['bsC1', 26000, .42, []], ['bsC2', 10000, .6, []], ['bsC3', 3800, .53, []]];
+        const SHK = [[0, 'none'], [.12, '.9px,-1.2px', .25], [.25, '-1px,.6px', -.2], [.37, '.4px,1.1px', .16], [.5, '-.8px,-.9px', -.3], [.62, '1.1px,.3px', .1], [.75, '-.3px,-1.1px', -.15], [.87, '.6px,.9px', .28], [1, 'none']].map((k) => ({ offset: k[0], transform: k[2] == null ? 'none' : 'translate(' + k[1] + ') rotate(' + k[2] + 'deg)' }));
+        let lg = null, dm = null;
+        function slow(ms) {
+          if (RM) return;
+          const it = (d) => (ms === Infinity ? Infinity : ms / d);
+          CLD.forEach((c) => {
+            try {
+              const o = $(c[0]), d = c[1], L = c[3]; let ph = c[2];
+              L.forEach((a) => { const g = a.effect.getComputedTiming(); if (g.progress != null) ph = g.progress; a.cancel(); });
+              L.length = 0;
+              if (ms > 0) L.push(o.animate(UP, { duration: d, iterationStart: ph, iterations: it(d) }));
+              if (ms !== Infinity) L.push(o.firstElementChild.animate(UP, { duration: d / .22, delay: ms, iterationStart: (ph + ms / d) % 1, iterations: Infinity }));
+              L.forEach((a) => { WA.push(a); });
+            } catch (e) { /* 옛 브라우저: 구름이 멈춰 있음 */ }
+          });
+          try {
+            if (lg) lg.cancel(); if (dm) dm.cancel(); lg = dm = null;
+            if (ms > 0) { lg = R.querySelector('.bs-logo').animate(SHK, { duration: 740, iterations: it(740) }); dm = R.querySelector('.bs-dr > span').animate(DRM, { duration: 260, easing: 'steps(10)', iterations: it(260) }); WA.push(lg, dm); }
+          } catch (e) { /* 흔들림 없이 */ }
+        }
+        // 로비 첫 프레임이 그려짐 → (300 m 전이면 거기까지 낙하산) → 0 m 착지 → hold 뒤 사라짐 (화면을 누르면 바로)
+        //  착지 장면과 사라짐은 지금 정해 두는 CSS·Web Animations(지연 포함, 합성 스레드) — 첫 프레임 뒤 로비가 아이콘 미리 그리기 등으로 메인 스레드를 오래 잡아도 제때 끝난다
+        //  타이머는 글자 바꾸기(land)와 지우기(kill)만 — 늦어져도 보이는 것은 그대로
+        function done() {
+          if (fin) return; fin = 1; clearTimeout(wd); mark(100);
+          for (let i = 0; i < 4; i++) pips[i].className = 'on';
+          R.setAttribute('aria-valuenow', 100);
+          const v = V(), t8 = go(v, (v < .8 ? [[.8, Math.min((.8 - v) * FF, 500), LN], [1, 700, LD]] : [[1, 560, LD]]));
+          chuteAt(Math.max(0, t8));
+          const d = Math.round(pl[pl.length - 1][0]), hold = RM ? 120 : 420;
+          R.style.setProperty('--ld', d + 'ms'); R.classList.add('bs-fin'); T(land, d); fade(d + hold);
+        }
+        function land() { if (gone) return; st.textContent = '로비 입장'; clearInterval(jv); }
+        // 사라짐: delay 뒤 opacity 0 (Web Animation, 합성 스레드) → 지움 · Web Animations 가 없으면 .bs-out(transition)
+        //  그때부터 누름도 로비로 통과: pointer-events 는 따로 한 애니메이션 (합성할 수 없는 속성이 섞이면 사라짐까지 메인 스레드로 간다)
+        let fa = null, fp = null, fT = 0;
+        function fade(delay) {
+          const ms = RM ? 350 : 550; fT = now() + delay;
+          try {
+            if (fa) fa.cancel(); if (fp) fp.cancel();
+            fa = R.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: RM ? 'none' : 'scale(1.06)' }], { duration: ms, delay: delay, easing: 'ease-in', fill: 'forwards' });
+            fp = R.animate([{ pointerEvents: 'none' }, { pointerEvents: 'none' }], { duration: ms, delay: delay, fill: 'forwards' }); WA.push(fa, fp);
+          } catch (e) { R.classList.add('bs-out'); }
+          T(() => { gone = 1; R.style.pointerEvents = 'none'; }, delay);
+          T(kill, delay + ms + 60);
+        }
+        // 착지 장면 중 누르면 바로 사라짐 — 이미 사라지기 시작했으면 그대로 (다시 시작하면 불투명으로 튀어 오른다)
+        function out() { if (!fin || gone) return; gone = 1; R.style.pointerEvents = 'none'; if (now() < fT - 40) fade(0); }
+        // 끝: 타이머·애니메이션을 멈추고 블록째 지움 · 캔버스 픽셀은 바로 풀어 둔다 (어딘가 이 스크립트를 붙잡고 있어도 메모리는 돌아오게)
+        function kill() {
+          mark('end'); tms.forEach((t) => clearTimeout(t)); clearTimeout(wd); clearInterval(jv); jobs.length = 0;
+          WA.concat(FX.map((f) => f[0] && f[0]._a)).forEach((a) => { try { if (a) a.cancel(); } catch (e) { /* 없음 */ } });
+          R.querySelectorAll('canvas').forEach((c) => { try { if (c._b) c._b.transferFromImageBitmap(null); } catch (e) { /* 없음 */ } c.width = c.height = 0; });
+          PS = PB = PL = null;
+          if (R.parentNode) R.parentNode.removeChild(R);
+          if (W.LDBoot === api) W.LDBoot = undefined;
+        }
+        // 낙하 속도 숫자만 가끔 흔들림 (자유 낙하 52~57 · 낙하산 4.2~5.8 — 어느 쪽이 보일지는 CSS 가 정함)
+        function jit() { vf.textContent = 52 + (Math.random() * 6 | 0); vc.textContent = (4.2 + Math.random() * 1.6).toFixed(1); }
+        // 실행 오류 화면(#fatal 이 위를 덮음)이 뜨면 멈춤 · three.js 를 다시 받아 성공하면 이어서
+        function fail(on) {
+          if (gone) return; R.classList.toggle('bs-hold', !!on);
+          WA.concat(FX.map((f) => f[0] && f[0]._a)).forEach((a) => { try { if (!a) return; if (on && a.playState === 'running') a.pause(); else if (!on && a.playState === 'paused') a.play(); } catch (e) { /* 없음 */ } });
+          clearInterval(jv); jv = 0; if (!on && !RM && !fin) jv = setInterval(jit, 300);
+        }
+        // fn 을 지금 상태가 화면에 한 번 그려진 뒤에 (rAF 두 번) — 숨은 탭은 rAF 가 돌지 않으므로 120ms 뒤에라도 (fn 의 예외는 그대로 밖으로)
+        function after(fn) { let d = 0; const run = () => { if (!d) { d = 1; fn(); } }; try { requestAnimationFrame(() => requestAnimationFrame(run)); } catch (e) { /* 없음 */ } setTimeout(run, 120); }
+        // 그림: 첫 화면 뒤 작은 일감으로 나눠 사이사이 쉬면서 · 섬 → 구름 → 바람 줄·물결 반짝임 → 구름 2겹 → 캐노피 (게임 초기화 직전 60% 에는 남은 것을 한 번에 — step)
+        //  CPU(OffscreenCanvas)에 그려 bitmaprenderer 캔버스로 넘긴다 (put): 그림 크기 텍스처 그대로 합성 — 보통 캔버스(CPU)는 화면 두 배 높이 층에 기기 해상도로 다시 그려져 휴대폰 GPU 메모리를 크게 씀(층 4개 × 수십 MB)
+        //  GPU 캔버스는 메인 스레드에 GPU 문맥을 새로 만들어야 해 첫 그림이 들쭉날쭉 · OffscreenCanvas 가 없는 옛 브라우저는 보통 캔버스 그대로
+        const OC = typeof OffscreenCanvas === 'function', cv = (w, h) => { w = Math.max(8, Math.round(w)); h = Math.max(8, Math.round(h)); if (OC) return new OffscreenCanvas(w, h); const c = D.createElement('canvas'); c.width = w; c.height = h; return c; }, cx = (c) => c.getContext('2d', { willReadFrequently: true });
+        const put = (host, c, first) => {
+          let d = c;
+          if (OC) {
+            d = D.createElement('canvas'); d.width = c.width; d.height = c.height;
+            try { d._b = d.getContext('bitmaprenderer'); d._b.transferFromImageBitmap(c.transferToImageBitmap()); } catch (e) { d = D.createElement('canvas'); d.width = c.width; d.height = c.height; d.getContext('2d').drawImage(c, 0, 0); }
+          }
+          host.insertBefore(d, first ? host.firstChild : null);
+        };
+        let PS, PB, PL, canDone = 0;
+        // 구름 조각 (둥근 덩어리: 안쪽은 차 있고 가장자리만 부드럽게) — 그림자 · 몸통 · 해 쪽(왼쪽 위) 빛 세 가지 색
+        const spr = (c0) => { const c = cv(64, 64), g = cx(c), q = g.createRadialGradient(32, 32, 0, 32, 32, 32); q.addColorStop(0, c0 + '1)'); q.addColorStop(.5, c0 + '.9)'); q.addColorStop(.78, c0 + '.42)'); q.addColorStop(1, c0 + '0)'); g.fillStyle = q; g.fillRect(0, 0, 64, 64); return c; };
+        // 구름 한 겹: [id, 해상도, 덩어리 수, 덩어리당 조각, 크기(타일 높이 비), 불투명도, 가장자리만, 세로 늘임(속도감)] — 위아래가 이어지는 타일 한 장을 그려 두 장 높이로 (위로 50% 흐르면 반복)
+        function cloud(o) {
+          if (!PS) { PS = spr('rgba(16,20,42,'); PB = spr('rgba(132,130,170,'); PL = spr('rgba(255,192,150,'); }
+          const iw = VW(), w = Math.round(Math.min(iw, 1600) * o[1]), h = Math.max(8, Math.round(w * VH() / iw)), c = cv(w, h * 2), g = cx(c);
+          for (let i = 0; i < o[2]; i++) {
+            const x = (o[6] ? (rnd() < .5 ? rnd() * .28 : 1 - rnd() * .28) : rnd()) * w, y = rnd() * h, r0 = h * o[4] * (.6 + rnd() * .8), pf = [];
+            for (let j = 0; j < o[3]; j++) { const u = rnd() - .5, s = r0 * (.75 - Math.abs(u) * .8) * (.7 + rnd() * .5); pf.push([x + u * r0 * 3, y + (rnd() - .5) * r0 * .7, s, s * o[7]]); }
+            for (let n = -1; n < 2; n++) {
+              const dy = n * h; if (y + dy < -3 * r0 || y + dy > h + 3 * r0) continue;
+              g.globalAlpha = o[5] * .7; pf.forEach((p) => g.drawImage(PS, p[0] - p[2] * .9, p[1] + dy - p[3] * .55, p[2] * 2.1, p[3] * 2));
+              g.globalAlpha = o[5]; pf.forEach((p) => g.drawImage(PB, p[0] - p[2], p[1] + dy - p[3], p[2] * 2, p[3] * 2));
+              g.globalAlpha = o[5] * .85; pf.forEach((p) => g.drawImage(PL, p[0] - p[2] * 1.05, p[1] + dy - p[3] * 1.15, p[2] * 1.45, p[3] * 1.4));
+            }
+          }
+          // 위 타일(넘친 것은 지우고)을 아래 칸에 그대로 복사 → 위로 50% 흘러도 이음매 없음
+          g.globalAlpha = 1; g.clearRect(0, h, w, h); g.drawImage(c, 0, 0, w, h, 0, h, w, h);
+          put($(o[0]).firstElementChild || $(o[0]), c); R.classList.add('bs-ready');
+        }
+        // 바람 줄(자유 낙하의 속도감) · 해 아래 물결 반짝임 두 장(번갈아 깜박임)
+        function wind() {
+          const w = Math.round(Math.min(VW(), 1600)), h = 240, c = cv(w, h * 2), g = cx(c);
+          for (let i = 0; i < 36; i++) {
+            const x = rnd() * w, y = rnd() * h, L = h * (.12 + rnd() * .3), lw = rnd() < .3 ? 2 : 1, a = (.07 + rnd() * .16).toFixed(3);
+            for (let n = -1; n < 3; n++) { const y0 = y + n * h; if (y0 > 2 * h || y0 + L < 0) continue; const q = g.createLinearGradient(0, y0, 0, y0 + L); q.addColorStop(0, 'rgba(220,228,255,0)'); q.addColorStop(.5, 'rgba(220,228,255,' + a + ')'); q.addColorStop(1, 'rgba(220,228,255,0)'); g.fillStyle = q; g.fillRect(x, y0, lw, L); }
+          }
+          put($('bsWd'), c);
+          for (let k = 0; k < 2; k++) {
+            const c2 = cv(160, 240), g2 = cx(c2);
+            for (let i = 0; i < 70; i++) { const t = rnd(), y = t * t * 240, x = 80 + (rnd() - .5) * (8 + t * 120) * (.3 + rnd() * .7), L = 1 + t * 7 * rnd(); g2.fillStyle = 'rgba(255,' + (190 + rnd() * 50 | 0) + ',140,' + ((.2 + rnd() * .5) * (1 - t * .6)).toFixed(3) + ')'; g2.fillRect(x - L / 2, y, L, .6 + t); }
+            put($('bsGl'), c2);
+          }
+        }
+        // 섬을 판에 붙이고 자기장(파란 점선)·다음 안전 구역(흰 원)·착지 지점(주황) 자리를 잡는다
+        function isle() {
+          const S = Math.min(1024, Math.round(Math.max(VW(), VH()) * .62)), I = island(S), bp = $('bsPl'), L = I[1];
+          put(bp, I[0], 1);
+          const pos = (id, x, y, d) => { const s = $(id).style; s.left = x / S * 100 + '%'; s.top = y / S * 100 + '%'; if (d) s.width = s.height = d / S * 100 + '%'; };
+          const sx = L[0] + (rnd() - .5) * S * .08, sy = L[1] + (rnd() - .5) * S * .08, zx = (sx + S / 2) / 2, zy = (sy + S / 2) / 2;
+          pos('bsMk', L[0], L[1]); pos('bsSf', sx, sy, S * .26); pos('bsZn', zx, zy, 2 * (Math.hypot(zx - sx, zy - sy) + S * .2));
+          R.classList.add('bs-isl');
+        }
+        // 그림 일감 — 섬(가장 눈에 띄는 것)부터 · 24ms 씩 쉬면서
+        const jobs = [isle, () => cloud(['bsC1', .45, 14, 6, .036, .55, 0, .7]), wind, () => cloud(['bsC2', .36, 7, 7, .07, .5, 0, .85]), () => cloud(['bsC3', .28, 4, 8, .17, .2, 1, 1.4]), () => canopy()];
+        const work = () => { if (gone || !jobs.length) return; try { jobs.shift()(); } catch (e) { /* 그림 하나가 없어도 나머지는 그대로 */ } T(work, 24); };
+        // 섬 (위에서 본 지도: 해안선·얕은 바다·모래·밭·숲·산줄기·강·마을 불빛) — [캔버스, 착지할 마을 좌표]
+        function island(S) {
+          const c = cv(S, S), g = cx(c), m = S / 2, R0 = S * .32, F = [], A = [.12, .08, .05, .032, .02, .012], K = [2, 3, 5, 7, 11, 17];
+          for (let i = 0; i < 6; i++) F.push(rnd() * 6.283);
+          const rad = (t) => { let v = 1; for (let i = 0; i < 6; i++) v += A[i] * Math.sin(K[i] * t + F[i]); return R0 * v; };
+          const pt = (t, k) => { const r = rad(t) * k; return [m + Math.cos(t) * r, m + Math.sin(t) * r]; };
+          const shape = (k) => { g.beginPath(); for (let i = 0; i < 160; i++) { const p = pt(i * .03927, k); g.lineTo(p[0], p[1]); } g.closePath(); };
+          const any = (k) => pt(rnd() * 6.283, Math.sqrt(rnd()) * k);
+          const dot = (x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, 6.283); g.fill(); };
+          let q;
+          // 얕은 바다: 해안에서 멀어질수록 옅어지는 청록 띠 여러 겹 (흐림 효과 없이 — 휴대폰에서 가볍게)
+          [[1.13, .1], [1.1, .14], [1.075, .2], [1.05, .28]].forEach((r) => { g.fillStyle = 'rgba(60,170,175,' + r[1] + ')'; shape(r[0]); g.fill(); });
+          g.fillStyle = 'rgba(90,200,185,.45)'; shape(1.025); g.fill();
+          g.fillStyle = '#d6b47e'; shape(1); g.fill();
+          q = g.createRadialGradient(m - R0 * .45, m - R0 * .6, R0 * .1, m, m, R0 * 1.25); q.addColorStop(0, '#80894f'); q.addColorStop(.5, '#4a5631'); q.addColorStop(1, '#28331f'); g.fillStyle = q; shape(.955); g.fill();
+          for (let i = 0; i < 30; i++) { const p = any(.78); g.save(); g.translate(p[0], p[1]); g.rotate(rnd() * 3.14); g.fillStyle = ['rgba(176,160,96,.4)', 'rgba(120,134,64,.45)', 'rgba(150,110,70,.35)'][i % 3]; g.fillRect(0, 0, S * (.018 + rnd() * .03), S * (.01 + rnd() * .018)); g.restore(); }
+          for (let i = 0; i < 300; i++) { const p = any(.86); g.fillStyle = 'rgba(22,36,20,' + (.3 + rnd() * .4).toFixed(2) + ')'; dot(p[0], p[1], S * (.004 + rnd() * .009)); }
+          // 강: 산줄기 가운데에서 바다까지 두 번 굽이침 (하늘빛 반사 + 노을빛 한 줄)
+          const a0 = rnd() * 6.283, ca = Math.cos(a0), sa = Math.sin(a0), ox = m - sa * R0 * .22, oy = m + ca * R0 * .22, jt = () => (rnd() - .5) * R0 * .3;
+          const e = pt(a0 + 1.6, .97), mx = (ox + e[0]) / 2 + jt(), my = (oy + e[1]) / 2 + jt();
+          g.lineCap = 'round'; g.beginPath(); g.moveTo(ox, oy); g.quadraticCurveTo((ox + mx) / 2 + jt(), (oy + my) / 2 + jt(), mx, my); g.quadraticCurveTo((mx + e[0]) / 2 + jt(), (my + e[1]) / 2 + jt(), e[0], e[1]);
+          g.strokeStyle = 'rgba(110,140,190,.8)'; g.lineWidth = S * .0055; g.stroke(); g.strokeStyle = 'rgba(255,200,140,.4)'; g.lineWidth = S * .002; g.stroke();
+          // 산줄기: 능선을 따라 봉우리 26개(가운데가 높고 양 끝이 낮음, 능선 옆으로 흩어짐) — 바위 띠를 깔고, 그림자(오른쪽 아래)를 모두 그린 뒤 해 쪽(왼쪽 위) 비탈
+          const pk = [];
+          for (let i = 0; i < 26; i++) { const t = i / 25 - .5, u = t * R0 * 1.2, b = Math.sin(t * 3) * R0 * .08 + (rnd() - .5) * R0 * .09; pk.push([ox + ca * u - sa * b, oy + sa * u + ca * b, S * (.01 + rnd() * .012) * (1.35 - Math.abs(t) * 1.3)]); }
+          g.lineJoin = 'round'; g.strokeStyle = 'rgba(70,66,50,.55)'; g.lineWidth = S * .028; g.beginPath(); pk.forEach((p) => g.lineTo(p[0], p[1])); g.stroke();
+          g.fillStyle = 'rgba(22,26,20,.55)'; pk.forEach((p) => dot(p[0] + p[2] * .45, p[1] + p[2] * .5, p[2] * 1.1));
+          pk.forEach((p) => { q = g.createRadialGradient(p[0] - p[2] * .45, p[1] - p[2] * .5, p[2] * .05, p[0], p[1], p[2]); q.addColorStop(0, '#e6cfa2'); q.addColorStop(.45, '#94876a'); q.addColorStop(1, 'rgba(70,70,54,0)'); g.fillStyle = q; dot(p[0], p[1], p[2]); });
+          const tw = []; for (let i = 0; i < 4; i++) tw.push(any(.62));
+          g.strokeStyle = 'rgba(230,214,180,.42)'; g.lineWidth = S * .0032; g.beginPath(); g.moveTo(tw[0][0], tw[0][1]);
+          for (let i = 1; i < 4; i++) g.quadraticCurveTo((tw[i][0] + tw[i - 1][0]) / 2 + (rnd() - .5) * S * .08, (tw[i][1] + tw[i - 1][1]) / 2 + (rnd() - .5) * S * .08, tw[i][0], tw[i][1]);
+          g.stroke();
+          tw.forEach((p) => { for (let j = 0; j < 16; j++) { g.fillStyle = j % 3 ? '#9b958a' : '#7a736a'; g.fillRect(p[0] + (rnd() - .5) * S * .05, p[1] + (rnd() - .5) * S * .05, S * (.005 + rnd() * .007), S * (.005 + rnd() * .006)); } });
+          g.shadowColor = '#ffb050'; g.shadowBlur = S * .012; g.fillStyle = '#ffe2a8';
+          tw.forEach((p) => { for (let j = 0; j < 7; j++) dot(p[0] + (rnd() - .5) * S * .05, p[1] + (rnd() - .5) * S * .05, S * .0028); });
+          g.shadowBlur = 0;
+          return [c, tw[0]];
+        }
+        // 머리 위 캐노피: 아래에서 올려다본 사각(ram-air) 낙하산 — 게임의 기본 낙하산처럼 올리브·모래 칸, 해 쪽(왼쪽)이 밝음 · 나에게 모이는 줄
+        function canopy() {
+          if (canDone) return; canDone = 1;
+          const N = 9, U = 1.18, f = (p) => p[0].toFixed(1) + ',' + p[1].toFixed(1), P1 = (u) => [500 + Math.sin(u) * 480, 292 - Math.cos(u) * 240], P2 = (u) => [500 + Math.sin(u) * 428, 324 - Math.cos(u) * 196];
+          // bsCs: 칸 위에 한 번 더 — 뒷전(아래쪽 호)으로 갈수록 어둡고 앞전 가장자리는 노을빛 (호 모양대로 세로를 절반으로 줄인 원형 그라데이션)
+          let s = '<defs><linearGradient id="bsLn" gradientUnits="userSpaceOnUse" x1="0" y1="190" x2="0" y2="420"><stop offset="0" stop-color="#0b0e13" stop-opacity=".6"/><stop offset="1" stop-color="#0b0e13" stop-opacity="0"/></linearGradient><linearGradient id="bsRim" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffc98a"/><stop offset="1" stop-color="#ffc98a" stop-opacity=".15"/></linearGradient>'
+            + '<radialGradient id="bsCs" gradientUnits="userSpaceOnUse" cx="500" cy="292" r="480" gradientTransform="translate(0 146) scale(1 .5)"><stop offset=".8" stop-color="#05070b" stop-opacity=".6"/><stop offset=".94" stop-color="#05070b" stop-opacity=".05"/><stop offset="1" stop-color="#ffcf9a" stop-opacity=".3"/></radialGradient></defs><g stroke="url(#bsLn)" stroke-width="1.5">';
+          for (let i = 0; i <= N; i++) s += '<path d="M' + f(P2(-U + 2 * U * i / N)) + 'L500,1500"/>';
+          s += '</g><g stroke="rgba(0,0,0,.45)" stroke-width="1.5" stroke-linejoin="round">';
+          for (let i = 0; i < N; i++) {
+            const a = -U + 2 * U * i / N, b = a + 2 * U / N, l = 1.05 - i / N * .45, c = i % 2 ? [60, 68, 44] : [112, 96, 70];
+            s += '<path d="M' + f(P1(a)) + 'L' + f(P1(b)) + 'L' + f(P2(b)) + 'L' + f(P2(a)) + 'Z" fill="rgb(' + c.map((v) => Math.round(v * l)).join(',') + ')"/>';
+          }
+          let b1 = '', b2 = '';
+          for (let i = 0; i <= 24; i++) { b1 += (i ? 'L' : '') + f(P1(-U + 2 * U * i / 24)); b2 += 'L' + f(P2(U - 2 * U * i / 24)); }
+          $('bsCan').innerHTML = s + '</g><path fill="url(#bsCs)" d="M' + b1 + b2 + 'Z"/><path fill="none" stroke="url(#bsRim)" stroke-width="3" d="M' + b1 + '"/>';
+        }
+        const safe = (f) => function () { try { return f.apply(this, arguments); } catch (e) { /* 부팅 화면 때문에 게임이 멈추지 않게 */ } };
+        const api = W.LDBoot = { step: safe(step), fail: safe(fail), done: safe(done), after: after };
+        R.addEventListener('pointerdown', () => { if (fin) out(); });
+        slow(Infinity); step(0); if (!RM) jv = setInterval(jit, 300); after(work);
+      } catch (e) {
+        // 부팅 화면이 망가지면 치우고 예전처럼 (로비 HTML 이 바로 보임)
+        try { W.LDBoot = undefined; R.parentNode.removeChild(R); } catch (e2) { /* 없음 */ }
+      }
+    })();
+    </script>
+  </div>
+  <!-- 웹 글꼴 CSS 는 부팅 화면 뒤에: 이 <link> 는 뒤에 오는 스크립트를 그 CSS 가 올 때까지 막는다 — 앞에 있으면 부팅 화면 스크립트까지 Google Fonts 답을 기다렸다 (막히거나 느린 망에선 멈춘 화면)
+       로비·게임 스크립트는 예전처럼 이 CSS 뒤에 돈다 (아이콘 미리 그리기가 글꼴을 기다리는 것도 그대로) · 부팅 화면은 글꼴이 오기 전엔 대체 글꼴 -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
   <canvas id="gl"></canvas>
 
   <!-- 로비: 상단 탭·아이콘 / 왼쪽 위 오퍼레이터 / 왼쪽 아래 소식·맵·출격 / 가운데 캐릭터 -->
@@ -38,12 +482,14 @@
         <button class="icon-btn dev-btn" id="devBtn" type="button" hidden title="개발자 도구"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5.2 5.2L4 16l4 4 5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>DEV</span></button>
         <!-- 오른쪽 위 화살표: 누르면 경기 설정 · 조작법 · 설정이 차례로 펼쳐짐 -->
         <div class="lb-more" id="lbMore">
-          <button class="icon-btn more-btn" id="moreBtn" type="button" aria-expanded="false" aria-controls="lbMenu" title="메뉴"><svg viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></svg><i class="tab-dot" id="moreDot" hidden></i></button>
+          <button class="icon-btn more-btn" id="moreBtn" type="button" aria-expanded="false" aria-controls="lbMenu" title="메뉴"><svg viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></svg><i class="tab-dot" id="moreDot" hidden></i><i class="tab-dot" id="appMoreDot" hidden></i></button>
           <div class="lb-menu" id="lbMenu" hidden>
             <button class="icon-btn" type="button" id="clBtn" title="업데이트 로그"><svg viewBox="0 0 24 24"><path d="M6 3.5h9l4 4v13H6z"/><path d="M15 3.5v4h4M9 11h7M9 14.5h7M9 18h4"/></svg><span>업데이트 로그</span><i class="tab-dot" id="clDot" hidden></i></button>
             <button class="icon-btn hl" type="button" data-ui="matchCfg" title="경기 설정"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>경기 설정</span></button>
             <button class="icon-btn" type="button" data-ui="help" title="조작법"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h1M9.5 10h1M13 10h1M16.5 10h1M7 14h10"/></svg><span>조작법</span></button>
             <button class="icon-btn" type="button" data-ui="settings" title="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg><span>설정</span></button>
+            <!-- v23 앱 설치 (10_app.js): 설치할 수 있을 때만 보임 · 처음엔 빨간 점 -->
+            <button class="icon-btn" type="button" id="appBtn" title="앱 설치 — 홈 화면에 추가" hidden><svg viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><path d="M12 6.8v6.6M9.3 10.7 12 13.4l2.7-2.7M10.6 18.3h2.8"/></svg><span>앱 설치</span><i class="tab-dot" id="appDot" hidden></i></button>
           </div>
         </div>
       </div>
@@ -140,7 +586,7 @@
           </div>
         </div>
       </div>
-      <div class="lb-brief"><div class="match-brief" id="matchBrief"></div><div class="micro" id="storeNote"></div></div>
+      <div class="lb-brief"><div class="lb-logo"><svg viewBox="0 0 1200 300" role="img" aria-label="Last Drop Royale"><use href="#ldr-logo-h"/></svg></div><div class="match-brief" id="matchBrief"></div><div class="micro" id="storeNote"></div></div>
     </div>
     <div id="partyBar" class="party-bar" hidden></div>
     <div id="inviteBox" class="invite-box"></div>
@@ -289,14 +735,42 @@
     </div>
   </section>
 
-  <!-- 로딩 -->
+  <!-- 로딩: v23 「위성 정찰 스캔」 (10_loading.js) — 맵을 만드는 동안 진짜 높이맵·표면이 주사선을 따라 드러나고 지역·도로·건물·나무 → 미니맵 → 첫 자기장 · 강하 준비 완료 도장 -->
   <section id="loading" class="screen" hidden>
-    <div class="load-box">
-      <div class="eyebrow">작전 지역 생성</div>
-      <h2 id="loadMap">칼덴 섬</h2>
-      <div class="bar big"><i id="loadBar"></i></div>
-      <div class="micro" id="loadStep">준비 중</div>
-      <p class="tip" id="loadTip"></p>
+    <div class="ld-bg" aria-hidden="true"></div>
+    <div class="ld-wrap">
+      <div class="ld-feed">
+        <div class="ld-cols" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span></div>
+        <div class="ld-rows" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+        <div class="ld-sat" id="ldSat" aria-hidden="true">
+          <canvas id="ldTerr" width="1" height="1"></canvas>
+          <canvas id="ldMap" width="1" height="1"></canvas>
+          <canvas id="ldTree" width="1" height="1"></canvas>
+          <canvas id="ldRoad" width="1" height="1"></canvas>
+          <canvas id="ldBld" width="1" height="1"></canvas>
+          <div class="ld-cur" id="ldCur"><div class="ld-cur-in"><canvas id="ldNoise" width="160" height="160"></canvas></div><i class="ld-trail"></i><i class="ld-line"></i><i class="ld-head"></i><canvas id="ldProf" width="256" height="40"></canvas><span class="ld-tag" id="ldTag"></span></div>
+          <div class="ld-acq"><i></i><b>신호 수신 중</b><small>SIGNAL ACQUIRE</small></div>
+          <canvas id="ldSweep" width="256" height="256"></canvas><i class="ld-swl"></i>
+          <div class="ld-pois" id="ldPois"></div>
+          <div class="ld-zone" id="ldZone"><div class="ld-zw"><svg class="zt" id="ldZt" preserveAspectRatio="none"><path id="ldZtP" fill-rule="evenodd"/></svg><i class="zc" id="ldZc"></i><i class="zn" id="ldZn"></i><i class="zp" id="ldZp"></i><i class="zx" id="ldZx"></i><b class="zl" id="ldZl"></b></div><i class="zf" id="ldZf"><i></i></i><b class="zfl" id="ldZfl">비행 경로</b></div>
+          <div class="ld-fx"></div>
+          <span class="ld-hud ld-live"><i></i>SAT-1 · LIVE</span><span class="ld-hud ld-rec" id="ldRec">REC 00:00.0</span>
+          <span class="ld-hud ld-pos" id="ldPos"></span><span class="ld-hud ld-gsd" id="ldGsd"></span>
+          <span class="ld-phase" id="ldPhase"></span>
+          <div class="ld-stamp" id="ldStamp"><b id="ldStampT"></b><small id="ldStampS"></small></div>
+        </div>
+        <i class="ld-brk" aria-hidden="true"></i>
+        <div class="ld-tick" aria-hidden="true"><div id="ldTick"></div></div>
+      </div>
+      <div class="ld-side">
+        <div class="ld-top"><span class="eyebrow">작전 지역 생성</span><span class="ld-op" id="ldOp"></span><svg class="ld-logo" viewBox="0 0 1200 300" aria-hidden="true"><use href="#ldr-logo-h"/></svg></div>
+        <h2 id="ldTitle"></h2>
+        <div class="ld-sub"><span id="ldSub"></span><em id="ldKm"></em></div>
+        <ol class="ld-log" id="ldLog"></ol>
+        <div class="ld-pct"><b id="ldPct">0</b><span>%</span><i class="ld-rule"><i id="ldRule"></i></i></div>
+        <div class="ld-memo" id="ldMemo"><div class="ld-memo-h"><span>작전 메모</span><em id="ldTipN"></em></div><p id="ldTip"></p></div>
+        <button class="btn ld-cancel" type="button" id="ldCancel" hidden>로비로 나가기</button>
+      </div>
     </div>
   </section>
 
@@ -417,6 +891,17 @@
     <div class="menu wide cl-menu">
       <div class="acct-head"><div class="eyebrow">업데이트 로그</div><button class="map-x acct-x" type="button" id="clClose" aria-label="닫기">✕</button></div>
       <div id="clBody" class="cl-body"></div>
+    </div>
+  </section>
+  <!-- v23 앱 설치 (10_app.js): 설치 창 · 아이폰·아이패드는 '홈 화면에 추가' 안내 · 앱 안 브라우저·그 밖의 브라우저는 메뉴 안내 (내용은 열 때 채움)
+       data-nofs: 이 안을 누를 때는 10_touch.js 가 전체 화면을 요청하지 않음 (설치하기 단추의 prompt() 가 그 누름의 사용자 활성화를 써야 함) -->
+  <section id="appPanel" class="overlay" data-nofs hidden>
+    <div class="menu app-box" role="dialog" aria-modal="true" aria-labelledby="appTitle">
+      <div class="acct-head"><div class="eyebrow">앱 설치</div><button class="map-x acct-x" type="button" id="appClose" aria-label="닫기">✕</button></div>
+      <div class="app-grid">
+        <div class="app-art" id="appArt" aria-hidden="true"></div>
+        <div class="app-main"><h2 class="app-h" id="appTitle">앱으로 설치하기</h2><div id="appBody"></div><p class="app-msg" id="appMsg" role="status" hidden></p><div class="app-btns" id="appBtns"></div></div>
+      </div>
     </div>
   </section>
   <!-- 이벤트 (10_event.js) -->
@@ -610,15 +1095,17 @@
 //  모두 실패하고 받는 중인 곳도 없으면 3초 뒤 한 번 · 안내가 떠 있는 동안 인터넷이 다시 연결되거나(online) 화면이 다시 보일 때마다 처음부터 다시 (와이파이↔LTE 를 바꾸는 순간엔 세 곳이 1초 안에 모두 실패)
 //  게임 코드는 받은 THREE 를 인자로 쓴다 (늦게 온 사본이 window.THREE 를 바꿔도 그대로) · 시작하다 오류가 나면 같은 안내 화면에 그 오류 (휴대폰엔 콘솔이 없다)
 //  게임 코드는 괄호로 감싼 function 으로 넘긴다: V8 이 곧 불릴 함수로 보고 한 번에 컴파일 (그냥 넘기면 3MB 를 한 번 더 미리 훑음)
+//  v23 부팅 화면(맨 위 #bootSplash · window.LDBoot)에 단계를 알린다: 여기 시작 40% · 예비 CDN 은 글만 · three 도착 60% (그 상태를 한 번 그린 뒤 게임 시작) · 안내 화면이 뜨면 멈춤
 (function (run) {
   const src = ['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js', 'https://unpkg.com/three@0.128.0/build/three.min.js'];
   const SRI = 'sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu';   // 세 곳 공통 — 맨 위 preload 의 integrity 와 같게
   let n = 0, wait = 0, done = false, auto = 1, shown = false;   // n: 받기 시작한 곳 수 · wait: 아직 받는 중인 곳 수 · auto: 저절로 다시 받을 남은 횟수 · shown: 안내가 떠 있음
   // 정말 r128 이 왔는가 — 엉뚱한 스크립트가 만든 THREE · 중간에 멈춘 사본(감싸는 코드가 THREE = {} 부터 만든다)이면 다음 곳 (SRI 를 모르는 옛 브라우저)
   const ok = () => !!window.THREE && window.THREE.REVISION === '128';
+  const boot = () => window.LDBoot;   // 부팅 화면 (없으면 예전처럼 — last-drop.html 옛 사본·시험)
   // 안내 화면: msg 가 없으면 three.js 를 받지 못함 · sub: 아래 작은 글 (다시 받는 중)
   const fatal = (on, msg, sub) => {
-    const f = document.getElementById('fatal'); shown = on; if (!f) return; f.hidden = !on; if (!on) return;
+    const f = document.getElementById('fatal'); shown = on; if (boot()) boot().fail(on); if (!f) return; f.hidden = !on; if (!on) return;
     f.innerHTML = '<div><p class="eyebrow">실행 오류</p><p></p><p class="micro"></p><button class="btn" type="button">새로고침</button></div>';
     const p = f.getElementsByTagName('p'); p[1].textContent = msg || '3D 라이브러리(three.js)를 불러오지 못했습니다. 네트워크 연결을 확인하세요.'; p[2].textContent = sub || ''; p[2].hidden = !sub;
     f.getElementsByTagName('button')[0].onclick = () => location.reload();
@@ -628,11 +1115,14 @@
     if (done) return;
     if (ok()) {
       done = true; fatal(false);
-      try { run(window.THREE); } catch (e) { fatal(true, '게임을 시작하지 못했습니다: ' + String((e && e.message) || e).slice(0, 200)); throw e; }   // 다시 던져 콘솔·오류 보고에도 그대로
+      const T3 = window.THREE, go = () => { try { run(T3); } catch (e) { fatal(true, '게임을 시작하지 못했습니다: ' + String((e && e.message) || e).slice(0, 200)); throw e; } };   // 다시 던져 콘솔·오류 보고에도 그대로
+      // 게임을 시작하면 1~3초 메인 스레드가 막힌다 — 부팅 화면의 '게임 데이터 준비 중' 을 먼저 한 번 그려 두면 그동안은 합성 스레드에서 계속 움직임 (rAF 두 번 · 숨은 탭은 120ms)
+      if (boot()) { boot().step(0.6, '게임 데이터 준비 중'); boot().after(go); } else go();
       return;
     }
     if (n < src.length) {
       const i = n++, s = document.createElement('script'), t = setTimeout(() => next(true), 15000);
+      if (i && boot()) boot().step(0.4 + i * 0.05, slow ? '연결이 느려 다른 서버에서도 받는 중' : '예비 서버에서 3D 엔진 받는 중 (' + (i + 1) + '/3)');
       s.src = src[i]; s.integrity = SRI; s.crossOrigin = 'anonymous'; wait++;
       s.onload = s.onerror = () => { clearTimeout(t); wait--; next(false, i === src.length - 1); };   // 받았는데 r128 이 없어도(공용 와이파이 로그인 화면 등) 다음 곳 · 해시가 다르면 error
       document.head.appendChild(s);
@@ -643,6 +1133,7 @@
   const again = (now) => { if (done || !shown || n < src.length || (wait && now !== true)) return; n = 0; fatal(true, '', '다시 받는 중…'); next(false); };
   window.addEventListener('online', () => again(true));
   document.addEventListener('visibilitychange', () => { if (!document.hidden) again(true); });
+  if (boot()) boot().step(0.4, '3D 엔진 불러오는 중');
   next(false);
 })((function (THREE) {
 /*SCRIPT*/

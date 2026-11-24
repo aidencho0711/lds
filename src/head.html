@@ -1,0 +1,31 @@
+<!-- v23 앱 설치(PWA) · 링크 미리보기 — build.js 가 dist/index.html 의 <head> 안(viewport 바로 뒤)에 넣는다 (last-drop.html 에는 넣지 않음)
+     아이콘은 dist/icons — 로고(#ldrDefs)에서 코드로 만든다 (로컬 서버에서 __LD.App.exportIcons() · src/10_app.js) · og:image 만 배포 주소(절대 경로)
+     주소가 그대로라 한 번 퍼진 그림은 남는다 (카카오톡·페이스북 미리보기 캐시 · 아이폰 홈 화면 아이콘은 추가할 때 한 번 받음) — 그림을 바꿔 배포했으면 카카오 공유 디버거에서 캐시 초기화 -->
+<meta name="description" content="브라우저에서 바로 즐기는 배틀로얄. 수송기에서 강하해 무기를 줍고, 좁혀 오는 자기장 속에서 최후의 1인이 되세요. PC·모바일 지원 — 홈 화면에 추가하면 앱처럼 전체 화면으로.">
+<meta name="theme-color" content="#0d1113">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Last Drop">
+<meta name="application-name" content="Last Drop">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Last Drop Royale">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="Last Drop Royale — 브라우저 배틀로얄">
+<meta property="og:description" content="브라우저에서 바로 즐기는 배틀로얄 — 강하 · 파밍 · 자기장, 최후의 1인이 되세요.">
+<meta property="og:url" content="https://lds-training.vercel.app/">
+<meta property="og:image" content="https://lds-training.vercel.app/icons/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Last Drop Royale 로고와 자기장이 좁혀 오는 작전 지도">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Last Drop Royale — 브라우저 배틀로얄">
+<meta name="twitter:description" content="브라우저에서 바로 즐기는 배틀로얄 — 강하 · 파밍 · 자기장, 최후의 1인이 되세요.">
+<meta name="twitter:image" content="https://lds-training.vercel.app/icons/og.jpg">

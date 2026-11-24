@@ -315,20 +315,21 @@ const Resume = (() => {
       clearInterval(waitT);
       waitT = setInterval(() => {
         if (!G.rjHold) { clearInterval(waitT); return; }
-        if (G.state === 'play') { $('loading').hidden = false; $('loadStep').textContent = '경기 상태를 받는 중…'; $('loadBar').style.width = '99%'; }
+        // 로딩 화면 그대로 가림막 (10_loading.js — 이미 떠 있으면 그대로) · '로비로 나가기' 단추: 기다리다 그만두면 다시 들어가기 창으로 (다시 시도 가능)
+        if (G.state === 'play') Loading.hold('경기 상태를 받는 중…', () => { if (G.rjHold) { clearInterval(waitT); failNet(s, '다시 들어가기를 그만두었습니다 — 다시 시도할 수 있습니다'); } });
         if (Date.now() - t0 > 25000 || !G.net) { clearInterval(waitT); failNet(s); }
       }, 300);
     } catch (e) { console.error(e); busy = false; show(s, '연결 실패: ' + e.message); }
   }
-  function failNet(s) {
-    G.rjHold = false; busy = false; $('loading').hidden = true;
+  function failNet(s, msg) {
+    G.rjHold = false; busy = false; Loading.hideNow();
     if (G.net) Net.close(true);
     if (G.state === 'play' || G.state === 'loading') toLobby();
-    pend = s; store.set(KEY, s); show(s, '경기에 다시 연결하지 못했습니다 (방장 기기와 연결이 되지 않음)');
+    pend = s; store.set(KEY, s); show(s, msg || '경기에 다시 연결하지 못했습니다 (방장 기기와 연결이 되지 않음)');
   }
   // 방장이 보낸 지금 상태를 적용함 (10_net.js applyRj 끝)
   function rejoined() {
-    G.rjHold = false; busy = false; clearInterval(waitT); $('loading').hidden = true;
+    G.rjHold = false; busy = false; clearInterval(waitT); Loading.finale({ zone: true, stamp: '경기 복귀', quick: true });   // 가림막: 지금 자기장 + 도장 뒤 바로 사라짐 (경기는 이미 진행 중)
     const p = G.player;
     HUD.toast(p && p.alive ? '경기에 다시 들어왔습니다 — 내 캐릭터를 돌려받았습니다' : '경기에 다시 들어왔습니다 — 그사이 탈락해서 팀원을 관전합니다', 'ok');
     saveT = 1;

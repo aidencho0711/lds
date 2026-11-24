@@ -315,7 +315,7 @@ async function xmVegetation(K) {
   }
   const nearPoi = (x, z) => { for (const q of pg[clamp(Math.floor((z + HALF) / PC), 0, PN - 1) * PN + clamp(Math.floor((x + HALF) / PC), 0, PN - 1)]) if (Math.hypot(q.x - x, q.z - z) < q.cr) return true; return false; };
   const NO_TREE = new Set([2, 3, 4, 5, 6, 7, 9]);
-  const trees = [], rocks = [], bushes = [], A = HALF * 0.9, tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '눈 덮인 숲 생성');
+  const trees = [], rocks = [], bushes = [], A = HALF * 0.9, tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '눈 덮인 숲 생성', { trees });
   const target = 5500;
   for (let t = 0; t < target * 7 && trees.length < target; t++) {
     if (t % 30000 === 0) await tick(trees.length / target * 0.6);
