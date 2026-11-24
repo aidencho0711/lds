@@ -9,7 +9,8 @@
 //        손목 3 (rad · 손목 관절을 중심으로 손 로컬 축: x = 손바닥 축(날이 날·등 쪽으로 기욺), y = 팔뚝 축(손목 비틀기), z = 엄지·날 축(손목 꺾기)),
 //        손가락 5 (굽힘 — 가운데·약지·새끼 두 마디, 검지 두 마디, 엄지(1 = 주먹처럼 접음, 0 = 폄)),
 //        부품 4 (관절 모델 — 나비 나이프 [날, 손잡이 B, 걸쇠, 손 안에서 앞으로 미끄러진 m] · 카람빗 [검지(고리) 둘레 회전]),
-//        무기 회전 3 (rad · 손 안에서 동작표의 pivot(없으면 쥔 점)을 중심으로 손 로컬 x·y·z — Euler XYZ), 무기 이동 3 (m · 손 안에서 — 던졌다 받기)]
+//        무기 회전 3 (rad · 손 안에서 회전 중심을 축으로 손 로컬 x·y·z — Euler XYZ), 무기 이동 3 (m · 손 안에서 — 던졌다 받기),
+//        회전 중심 3 (모델 좌표 m — 없으면 동작표 pivot, 그것도 없으면 쥔 점)]
 //    키프레임 사이는 Catmull-Rom (kfSample) · 손 자리·손목은 상태의 amp 로 키우고 줄임
 //  · 상태가 바뀌면 바뀌기 직전 줄을 붙잡아 두고 짧게 섞어 넘어간다(순간이동 없음) · 부품·무기 회전은 2π 를 더하고 빼 새 상태와 가까운 쪽에서 섞음
 //  · 맞히는 시간·거리·피해·쿨타임·꺼내는 시간은 기본 무기와 똑같다 — 휘두르기 줄의 u = 휘두른 시간 / 전체 시간,
@@ -17,7 +18,7 @@
 //  · 소리: 동작표의 S = [[u, 이름], …] (내 캐릭터의 꺼내기·대기 손장난·살펴보기·넣기·휘두르기 중) — 이름은 동작표 snd 의 소리(Audio.mskin) 또는 Audio.knife 의 것
 // ============================================================
 const KAnim = (() => {
-  const PI = Math.PI, P2 = PI * 2, NV = 21, IR = 3, IF = 6, IP = 11, IW = 15, IT = 18;
+  const PI = Math.PI, P2 = PI * 2, NV = 24, IR = 3, IF = 6, IP = 11, IW = 15, IT = 18, IV = 21;
   const SPIN = [11, 12, 13, 14, 15, 16, 17];   // 2π 맞춤 채널 (부품 · 무기 회전)
   const F_GRIP = [1.72, 1.62, 1.58, 1.42, 1.0];   // 기본 쥠 (엄지 1 = 주먹처럼 접음)
   const SPEC = {};   // 모양 id → 동작표 (def 로 등록)
@@ -26,13 +27,30 @@ const KAnim = (() => {
   const TREADY = { knife: MEL_READY, machete: MEL_READY, pan: PAN_READY, crowbar: CROW_READY };
 
   // ---------- 동작표 쓰기 ----------
-  //  K(u, 손[3], 손목[3], 손가락[5], 부품[4], 무기 회전[3], 무기 이동[3]) — 빠진 것은 0 (손가락은 동작표의 기본 쥠, 대기 손장난(fid)은 0 = 그대로)
-  function K(u, h, r, f, p, w, t) { return { u, h, r, f, p, w, t }; }
-  function rowOf(k, F0, add) {
+  //  K(u, 손[3], 손목[3], 손가락[5], 부품[4], 무기 회전[3], 무기 이동[3], 회전 중심[3]) — 빠진 것은 0 (손가락은 동작표의 기본 쥠 · 회전 중심은 동작표 pivot, 대기 손장난(fid)은 0 = 그대로)
+  //   회전 중심(모델 좌표 m)도 줄마다 섞이므로, 무기 회전이 0(2π)인 줄에서 바꾸면 튀지 않는다 (손잡이 둘레 돌리기 ↔ 검지 둘레 돌리기)
+  function K(u, h, r, f, p, w, t, v) { return { u, h, r, f, p, w, t, v }; }
+  // 방향으로 쓰는 줄: KO(u, 손 자리[3], 날(엄지) 방향 b[3], 손가락 쪽 e[3], 손가락, 부품, 무기 회전, 무기 이동, 회전 중심) — b·e 는 카메라 공간(x 오른쪽, y 위, z 앞)
+  //  → 그 방향이 되는 손목 회전과, 손바닥이 (기본 자리 + 손 자리)에 오게 하는 손 자리를 등록할 때 한 번 계산 (손목을 돌려도 무기가 제자리에)
+  function KO(u, h, b, e, f, p, w, t, v) { return { u, h, ob: b, oe: e, f, p, w, t, v }; }
+  const _oB = new THREE.Vector3(), _oE = new THREE.Vector3(), _oQ = new THREE.Quaternion(), _oR = new THREE.Quaternion(), _oEu = new THREE.Euler(0, 0, 0, 'YXZ'), _oW = new THREE.Vector3(), _oP = new THREE.Vector3();
+  function rowOf(k, F0, add, S, prev) {
     const o = new Array(NV + 1).fill(0); o[0] = k.u;
     const put = (a, i, n) => { if (a) for (let j = 0; j < n; j++) o[1 + i + j] = a[j] || 0; };
-    put(k.h, 0, 3); put(k.r, IR, 3); put(k.p, IP, 4); put(k.w, IW, 3); put(k.t, IT, 3);
+    put(k.h, 0, 3); put(k.r, IR, 3); put(k.p, IP, 4); put(k.w, IW, 3); put(k.t, IT, 3); put(k.v || (add || !S ? null : S.pivot), IV, 3);
     for (let j = 0; j < 5; j++) o[1 + IF + j] = k.f ? k.f[j] : add ? 0 : F0[j];
+    if (k.ob && S) {
+      bladeQuat(_oQ, _oB.set(k.ob[0], k.ob[1], -k.ob[2]), _oE.set(k.oe[0], k.oe[1], -k.oe[2]));
+      _oR.copy(S.Q0).invert().multiply(_oQ); _oEu.setFromQuaternion(_oR, 'YXZ');
+      const r = [_oEu.x, _oEu.y, _oEu.z];
+      // 앞 줄과 가까운 각으로 (2π 맞춤 — 손목이 반대로 한 바퀴 돌지 않게)
+      for (let j = 0; j < 3; j++) { if (prev) r[j] += P2 * Math.round((prev[1 + IR + j] - r[j]) / P2); o[1 + IR + j] = r[j]; }
+      // 손바닥 자리: 기본 손목 관절 + 새 방향의 손바닥 → (기본 자리 + 손 자리)와의 차이를 손 자리로
+      _oW.copy(PALM.R).multiplyScalar(VM_SC).applyQuaternion(S.Q0); _oW.subVectors(S.P0, _oW);
+      _oP.copy(PALM.R).multiplyScalar(VM_SC).applyQuaternion(_oQ).add(_oW);
+      const h = k.h || [0, 0, 0];
+      o[1] = S.P0.x + h[0] - _oP.x; o[2] = S.P0.y + h[1] - _oP.y; o[3] = -(S.P0.z - h[2] - _oP.z);
+    }
     return o;
   }
   // 기본 꺼내기(아래에서 올라옴)·넣기(아래로) — 동작표에 없으면
@@ -43,20 +61,20 @@ const KAnim = (() => {
   // 동작표 등록 (09_player_mskin_<무기>.js):
   //  def(모양 id, { base: { h, b, e, f }(1인칭 기본 손 자리·날 방향·때리는 쪽·쥠 — 없으면 무기 기본), pivot: [x, y, z](무기 회전 중심, 모델 좌표 m),
   //    idle: { amp, speed, part(부품 0 흔들림), fid: [손장난 줄들 — 더하는 값], every: [최소, 최대 초] }, equip, unequip: { dur, speed, amp, K, S },
-  //    attack: [{ K, S, roll(옆 기울임 rad), kick(맞힘 흔들림 방향 ±1) } …](u = 휘두른 시간 비율), inspect: [{ dur, speed, amp, K, S } …],
+  //    attack: [{ K, S, roll(옆 기울임 rad), kick(맞힘 흔들림 방향 ±1) } …](u = 휘두른 시간 비율), inspect: [{ dur, speed, amp, K, S, gl: [[u0, u1] …](날을 따라 빛이 반짝 지나감) } …],
   //    snd: { 이름: [길이(초), 소리 조각들] }(Audio.mskin), swing: 휘두르는 소리 이름 또는 [첫째, 둘째], ghost: 잔상 빠르기 기준(m/s, 0 = 없음) })
   function def(shape, sp) {
     const D = MSHAPE[shape]; if (!D) { console.warn('KAnim: 모양 없음', shape); return null; }
     const mid = D.melee, vb = VBASE[mid], b = sp.base || {}, F0 = b.f || F_GRIP;
     const S = { shape, mid, F0, h: b.h || [vb[1], vb[2], vb[3]], B: b.b || [vb[4], vb[5], vb[6]], E: b.e || [vb[7], vb[8], vb[9]], snd: sp.snd || {}, swing: sp.swing || null,
       ghost: sp.ghost !== undefined ? sp.ghost : 1.6, pivot: sp.pivot || null, idle: sp.idle || {}, kar: D.rig === 'karambit', bal: D.rig === 'balisong' };
-    const tr = (t, add) => (t ? Object.assign({}, t, { R: t.K.map((k) => (Array.isArray(k) ? k : rowOf(k, F0, add))) }) : null);
-    S.equip = tr(sp.equip || DEF.equip); S.unequip = tr(sp.unequip || DEF.unequip);
-    S.attack = (sp.attack || []).map((t) => tr(t)); S.inspect = (sp.inspect || []).map((t) => tr(t)); S.fid = (S.idle.fid || []).map((t) => tr(t, true));
-    S.rest = rowOf(K(0), F0);
     // 카메라 공간(z 뒤) 기본 손바닥 자리 · 손 방향
     S.P0 = new THREE.Vector3(S.h[0], S.h[1], -S.h[2]);
     S.Q0 = bladeQuat(new THREE.Quaternion(), new THREE.Vector3(S.B[0], S.B[1], -S.B[2]), new THREE.Vector3(S.E[0], S.E[1], -S.E[2]));
+    const tr = (t, add) => { if (!t) return null; const R = []; for (const k of t.K) R.push(Array.isArray(k) ? k : rowOf(k, F0, add, add ? null : S, R[R.length - 1])); return Object.assign({}, t, { R }); };
+    S.equip = tr(sp.equip || DEF.equip); S.unequip = tr(sp.unequip || DEF.unequip);
+    S.attack = (sp.attack || []).map((t) => tr(t)); S.inspect = (sp.inspect || []).map((t) => tr(t)); S.fid = (S.idle.fid || []).map((t) => tr(t, true));
+    S.rest = rowOf(K(0), F0, false, S, null);
     SPEC[shape] = S; return S;
   }
 
@@ -163,7 +181,7 @@ const KAnim = (() => {
     const w = ka.bd > 0 ? sstep(0, 1, ka.bt / ka.bd) : 1;
     for (let i = 0; i < NV; i++) ka.row[i] = w >= 1 ? _tg[i] : lerp(ka.from[i], _tg[i], w);
     // 시험용: 고정 자세 (dbg.k = K(...) — 내 캐릭터만)
-    if (dbg.k && c.isPlayer) { const r = rowOf(dbg.k, S.F0); for (let i = 0; i < NV; i++) ka.row[i] = r[i + 1]; }
+    if (dbg.k && c.isPlayer) { const r = rowOf(dbg.k, S.F0, false, S, null); for (let i = 0; i < NV; i++) ka.row[i] = r[i + 1]; }
     return ka.row;
   }
   const dbg = { k: null };
@@ -204,8 +222,7 @@ const KAnim = (() => {
     const rig = o.userData.rig; o.userData.kaSet = true;
     if (S.kar && rig) { karamPlace(Ar, o, v[IP]); return; }
     _we.set(v[IW], v[IW + 1], v[IW + 2], 'XYZ'); o.quaternion.setFromEuler(_we);
-    const pv = S.pivot;
-    if (pv) { _wv.fromArray(pv).applyQuaternion(o.quaternion); o.position.set(pv[0] - _wv.x, pv[1] - _wv.y, pv[2] - _wv.z); } else o.position.set(0, 0, 0);
+    _wv.set(v[IV], v[IV + 1], v[IV + 2]).applyQuaternion(o.quaternion); o.position.set(v[IV] - _wv.x, v[IV + 1] - _wv.y, v[IV + 2] - _wv.z);
     o.position.x += v[IT]; o.position.y += v[IT + 1]; o.position.z += v[IT + 2];
     if (rig && S.bal) { rig.blade.rotation.x = v[IP]; rig.B.rotation.x = v[IP + 1]; rig.latch.rotation.x = v[IP + 2]; o.position.z += v[IP + 3]; }
     o.position.multiplyScalar(sc);
@@ -236,10 +253,37 @@ const KAnim = (() => {
   const _tp = new THREE.Vector3(), _bp = new THREE.Vector3(), _lt = new THREE.Vector3();
   // 잔상: 빠르게 움직이는 날(관절 모델은 날 부품, 아니면 무기 전체)을 지난 몇 프레임 자리에 옅게 — 낮은 화질이면 생략
   //  메시마다 지난 자리 4개를 돌려 쓰는 행렬 고리(무기가 바뀔 때만 새로 만듦) · 잔상 3장(가까운 것일수록 진하게)
-  const GH = { src: null, list: [], ms: [], ring: [], head: 0, n: 0, mats: null, lt: false, wm: null }, GOP = [0.2, 0.12, 0.06];
+  const GH = { src: null, list: [], ms: [], ring: [], head: 0, n: 0, mats: null, lt: false, wm: null }, GOP = [0.15, 0.09, 0.045];
   const ghostMats = () => GH.mats || (GH.mats = GOP.map((op) => new THREE.MeshBasicMaterial({ color: 0xd8e6ff, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })));
-  // 잔상 재질을 뷰모델 장면에 미리 (보이지 않는 작은 판) — 경기 시작 때 뷰모델 셰이더를 미리 만들 때 같이 만들어져, 처음 돌릴 때 화면이 멈추지 않게 (09_player.js buildViewModel)
-  function warmVM(sc) { const m = ghostMats(); if (!GH.wm) { GH.wm = new THREE.Mesh(new THREE.PlaneGeometry(0.001, 0.001), m[0]); GH.wm.visible = false; } if (sc && GH.wm.parent !== sc) sc.add(GH.wm); }
+  // 반짝임: 살펴보기 줄의 gl = [[u0, u1], …] 동안 빛 한 점이 날 뿌리 → 끝으로 미끄러짐 (금속 재질이 빛을 받는 순간) — 1인칭만 · 스프라이트 하나를 돌려 씀
+  let GLS = null;
+  function glintSprite() {
+    if (GLS) return GLS;
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d'), c = 32;
+    const rg = g.createRadialGradient(c, c, 0, c, c, 30); rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(0.18, 'rgba(255,246,220,0.75)'); rg.addColorStop(1, 'rgba(255,240,200,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+    // 네 갈래 빛줄기
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,255,255,0.9)';
+    for (const [w, h] of [[60, 3], [3, 60], [26, 1.6], [1.6, 26]]) g.fillRect(c - w / 2, c - h / 2, w, h);
+    const tx = new THREE.CanvasTexture(cv);
+    GLS = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+    GLS.visible = false; GLS.renderOrder = 5; return GLS;
+  }
+  // 잔상·반짝임 재질을 뷰모델 장면에 미리 (보이지 않게) — 경기 시작 때 뷰모델 셰이더를 미리 만들 때 같이 만들어져, 처음 돌릴 때 화면이 멈추지 않게 (09_player.js buildViewModel)
+  function warmVM(sc) {
+    const m = ghostMats(); if (!GH.wm) { GH.wm = new THREE.Mesh(new THREE.PlaneGeometry(0.001, 0.001), m[0]); GH.wm.visible = false; }
+    if (sc && GH.wm.parent !== sc) sc.add(GH.wm);
+    const gs = glintSprite(); if (sc && gs.parent !== sc) sc.add(gs);
+  }
+  const _gl = new THREE.Vector3();
+  function glint(tr, u, tip, base) {
+    const gs = GLS; if (!gs) return;
+    let k = -1, s = 0;
+    if (tr && tr.gl && SETTINGS.quality !== 'low') for (const [a, b] of tr.gl) if (u >= a && u <= b) { s = (u - a) / (b - a); k = Math.sin(Math.PI * s); break; }
+    gs.visible = k > 0.02; if (!gs.visible) return;
+    _gl.lerpVectors(base, tip, 0.15 + 0.8 * s); gs.position.copy(_gl).multiplyScalar(0.985);
+    gs.scale.setScalar(0.035 + 0.03 * k); gs.material.opacity = k;
+  }
   function ghostClear() { for (const m of GH.list) if (m.parent) m.parent.remove(m); GH.list.length = 0; GH.ms = []; GH.ring = []; GH.n = 0; GH.src = null; GH.lt = false; }
   function ghosts(src, dt, speed, th) {
     if (SETTINGS.quality === 'low' || !th) { if (GH.list.length) ghostClear(); return; }
@@ -258,7 +302,7 @@ const KAnim = (() => {
   // 1인칭 뷰모델: 오른손 + 무기 (왼손은 09_player.js 가 그대로) — 반환 = 왼손이 참고할 { pull, low } 또는 null(기본 동작으로)
   const _vmInfo = { pull: 0, low: 0 };
   function vm(dt, p, A, run, force) {
-    const ka = p.ka; if (!ka || !ka.st || (ka.st === 'unequip' && !force) || kindOf(p, ka.mid) !== ka.kind) { if (GH.list.length || GH.lt) ghostClear(); return null; }
+    const ka = p.ka; if (!ka || !ka.st || (ka.st === 'unequip' && !force) || kindOf(p, ka.mid) !== ka.kind) { if (GH.list.length || GH.lt) ghostClear(); if (GLS) GLS.visible = false; return null; }
     const S = SPEC[ka.kind], sk = MeleeSkin.ofChar(p, ka.mid);
     vmHeld(A.R, ka.mid, sk);
     const o = A.R.hold.children[0]; if (!o) return null;
@@ -275,8 +319,11 @@ const KAnim = (() => {
     const spd = GH.lt ? _tp.distanceTo(_lt) / Math.max(dt, 1e-3) : 0; _lt.copy(_tp); GH.lt = true;
     const sw = ka.st === 'attack' ? ka.sw : null, D = ITEMS[ka.mid];
     if (sw && sw.t > D.wind * 0.85 && sw.t < D.wind + D.strike * 1.4) FX.trail('vm', VM.scene, _tp, _bp, MeleeSkin.trail(ka.mid, sk));
-    ghosts(gs, dt, spd, S.ghost);
-    const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0, it = ka.st === 'inspect' ? trackOf(ka, 'inspect') : null;
+    // 잔상은 손장난(꺼내기·살펴보기·대기)의 빠른 돌기에만 — 휘두르기는 자국이 따로 있어 겹치면 번져 보임
+    ghosts(gs, dt, spd, ka.st === 'attack' || ka.st === 'unequip' ? 0 : S.ghost);
+    const it = ka.st === 'inspect' ? trackOf(ka, 'inspect') : null;
+    glint(it, it ? clamp(ka.t / (it.dur || 1), 0, 1) : 0, _tp, _bp);
+    const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0;
     _vmInfo.pull = sw ? Math.sin(Math.PI * clamp((u - 0.2) / 0.55, 0, 1)) : 0;
     _vmInfo.low = it ? Math.sin(Math.PI * clamp(ka.t / (it.dur || 1), 0, 1)) : 0;
     return _vmInfo;
@@ -297,7 +344,7 @@ const KAnim = (() => {
   }
   const outActive = (p) => !!(p && p.alive && !p.knocked && !p.veh && p.ka && p.ka.st === 'unequip');
   // 근접 무기 뷰모델을 안 그리는 프레임: 잔상을 숨기고 빠르기 기준을 버림 (다른 무기 화면에 잔상이 남지 않게)
-  function vmOff() { if (GH.list.length) { for (const gm of GH.list) gm.visible = false; } GH.lt = false; GH.n = 0; }
+  function vmOff() { if (GH.list.length) { for (const gm of GH.list) gm.visible = false; } GH.lt = false; GH.n = 0; if (GLS) GLS.visible = false; }
 
   // ---------- 카메라 (내 캐릭터) ----------
   //  휘두르기: 숙임(앞뒤 기울기)은 기본 무기와 똑같이 — 내 근접 판정 방향이 카메라 앞 방향이라 숙임이 다르면 맞는 자리가 달라진다
@@ -370,5 +417,5 @@ const KAnim = (() => {
     if (s2.t > D.wind * 0.85 && s2.t < D.wind + D.strike * 1.35) { tipBase(o, s2.id, sk, _t3a, _t3b); FX.trail('c' + c.id, G.scene, _t3a, _t3b, MeleeSkin.trail(s2.id, sk)); }
     return true;
   }
-  return { K, def, SPEC, dbg, kindOf, canInspect, ownDraw, tick, on, inspect, vm, vmOut, vmOff, outActive, cam, hit, alt, swingSound, tppRow, fingersOf, fingers3, tppApply, trail3, sheath, unplace, place, handPose, warmVM };
+  return { K, KO, def, SPEC, dbg, kindOf, canInspect, ownDraw, tick, on, inspect, vm, vmOut, vmOff, outActive, cam, hit, alt, swingSound, tppRow, fingersOf, fingers3, tppApply, trail3, sheath, unplace, place, handPose, warmVM };
 })();
