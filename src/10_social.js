@@ -472,5 +472,5 @@ const Party = (() => {
   }
   function renderAll() { render(); Social.render(); if (G.state === 'lobby') HUD.renderLobby(); }
   return { create, invite, accept, leave, kick, tryStart, lockInfo, settingsChanged, decoratePlay, render, tick, onOnline, send, id, size, has, canInvite, isLeader,
-    get state() { return P; }, get present() { return present; }, get silent() { return silent; }, members: () => (P ? P.members : []) };
+    get state() { return P; }, get present() { return present; }, get silent() { return silent; }, members: () => (P ? P.members : []), ownSet: () => own };   // ownSet: 파티원일 때 방장 설정에 가려 둔 내 설정 (10_cloud.js 가 내 설정으로 저장)
 })();

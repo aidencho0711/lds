@@ -129,7 +129,7 @@ const Lobby = {
   },
   pose(r, t, yaw) { poseLobby(r, t, yaw); },
   applyTime() {
-    const sc = this.scene, t = TIMES[SETTINGS.time];
+    const sc = this.scene, t = TIMES[SETTINGS.time] || TIMES.day;
     if (this.lights) { sc.remove(this.lights.hemi); sc.remove(this.lights.sun); }
     if (this.sky) sc.remove(this.sky);
     this.sky = skyDome(t, 300); sc.add(this.sky);

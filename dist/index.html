@@ -24923,6 +24923,13 @@ function updateCharTimers(c, dt) {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-24', t: '여러 기기로 할 때 랭크·장착·설정이 옛 값으로 되돌아가던 문제 수정', items: [
+    '휴대폰으로 랭크전을 하는 동안 켜 둔 PC 탭이 무엇이든 저장하면 옛 RP·승급전 기록으로 덮어쓰던 문제 수정 — 이제 저장하거나 받아올 때 서버 랭크와 합쳐, 더 많이 진행한 기록이 남음',
+    '두 기기에서 모두 랭크전을 했다면 승급전을 더 통과한 쪽, 같으면 판 수가 많은 쪽 기록을 씀 · 다른 기기에서 한 판·승 수와 최근 기록도 더함 · 일반 랭크와 하드코어는 따로 합침',
+    '장착(옷·총·차량·근접 무기 스킨)과 설정도 이 기기에서 바꾼 것만 올라가 다른 기기에서 바꾼 것이 지워지지 않음 · 다른 기기에서 바꾼 장착은 로비 캐릭터에 바로 보임 (화면 품질·버튼 배치 같은 기기별 설정은 예전처럼 기기마다 따로)',
+    '저장이 한 번 실패한 뒤 다시 저장하면(응답만 못 받은 경우 포함) 다른 기기에서 얻은 골드가 두 번 더해지던 문제도 고침',
+    '경기 중에는 다른 기기에서 바꾼 맵·모드 설정을 적용하지 않고 로비로 돌아온 뒤 적용 (승급전 판정·이어하기가 다른 맵 기준이 되지 않게) · 파티·온라인 경기 중 잠깐 바뀐 설정은 내 계정 설정으로 저장되지 않음',
+  ] },
   { v: 'v23', d: '2026-11-24', t: '파티를 옮기거나 다시 들어갈 때 퇴장 효과가 입장 위에 겹치던 문제 고침', items: [
     '퇴장 연출이 끝나기 전에 다른 파티에 들어가면(또는 미리 보기를 연달아 누르면) 앞 연출의 소품·이름 띠·소리가 새 연출 위에 3초쯤 겹쳐 나오던 문제 — 이제 바뀌는 순간 앞 연출의 것만 깨끗이 치움',
     '파티에 있는 채로 다른 파티의 초대를 수락하면 내 화면에서는 퇴장 없이 바로 새 파티 입장 연출이 나옴 (전에 있던 파티 사람들 화면에는 퇴장이 그대로 보임) · 초대만 해 두고 혼자인 파티를 닫을 때와 로그아웃할 때는 퇴장 연출이 나오지 않음',
@@ -25440,16 +25447,28 @@ const Cloud = (() => {
   }
 
   // ---------- 기록 묶기 / 풀기 ----------
+  //  설정: 파티원·온라인 경기가 잠깐 바꿔 둔 칸(방장 설정 · 경기 설정)은 내 보관본으로 올린다 — 남의 설정이 내 계정에 저장되지 않게
+  //  hold: 경기 중·파티 중이라 아직 적용하지 못한 다른 기기 설정 { from: 그때 이 기기 설정, out: 합친 설정 } → 그 뒤 이 기기에서 바꾸지 않은 칸은 받은 값으로 올림
+  //  mv: 합치기를 아는 빌드가 쓴 설정 표시 — 표시 없는 설정(옛 빌드 탭이 통째로 올린 것)은 받아들이지 않는다 (setMerge)
+  let hold = null;
+  // 키 순서와 상관없는 JSON — 서버(jsonb)는 칸 순서를 바꿔 돌려주므로 같은 내용인지 볼 때 이것으로
+  const cj = (o) => JSON.stringify(o, (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v).sort().reduce((a, x) => { a[x] = v[x]; return a; }, {}) : v));
   function pack() {
-    const st = {}; for (const k in SETTINGS) if (!DEVICE_SETTINGS.includes(k)) st[k] = SETTINGS[k];
+    const st = {}; for (const k in SETTINGS) if (!DEVICE_SETTINGS.includes(k) && k !== 'mv') st[k] = SETTINGS[k];
+    if (G.net && G.net.own) Object.assign(st, G.net.own);
+    const po = Party.ownSet && Party.ownSet(); if (po) Object.assign(st, po);
+    if (hold) for (const k in hold.out) if (k !== 'mv' && cj(st[k]) === cj(hold.from[k])) st[k] = hold.out[k];
+    st.mv = 1;
     return { stats: STATS, rank: Rank.state, settings: st };
   }
+  // 서버 설정으로 바꿈 — 기기별 설정은 이 기기 것 그대로
+  function useSettings(st) { const keep = {}; for (const k of DEVICE_SETTINGS) keep[k] = SETTINGS[k]; SETTINGS = Object.assign({}, DEFAULT_SETTINGS, st, keep); store.set('settings', SETTINGS); }
   function apply(d) {
     STATS = Object.assign({ matches: 0, wins: 0, kills: 0, xp: 0, best: 99, recent: [] }, d.stats || {});
     if (!STATS.dm) STATS.dm = Object.assign({}, DM_STATS0);
     store.set('stats', STATS);
     Rank.replace(d.rank || {});
-    if (d.settings) { const keep = {}; for (const k of DEVICE_SETTINGS) keep[k] = SETTINGS[k]; SETTINGS = Object.assign({}, DEFAULT_SETTINGS, d.settings, keep); store.set('settings', SETTINGS); }
+    if (d.settings) useSettings(d.settings);
   }
   // 전적이 없어도 상점 기록(뽑기·미션·스킨)이 있으면 진행한 계정으로 본다
   const hasProgress = (d) => !!(d && d.stats && ((d.stats.matches || 0) > 0 || (d.stats.xp || 0) > 0 || (d.stats.eco && (d.stats.eco.rev || 0) > 2) || (d.stats.skins || []).length || (d.stats.vskins || []).length || (d.stats.gskins || []).length));
@@ -25460,16 +25479,77 @@ const Cloud = (() => {
   }
 
   // ---------- 동기화 ----------
-  //  base: 마지막으로 서버와 같았던 STATS. 서버의 sync 표식이 base와 다르면(다른 기기가 저장함)
-  //  이 기기에서 바뀐 양만 서버 값에 더해 합친 뒤 올린다 → 재화가 되살아나거나 얻은 스킨이 사라지지 않음
-  let base = null, pullT = 0;
+  //  base: 마지막으로 서버와 같았던 기록 { stats, rank, settings }. 서버의 sync 표식이 base 와 다르면(다른 기기·관리자가 저장함)
+  //  이 기기에서 바뀐 것만 서버 값에 얹어 합친 뒤 올린다 → 재화가 되살아나거나 얻은 스킨이 사라지지 않음
+  //   · 전적: 바뀐 양을 더함 (Eco.mergeStats) · 랭크: base 이후 판 수가 늘어난 쪽 (Rank.mergeRank) · 설정: 이 기기에서 바꾼 칸만 (mergeSet)
+  //   (예전엔 전적만 합치고 랭크·설정은 이 기기 값을 그대로 올려, 오래 열어 둔 탭·다른 기기가 새 RP·승급전·장착을 옛 값으로 덮었다)
+  let base = null, pullT = 0, acctLoad = false;   // acctLoad: 로그인하며 계정 기록을 불러오는 중 (base 가 없어 합칠 수 없으므로 그동안은 올리지 않음)
+  let pend = null;   // 올렸는데 응답을 못 받은 기록 { sync, sent } — 서버에 그 sync 가 있으면 실제로 저장된 것 (다시 합치면 두 번 더해짐)
   const snap = (o) => JSON.parse(JSON.stringify(o || {}));
+  const COLS = 'stats, rank, settings';
+  // base 로 둘 기록: 서버와 같아진 지금 이 기기의 랭크·설정 + 전적(st)
+  const agreed = (st) => ({ stats: snap(st), rank: snap(Rank.state), settings: snap(pack().settings) });
+  // 서버 설정 → 이 기기 묶음(pack)과 같은 모양 (빠진 칸은 기본값)
+  const cloudSet = (st) => { const o = Object.assign({}, DEFAULT_SETTINGS, st); for (const k of DEVICE_SETTINGS) delete o[k]; return o; };
   // 관리자 초기화(supabase/admin.sql admin_reset): 서버 기록의 reset 표식이 이 기기와 다르면 이 기기의 옛 기록을 버리고 따름
   const isReset = (srv) => !!(srv && srv.reset && srv.reset !== STATS.reset);
-  function adoptReset(srv) {
-    STATS = Object.assign({ matches: 0, wins: 0, kills: 0, xp: 0, best: 99, recent: [] }, snap(srv)); STATS.dm = Object.assign({}, DM_STATS0);
-    store.set('stats', STATS); Rank.replace({}); base = snap(STATS); afterMerge();
+  // 설정 합치기 (계산만): 이 기기에서 base 이후 바꾼 칸만 서버 설정 위에 얹은 것(out) · 이 기기에서 바꾼 칸이 있었는가(own → 다시 올려야 함)
+  //  서버 설정이 없거나 표시(mv)가 없으면(배포 전 옛 빌드 탭이 통째로 올린 것) 받아들이지 않고 이 기기 것을 다시 올린다 — 예전처럼 다음 저장이 덮어써 고침
+  function setMerge(srv) {
+    const L = pack().settings;
+    if (!srv || typeof srv !== 'object' || !srv.mv) return { out: null, own: true };
+    const B = (base && base.settings) || {}, out = Object.assign({}, srv); let own = false;
+    for (const k of new Set([...Object.keys(L), ...Object.keys(B)])) if (k !== 'mv' && cj(L[k]) !== cj(B[k])) { own = true; if (L[k] === undefined) delete out[k]; else out[k] = L[k]; }
+    return { out, own };
+  }
+  // 받은 설정을 지금 설정에 적용 — 로비에서, 파티원·온라인 경기 설정이 걸려 있지 않을 때만. 아니면 hold 로 미룸
+  //  (경기 중·불러오는 중에 map·모드가 바뀌면 승급전 판정·이어하기·리콜이 다른 맵 기준이 된다) · 돌려주는 값: 바뀐 칸
+  const canApply = () => G.state === 'lobby' && !(G.net && G.net.own) && !(Party.ownSet && Party.ownSet());
+  function applySet(out) {
+    if (!out) return [];
+    if (!canApply()) { if (!hold) hold = { from: pack().settings }; hold.out = out; return []; }
+    hold = null; const st = Object.assign({}, out); delete st.mv;
+    const was = SETTINGS; useSettings(st);
+    return Object.keys(SETTINGS).filter((k) => cj(SETTINGS[k]) !== cj(was[k]));
+  }
+  // 다른 기기에서 바꾼 장착·소리·시간대를 로비에 바로 보이게 (실패해도 기록은 이미 다 합쳐 둠)
+  function refreshSet(ch) {
+    if (!ch.length || G.state !== 'lobby') return;
+    try {
+      if (G.applySettings) for (const k of ch) G.applySettings(k);
+      if (ch.some((k) => ['look', 'body', 'glook', 'gshow'].includes(k)) && Lobby.setLook) Lobby.setLook(SETTINGS.look);
+      if (ch.includes('vlook') && Lobby.motoProp) Lobby.motoProp();
+      if (ch.includes('time') && Lobby.applyTime) Lobby.applyTime();
+    } catch (e) { console.warn('Cloud settings', e); }
+  }
+  // 경기·파티 중에 미뤄 둔 설정을 로비에서 적용 (그 뒤 이 기기에서 바꾼 칸은 그대로 — pack 이 이미 그렇게 묶음)
+  function flushHold() {
+    if (!hold || !canApply()) return;
+    const st = pack().settings; hold = null; refreshSet(applySet(st));
+    try { HUD.renderLobby(); } catch (e) { /* 로비 화면이 없어도 기록은 적용됨 */ }
+  }
+  // 서버 기록이 이 기기가 마지막으로 올리려던 것(응답을 못 받음)과 같으면 실제로 저장된 것 → 그대로 base 로 (다시 합치지 않음)
+  function landed(row) { if (pend && row && row.stats && row.stats.sync === pend.sync) base = pend.sent; pend = null; }
+  // 다른 기기·관리자가 저장한 서버 기록(row)과 합침 → base 는 이제 그 서버 기록. 다시 올려야 하면 true
+  //  먼저 모두 계산하고 기록·base 를 한꺼번에 바꾼 뒤 화면을 고친다 (화면 코드가 실패해도 base 가 어긋나 다음 합치기에서 두 번 더하지 않게)
+  function merge(row) {
+    const srv = row.stats, own = cj(STATS) !== cj(base.stats) || cj(Rank.state) !== cj(base.rank);
+    const st = Eco.mergeStats(base.stats, STATS, srv), rk = Rank.mergeRank(Rank.state, row.rank, base.rank), sm = setMerge(row.settings);
+    st.sync = srv.sync; STATS = st; Rank.replace(rk);
+    base = { stats: snap(srv), rank: Rank.normOf(row.rank), settings: cloudSet(row.settings) };
+    const ch = applySet(sm.out); afterMerge(); refreshSet(ch);
+    // 이 기기에서 바뀐 것이 있었거나, 합친 랭크가 서버 것과 다르면(옛 탭이 되돌린 랭크를 이 기기 기록으로 지킴) 다시 올린다
+    return own || sm.own || cj(Rank.state) !== cj(Rank.normOf(row.rank));
+  }
+  // 초기화된 기록 받기: 전적·랭크는 서버 것 그대로 (admin_reset 은 랭크를 비움). 설정은 초기화하지 않으므로 이 기기에서 바꾼 칸은 얹음 → 그런 칸이 있었으면 true
+  function adoptReset(row) {
+    const st = Object.assign({ matches: 0, wins: 0, kills: 0, xp: 0, best: 99, recent: [] }, snap(row.stats)); st.dm = Object.assign({}, DM_STATS0);
+    const sm = setMerge(row.settings);
+    STATS = st; store.set('stats', STATS); Rank.replace(row.rank || {});
+    base = { stats: snap(STATS), rank: snap(Rank.state), settings: cloudSet(row.settings) };
+    const ch = applySet(sm.out); afterMerge(); refreshSet(ch);
     if (G.state === 'lobby') HUD.lobbyNote('관리자가 이 계정의 기록을 초기화했습니다');
+    return sm.own;
   }
   function afterMerge() {
     store.set('stats', STATS);
@@ -25477,35 +25557,44 @@ const Cloud = (() => {
   }
   async function pushNow() {
     if (!sb || !user) return false;
-    if (busy) { dirty = true; return false; }
+    if (busy || acctLoad) { dirty = true; return false; }
     busy = true; dirty = false; status = 'syncing'; render();
+    const me = user;
     try {
-      const cur = await sb.from('player_data').select('stats').eq('user_id', user.id).maybeSingle();
-      if (!cur.error && cur.data && isReset(cur.data.stats)) adoptReset(cur.data.stats);
-      else if (!cur.error && cur.data && cur.data.stats && base && cur.data.stats.sync && cur.data.stats.sync !== base.sync) { STATS = Eco.mergeStats(base, STATS, cur.data.stats); afterMerge(); }
+      flushHold();
+      const cur = await sb.from('player_data').select(COLS).eq('user_id', me.id).maybeSingle();
+      if (cur.error) throw cur.error;   // 못 읽었으면 올리지 않는다 (합치지 않고 올리면 다른 기기의 새 기록을 덮어씀) → 나중에 다시
+      if (user !== me) return false;    // 읽는 사이 로그아웃·계정 전환 → 이 기기 기록(이제 게스트)을 건드리지 않음
+      const row = cur.data; landed(row);
+      if (row && isReset(row.stats)) adoptReset(row);
+      else if (row && row.stats && base && row.stats.sync && row.stats.sync !== base.stats.sync) merge(row);
       STATS.sync = Eco.DEV + ':' + Date.now().toString(36); store.set('stats', STATS);
-      const d = pack();
-      const { error } = await sb.from('player_data').upsert({ user_id: user.id, stats: d.stats, rank: d.rank, settings: d.settings });
+      const d = pack(), sent = agreed(d.stats);   // 올린 그대로를 base 로 (올리는 사이 이 기기에서 바뀐 것은 다음 저장 때 합침)
+      pend = { sync: d.stats.sync, sent };
+      const { error } = await sb.from('player_data').upsert({ user_id: me.id, stats: d.stats, rank: d.rank, settings: d.settings });
       if (error) throw error;
-      base = snap(STATS);
+      if (user !== me) return false;
+      pend = null; base = sent;
       lastSync = Date.now(); status = 'online'; lastErr = '';
-      Eco.flushGrants('saved');   // 서버에 저장된 보상은 대기열에서 지움 (10_eco.js)
+      Eco.flushGrants('saved', sent.stats.eco);   // 서버에 저장된 보상(올린 기록에 든 것만)은 대기열에서 지움 (10_eco.js)
       return true;
     } catch (e) { status = 'error'; lastErr = msgOf(e); dirty = true; return false; }
     finally { busy = false; render(); if (dirty && status !== 'error') schedule(1500); }
   }
-  // 다른 기기에서 바뀐 기록 받아오기 (앱으로 돌아올 때·상점/미션을 열 때, 15초에 한 번까지)
+  // 다른 기기에서 바뀐 기록(전적·랭크·설정) 받아오기 (앱으로 돌아올 때·상점/미션을 열 때, 15초에 한 번까지)
   async function pull(force) {
-    if (!sb || !user || busy || (!force && Date.now() - pullT < 15000)) return false;
+    if (!sb || !user || busy || acctLoad) return false;
+    flushHold();   // 경기·파티 중에 받아 둔 다른 기기 설정을 로비에서 적용
+    if (!force && Date.now() - pullT < 15000) return false;
     pullT = Date.now();
+    const b0 = base, me = user;
     try {
-      const cur = await sb.from('player_data').select('stats').eq('user_id', user.id).maybeSingle();
-      const srv = cur.data && cur.data.stats;
-      if (!cur.error && isReset(srv)) { adoptReset(srv); return true; }
-      if (cur.error || !srv || !base || !srv.sync || srv.sync === base.sync) return false;
-      const localChanged = JSON.stringify(STATS) !== JSON.stringify(base);
-      STATS = Eco.mergeStats(base, STATS, srv); STATS.sync = srv.sync; base = snap(srv); afterMerge();
-      if (localChanged) { dirty = true; schedule(500); }
+      const cur = await sb.from('player_data').select(COLS).eq('user_id', me.id).maybeSingle(), row = !cur.error && cur.data, srv = row && row.stats;
+      if (busy || base !== b0 || user !== me || acctLoad) return false;   // 받는 사이 저장이 시작됐거나 끝남·계정이 바뀜 → 받은 기록이 옛것일 수 있다 (저장이 서버 기록과 합친다)
+      landed(row);
+      if (isReset(srv)) { if (adoptReset(row)) { dirty = true; schedule(500); } return true; }
+      if (!srv || !base || !srv.sync || srv.sync === base.stats.sync) return false;
+      if (merge(row)) { dirty = true; schedule(500); }
       return true;
     } catch (e) { return false; }
   }
@@ -25518,27 +25607,31 @@ const Cloud = (() => {
 
   // 로그인 직후: 게스트 기록 보관 → 서버 기록 불러오기(없으면 이 기기 기록 올리기)
   async function afterLogin(u, fresh) {
-    user = u;
-    const prev = store.get('account', null);
-    const prof = await profOf(u.id);   // 조회 실패해도 진행
-    // v23 밴 중인 계정 (토큰이 아직 살아 있던 세션 복원 · 로그인 직후): 아무것도 불러오지 않고 바로 로그아웃 + 안내 창
-    const ban = banOf(prof);
-    if (ban) {
-      signingOut = true;
-      try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
-      user = null; store.set('account', null); status = 'idle'; render();
-      showBan(ban, (prof && prof.username) || '');
-      const e = new Error(`정지된 계정입니다 — ${banTime(ban.until)}까지`); e.ban = true; throw e;
-    }
-    name = (prof && prof.username) || (u.user_metadata && u.user_metadata.username) || '플레이어';
-    if (!store.get('guestBackup', null)) store.set('guestBackup', { stats: STATS, rank: Rank.state, settings: SETTINGS });
-    let row = null;
-    const r = await sb.from('player_data').select('stats, rank, settings, updated_at').eq('user_id', u.id).maybeSingle();
-    if (r.error) throw r.error;
-    row = r.data;
+    user = u; hold = null; pend = null;
+    // 계정 기록을 다 불러올 때까지(acctLoad) 저장하지 않음 — base 가 없을 때 올리면 이 기기의 옛 기록이 합쳐지지 않고 서버를 덮는다
+    acctLoad = true;
+    let prev = null, prof = null, row = null;
+    try {
+      prev = store.get('account', null);
+      prof = await profOf(u.id);   // 조회 실패해도 진행
+      // v23 밴 중인 계정 (토큰이 아직 살아 있던 세션 복원 · 로그인 직후): 아무것도 불러오지 않고 바로 로그아웃 + 안내 창
+      const ban = banOf(prof);
+      if (ban) {
+        signingOut = true;
+        try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
+        user = null; store.set('account', null); status = 'idle'; render();
+        showBan(ban, (prof && prof.username) || '');
+        const e = new Error(`정지된 계정입니다 — ${banTime(ban.until)}까지`); e.ban = true; throw e;
+      }
+      name = (prof && prof.username) || (u.user_metadata && u.user_metadata.username) || '플레이어';
+      if (!store.get('guestBackup', null)) store.set('guestBackup', { stats: STATS, rank: Rank.state, settings: SETTINGS });
+      const r = await sb.from('player_data').select('stats, rank, settings, updated_at').eq('user_id', u.id).maybeSingle();
+      if (r.error) throw r.error;
+      row = r.data;
+    } finally { acctLoad = false; }   // 아래 apply·base 정하기는 기다림 없이 이어지므로 그 사이에 저장이 끼지 않는다
     let note;
-    if (row && isReset(row.stats) && !hasProgress(row)) { apply(row); base = snap(row.stats); note = '관리자가 이 계정의 기록을 초기화했습니다'; }
-    else if (hasProgress(row)) { apply(row); base = snap(row.stats); note = `${name}님의 기록을 불러왔습니다`; }
+    if (row && isReset(row.stats) && !hasProgress(row)) { apply(row); base = agreed(row.stats); note = '관리자가 이 계정의 기록을 초기화했습니다'; }
+    else if (hasProgress(row)) { apply(row); base = agreed(row.stats); note = `${name}님의 기록을 불러왔습니다`; }
     else { // 새 계정(또는 아직 기록이 없는 계정): 지금 이 기기의 기록을 계정으로 옮김
       await pushNow();
       // '옮김'이므로 로그아웃 뒤 게스트 기록은 새로 시작 (같은 기록이 게스트·계정 양쪽에 복사되지 않게). 기기별 설정은 유지
@@ -25552,6 +25645,7 @@ const Cloud = (() => {
     EvBR.recover();             // 예전에 이 기기에서 받았는데 계정에 들어오지 않은 백룸 보상을 한 번 복구 (10_event.js)
     Dev.onLogin();   // 개발자 계정이면 모든 스킨 지급 (10_dev.js)
     refreshUi();
+    if (dirty) schedule(1500);   // 계정을 불러오는 동안 미룬 저장
     if (G.onAuth) try { G.onAuth(true); } catch (e) { console.warn(e); } // 친구·파티 연결
     if (prev && prev.id === u.id && prev.name && prof && prof.username && prev.name !== prof.username) renamed(prev.name, name, prof);   // 이 기기가 모르는 사이에 아이디가 바뀜
     return note;
@@ -25767,7 +25861,7 @@ const Cloud = (() => {
     signingOut = true;
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
     if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
-    user = null; name = null; admin = false; role = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null;
+    user = null; name = null; admin = false; role = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null; hold = null; pend = null;
     STAFF.clear(); staffWant.clear(); staffSrv = null; staffOffT = 0;
     store.set('account', null);
     restoreGuest();
@@ -26978,9 +27072,9 @@ const Eco = (() => {
     return 'ok';
   }
   // mode 'login': 계정 기록을 막 불러옴 → 기록에 없는 것은 넣고(서버에 저장될 때까지 남김), 이미 있는 것은 지움 / 'saved': 서버 저장 성공 → 기록에 있는 것만 지움
-  function flushGrants(mode) {
+  function flushGrants(mode, eco) {   // eco: 'saved' 일 때 실제로 올린 기록의 eco (올리는 사이 받은 보상은 아직 서버에 없으므로 대기열에 남김)
     const P = pend(); if (!P.length) return;
-    const e = E(), left = [];
+    const e = (eco && typeof eco === 'object' && eco) || E(), left = [];
     for (const g of P) {
       const had = Array.isArray(e.gr) && e.gr.includes(g.id);
       if (mode === 'login' && !had) { grantApply(g); left.push(g); }
@@ -31411,7 +31505,8 @@ const Rank = (() => {
   const capOf = (sg) => (sg >= 4 ? Infinity : SUP.base + sg * SUP.span);
   const floorOf = (sg) => (sg > 0 ? SUP.base + (sg - 1) * SUP.span : 0);
   // 기록 정리 + v23 개편 이전 기록(cv 없음) 옮기기: 4000 RP 넘으면 4000으로 (S.cut — 보상·안내는 settle)
-  function norm() {
+  //  S: 정리할 기록 — 지금 기록, 또는 합치기 전의 서버·base 기록 (normOf)
+  function norm(S) {
     if (!Array.isArray(S.history)) S.history = [];
     if (!Array.isArray(S.placements)) S.placements = [];
     S.rp = Math.max(0, Math.floor(+S.rp || 0)); S.sg = clamp(Math.floor(+S.sg || 0), 0, 4); S.ss = Math.max(0, Math.floor(+S.ss || 0));
@@ -31423,7 +31518,7 @@ const Rank = (() => {
     if (S.rp > cap) S.rp = cap; if (S.rp < fl) S.rp = fl;
     S.peak = Math.min(Math.max(+S.peak || 0, S.rp), cap);
   }
-  norm(); store.set('rank', S);
+  norm(S); store.set('rank', S);
   // RP만 알 때(다른 계정 — 랭킹 서버가 sg 를 안 줄 때) 통과한 승급전 수 짐작: 티어 끝 RP 는 '승급전 대기'로 본다
   const sgGuess = (rp) => (rp > SUP.base ? Math.min(4, Math.ceil((rp - SUP.base) / SUP.span)) : 0);
   function mk(t, div, rp, into, need, top, series, sg) {
@@ -31487,7 +31582,7 @@ const Rank = (() => {
         S.rp = clamp(Math.round(sum * 3.5), 0, 1999); S.peak = Math.max(S.peak, S.rp);
         out.revealed = true; out.after = mine();
       }
-      S.history.unshift({ placement: true, place: r.place, total: r.total, kills: r.kills });
+      S.history.unshift({ placement: true, place: r.place, total: r.total, kills: r.kills, t: Date.now() });   // t: 끝난 시각 (여러 기기 기록을 합칠 때 순서·같은 판 — mergeRank)
       S.history = S.history.slice(0, 10); save(); return out;
     }
     const before = mine();
@@ -31498,14 +31593,14 @@ const Rank = (() => {
       const passed = ok && S.ss >= need;
       if (passed) { S.sg++; S.ss = 0; }
       const after = mine();
-      S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta: 0, rp: S.rp, ser: ok ? 1 : -1 });
+      S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta: 0, rp: S.rp, ser: ok ? 1 : -1, t: Date.now() });
       S.history = S.history.slice(0, 10); save();
       return { placement: false, series: true, ok, why, kills: r.kills || 0, needK: SERIES_KILLS, streak: passed ? need : S.ss, need, lim, map: r.map, passed, delta: 0, before, after, promoted: passed, demoted: false, tierUp: passed };
     }
     const raw = rpDelta(r, before.t), rp = clamp(S.rp + raw, floorOf(S.sg), capOf(S.sg)), delta = rp - S.rp;
     S.rp = rp; S.peak = Math.max(S.peak, S.rp);
     const after = mine();
-    S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta, rp: S.rp });
+    S.history.unshift({ place: r.place, total: r.total, kills: r.kills, delta, rp: S.rp, t: Date.now() });
     S.history = S.history.slice(0, 10); save();
     return { placement: false, delta, raw, before, after, promoted: ord(after) > ord(before), demoted: ord(after) < ord(before), tierUp: after.t > before.t,
       seriesStart: after.series, guard: delta > raw };   // seriesStart: 이번 판으로 티어 끝에 닿아 승급전 시작 · guard: 강등 보호로 덜 깎임
@@ -31520,6 +31615,36 @@ const Rank = (() => {
     return true;
   }
   function cutSeen() { if (S.cut && !S.cut.seen) { S.cut.seen = 1; save(); } }
+
+  // ---------- 여러 기기 합치기 (10_cloud.js — 저장·받아오기 때 서버 기록과) ----------
+  //  local 이 기기 · server 서버 · base 마지막으로 서버와 같았던 기록. 랭크는 경기로만 바뀌므로 base 이후 판 수(games)가 늘어난 쪽을 통째로 고른다
+  //  (RP·단계·승급전·배치고사를 한 기록에서 — 칸마다 섞으면 티어와 승급전 상태가 어긋남). 일반 랭크와 하드코어(hc)는 따로 고른다
+  //   · 둘 다 늘었으면 승급전을 더 통과한 쪽(강등 보호) → 판 수가 많은 쪽 → RP 높은 쪽. 다른 쪽에서 한 판·승 수는 더하고, 최고 RP 는 큰 쪽, 최근 기록은 합친다
+  //   · 둘 다 그대로면 판 수가 많은 쪽(옛 기기가 덮어써 줄어든 서버 기록은 버림) → 같으면 이 기기에서 바뀐 것(개발자 도구 등)이 있을 때만 이 기기 것
+  //   · 개편 보상 표식(cut 의 받음·안내 봄)은 양쪽을 합친다
+  const normOf = (o) => { const x = Object.assign(S0(), JSON.parse(JSON.stringify(o && typeof o === 'object' ? o : {}))); norm(x); return x; };
+  // 키 순서와 상관없는 JSON — 서버(jsonb)는 칸 순서를 바꿔 돌려주므로 같은 판·같은 기록인지 볼 때 이것으로
+  const cj = (o) => JSON.stringify(o, (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v).sort().reduce((a, x) => { a[x] = v[x]; return a; }, {}) : v));
+  function mergeRank(local, server, base) {
+    const L = normOf(local), R = normOf(server), B = normOf(base), n = (o, k) => Math.max(0, Math.floor(+o[k] || 0)), arr = (a) => (Array.isArray(a) ? a : []);
+    // 최근 기록: 양쪽에 다 있는 판은 하나만, 늦게 끝난 판부터 10개 (끝난 시각 t 가 없는 옛 기록은 뒤에 그대로)
+    const hist = (a, b) => { const out = arr(a).slice(), ks = out.map(cj); for (const x of arr(b)) { const i = ks.indexOf(cj(x)); if (i >= 0) ks[i] = null; else out.push(x); } return out.sort((x, y) => (y.t || 0) - (x.t || 0)).slice(0, 10); };
+    // 되돌아간 기록: 통과한 승급전 수(sg)·최고 RP(peak)는 관리자 초기화(adoptReset — 합치기 전에 따로 처리) 말고는 줄지 않는다
+    //  → base 보다 작으면 옛 탭·옛 빌드가 덮어쓴 것. 판 수가 더 많아도 그쪽은 고르지 않는다 (승급전 통과가 사라지지 않게)
+    const back = (x, b) => n(x, 'sg') < n(b, 'sg') || n(x, 'peak') < n(b, 'peak');
+    const pick = (l, r, b) => {
+      const bl = back(l, b), br = back(r, b); if (bl !== br) return br ? l : r;
+      const gl = n(l, 'games'), gr = n(r, 'games'), gb = n(b, 'games');
+      if (gl <= gb || gr <= gb) return gl !== gr ? (gl > gr ? l : r) : cj(l) === cj(b) ? r : l;
+      const w = ((n(l, 'sg') - n(r, 'sg')) || (gl - gr) || (n(l, 'rp') - n(r, 'rp'))) > 0 ? l : r, o = w === l ? r : l;
+      return Object.assign({}, w, { games: n(w, 'games') + n(o, 'games') - gb, wins: n(w, 'wins') + Math.max(0, n(o, 'wins') - n(b, 'wins')), peak: Math.max(n(w, 'peak'), n(o, 'peak')), history: hist(w.history, o.history) });
+    };
+    const main = (o) => Object.assign({}, o, { hc: undefined }), hc = (o) => Object.assign(HC0(), o.hc && typeof o.hc === 'object' ? o.hc : {});   // main: 하드코어를 뺀 일반 랭크 (칸 순서는 그대로)
+    const out = pick(main(L), main(R), main(B));
+    if (L.cut || R.cut) out.cut = Object.assign({}, ...[L.cut, R.cut, out.cut].filter((c) => c && typeof c === 'object'));
+    if (L.hc || R.hc) out.hc = pick(hc(L), hc(R), hc(B));
+    return out;
+  }
 
   // ---------- 엠블럼 ----------
   const cache = {};
@@ -31907,7 +32032,7 @@ const Rank = (() => {
     H.rp = Math.max(0, H.rp + delta); H.peak = Math.max(H.peak || 0, H.rp);
     const after = hcTierOf(H.rp), rank = (x) => x.t * 4 + (4 - x.div);
     const p = (r.place - 1) / Math.max(1, r.total - 1), lazy = r.quit ? 0 : Math.round(52 * (1 - p) ** 2 * 0.8 * (1 - fightK(r)));   // 싸우지 않아 덜 받은 순위 점수
-    H.history = [{ place: r.place, total: r.total, kills: r.kills, delta, rp: H.rp }].concat(H.history || []).slice(0, 10); save();
+    H.history = [{ place: r.place, total: r.total, kills: r.kills, delta, rp: H.rp, t: Date.now() }].concat(H.history || []).slice(0, 10); save();
     return { hc: true, placement: false, delta, lazy: lazy >= 3 ? lazy : 0, before, after, promoted: rank(after) > rank(before), demoted: rank(after) < rank(before), tierUp: after.t > before.t };
   }
   // 하드코어 휘장: 위아래가 뾰족한 각진 판(흑철) + 티어별 장식. 단계는 각진 명판에 로마 숫자
@@ -32023,9 +32148,9 @@ const Rank = (() => {
     return { kind: 'ranked', emb: emblem(ti.t, ti.div), label: ti.label, sub: ti.top ? `${S.rp} RP` : `${ti.into} / ${ti.need} RP`, tier: ti };
   }
   return { get state() { return S; }, get hc() { return hcS(); }, hcOk, hcTierOf, applyHc, hcEmblem, hcStatus, embOf, embCanvas, embParts, rpDeltaHc, unlocked, placed, tierOf, mine, peakTier, viewOf, series, settle, cutSeen, ord, apply, botDifficulty, botCount, mixOf, emblem, status, placementScore, rpDelta,
-    reset() { S = S0(); norm(); save(); }, _set(o) { Object.assign(S, o); norm(); save(); },
+    reset() { S = S0(); norm(S); save(); }, _set(o) { Object.assign(S, o); norm(S); save(); },
     // 계정 전환: 통째로 바꿔 끼움 (저장 알림 없이) — 개편 전 기록이면 norm 이 옮긴다
-    replace(o) { S = Object.assign(S0(), o || {}); norm(); store.set('rank', S); } };
+    replace(o) { S = Object.assign(S0(), o || {}); norm(S); store.set('rank', S); }, normOf, mergeRank };
 })();
 
 // ---------- 10_rankfx.js ----------
@@ -34949,7 +35074,7 @@ const Party = (() => {
   }
   function renderAll() { render(); Social.render(); if (G.state === 'lobby') HUD.renderLobby(); }
   return { create, invite, accept, leave, kick, tryStart, lockInfo, settingsChanged, decoratePlay, render, tick, onOnline, send, id, size, has, canInvite, isLeader,
-    get state() { return P; }, get present() { return present; }, get silent() { return silent; }, members: () => (P ? P.members : []) };
+    get state() { return P; }, get present() { return present; }, get silent() { return silent; }, members: () => (P ? P.members : []), ownSet: () => own };   // ownSet: 파티원일 때 방장 설정에 가려 둔 내 설정 (10_cloud.js 가 내 설정으로 저장)
 })();
 
 // ---------- 10_touch.js ----------
@@ -37184,7 +37309,7 @@ const Lobby = {
   },
   pose(r, t, yaw) { poseLobby(r, t, yaw); },
   applyTime() {
-    const sc = this.scene, t = TIMES[SETTINGS.time];
+    const sc = this.scene, t = TIMES[SETTINGS.time] || TIMES.day;
     if (this.lights) { sc.remove(this.lights.hemi); sc.remove(this.lights.sun); }
     if (this.sky) sc.remove(this.sky);
     this.sky = skyDome(t, 300); sc.add(this.sky);
