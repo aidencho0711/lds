@@ -359,6 +359,11 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 #rotateHint { position: absolute; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--ink); text-align: center; padding: 24px; }
 #rotateHint div { display: flex; flex-direction: column; gap: 10px; align-items: center; }
 #fatal { position: absolute; inset: 0; z-index: 60; background: var(--ink); color: var(--sand); padding: 24px; display: grid; place-items: center; text-align: center; }
+/* 화면(WebGL)이 끊겼을 때 (11_game.js GLX): 기다리는 동안 글자가 깜박임 · 돌아오지 않으면 새로고침 버튼 */
+#glLost { position: absolute; inset: 0; z-index: 55; display: grid; place-items: center; background: rgba(8, 10, 11, 0.92); text-align: center; padding: 24px; }
+#glLost > div { display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 360px; }
+#glLost b { font-size: 1.05rem; animation: blink 1.4s ease-in-out infinite; }
+#glLost.fail b { animation: none; }
 
 /* 좁은 화면 (모바일 가로) */
 @media (max-height: 520px), (max-width: 760px) {

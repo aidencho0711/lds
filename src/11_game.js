@@ -47,6 +47,78 @@ function initRenderer() {
   window.addEventListener('resize', onResize);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
   G.onResize = onResize;
+  GLX.init(r);
+}
+// ---------- v23 화면(WebGL) 끊김 · 복구 ----------
+//  휴대폰은 앱을 바꾸거나 메모리가 모자라면 GL 컨텍스트를 버린다 — 예전엔 안내 없이 화면이 멈췄고, 돌아와도 금속 반사(환경맵)가 까맣게 · 끊긴 사이 그린 아이콘은 빈 그림으로 남았다
+//  · 끊김(webglcontextlost): 기본 동작을 막아 복구를 허용하고(three r128 도 막음) 그리기를 멈춘 뒤 '화면을 다시 불러오는 중…'
+//    혼자 하는 경기는 그동안 멈춘다(보이지 않는 사이 죽지 않게) · 같이 하기는 경기만 계속 돌린다(다른 사람 화면이 멈추지 않게)
+//  · 복구(webglcontextrestored): three 가 GL 상태를 새로 만들고 텍스처·버퍼·셰이더는 CPU 에 남은 것으로 다시 올린다 (그림자 설정도 three 가 지킴)
+//    (GPU 에만 있던 환경맵은 05_models.js 가 CPU 사본으로 · 읽는 중이던 아이콘은 다시 줄에) → 한 장 그려 본 뒤 안내를 닫음
+//  · 화면이 보이는 채로 5초 안에 돌아오지 않거나 복구한 뒤 그리지 못하면 '새로고침' — 경기 중이면 이어하기 저장(10_resume.js)부터
+//  · WebGL 컨텍스트는 이 렌더러 하나 — 로비·상자 컷신·총기 스킨·입장 연출은 모두 이것으로 그리고, 티어 컷신·지도는 2D 캔버스, 관전은 영상
+//    (친구 관전 영상 · 티어 승급 컷신을 보는 동안은 안내로 가리지 않는다)
+const GLX = {
+  lost: false, bad: false, t: 0, iv: 0, gl: null, cv2: null, cvLost: false, cvTrust: false, rfx: false,   // bad: 복구했는데 그리지 못함 · t: 끊긴(또는 다시 보이기 시작한) 시각 · cv2·cvLost·cvTrust: 2D 캔버스 확인 (아래 pad) · rfx: 안내 때 본 티어 컷신
+  init(r) {
+    const cv = r.domElement; this.gl = r.getContext();
+    cv.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.down(); }, false);
+    cv.addEventListener('webglcontextrestored', () => this.up(), false);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.t = performance.now(); if (this.lost) this.show(); });   // 5초는 다시 보일 때부터 센다
+    $('glReload').addEventListener('click', () => this.reload());
+    try { this.cvTrust = this.mag(this.pad(4)); this.watch2d(); } catch (e) { console.warn(e); }
+  },
+  // 2D 캔버스도 지워졌는가 — 진짜 GPU 프로세스 오류(메모리 부족·응답 없음)는 WebGL 뿐 아니라 가속 2D 캔버스(CanvasTexture 원본·지도 바탕)까지 비운다
+  //  → 복구는 되는데 three 가 빈 원본을 다시 올려 글자·무늬·집 외벽이 까맣게 된다 (WEBGL_lose_context 시험으로는 보이지 않음)
+  //  자홍색으로 칠한 256×256 캔버스(텍스처 원본과 같은 크기대 — 128×129 보다 작으면 브라우저가 가속하지 않음)가 contextlost 를 받았거나
+  //  복구 때 읽은 값이 자홍색이 아니면 그리지 않고 새로고침 안내(이어하기 저장) · 한 캔버스는 한 번만 읽는다 (여러 번 읽으면 Chrome 이 CPU 캔버스로 바꿔 확인이 안 됨)
+  //  처음에 작은 캔버스로 읽어 보아 읽기를 막거나 바꾸는 브라우저(개인정보 보호)면 읽기로는 판단하지 않고 이벤트로만 (cvTrust)
+  pad(n) { const c = document.createElement('canvas'); c.width = c.height = n; const x = c.getContext('2d'); x.fillStyle = '#ff00ff'; x.fillRect(0, 0, n, n); return c; },
+  mag(c) { try { const d = c.getContext('2d').getImageData(0, 0, 1, 1).data; return d[0] > 200 && d[1] < 60 && d[2] > 200 && d[3] > 200; } catch (e) { return false; } },
+  watch2d() { const c = this.pad(256); c.addEventListener('contextlost', () => { if (c === this.cv2) this.cvLost = true; }); this.cv2 = c; },
+  cvGone() { return this.cvLost || (this.cvTrust && !!this.cv2 && !this.mag(this.cv2)); },
+  // 이번 프레임에 그리면 안 되는가 (이벤트가 오기 전에도 GL 에 직접 물어본다 — 끊긴 GL 에 셰이더를 만들면 three 가 오류)
+  //  끊긴 동안 티어 승급 컷신이 시작·끝나면 그 프레임에 안내를 감추거나 다시 덮는다 (1초 간격을 기다리지 않게 — show 가 rfx 를 적음)
+  off() { if (!this.lost && this.gl && this.gl.isContextLost()) this.down(); else if (this.lost && RankFx.active !== this.rfx) this.show(); return this.lost; },
+  down() {
+    if (this.lost) return; this.lost = true; this.bad = false; this.t = performance.now();
+    try { Models.glLost(); } catch (e) { console.warn(e); }
+    clearInterval(this.iv); this.iv = setInterval(() => this.show(), 1000); this.show();
+  },
+  up() {
+    if (!this.lost) return; this.lost = false; this.bad = this.cvGone();   // 2D 캔버스까지 지워졌으면 그리지 않고 바로 새로고침 안내 · 아니면 앞서 그리지 못했어도 이번 복구로 다시 해 본다
+    if (!this.bad) try { G.onResize(); drawNow(); } catch (e) { console.warn('화면 복구 실패', e); this.bad = true; }   // 바로 한 장 그림 — 셰이더를 다시 만드는 동안은 안내가 덮고 있게
+    if (this.gl.isContextLost()) { this.down(); return; }   // 그새 다시 끊김: 다시 기다림
+    if (this.bad) { this.lost = true; this.show(); return; }   // 그리지 못함: 새로고침 안내 (그리기는 계속 멈춤)
+    clearInterval(this.iv); this.show();
+    try { this.watch2d(); this.refill(); } catch (e) { console.warn(e); }   // 다음 확인용 새 캔버스 · 끊긴 사이 빈칸이 된 그림 다시
+  },
+  // 끊긴 동안 바로 그리려다 빈칸이 된 그림 — 줄(img[data-th] · Shop.pump)을 거치지 않는 상점 상자·차량, 창고 차량 그림 (열려 있는 화면만 다시 그림)
+  refill() {
+    if (G.state !== 'lobby') return;
+    const vis = (p) => { const e = document.querySelector(`[data-pane=${p}]`); return !!e && !e.hidden; };
+    if (vis('shop')) Shop.render();
+    if (vis('custom')) HUD.renderWarehouse();
+  },
+  // 안내 (끊긴 동안 1초마다): 기다리는 중 → 보이는 채로 5초가 지나거나 복구 뒤 그리지 못하면 새로고침 버튼
+  //  친구 관전 영상 · 티어 승급 컷신(2D 캔버스 — 10_rankfx.js)은 GL 없이 보이므로 가리지 않는다 (컷신이 시작·끝나는 프레임에 off 가 다시 부름)
+  show() {
+    const el = $('glLost'), fail = this.lost && (this.bad || (!document.hidden && performance.now() - this.t > 5000));
+    this.rfx = RankFx.active; el.hidden = !this.lost || Watch.viewing() || this.rfx;
+    if (el.hidden) return;
+    el.classList.toggle('fail', fail); $('glReload').hidden = !fail;
+    $('glLostT').textContent = fail ? '화면을 다시 불러오지 못했습니다' : '화면을 다시 불러오는 중…';
+    // 이어하기를 약속하는 것은 실제로 저장하는 경기일 때만 (10_resume.js can · 끝난 경기(G.over)는 새로고침하면 결과만 기록됨)
+    $('glLostMsg').textContent = fail ? '새로고침하면 다시 그립니다.' + (Resume.can() && !G.over ? ' 진행 중이던 경기는 새로고침한 뒤 이어서 할 수 있습니다.' : '') : '그래픽(WebGL) 연결이 잠시 끊겼습니다. 곧 이어서 그립니다.';
+    if (fail) releaseLock();   // PC: 마우스 잠금을 풀어 버튼을 누를 수 있게
+  },
+  reload() { try { Resume.save(); } catch (e) { console.warn(e); } location.reload(); },   // 경기 상태를 먼저 저장 (pagehide 에서도 저장하지만 확실히)
+};
+// 지금 화면을 한 장 그림 (GL 복구 직후 — GLX.up)
+function drawNow() {
+  const r = G.renderer;
+  if (G.state === 'lobby' || G.state === 'loading') { if (Cutscene.active) Cutscene.render(r); else if (!Watch.viewing()) r.render(Lobby.scene, Lobby.cam); }
+  else if (G.scene) { r.render(G.scene, G.camera); if (G.state === 'play') renderViewModel(); }
 }
 function skyDome(t, R = 1500) {
   const g = new THREE.SphereGeometry(R, 24, 12), col = [], top = new THREE.Color(t.top), hor = new THREE.Color(t.hor), c = new THREE.Color();
@@ -862,20 +934,23 @@ function loop(ts) {
   if (!FrameGate.pass(ts === undefined ? t : ts)) return;   // 목표 시각 전 → 이번 화면 갱신은 건너뜀
   let dt = (t - _last) / 1000; _last = t; dt = Math.min(dt, 0.05);
   Dev.frame(); FpsBox.tick(t);
+  const off = GLX.off();   // 화면(GL)이 끊긴 동안: 그리지 않는다 · 로비와 혼자 하는 경기는 멈추고 같이 하기는 경기만 계속
   try {
     if (G.state === 'lobby' || G.state === 'loading') {
+      if (off) return;
       GunSkin.update(dt);   // 총기 스킨: 빛 애니메이션·꺼내기 효과 (경기 중에는 G.update와 함께 — 멈추면 같이 멈춤)
       if (Cutscene.active) { Cutscene.update(dt); Cutscene.render(G.renderer); }
       else if (!Watch.viewing()) { Lobby.update(dt); G.renderer.render(Lobby.scene, Lobby.cam); }   // 친구 관전 화면이 덮고 있으면 로비 3D 는 그리지 않음
       Models.pump(5); Shop.pump();
     }
     else if (G.scene) {
-      if ((!G.paused || G.net) && G.state === 'play') { GunSkin.update(dt * G.timeScale); G.update(dt * G.timeScale); } // 같이 하기는 메뉴를 열어도 멈추지 않는다
+      if ((!G.paused || G.net) && (!off || G.net) && G.state === 'play') { GunSkin.update(dt * G.timeScale); G.update(dt * G.timeScale); } // 같이 하기는 메뉴를 열어도·화면이 끊겨도 멈추지 않는다
       else if (G.state === 'result' && G.player) {
         // 방장이 진 뒤에도 다른 팀 사람이 남아 있으면 경기를 계속 돌린다 (승부가 나거나 모두 나가면 멈춤)
         if (G.bgSim) { if (G.net && Net.isHost() && Net.othersPlaying() && aliveTeamCount() > 1) G.update(dt * G.timeScale); else G.bgSim = false; }
         VM.active = false; const a = performance.now() / 4000; G.camera.position.set(G.player.pos.x + Math.sin(a) * 10, G.player.pos.y + 6, G.player.pos.z + Math.cos(a) * 10); G.camera.lookAt(G.player.pos);
       }
+      if (off) return;
       G.renderer.render(G.scene, G.camera);
       if (G.state === 'play') renderViewModel();
       if (G.state === 'play') Models.idle(); else Models.pump(2);   // v22: 경기 중에는 아이콘 미리 그리기를 멈추고, 꼭 필요한 것만 GPU 를 기다리지 않고
@@ -884,9 +959,11 @@ function loop(ts) {
 }
 
 function boot() {
+  // three.js 는 index.html 이 cdnjs → jsdelivr → unpkg 순서로 받은 뒤에야 이 코드를 시작한다 (모두 실패하면 거기서 안내) — 여기는 마지막 확인
   if (typeof THREE === 'undefined') { fatal('3D 라이브러리(three.js)를 불러오지 못했습니다. 네트워크 연결을 확인하세요.'); return; }
-  const test = document.createElement('canvas');
-  if (!(test.getContext('webgl') || test.getContext('experimental-webgl'))) { fatal('이 브라우저/기기에서 WebGL을 사용할 수 없습니다.'); return; }
+  const test = document.createElement('canvas'), tgl = test.getContext('webgl') || test.getContext('experimental-webgl');
+  if (!tgl) { fatal('이 브라우저/기기에서 WebGL을 사용할 수 없습니다.'); return; }
+  { const x = tgl.getExtension('WEBGL_lose_context'); if (x) x.loseContext(); }   // 확인용 컨텍스트는 바로 놓는다 (휴대폰의 GL 메모리·동시 컨텍스트 수)
   if (IS_TOUCH) document.body.classList.add('touch');
   applyCssVars();
   initRenderer();
@@ -906,10 +983,10 @@ function boot() {
   // 인벤토리 사진(아이콘)은 글꼴이 준비된 뒤 로비에서 조금씩 미리 렌더
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
-  // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  // 테스트/디버그용 핸들 — 로컬 파일·개발 주소이거나 서버가 확인한 관리자 계정일 때만 window 에 붙는다 (10_dev.js Dev.hooks · 배포 사이트의 콘솔 치트 막기)
+  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
-    states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };
+    states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } } }));
 }
 boot();

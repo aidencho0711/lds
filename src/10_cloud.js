@@ -6,7 +6,7 @@
 //  · 로그인: 서버에 기록이 있으면 그걸 불러오고, 비어 있으면(새 계정) 이 기기의 기록을 올린다
 //    로그인 전 기기 기록(게스트)은 따로 보관했다가 로그아웃하면 되돌린다 → 한 기기를 가족이 같이 써도 섞이지 않음
 //  · 서버가 꺼져 있거나(무료 프로젝트 7일 비활성 정지) SDK를 못 불러와도 게임은 게스트로 그대로 동작
-//  · SDK는 필요할 때 CDN에서 불러온다(버전 고정)
+//  · SDK는 필요할 때 CDN에서 불러온다(버전 고정 · v23 jsdelivr 가 막히면 unpkg 의 같은 버전 — CLOUD_CFG.sdk)
 // ============================================================
 const Cloud = (() => {
   const cfg = CLOUD_CFG, enabled = !!(cfg.url && cfg.key);
@@ -55,10 +55,20 @@ const Cloud = (() => {
           res(sb);
         } catch (e) { rej(e); }
       };
-      if (window.supabase && window.supabase.createClient) return done();
-      const s = document.createElement('script'); s.src = cfg.sdk; s.async = true; s.crossOrigin = 'anonymous';
-      s.onload = done; s.onerror = () => rej(new Error('로그인 모듈을 불러오지 못했습니다 (인터넷 연결 확인 후 다시 시도)'));
-      document.head.appendChild(s);
+      // v23 예비 CDN: cfg.sdk 의 주소(같은 버전)를 차례로 — 실패하면 다음 곳, 12초 넘게 답이 없으면 다음 곳도 같이 받아 먼저 온 것을 쓴다
+      //  마지막 곳도 실패하거나 답이 없으면 실패로 돌려준다 (다시 로그인하면 처음부터 · 그사이 늦게 온 SDK 가 있으면 그것을 씀)
+      const urls = [].concat(cfg.sdk || []); let n = 0, wait = 0, fin = false;
+      const next = (slow, last) => {   // slow: 방금 받기 시작한 곳이 답이 없음 · last: 마지막 곳이 끝났는데 SDK 가 없음
+        if (fin) return;
+        if (window.supabase && window.supabase.createClient) { fin = true; done(); return; }
+        if (n < urls.length) {
+          const i = n++, s = document.createElement('script'), t = setTimeout(() => next(true), 12000);
+          s.src = urls[i]; s.async = true; s.crossOrigin = 'anonymous'; wait++;
+          s.onload = s.onerror = () => { clearTimeout(t); wait--; next(false, i === urls.length - 1); };
+          document.head.appendChild(s);
+        } else if (slow || last || !wait) { fin = true; rej(new Error('로그인 모듈을 불러오지 못했습니다 (인터넷 연결 확인 후 다시 시도)')); }
+      };
+      next(false);
     }).catch((e) => { loading = null; throw e; });
     return loading;
   }
@@ -222,42 +232,53 @@ const Cloud = (() => {
   // 창을 닫거나 다른 앱으로 갈 때 밀린 저장을 바로 보냄
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && user && dirty) { clearTimeout(syncT); pushNow(); } else if (document.visibilityState === 'visible' && user) pull(); });
 
+  // v23 로그인 차례: afterLogin 이 시작할 때마다 · 로그아웃할 때 올린다 — 기다리는 사이 차례가 바뀌었으면 그 로그인은 아무것도 바꾸지 않고 멈춘다(stale)
+  //  (관리자 기기의 느린 세션 복원 중에 로그아웃하고 다른 계정으로 들어오면, 앞 계정의 늦은 is_admin 답이 새 계정에 관리자 도구·콘솔 핸들·스킨 지급을 붙였다
+  //   · 앞 계정의 기록 불러오기(apply)·store 'account' 도 새 계정 위에 얹힐 수 있었다)
+  let loginGen = 0;
+  const staleErr = () => { const e = new Error('다른 로그인으로 바뀌어 멈췄습니다'); e.stale = true; return e; };
   // 로그인 직후: 게스트 기록 보관 → 서버 기록 불러오기(없으면 이 기기 기록 올리기)
   async function afterLogin(u, fresh) {
+    const my = ++loginGen, live = () => { if (my !== loginGen) throw staleErr(); };   // 기다린(await) 뒤마다 확인
+    if (admin) { admin = false; role = null; Dev.refresh(); }   // v23 로그아웃 없이 다른 계정으로: 앞 계정의 관리자 도구·콘솔 핸들(10_dev.js hooks)부터 뗀다
     user = u; hold = null; pend = null;
     // 계정 기록을 다 불러올 때까지(acctLoad) 저장하지 않음 — base 가 없을 때 올리면 이 기기의 옛 기록이 합쳐지지 않고 서버를 덮는다
     acctLoad = true;
     let prev = null, prof = null, row = null;
     try {
       prev = store.get('account', null);
-      prof = await profOf(u.id);   // 조회 실패해도 진행
+      prof = await profOf(u.id); live();   // 조회 실패해도 진행
       // v23 밴 중인 계정 (토큰이 아직 살아 있던 세션 복원 · 로그인 직후): 아무것도 불러오지 않고 바로 로그아웃 + 안내 창
       const ban = banOf(prof);
       if (ban) {
         signingOut = true;
         try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
+        live();
         user = null; store.set('account', null); status = 'idle'; render();
         showBan(ban, (prof && prof.username) || '');
         const e = new Error(`정지된 계정입니다 — ${banTime(ban.until)}까지`); e.ban = true; throw e;
       }
       name = (prof && prof.username) || (u.user_metadata && u.user_metadata.username) || '플레이어';
       if (!store.get('guestBackup', null)) store.set('guestBackup', { stats: STATS, rank: Rank.state, settings: SETTINGS });
-      const r = await sb.from('player_data').select('stats, rank, settings, updated_at').eq('user_id', u.id).maybeSingle();
+      const r = await sb.from('player_data').select('stats, rank, settings, updated_at').eq('user_id', u.id).maybeSingle(); live();
       if (r.error) throw r.error;
       row = r.data;
-    } finally { acctLoad = false; }   // 아래 apply·base 정하기는 기다림 없이 이어지므로 그 사이에 저장이 끼지 않는다
+    } catch (e) { live(); throw e; }   // 멈춘 로그인의 연결 오류는 stale 로 (새 로그인을 '오류'로 표시하지 않게)
+    finally { if (my === loginGen) acctLoad = false; }   // 아래 apply·base 정하기는 기다림 없이 이어지므로 그 사이에 저장이 끼지 않는다 · 멈춘 로그인은 새 로그인의 것을 건드리지 않음 (로그아웃이 직접 내림)
     let note;
     if (row && isReset(row.stats) && !hasProgress(row)) { apply(row); base = agreed(row.stats); note = '관리자가 이 계정의 기록을 초기화했습니다'; }
     else if (hasProgress(row)) { apply(row); base = agreed(row.stats); note = `${name}님의 기록을 불러왔습니다`; }
     else { // 새 계정(또는 아직 기록이 없는 계정): 지금 이 기기의 기록을 계정으로 옮김
-      await pushNow();
+      await pushNow(); live();
       // '옮김'이므로 로그아웃 뒤 게스트 기록은 새로 시작 (같은 기록이 게스트·계정 양쪽에 복사되지 않게). 기기별 설정은 유지
       if (hasProgress(pack())) { const g = store.get('guestBackup', null); if (g) store.set('guestBackup', { stats: null, rank: null, settings: g.settings }); note = '이 기기의 기록을 계정으로 옮겼습니다'; }
       else note = `${name}님, 환영합니다`;
     }
     store.set('account', { id: u.id, name });
     status = 'online'; lastSync = Date.now();
-    admin = await checkAdmin(name); role = admin ? await checkRole() : null;
+    const ad = await checkAdmin(name); live();
+    const rl = ad ? await checkRole() : null; live();
+    admin = ad; role = rl;   // 답을 받은 로그인이 아직 지금 로그인일 때만 — 여기부터 끝까지는 기다림이 없다
     Eco.flushGrants('login');   // 계정을 불러오는 중에 받은 보상 · 서버에 아직 못 올린 보상을 이 계정 기록에 다시 넣음 (10_eco.js)
     EvBR.recover();             // 예전에 이 기기에서 받았는데 계정에 들어오지 않은 백룸 보상을 한 번 복구 (10_event.js)
     Dev.onLogin();   // 개발자 계정이면 모든 스킨 지급 (10_dev.js)
@@ -429,16 +450,18 @@ const Cloud = (() => {
     // 이전에 로그인했던 기기만 시작할 때 SDK를 불러 세션 복원 (게스트는 로그인 창을 열 때 불러옴)
     if (!enabled || !store.get('account', null)) { try { Rank.settle(); } catch (e) { console.warn(e); } return; }   // 게스트 기록도 v23 개편 정리
     status = 'restoring'; render();
+    const g0 = loginGen;
     try {
       await loadSdk();
       const { data } = await sb.auth.getSession();
+      if (g0 !== loginGen) return;   // SDK 를 받는 사이 로그인 창으로 들어옴 — 그 로그인이 이어 간다
       if (data && data.session && data.session.user) await afterLogin(data.session.user, false);
       else {
         const was = store.get('account', null);
         store.set('account', null); restoreGuest(); status = 'idle'; render(); try { Rank.settle(); } catch (e) { console.warn(e); }
         if (was && was.name) { const b = await banInfoByName(was.name); if (b) showBan(b, was.name); }   // v23 세션 갱신이 밴으로 거부돼 세션이 없어짐 → 안내
       }
-    } catch (e) { if (e && e.ban) { restoreGuest(); status = 'idle'; render(); return; } status = 'error'; lastErr = msgOf(e); render(); }   // e.ban: 밴 중인 계정 (afterLogin 이 로그아웃·창을 이미)
+    } catch (e) { if (e && e.stale) return; if (e && e.ban) { restoreGuest(); status = 'idle'; render(); return; } status = 'error'; lastErr = msgOf(e); render(); }   // e.stale: 복원 중에 로그아웃·다른 로그인 (그쪽이 화면을 정함) · e.ban: 밴 중인 계정 (afterLogin 이 로그아웃·창을 이미)
   }
   async function signUp(id, pw, pw2) {
     const bad = checkId(id); if (bad) throw new Error(bad);
@@ -474,11 +497,12 @@ const Cloud = (() => {
     if (g) { apply(g); store.set('guestBackup', null); }
   }
   async function signOut() {
+    loginGen++;   // 진행 중이던 로그인(afterLogin)은 다음 await 뒤에 멈춘다 — 늦게 온 답이 로그아웃한 뒤·다음 계정에 얹히지 않게
     if (dirty) await pushNow();
     signingOut = true;
     try { if (sb) await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* 오프라인이어도 로컬 로그아웃 */ } finally { signingOut = false; }
     if (G.onAuth) try { G.onAuth(false); } catch (e) { console.warn(e); }
-    user = null; name = null; admin = false; role = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null; hold = null; pend = null;
+    user = null; name = null; admin = false; role = null; status = 'idle'; clearTimeout(syncT); dirty = false; base = null; hold = null; pend = null; acctLoad = false;
     STAFF.clear(); staffWant.clear(); staffSrv = null; staffOffT = 0;
     store.set('account', null);
     restoreGuest();
@@ -538,7 +562,7 @@ const Cloud = (() => {
       try {
         const note = mode === 'signup' ? await signUp($('acctId').value, $('acctPw').value, $('acctPw2').value) : await signIn($('acctId').value, $('acctPw').value);
         close(); HUD.lobbyNote(note || `${name}님으로 로그인했습니다`);
-      } catch (err) { msg(err.message || String(err), false); }
+      } catch (err) { if (err && err.stale) return; msg(err.message || String(err), false); }   // stale: 로그인하는 사이 로그아웃함 (로그아웃이 창·알림을 이미)
       finally { btn.disabled = false; }
     });
     $('acctLogout').addEventListener('click', async () => { await signOut(); close(); HUD.lobbyNote('로그아웃했습니다 — 이 기기의 게스트 기록으로 돌아왔습니다'); });

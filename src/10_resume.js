@@ -150,6 +150,7 @@ const Resume = (() => {
   }
 
   // ---------- 저장 ----------
+  //  저장하는 경기인가 — 밖에서도 can 으로 (11_game.js GLX: 새로고침 안내에 '이어서 할 수 있음'을 붙일지)
   const want = () => G.state === 'play' && !!G.scene && !!G.player && !G.training && !G.island && !G.quit && !(G.dm && G.dm.over) && !G.rjHold && !busy;
   function snapBr() {
     const rps = Recall.snapPlanes(), vh = vehSnap(), pl = G.plane, vi = (v) => v.rsI;
@@ -337,5 +338,5 @@ const Resume = (() => {
     $('rjGo').addEventListener('click', go);
     $('rjNo').addEventListener('click', () => { if (!busy) forfeit(pend); });
   }
-  return { setup, check, tick, save, clear, fresh, mark, apply, applyMine, encChar, rejoined, get pending() { return pend; }, get busy() { return busy; } };
+  return { setup, check, tick, save, clear, fresh, mark, apply, applyMine, encChar, rejoined, can: want, get pending() { return pend; }, get busy() { return busy; } };
 })();

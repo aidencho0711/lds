@@ -15,6 +15,7 @@
 //  · v23 계정 밴 (개발자·부개발자): 계정 상세에서 기간(숫자 + 분·시간·일)과 사유 → 서버 admin_ban → 그동안 로그인할 수 없음 · 접속 중이면 바로 로그아웃
 //  · v23 개발자·부개발자 계정은 모든 프로필 사진·테두리·칭호·파티 입장 연출을 가진다 (10_ui_profile.js staff) + 전용 입장 연출 (10_partyfx.js 'dev')
 //    다른 기기는 그 계정이 관리자인지 서버에 확인하고 보여 준다 (10_cloud.js staffRole · supabase/admin.sql staff_roles)
+//  · v23 콘솔 디버그 핸들(window.__LD · __gh · __spawn)은 로컬 파일·개발 주소이거나 관리자 계정으로 로그인했을 때만 붙는다 (hooks)
 // ============================================================
 const Dev = (() => {
   const F = Object.assign({ god: false, ammo: false, tp: false, zone: false, stats: false }, store.get('dev', null) || {});
@@ -41,6 +42,28 @@ const Dev = (() => {
     const chip = $('acctChip'); if (chip) chip.classList.toggle('dev', on);
     const st = $('devStats'); if (st) st.hidden = !(on && F.stats);
     if (!on && !$('devPanel').hidden) close();
+    hooks();   // 콘솔 디버그 핸들 붙이기·떼기 (아래)
+  }
+
+  // ---------- v23 콘솔 디버그 핸들 (window.__LD · __gh · __spawn — 11_game.js boot 가 만든다) ----------
+  //  배포 사이트에도 열려 있어 누구나 콘솔 한 줄로 재화·랭크·경기를 바꿀 수 있었다 → 이럴 때만 window 에 붙인다
+  //  · 로컬 파일(file:) · 개발 주소(localhost · 127.0.0.1 · [::1] · *.localhost · *.test) — 테스트·하네스
+  //  · 서버가 관리자(개발자·부개발자)로 확인한 계정으로 로그인했을 때 (10_cloud.js checkAdmin) — 로그아웃하거나 다른 계정이면 바로 뗀다
+  //  게임 코드는 이 핸들을 읽지 않는다 (모두 직접 참조) — 붙이고 떼는 것은 콘솔·시험용
+  const DEV_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$|\.(localhost|test)$/i;
+  // 붙여도 되는가 — 순수 함수: 주소 { protocol, hostname } 와 계정 { user, admin } 만 본다
+  const hookOk = (loc, acct) => !!(loc && (loc.protocol === 'file:' || DEV_HOST.test(String(loc.hostname || '')))) || !!(acct && acct.user && acct.admin);
+  let hookMk = null, hookObj = null, hookOn = false;
+  // make: 핸들 묶음 { 이름: 값 } 을 만드는 함수 (부팅 때 한 번 넘김 · 처음 붙일 때 만든다) — 지금 붙어 있으면 true
+  //  로그인·로그아웃·계정이 바뀔 때마다 refresh 가 부른다 (10_cloud.js render · onLogin)
+  function hooks(make) {
+    if (make) hookMk = make;
+    const on = !!hookMk && hookOk(location, { user: Cloud.user, admin: Cloud.admin });
+    if (on !== hookOn) {
+      hookOn = on; if (on && !hookObj) hookObj = hookMk();
+      for (const k in hookObj) { if (on) window[k] = hookObj[k]; else if (window[k] === hookObj[k]) delete window[k]; }
+    }
+    return on;
   }
 
   // ---------- 경기 치트 ----------
@@ -425,5 +448,5 @@ const Dev = (() => {
     $('devClose').addEventListener('click', () => { Audio.ui(); close(); });
     refresh();
   }
-  return { is, sub, roleName, cheat, onLogin, refresh, open, close, setup, frame, mapTap, flags: F, _giveGun: giveGun, _kit: kit, _spawnVeh: spawnVeh, _killAll: killAll };
+  return { is, sub, roleName, cheat, onLogin, refresh, hooks, hookOk, open, close, setup, frame, mapTap, flags: F, _giveGun: giveGun, _kit: kit, _spawnVeh: spawnVeh, _killAll: killAll };
 })();

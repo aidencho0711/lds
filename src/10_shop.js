@@ -176,8 +176,9 @@ const Shop = (() => {
   const THUMB = {};
   function thumb(key, make, W, H, dir) {
     if (THUMB[key] !== undefined) return THUMB[key];
-    try { THUMB[key] = Models._render(make(), W, H, dir); } catch (e) { console.warn('썸네일 실패', key, e); THUMB[key] = ''; }
-    return THUMB[key];
+    let u; try { u = Models._render(make(), W, H, dir); } catch (e) { console.warn('썸네일 실패', key, e); u = ''; }
+    if (u === null) return '';   // 화면(GL)이 끊긴 동안: 저장하지 않고 다음에 다시 그림 (05_models.js renderIcon)
+    return (THUMB[key] = u);
   }
   const crateThumb = (box) => thumb('crate:' + box, () => crate(box).root, 200, 160, [0.9, 0.75, 1.3]);
   const vehThumb = (id) => { const V = VSKINS[id]; return thumb('veh:' + id, () => VehModels.instance(V.veh, id).root, 240, 140, V.veh === 'sedan' || V.veh === 'uaz' || V.veh === 'pickup' ? [1.2, 0.55, 1.0] : [1.3, 0.45, 0.6]); };
@@ -205,7 +206,7 @@ const Shop = (() => {
   const meleeImg = (melee, id) => `<img data-th="${msKey(melee, id)}" src="${meleeSrc(melee, id)}" alt="">`;
   function meleeImgEl(melee, id) { const im = document.createElement('img'); im.dataset.th = msKey(melee, id); im.src = meleeSrc(melee, id); im.alt = ''; return im; }
   const meleeOfSlot = (slot) => (/^m_/.test(slot || '') ? slot.slice(2) : null);
-  function pump() { if (!TQ.length) return; const [k, make] = TQ.shift(), src = make() || BLANK; document.querySelectorAll(`img[data-th="${k}"]`).forEach((im) => { im.src = src; }); }
+  function pump() { if (!TQ.length) return; const [k, make] = TQ.shift(), src = make() || BLANK; if (THUMB[k] === undefined) { TQ.unshift([k, make]); return; } document.querySelectorAll(`img[data-th="${k}"]`).forEach((im) => { im.src = src; }); }   // 못 그렸으면(화면이 끊김) 다음에 다시
   // ---------- 아이콘 ----------
   const SLOT_NAME = { hat: '모자', top: '상의', bottom: '하의', shoes: '신발', gloves: '장갑', chute: '낙하산', helmet: '헬멧 스킨 · 모든 레벨', pack: '가방 스킨 · 모든 레벨',
     m_knife: '식칼 스킨 · 모양이 바뀜', m_machete: '마체테 스킨 · 모양이 바뀜', m_pan: '프라이팬 스킨 · 모양이 바뀜', m_crowbar: '쇠지렛대 스킨 · 모양이 바뀜' };

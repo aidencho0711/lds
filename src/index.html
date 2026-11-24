@@ -1,5 +1,8 @@
 <title>Last Drop Royale</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<!-- three.js: 게임 코드와 함께 미리 받기 시작 (실제로 붙이는 것은 맨 아래 받기 코드 — 막히면 다른 CDN)
+     crossorigin · integrity 는 받기 코드의 것(SRI)과 똑같아야 이 사본을 그대로 쓴다 (다르면 한 번 더 받음) -->
+<link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" as="script" crossorigin="anonymous" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
 <style>/*STYLE*/</style>
 <div id="app">
@@ -597,7 +600,53 @@
   </section>
 
   <div id="rotateHint" hidden><div><b>가로 화면으로 돌려 주세요</b><p class="micro">이 게임은 가로 화면 기준으로 설계되었습니다.</p><button class="btn" id="rotateDismiss">그래도 계속</button></div></div>
+  <!-- 화면(WebGL)이 끊겼을 때: 복구를 기다리는 동안 · 돌아오지 않으면 새로고침 (11_game.js GLX) -->
+  <div id="glLost" role="alert" hidden><div><b id="glLostT">화면을 다시 불러오는 중…</b><p class="micro" id="glLostMsg"></p><button class="btn amber" type="button" id="glReload" hidden>새로고침</button></div></div>
   <div id="fatal" hidden></div>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>/*SCRIPT*/</script>
+<script>
+// v23 three.js r128 받기 — 게임 코드는 이것이 와야 시작한다 (예전엔 cdnjs 한 곳뿐이라 막히면 시작하지 못했다)
+//  cdnjs(맨 위 preload 로 HTML 과 함께 미리 받는 중) → 실패하면 같은 버전을 jsdelivr → unpkg 에서 (세 곳의 파일은 바이트까지 같다 — 2026-11-24 SHA-384 확인)
+//  SRI: 그 SHA-384 와 한 바이트라도 다르면 브라우저가 실행하지 않고 실패(error)로 → 다음 곳 (바뀌거나 가로챈 CDN 이 로그인 세션이 든 이 페이지에서 코드를 돌리지 못하게)
+//  한 곳이 15초 넘게 답이 없으면 다음 곳도 같이 받아 먼저 온 것을 쓴다 · 마지막 곳도 실패하거나 답이 없으면 안내 + 새로고침 (그 뒤에라도 오면 그때 시작)
+//  모두 실패하고 받는 중인 곳도 없으면 3초 뒤 한 번 · 안내가 떠 있는 동안 인터넷이 다시 연결되거나(online) 화면이 다시 보일 때마다 처음부터 다시 (와이파이↔LTE 를 바꾸는 순간엔 세 곳이 1초 안에 모두 실패)
+//  게임 코드는 받은 THREE 를 인자로 쓴다 (늦게 온 사본이 window.THREE 를 바꿔도 그대로) · 시작하다 오류가 나면 같은 안내 화면에 그 오류 (휴대폰엔 콘솔이 없다)
+//  게임 코드는 괄호로 감싼 function 으로 넘긴다: V8 이 곧 불릴 함수로 보고 한 번에 컴파일 (그냥 넘기면 3MB 를 한 번 더 미리 훑음)
+(function (run) {
+  const src = ['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js', 'https://unpkg.com/three@0.128.0/build/three.min.js'];
+  const SRI = 'sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu';   // 세 곳 공통 — 맨 위 preload 의 integrity 와 같게
+  let n = 0, wait = 0, done = false, auto = 1, shown = false;   // n: 받기 시작한 곳 수 · wait: 아직 받는 중인 곳 수 · auto: 저절로 다시 받을 남은 횟수 · shown: 안내가 떠 있음
+  // 정말 r128 이 왔는가 — 엉뚱한 스크립트가 만든 THREE · 중간에 멈춘 사본(감싸는 코드가 THREE = {} 부터 만든다)이면 다음 곳 (SRI 를 모르는 옛 브라우저)
+  const ok = () => !!window.THREE && window.THREE.REVISION === '128';
+  // 안내 화면: msg 가 없으면 three.js 를 받지 못함 · sub: 아래 작은 글 (다시 받는 중)
+  const fatal = (on, msg, sub) => {
+    const f = document.getElementById('fatal'); shown = on; if (!f) return; f.hidden = !on; if (!on) return;
+    f.innerHTML = '<div><p class="eyebrow">실행 오류</p><p></p><p class="micro"></p><button class="btn" type="button">새로고침</button></div>';
+    const p = f.getElementsByTagName('p'); p[1].textContent = msg || '3D 라이브러리(three.js)를 불러오지 못했습니다. 네트워크 연결을 확인하세요.'; p[2].textContent = sub || ''; p[2].hidden = !sub;
+    f.getElementsByTagName('button')[0].onclick = () => location.reload();
+  };
+  // slow: 방금 받기 시작한 곳이 15초 넘게 답이 없음 · last: 마지막 곳이 끝났는데 THREE 가 없음 (그 앞의 곳들은 이미 15초를 넘겼거나 실패)
+  const next = (slow, last) => {
+    if (done) return;
+    if (ok()) {
+      done = true; fatal(false);
+      try { run(window.THREE); } catch (e) { fatal(true, '게임을 시작하지 못했습니다: ' + String((e && e.message) || e).slice(0, 200)); throw e; }   // 다시 던져 콘솔·오류 보고에도 그대로
+      return;
+    }
+    if (n < src.length) {
+      const i = n++, s = document.createElement('script'), t = setTimeout(() => next(true), 15000);
+      s.src = src[i]; s.integrity = SRI; s.crossOrigin = 'anonymous'; wait++;
+      s.onload = s.onerror = () => { clearTimeout(t); wait--; next(false, i === src.length - 1); };   // 받았는데 r128 이 없어도(공용 와이파이 로그인 화면 등) 다음 곳 · 해시가 다르면 error
+      document.head.appendChild(s);
+    } else if (slow || last || !wait) { fatal(true); if (!wait && auto > 0) { auto--; setTimeout(again, 3000); } }
+  };
+  // 처음부터 다시 — 세 곳을 모두 해 보고 안내가 떠 있을 때만 (안내는 그대로 두고 아래에 '다시 받는 중…')
+  //  3초 뒤 한 번은 받는 중인 곳이 없을 때 · 인터넷이 다시 연결되거나 화면이 다시 보일 때(now)는 답이 없던 곳이 남아 있어도 (먼저 온 것을 씀)
+  const again = (now) => { if (done || !shown || n < src.length || (wait && now !== true)) return; n = 0; fatal(true, '', '다시 받는 중…'); next(false); };
+  window.addEventListener('online', () => again(true));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) again(true); });
+  next(false);
+})((function (THREE) {
+/*SCRIPT*/
+}));
+</script>

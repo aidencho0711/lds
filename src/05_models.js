@@ -34,7 +34,15 @@ const Models = (() => {
     box(0, 8, 2, 9, 5, 3.2); box(-8, 3, -1, 3, 7, 1.7); box(6, 2, -6, 5, 4, 1.3); box(3, 1, 8, 6, 2, 0.9);
     const rt = pm.fromScene(sc, 0.02);
     pm.dispose();
-    return rt.texture;
+    // v23: 렌더 타깃(GPU 에만 있음)을 CPU 사본(DataTexture · 768×768 RGBA 약 2.4MB)으로 바꿔 둔다 — 화면(GL)이 끊겼다 돌아오면
+    //  three 가 GPU 에만 있던 것은 빈 텍스처로 다시 만들어 금속 반사가 까맣게 됐다. CPU 사본은 그대로 다시 올라감 (11_game.js GLX)
+    const t = rt.texture, w = rt.width, h = rt.height, px = new Uint8Array(w * h * 4);
+    r.readRenderTargetPixels(rt, 0, 0, w, h, px);
+    let any = false; for (let i = 0; i < px.length && !any; i += 4) any = px[i] !== 0 || px[i + 1] !== 0 || px[i + 2] !== 0;
+    if (!any) return t;   // 읽지 못함(빈 값): 예전처럼 렌더 타깃 그대로
+    const env = new THREE.DataTexture(px, w, h, t.format, t.type, t.mapping, t.wrapS, t.wrapT, t.magFilter, t.minFilter, t.anisotropy, t.encoding);
+    env.name = t.name; rt.dispose();
+    return env;
   }
   function init(renderer) {
     R = renderer;
@@ -676,15 +684,19 @@ const Models = (() => {
     const og = out.getContext('2d'); og.imageSmoothingEnabled = true; og.imageSmoothingQuality = 'high'; og.drawImage(big, 0, 0, W, H);
     return out;
   }
+  // 화면(GL)이 끊긴 동안은 빈 그림만 나온다 → null (부른 쪽이 저장하지 않고 나중에 다시 — icon · 10_shop.js thumb)
+  const glOff = () => R.getContext().isContextLost();
   function renderIcon(obj, W, H, dir) {
+    if (glOff()) return null;
     const s = iconShot(obj, W, H, dir), px = new Uint8Array(s.rw * s.rh * 4);
     R.readRenderTargetPixels(iconRT, 0, 0, s.rw, s.rh, px); s.done();
+    if (glOff()) return null;   // 그리는 사이에 끊김
     return iconCanvas(px, s.rw, s.rh, W, H).toDataURL('image/png');
   }
   // v22 비동기 아이콘 (경기 중): 픽셀 읽기를 GPU 가 끝낼 때까지 기다리지 않고(WebGL2 PBO + fence) 다음 프레임들에서 받아 오고,
   //  PNG 인코딩도 toBlob(다른 스레드)으로 — 경기 중 부착물을 주우면 화면이 잠깐 멈추던 것(아이콘 하나에 PC 30~60ms, 태블릿은 몇 배)
-  let rd = null;   // 읽는 중: { sync, buf, rw, rh, W, H, cb, t0 }
-  function renderIconAsync(obj, W, H, dir, cb) {
+  let rd = null;   // 읽는 중: { sync, buf, rw, rh, W, H, cb, back, t0 } — back: 화면(GL)이 끊겨 버릴 때 다시 줄에
+  function renderIconAsync(obj, W, H, dir, cb, back) {
     const gl = R.getContext();
     if (!R.capabilities.isWebGL2 || typeof gl.fenceSync !== 'function') { cb(renderIcon(obj, W, H, dir)); return; }
     const s = iconShot(obj, W, H, dir), buf = gl.createBuffer();
@@ -693,8 +705,11 @@ const Models = (() => {
     gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
     const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); gl.flush();
     s.done();
-    rd = { sync, buf, rw: s.rw, rh: s.rh, W, H, cb, t0: performance.now() };
+    rd = { sync, buf, rw: s.rw, rh: s.rh, W, H, cb, back, t0: performance.now() };
   }
+  // 화면(GL)이 끊김 (11_game.js GLX): 읽는 중이던 아이콘은 버리고 다시 줄에 (그 PBO·fence 는 끊긴 컨텍스트 것이라 복구 뒤엔 못 씀)
+  //  아이콘 렌더 타깃도 놓고 새로 만든다 (끊기기 전 것을 dispose 하면 three 가 옛 컨텍스트 것을 지우려다 WebGL 경고)
+  function glLost() { iconRT = null; if (rd) { const r = rd; rd = null; r.back(); } }
   // 읽기가 끝났으면 마무리하고 true (읽는 중이 아니어도 true)
   function readDone() {
     if (!rd) return true;
@@ -704,6 +719,7 @@ const Models = (() => {
     const px = new Uint8Array(r.rw * r.rh * 4);
     gl.bindBuffer(gl.PIXEL_PACK_BUFFER, r.buf); gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, px); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
     gl.deleteSync(r.sync); gl.deleteBuffer(r.buf);
+    if (gl.isContextLost()) { r.back(); return true; }   // 읽는 사이에 끊김: 빈 그림 → 다시 줄에
     const out = iconCanvas(px, r.rw, r.rh, r.W, r.H);
     if (out.toBlob) out.toBlob((b) => r.cb(b ? URL.createObjectURL(b) : out.toDataURL('image/png')), 'image/png'); else r.cb(out.toDataURL('image/png'));
     return true;
@@ -713,42 +729,50 @@ const Models = (() => {
   const later = new Map(), inflight = new Map();   // 경기 중 미룬 아이콘 · 그리는 중: key → { id, att, cbs }
   let laterT = 0;
   const finish = (key, e, url) => { ICON[key] = url; inflight.delete(key); for (const f of e.cbs) { try { f(url); } catch (er) { console.warn(er); } } };
+  // 지금 못 그리는 아이콘은 줄에 넣고 대신 같은 총의 부착물 없는 아이콘 (없으면 '')
+  function defer(key, id, att, cb) {
+    let e = inflight.get(key) || later.get(key);
+    if (!e) { e = { id, att: att ? Object.assign({}, att) : null, cbs: [] }; later.set(key, e); }
+    if (cb) e.cbs.push(cb);
+    return (ITEMS[id].type === 'weapon' && ICON[iconKey(id, null)]) || '';
+  }
   function icon(id, att, cb) {
     if (!ITEMS[id]) return '';
     const key = iconKey(id, att);
     if (ICON[key] !== undefined) return ICON[key];
     if (!R) return '';
-    if (G.state === 'play') {
-      let e = inflight.get(key) || later.get(key);
-      if (!e) { e = { id, att: att ? Object.assign({}, att) : null, cbs: [] }; later.set(key, e); }
-      if (cb) e.cbs.push(cb);
-      return (ITEMS[id].type === 'weapon' && ICON[iconKey(id, null)]) || '';
-    }
+    if (G.state === 'play' || glOff()) return defer(key, id, att, cb);   // 경기 중 · 화면(GL)이 끊긴 동안: 나중에 그림
     try {
-      const d = ITEMS[id], wide = wideItem(id);
-      ICON[key] = renderIcon(buildDisplay(id, att), wide ? 320 : 160, wide ? 128 : 160, VIEW[id] || VIEW[d.type] || VIEW.ammo);
+      const d = ITEMS[id], wide = wideItem(id), url = renderIcon(buildDisplay(id, att), wide ? 320 : 160, wide ? 128 : 160, VIEW[id] || VIEW[d.type] || VIEW.ammo);
+      if (url === null) return defer(key, id, att, cb);
+      ICON[key] = url;
     } catch (e) { console.warn('아이콘 렌더 실패', id, e); ICON[key] = ''; }
     return ICON[key];
   }
   // 경기 중 매 프레임 (11_game.js loop): 미룬 아이콘을 0.35초에 하나씩, GPU 를 기다리지 않고 그린다
   function idle() {
-    if (!R || !readDone() || !later.size) return;
+    if (!R || glOff() || !readDone() || !later.size) return;
     const t = performance.now(); if (t - laterT < 350) return; laterT = t;
     const [key, e] = later.entries().next().value; later.delete(key);
     if (ICON[key] !== undefined) { finish(key, e, ICON[key]); return; }
     inflight.set(key, e);
+    const back = () => { inflight.delete(key); later.set(key, e); };   // 화면(GL)이 끊겨 못 그림: 다시 줄에
     try {
       const d = ITEMS[e.id], wide = wideItem(e.id);
-      renderIconAsync(buildDisplay(e.id, e.att), wide ? 320 : 160, wide ? 128 : 160, VIEW[e.id] || VIEW[d.type] || VIEW.ammo, (url) => finish(key, e, url));
+      renderIconAsync(buildDisplay(e.id, e.att), wide ? 320 : 160, wide ? 128 : 160, VIEW[e.id] || VIEW[d.type] || VIEW.ammo, (url) => (url === null ? back() : finish(key, e, url)), back);
     } catch (er) { console.warn('아이콘 렌더 실패', e.id, er); finish(key, e, ''); }
   }
   const queue = [];
   function prewarm() { for (const id in ITEMS) queue.push(id); }
   // 로비에서 (경기 중에는 부르지 않음 — v22): 미리 그리기 + 경기 중 미뤄 둔 것 마저
   function pump(budgetMs = 6) {
-    if (!R || !readDone()) return;
+    if (!R || glOff() || !readDone()) return;
     const t0 = performance.now();
-    while (later.size && G.state !== 'play' && performance.now() - t0 < budgetMs) { const [key, e] = later.entries().next().value; later.delete(key); finish(key, e, icon(e.id, e.att)); }
+    while (later.size && G.state !== 'play' && performance.now() - t0 < budgetMs) {
+      const [key, e] = later.entries().next().value; later.delete(key);
+      const url = icon(e.id, e.att); if (ICON[key] === undefined) { later.set(key, e); return; }   // 그리는 사이 화면(GL)이 끊김: 다시 줄에
+      finish(key, e, url);
+    }
     while (queue.length && performance.now() - t0 < budgetMs) icon(queue.shift());
   }
 
@@ -814,6 +838,6 @@ const Models = (() => {
   }
   const scopeInfo = (id) => SC[id] || null;
   const kit = { A, BX, CY, RB, PF, SPH, TOR, PL, rail, trigger, magPts, tube, flip, M, cart };
-  return { init, buildGun, ground, display: buildDisplay, icon, iconKey, prewarm, pump, idle, hand, sleeve, casing, scopeInfo, cluster, M, crate, deathCrate, canopy, kit, _render: renderIcon, get env() { return ENV; }, GUNS, CLS };
+  return { init, buildGun, ground, display: buildDisplay, icon, iconKey, prewarm, pump, idle, glLost, hand, sleeve, casing, scopeInfo, cluster, M, crate, deathCrate, canopy, kit, _render: renderIcon, get env() { return ENV; }, GUNS, CLS };
 })();
 function buildGunMesh(id, att, skin) { return Models.buildGun(id, att, skin); }
