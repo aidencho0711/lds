@@ -638,6 +638,7 @@ function updateDriving(dt) {
 // ---------- 팀 지휘 (핑) ----------
 // Y / 핑 버튼: 조준점 근처에 보이는 적이 있으면 '공격', 아니면 그 지점으로 '이동'
 //  빠르게 두 번(0.4초 안) → '위험' 표시(빨간 경고: 팀원이 그쪽을 경계하며 엄폐), 길게 누르기(0.55초) → '모여'(따라오기)
+//  v23: 핑·지도 마커는 다른 기기의 사람 팀원에게도 보인다 (09_player_ping.js TeamPing — 봇 팀원이 없어도 찍을 수 있다)
 let _pingT = -9, _pingPrev = null, _pingHold0 = 0, _pingHoldDone = false;
 const rtNow = () => performance.now() / 1000; // 실제 시간 (프레임이 느려도 두 번 누르기 판정이 흔들리지 않게)
 const _pv = new THREE.Vector3(), _pc = new THREE.Vector3();
@@ -646,6 +647,7 @@ function teamCallout(text, kind) { const ms = mateBots(G.player); if (ms.length)
 function setTeamOrder(ord, quiet) {
   const p = G.player; if (!p) return;
   ord.t = G.time; G.teamOrder = ord.kind === 'follow' ? null : ord;
+  if (ord.kind === 'follow') TeamPing.followed();   // 사람 팀원에게도 '모여' 알림
   for (const m of mateBots(p)) {
     const b = m.brain; b.thinkT = 0; b.goal = null; b.path = null; b.wantPath = null;
     if (b.investigate && b.investigate.kind === 'order') b.investigate = null;
@@ -679,8 +681,8 @@ function pingHoldCheck() {
 function pingInputs(p) { const q = Input.pingQ.splice(0); if (!q.length) q.push(rtNow()); for (const t of q) playerPing(p, t); }
 function playerPing(p, tPress) {
   const now = tPress || rtNow();
-  if (!(G.teamSize > 1)) { HUD.toast('핑은 듀오·스쿼드에서 팀원 봇에게 지시할 때 씁니다'); return; }
-  if (!mateBots(p).length) { HUD.toast('지시할 팀원이 없습니다', 'warn'); return; }
+  if (!(G.teamSize > 1)) { HUD.toast('핑은 듀오·스쿼드에서 팀원에게 위치를 알릴 때 씁니다'); return; }
+  if (!TeamPing.hasMates(p)) { HUD.toast('핑을 볼 팀원이 없습니다', 'warn'); return; }
   // 두 번째 누름: 방금 찍은 핑을 되돌리고 그 자리에 '위험' 표시
   if (now - _pingT < 0.4) {
     _pingT = -9; G.teamOrder = _pingPrev || null;
@@ -705,7 +707,7 @@ function playerPing(p, tPress) {
 }
 // 지시 유지·해제: 공격 목표 탈락/40초, 이동 지점에서 플레이어가 160m 넘게 멀어지거나 150초
 function updateTeamOrder() {
-  pingHoldCheck();
+  pingHoldCheck(); TeamPing.update();   // 내 핑을 사람 팀원에게 보내고, 받은 핑의 시간을 센다
   if (G.danger && G.time - G.danger.t > 25) G.danger = null;
   const ord = G.teamOrder, p = G.player; if (!ord) return;
   if (!p || !p.alive) { G.teamOrder = null; return; }

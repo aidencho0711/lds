@@ -162,10 +162,8 @@ class Brain {
   shareSpot(o) {
     if (G.noIntel) return; // (테스트용 비교 스위치)
     for (const m of teamMembers(this.c)) if (m !== this.c && m.brain && standing(m)) m.brain.reportEnemy(o, o.pos.x, o.pos.z);
-    if (G.player && sameTeam(G.player, this.c)) {
-      HUD.spot(o, this.c);
-      const ord = G.teamOrder; if (ord && ord.kind === 'attack' && ord.target === o) { ord.x = o.pos.x; ord.z = o.pos.z; }
-    }
+    if (G.player && sameTeam(G.player, this.c)) HUD.spot(o, this.c);
+    TeamPing.track(this.c, o);   // 그 적을 노린 같은 팀 사람(나·다른 기기 사람)의 공격 지시 위치를 새로
   }
   reportEnemy(o, x, z) {
     const c = this.c; if (c.knocked || !o.alive) return;
@@ -176,10 +174,11 @@ class Brain {
     // 무장한 봇만 그쪽을 돌아본다 (맨손 봇이 서로 돌아보다 주먹 싸움이 늘던 문제)
     if (this.usableWeapons().length && (!this.target || !this.aware.get(this.target) || !this.aware.get(this.target).visible)) this.lookYaw = Math.atan2(x - c.pos.x, z - c.pos.z);
   }
-  // 사람의 팀원이면 그 사람 (살아 있을 때) — 따라다닌다. 지시(핑)는 이 기기 플레이어의 팀원만 받는다
+  // 사람의 팀원이면 그 사람 (살아 있을 때) — 따라다닌다. 지시(핑)는 그 사람의 것을 받는다
   //  followC: 팀의 사람 (온라인 매칭·파티에서 다른 기기 사람의 팀원 봇도 방장 기기가 움직임 — 11_game.js startMatch)
+  //  v23: 그 사람이 다른 기기여도 그 사람이 찍은 핑(09_player_ping.js 가 받아 둔 것)을 따른다 · 위험 표시는 같은 팀 사람 것 중 가장 가까운 것 (dangerFor)
   playerMate() { const p = this.followC || G.player; return !G.dm && G.teamSize > 1 && p && p.alive && p !== this.c && p.team === this.c.team && p.mode === 'ground' ? p : null; }
-  order() { const pm = this.playerMate(); return pm && pm === G.player ? G.teamOrder : null; }
+  order() { const pm = this.playerMate(); return pm ? TeamPing.ordOf(pm) : null; }
   // 따라가기 자리: 플레이어 진행 방향 기준 왼뒤·오른뒤·뒤
   followSlot(p) {
     const yaw = Math.hypot(p.vel.x, p.vel.z) > 1 ? Math.atan2(p.vel.x, p.vel.z) : p.yaw;
@@ -348,7 +347,7 @@ class Brain {
     this.target = tgt;
     // 조심 모드: 막 부활했거나 체력이 낮으면 돌진·추격·소리 수색을 하지 않는다
     const recovering = G.time < (this.recoverUntil || 0);
-    const pm = this.playerMate(), ord = pm && pm === G.player ? G.teamOrder : null;
+    const pm = this.playerMate(), ord = this.order();
     const cautious = this.cautious = recovering || c.hp < 35;
 
     // 무기 정비
@@ -467,8 +466,8 @@ class Brain {
       const dl = Math.hypot(pm.pos.x - c.pos.x, pm.pos.z - c.pos.z);
       if (dl > (recovering ? 48 : usable ? 24 : 40) || (this.state === 'FOLLOW' && dl > 9 && this.stateT < 25)) { this.setState('FOLLOW'); return; }
     }
-    // 플레이어의 '위험' 표시: 150m 안이면 그쪽을 보고 엄폐(없으면 그 자리에서 앉아 경계) — 25초
-    const dg = pm && G.danger;
+    // 플레이어의 '위험' 표시: 150m 안이면 그쪽을 보고 엄폐(없으면 그 자리에서 앉아 경계) — 25초 (v23: 같은 팀 사람 것만 · 다른 기기 사람 것도)
+    const dg = pm && TeamPing.dangerFor(c);
     if (dg && Math.hypot(dg.x - c.pos.x, dg.z - c.pos.z) < 150 && !(tgt && tr.visible)) {
       if (this.state !== 'DANGER' || this.dangerRef !== dg) { this.dangerRef = dg; this.holdCover = null; const q = this.coverFrom(dg.x, (dg.y || heightAt(dg.x, dg.z)) + 1.5, dg.z); if (q) this.holdCover = { x: q[0], z: q[1] }; }
       this.setState('DANGER'); return;
@@ -901,7 +900,7 @@ class Brain {
         break;
       }
       case 'DANGER': { // 위험 표시 쪽을 경계: 엄폐 지점으로 가서 앉아 그쪽을 본다
-        const dg = G.danger; if (!dg) { this.setState('EXPLORE'); break; }
+        const dg = TeamPing.dangerFor(c); if (!dg) { this.setState('EXPLORE'); break; }
         const cv = this.holdCover;
         if (cv && Math.hypot(cv.x - c.pos.x, cv.z - c.pos.z) > 0.8) { this.moveGoal(cv.x, cv.z, 'cover'); wish = this.steer(); speed = 6.2; c.sprint = true; if (!wish && !this.wantPath) this.holdCover = null; }
         else { wantStance = 'crouch'; c.aiming = !!c.weapon; this.faceToward(dg.x, (dg.y || heightAt(dg.x, dg.z)) + 1.2, dg.z, dt, 3); }
@@ -919,11 +918,11 @@ class Brain {
       }
       case 'ORDER': { // 이동 지시 지점으로 가서 앉아 경계
         const o = this.order(); if (!o || o.kind !== 'move') { this.setState('EXPLORE'); break; }
-        const sl = this.orderSlot(o), ds = Math.hypot(sl[0] - c.pos.x, sl[1] - c.pos.z);
+        const sl = this.orderSlot(o), ds = Math.hypot(sl[0] - c.pos.x, sl[1] - c.pos.z), dg = ds > 2 ? null : TeamPing.dangerFor(c);
         if (ds > 2) {
           this.moveGoal(sl[0], sl[1], 'order', o.y); wish = this.steer(); speed = ds > 20 ? 6.2 : 4.6; c.sprint = ds > 20;
           if ((!wish || (!wish[0] && !wish[1])) && !this.wantPath && ds < 8) wish = [(sl[0] - c.pos.x) / ds, (sl[1] - c.pos.z) / ds];
-        } else if (G.danger && Math.hypot(G.danger.x - c.pos.x, G.danger.z - c.pos.z) < 150) { wantStance = 'crouch'; c.aiming = !!c.weapon; this.faceToward(G.danger.x, (G.danger.y || heightAt(G.danger.x, G.danger.z)) + 1.2, G.danger.z, dt, 3); }
+        } else if (dg && Math.hypot(dg.x - c.pos.x, dg.z - c.pos.z) < 150) { wantStance = 'crouch'; c.aiming = !!c.weapon; this.faceToward(dg.x, (dg.y || heightAt(dg.x, dg.z)) + 1.2, dg.z, dt, 3); }
         else { wantStance = 'crouch'; this.scan(dt * 0.6); }
         break;
       }

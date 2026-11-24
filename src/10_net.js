@@ -12,6 +12,8 @@
 //  피해: 쏜 쪽이 맞힌 것을 판정 → 맞은 캐릭터의 주인 기기로 'hit' → 주인이 방어구 계산·기절·사망 처리 후 결과를 알림
 //  아이템: 시작 아이템·차량은 같은 시드로 각자 생성(방장이 개수·위치 합계로 검증, 다르면 목록 전송), 이후 줍기·버리기는 사건으로
 //  리콜(08_recall.js): 'rc' — 등록 요청은 방장에게, 방장이 확인해 승인을 모두에게. 되살리기는 그 캐릭터의 주인 기기
+//  팀 핑(09_player_ping.js, v23): 'pg' — 찍은 사람의 핑·마커 상태 통째로, 같은 팀 사람마다(to) + 방장(팀원 봇). 방장이 받는 사람에게 넘긴다
+//   (옛 화면은 모르는 사건을 버릴 뿐 깨지지 않아 NET_VER 는 올리지 않음 — 서로 핑만 안 보인다)
 // ============================================================
 // 같이 하기 버전: 경기 사건·설정의 모양이 바뀌면 올린다 — 다르면 파티·온라인 매칭·경기 연결에서 같이 하지 않는다 (10_ver.js)
 //  2 = v22 데스매치 아레나(cfg.arena) · 3 = v22 시체·보급 상자(gadd bx)·근접 무기(pu w)·새 투척 무기 + v23 이어하기(로비 rj·rjok · rjs)·우승 축하(vic)
@@ -256,7 +258,7 @@ const Net = (() => {
     if (m.v) for (const a of m.v) applyVeh(a);
     if (m.w) applyWorld(m.w);
     if (m.e) for (const e of m.e) {
-      e.from = e.from || p.uid;
+      e.from = N.host ? p.uid : e.from || p.uid;   // 보낸 사람: 방장은 실제로 보낸 파티원으로 (파티원은 남의 사건을 넘기지 않음 — v23 핑처럼 보낸 사람을 믿는 사건을 다른 사람 이름으로 꾸며 넘기지 못하게)
       if (N.host && e.to && e.to !== N.me) { const tp = N.peers.get(e.to); if (!tp || tp.left) e.to = N.me; } // 떠난 사람 앞 사건은 방장이 대신 처리
       // 방장: 다른 파티원에게 넘길 것
       if (N.host && (!e.to || e.to !== N.me)) { const fw = Object.assign({}, e); N.outB.push(fw); }
@@ -301,6 +303,7 @@ const Net = (() => {
       case 'isl': if (!N.host && G.island) Island.end(); break;   // 방장의 스타트 섬이 끝남 → 모두 수송기로
       case 'rjs': applyRj(e); break;   // v23 다시 들어옴: 방장이 보낸 지금 상태
       case 'vic': Victory.onNet(e); break;   // v23 우승 축하: 파티원의 동상 세우기·춤
+      case 'pg': try { TeamPing.onNet(e); } catch (er) { console.warn('핑 받기', er); } break;   // v23 팀 핑·지도 마커 (09_player_ping.js — 같은 팀 사람 + 팀원 봇을 움직이는 방장에게만 온다 · 이상한 값으로 이 묶음의 다른 사건을 놓치지 않게)
     }
   }
 
