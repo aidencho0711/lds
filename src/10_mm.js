@@ -9,6 +9,7 @@
 //    대기열은 아레나(맵)별 — '무작위'를 고른 사람끼리는 방장이 아레나를 뽑는다
 //  · 파티: 방장이 파티째 줄 선다 (파티원은 같은 팀). 파티원 화면에는 '방장이 온라인 매칭 중'
 //  · 경기 연결: 이 경기 전용 실시간 채널(ld-mm-<경기 번호>)로 WebRTC 신호를 주고받는다 (10_net.js)
+//  · 게임 버전(NET_VER)이 대기열 키에 들어 있어 버전이 다른 사람끼리는 묶이지 않는다 · 받은 경기 설정의 버전도 다시 확인 (10_ver.js)
 // ============================================================
 const MM = (() => {
   const T = { wait: 180, poll: 2000 };   // 최대 대기(초) · 확인 간격(ms)
@@ -119,6 +120,8 @@ const MM = (() => {
   }
   function launch(cfg) {
     const q = Q; if (!q || q.launched) return;
+    // 매칭된 경기의 방장과 게임 버전이 다름 (대기열 키에 버전이 들어 있어 보통은 갈림) → 같이 하지 않음 (10_ver.js)
+    if (cfg.v !== NET_VER) { cancel(); Ver.tell(cfg.v, (cfg.humans.find((h) => h.uid === cfg.host) || {}).name); return; }
     q.launched = true; clearTimeout(q.timer); Q = null;
     if (q.party) { Party.send('mm', { on: 0 }); Party.send('start', { cfg }); }
     const nh = cfg.humans.length, others = nh - q.members.length;

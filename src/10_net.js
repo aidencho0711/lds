@@ -13,7 +13,20 @@
 //  아이템: 시작 아이템·차량은 같은 시드로 각자 생성(방장이 개수·위치 합계로 검증, 다르면 목록 전송), 이후 줍기·버리기는 사건으로
 //  리콜(08_recall.js): 'rc' — 등록 요청은 방장에게, 방장이 확인해 승인을 모두에게. 되살리기는 그 캐릭터의 주인 기기
 // ============================================================
-const NET_VER = 2;   // v22: 2 = 데스매치 아레나(cfg.arena) — 버전이 다르면 매칭 대기열이 갈린다
+// 같이 하기 버전: 경기 사건·설정의 모양이 바뀌면 올린다 — 다르면 파티·온라인 매칭·경기 연결에서 같이 하지 않는다 (10_ver.js)
+//  2 = v22 데스매치 아레나(cfg.arena) · 3 = v22 시체·보급 상자(gadd bx)·근접 무기(pu w)·새 투척 무기 + v23 이어하기(로비 rj·rjok · rjs)·우승 축하(vic)
+const NET_VER = 3;
+// 받은 피해('hit')의 상한 = 이 게임에서 한 번에 줄 수 있는 가장 큰 피해 — 불러올 때 표에서 계산 (판처파우스트 직격 ITEMS.pzf.dmg 가 가장 큼)
+//  보내는 값은 머리(×2.1)·기절 중 머리(×1.5)·방어구를 셈하기 전 피해(맞은 쪽 applyDamage 가 곱함)라 그 전 값끼리 견준다:
+//  총 ITEMS dmg(산탄은 한 알씩 · 거리 감쇠 ≤ 1 · pzf = 직격) · 근접 무기 ITEMS dmg(머리는 ×0.72 로 줄여 보냄) · 주먹 PUNCH · 폭발 BLAST_DMG ·
+//  차량 들이받기 (상대 속도 - 2.5) × hit — 상대 속도 ≤ 가장 빠른 차 최고속의 두 배(차 + 다른 차에 튕겨 날아온 사람) · 탑승자 충돌·착지·내리기 피해도 이 안
+//  (낙하·자기장 피해는 그 캐릭터 주인 기기만 셈해 오가지 않음 · 화염병·자기장 수류탄은 0.2초마다 몇 점)
+//  표에 숫자가 아닌 값이 섞여 계산이 NaN 이 되면 받은 피해가 모두 NaN 이 되므로 → 999 (지금 표의 최댓값 = 판처파우스트 직격)
+const NET_HIT_MAX = (() => {
+  const vmax = Math.max(...Object.values(VEH_TYPES).map((T) => T.vmax)), m = Math.max(PUNCH.dmg, ...Object.values(ITEMS).map((d) => d.dmg || 0), ...Object.values(BLAST_DMG), ...Object.values(VEH_TYPES).map((T) => 2 * vmax * T.hit));
+  if (Number.isFinite(m) && m > 0) return m;
+  console.warn('NET_HIT_MAX: 피해 표에 숫자가 아닌 값이 있어 999 로 둡니다'); return 999;
+})();
 const NET_ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }].concat(CLOUD_CFG.turn || []);
 const Net = (() => {
   let N = null;
@@ -72,6 +85,7 @@ const Net = (() => {
   //  → 방장에게 연결해 지금 상태(rjs)를 받을 때까지 내 캐릭터 상태를 보내지 않는다(hold)
   function join(cfg, rj) {
     if (!Cloud.uid || G.state === 'loading') return;
+    if (cfg.v !== NET_VER) { Ver.tell(cfg.v, (cfg.humans.find((h) => h.uid === cfg.host) || {}).name); return; }   // 방장(경기 설정)과 게임 버전이 다름 → 들어가지 않음
     if (N) close(true);
     if (G.state === 'play' || G.state === 'result') { $('resultPanel').hidden = true; disposeMatch(); G.state = 'lobby'; }
     // 이번 경기만 방장 설정 (저장하지 않음). 온라인 매칭은 모르는 사람의 설정이므로 끝나면 내 설정으로 되돌린다
@@ -159,7 +173,7 @@ const Net = (() => {
     dc.onmessage = (e) => recv(p, e.data);
     dc.onclose = () => { if (p.open) { p.open = false; if (N && !N.ended) toRelay(p, 'closed'); } };
   }
-  function toRelay(p, why) { if (p.relay) return; p.relay = true; console.warn('중계 전환', p.uid, why); if (N && !N.ended) { HUD.toast(`${p.name}님과 직접 연결이 안 되어 서버 중계로 전환합니다 (움직임이 덜 부드러울 수 있음)`, 'warn'); hello(p); linkUp(p); } }
+  function toRelay(p, why) { if (p.relay || p.bad) return; p.relay = true; console.warn('중계 전환', p.uid, why); if (N && !N.ended) { HUD.toast(`${p.name}님과 직접 연결이 안 되어 서버 중계로 전환합니다 (움직임이 덜 부드러울 수 있음)`, 'warn'); hello(p); linkUp(p); } }
   // 연결이 생기면: 밀린 사건 전송, 방장은 인사를 받았던 파티원에게 현재 상태
   function linkUp(p) {
     if (p.q && p.q.length) { const q = p.q.splice(0); for (const m of q) sendTo(p, m, true); }
@@ -211,7 +225,7 @@ const Net = (() => {
   // 경기 화면이 준비됨 (startMatch / DM.start 끝)
   function ready() {
     if (!N) return; N.ready = true;
-    for (const p of N.peers.values()) { if ((p.open || p.relay) && p.needHello) hello(p); if (p.needWelcome) welcome(p); }
+    for (const p of N.peers.values()) { if (p.bad) { verDrop(p, p.badV); continue; } if ((p.open || p.relay) && p.needHello) hello(p); if (p.needWelcome) welcome(p); }
     checkSum();
   }
   function checkSum() {
@@ -234,7 +248,7 @@ const Net = (() => {
 
   // ---------- 받기 ----------
   function recv(p, data) {
-    if (!N) return;
+    if (!N || p.bad) return;   // bad: 게임 버전이 달라 내보낸 사람 (verDrop)
     let m; try { m = typeof data === 'string' ? JSON.parse(data) : data; } catch (e) { return; }
     p.lastRx = now(); N.stats.rx += (data && data.length) || 0;
     if (N.rj && !N.ready) return;   // 다시 들어오는 중 · 아직 맵을 만드는 중: 버림 (인사한 뒤 방장이 지금 상태를 통째로 보낸다 — 그 전 사건을 적용하면 아이템 칸이 없어 오류)
@@ -252,13 +266,15 @@ const Net = (() => {
   // 번호 → 캐릭터 (CHARS 가 바뀌거나 늘면 다시 만든다 — 받은 상태마다 배열 전체를 훑지 않게)
   let cmA = null, cmN = -1, cmM = null;
   const charById = (id) => { if (cmA !== CHARS || cmN !== CHARS.length) { cmA = CHARS; cmN = CHARS.length; cmM = new Map(); for (const c of CHARS) cmM.set(c.id, c); } return cmM.get(id) || null; };
+  // 받은 피해: 숫자가 아니거나 음수·무한이면 -1(버림), 아니면 NET_HIT_MAX 까지 (내 기기에서 준 피해는 그대로)
+  const hitDmg = (d) => (Number.isFinite(d) && d >= 0 ? Math.min(d, NET_HIT_MAX) : -1);
   function handle(e, from) {
     switch (e.k) {
-      case 'hello': { if (N.host) { const p = N.peers.get(from); if (p) { p.helloSeen = true; welcome(p); } } break; }
+      case 'hello': { if (N.host) { const p = N.peers.get(from); if (p) { if (e.v !== NET_VER) { verDrop(p, e.v); break; } p.helloSeen = true; welcome(p); } } break; }
       case 'welcome': applyWelcome(e); break;
-      case 'hit': { const t = charById(e.v); if (!t || !mine(t)) return; const a = e.a >= 0 ? charById(e.a) : null; const d = applyDamage(t, e.d, e.p, a, e.c, e.h && e.h[0], e.h && e.h[1], e.h && e.h[2]); if (a && d > 0 && !mine(a)) ev({ k: 'dealt', a: a.id, d: r2(d) }, ownerOf(a)); break; }
+      case 'hit': { const t = charById(e.v); if (!t || !mine(t)) return; const dm = hitDmg(e.d); if (dm < 0) return; const a = e.a >= 0 ? charById(e.a) : null; const d = applyDamage(t, dm, e.p, a, e.c, e.h && e.h[0], e.h && e.h[1], e.h && e.h[2]); if (a && d > 0 && !mine(a)) ev({ k: 'dealt', a: a.id, d: r2(d) }, ownerOf(a)); break; }
       case 'own': { const c = charById(e.c); if (c && c.net) { c.net.owner = e.o; c.net.mine = e.o === N.me; } break; }
-      case 'dealt': { const a = charById(e.a); if (a && mine(a)) a.damageDealt += e.d; break; }
+      case 'dealt': { const a = charById(e.a); if (a && mine(a) && Number.isFinite(e.d) && e.d > 0) a.damageDealt += e.d; break; }   // 숫자가 아니거나 무한이면 버림 (기록이 망가지지 않게)
       case 'kreq': { const t = charById(e.v); if (t && mine(t) && t.alive) killChar(t, e.a >= 0 ? charById(e.a) : null, e.c); break; }
       case 'knock': netKnock(e); break;
       case 'death': netDeath(e); break;
@@ -271,7 +287,7 @@ const Net = (() => {
       case 'gadd': { if (N.items.has(e.u)) break; N.applying++; spawnItem(G.scene, e.i, e.n, e.x, e.y, e.z, e.in || null, e.u, e.bx || null); N.applying--; break; }
       case 'gdel': { const it = N.items.get(e.u); if (it && it.alive) { N.applying++; removeItem(it); N.applying--; } break; }
       case 'gcnt': { const it = N.items.get(e.u); if (it) it.count = e.n; break; }
-      case 'vhit': { const v = N.vehs[e.n]; if (v && !vehRemote(v)) Veh.damage(v, e.d, e.a >= 0 ? charById(e.a) : null, e.c); break; }
+      case 'vhit': { const v = N.vehs[e.n]; if (v && !vehRemote(v) && Number.isFinite(e.d)) Veh.damage(v, e.d, e.a >= 0 ? charById(e.a) : null, e.c); break; }   // 차량은 판처파우스트 직격(1e6)까지 받으므로 숫자인지만
       case 'vseat': { const v = N.vehs[e.n], who = charById(e.c); if (v && who) Veh.yieldSeat(v, who); break; }   // 파티원이 봇이 앉은 차에 타려 함 → 방장이 봇을 내리게 함
       case 'vboom': { const v = N.vehs[e.n]; if (v && vehRemote(v)) Veh.netBoom(v); break; }
       case 'zone': applyZone(e.z); break;
@@ -731,6 +747,13 @@ const Net = (() => {
       if (c) botize(c);
       HUD.toast(`${hm.name}님이 경기를 떠났습니다${c && c.alive ? ' — 봇이 이어서 합니다' : ''}`, 'warn');
     }
+  }
+  // 방장: 인사(hello)의 게임 버전이 다름 (버전 확인이 없는 예전 화면) → 같이 하지 않음: 그 사람이 보내는 것은 바로 버리고(bad),
+  //  떠난 사람처럼 캐릭터는 봇이 잇는다 — 내 경기를 아직 만드는 중이면 준비된 뒤(ready)에
+  function verDrop(p, v) {
+    if (p.dropped) return; p.bad = true; p.badV = v; if (!N.ready) return;
+    p.dropped = true; peerLeft(p.uid); Ver.tell(v, p.name);
+    setTimeout(() => { closePeer(p); if (N && N.peers.get(p.uid) === p) N.peers.delete(p.uid); }, 300);
   }
 
   // ---------- 방장 넘겨주기 (v22) ----------

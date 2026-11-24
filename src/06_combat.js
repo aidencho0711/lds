@@ -271,11 +271,12 @@ function stepRockets(dt) {
   }
 }
 // 직격: 기절 없이 처치 (같은 팀·부활 보호는 그대로 막힘). 다른 기기 캐릭터는 주인 기기에 처치 요청까지
+//  피해 = ITEMS.pzf.dmg (999) — 같이 하기에서 받은 피해의 상한(10_net.js NET_HIT_MAX)도 이 표 값으로 계산한다
 function rocketLethal(t, own) {
   if (!t.alive || sameTeam(own, t) || (G.dm && t.spawnProt > G.time)) return;
-  applyDamage(t, 999, 'impact', own, 'pzf');
+  applyDamage(t, ITEMS.pzf.dmg, 'impact', own, 'pzf');
   if (G.net && !Net.mine(t)) { if (t.alive) Net.killReq(t, own, 'pzf'); return; }
-  if (t.alive && t.knocked) applyDamage(t, 999, 'impact', own, 'pzf');
+  if (t.alive && t.knocked) applyDamage(t, ITEMS.pzf.dmg, 'impact', own, 'pzf');
 }
 function rocketBoom(r, x, y, z, hit) {
   FX.blast(x, y, z, r.st); Audio.rocket('boom', { x, y, z }, false, r.st);   // 스킨이면 그 모양의 폭발(모양만 — 피해는 같음)
@@ -289,7 +290,7 @@ function rocketBoom(r, x, y, z, hit) {
     if (!ch.alive || ch === direct || ch.mode !== 'ground') continue;
     ch.chest(_v1); const dd = _v1.distanceTo(_v2.set(x, y + 0.2, z)); if (dd > R) continue;
     const cover = losClear(x, y + 0.3, z, _v1.x, _v1.y, _v1.z, dveh) ? 1 : 0.2;
-    applyDamage(ch, 240 * Math.pow(1 - dd / R, 1.1) * cover, 'blast', own, 'pzf');
+    applyDamage(ch, BLAST_DMG.pzf * Math.pow(1 - dd / R, 1.1) * cover, 'blast', own, 'pzf');
   }
   Veh.blast(x, y, z, R, 1400, own, dveh);
 }
@@ -1060,11 +1061,14 @@ function stepProjectiles(dt) {
     }
   }
 }
+// 폭발 피해 (바로 옆 최대): 수류탄 · 충격 수류탄 · 손에 쥔 채 터짐 · 판처파우스트 폭발 · 폭발한 차량에 탄 사람 · 그 둘레 (08_vehicle.js)
+//  같이 하기에서 받은 피해의 상한(10_net.js NET_HIT_MAX)도 이 값들로 계산한다
+const BLAST_DMG = { frag: 160, impact: 132, held: 400, pzf: 240, veh: 400, vehNear: 150 };
 // 터짐: 종류별 효과
 function detonate(p) {
   switch (p.type) {
-    case 'frag': explode(p, 9, 160, 8, 420, 0.62); break;
-    case 'impact': explode(p, 6.5, 132, 6, 320, 0.5); break;
+    case 'frag': explode(p, 9, BLAST_DMG.frag, 8, 420, 0.62); break;
+    case 'impact': explode(p, 6.5, BLAST_DMG.impact, 6, 320, 0.5); break;
     case 'molotov': Hazard.fire(p); break;
     case 'zonegren': Hazard.field(p); break;
     case 'flash': flashBang(p); break;
@@ -1072,7 +1076,7 @@ function detonate(p) {
   }
 }
 // R: 피해 반경 · dmg: 바로 옆 최대 피해 · vR·vD: 차량 피해 반경·크기 · k: 폭발 모양 크기
-function explode(p, R = 9, dmg = 160, vR = 8, vD = 420, k = 0.62) {
+function explode(p, R = 9, dmg = BLAST_DMG.frag, vR = 8, vD = 420, k = 0.62) {
   FX.explosion(p.x, p.y, p.z, k); Audio.explosion(p, k < 0.6 ? 0.85 : 1);
   G.noises.push({ x: p.x, y: p.y, z: p.z, t: G.time, r: 220, by: p.owner, kind: 'blast' });
   if (G.player && G.player.alive) { const d = Math.hypot(G.player.pos.x - p.x, G.player.pos.z - p.z); if (d < 40) G.shake = Math.max(G.shake, (1 - d / 40) * 1.2 * (R / 9)); }
@@ -1083,7 +1087,7 @@ function explode(p, R = 9, dmg = 160, vR = 8, vD = 420, k = 0.62) {
     if (d > R) continue;
     const cover = losClear(p.x, p.y + 0.4, p.z, _v1.x, _v1.y, _v1.z) ? 1 : 0.15;
     // 손에 쥔 채 터지면 방탄조끼와 상관없이 치명상
-    applyDamage(c, p.inHand && c === p.owner ? 400 : dmg * Math.pow(1 - d / R, 1.35) * cover, 'blast', p.owner, p.type);
+    applyDamage(c, p.inHand && c === p.owner ? BLAST_DMG.held : dmg * Math.pow(1 - d / R, 1.35) * cover, 'blast', p.owner, p.type);
   }
   Veh.blast(p.x, p.y, p.z, vR, vD, p.owner);
 }

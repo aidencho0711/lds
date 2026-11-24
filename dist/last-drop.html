@@ -65,6 +65,12 @@ kbd { font-family: var(--f-display); font-size: 0.8em; border: 1px solid var(--l
 .lb-sub button.lock { opacity: 0.6; }
 .lb-note { align-self: flex-start; margin-top: 4px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
 .lb-note > div { font-size: 0.76rem; color: #ffd9a0; background: rgba(13, 17, 19, 0.75); border: 1px solid rgba(240, 164, 58, 0.5); border-radius: 3px; padding: 3px 8px; animation: kfIn 0.2s; }
+/* 새 버전 알림 막대 (10_ver.js): 탭 아래 가운데 — 공지와 같은 결이지만 사라지지 않고 새로고침 단추가 붙음 */
+.lb-upd { align-self: center; display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 3px 3px 3px 10px; font-size: 0.78rem; font-weight: 600; color: #ffd9a0; background: rgba(13, 17, 19, 0.85); border: 1px solid var(--amber); border-radius: 3px; animation: kfIn 0.2s; }
+.lb-upd i { width: 6px; height: 6px; flex: none; background: var(--amber); transform: rotate(45deg); }
+.lb-upd .btn.sm { flex: none; padding: 2px 10px; font-size: 0.74rem; }
+.lb-upd-x { appearance: none; flex: none; align-self: stretch; min-width: 28px; margin-left: -4px; padding: 0 4px; border: 0; background: none; color: var(--dim); font: inherit; font-size: 0.8rem; line-height: 1; cursor: pointer; }
+.lb-upd-x:hover { color: var(--sand); }
 .lb-right { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
 .lv-chip { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px 0 6px; border: 1px solid var(--line); background: rgba(13, 17, 19, 0.6); border-radius: 4px; cursor: pointer; }
 .lv-chip:hover { border-color: var(--line-2); }
@@ -2044,6 +2050,8 @@ body.touch #victoryHud button { padding: 8px 12px; font-size: 0.8rem; }</style>
         </div>
         <div class="lb-sub" id="segQueue"></div>
         <div class="lb-note" id="lbNote" hidden></div>
+        <!-- 새 배포 · 게임 버전이 낮음 (10_ver.js): 누르면 새로고침 · ✕ 닫기 -->
+        <div class="lb-upd" id="verBar" hidden><i aria-hidden="true"></i><span id="verTxt">새 버전이 나왔어요</span><button class="btn amber sm" id="verGo" type="button">새로고침</button><button class="lb-upd-x" id="verX" type="button" aria-label="닫기" title="닫기">✕</button></div>
       </nav>
       <div class="lb-right">
         <!-- 이벤트 (10_event.js): 다른 게임 홍보 — THE BACKROOMS 탈출 이벤트 -->
@@ -19730,11 +19738,12 @@ function stepRockets(dt) {
   }
 }
 // 직격: 기절 없이 처치 (같은 팀·부활 보호는 그대로 막힘). 다른 기기 캐릭터는 주인 기기에 처치 요청까지
+//  피해 = ITEMS.pzf.dmg (999) — 같이 하기에서 받은 피해의 상한(10_net.js NET_HIT_MAX)도 이 표 값으로 계산한다
 function rocketLethal(t, own) {
   if (!t.alive || sameTeam(own, t) || (G.dm && t.spawnProt > G.time)) return;
-  applyDamage(t, 999, 'impact', own, 'pzf');
+  applyDamage(t, ITEMS.pzf.dmg, 'impact', own, 'pzf');
   if (G.net && !Net.mine(t)) { if (t.alive) Net.killReq(t, own, 'pzf'); return; }
-  if (t.alive && t.knocked) applyDamage(t, 999, 'impact', own, 'pzf');
+  if (t.alive && t.knocked) applyDamage(t, ITEMS.pzf.dmg, 'impact', own, 'pzf');
 }
 function rocketBoom(r, x, y, z, hit) {
   FX.blast(x, y, z, r.st); Audio.rocket('boom', { x, y, z }, false, r.st);   // 스킨이면 그 모양의 폭발(모양만 — 피해는 같음)
@@ -19748,7 +19757,7 @@ function rocketBoom(r, x, y, z, hit) {
     if (!ch.alive || ch === direct || ch.mode !== 'ground') continue;
     ch.chest(_v1); const dd = _v1.distanceTo(_v2.set(x, y + 0.2, z)); if (dd > R) continue;
     const cover = losClear(x, y + 0.3, z, _v1.x, _v1.y, _v1.z, dveh) ? 1 : 0.2;
-    applyDamage(ch, 240 * Math.pow(1 - dd / R, 1.1) * cover, 'blast', own, 'pzf');
+    applyDamage(ch, BLAST_DMG.pzf * Math.pow(1 - dd / R, 1.1) * cover, 'blast', own, 'pzf');
   }
   Veh.blast(x, y, z, R, 1400, own, dveh);
 }
@@ -20519,11 +20528,14 @@ function stepProjectiles(dt) {
     }
   }
 }
+// 폭발 피해 (바로 옆 최대): 수류탄 · 충격 수류탄 · 손에 쥔 채 터짐 · 판처파우스트 폭발 · 폭발한 차량에 탄 사람 · 그 둘레 (08_vehicle.js)
+//  같이 하기에서 받은 피해의 상한(10_net.js NET_HIT_MAX)도 이 값들로 계산한다
+const BLAST_DMG = { frag: 160, impact: 132, held: 400, pzf: 240, veh: 400, vehNear: 150 };
 // 터짐: 종류별 효과
 function detonate(p) {
   switch (p.type) {
-    case 'frag': explode(p, 9, 160, 8, 420, 0.62); break;
-    case 'impact': explode(p, 6.5, 132, 6, 320, 0.5); break;
+    case 'frag': explode(p, 9, BLAST_DMG.frag, 8, 420, 0.62); break;
+    case 'impact': explode(p, 6.5, BLAST_DMG.impact, 6, 320, 0.5); break;
     case 'molotov': Hazard.fire(p); break;
     case 'zonegren': Hazard.field(p); break;
     case 'flash': flashBang(p); break;
@@ -20531,7 +20543,7 @@ function detonate(p) {
   }
 }
 // R: 피해 반경 · dmg: 바로 옆 최대 피해 · vR·vD: 차량 피해 반경·크기 · k: 폭발 모양 크기
-function explode(p, R = 9, dmg = 160, vR = 8, vD = 420, k = 0.62) {
+function explode(p, R = 9, dmg = BLAST_DMG.frag, vR = 8, vD = 420, k = 0.62) {
   FX.explosion(p.x, p.y, p.z, k); Audio.explosion(p, k < 0.6 ? 0.85 : 1);
   G.noises.push({ x: p.x, y: p.y, z: p.z, t: G.time, r: 220, by: p.owner, kind: 'blast' });
   if (G.player && G.player.alive) { const d = Math.hypot(G.player.pos.x - p.x, G.player.pos.z - p.z); if (d < 40) G.shake = Math.max(G.shake, (1 - d / 40) * 1.2 * (R / 9)); }
@@ -20542,7 +20554,7 @@ function explode(p, R = 9, dmg = 160, vR = 8, vD = 420, k = 0.62) {
     if (d > R) continue;
     const cover = losClear(p.x, p.y + 0.4, p.z, _v1.x, _v1.y, _v1.z) ? 1 : 0.15;
     // 손에 쥔 채 터지면 방탄조끼와 상관없이 치명상
-    applyDamage(c, p.inHand && c === p.owner ? 400 : dmg * Math.pow(1 - d / R, 1.35) * cover, 'blast', p.owner, p.type);
+    applyDamage(c, p.inHand && c === p.owner ? BLAST_DMG.held : dmg * Math.pow(1 - d / R, 1.35) * cover, 'blast', p.owner, p.type);
   }
   Veh.blast(p.x, p.y, p.z, vR, vD, p.owner);
 }
@@ -23416,12 +23428,12 @@ const Veh = (() => {
     const x = v.pos.x, y = v.pos.y + 0.8, z = v.pos.z, by = v.lastHitBy;
     FX.blast(x, y, z, null, 1.15, true); Audio.explosion({ x, y, z }, 1.25);   // v21: 큰 폭발(불붙은 조각·잔불 많이)
     G.noises.push({ x, y, z, t: G.time, r: 300, by, kind: 'blast' });
-    for (const d of riders(v)) { applyDamage(d, 400, 'impact', by, 'vexp'); if (d.veh) exit(d, false, true); }
+    for (const d of riders(v)) { applyDamage(d, BLAST_DMG.veh, 'impact', by, 'vexp'); if (d.veh) exit(d, false, true); }
     for (const c of CHARS) {
       if (!c.alive || c.mode !== 'ground') continue;
       c.chest(_v); const d = Math.hypot(_v.x - x, _v.y - y, _v.z - z); if (d > 8) continue;
       const cover = losClear(x, y + 0.4, z, _v.x, _v.y, _v.z) ? 1 : 0.2;
-      applyDamage(c, 150 * Math.pow(1 - d / 8, 1.2) * cover, 'blast', by, 'vexp');
+      applyDamage(c, BLAST_DMG.vehNear * Math.pow(1 - d / 8, 1.2) * cover, 'blast', by, 'vexp');
     }
     blast(x, y, z, 7, 500, by, v);
     VehModels.wreck(v.P); v.P.root.position.y -= 0.12;
@@ -25461,10 +25473,18 @@ const KAnim = (() => {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-24', t: '게임 버전이 다르면 같이 하지 않음 · 새 버전 알림 막대 · 이상한 피해 값 막기', items: [
+    '친구·파티원과 게임 버전이 다르면 같이 하지 않고 바로 알려 줌 — 친구 목록에 「버전 다름」, 파티 초대·파티 참가·온라인 매칭·경기 연결에서 막고, 예전 버전 쪽에는 「게임 버전이 달라요 — 새로고침해 주세요」 막대 (✕ 로 닫기)',
+    '로비에 있을 때 새 버전이 배포되면 「새 버전이 나왔어요 · 새로고침」 막대가 뜸 (5분마다 · 앱으로 돌아올 때 · 경기를 마치고 로비로 올 때 확인 · 경기 중에는 확인하지 않음)',
+    '이어하기: 그사이 게임 버전이 바뀌어 같이 하던 경기에 다시 들어갈 수 없으면 탈주가 아닌 보통 패배로 기록 (떠날 때의 순위 그대로 · 랭크·하드코어 탈주 감점 없음 · 안내 8초)',
+    '같이 하기에서 다른 기기가 보낸 피해 값이 이상하면(엄청 큰 값 · 숫자가 아님 · 음수) 버리거나 게임에서 가장 큰 한 방(판처파우스트 직격 999)까지로 줄임 — 보통 피해는 그대로',
+    '같은 계정을 휴대폰·PC 에 같이 켜 두어도 이 화면과 버전이 같은 쪽을 보고 친구 상태·초대를 판단 · 게임 버전 안내는 친구가 보낸 것만 받음',
+    '같이 하기 버전을 3으로 올림 — 이번 업데이트 전에 열어 둔 화면과는 같이 할 수 없으니 모두 새로고침해 주세요 (그래픽 품질과 상관없이 맵이 같아지면서 예전 화면과는 맵도 다름)',
+  ] },
   { v: 'v23', d: '2026-11-24', t: '그래픽 품질과 상관없이 모두 같은 맵 — 같이 하기에서 기기마다 나무·바위 자리가 달랐던 문제 수정', items: [
     '그래픽 품질 「낮음」(휴대폰 기본값)은 나무·덤불을 적게, 「높음」·「엑스트라」는 많이 심었는데, 나무는 총알과 차를 막는 물체라 같이 하기에서 휴대폰과 PC가 서로 다른 엄폐물을 보며 싸우고 있었음 — 이제 모든 품질에서 나무·덤불·바위가 같은 자리에 같은 수만큼 생김',
     '나무 수가 달라지면 그 뒤에 놓는 바위와 리콜 타워 자리까지 밀려 달라지던 것도 함께 고쳐짐 (키나루·아이언리지·칼덴·크리스마스 섬은 품질에 따라 리콜 타워 자리가 달랐음)',
-    '맵은 예전 「중간」 품질과 똑같음 — 「중간」으로 하던 사람은 바뀌는 것이 없고, 「낮음」은 나무가 늘고 「높음」·「엑스트라」는 조금 줄어듦 · 그래픽 품질은 이제 풀·시야 거리·해상도처럼 눈에 보이는 것만 바꿈',
+    '맵은 예전 「중간」 품질과 똑같음 — 「중간」으로 하던 사람은 바뀌는 것이 없고, 「낮음」은 나무가 늘고 「높음」·「엑스트라」는 조금 줄어듦 · 그래픽 품질은 이제 맵(나무·바위 같은 충돌 물체)을 바꾸지 않음',
   ] },
   { v: 'v23', d: '2026-11-24', t: '나비 나이프 · 카람빗 전용 동작 — 꺼내기 · 대기 · 휘두르기 · 살펴보기 · 넣기', items: [
     '나비 나이프 꺼내기: 엄지로 걸쇠를 튕겨 풀고 → 손잡이 하나가 손등 위로 넘어가고 → 손목을 튕겨 날과 함께 굴려 펼친 뒤 → 손바닥으로 받아 철컥 → 걸쇠를 잠그고 쥠 (두 손잡이 · 날 · 걸쇠가 각각 따로 움직임)',
@@ -29437,10 +29457,10 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   //  · 글이 길수록 오래(3.5~10초) · 같은 글이 이미 떠 있으면 시간만 다시 잼 · 넘치면 가장 오래된 줄부터 내림
   const notes = [];
   function dropLobbyNote(it) { const i = notes.indexOf(it); if (i < 0) return; notes.splice(i, 1); clearTimeout(it.t); it.el.remove(); if (!notes.length) $('lbNote').hidden = true; }
-  function showLobbyNote(msg) {
+  function showLobbyNote(msg, ms) {   // ms: 오래 보여 줄 안내 (게임 버전 다름 등) — 없으면 글 길이로
     const box = $('lbNote'); msg = String(msg); let it = notes.find((x) => x.msg === msg);
     if (!it) { it = { msg, el: h('div', '', msg) }; notes.push(it); box.appendChild(it.el); while (notes.length > 3) dropLobbyNote(notes[0]); }
-    clearTimeout(it.t); it.t = setTimeout(() => dropLobbyNote(it), Math.min(10000, Math.max(3500, 1200 + msg.length * 70))); box.hidden = false;
+    clearTimeout(it.t); it.t = setTimeout(() => dropLobbyNote(it), ms || Math.min(10000, Math.max(3500, 1200 + msg.length * 70))); box.hidden = false;
   }
   // 승급전 연속 성공 칸: 채운 칸 n / 전체 need (fail: 이번에 실패한 칸을 빨갛게)
   const pipsHTML = (n, need, fail) => Array.from({ length: need }, (_, i) => `<i class="${i < n ? 'on' : fail && i === n ? 'x' : ''}"></i>`).join('');
@@ -29537,7 +29557,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       if (R.tierUp && !R.placement && R.before && R.after) setTimeout(() => { if (G.state === 'result' && !$('resultPanel').hidden) RankFx.play(R.before, R.after, { series: !!R.series }); }, 650);
     }
   }
-  return { lobbyNote: (m) => showLobbyNote(m), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { if (/^m_/.test(cat || '')) { whMel = cat; cat = 'melee'; } whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); else if (cat === 'melee' && skin) Lobby.show({ kind: 'melee', melee: whMel.slice(2), skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
+  return { lobbyNote: (m, ms) => showLobbyNote(m, ms), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { if (/^m_/.test(cat || '')) { whMel = cat; cat = 'melee'; } whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); else if (cat === 'melee' && skin) Lobby.show({ kind: 'melee', melee: whMel.slice(2), skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();
 
 // ---------- 10_mm.js ----------
@@ -29552,6 +29572,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
 //    대기열은 아레나(맵)별 — '무작위'를 고른 사람끼리는 방장이 아레나를 뽑는다
 //  · 파티: 방장이 파티째 줄 선다 (파티원은 같은 팀). 파티원 화면에는 '방장이 온라인 매칭 중'
 //  · 경기 연결: 이 경기 전용 실시간 채널(ld-mm-<경기 번호>)로 WebRTC 신호를 주고받는다 (10_net.js)
+//  · 게임 버전(NET_VER)이 대기열 키에 들어 있어 버전이 다른 사람끼리는 묶이지 않는다 · 받은 경기 설정의 버전도 다시 확인 (10_ver.js)
 // ============================================================
 const MM = (() => {
   const T = { wait: 180, poll: 2000 };   // 최대 대기(초) · 확인 간격(ms)
@@ -29662,6 +29683,8 @@ const MM = (() => {
   }
   function launch(cfg) {
     const q = Q; if (!q || q.launched) return;
+    // 매칭된 경기의 방장과 게임 버전이 다름 (대기열 키에 버전이 들어 있어 보통은 갈림) → 같이 하지 않음 (10_ver.js)
+    if (cfg.v !== NET_VER) { cancel(); Ver.tell(cfg.v, (cfg.humans.find((h) => h.uid === cfg.host) || {}).name); return; }
     q.launched = true; clearTimeout(q.timer); Q = null;
     if (q.party) { Party.send('mm', { on: 0 }); Party.send('start', { cfg }); }
     const nh = cfg.humans.length, others = nh - q.members.length;
@@ -29790,7 +29813,20 @@ const MM = (() => {
 //  아이템: 시작 아이템·차량은 같은 시드로 각자 생성(방장이 개수·위치 합계로 검증, 다르면 목록 전송), 이후 줍기·버리기는 사건으로
 //  리콜(08_recall.js): 'rc' — 등록 요청은 방장에게, 방장이 확인해 승인을 모두에게. 되살리기는 그 캐릭터의 주인 기기
 // ============================================================
-const NET_VER = 2;   // v22: 2 = 데스매치 아레나(cfg.arena) — 버전이 다르면 매칭 대기열이 갈린다
+// 같이 하기 버전: 경기 사건·설정의 모양이 바뀌면 올린다 — 다르면 파티·온라인 매칭·경기 연결에서 같이 하지 않는다 (10_ver.js)
+//  2 = v22 데스매치 아레나(cfg.arena) · 3 = v22 시체·보급 상자(gadd bx)·근접 무기(pu w)·새 투척 무기 + v23 이어하기(로비 rj·rjok · rjs)·우승 축하(vic)
+const NET_VER = 3;
+// 받은 피해('hit')의 상한 = 이 게임에서 한 번에 줄 수 있는 가장 큰 피해 — 불러올 때 표에서 계산 (판처파우스트 직격 ITEMS.pzf.dmg 가 가장 큼)
+//  보내는 값은 머리(×2.1)·기절 중 머리(×1.5)·방어구를 셈하기 전 피해(맞은 쪽 applyDamage 가 곱함)라 그 전 값끼리 견준다:
+//  총 ITEMS dmg(산탄은 한 알씩 · 거리 감쇠 ≤ 1 · pzf = 직격) · 근접 무기 ITEMS dmg(머리는 ×0.72 로 줄여 보냄) · 주먹 PUNCH · 폭발 BLAST_DMG ·
+//  차량 들이받기 (상대 속도 - 2.5) × hit — 상대 속도 ≤ 가장 빠른 차 최고속의 두 배(차 + 다른 차에 튕겨 날아온 사람) · 탑승자 충돌·착지·내리기 피해도 이 안
+//  (낙하·자기장 피해는 그 캐릭터 주인 기기만 셈해 오가지 않음 · 화염병·자기장 수류탄은 0.2초마다 몇 점)
+//  표에 숫자가 아닌 값이 섞여 계산이 NaN 이 되면 받은 피해가 모두 NaN 이 되므로 → 999 (지금 표의 최댓값 = 판처파우스트 직격)
+const NET_HIT_MAX = (() => {
+  const vmax = Math.max(...Object.values(VEH_TYPES).map((T) => T.vmax)), m = Math.max(PUNCH.dmg, ...Object.values(ITEMS).map((d) => d.dmg || 0), ...Object.values(BLAST_DMG), ...Object.values(VEH_TYPES).map((T) => 2 * vmax * T.hit));
+  if (Number.isFinite(m) && m > 0) return m;
+  console.warn('NET_HIT_MAX: 피해 표에 숫자가 아닌 값이 있어 999 로 둡니다'); return 999;
+})();
 const NET_ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }].concat(CLOUD_CFG.turn || []);
 const Net = (() => {
   let N = null;
@@ -29849,6 +29885,7 @@ const Net = (() => {
   //  → 방장에게 연결해 지금 상태(rjs)를 받을 때까지 내 캐릭터 상태를 보내지 않는다(hold)
   function join(cfg, rj) {
     if (!Cloud.uid || G.state === 'loading') return;
+    if (cfg.v !== NET_VER) { Ver.tell(cfg.v, (cfg.humans.find((h) => h.uid === cfg.host) || {}).name); return; }   // 방장(경기 설정)과 게임 버전이 다름 → 들어가지 않음
     if (N) close(true);
     if (G.state === 'play' || G.state === 'result') { $('resultPanel').hidden = true; disposeMatch(); G.state = 'lobby'; }
     // 이번 경기만 방장 설정 (저장하지 않음). 온라인 매칭은 모르는 사람의 설정이므로 끝나면 내 설정으로 되돌린다
@@ -29936,7 +29973,7 @@ const Net = (() => {
     dc.onmessage = (e) => recv(p, e.data);
     dc.onclose = () => { if (p.open) { p.open = false; if (N && !N.ended) toRelay(p, 'closed'); } };
   }
-  function toRelay(p, why) { if (p.relay) return; p.relay = true; console.warn('중계 전환', p.uid, why); if (N && !N.ended) { HUD.toast(`${p.name}님과 직접 연결이 안 되어 서버 중계로 전환합니다 (움직임이 덜 부드러울 수 있음)`, 'warn'); hello(p); linkUp(p); } }
+  function toRelay(p, why) { if (p.relay || p.bad) return; p.relay = true; console.warn('중계 전환', p.uid, why); if (N && !N.ended) { HUD.toast(`${p.name}님과 직접 연결이 안 되어 서버 중계로 전환합니다 (움직임이 덜 부드러울 수 있음)`, 'warn'); hello(p); linkUp(p); } }
   // 연결이 생기면: 밀린 사건 전송, 방장은 인사를 받았던 파티원에게 현재 상태
   function linkUp(p) {
     if (p.q && p.q.length) { const q = p.q.splice(0); for (const m of q) sendTo(p, m, true); }
@@ -29988,7 +30025,7 @@ const Net = (() => {
   // 경기 화면이 준비됨 (startMatch / DM.start 끝)
   function ready() {
     if (!N) return; N.ready = true;
-    for (const p of N.peers.values()) { if ((p.open || p.relay) && p.needHello) hello(p); if (p.needWelcome) welcome(p); }
+    for (const p of N.peers.values()) { if (p.bad) { verDrop(p, p.badV); continue; } if ((p.open || p.relay) && p.needHello) hello(p); if (p.needWelcome) welcome(p); }
     checkSum();
   }
   function checkSum() {
@@ -30011,7 +30048,7 @@ const Net = (() => {
 
   // ---------- 받기 ----------
   function recv(p, data) {
-    if (!N) return;
+    if (!N || p.bad) return;   // bad: 게임 버전이 달라 내보낸 사람 (verDrop)
     let m; try { m = typeof data === 'string' ? JSON.parse(data) : data; } catch (e) { return; }
     p.lastRx = now(); N.stats.rx += (data && data.length) || 0;
     if (N.rj && !N.ready) return;   // 다시 들어오는 중 · 아직 맵을 만드는 중: 버림 (인사한 뒤 방장이 지금 상태를 통째로 보낸다 — 그 전 사건을 적용하면 아이템 칸이 없어 오류)
@@ -30029,13 +30066,15 @@ const Net = (() => {
   // 번호 → 캐릭터 (CHARS 가 바뀌거나 늘면 다시 만든다 — 받은 상태마다 배열 전체를 훑지 않게)
   let cmA = null, cmN = -1, cmM = null;
   const charById = (id) => { if (cmA !== CHARS || cmN !== CHARS.length) { cmA = CHARS; cmN = CHARS.length; cmM = new Map(); for (const c of CHARS) cmM.set(c.id, c); } return cmM.get(id) || null; };
+  // 받은 피해: 숫자가 아니거나 음수·무한이면 -1(버림), 아니면 NET_HIT_MAX 까지 (내 기기에서 준 피해는 그대로)
+  const hitDmg = (d) => (Number.isFinite(d) && d >= 0 ? Math.min(d, NET_HIT_MAX) : -1);
   function handle(e, from) {
     switch (e.k) {
-      case 'hello': { if (N.host) { const p = N.peers.get(from); if (p) { p.helloSeen = true; welcome(p); } } break; }
+      case 'hello': { if (N.host) { const p = N.peers.get(from); if (p) { if (e.v !== NET_VER) { verDrop(p, e.v); break; } p.helloSeen = true; welcome(p); } } break; }
       case 'welcome': applyWelcome(e); break;
-      case 'hit': { const t = charById(e.v); if (!t || !mine(t)) return; const a = e.a >= 0 ? charById(e.a) : null; const d = applyDamage(t, e.d, e.p, a, e.c, e.h && e.h[0], e.h && e.h[1], e.h && e.h[2]); if (a && d > 0 && !mine(a)) ev({ k: 'dealt', a: a.id, d: r2(d) }, ownerOf(a)); break; }
+      case 'hit': { const t = charById(e.v); if (!t || !mine(t)) return; const dm = hitDmg(e.d); if (dm < 0) return; const a = e.a >= 0 ? charById(e.a) : null; const d = applyDamage(t, dm, e.p, a, e.c, e.h && e.h[0], e.h && e.h[1], e.h && e.h[2]); if (a && d > 0 && !mine(a)) ev({ k: 'dealt', a: a.id, d: r2(d) }, ownerOf(a)); break; }
       case 'own': { const c = charById(e.c); if (c && c.net) { c.net.owner = e.o; c.net.mine = e.o === N.me; } break; }
-      case 'dealt': { const a = charById(e.a); if (a && mine(a)) a.damageDealt += e.d; break; }
+      case 'dealt': { const a = charById(e.a); if (a && mine(a) && Number.isFinite(e.d) && e.d > 0) a.damageDealt += e.d; break; }   // 숫자가 아니거나 무한이면 버림 (기록이 망가지지 않게)
       case 'kreq': { const t = charById(e.v); if (t && mine(t) && t.alive) killChar(t, e.a >= 0 ? charById(e.a) : null, e.c); break; }
       case 'knock': netKnock(e); break;
       case 'death': netDeath(e); break;
@@ -30048,7 +30087,7 @@ const Net = (() => {
       case 'gadd': { if (N.items.has(e.u)) break; N.applying++; spawnItem(G.scene, e.i, e.n, e.x, e.y, e.z, e.in || null, e.u, e.bx || null); N.applying--; break; }
       case 'gdel': { const it = N.items.get(e.u); if (it && it.alive) { N.applying++; removeItem(it); N.applying--; } break; }
       case 'gcnt': { const it = N.items.get(e.u); if (it) it.count = e.n; break; }
-      case 'vhit': { const v = N.vehs[e.n]; if (v && !vehRemote(v)) Veh.damage(v, e.d, e.a >= 0 ? charById(e.a) : null, e.c); break; }
+      case 'vhit': { const v = N.vehs[e.n]; if (v && !vehRemote(v) && Number.isFinite(e.d)) Veh.damage(v, e.d, e.a >= 0 ? charById(e.a) : null, e.c); break; }   // 차량은 판처파우스트 직격(1e6)까지 받으므로 숫자인지만
       case 'vseat': { const v = N.vehs[e.n], who = charById(e.c); if (v && who) Veh.yieldSeat(v, who); break; }   // 파티원이 봇이 앉은 차에 타려 함 → 방장이 봇을 내리게 함
       case 'vboom': { const v = N.vehs[e.n]; if (v && vehRemote(v)) Veh.netBoom(v); break; }
       case 'zone': applyZone(e.z); break;
@@ -30508,6 +30547,13 @@ const Net = (() => {
       if (c) botize(c);
       HUD.toast(`${hm.name}님이 경기를 떠났습니다${c && c.alive ? ' — 봇이 이어서 합니다' : ''}`, 'warn');
     }
+  }
+  // 방장: 인사(hello)의 게임 버전이 다름 (버전 확인이 없는 예전 화면) → 같이 하지 않음: 그 사람이 보내는 것은 바로 버리고(bad),
+  //  떠난 사람처럼 캐릭터는 봇이 잇는다 — 내 경기를 아직 만드는 중이면 준비된 뒤(ready)에
+  function verDrop(p, v) {
+    if (p.dropped) return; p.bad = true; p.badV = v; if (!N.ready) return;
+    p.dropped = true; peerLeft(p.uid); Ver.tell(v, p.name);
+    setTimeout(() => { closePeer(p); if (N && N.peers.get(p.uid) === p) N.peers.delete(p.uid); }, 300);
   }
 
   // ---------- 방장 넘겨주기 (v22) ----------
@@ -33944,6 +33990,9 @@ const Ladder = (() => {
 //    → 로비 채널로 그 경기 사람들에게 묻고(rj) 지금 방장이 답하면(rjok) 같은 경기를 열어 다시 연결, 방장이 보낸 지금 상태로 맞춘 뒤
 //      내 캐릭터를 돌려받는다 (소지품은 이 기기에 저장해 둔 것 — 방장 기기는 손에 든 총·장비만 알고 있었다) — 10_net.js
 //    - 10초 동안 아무도 답하지 않으면 이미 끝난 경기 → 떠날 때의 순위로 기록
+//    - 그사이 새로고침으로 게임 버전(NET_VER)이 바뀌었으면 묻지 않고 떠날 때의 순위로 기록 (예전 버전 경기와는 같이 할 수 없음 — 10_ver.js)
+//      스스로 나간 것이 아니라 배포 때문에 못 돌아가는 것이라 탈주가 아닌 보통 패배로 (랭크·하드코어 탈주 감점 · 승급전 '탈주' 실패 없음) · 안내는 8초
+//    - 이 창이 답을 기다리는 동안은 새 버전 막대를 미룬다 (새로고침하면 다시 들어갈 수 있던 경기를 놓칠 수 있다 — 10_ver.js Ver.sync)
 //  · 포기하기: 일시정지 메뉴의 '경기 포기'처럼 떠날 때의 순위로 기록 (랭크전은 RP 에도 반영 · 데스매치는 원래처럼 기록 없음)
 //  · 결과가 정해진 뒤(전멸·우승 뒤 결과 화면이 뜨기 전) 떠났으면 묻지 않고 그 결과로 기록
 //  · 저장하지 않는 곳: 스타트 섬(시작 전 — 떠나도 기록이 없음) · 훈련장 · 메뉴로 나간 경기(그때 이미 기록됨)
@@ -34171,6 +34220,9 @@ const Resume = (() => {
     if (s.v !== VER || age < 0 || age > (net ? NET_MAX : SOLO_MAX)) { clear(); return; }
     if ((s.uid || null) !== (Cloud.uid || null)) { if (Cloud.uid) clear(); return; }   // 다른 계정 · (로그아웃 상태면 그대로 두었다가 로그인하면 다시 확인)
     if (s.q && s.q.over) { clear(); record(s.q, false); return; }   // 결과가 정해진 뒤에 떠남 → 묻지 않고 기록
+    // 같이 하기: 그사이 게임 버전이 바뀜(새로고침으로 새 배포를 받음) → 예전 버전 경기에는 다시 들어갈 수 없다 (10_ver.js)
+    //  탈주가 아닌 보통 패배로 떠날 때의 순위 그대로 (quit 없음 → 탈주 감점·승급전 '탈주' 실패 없음) · 휴대폰에서도 읽게 8초
+    if (net && s.cfg && s.cfg.v !== NET_VER) { clear(); const t = '게임 버전이 바뀌어 그 경기에 다시 들어갈 수 없습니다'; if (s.q) record(s.q, false, t + ' · 떠날 때의 순위로 기록' + (s.q.ranked || s.q.hc ? ' (탈주 아님)' : ''), 8000); else HUD.lobbyNote(t, 8000); return; }
     if (G.state !== 'lobby') return;
     pend = s; show(s);
   }
@@ -34190,16 +34242,17 @@ const Resume = (() => {
       + (q ? ` 포기하면 ${q.place}위로 기록됩니다${q.hc || q.ranked ? ' (랭크 점수 반영)' : ''}.` : ' 포기하면 기록 없이 끝납니다.');
     const m = $('rjMsg'); m.hidden = !msg; m.textContent = msg || '';
     $('rjGo').disabled = false; $('rjNo').disabled = false; $('rjGo').textContent = msg ? '다시 시도' : '다시 들어가기';
-    $('rjPanel').hidden = false;
+    $('rjPanel').hidden = false; Ver.sync();   // 새 버전 막대는 답할 때까지 미룸 (10_ver.js)
   }
-  function hide() { $('rjPanel').hidden = true; }
-  // 경기 기록 (11_game.js recordBR — 결과 화면과 같은 셈) · win: 결과가 정해진 뒤 떠난 경기 · head: 알림 앞머리
-  function record(q, quit, head) {
+  function hide() { $('rjPanel').hidden = true; Ver.sync(); }
+  // 경기 기록 (11_game.js recordBR — 결과 화면과 같은 셈) · quit: 포기(탈주) — 아니면 결과가 정해진 뒤 떠난 경기(win) · 게임 버전이 바뀌어 못 돌아간 경기(보통 패배)
+  //  head: 알림 앞머리 · ms: 알림을 보여 줄 시간
+  function record(q, quit, head, ms) {
     if (!q) return;
     try {
       const r = recordBR(Object.assign({}, q, { win: !!q.win && !quit, quit: !!quit }));
       const R = G.rankResult, rp = R && !R.placement && R.delta !== undefined ? ` · 랭크 ${R.delta >= 0 ? '+' : ''}${R.delta} RP` : '';
-      HUD.lobbyNote(`${head || (quit ? '지난 경기를 포기했습니다' : '지난 경기 결과를 기록했습니다')} — ${q.win && !quit ? '우승' : q.place + '위'} · 경험치 +${r.xp}${rp}${r.notes.length ? ' · ' + r.notes.join(' · ') : ''}`);
+      HUD.lobbyNote(`${head || (quit ? '지난 경기를 포기했습니다' : '지난 경기 결과를 기록했습니다')} — ${q.win && !quit ? '우승' : q.place + '위'} · 경험치 +${r.xp}${rp}${r.notes.length ? ' · ' + r.notes.join(' · ') : ''}`, ms);
       HUD.renderLobby();
     } catch (e) { console.warn('이어하기 기록 실패', e); }
   }
@@ -35197,9 +35250,9 @@ const Social = (() => {
     clearInterval(pollT); clearInterval(statT);
     if (!keepUi) { Watch.stopAll(); $('friendPanel').hidden = true; render(); renderInvites(); }
   }
-  // pl: 지금 경기 화면(관전할 수 있음) — 결과 화면·불러오는 중은 0
+  // pl: 지금 경기 화면(관전할 수 있음) — 결과 화면·불러오는 중은 0 · nv: 같이 하기 버전 (10_ver.js — 없으면 예전 화면)
   function myStatus() {
-    return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, st: G.state === 'lobby' || G.state === 'loading' && !G.netLoading ? (G.state === 'lobby' ? 'lobby' : 'game') : 'game', pid: Party.id(), pn: Party.size(), pl: G.state === 'play' ? 1 : 0 };
+    return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, st: G.state === 'lobby' || G.state === 'loading' && !G.netLoading ? (G.state === 'lobby' ? 'lobby' : 'game') : 'game', pid: Party.id(), pn: Party.size(), pl: G.state === 'play' ? 1 : 0, nv: NET_VER };
   }
   // 상태가 바뀌었을 때만 presence 갱신 (초당 제한이 있다)
   function track(force) {
@@ -35208,11 +35261,18 @@ const Social = (() => {
     if (!force && k === lastTrack) return; lastTrack = k;
     ch.track(s).catch(() => { lastTrack = ''; });
   }
+  // 한 계정이 여러 곳(휴대폰·PC 탭)에 접속해 있으면 하나를 고른다: 이 화면과 게임 버전이 같은 접속 → 그중 로비에 있는 것 → 가장 늦게 알린 것
+  //  (예전 버전 탭이 남아 있어도 같은 버전 접속으로 초대할 수 있게 — 10_ver.js)
   function readPresence() {
     online.clear(); if (!ch) return;
     const st = ch.presenceState();
-    for (const k in st) { const a = st[k]; if (a && a.length) online.set(k, a[a.length - 1]); }
+    for (const k in st) {
+      const a = (st[k] || []).filter(Boolean); if (!a.length) continue;
+      const same = a.filter((x) => x.nv === NET_VER), L = same.length ? same : a, lb = L.filter((x) => x.st === 'lobby');
+      online.set(k, (lb.length ? lb : L).pop());
+    }
   }
+  const isFriend = (uid) => friends.some((f) => f.id === uid && f.status === 'accepted');
   // 받는 사람(to)이 정해진 메시지 — 로비 채널에 있는 모두가 받지만 to가 아니면 버린다
   function send(to, k, data) {
     if (!ch || !ok) return false;
@@ -35223,22 +35283,30 @@ const Social = (() => {
     if (!m || m.to !== me() || !m.from) return;
     if (m.k === 'spec' || m.k === 'spof' || m.k === 'span' || m.k === 'spno' || m.k === 'spx') { Watch.onLobby(m); return; }   // 친구 관전 신호 (10_watch.js)
     if (m.k === 'inv') {
-      if (G.state !== 'lobby') { send(m.from.uid, 'invno', { why: 'busy' }); return; }
-      if (Party.id() === m.pid) return;
+      // pid 없는 초대 = 게임 버전 안내뿐 (10_ver.js) — 버전이 같으면 보낸 쪽이 이 계정의 다른 접속(예전 탭 등)을 보고 보낸 것 → 무시
+      if (!m.pid && m.nv === NET_VER) return;
+      // 게임 버전이 다름 (버전이 없으면 예전 화면): 친구가 보낸 것만 — 초대 카드는 안내만(수락 없음) · 내 쪽이 낮으면 새로고침 막대
+      //  보낸 사람이 모르고 보낸 초대(pid 있음)면 알려 준다 — 버전 안내 초대(pid 없음)는 보낸 쪽이 이미 안내를 봤다(게임 중이어도 답하지 않음)
+      const nv = m.nv !== NET_VER ? m.nv || 0 : undefined;
+      if (nv !== undefined && !isFriend(m.from.uid)) return;
+      if (G.state !== 'lobby') { if (m.pid) send(m.from.uid, 'invno', { why: 'busy' }); return; }
+      if (m.pid && Party.id() === m.pid) return;
+      if (nv !== undefined) { if (m.pid) send(m.from.uid, 'invno', { why: 'ver', nv: NET_VER }); if (Ver.mineOld(nv)) Ver.bar('old'); }
       const was = rsvIn.has(m.from.uid); rsvIn.delete(m.from.uid);
       invites = invites.filter((v) => v.from.uid !== m.from.uid);
-      invites.push({ from: m.from, pid: m.pid, t: Date.now(), rsv: was });
+      invites.push({ from: m.from, pid: m.pid, t: Date.now(), rsv: was, nv });
       Audio.init(); Audio.ui && Audio.ui();
       renderInvites(); render();
     } else if (m.k === 'invno') {
       // 예약해 둔 초대를 보냈는데 그새 다시 경기에 들어감 → 다시 예약 (조용히)
       const s = rsvSent.get(m.from.uid);
       if (m.why === 'busy' && s && Date.now() - s.t < 60000) { rsvSent.delete(m.from.uid); rsv.set(m.from.uid, { t: s.t0, name: m.from.name }); render(); return; }
+      if (m.why === 'ver') { if (isFriend(m.from.uid)) Ver.tell(m.nv, m.from.name); return; }   // 게임 버전이 달라 초대를 받을 수 없음 (10_ver.js · 친구가 보낸 것만)
       HUD.lobbyNote(`${m.from.name}님이 ${m.why === 'busy' ? '게임 중이라 초대를 받지 못했습니다' : m.why === 'full' ? '— 파티가 가득 찼습니다' : '초대를 거절했습니다'}`);
     }
     else if (m.k === 'fr') { refresh(); HUD.lobbyNote(m.what === 'accepted' ? `${m.from.name}님과 친구가 되었습니다` : `${m.from.name}님이 친구 요청을 보냈습니다`); }
     else if (m.k === 'rsv') {   // 친구가 나에게 초대를 예약함 (나는 경기 중)
-      if (!friends.some((f) => f.id === m.from.uid && f.status === 'accepted')) return;
+      if (!isFriend(m.from.uid)) return;
       rsvIn.set(m.from.uid, { from: m.from, t: Date.now() });
       const msg = `${m.from.name}님이 파티 초대를 예약했습니다 — 경기를 마치고 로비로 돌아가면 초대가 옵니다`;
       if (G.state === 'lobby') HUD.lobbyNote(msg); else HUD.toast(msg, 'info');
@@ -35278,6 +35346,7 @@ const Social = (() => {
       const o = online.get(uid); if (!o || o.st !== 'lobby') continue;
       rsv.delete(uid); ch2 = true;
       if (!Party.canInvite()) { HUD.lobbyNote(`${r.name}님이 로비로 돌아왔지만 지금은 초대할 수 없습니다 (방장만 · ${PARTY_MAX}명까지)`); continue; }
+      if (o.nv !== NET_VER) { Party.invite(f, o); continue; }   // 게임 버전이 다름: 초대 대신 버전 안내만 (10_ver.js)
       rsvSent.set(uid, { t, t0: r.t });
       Party.invite(f, o);
       setTimeout(() => HUD.lobbyNote(`${r.name}님이 경기를 마쳐 예약한 파티 초대를 보냈습니다`), 700);   // 파티를 새로 만들면 초대 알림이 조금 늦게 뜨므로 그 뒤에
@@ -35318,7 +35387,7 @@ const Social = (() => {
 
   // ---------- 화면 ----------
   function setMsg(t, good) { const m = $('friendMsg'); if (!m) return; m.textContent = t; m.className = 'acct-msg' + (good ? ' ok' : ' bad'); }
-  const statusText = (o, uid) => !o ? '오프라인' : o.st === 'game' ? (rsv.has(uid) ? '게임 중 · 초대 예약됨' : '게임 중') : o.pid && o.pn > 1 ? `로비 · 파티 ${o.pn}/${PARTY_MAX}` : '로비';
+  const statusText = (o, uid) => !o ? '오프라인' : (o.st === 'game' ? (rsv.has(uid) ? '게임 중 · 초대 예약됨' : '게임 중') : o.pid && o.pn > 1 ? `로비 · 파티 ${o.pn}/${PARTY_MAX}` : '로비') + (o.nv !== NET_VER ? ' · 버전 다름' : '');   // 버전 다름: 같이 할 수 없음 (10_ver.js)
   function badgeCount() { return friends.filter((f) => f.status === 'pending' && f.incoming).length + invites.length; }
   function render() {
     const btn = $('friendBtn'); if (!btn) return;
@@ -35354,7 +35423,7 @@ const Social = (() => {
       } else {
         const iv = el('button', 'btn amber sm', '초대'); iv.type = 'button';
         iv.disabled = !o || o.st === 'game' || !Party.canInvite();
-        iv.title = !o ? '접속 중일 때만 초대할 수 있습니다' : o.st === 'game' ? '게임 중입니다' : !Party.canInvite() ? (Party.id() && !Party.isLeader() ? '방장만 초대할 수 있습니다' : '파티가 가득 찼습니다') : '파티에 초대';
+        iv.title = !o ? '접속 중일 때만 초대할 수 있습니다' : o.st === 'game' ? '게임 중입니다' : !Party.canInvite() ? (Party.id() && !Party.isLeader() ? '방장만 초대할 수 있습니다' : '파티가 가득 찼습니다') : o.nv !== NET_VER ? `게임 버전이 달라 같이 할 수 없습니다 — ${Ver.mineOld(o.nv) ? '내 게임이 예전 버전이라 새로고침해야 합니다' : '친구가 새로고침해야 합니다'}` : '파티에 초대';
         iv.onclick = () => Party.invite(f, o); r.appendChild(iv);
       }
       const rm = el('button', 'btn sm ghost', '삭제'); rm.type = 'button';
@@ -35373,6 +35442,15 @@ const Social = (() => {
     const box = $('inviteBox'); if (!box) return; box.innerHTML = '';
     for (const v of invites.slice(-2)) {
       const c = el('div', 'invite-card');
+      if (v.nv !== undefined) {   // 게임 버전이 다름 (10_ver.js): 안내만 — 낮은 쪽이 새로고침해야 같이 할 수 있다
+        const old = Ver.mineOld(v.nv), row = el('div', 'iv-b');
+        c.appendChild(el('div', 'iv-t', `${v.from.name}님이 파티에 초대했지만 게임 버전이 달라요`));
+        c.appendChild(el('div', 'micro', old ? '내 게임이 예전 버전이에요 — 새로고침한 뒤 다시 초대받으면 같이 할 수 있어요' : `${v.from.name}님의 게임이 예전 버전이에요 — ${v.from.name}님이 새로고침해야 같이 할 수 있어요`));
+        // 새로고침 단추: 이어하기 창이 답을 기다리는 동안은 숨김 (그 경기를 놓칠 수 있다 — 답하면 다시 그림 · Ver.sync)
+        if (old && !Resume.pending) { const r = el('button', 'btn amber sm', '새로고침'); r.type = 'button'; r.onclick = () => location.reload(); row.appendChild(r); }
+        const d = el('button', 'btn sm', '닫기'); d.type = 'button'; d.onclick = () => { invites = invites.filter((x) => x !== v); renderInvites(); render(); };
+        row.appendChild(d); c.appendChild(row); box.appendChild(c); continue;
+      }
       c.appendChild(el('div', 'iv-t', v.rsv ? `${v.from.name}님이 예약해 둔 파티 초대가 왔습니다` : `${v.from.name}님이 파티에 초대했습니다`));
       c.appendChild(el('div', 'micro', `Lv ${v.from.lv || '-'} · 수락하면 ${v.from.name}님이 방장인 파티에 들어갑니다`));
       const row = el('div', 'iv-b');
@@ -35394,7 +35472,7 @@ const Social = (() => {
     G.onAuth = (on) => { if (on) start(); else stop(); };
     render();
   }
-  return { setup, start, stop, send, refresh, render, track, openPanel, reserve, unreserve, get online() { return online; }, get friends() { return friends; }, get connected() { return ok; }, get invites() { return invites; }, get rsv() { return rsv; }, get rsvIn() { return rsvIn; } };
+  return { setup, start, stop, send, refresh, render, renderInvites, track, openPanel, reserve, unreserve, msg: (t) => setMsg(t, false), get online() { return online; }, get friends() { return friends; }, get connected() { return ok; }, get invites() { return invites; }, get rsv() { return rsv; }, get rsvIn() { return rsvIn; } };
 })();
 
 const Party = (() => {
@@ -35408,7 +35486,7 @@ const Party = (() => {
   const has = (uid) => !!P && P.members.some((m) => m.uid === uid);
   const canInvite = () => !!Cloud.user && (!P || (isLeader() && size() < PARTY_MAX));
   const uuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'p' + Math.random().toString(16).slice(2) + Date.now().toString(16));
-  function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, hc: Rank.hcOk() ? 1 : 0, look: myLook(), st: G.state === 'lobby' ? 'lobby' : 'game', ent: typeof PartyFx !== 'undefined' ? PartyFx.mineList() : null }; }   // ent: 파티 입장·퇴장 연출 (10_partyfx.js)
+  function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, hc: Rank.hcOk() ? 1 : 0, look: myLook(), st: G.state === 'lobby' ? 'lobby' : 'game', ent: typeof PartyFx !== 'undefined' ? PartyFx.mineList() : null, nv: NET_VER }; }   // ent: 파티 입장·퇴장 연출 (10_partyfx.js) · nv: 같이 하기 버전 (10_ver.js)
   function shared() { const o = {}; for (const k of SHARED) o[k] = SETTINGS[k]; return o; }
 
   // ---------- 채널 ----------
@@ -35436,10 +35514,15 @@ const Party = (() => {
     if (P && !isLeader()) { HUD.lobbyNote('방장만 초대할 수 있습니다'); return; }
     if (size() >= PARTY_MAX) { HUD.lobbyNote(`파티는 ${PARTY_MAX}명까지입니다`); return; }
     if (!o) { HUD.lobbyNote(`${f.username}님은 접속 중이 아닙니다`); return; }
-    const go = () => { Social.send(f.id, 'inv', { pid: P.id }); HUD.lobbyNote(`${f.username}님에게 파티 초대를 보냈습니다`); };
+    // 게임 버전이 다름 (접속 표시 nv · 10_ver.js): 파티를 만들지 않고 바로 안내. 버전을 아는 화면에는 수락 없는 안내 카드가 뜨게 알림(pid 없음)
+    //  버전 확인이 없는 예전 화면(nv 없음)에는 보내지 않는다 — 수락하면 파티에 들어오려다 막힘
+    if (o.nv !== NET_VER) { if (o.nv) Social.send(f.id, 'inv', { nv: NET_VER }); Ver.tell(o.nv || 0, f.username); return; }
+    const go = () => { Social.send(f.id, 'inv', { pid: P.id, nv: NET_VER }); HUD.lobbyNote(`${f.username}님에게 파티 초대를 보냈습니다`); };
     if (!P) create(go); else go();
   }
   function accept(v) {
+    // 게임 버전이 다른 초대(안내 카드)는 수락할 수 없음 (10_ver.js) · 파티 번호(pid)가 없는 초대도 — 들어갈 파티가 없다 (버전 안내뿐)
+    if (v.nv !== undefined || !v.pid) { if (v.nv !== undefined) Ver.tell(v.nv, v.from.name); return; }
     if (P) leave(true);
     joining = { pid: v.pid, leader: v.from, t: Date.now() };
     open(v.pid, () => send('hello', { m: memberInfo() }));
@@ -35456,6 +35539,8 @@ const Party = (() => {
     silent = !!quiet;   // 다른 파티의 초대를 수락하느라 나가거나(accept) 로그아웃(Social.stop): 아래 화면 갱신에서 PartyFx 가 내 퇴장 연출을 건너뛴다 (10_partyfx.js team)
     try { restoreOwn(); if (was && !quiet) HUD.lobbyNote('파티에서 나왔습니다'); Social.track(); renderAll(); } finally { silent = false; }
   }
+  // 게임 버전이 달라 파티에 들어가지 못함·나옴 (10_ver.js) — nv: 방장 버전 · name: 방장 이름
+  function verOut(nv, name) { close(); P = null; joining = null; MM.partyGone(); restoreOwn(); Ver.tell(nv, name); Social.track(); renderAll(); }
   function kick(uid) {
     if (!isLeader()) return;
     const m = P.members.find((x) => x.uid === uid); if (!m) return;
@@ -35488,6 +35573,7 @@ const Party = (() => {
       case 'hello': {
         if (!isLeader()) return;
         const idx = P.members.findIndex((x) => x.uid === m.m.uid);
+        if (idx < 0 && m.m.nv !== NET_VER) { send('ver', { to: m.m.uid, nv: NET_VER }); Ver.tell(m.m.nv, m.m.name); return; }   // 게임 버전이 다른 사람은 들이지 않음 (10_ver.js)
         if (idx < 0 && P.members.length >= PARTY_MAX) { send('full', { to: m.m.uid }); return; }
         if (idx < 0) { P.members.push(m.m); MM.partyChanged(); HUD.lobbyNote(`${m.m.name}님이 파티에 들어왔습니다`); Audio.ui && Audio.ui(); }
         else P.members[idx] = Object.assign(P.members[idx], m.m);
@@ -35496,6 +35582,8 @@ const Party = (() => {
       case 'state': {
         const p = m.p; if (!p || !p.members) return;
         if (!p.members.some((x) => x.uid === me())) { if (P && P.id === p.id) { close(); P = null; MM.partyGone(); restoreOwn(); HUD.lobbyNote('파티에서 빠졌습니다'); renderAll(); } return; }
+        const ld = p.members.find((x) => x.uid === p.leader);
+        if (ld && ld.uid !== me() && ld.nv !== NET_VER) { send('bye', {}); verOut(ld.nv, ld.name); return; }   // 방장과 게임 버전이 다름 (버전 확인이 없는 예전 방장 등) → 설정을 받기 전에 나감
         const first = !P;
         P = p; joining = null; applyShared(p.s);
         if (first) HUD.lobbyNote(`${(p.members.find((x) => x.uid === p.leader) || {}).name || '방장'}님의 파티에 들어왔습니다`);
@@ -35516,6 +35604,7 @@ const Party = (() => {
       }
       case 'kick': if (m.uid === me()) { close(); P = null; MM.partyGone(); restoreOwn(); HUD.lobbyNote('방장이 파티에서 내보냈습니다'); Social.track(); renderAll(); } break;
       case 'full': if (m.to === me()) { close(); P = null; joining = null; restoreOwn(); HUD.lobbyNote('파티가 가득 찼습니다'); renderAll(); } break;
+      case 'ver': if (m.to === me()) verOut(m.nv, joining && joining.leader ? joining.leader.name : ''); break;   // 방장이 게임 버전이 달라 들이지 않음
       case 'start': if (P && m.cfg && m.cfg.humans.some((x) => x.uid === me())) { MM.partyGone(); Net.join(m.cfg); } break;
       case 'mm': if (P && m.from === P.leader) MM.onParty(m); break;   // 방장이 온라인 매칭 중 (10_mm.js)
       case 'chat': Chat.onParty(m); break;   // 파티 문자 (10_chat.js) — 로비·경기 중 모두
@@ -36664,6 +36753,76 @@ const Prof = (() => {
     renderChip();
   }
   return { AV, FR, TI, my, set, refresh: changed, open, close, render, renderChip, setup, lobbyTags, frameHTML, avatarSVG, titleHTML, titleName, ultraOwned, earned: () => TI.filter((t) => t.ok()).map((t) => t.id) };
+})();
+
+// ---------- 10_ver.js ----------
+// ============================================================
+// 10_ver.js — 게임 버전 확인 (v23)
+//  · 같이 하기 버전(NET_VER · 10_net.js)이 서로 다르면 같이 하지 않는다. 할 수 있는 가장 이른 곳에서 확인:
+//    로비 접속 표시(nv → 친구 목록 '버전 다름') → 파티 초대(inv nv) → 파티 참가(파티원 정보 nv — 방장이 거절하면 'ver', 파티원은 방장 버전을 보고 나감)
+//    → 온라인 매칭(대기열 키에 버전 · 받은 경기 설정 cfg.v) → 경기 연결(Net.join 의 cfg.v · 방장이 받는 인사 hello 의 v) · 이어하기(저장한 경기 설정 cfg.v)
+//    버전 표시가 없는 상대 = 이 확인이 생기기 전 화면(버전 2 이하)
+//  · 안내: 버전이 낮은 쪽(예전 화면)에는 '게임 버전이 달라요 — 새로고침해 주세요' + 로비 새로고침 막대, 높은 쪽에는 '상대가 새로고침해야'
+//    로비 채널로 온 버전 안내(초대 inv · invno 'ver')는 친구가 보낸 것만 믿는다 (10_social.js — 아무나 막대를 띄우지 못하게) · 막대는 ✕ 로 닫을 수 있다
+//  · 새 배포 알림: 서버 없는 정적 페이지라 열어 둔 탭은 새 배포를 모른다 → 로비에 있을 때만 이 페이지 주소를 HEAD 로 물어,
+//    ETag 가 부팅 직후 값과 달라지면 '새 버전이 나왔어요 · 새로고침' 막대 (5분마다 · 화면으로 돌아오면 · 경기를 마치고 로비로 오면 — 60초에 한 번까지)
+//    ETag 는 약한 표시 W/ 를 떼고 견준다 (Vercel: 압축해 보내면 W/"…", 아니면 "…" — 같은 파일 · 중간 프록시도 붙였다 뗐다 한다)
+//    ETag 가 없으면 아무것도 하지 않는다 (Last-Modified 는 Vercel 에서 캐시를 채운 시각이라 쓰지 않음) · file:// 도 · 경기 중에는 묻지 않는다(막대도 로비 안에만 있다)
+//    한 번 알면 더 묻지 않고, 막대를 닫아 두었으면 경기를 마치고 로비로 올 때마다 다시 띄운다
+//  · 이어하기 창(10_resume.js)이 답을 기다리는 동안은 막대를 미룬다 — 그때 새로고침하면 다시 들어갈 수 있던 경기를 놓칠 수 있다 → 답한 뒤에 띄움
+// ============================================================
+const Ver = (() => {
+  const EVERY = 300e3, GAP = 60e3;
+  let base, lastT = 0, busy = false, off = false, iv = null, want = '', found = false, held = false;
+  const OLD = '게임 버전이 달라요 — 새로고침해 주세요', NEW = '새 버전이 나왔어요';
+  const mineOld = (nv) => (nv || 0) > NET_VER;   // 상대(nv)가 나보다 새 버전 → 내가 새로고침해야 함
+  // 상대 버전(nv · 없으면 예전 화면)과 다를 때 안내 · name: 상대(방장·파티원) 이름
+  //  로비: 알림(8초) + 친구 창 안내 줄(창이 로비를 가리므로) · 내 쪽이 낮으면 새로고침 막대도(✕ 로 닫을 때까지) · 경기 중: 알림 띠(토스트)
+  function tell(nv, name) {
+    const old = mineOld(nv), msg = old ? OLD : `게임 버전이 달라요 — ${name ? name + '님이' : '상대가'} 새로고침해야 같이 할 수 있어요`;
+    if (old) bar('old');
+    if (G.state !== 'lobby') { HUD.toast(msg, 'warn'); return; }
+    HUD.lobbyNote(old ? `${name ? name + '님과' : '상대와'} 게임 버전이 달라 같이 할 수 없어요` : msg, 8000); Social.msg(msg);
+  }
+  // 로비 막대: 'new' 새 배포 · 'old' 같이 하려던 상대보다 내 버전이 낮음 (둘 다 새로고침하면 풀린다 — 'old' 문구가 먼저) — 부를 때마다 나타나는 효과를 다시
+  function bar(k) { if (k === 'old' || !want) want = k; sync(true); }
+  // 막대를 보이거나 미룸 — 이어하기 창이 답을 기다리는 동안(Resume.pending)은 숨겨 두었다가 답한 뒤에 (10_resume.js 가 창을 열고 닫을 때 부름)
+  //  그동안은 버전 안내 카드의 새로고침 단추도 숨긴다 (10_social.js renderInvites)
+  function sync(fx) {
+    const b = $('verBar'); if (!b) return;
+    const h = !!Resume.pending; if (h !== held) { held = h; Social.renderInvites(); }
+    if (!want || h) { b.hidden = true; return; }
+    $('verTxt').textContent = want === 'old' ? OLD : NEW;
+    if (fx || b.hidden) { b.hidden = true; void b.offsetWidth; b.hidden = false; }
+  }
+  // 이 페이지의 ETag (W/ 는 뗌) · ETag 가 없으면 null · 실패하면 undefined (15초 안에 답이 없어도 — 망이 바뀌는 휴대폰에서 걸린 채 남지 않게)
+  async function tag() {
+    const ac = typeof AbortController === 'function' ? new AbortController() : null, to = ac && setTimeout(() => ac.abort(), 15e3);
+    try { const r = await fetch(location.pathname, { method: 'HEAD', cache: 'no-store', signal: ac ? ac.signal : undefined }); if (!r.ok) return undefined; const e = r.headers.get('etag'); return e ? e.trim().replace(/^W\//i, '') : null; }
+    catch (e) { return undefined; } finally { clearTimeout(to); }
+  }
+  // force: 부팅 직후 처음 값 (로비·화면·간격 조건 없이)
+  async function check(force) {
+    if (off || busy || (!force && (G.state !== 'lobby' || document.hidden || Date.now() - lastT < GAP))) return;
+    busy = true; lastT = Date.now();
+    const t = await tag(); busy = false;
+    if (t === undefined) return;   // 연결 실패 → 다음 확인 때 다시
+    if (t === null) { if (base === undefined) stop(); return; }   // 이 서버는 알려 주지 않음 → 그만
+    if (base === undefined) { base = t; return; }
+    if (t !== base) { found = true; bar('new'); stop(); }   // 한 번 알면 더 묻지 않음
+  }
+  function stop() { off = true; clearInterval(iv); iv = null; }
+  // 경기를 마치고 로비로 (11_game.js toLobby): 새 배포를 다시 묻는다 (60초에 한 번까지) · 이미 알았으면 닫아 둔 막대도 다시
+  function lobby() { if (found) bar('new'); else check(); }
+  function setup() {
+    $('verGo').addEventListener('click', () => location.reload());
+    $('verX').addEventListener('click', () => { want = ''; $('verBar').hidden = true; });
+    if (location.protocol !== 'http:' && location.protocol !== 'https:') { off = true; return; }   // file:// 등
+    check(true);
+    iv = setInterval(() => check(), EVERY);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  }
+  return { setup, tell, mineOld, check, bar, sync, lobby, get base() { return base; }, get off() { return off; }, get found() { return found; }, get want() { return want; } };
 })();
 
 // ---------- 10_victory.js ----------
@@ -38538,6 +38697,7 @@ function toLobby() {
   disposeMatch(); G.state = 'lobby'; G.paused = false; G.spec = null; releaseLock();
   G.training = false; document.body.classList.remove('training');
   $('lobby').hidden = false; HUD.renderLobby(); Audio.music(true);
+  Ver.lobby();   // 새 배포를 다시 물음 (10_ver.js · 60초에 한 번까지 · 이미 알았으면 닫아 둔 막대를 다시)
 }
 // 로비의 출격·다시 하기: 게임 종류에 따라 배틀로얄 또는 데스매치
 //  온라인 매칭이 켜져 있으면 줄 서기 (10_mm.js) · noMM: 매칭 없이 바로 (AI로 바로 시작 · 매칭 서버 연결 실패)
@@ -38629,7 +38789,7 @@ function boot() {
   Lobby.init();
   setupInput($('gl'));
   setupTouch($('touch'));
-  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Chat.setup(); Watch.setup(); Shop.setup(); Pass.setup(); Ladder.setup(); Dev.setup(); Prof.setup(); RankFx.setup(); Resume.setup(); Cloud.setup();
+  HUD.setupLobby(); Training.setupLobby(); Social.setup(); Chat.setup(); Watch.setup(); Shop.setup(); Pass.setup(); Ladder.setup(); Dev.setup(); Prof.setup(); RankFx.setup(); Resume.setup(); Ver.setup(); Cloud.setup();
   // 이어하기: 로그인 복원이 끝난 뒤(계정 기록을 불러온 다음) 지난 경기가 남아 있으면 묻는다 · 나중에 로그인할 때도 (10_resume.js)
   Promise.resolve(Cloud.init()).catch((e) => console.warn(e)).then(() => Resume.check());
   { const prev = G.onAuth; G.onAuth = (on) => { if (prev) try { prev(on); } catch (e) { console.warn(e); } if (on) setTimeout(() => Resume.check(), 0); }; }
@@ -38641,7 +38801,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들
-  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  window.__gh = (x, z) => groundAt(x, z, 999); window.__spawn = (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }; window.__LD = { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } };

@@ -382,12 +382,12 @@ const Veh = (() => {
     const x = v.pos.x, y = v.pos.y + 0.8, z = v.pos.z, by = v.lastHitBy;
     FX.blast(x, y, z, null, 1.15, true); Audio.explosion({ x, y, z }, 1.25);   // v21: 큰 폭발(불붙은 조각·잔불 많이)
     G.noises.push({ x, y, z, t: G.time, r: 300, by, kind: 'blast' });
-    for (const d of riders(v)) { applyDamage(d, 400, 'impact', by, 'vexp'); if (d.veh) exit(d, false, true); }
+    for (const d of riders(v)) { applyDamage(d, BLAST_DMG.veh, 'impact', by, 'vexp'); if (d.veh) exit(d, false, true); }
     for (const c of CHARS) {
       if (!c.alive || c.mode !== 'ground') continue;
       c.chest(_v); const d = Math.hypot(_v.x - x, _v.y - y, _v.z - z); if (d > 8) continue;
       const cover = losClear(x, y + 0.4, z, _v.x, _v.y, _v.z) ? 1 : 0.2;
-      applyDamage(c, 150 * Math.pow(1 - d / 8, 1.2) * cover, 'blast', by, 'vexp');
+      applyDamage(c, BLAST_DMG.vehNear * Math.pow(1 - d / 8, 1.2) * cover, 'blast', by, 'vexp');
     }
     blast(x, y, z, 7, 500, by, v);
     VehModels.wreck(v.P); v.P.root.position.y -= 0.12;

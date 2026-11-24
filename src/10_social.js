@@ -40,9 +40,9 @@ const Social = (() => {
     clearInterval(pollT); clearInterval(statT);
     if (!keepUi) { Watch.stopAll(); $('friendPanel').hidden = true; render(); renderInvites(); }
   }
-  // pl: 지금 경기 화면(관전할 수 있음) — 결과 화면·불러오는 중은 0
+  // pl: 지금 경기 화면(관전할 수 있음) — 결과 화면·불러오는 중은 0 · nv: 같이 하기 버전 (10_ver.js — 없으면 예전 화면)
   function myStatus() {
-    return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, st: G.state === 'lobby' || G.state === 'loading' && !G.netLoading ? (G.state === 'lobby' ? 'lobby' : 'game') : 'game', pid: Party.id(), pn: Party.size(), pl: G.state === 'play' ? 1 : 0 };
+    return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, st: G.state === 'lobby' || G.state === 'loading' && !G.netLoading ? (G.state === 'lobby' ? 'lobby' : 'game') : 'game', pid: Party.id(), pn: Party.size(), pl: G.state === 'play' ? 1 : 0, nv: NET_VER };
   }
   // 상태가 바뀌었을 때만 presence 갱신 (초당 제한이 있다)
   function track(force) {
@@ -51,11 +51,18 @@ const Social = (() => {
     if (!force && k === lastTrack) return; lastTrack = k;
     ch.track(s).catch(() => { lastTrack = ''; });
   }
+  // 한 계정이 여러 곳(휴대폰·PC 탭)에 접속해 있으면 하나를 고른다: 이 화면과 게임 버전이 같은 접속 → 그중 로비에 있는 것 → 가장 늦게 알린 것
+  //  (예전 버전 탭이 남아 있어도 같은 버전 접속으로 초대할 수 있게 — 10_ver.js)
   function readPresence() {
     online.clear(); if (!ch) return;
     const st = ch.presenceState();
-    for (const k in st) { const a = st[k]; if (a && a.length) online.set(k, a[a.length - 1]); }
+    for (const k in st) {
+      const a = (st[k] || []).filter(Boolean); if (!a.length) continue;
+      const same = a.filter((x) => x.nv === NET_VER), L = same.length ? same : a, lb = L.filter((x) => x.st === 'lobby');
+      online.set(k, (lb.length ? lb : L).pop());
+    }
   }
+  const isFriend = (uid) => friends.some((f) => f.id === uid && f.status === 'accepted');
   // 받는 사람(to)이 정해진 메시지 — 로비 채널에 있는 모두가 받지만 to가 아니면 버린다
   function send(to, k, data) {
     if (!ch || !ok) return false;
@@ -66,22 +73,30 @@ const Social = (() => {
     if (!m || m.to !== me() || !m.from) return;
     if (m.k === 'spec' || m.k === 'spof' || m.k === 'span' || m.k === 'spno' || m.k === 'spx') { Watch.onLobby(m); return; }   // 친구 관전 신호 (10_watch.js)
     if (m.k === 'inv') {
-      if (G.state !== 'lobby') { send(m.from.uid, 'invno', { why: 'busy' }); return; }
-      if (Party.id() === m.pid) return;
+      // pid 없는 초대 = 게임 버전 안내뿐 (10_ver.js) — 버전이 같으면 보낸 쪽이 이 계정의 다른 접속(예전 탭 등)을 보고 보낸 것 → 무시
+      if (!m.pid && m.nv === NET_VER) return;
+      // 게임 버전이 다름 (버전이 없으면 예전 화면): 친구가 보낸 것만 — 초대 카드는 안내만(수락 없음) · 내 쪽이 낮으면 새로고침 막대
+      //  보낸 사람이 모르고 보낸 초대(pid 있음)면 알려 준다 — 버전 안내 초대(pid 없음)는 보낸 쪽이 이미 안내를 봤다(게임 중이어도 답하지 않음)
+      const nv = m.nv !== NET_VER ? m.nv || 0 : undefined;
+      if (nv !== undefined && !isFriend(m.from.uid)) return;
+      if (G.state !== 'lobby') { if (m.pid) send(m.from.uid, 'invno', { why: 'busy' }); return; }
+      if (m.pid && Party.id() === m.pid) return;
+      if (nv !== undefined) { if (m.pid) send(m.from.uid, 'invno', { why: 'ver', nv: NET_VER }); if (Ver.mineOld(nv)) Ver.bar('old'); }
       const was = rsvIn.has(m.from.uid); rsvIn.delete(m.from.uid);
       invites = invites.filter((v) => v.from.uid !== m.from.uid);
-      invites.push({ from: m.from, pid: m.pid, t: Date.now(), rsv: was });
+      invites.push({ from: m.from, pid: m.pid, t: Date.now(), rsv: was, nv });
       Audio.init(); Audio.ui && Audio.ui();
       renderInvites(); render();
     } else if (m.k === 'invno') {
       // 예약해 둔 초대를 보냈는데 그새 다시 경기에 들어감 → 다시 예약 (조용히)
       const s = rsvSent.get(m.from.uid);
       if (m.why === 'busy' && s && Date.now() - s.t < 60000) { rsvSent.delete(m.from.uid); rsv.set(m.from.uid, { t: s.t0, name: m.from.name }); render(); return; }
+      if (m.why === 'ver') { if (isFriend(m.from.uid)) Ver.tell(m.nv, m.from.name); return; }   // 게임 버전이 달라 초대를 받을 수 없음 (10_ver.js · 친구가 보낸 것만)
       HUD.lobbyNote(`${m.from.name}님이 ${m.why === 'busy' ? '게임 중이라 초대를 받지 못했습니다' : m.why === 'full' ? '— 파티가 가득 찼습니다' : '초대를 거절했습니다'}`);
     }
     else if (m.k === 'fr') { refresh(); HUD.lobbyNote(m.what === 'accepted' ? `${m.from.name}님과 친구가 되었습니다` : `${m.from.name}님이 친구 요청을 보냈습니다`); }
     else if (m.k === 'rsv') {   // 친구가 나에게 초대를 예약함 (나는 경기 중)
-      if (!friends.some((f) => f.id === m.from.uid && f.status === 'accepted')) return;
+      if (!isFriend(m.from.uid)) return;
       rsvIn.set(m.from.uid, { from: m.from, t: Date.now() });
       const msg = `${m.from.name}님이 파티 초대를 예약했습니다 — 경기를 마치고 로비로 돌아가면 초대가 옵니다`;
       if (G.state === 'lobby') HUD.lobbyNote(msg); else HUD.toast(msg, 'info');
@@ -121,6 +136,7 @@ const Social = (() => {
       const o = online.get(uid); if (!o || o.st !== 'lobby') continue;
       rsv.delete(uid); ch2 = true;
       if (!Party.canInvite()) { HUD.lobbyNote(`${r.name}님이 로비로 돌아왔지만 지금은 초대할 수 없습니다 (방장만 · ${PARTY_MAX}명까지)`); continue; }
+      if (o.nv !== NET_VER) { Party.invite(f, o); continue; }   // 게임 버전이 다름: 초대 대신 버전 안내만 (10_ver.js)
       rsvSent.set(uid, { t, t0: r.t });
       Party.invite(f, o);
       setTimeout(() => HUD.lobbyNote(`${r.name}님이 경기를 마쳐 예약한 파티 초대를 보냈습니다`), 700);   // 파티를 새로 만들면 초대 알림이 조금 늦게 뜨므로 그 뒤에
@@ -161,7 +177,7 @@ const Social = (() => {
 
   // ---------- 화면 ----------
   function setMsg(t, good) { const m = $('friendMsg'); if (!m) return; m.textContent = t; m.className = 'acct-msg' + (good ? ' ok' : ' bad'); }
-  const statusText = (o, uid) => !o ? '오프라인' : o.st === 'game' ? (rsv.has(uid) ? '게임 중 · 초대 예약됨' : '게임 중') : o.pid && o.pn > 1 ? `로비 · 파티 ${o.pn}/${PARTY_MAX}` : '로비';
+  const statusText = (o, uid) => !o ? '오프라인' : (o.st === 'game' ? (rsv.has(uid) ? '게임 중 · 초대 예약됨' : '게임 중') : o.pid && o.pn > 1 ? `로비 · 파티 ${o.pn}/${PARTY_MAX}` : '로비') + (o.nv !== NET_VER ? ' · 버전 다름' : '');   // 버전 다름: 같이 할 수 없음 (10_ver.js)
   function badgeCount() { return friends.filter((f) => f.status === 'pending' && f.incoming).length + invites.length; }
   function render() {
     const btn = $('friendBtn'); if (!btn) return;
@@ -197,7 +213,7 @@ const Social = (() => {
       } else {
         const iv = el('button', 'btn amber sm', '초대'); iv.type = 'button';
         iv.disabled = !o || o.st === 'game' || !Party.canInvite();
-        iv.title = !o ? '접속 중일 때만 초대할 수 있습니다' : o.st === 'game' ? '게임 중입니다' : !Party.canInvite() ? (Party.id() && !Party.isLeader() ? '방장만 초대할 수 있습니다' : '파티가 가득 찼습니다') : '파티에 초대';
+        iv.title = !o ? '접속 중일 때만 초대할 수 있습니다' : o.st === 'game' ? '게임 중입니다' : !Party.canInvite() ? (Party.id() && !Party.isLeader() ? '방장만 초대할 수 있습니다' : '파티가 가득 찼습니다') : o.nv !== NET_VER ? `게임 버전이 달라 같이 할 수 없습니다 — ${Ver.mineOld(o.nv) ? '내 게임이 예전 버전이라 새로고침해야 합니다' : '친구가 새로고침해야 합니다'}` : '파티에 초대';
         iv.onclick = () => Party.invite(f, o); r.appendChild(iv);
       }
       const rm = el('button', 'btn sm ghost', '삭제'); rm.type = 'button';
@@ -216,6 +232,15 @@ const Social = (() => {
     const box = $('inviteBox'); if (!box) return; box.innerHTML = '';
     for (const v of invites.slice(-2)) {
       const c = el('div', 'invite-card');
+      if (v.nv !== undefined) {   // 게임 버전이 다름 (10_ver.js): 안내만 — 낮은 쪽이 새로고침해야 같이 할 수 있다
+        const old = Ver.mineOld(v.nv), row = el('div', 'iv-b');
+        c.appendChild(el('div', 'iv-t', `${v.from.name}님이 파티에 초대했지만 게임 버전이 달라요`));
+        c.appendChild(el('div', 'micro', old ? '내 게임이 예전 버전이에요 — 새로고침한 뒤 다시 초대받으면 같이 할 수 있어요' : `${v.from.name}님의 게임이 예전 버전이에요 — ${v.from.name}님이 새로고침해야 같이 할 수 있어요`));
+        // 새로고침 단추: 이어하기 창이 답을 기다리는 동안은 숨김 (그 경기를 놓칠 수 있다 — 답하면 다시 그림 · Ver.sync)
+        if (old && !Resume.pending) { const r = el('button', 'btn amber sm', '새로고침'); r.type = 'button'; r.onclick = () => location.reload(); row.appendChild(r); }
+        const d = el('button', 'btn sm', '닫기'); d.type = 'button'; d.onclick = () => { invites = invites.filter((x) => x !== v); renderInvites(); render(); };
+        row.appendChild(d); c.appendChild(row); box.appendChild(c); continue;
+      }
       c.appendChild(el('div', 'iv-t', v.rsv ? `${v.from.name}님이 예약해 둔 파티 초대가 왔습니다` : `${v.from.name}님이 파티에 초대했습니다`));
       c.appendChild(el('div', 'micro', `Lv ${v.from.lv || '-'} · 수락하면 ${v.from.name}님이 방장인 파티에 들어갑니다`));
       const row = el('div', 'iv-b');
@@ -237,7 +262,7 @@ const Social = (() => {
     G.onAuth = (on) => { if (on) start(); else stop(); };
     render();
   }
-  return { setup, start, stop, send, refresh, render, track, openPanel, reserve, unreserve, get online() { return online; }, get friends() { return friends; }, get connected() { return ok; }, get invites() { return invites; }, get rsv() { return rsv; }, get rsvIn() { return rsvIn; } };
+  return { setup, start, stop, send, refresh, render, renderInvites, track, openPanel, reserve, unreserve, msg: (t) => setMsg(t, false), get online() { return online; }, get friends() { return friends; }, get connected() { return ok; }, get invites() { return invites; }, get rsv() { return rsv; }, get rsvIn() { return rsvIn; } };
 })();
 
 const Party = (() => {
@@ -251,7 +276,7 @@ const Party = (() => {
   const has = (uid) => !!P && P.members.some((m) => m.uid === uid);
   const canInvite = () => !!Cloud.user && (!P || (isLeader() && size() < PARTY_MAX));
   const uuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'p' + Math.random().toString(16).slice(2) + Date.now().toString(16));
-  function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, hc: Rank.hcOk() ? 1 : 0, look: myLook(), st: G.state === 'lobby' ? 'lobby' : 'game', ent: typeof PartyFx !== 'undefined' ? PartyFx.mineList() : null }; }   // ent: 파티 입장·퇴장 연출 (10_partyfx.js)
+  function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, hc: Rank.hcOk() ? 1 : 0, look: myLook(), st: G.state === 'lobby' ? 'lobby' : 'game', ent: typeof PartyFx !== 'undefined' ? PartyFx.mineList() : null, nv: NET_VER }; }   // ent: 파티 입장·퇴장 연출 (10_partyfx.js) · nv: 같이 하기 버전 (10_ver.js)
   function shared() { const o = {}; for (const k of SHARED) o[k] = SETTINGS[k]; return o; }
 
   // ---------- 채널 ----------
@@ -279,10 +304,15 @@ const Party = (() => {
     if (P && !isLeader()) { HUD.lobbyNote('방장만 초대할 수 있습니다'); return; }
     if (size() >= PARTY_MAX) { HUD.lobbyNote(`파티는 ${PARTY_MAX}명까지입니다`); return; }
     if (!o) { HUD.lobbyNote(`${f.username}님은 접속 중이 아닙니다`); return; }
-    const go = () => { Social.send(f.id, 'inv', { pid: P.id }); HUD.lobbyNote(`${f.username}님에게 파티 초대를 보냈습니다`); };
+    // 게임 버전이 다름 (접속 표시 nv · 10_ver.js): 파티를 만들지 않고 바로 안내. 버전을 아는 화면에는 수락 없는 안내 카드가 뜨게 알림(pid 없음)
+    //  버전 확인이 없는 예전 화면(nv 없음)에는 보내지 않는다 — 수락하면 파티에 들어오려다 막힘
+    if (o.nv !== NET_VER) { if (o.nv) Social.send(f.id, 'inv', { nv: NET_VER }); Ver.tell(o.nv || 0, f.username); return; }
+    const go = () => { Social.send(f.id, 'inv', { pid: P.id, nv: NET_VER }); HUD.lobbyNote(`${f.username}님에게 파티 초대를 보냈습니다`); };
     if (!P) create(go); else go();
   }
   function accept(v) {
+    // 게임 버전이 다른 초대(안내 카드)는 수락할 수 없음 (10_ver.js) · 파티 번호(pid)가 없는 초대도 — 들어갈 파티가 없다 (버전 안내뿐)
+    if (v.nv !== undefined || !v.pid) { if (v.nv !== undefined) Ver.tell(v.nv, v.from.name); return; }
     if (P) leave(true);
     joining = { pid: v.pid, leader: v.from, t: Date.now() };
     open(v.pid, () => send('hello', { m: memberInfo() }));
@@ -299,6 +329,8 @@ const Party = (() => {
     silent = !!quiet;   // 다른 파티의 초대를 수락하느라 나가거나(accept) 로그아웃(Social.stop): 아래 화면 갱신에서 PartyFx 가 내 퇴장 연출을 건너뛴다 (10_partyfx.js team)
     try { restoreOwn(); if (was && !quiet) HUD.lobbyNote('파티에서 나왔습니다'); Social.track(); renderAll(); } finally { silent = false; }
   }
+  // 게임 버전이 달라 파티에 들어가지 못함·나옴 (10_ver.js) — nv: 방장 버전 · name: 방장 이름
+  function verOut(nv, name) { close(); P = null; joining = null; MM.partyGone(); restoreOwn(); Ver.tell(nv, name); Social.track(); renderAll(); }
   function kick(uid) {
     if (!isLeader()) return;
     const m = P.members.find((x) => x.uid === uid); if (!m) return;
@@ -331,6 +363,7 @@ const Party = (() => {
       case 'hello': {
         if (!isLeader()) return;
         const idx = P.members.findIndex((x) => x.uid === m.m.uid);
+        if (idx < 0 && m.m.nv !== NET_VER) { send('ver', { to: m.m.uid, nv: NET_VER }); Ver.tell(m.m.nv, m.m.name); return; }   // 게임 버전이 다른 사람은 들이지 않음 (10_ver.js)
         if (idx < 0 && P.members.length >= PARTY_MAX) { send('full', { to: m.m.uid }); return; }
         if (idx < 0) { P.members.push(m.m); MM.partyChanged(); HUD.lobbyNote(`${m.m.name}님이 파티에 들어왔습니다`); Audio.ui && Audio.ui(); }
         else P.members[idx] = Object.assign(P.members[idx], m.m);
@@ -339,6 +372,8 @@ const Party = (() => {
       case 'state': {
         const p = m.p; if (!p || !p.members) return;
         if (!p.members.some((x) => x.uid === me())) { if (P && P.id === p.id) { close(); P = null; MM.partyGone(); restoreOwn(); HUD.lobbyNote('파티에서 빠졌습니다'); renderAll(); } return; }
+        const ld = p.members.find((x) => x.uid === p.leader);
+        if (ld && ld.uid !== me() && ld.nv !== NET_VER) { send('bye', {}); verOut(ld.nv, ld.name); return; }   // 방장과 게임 버전이 다름 (버전 확인이 없는 예전 방장 등) → 설정을 받기 전에 나감
         const first = !P;
         P = p; joining = null; applyShared(p.s);
         if (first) HUD.lobbyNote(`${(p.members.find((x) => x.uid === p.leader) || {}).name || '방장'}님의 파티에 들어왔습니다`);
@@ -359,6 +394,7 @@ const Party = (() => {
       }
       case 'kick': if (m.uid === me()) { close(); P = null; MM.partyGone(); restoreOwn(); HUD.lobbyNote('방장이 파티에서 내보냈습니다'); Social.track(); renderAll(); } break;
       case 'full': if (m.to === me()) { close(); P = null; joining = null; restoreOwn(); HUD.lobbyNote('파티가 가득 찼습니다'); renderAll(); } break;
+      case 'ver': if (m.to === me()) verOut(m.nv, joining && joining.leader ? joining.leader.name : ''); break;   // 방장이 게임 버전이 달라 들이지 않음
       case 'start': if (P && m.cfg && m.cfg.humans.some((x) => x.uid === me())) { MM.partyGone(); Net.join(m.cfg); } break;
       case 'mm': if (P && m.from === P.leader) MM.onParty(m); break;   // 방장이 온라인 매칭 중 (10_mm.js)
       case 'chat': Chat.onParty(m); break;   // 파티 문자 (10_chat.js) — 로비·경기 중 모두

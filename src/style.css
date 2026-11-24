@@ -62,6 +62,12 @@ kbd { font-family: var(--f-display); font-size: 0.8em; border: 1px solid var(--l
 .lb-sub button.lock { opacity: 0.6; }
 .lb-note { align-self: flex-start; margin-top: 4px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
 .lb-note > div { font-size: 0.76rem; color: #ffd9a0; background: rgba(13, 17, 19, 0.75); border: 1px solid rgba(240, 164, 58, 0.5); border-radius: 3px; padding: 3px 8px; animation: kfIn 0.2s; }
+/* 새 버전 알림 막대 (10_ver.js): 탭 아래 가운데 — 공지와 같은 결이지만 사라지지 않고 새로고침 단추가 붙음 */
+.lb-upd { align-self: center; display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 3px 3px 3px 10px; font-size: 0.78rem; font-weight: 600; color: #ffd9a0; background: rgba(13, 17, 19, 0.85); border: 1px solid var(--amber); border-radius: 3px; animation: kfIn 0.2s; }
+.lb-upd i { width: 6px; height: 6px; flex: none; background: var(--amber); transform: rotate(45deg); }
+.lb-upd .btn.sm { flex: none; padding: 2px 10px; font-size: 0.74rem; }
+.lb-upd-x { appearance: none; flex: none; align-self: stretch; min-width: 28px; margin-left: -4px; padding: 0 4px; border: 0; background: none; color: var(--dim); font: inherit; font-size: 0.8rem; line-height: 1; cursor: pointer; }
+.lb-upd-x:hover { color: var(--sand); }
 .lb-right { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
 .lv-chip { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px 0 6px; border: 1px solid var(--line); background: rgba(13, 17, 19, 0.6); border-radius: 4px; cursor: pointer; }
 .lv-chip:hover { border-color: var(--line-2); }

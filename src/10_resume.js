@@ -12,6 +12,9 @@
 //    → 로비 채널로 그 경기 사람들에게 묻고(rj) 지금 방장이 답하면(rjok) 같은 경기를 열어 다시 연결, 방장이 보낸 지금 상태로 맞춘 뒤
 //      내 캐릭터를 돌려받는다 (소지품은 이 기기에 저장해 둔 것 — 방장 기기는 손에 든 총·장비만 알고 있었다) — 10_net.js
 //    - 10초 동안 아무도 답하지 않으면 이미 끝난 경기 → 떠날 때의 순위로 기록
+//    - 그사이 새로고침으로 게임 버전(NET_VER)이 바뀌었으면 묻지 않고 떠날 때의 순위로 기록 (예전 버전 경기와는 같이 할 수 없음 — 10_ver.js)
+//      스스로 나간 것이 아니라 배포 때문에 못 돌아가는 것이라 탈주가 아닌 보통 패배로 (랭크·하드코어 탈주 감점 · 승급전 '탈주' 실패 없음) · 안내는 8초
+//    - 이 창이 답을 기다리는 동안은 새 버전 막대를 미룬다 (새로고침하면 다시 들어갈 수 있던 경기를 놓칠 수 있다 — 10_ver.js Ver.sync)
 //  · 포기하기: 일시정지 메뉴의 '경기 포기'처럼 떠날 때의 순위로 기록 (랭크전은 RP 에도 반영 · 데스매치는 원래처럼 기록 없음)
 //  · 결과가 정해진 뒤(전멸·우승 뒤 결과 화면이 뜨기 전) 떠났으면 묻지 않고 그 결과로 기록
 //  · 저장하지 않는 곳: 스타트 섬(시작 전 — 떠나도 기록이 없음) · 훈련장 · 메뉴로 나간 경기(그때 이미 기록됨)
@@ -239,6 +242,9 @@ const Resume = (() => {
     if (s.v !== VER || age < 0 || age > (net ? NET_MAX : SOLO_MAX)) { clear(); return; }
     if ((s.uid || null) !== (Cloud.uid || null)) { if (Cloud.uid) clear(); return; }   // 다른 계정 · (로그아웃 상태면 그대로 두었다가 로그인하면 다시 확인)
     if (s.q && s.q.over) { clear(); record(s.q, false); return; }   // 결과가 정해진 뒤에 떠남 → 묻지 않고 기록
+    // 같이 하기: 그사이 게임 버전이 바뀜(새로고침으로 새 배포를 받음) → 예전 버전 경기에는 다시 들어갈 수 없다 (10_ver.js)
+    //  탈주가 아닌 보통 패배로 떠날 때의 순위 그대로 (quit 없음 → 탈주 감점·승급전 '탈주' 실패 없음) · 휴대폰에서도 읽게 8초
+    if (net && s.cfg && s.cfg.v !== NET_VER) { clear(); const t = '게임 버전이 바뀌어 그 경기에 다시 들어갈 수 없습니다'; if (s.q) record(s.q, false, t + ' · 떠날 때의 순위로 기록' + (s.q.ranked || s.q.hc ? ' (탈주 아님)' : ''), 8000); else HUD.lobbyNote(t, 8000); return; }
     if (G.state !== 'lobby') return;
     pend = s; show(s);
   }
@@ -258,16 +264,17 @@ const Resume = (() => {
       + (q ? ` 포기하면 ${q.place}위로 기록됩니다${q.hc || q.ranked ? ' (랭크 점수 반영)' : ''}.` : ' 포기하면 기록 없이 끝납니다.');
     const m = $('rjMsg'); m.hidden = !msg; m.textContent = msg || '';
     $('rjGo').disabled = false; $('rjNo').disabled = false; $('rjGo').textContent = msg ? '다시 시도' : '다시 들어가기';
-    $('rjPanel').hidden = false;
+    $('rjPanel').hidden = false; Ver.sync();   // 새 버전 막대는 답할 때까지 미룸 (10_ver.js)
   }
-  function hide() { $('rjPanel').hidden = true; }
-  // 경기 기록 (11_game.js recordBR — 결과 화면과 같은 셈) · win: 결과가 정해진 뒤 떠난 경기 · head: 알림 앞머리
-  function record(q, quit, head) {
+  function hide() { $('rjPanel').hidden = true; Ver.sync(); }
+  // 경기 기록 (11_game.js recordBR — 결과 화면과 같은 셈) · quit: 포기(탈주) — 아니면 결과가 정해진 뒤 떠난 경기(win) · 게임 버전이 바뀌어 못 돌아간 경기(보통 패배)
+  //  head: 알림 앞머리 · ms: 알림을 보여 줄 시간
+  function record(q, quit, head, ms) {
     if (!q) return;
     try {
       const r = recordBR(Object.assign({}, q, { win: !!q.win && !quit, quit: !!quit }));
       const R = G.rankResult, rp = R && !R.placement && R.delta !== undefined ? ` · 랭크 ${R.delta >= 0 ? '+' : ''}${R.delta} RP` : '';
-      HUD.lobbyNote(`${head || (quit ? '지난 경기를 포기했습니다' : '지난 경기 결과를 기록했습니다')} — ${q.win && !quit ? '우승' : q.place + '위'} · 경험치 +${r.xp}${rp}${r.notes.length ? ' · ' + r.notes.join(' · ') : ''}`);
+      HUD.lobbyNote(`${head || (quit ? '지난 경기를 포기했습니다' : '지난 경기 결과를 기록했습니다')} — ${q.win && !quit ? '우승' : q.place + '위'} · 경험치 +${r.xp}${rp}${r.notes.length ? ' · ' + r.notes.join(' · ') : ''}`, ms);
       HUD.renderLobby();
     } catch (e) { console.warn('이어하기 기록 실패', e); }
   }
