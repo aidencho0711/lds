@@ -61,30 +61,51 @@ const HUD = (() => {
     xsanta: '<path d="M3.5 17.5c1-6.5 4.6-12 10.4-12.8 2.8-.4 4.7 1.2 5.6 3.4l-2.8 1c-.8-1.4-2-2-3.3-1.8C9.8 8 7.6 12 7 17.5z"/><rect x="2" y="16.6" width="12.4" height="4.4" rx="2.2"/><circle cx="19.8" cy="9.4" r="2.4"/>',
   };
   const epsIco = (kind) => `<svg class="eps-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${EPS_ICO[kind] || EPS_ICO.celestial}</svg>`;
+  // v23 울트라레어 근접 무기 스킨 문양 (05_models_mskinfx.js 주제): 나비 · 갈고리 날과 손가락 고리 · 회로 칼날 · 얼음 결정 · 프라이팬과 반짝임 — 처치 휘장과 킬 로그에 씀
+  const MSK_ICO = {
+    'm-balisong': '<path d="M11.4 11.2C9.6 6.2 5.8 3 3 3.6 1 4 1.3 7.6 3.4 9.6c.9.8 2 1.3 3.2 1.5-2 .4-3.6 1.8-3.4 3.6.3 2.2 3 3 5.2 1.6 1.6-1 2.6-2.8 3-5.1zM12.6 11.2C14.4 6.2 18.2 3 21 3.6c2 .4 1.7 4-.4 6-.9.8-2 1.3-3.2 1.5 2 .4 3.6 1.8 3.4 3.6-.3 2.2-3 3-5.2 1.6-1.6-1-2.6-2.8-3-5.1z"/><rect x="11.25" y="7" width="1.5" height="12" rx=".75"/><path d="M12 7.4 10.3 4.4M12 7.4l1.7-3" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>',
+    'm-karambit': '<path d="M7.6 15.6C5.8 10.8 8.2 5.2 13.6 3.8 18.1 2.7 21.9 5.3 22.6 9.4 20.9 7.4 18.4 6.7 16.1 7.3 12.7 8.2 10.7 11.6 11 15.4z"/><circle cx="6.3" cy="18.6" r="3.1" fill="none" stroke="currentColor" stroke-width="2.1"/><path d="M8.3 16.4l1.8-1.6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
+    'm-neon': '<path d="M5.4 19.4 16 5.6 21.2 2.8l-2.6 5.2L7.6 21.2z"/><path d="M2.2 22.4l2.3-2.6 1.6 1.4-2.4 2.4z"/><path d="M9.2 13.4H5.8v-3M14.2 15.6v3.6h3.4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.8" cy="9.2" r="1.4"/><circle cx="18.8" cy="19.2" r="1.4"/>',
+    'm-frost': '<path d="M12 1.4l2.7 6.3-1 12.6-1.7 2.3-1.7-2.3-1-12.6z"/><path d="M5 6.4l3.8 3.3.5 8.1-3.8-6.6z" opacity=".72"/><path d="M19 6.4l-3.8 3.3-.5 8.1 3.8-6.6z" opacity=".72"/><path d="M20.6 15.4l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6z"/>',
+    'm-golden': '<path fill-rule="evenodd" d="M9.5 5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zm0 2.6a4.9 4.9 0 1 1 0 9.8 4.9 4.9 0 0 1 0-9.8z"/><circle cx="9.5" cy="12.5" r="3.4" opacity=".55"/><path d="M15.4 8.4l5.7-4.5 1.6 2-5.7 4.5z"/><path d="M19.6 13.6l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>',
+  };
+  const mskIco = (kind) => `<svg class="mku-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${MSK_ICO[kind] || MSK_ICO['m-balisong']}</svg>`;
   const hex6 = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
   // eps: 엡실론 스킨이면 그 스킨 정보(GSKINS 항목) → 더 큰 휘장(도는 빛 테 · 총마다 다른 문양 · EPSILON 번호)
-  function skinKill(fx, name, eps) {
+  // mel: v23 울트라레어 근접 무기 스킨(fx = 05_models_mskinfx.js 주제) → 모양마다 다른 테 · 문양 (#skinKill.mel)
+  function skinKill(fx, name, eps, mel) {
     const e = $('skinKill'); if (!e || !fx) return;
     e.style.setProperty('--sk1', hex6(fx.c)); e.style.setProperty('--sk2', hex6(fx.c2));
-    e.className = 'k-' + fx.kind + (eps ? ' eps' : ''); e.innerHTML = '';
+    e.className = 'k-' + fx.kind + (eps ? ' eps' : '') + (mel ? ' mel' : ''); e.innerHTML = '';
     if (eps) { e.appendChild(h('i', 'sk-ring')); const ic = h('i', 'sk-ico'); ic.innerHTML = epsIco(fx.kind); e.appendChild(ic); }
+    else if (mel) { e.appendChild(h('i', 'sk-ring')); const ic = h('i', 'sk-ico'); ic.innerHTML = mskIco(fx.kind); e.appendChild(ic); }
     e.appendChild(h('b', '', '처치')); e.appendChild(h('small', '', name || ''));
     if (eps) e.appendChild(h('u', '', eps.xm ? `EXCLUSIVE · ✦${eps.no}` : `EPSILON · Ε-${eps.no}`));
     if (eps && eps.xm) e.classList.add('xm');
     void e.offsetWidth; e.classList.add('on');
   }
   // sk: 처치한 총에 장착한 스킨 id (엡실론이면 킬 로그 줄이 그 스킨의 색·문양·이름으로 꾸며지고 더 오래 남는다)
-  function killfeed(killer, victim, weapon, byPlayer, playerDied, kind, mate, sk) {
+  // ms: v23 처치·기절에 쓴 근접 무기의 스킨 id (MeleeFx.ofKill) — 무기 이름 대신 스킨 이름(레어도 색) · 울트라레어 다섯 종은 모양마다 꾸민 줄이 더 오래 남는다
+  function killfeed(killer, victim, weapon, byPlayer, playerDied, kind, mate, sk, ms) {
     const sd = sk && typeof GSKINS !== 'undefined' ? GSKINS[sk] : null, eps = killer && sd && (sd.eps || sd.xm) && sd.fx ? sd : null;   // 엡실론·EXCLUSIVE: 그 스킨의 색·문양·이름으로 꾸민 킬 로그
-    const box = $('killfeed'), e = h('div', 'kf' + (byPlayer ? ' mine' : '') + (playerDied || mate ? ' dead' : '') + (kind === 'knock' ? ' knock' : '') + (eps ? ' eps k-' + eps.fx.kind + (eps.xm ? ' xm' : '') : ''));
+    // 근접 무기 스킨 정보 · 울트라레어 주제 (엡실론 총 줄이 먼저)
+    const mi = !eps && killer && ms && typeof MeleeFx !== 'undefined' ? MeleeFx.info(ms) : null, mu = mi && mi.th;
+    const box = $('killfeed'), e = h('div', 'kf' + (byPlayer ? ' mine' : '') + (playerDied || mate ? ' dead' : '') + (kind === 'knock' ? ' knock' : '') + (eps ? ' eps k-' + eps.fx.kind + (eps.xm ? ' xm' : '') : '') + (mu ? ' mku k-' + mu.kind : ''));
     if (eps) {
       e.style.setProperty('--sk1', hex6(eps.fx.c)); e.style.setProperty('--sk2', hex6(eps.fx.c2));
       const w = h('em', 'kf-eps'); w.innerHTML = epsIco(eps.fx.kind); w.appendChild(h('b', '', `${weapon || ''} · ${eps.name}` + (kind === 'knock' ? ' · 기절' : '')));
       e.append(h('i', 'kf-tag', eps.xm ? '✦' : 'Ε'), h('span', 'kf-n', killer), w, h('span', 'kf-n', victim));
+    } else if (mu) {
+      e.style.setProperty('--sk1', hex6(mu.c)); e.style.setProperty('--sk2', hex6(mu.c2));
+      const w = h('em', 'kf-mu'); w.innerHTML = mskIco(mu.kind); w.appendChild(h('b', '', mi.name + (kind === 'knock' ? ' · 기절' : '')));
+      e.append(h('span', 'kf-n', killer), w, h('span', 'kf-n', victim));
+    } else if (mi) {
+      const w = h('em', 'kf-msk'); w.style.setProperty('--rc', mi.color); w.appendChild(h('b', '', mi.name)); if (kind === 'knock') w.append(' · 기절');
+      e.append(killer); e.appendChild(w); e.append(victim);
     } else if (killer) { e.append(killer); e.appendChild(h('em', '', (weapon || '▸') + (kind === 'knock' ? ' · 기절' : kind === 'wipe' ? '' : ''))); e.append(victim); }
     else { e.append(victim); e.appendChild(h('em', '', kind === 'knock' ? (weapon ? weapon + '(으)로 기절' : '기절') : weapon ? weapon + '(으)로 탈락' : '탈락')); }
     box.prepend(e); while (box.children.length > 5) box.lastChild.remove();
-    setTimeout(() => e.remove(), eps ? 9500 : 7000);
+    setTimeout(() => e.remove(), eps || mu ? 9500 : 7000);
     if (byPlayer) toast(kind === 'knock' ? `${victim} 기절` : `${victim} 처치`, 'ok');
   }
   // 줍기 목록 (v22): 상자 안 물건은 상자 이름 아래로 묶고, 주워야 할 것(자동 줍기 대상 · 지금보다 좋은 장비)은 노란색
@@ -945,8 +966,11 @@ const HUD = (() => {
       if (slot.gear) ico.appendChild(Shop.gearImgEl(slot.id, id, whLv));
       else if (slot.melee) ico.appendChild(Shop.meleeImgEl(slot.melee, id));
       else ico.innerHTML = `<svg viewBox="0 0 24 24">${S ? SKIN_ICON[slot.id](skinFill(S), S.sole !== undefined ? hexs(S.sole) : S.colors ? hexs(S.colors[1]) : S.color2 !== undefined ? hexs(S.color2) : null) : SKIN_ICON.none()}</svg>`;
+      // v23 근접 무기 스킨 혜택: 울트라레어 = 처치 효과·킬 로그 · 슈퍼레어 = 약한 처치 효과 (05_models_mskinfx.js)
+      const mt = slot.melee && S && typeof MeleeFx !== 'undefined' ? MeleeFx.tier(id) : 0;
       b.appendChild(ico); b.appendChild(h('b', '', S ? S.name : base ? '기본 ' + slot.name : slot.name + ' 없음')); b.appendChild(h('span', '', (R ? R.name + ' · ' : '') + slot.name + ' · ' + (on ? '장착 중' : S || base ? '장착하기' : '벗기')));
-      b.title = S ? `${S.name} — ${S.desc || ''}` + (slot.gear ? ' (경기에서 주운 모든 레벨의 ' + slot.name + '에 적용)' : slot.melee ? ` (경기에서 ${slot.name}을 들면 이 모양 · 피해·거리는 같음)` : '') : base ? `기본 ${slot.name} 모습` : `${slot.name} 벗기`;
+      if (mt) b.appendChild(h('em', 'wh-perk', mt === 2 ? '처치 효과 · 킬 로그' : '약한 처치 효과'));
+      b.title = S ? `${S.name} — ${S.desc || ''}` + (slot.gear ? ' (경기에서 주운 모든 레벨의 ' + slot.name + '에 적용)' : slot.melee ? ` (경기에서 ${slot.name}을 들면 이 모양 · 피해·거리는 같음${mt === 2 ? ' · 처치하면 쓰러진 자리에 전용 효과 · 꾸민 킬 로그 · 조준점 휘장' : mt === 1 ? ' · 처치하면 스킨 색의 약한 효과' : ''})` : '') : base ? `기본 ${slot.name} 모습` : `${slot.name} 벗기`;
       b.addEventListener('click', () => { if (!on) equipSkin(slot.id, id || null); });
       return b;
     };

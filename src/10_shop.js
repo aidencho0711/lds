@@ -241,7 +241,9 @@ const Shop = (() => {
     if (o.k === 'gold' || o.k === 'coin' || o.k === 'gcoin') return '재화';
     if (o.k === 'gskin') { const S = GSKINS[o.id], cls = ITEMS[S.gun].name.replace(GunSkin.short(S.gun), '').trim() || ITEMS[S.gun].name; return `총기 스킨 · ${cls}` + (S.xm ? ' · 대기·살펴보기·사격·처치 효과·킬 로그' : S.fx ? ' · 사격·교체 효과' + (S.parts ? ' · 부속품' : '') : S.lite ? ' · 약한 사격·맞힘 효과' : '') + (S.gun === 'pzf' ? ' · 로켓·폭발 모양' : ''); }
     if (o.k === 'vskin') { const V = VSKINS[o.id]; return `${VEH_SKIN_TYPES[V.veh]} 스킨 · ${VCLS_NAME[V.cls]}` + (V.rar === 8 ? ' · 움직이는 썰매·빛나는 코' : ''); }
-    const SK = Body.SKINS[o.id]; return (SLOT_NAME[SK.slot] || '') + (SK.fx ? (SK.slot === 'helmet' ? ' · 쓰면 몸 둘레 효과' : SK.slot === 'pack' ? ' · 메면 몸 둘레 효과' : ' · 입으면 몸 둘레 효과') : '');
+    // v23 근접 무기: 울트라레어 = 처치 효과 · 킬 로그 · 슈퍼레어 = 약한 처치 효과 (05_models_mskinfx.js)
+    const SK = Body.SKINS[o.id], mp = meleeOfSlot(SK.slot) && typeof MeleeFx !== 'undefined' ? MeleeFx.perk(o.id) : '';
+    return (SLOT_NAME[SK.slot] || '') + (mp ? ' · ' + mp : '') + (SK.fx ? (SK.slot === 'helmet' ? ' · 쓰면 몸 둘레 효과' : SK.slot === 'pack' ? ' · 메면 몸 둘레 효과' : ' · 입으면 몸 둘레 효과') : '');
   }
 
   // ---------- 상점 화면 ----------
@@ -271,7 +273,7 @@ const Shop = (() => {
         grid.appendChild(card);
       }
       body.appendChild(grid);
-      $('shopFoot').textContent = `크리스마스 상자는 1회 300(EXCLUSIVE 2%), 총기 상자·차량 뽑기는 1회 200, 옷 상자는 1회 100 ${GOLD_NAME}. 총기 상자는 70% 확률로 총기 교환 코인, 나머지는 총기 스킨이 나오고 울트라레어 스킨은 쏠 때와 총을 바꿀 때 효과가 있습니다. 이미 가진 것이 나오면 일부를 돌려받습니다.`;
+      $('shopFoot').textContent = `크리스마스 상자는 1회 300(EXCLUSIVE 2%), 총기 상자·차량 뽑기는 1회 200, 옷 상자는 1회 100 ${GOLD_NAME}. 총기 상자는 70% 확률로 총기 교환 코인, 나머지는 총기 스킨이 나오고 울트라레어 스킨은 쏠 때와 총을 바꿀 때 효과가 있습니다. 근접 무기 스킨은 모양이 바뀌고, 울트라레어는 처치 효과·킬 로그, 슈퍼레어는 약한 처치 효과가 있습니다. 이미 가진 것이 나오면 일부를 돌려받습니다.`;
     } else {
       // 교환소: 총기 / 차량
       const subt = h('div', 'ex-subtabs');

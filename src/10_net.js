@@ -569,7 +569,7 @@ const Net = (() => {
     if (t.veh) Veh.exit(t, true, true);
     t.setVisibleGear();
     if (by && !mine(by)) by.knocks = (by.knocks || 0) + 1; else if (by && mine(by)) by.knocks++;
-    HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, t.isPlayer, 'knock', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(e.c) : null);
+    HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, t.isPlayer, 'knock', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(e.c) : null, MeleeFx.ofKill(by, e.c));
     if (G.player && sameTeam(G.player, t)) HUD.toast(`팀원 ${t.name} 기절!`, 'warn');
   }
   function netDeath(e) {
@@ -582,9 +582,10 @@ const Net = (() => {
     if (t.veh) Veh.exit(t, true, true);
     if (by) by.kills++;
     if (G.killLog) G.killLog.push({ t: Math.round(G.time), cause: e.c, kn: wasKnocked, by: by ? (by.isPlayer ? 'player' : 'bot') : 'env' });
-    if (!e.lost) HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, false, e.c === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(e.c) : null);
+    if (!e.lost) HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, false, e.c === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(e.c) : null, MeleeFx.ofKill(by, e.c));
     Audio.death(t.pos);
-    if (!e.lost) SkinFx.kill(t, by, e.c);
+    // v23 근접 무기 스킨 처치 효과도 다른 기기의 처치에
+    if (!e.lost) { SkinFx.kill(t, by, e.c); MeleeFx.kill(t, by, e.c); }
     if (G.teams) { const T = G.teams[t.team]; if (T && !T.place && !teamAlive(T)) T.place = aliveTeamCount() + 1; }
     G.onDeath(t, by);
   }

@@ -138,6 +138,8 @@ const RARITY = [
 
     // ---------- v23 근접 무기 스킨 (slot 'm_knife'·'m_machete'·'m_pan'·'m_crowbar') — 색이 아니라 모양이 바뀐다 ----------
     //  shape = 05_models_mskin_<무기>.js 의 모양 생성기 · 휘두르는 동작·피해·사거리는 원래 무기 그대로
+    //  울트라레어(5) = 처치 효과 · 꾸민 킬 로그 · 조준점 휘장, 슈퍼레어(4) = 약한 처치 효과 (05_models_mskinfx.js) · 킬 로그에는 무기 이름 대신 스킨 이름(레어도 색)
+    //  v23: 나비 나이프·카람빗 슈퍼레어 → 울트라레어
     // 배틀로얄 상자: 전장
     knife_br_hunt: { slot: 'm_knife', box: 'br', rar: 1, name: '사냥칼', desc: '나무 손잡이 · 놋쇠 가드의 넓은 날 사냥칼', shape: 'hunter' },
     pan_br_skillet: { slot: 'm_pan', box: 'br', rar: 1, name: '무쇠 스킬렛', desc: '따르는 홈 · 보조 손잡이가 달린 두꺼운 무쇠 팬', shape: 'skillet' },
@@ -147,12 +149,12 @@ const RARITY = [
     // 스페셜 상자: 스트리트
     pan_sp_wok: { slot: 'm_pan', box: 'sp', rar: 3, name: '웍', desc: '깊고 둥근 중화 팬 · 긴 나무 손잡이', shape: 'wok' },
     crow_sp_wrench: { slot: 'm_crowbar', box: 'sp', rar: 3, name: '대형 렌치', desc: '톱니 턱이 달린 커다란 파이프 렌치', shape: 'wrench' },
-    knife_sp_bfly: { slot: 'm_knife', box: 'sp', rar: 4, name: '나비 나이프', desc: '두 갈래 손잡이가 날을 감싸는 무지갯빛 나이프', shape: 'balisong' },
+    knife_sp_bfly: { slot: 'm_knife', box: 'sp', rar: 5, name: '나비 나이프', desc: '두 갈래 손잡이가 날을 감싸는 무지갯빛 나이프', shape: 'balisong' },
     pan_sp_waffle: { slot: 'm_pan', box: 'sp', rar: 4, name: '와플 팬', desc: '격자 무늬 네모 와플 판', shape: 'waffle' },
     mach_sp_neon: { slot: 'm_machete', box: 'sp', rar: 5, name: '네온 블레이드', desc: '빛나는 날끝과 회로 선이 흐르는 각진 칼', shape: 'neon' },
     // 보급 상자: 엘리트
     mach_sup_saw: { slot: 'm_machete', box: 'sup', rar: 3, name: '톱날 정글도', desc: '등에 톱날 · 손을 감싸는 고리 손잡이', shape: 'sawback' },
-    knife_sup_karam: { slot: 'm_knife', box: 'sup', rar: 4, name: '카람빗', desc: '갈고리처럼 휜 검은 날 · 손가락 고리 · 금 테', shape: 'karambit' },
+    knife_sup_karam: { slot: 'm_knife', box: 'sup', rar: 5, name: '카람빗', desc: '갈고리처럼 휜 검은 날 · 손가락 고리 · 금 테', shape: 'karambit' },
     crow_sup_hammer: { slot: 'm_crowbar', box: 'sup', rar: 4, name: '전쟁 망치', desc: '납작한 망치머리 · 뒤 가시 · 가죽 손잡이', shape: 'warhammer' },
     pan_sup_gold: { slot: 'm_pan', box: 'sup', rar: 5, name: '황금 프라이팬', desc: '덩굴무늬를 새긴 금빛 팬 · 손잡이 끝 보석', shape: 'golden' },
     // 크리스마스 상자: 겨울

@@ -897,7 +897,8 @@ function knockChar(t, attacker, cause) {
   t.stance = 'prone'; t.setVisibleGear();
   if (by) by.knocks++;
   if (G.knockLog) G.knockLog.push({ t: Math.round(G.time), cause, by: by ? (by.isPlayer ? 'player' : 'bot') : 'env' });
-  HUD.killfeed(by ? by.name : null, t.name, causeName(cause), by && by.isPlayer, t.isPlayer, 'knock', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(cause) : null);
+  // v23 마지막 인수: 근접 무기 스킨 id (킬 로그에 무기 이름 대신 스킨 이름 · 울트라레어는 꾸민 줄)
+  HUD.killfeed(by ? by.name : null, t.name, causeName(cause), by && by.isPlayer, t.isPlayer, 'knock', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(cause) : null, MeleeFx.ofKill(by, cause));
   if (t.isPlayer) { HUD.toast('기절했습니다! 팀원이 부활시켜 줄 때까지 기어서 버티세요', 'warn'); HUD.setLoot([]); Audio.hurt(); }
   else if (G.player && sameTeam(G.player, t)) HUD.toast(`팀원 ${t.name} 기절!`, 'warn');
   if (t.brain) t.brain.onKnocked();
@@ -966,9 +967,11 @@ function killChar(t, attacker, cause) {
   }
   t.inv.weapons = [null, null, null]; t.inv.items = {}; t.inv.cur = -1; t.inv.gear = { helmet: null, vest: null, bag: null }; t.inv.melee = null; t.swing = null; t.nadeQ = null;
   t.setVisibleGear();
-  HUD.killfeed(attacker && attacker !== t ? attacker.name : null, t.name, causeName(cause), attacker && attacker.isPlayer, t.isPlayer, cause === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t), attacker && attacker !== t && attacker.skinOf ? attacker.skinOf(cause) : null);
+  HUD.killfeed(attacker && attacker !== t ? attacker.name : null, t.name, causeName(cause), attacker && attacker.isPlayer, t.isPlayer, cause === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t), attacker && attacker !== t && attacker.skinOf ? attacker.skinOf(cause) : null, attacker !== t ? MeleeFx.ofKill(attacker, cause) : null);
   Audio.death(t.pos);
   SkinFx.kill(t, attacker, cause);   // 울트라레어 스킨 총으로 처치하면 그 자리에 큰 효과
+  // v23 근접 무기 스킨: 울트라레어 = 모양마다 다른 처치 효과 · 슈퍼레어 = 약한 효과 (05_models_mskinfx.js)
+  MeleeFx.kill(t, attacker, cause);
   // 팀: 서 있는 팀원이 없으면 기절한 팀원도 모두 탈락 (기절시킨 적에게 처치 인정)
   if (G.teams && G.teamSize > 1 && !teamHasStanding(t.team)) for (const m of G.teams[t.team].members) if (m.alive && m.knocked) killChar(m, m.knockedBy, 'wipe');
   if (G.teams) { const T = G.teams[t.team]; if (T && !T.place && !teamAlive(T)) T.place = aliveTeamCount() + 1; }
@@ -1248,6 +1251,8 @@ const FX = (() => {
   function init(sc) {
     scene = sc; tracers = []; dots = []; flashes = []; bursts = []; trails = [];
     SkinFx.init(sc); Hazard.init(sc); Crates.init(sc);   // v22 불·자기장 수류탄 · 시체 상자도 경기마다 새로
+    // v23 근접 무기 스킨 처치 효과: 판 풀을 새 장면에 (첫 두 프레임 미리 그림)
+    MeleeFx.init(sc);
     dotTex = dotTex || tex(0.35); smokeTex = smokeTex || tex(0.6, 128);
     for (let i = 0; i < 40; i++) {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 1], 3));
@@ -1431,6 +1436,8 @@ const FX = (() => {
     for (const b of bursts) if (b.life > 0) { b.life -= dt; const u = 1 - b.life / b.max; b.s.scale.setScalar((2 + u * 14) * b.k); b.s.material.opacity = Math.max(0, 1 - u * u); if (b.life <= 0) b.s.visible = false; }
     for (const tr of trails) if (tr.m.visible) { tr.idle += dt; if (tr.idle > 0.16) tr.m.visible = false; else drawTrail(tr); }
     updateCases(dt);
+    // v23 근접 무기 스킨 처치 효과
+    MeleeFx.update(dt);
   }
   return { init, tracer, impact, flash, casing, explosion, grenadeMesh, smoke, updateSmoke, update, puff, flame, blast, flashBurst, trail };
 })();

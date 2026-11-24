@@ -149,9 +149,10 @@ const Training = (() => {
     if (kill) {
       D.downT = DOWN_T; t.alive = false; t.hp = 0; t.vel.set(0, 0, 0);
       D.last = { shots: D.shots, time: now - D.firstT, dmg: Math.round(D.burst), cause };
-      const w = cause && ITEMS[cause] ? ITEMS[cause].name : causeName(cause);
+      // v23 근접 무기 스킨은 스킨 이름
+      const ms = MeleeFx.ofKill(attacker, cause), w = ms ? Body.SKINS[ms].name : cause && ITEMS[cause] ? ITEMS[cause].name : causeName(cause);
       if (attacker && attacker.isPlayer) HUD.toast(`${D.label} 처치 — ${D.shots}발 · ${(now - D.firstT).toFixed(2)}초${w ? ' · ' + w : ''}`, 'ok');
-      SkinFx.kill(t, attacker, cause);
+      SkinFx.kill(t, attacker, cause); MeleeFx.kill(t, attacker, cause);
     }
     return d;
   }
