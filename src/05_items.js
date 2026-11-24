@@ -373,8 +373,8 @@ function pickupItemRaw(c, it, scene, opts = {}) {
     if (old) dropAt(old, 1);
     if (!c.weapon) {
       c.equipT = Math.max(c.equipT, 0.35); c.swing = null;
-      if (old === 'knife' && c.ka) c.ka.held = false;   // v23 들고 있던 식칼을 식칼로 바꿔 주워도 꺼내는 동작을 다시 (나비 나이프·카람빗)
-      if (c.isPlayer && !(it.id === 'knife' && KAnim.kindOf(c) && !c.veh)) setTimeout(() => Audio.melee('draw', it.id, null, true), 120);   // v23 나비 나이프·카람빗은 꺼내는 동작의 전용 소리
+      if (old && c.ka) c.ka.held = false;   // v23 들고 있던 근접 무기를 다른 것(같은 것)으로 바꿔 주워도 꺼내는 동작을 다시 (근접 무기 스킨 전용 동작)
+      if (c.isPlayer && !(KAnim.ownDraw(c, it.id) && !c.veh)) setTimeout(() => Audio.melee('draw', it.id, null, true), 120);   // v23 전용 꺼내는 소리가 있는 스킨은 그 소리
     }
     c.setVisibleGear();
     return { ok: true, msg: d.name + (old ? ` 획득 (${ITEMS[old].name} 버림)` : ' 획득') };

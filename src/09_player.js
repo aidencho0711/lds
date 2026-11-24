@@ -244,9 +244,10 @@ function updateMeleeVM(dt, p) {
   const eq = clamp(p.equipT / 0.35, 0, 1), bobAmp = clamp(p.anim.speed / 5, 0, 1);
   const S = VM.melS || (VM.melS = { run: 0 }); S.run = lerp(S.run, p.sprint && !sw ? 1 : 0, clamp(dt * 8, 0, 1));
   const msk = MeleeSkin.ofChar(p, id);   // v23 근접 무기 스킨 (모양이 바뀜)
-  const ks = KAnim.vm(dt, p, A, S.run);   // v23 나비 나이프·카람빗: 오른손·칼은 전용 동작(09_player_mskin.js)이 그림 — 왼손만 아래에서
+  const ks = KAnim.vm(dt, p, A, S.run);   // v23 근접 무기 스킨 전용 동작: 오른손·무기는 09_player_mskin.js 가 그림 — 왼손만 아래에서
   if (ks) pickHeld(A.L, p);
   else {
+    KAnim.unplace(A.R.hold.children[0]);   // 전용 동작이 돌려 놓은 손 안 자리를 원래대로 (같은 모델을 기본 동작이 그릴 때)
     _mvP.set(_mv9[0] + Math.sin(p.anim.phase) * 0.012 * bobAmp + S.run * 0.05, _mv9[1] - Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp - eq * 0.36 - S.run * 0.14, -_mv9[2]);
     _mvB.set(_mv9[3], _mv9[4] - S.run * 0.55, -_mv9[5]); _mvE.set(_mv9[6], _mv9[7], -_mv9[8]);
     bladeQuat(_mvQ, _mvB, _mvE);
@@ -498,7 +499,7 @@ function updatePlayer(dt) {
   if (Input.consume('view')) { G.firstPerson = !G.firstPerson; SETTINGS.view = G.firstPerson ? 'fpp' : 'tpp'; saveSettings(); }
   if (Input.consume('ping')) pingInputs(p);
   // 총 살펴보기 (N · 모바일은 무기 칸 누르기): 1인칭은 총을 들어 옆면을 보여 주고, 테스터 스킨은 전용 연출. 쏘기·조준·장전·교체·달리기면 멈춤
-  //  v23 나비 나이프·카람빗을 들고 있으면 그 칼의 전용 살펴보기 (09_player_mskin.js — 대기 중일 때만, 휘두르기·달리기·회복·투척이면 멈춤)
+  //  v23 전용 동작이 있는 근접 무기 스킨을 들고 있으면 그 스킨의 살펴보기 (09_player_mskin.js — 대기 중일 때만, 여러 개면 무작위 · 휘두르기·달리기·회복·투척이면 멈춤)
   const insReq = Input.consume('inspect');
   if (insReq && !p.weapon && p.melee && !p.throwMode) KAnim.inspect(p);
   if (insReq && p.weapon && !p.rl && !p.cycle && p.equipT <= 0 && !p.throwMode) {
@@ -762,7 +763,7 @@ function drawMelee(p, say) {
   if (!p.inv.melee) { if (say) HUD.toast('근접 무기가 없습니다'); return; }
   if (p.inv.cur < 0) return;
   p.inv.cur = -1; p.reloadT = 0; p.cycle = null; p.aiming = false; p.burstQ = 0; p.equipT = 0.35; p.swing = null; p.inspectT = 0; p.setVisibleGear();
-  if (!(p.inv.melee === 'knife' && KAnim.kindOf(p) && !p.veh)) Audio.melee('draw', p.inv.melee, null, true);   // v23 나비 나이프·카람빗은 꺼내는 동작에 맞춘 전용 소리(09_player_mskin.js) — 탑승 중(동작 없음)은 기본 소리
+  if (!(KAnim.ownDraw(p, p.inv.melee) && !p.veh)) Audio.melee('draw', p.inv.melee, null, true);   // v23 근접 무기 스킨 중 전용 꺼내는 소리가 있는 것은 꺼내는 동작에 맞춘 소리(09_player_mskin*.js) — 탑승 중(동작 없음)은 기본 소리
 }
 // J: 부스트 — 부스트가 낮으면 진통제(큰 것)부터
 function useBoost(p) { const id = p.inv.bestBoost(p.boost); if (!id) { HUD.toast('부스트 아이템이 없습니다 (에너지 드링크·진통제)'); return; } useConsumable(p, id); }

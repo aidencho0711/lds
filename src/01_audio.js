@@ -650,6 +650,29 @@ const Audio = (() => {
         }
       }
     },
+    // v23 근접 무기 스킨 전용 동작 소리 (09_player_mskin*.js 의 동작표가 소리를 데이터로 들고 온다) — rec = [[종류, 시작(초), …], …]
+    //  'n' 잡음(길이, 필터, 주파수, Q, 크기) · 't' 음(길이, 파형, 시작 주파수, 끝 주파수, 크기) · 'r' 금속 울림(주파수, 길이, 크기, 둘째 진동 비율)
+    //  · 's' 바람(길이, Q, f0, f1(45% 지점), f2, 가장 큰 크기, 그 시점 비율) — 주파수는 칠 때마다 ±8% 흔들림
+    //  len = 목소리 자리를 차지하는 길이 · key = 같은 소리 간격 제한(없으면 제한 없음 — 휘두름) · 거리: 휘두름(swing) 26m, 손장난 20m
+    mskin(rec, len, pos, own, key, swing) {
+      if (!ctx || !rec || !rec.length) return;
+      const range = swing ? 26 : 20;
+      if ((!own && pos && geom(pos).d > range) || (key && !throttle('ms' + (own ? 1 : 0) + key, Math.max(0.05, len * 0.3))) || !voice(len)) return;
+      const out = spatial(own ? null : pos, own ? 0.3 : 0.38, range); if (!out) return;
+      const t = ctx.currentTime, j = 0.92 + Math.random() * 0.16;
+      for (const s of rec) {
+        const t0 = t + (s[1] || 0);
+        if (s[0] === 'n') noise(out, t0, s[2], s[3], s[4] * j, s[5], s[6]);
+        else if (s[0] === 't') tone(out, t0, s[2], s[3], s[4] * j, s[5] * j, s[6]);
+        else if (s[0] === 'r') { const f = s[2], d = s[3], a = s[4], r = s[5] || 1.59; tone(out, t0, d, 'sine', f * j, f * j * 0.995, a); tone(out, t0, d * 0.6, 'sine', f * r * j, f * r * j * 0.995, a * 0.5); }
+        else if (s[0] === 's') {
+          const du = s[2], src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(); src.buffer = noiseBuf; src.playbackRate.value = j;
+          f.type = 'bandpass'; f.Q.value = s[3]; f.frequency.setValueAtTime(s[4] * j, t0); f.frequency.exponentialRampToValueAtTime(s[5] * j, t0 + du * 0.45); f.frequency.exponentialRampToValueAtTime(s[6] * j, t0 + du);
+          g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(s[7], t0 + du * (s[8] || 0.4)); g.gain.exponentialRampToValueAtTime(0.001, t0 + du);
+          src.connect(f); f.connect(g); g.connect(out); src.start(t0, Math.random()); src.stop(t0 + du + 0.05);
+        }
+      }
+    },
     // v22 섬광탄: 아주 큰 '팡' (높은 터짐 + 짧은 쿵) · earRing: 가까이서 맞으면 귀 울림(삐—)
     flashbang(pos) {
       if (!ctx || !voice(1.2)) return;
