@@ -14,12 +14,14 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const now = () => performance.now() / 1000;
 
 function mulberry32(a) {
-  return function () {
+  const f = function () {
     a |= 0; a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+  f.fork = () => mulberry32(a);   // 지금 상태에서 갈라진 복제본: 같은 수열을 이어 내지만 원래 난수는 소비하지 않는다 (02_world.js 풀)
+  return f;
 }
 
 function angleDiff(a, b) { // b - a 를 [-PI, PI]로
@@ -118,13 +120,14 @@ function levelFromXp(xp) {
   return { lv, cur: x, need };
 }
 
+// 그래픽 품질은 기기마다 다른 설정이라 맵에 손대지 않는다 — 나무·덤불 수는 여기 없음: 나무는 충돌 상자이고, 수가 바뀌면 생성 난수 순서가 밀려 바위·리콜 타워
+//  자리까지 달라졌다 (같이 하기에서 폰(낮음)과 PC(중간)의 엄폐물이 달랐음). 맵은 모든 품질에서 예전 '중간'과 같고, 품질은 풀(충돌 없음·갈라진 난수)·시야·해상도만 바꾼다 (02_world.js)
 const QUALITY = {
-  low:    { pr: 0.8, grass: 0,    trees: 0.65, far: 260, near: 60,  botDraw: 160 },
-  medium: { pr: 1.0, grass: 1600, trees: 1.0,  far: 380, near: 90,  botDraw: 230 },
-  high:   { pr: Math.min(window.devicePixelRatio || 1, 1.75), grass: 4000, trees: 1.25, far: 520, near: 120, botDraw: 320 },
-  // v20 엑스트라: '높음'보다 선명(해상도 배율 최대 2)·멀리(시야 640m, 봇 420m)·풀 많이, 정밀 캐릭터·캐릭터 그림자를 더 멀리(lod·shadow).
-  //  나무 수는 '높음'과 같게 — 맵 생성 시간·메모리를 늘리지 않는다
-  extra:  { pr: Math.min(window.devicePixelRatio || 1, 2), grass: 6500, trees: 1.25, far: 640, near: 150, botDraw: 420, lod: 70, shadow: 90 },
+  low:    { pr: 0.8, grass: 0,    far: 260, near: 60,  botDraw: 160 },
+  medium: { pr: 1.0, grass: 1600, far: 380, near: 90,  botDraw: 230 },
+  high:   { pr: Math.min(window.devicePixelRatio || 1, 1.75), grass: 4000, far: 520, near: 120, botDraw: 320 },
+  // v20 엑스트라: '높음'보다 선명(해상도 배율 최대 2)·멀리(시야 640m, 봇 420m)·풀 많이, 정밀 캐릭터·캐릭터 그림자를 더 멀리(lod·shadow)
+  extra:  { pr: Math.min(window.devicePixelRatio || 1, 2), grass: 6500, far: 640, near: 150, botDraw: 420, lod: 70, shadow: 90 },
 };
 // 그림자 지도 해상도 · 'ultra'(최고 4096)는 그림자 범위도 넓힌다(SHADOW_HALF)
 const SHADOW_SIZE = { off: 0, low: 1024, high: 2048, ultra: 4096 };

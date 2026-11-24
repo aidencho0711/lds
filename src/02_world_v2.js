@@ -842,7 +842,7 @@ function v2Merge(list) {
 }
 async function v2Vegetation(K) {
   if (K.XM) return xmVegetation(K);
-  const { w, R, rng, Q, mk, vegMat, JG } = K, RW = K.RV.w;
+  const { w, R, rng, mk, vegMat, JG } = K, RW = K.RV.w;   // 식생 수는 그래픽 품질과 무관 (02_world.js 나무 주석)
   // 지역 근처(작은 마을·주유소 포함)는 나무를 비운다: 64m 칸 색인
   const PC = 64, PN = Math.ceil(SIZE / PC), pg = new Array(PN * PN).fill(EMPTY_LIST);
   for (const p of w.pois) {
@@ -856,7 +856,7 @@ async function v2Vegetation(K) {
   const trees = [], rocks = [], bushes = [], palms = [], bamboo = [], ferns = [], tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '숲과 바위 생성');
   const A = HALF * 0.9;
   if (!JG) { // 노르덴: 숲바닥(8)은 빽빽, 풀밭은 드문드문, 산비탈은 침엽수
-    const target = Math.floor(34000 * Q.trees);
+    const target = 34000;
     for (let t = 0; t < target * 7 && trees.length < target; t++) {
       if (t % 40000 === 0) await tick(trees.length / target * 0.6);
       const x = R(-A, A), z = R(-A, A), s = surfaceAt(x, z), mw = K.mountW(x, z);
@@ -870,7 +870,7 @@ async function v2Vegetation(K) {
       K.addCollider(x - 0.28 * sc, h - 0.5, z - 0.28 * sc, x + 0.28 * sc, h + 6.5 * sc, z + 0.28 * sc, { kind: 'tree' });
     }
   } else {   // 정글: 키 큰 활엽수 · 중층 나무 (노르덴보다 훨씬 빽빽)
-    const target = Math.floor(30000 * Q.trees);
+    const target = 30000;
     for (let t = 0; t < target * 6 && trees.length < target; t++) {
       if (t % 40000 === 0) await tick(trees.length / target * 0.5);
       const x = R(-A, A), z = R(-A, A), s = surfaceAt(x, z), dens = s === 8 ? 1 : s === 0 ? 0.3 : s === 1 ? 0.08 : 0;
@@ -881,7 +881,7 @@ async function v2Vegetation(K) {
       const r = (broad ? 0.42 : 0.28) * sc; K.addCollider(x - r, h - 0.5, z - r, x + r, h + (broad ? 13 : 6.5) * sc, z + r, { kind: 'tree' });
     }
     // 야자수: 해변 · 강가 · 마을 둘레
-    const palmT = Math.floor(3200 * Q.trees);
+    const palmT = 3200;
     for (let t = 0; t < palmT * 14 && palms.length < palmT; t++) {
       const x = R(-A, A), z = R(-A, A), h = heightAt(x, z); if (h < 0.9 || h > 40) continue;
       const s = surfaceAt(x, z), rd = K.riverDist(x, z), beach = s === 3 && K.edgeF(x, z) > 0, bank = rd < RW + 40 && rd > RW + 6;
@@ -891,7 +891,7 @@ async function v2Vegetation(K) {
       K.addCollider(x - 0.24 * sc, h - 0.5, z - 0.24 * sc, x + 0.24 * sc, h + 8 * sc, z + 0.24 * sc, { kind: 'tree' });
     }
     // 대나무 덤불: 강가·비탈 군락
-    const bamT = Math.floor(2400 * Q.trees);
+    const bamT = 2400;
     for (let t = 0; t < bamT * 12 && bamboo.length < bamT; t++) {
       const x = R(-A, A), z = R(-A, A); if (fbm(K.nF, x * 0.004, z * 0.004, 2) < 0.12) continue;
       const h = heightAt(x, z), s = surfaceAt(x, z); if (!okSpot(x, z, h, s, 1.0, 8)) continue;
@@ -899,7 +899,7 @@ async function v2Vegetation(K) {
       K.addCollider(x - 0.9 * sc, h - 0.5, z - 0.9 * sc, x + 0.9 * sc, h + 8 * sc, z + 0.9 * sc, { kind: 'tree' });
     }
     // 고사리 (충돌 없음, 그림자 없음)
-    const fernT = Math.floor(16000 * Q.trees);
+    const fernT = 16000;
     for (let t = 0; t < fernT * 4 && ferns.length < fernT; t++) {
       const x = R(-A, A), z = R(-A, A), s = surfaceAt(x, z); if (s !== 8 && s !== 0) continue;
       const h = heightAt(x, z); if (h < 1.3 || w.roadDist(x, z) < 4.5 || nearPoi(x, z)) continue;
@@ -919,7 +919,7 @@ async function v2Vegetation(K) {
     K.claim(x - sx * 0.7, z - sz * 0.7, x + sx * 0.7, z + sz * 0.7);
     K.addCollider(x - sx * 0.68, h - 0.6, z - sz * 0.68, x + sx * 0.68, h + sy * 0.85, z + sz * 0.68, { kind: 'rock' });
   }
-  const bushT = Math.floor((JG ? 11000 : 12000) * Q.trees);
+  const bushT = JG ? 11000 : 12000;
   for (let t = 0; t < bushT * 5 && bushes.length < bushT; t++) {
     const x = R(-HALF * 0.88, HALF * 0.88), z = R(-HALF * 0.88, HALF * 0.88), h = heightAt(x, z), s = surfaceAt(x, z);
     if (h < 1.3 || s === 4 || s === 5 || s === 3 || s === 11 || s === 9 || s === 10 || w.roadDist(x, z) < 5) continue;

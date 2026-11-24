@@ -2663,12 +2663,14 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const now = () => performance.now() / 1000;
 
 function mulberry32(a) {
-  return function () {
+  const f = function () {
     a |= 0; a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+  f.fork = () => mulberry32(a);   // 지금 상태에서 갈라진 복제본: 같은 수열을 이어 내지만 원래 난수는 소비하지 않는다 (02_world.js 풀)
+  return f;
 }
 
 function angleDiff(a, b) { // b - a 를 [-PI, PI]로
@@ -2767,13 +2769,14 @@ function levelFromXp(xp) {
   return { lv, cur: x, need };
 }
 
+// 그래픽 품질은 기기마다 다른 설정이라 맵에 손대지 않는다 — 나무·덤불 수는 여기 없음: 나무는 충돌 상자이고, 수가 바뀌면 생성 난수 순서가 밀려 바위·리콜 타워
+//  자리까지 달라졌다 (같이 하기에서 폰(낮음)과 PC(중간)의 엄폐물이 달랐음). 맵은 모든 품질에서 예전 '중간'과 같고, 품질은 풀(충돌 없음·갈라진 난수)·시야·해상도만 바꾼다 (02_world.js)
 const QUALITY = {
-  low:    { pr: 0.8, grass: 0,    trees: 0.65, far: 260, near: 60,  botDraw: 160 },
-  medium: { pr: 1.0, grass: 1600, trees: 1.0,  far: 380, near: 90,  botDraw: 230 },
-  high:   { pr: Math.min(window.devicePixelRatio || 1, 1.75), grass: 4000, trees: 1.25, far: 520, near: 120, botDraw: 320 },
-  // v20 엑스트라: '높음'보다 선명(해상도 배율 최대 2)·멀리(시야 640m, 봇 420m)·풀 많이, 정밀 캐릭터·캐릭터 그림자를 더 멀리(lod·shadow).
-  //  나무 수는 '높음'과 같게 — 맵 생성 시간·메모리를 늘리지 않는다
-  extra:  { pr: Math.min(window.devicePixelRatio || 1, 2), grass: 6500, trees: 1.25, far: 640, near: 150, botDraw: 420, lod: 70, shadow: 90 },
+  low:    { pr: 0.8, grass: 0,    far: 260, near: 60,  botDraw: 160 },
+  medium: { pr: 1.0, grass: 1600, far: 380, near: 90,  botDraw: 230 },
+  high:   { pr: Math.min(window.devicePixelRatio || 1, 1.75), grass: 4000, far: 520, near: 120, botDraw: 320 },
+  // v20 엑스트라: '높음'보다 선명(해상도 배율 최대 2)·멀리(시야 640m, 봇 420m)·풀 많이, 정밀 캐릭터·캐릭터 그림자를 더 멀리(lod·shadow)
+  extra:  { pr: Math.min(window.devicePixelRatio || 1, 2), grass: 6500, far: 640, near: 150, botDraw: 420, lod: 70, shadow: 90 },
 };
 // 그림자 지도 해상도 · 'ultra'(최고 4096)는 그림자 범위도 넓힌다(SHADOW_HALF)
 const SHADOW_SIZE = { off: 0, low: 1024, high: 2048, ultra: 4096 };
@@ -5194,9 +5197,11 @@ async function generateWorld(mapId, scene, progress) {
 
   await yieldUI(0.68, '숲과 바위 생성');
   // ----- 나무 / 바위 / 덤불 / 풀 -----
+  //  나무·덤불 수는 그래픽 품질과 무관(예전 '중간' 값 그대로): 나무는 충돌 상자이고, 수가 바뀌면 생성 난수(rng) 순서가 밀려 바위·리콜 타워 자리까지 달라진다
+  //  → 같이 하기에서 기기마다 엄폐물·총알 막힘·차 충돌이 달랐음. 품질은 풀 수(아래, 갈라진 난수)만 바꾼다
   const Q = QUALITY[SETTINGS.quality] || QUALITY.medium;
   const trees = [], rocks = [], bushes = [];
-  const treeTarget = V2 ? 0 : Math.floor((big ? 42000 : 1500) * Q.trees);   // v2 식생은 v2Vegetation
+  const treeTarget = V2 ? 0 : big ? 42000 : 1500;   // v2 식생은 v2Vegetation
   for (let t = 0; t < treeTarget * 6 && trees.length < treeTarget; t++) {
     if (big && t % 20000 === 0) await yieldUI(0.68 + 0.08 * trees.length / treeTarget, '숲과 바위 생성');
     const x = R(-HALF * 0.9, HALF * 0.9), z = R(-HALF * 0.9, HALF * 0.9);
@@ -5228,7 +5233,7 @@ async function generateWorld(mapId, scene, progress) {
     claim(x - sx * 0.7, z - sz * 0.7, x + sx * 0.7, z + sz * 0.7);
     addCollider(x - sx * 0.68, h - 0.6, z - sz * 0.68, x + sx * 0.68, h + sy * 0.85, z + sz * 0.68, { kind: 'rock' });
   }
-  for (let t = 0; t < (V2 ? 0 : big ? 60000 : 4000) && bushes.length < (big ? 14000 : 700) * Q.trees; t++) {
+  for (let t = 0; t < (V2 ? 0 : big ? 60000 : 4000) && bushes.length < (big ? 14000 : 700); t++) {
     const x = R(-HALF * 0.88, HALF * 0.88), z = R(-HALF * 0.88, HALF * 0.88), h = heightAt(x, z), s = surfaceAt(x, z);
     if (h < 1.3 || s === 4 || s === 5 || s === 3 || w.roadDist(x, z) < 5) continue;
     if (AR && M.layout === 'ruins') continue;
@@ -5270,17 +5275,18 @@ async function generateWorld(mapId, scene, progress) {
   mk(new THREE.DodecahedronGeometry(1, 0), vegMat, rocks, (r, d, c) => { d.position.set(r.x, r.y + r.sy * 0.25, r.z); d.scale.set(r.sx, r.sy, r.sz); d.rotation.set(rng() * 0.4, r.rot, rng() * 0.4); const g = 0.42 + rng() * 0.12; c.setRGB(g, g * 0.98, g * 0.93); });
   mk(new THREE.IcosahedronGeometry(0.9, 0), vegMat, bushes, (b, d, c) => { d.position.set(b.x, b.y + 0.35 * b.sc, b.z); d.scale.set(b.sc, b.sc * 0.75, b.sc); d.rotation.set(0, rng() * 3, 0); c.setHSL(0.25 + rng() * 0.06, 0.4, 0.22 + rng() * 0.06); });
   if (Q.grass > 0 && !big) {
-    const grass = [];
+    // 풀(충돌 없음)은 품질마다 수가 달라 생성 난수를 쓰지 않는다: 지금 자리에서 갈라진 복제본(gr) — '중간'은 예전과 같은 자리·색
+    const gr = rng.fork(), GR = (a, b) => a + gr() * (b - a), grass = [];
     for (let t = 0; t < Q.grass * 4 && grass.length < Q.grass; t++) {
-      const x = R(-HALF * 0.85, HALF * 0.85), z = R(-HALF * 0.85, HALF * 0.85), s = surfaceAt(x, z), h = heightAt(x, z);
+      const x = GR(-HALF * 0.85, HALF * 0.85), z = GR(-HALF * 0.85, HALF * 0.85), s = surfaceAt(x, z), h = heightAt(x, z);
       if ((s === 0 || s === 8 || s === 7) && h > 1.3 && w.roadDist(x, z) > 4.5) grass.push({ x, z, y: h });
     }
     const gg = new THREE.ConeGeometry(0.25, 0.7, 3); gg.translate(0, 0.3, 0);
-    const im = mk(gg, vegMat, grass, (g, d, c) => { d.position.set(g.x, g.y, g.z); const s = R(0.7, 1.5); d.scale.set(s, s, s); d.rotation.set(0, rng() * 3, 0); c.setHSL(0.22 + rng() * 0.06, 0.45, 0.28 + rng() * 0.1); });
+    const im = mk(gg, vegMat, grass, (g, d, c) => { d.position.set(g.x, g.y, g.z); const s = GR(0.7, 1.5); d.scale.set(s, s, s); d.rotation.set(0, gr() * 3, 0); c.setHSL(0.22 + gr() * 0.06, 0.45, 0.28 + gr() * 0.1); });
     if (im) im.castShadow = false;
   }
   w.trees = trees; w.rocks = rocks;
-  if (V2) { Object.assign(K, { Q, mk, vegMat, heightAt, surfaceAt, footprintFree, claim, addCollider, yieldUI }); await v2Vegetation(K); }
+  if (V2) { Object.assign(K, { mk, vegMat, heightAt, surfaceAt, footprintFree, claim, addCollider, yieldUI }); await v2Vegetation(K); }
   // 리콜 타워 (08_recall.js): 별도 시드 난수 · 충돌 상자는 맨 뒤에 붙음 → 위에서 만든 지형·건물·전리품·나무는 그대로
   placeRecallTowers({ M, w, flat: FLAT, getBatch, addBox, addCollider, footprintFree, poisNear, riverDist, RV });
 
@@ -6990,7 +6996,7 @@ function v2Merge(list) {
 }
 async function v2Vegetation(K) {
   if (K.XM) return xmVegetation(K);
-  const { w, R, rng, Q, mk, vegMat, JG } = K, RW = K.RV.w;
+  const { w, R, rng, mk, vegMat, JG } = K, RW = K.RV.w;   // 식생 수는 그래픽 품질과 무관 (02_world.js 나무 주석)
   // 지역 근처(작은 마을·주유소 포함)는 나무를 비운다: 64m 칸 색인
   const PC = 64, PN = Math.ceil(SIZE / PC), pg = new Array(PN * PN).fill(EMPTY_LIST);
   for (const p of w.pois) {
@@ -7004,7 +7010,7 @@ async function v2Vegetation(K) {
   const trees = [], rocks = [], bushes = [], palms = [], bamboo = [], ferns = [], tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '숲과 바위 생성');
   const A = HALF * 0.9;
   if (!JG) { // 노르덴: 숲바닥(8)은 빽빽, 풀밭은 드문드문, 산비탈은 침엽수
-    const target = Math.floor(34000 * Q.trees);
+    const target = 34000;
     for (let t = 0; t < target * 7 && trees.length < target; t++) {
       if (t % 40000 === 0) await tick(trees.length / target * 0.6);
       const x = R(-A, A), z = R(-A, A), s = surfaceAt(x, z), mw = K.mountW(x, z);
@@ -7018,7 +7024,7 @@ async function v2Vegetation(K) {
       K.addCollider(x - 0.28 * sc, h - 0.5, z - 0.28 * sc, x + 0.28 * sc, h + 6.5 * sc, z + 0.28 * sc, { kind: 'tree' });
     }
   } else {   // 정글: 키 큰 활엽수 · 중층 나무 (노르덴보다 훨씬 빽빽)
-    const target = Math.floor(30000 * Q.trees);
+    const target = 30000;
     for (let t = 0; t < target * 6 && trees.length < target; t++) {
       if (t % 40000 === 0) await tick(trees.length / target * 0.5);
       const x = R(-A, A), z = R(-A, A), s = surfaceAt(x, z), dens = s === 8 ? 1 : s === 0 ? 0.3 : s === 1 ? 0.08 : 0;
@@ -7029,7 +7035,7 @@ async function v2Vegetation(K) {
       const r = (broad ? 0.42 : 0.28) * sc; K.addCollider(x - r, h - 0.5, z - r, x + r, h + (broad ? 13 : 6.5) * sc, z + r, { kind: 'tree' });
     }
     // 야자수: 해변 · 강가 · 마을 둘레
-    const palmT = Math.floor(3200 * Q.trees);
+    const palmT = 3200;
     for (let t = 0; t < palmT * 14 && palms.length < palmT; t++) {
       const x = R(-A, A), z = R(-A, A), h = heightAt(x, z); if (h < 0.9 || h > 40) continue;
       const s = surfaceAt(x, z), rd = K.riverDist(x, z), beach = s === 3 && K.edgeF(x, z) > 0, bank = rd < RW + 40 && rd > RW + 6;
@@ -7039,7 +7045,7 @@ async function v2Vegetation(K) {
       K.addCollider(x - 0.24 * sc, h - 0.5, z - 0.24 * sc, x + 0.24 * sc, h + 8 * sc, z + 0.24 * sc, { kind: 'tree' });
     }
     // 대나무 덤불: 강가·비탈 군락
-    const bamT = Math.floor(2400 * Q.trees);
+    const bamT = 2400;
     for (let t = 0; t < bamT * 12 && bamboo.length < bamT; t++) {
       const x = R(-A, A), z = R(-A, A); if (fbm(K.nF, x * 0.004, z * 0.004, 2) < 0.12) continue;
       const h = heightAt(x, z), s = surfaceAt(x, z); if (!okSpot(x, z, h, s, 1.0, 8)) continue;
@@ -7047,7 +7053,7 @@ async function v2Vegetation(K) {
       K.addCollider(x - 0.9 * sc, h - 0.5, z - 0.9 * sc, x + 0.9 * sc, h + 8 * sc, z + 0.9 * sc, { kind: 'tree' });
     }
     // 고사리 (충돌 없음, 그림자 없음)
-    const fernT = Math.floor(16000 * Q.trees);
+    const fernT = 16000;
     for (let t = 0; t < fernT * 4 && ferns.length < fernT; t++) {
       const x = R(-A, A), z = R(-A, A), s = surfaceAt(x, z); if (s !== 8 && s !== 0) continue;
       const h = heightAt(x, z); if (h < 1.3 || w.roadDist(x, z) < 4.5 || nearPoi(x, z)) continue;
@@ -7067,7 +7073,7 @@ async function v2Vegetation(K) {
     K.claim(x - sx * 0.7, z - sz * 0.7, x + sx * 0.7, z + sz * 0.7);
     K.addCollider(x - sx * 0.68, h - 0.6, z - sz * 0.68, x + sx * 0.68, h + sy * 0.85, z + sz * 0.68, { kind: 'rock' });
   }
-  const bushT = Math.floor((JG ? 11000 : 12000) * Q.trees);
+  const bushT = JG ? 11000 : 12000;
   for (let t = 0; t < bushT * 5 && bushes.length < bushT; t++) {
     const x = R(-HALF * 0.88, HALF * 0.88), z = R(-HALF * 0.88, HALF * 0.88), h = heightAt(x, z), s = surfaceAt(x, z);
     if (h < 1.3 || s === 4 || s === 5 || s === 3 || s === 11 || s === 9 || s === 10 || w.roadDist(x, z) < 5) continue;
@@ -7427,7 +7433,7 @@ function xmMerge(parts) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals(); return g;
 }
 async function xmVegetation(K) {
-  const { w, R, rng, Q, mk } = K;
+  const { w, R, rng, mk } = K;   // 식생 수는 그래픽 품질과 무관 (02_world.js 나무 주석)
   const PC = 64, PN = Math.ceil(SIZE / PC), pg = new Array(PN * PN).fill(EMPTY_LIST);
   for (const p of w.pois) {
     const cr = p.type === 'village' ? p.r - 4 : p.type === 'xlake' ? p.lake.r + 4 : p.r + 6;
@@ -7437,7 +7443,7 @@ async function xmVegetation(K) {
   const nearPoi = (x, z) => { for (const q of pg[clamp(Math.floor((z + HALF) / PC), 0, PN - 1) * PN + clamp(Math.floor((x + HALF) / PC), 0, PN - 1)]) if (Math.hypot(q.x - x, q.z - z) < q.cr) return true; return false; };
   const NO_TREE = new Set([2, 3, 4, 5, 6, 7, 9]);
   const trees = [], rocks = [], bushes = [], A = HALF * 0.9, tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '눈 덮인 숲 생성');
-  const target = Math.floor(5500 * Q.trees);
+  const target = 5500;
   for (let t = 0; t < target * 7 && trees.length < target; t++) {
     if (t % 30000 === 0) await tick(trees.length / target * 0.6);
     const x = R(-A, A), z = R(-A, A), s = surfaceAt(x, z), mw = K.mountW(x, z);
@@ -7460,7 +7466,7 @@ async function xmVegetation(K) {
     K.claim(x - sx * 0.7, z - sz * 0.7, x + sx * 0.7, z + sz * 0.7);
     K.addCollider(x - sx * 0.68, h - 0.6, z - sz * 0.68, x + sx * 0.68, h + sy * 0.85, z + sz * 0.68, { kind: 'rock' });
   }
-  const bushT = Math.floor(1800 * Q.trees);
+  const bushT = 1800;
   for (let t = 0; t < bushT * 5 && bushes.length < bushT; t++) {
     const x = R(-HALF * 0.88, HALF * 0.88), z = R(-HALF * 0.88, HALF * 0.88), h = heightAt(x, z), s = surfaceAt(x, z);
     if (h < 1.3 || s === 4 || s === 5 || s === 3 || s === 9 || w.roadDist(x, z) < 5) continue;
@@ -25455,6 +25461,11 @@ const KAnim = (() => {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-24', t: '그래픽 품질과 상관없이 모두 같은 맵 — 같이 하기에서 기기마다 나무·바위 자리가 달랐던 문제 수정', items: [
+    '그래픽 품질 「낮음」(휴대폰 기본값)은 나무·덤불을 적게, 「높음」·「엑스트라」는 많이 심었는데, 나무는 총알과 차를 막는 물체라 같이 하기에서 휴대폰과 PC가 서로 다른 엄폐물을 보며 싸우고 있었음 — 이제 모든 품질에서 나무·덤불·바위가 같은 자리에 같은 수만큼 생김',
+    '나무 수가 달라지면 그 뒤에 놓는 바위와 리콜 타워 자리까지 밀려 달라지던 것도 함께 고쳐짐 (키나루·아이언리지·칼덴·크리스마스 섬은 품질에 따라 리콜 타워 자리가 달랐음)',
+    '맵은 예전 「중간」 품질과 똑같음 — 「중간」으로 하던 사람은 바뀌는 것이 없고, 「낮음」은 나무가 늘고 「높음」·「엑스트라」는 조금 줄어듦 · 그래픽 품질은 이제 풀·시야 거리·해상도처럼 눈에 보이는 것만 바꿈',
+  ] },
   { v: 'v23', d: '2026-11-24', t: '나비 나이프 · 카람빗 전용 동작 — 꺼내기 · 대기 · 휘두르기 · 살펴보기 · 넣기', items: [
     '나비 나이프 꺼내기: 엄지로 걸쇠를 튕겨 풀고 → 손잡이 하나가 손등 위로 넘어가고 → 손목을 튕겨 날과 함께 굴려 펼친 뒤 → 손바닥으로 받아 철컥 → 걸쇠를 잠그고 쥠 (두 손잡이 · 날 · 걸쇠가 각각 따로 움직임)',
     '나비 나이프 휘두르기: 손목을 꺾었다 튕기는 대각선 베기 ↔ 손목을 비틀며 찌르기를 번갈아 · 살펴보기: 손바닥을 돌려 날 옆면과 무지갯빛 손잡이를 보여 주고, 걸쇠를 풀어 접었다가 다시 펼치고 한 바퀴 돌림',

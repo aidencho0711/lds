@@ -306,7 +306,7 @@ function xmMerge(parts) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals(); return g;
 }
 async function xmVegetation(K) {
-  const { w, R, rng, Q, mk } = K;
+  const { w, R, rng, mk } = K;   // 식생 수는 그래픽 품질과 무관 (02_world.js 나무 주석)
   const PC = 64, PN = Math.ceil(SIZE / PC), pg = new Array(PN * PN).fill(EMPTY_LIST);
   for (const p of w.pois) {
     const cr = p.type === 'village' ? p.r - 4 : p.type === 'xlake' ? p.lake.r + 4 : p.r + 6;
@@ -316,7 +316,7 @@ async function xmVegetation(K) {
   const nearPoi = (x, z) => { for (const q of pg[clamp(Math.floor((z + HALF) / PC), 0, PN - 1) * PN + clamp(Math.floor((x + HALF) / PC), 0, PN - 1)]) if (Math.hypot(q.x - x, q.z - z) < q.cr) return true; return false; };
   const NO_TREE = new Set([2, 3, 4, 5, 6, 7, 9]);
   const trees = [], rocks = [], bushes = [], A = HALF * 0.9, tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '눈 덮인 숲 생성');
-  const target = Math.floor(5500 * Q.trees);
+  const target = 5500;
   for (let t = 0; t < target * 7 && trees.length < target; t++) {
     if (t % 30000 === 0) await tick(trees.length / target * 0.6);
     const x = R(-A, A), z = R(-A, A), s = surfaceAt(x, z), mw = K.mountW(x, z);
@@ -339,7 +339,7 @@ async function xmVegetation(K) {
     K.claim(x - sx * 0.7, z - sz * 0.7, x + sx * 0.7, z + sz * 0.7);
     K.addCollider(x - sx * 0.68, h - 0.6, z - sz * 0.68, x + sx * 0.68, h + sy * 0.85, z + sz * 0.68, { kind: 'rock' });
   }
-  const bushT = Math.floor(1800 * Q.trees);
+  const bushT = 1800;
   for (let t = 0; t < bushT * 5 && bushes.length < bushT; t++) {
     const x = R(-HALF * 0.88, HALF * 0.88), z = R(-HALF * 0.88, HALF * 0.88), h = heightAt(x, z), s = surfaceAt(x, z);
     if (h < 1.3 || s === 4 || s === 5 || s === 3 || s === 9 || w.roadDist(x, z) < 5) continue;

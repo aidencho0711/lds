@@ -1116,9 +1116,11 @@ async function generateWorld(mapId, scene, progress) {
 
   await yieldUI(0.68, '숲과 바위 생성');
   // ----- 나무 / 바위 / 덤불 / 풀 -----
+  //  나무·덤불 수는 그래픽 품질과 무관(예전 '중간' 값 그대로): 나무는 충돌 상자이고, 수가 바뀌면 생성 난수(rng) 순서가 밀려 바위·리콜 타워 자리까지 달라진다
+  //  → 같이 하기에서 기기마다 엄폐물·총알 막힘·차 충돌이 달랐음. 품질은 풀 수(아래, 갈라진 난수)만 바꾼다
   const Q = QUALITY[SETTINGS.quality] || QUALITY.medium;
   const trees = [], rocks = [], bushes = [];
-  const treeTarget = V2 ? 0 : Math.floor((big ? 42000 : 1500) * Q.trees);   // v2 식생은 v2Vegetation
+  const treeTarget = V2 ? 0 : big ? 42000 : 1500;   // v2 식생은 v2Vegetation
   for (let t = 0; t < treeTarget * 6 && trees.length < treeTarget; t++) {
     if (big && t % 20000 === 0) await yieldUI(0.68 + 0.08 * trees.length / treeTarget, '숲과 바위 생성');
     const x = R(-HALF * 0.9, HALF * 0.9), z = R(-HALF * 0.9, HALF * 0.9);
@@ -1150,7 +1152,7 @@ async function generateWorld(mapId, scene, progress) {
     claim(x - sx * 0.7, z - sz * 0.7, x + sx * 0.7, z + sz * 0.7);
     addCollider(x - sx * 0.68, h - 0.6, z - sz * 0.68, x + sx * 0.68, h + sy * 0.85, z + sz * 0.68, { kind: 'rock' });
   }
-  for (let t = 0; t < (V2 ? 0 : big ? 60000 : 4000) && bushes.length < (big ? 14000 : 700) * Q.trees; t++) {
+  for (let t = 0; t < (V2 ? 0 : big ? 60000 : 4000) && bushes.length < (big ? 14000 : 700); t++) {
     const x = R(-HALF * 0.88, HALF * 0.88), z = R(-HALF * 0.88, HALF * 0.88), h = heightAt(x, z), s = surfaceAt(x, z);
     if (h < 1.3 || s === 4 || s === 5 || s === 3 || w.roadDist(x, z) < 5) continue;
     if (AR && M.layout === 'ruins') continue;
@@ -1192,17 +1194,18 @@ async function generateWorld(mapId, scene, progress) {
   mk(new THREE.DodecahedronGeometry(1, 0), vegMat, rocks, (r, d, c) => { d.position.set(r.x, r.y + r.sy * 0.25, r.z); d.scale.set(r.sx, r.sy, r.sz); d.rotation.set(rng() * 0.4, r.rot, rng() * 0.4); const g = 0.42 + rng() * 0.12; c.setRGB(g, g * 0.98, g * 0.93); });
   mk(new THREE.IcosahedronGeometry(0.9, 0), vegMat, bushes, (b, d, c) => { d.position.set(b.x, b.y + 0.35 * b.sc, b.z); d.scale.set(b.sc, b.sc * 0.75, b.sc); d.rotation.set(0, rng() * 3, 0); c.setHSL(0.25 + rng() * 0.06, 0.4, 0.22 + rng() * 0.06); });
   if (Q.grass > 0 && !big) {
-    const grass = [];
+    // 풀(충돌 없음)은 품질마다 수가 달라 생성 난수를 쓰지 않는다: 지금 자리에서 갈라진 복제본(gr) — '중간'은 예전과 같은 자리·색
+    const gr = rng.fork(), GR = (a, b) => a + gr() * (b - a), grass = [];
     for (let t = 0; t < Q.grass * 4 && grass.length < Q.grass; t++) {
-      const x = R(-HALF * 0.85, HALF * 0.85), z = R(-HALF * 0.85, HALF * 0.85), s = surfaceAt(x, z), h = heightAt(x, z);
+      const x = GR(-HALF * 0.85, HALF * 0.85), z = GR(-HALF * 0.85, HALF * 0.85), s = surfaceAt(x, z), h = heightAt(x, z);
       if ((s === 0 || s === 8 || s === 7) && h > 1.3 && w.roadDist(x, z) > 4.5) grass.push({ x, z, y: h });
     }
     const gg = new THREE.ConeGeometry(0.25, 0.7, 3); gg.translate(0, 0.3, 0);
-    const im = mk(gg, vegMat, grass, (g, d, c) => { d.position.set(g.x, g.y, g.z); const s = R(0.7, 1.5); d.scale.set(s, s, s); d.rotation.set(0, rng() * 3, 0); c.setHSL(0.22 + rng() * 0.06, 0.45, 0.28 + rng() * 0.1); });
+    const im = mk(gg, vegMat, grass, (g, d, c) => { d.position.set(g.x, g.y, g.z); const s = GR(0.7, 1.5); d.scale.set(s, s, s); d.rotation.set(0, gr() * 3, 0); c.setHSL(0.22 + gr() * 0.06, 0.45, 0.28 + gr() * 0.1); });
     if (im) im.castShadow = false;
   }
   w.trees = trees; w.rocks = rocks;
-  if (V2) { Object.assign(K, { Q, mk, vegMat, heightAt, surfaceAt, footprintFree, claim, addCollider, yieldUI }); await v2Vegetation(K); }
+  if (V2) { Object.assign(K, { mk, vegMat, heightAt, surfaceAt, footprintFree, claim, addCollider, yieldUI }); await v2Vegetation(K); }
   // 리콜 타워 (08_recall.js): 별도 시드 난수 · 충돌 상자는 맨 뒤에 붙음 → 위에서 만든 지형·건물·전리품·나무는 그대로
   placeRecallTowers({ M, w, flat: FLAT, getBatch, addBox, addCollider, footprintFree, poisNear, riverDist, RV });
 
