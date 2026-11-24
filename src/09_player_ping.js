@@ -61,7 +61,7 @@ const TeamPing = (() => {
     else if ((mk || o || dg) && acc - sentT >= BEAT) send(N, p, mk, o, dg, true);
   }
   // 받을 사람: 같은 팀 사람(다른 기기 · 아직 자기 캐릭터를 움직이는 사람 — 나갔다 돌아오면 다시) + 방장(bot: 내 팀원 봇을 움직임 — 다른 팀이어도)
-  //  (N.gone 은 파티원 기기에서 돌아온 사람을 지우지 않아 쓰지 않는다 · 봇이 이어받은 사람도 방장 기기가 움직이는 '봇')
+  //  (N.gone 은 쓰지 않는다 — 연결이 끊겨 방장이 봇에게 넘긴 사람은 파티원 기기의 N.gone 에 없을 수 있다 · 봇이 이어받은 사람도 방장 기기가 움직이는 '봇')
   function targets(N, p) {
     const out = [], ms = teamMembers(p);
     for (const m of ms) if (m !== p && live(m) && !out.includes(m.uid)) out.push(m.uid);
