@@ -1221,7 +1221,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     // 모드 선택 (맵 선택 창 위쪽)
     const gg = $('gameGrid'); gg.innerHTML = '';
     for (const [k, T] of Object.entries(GAME_TYPES)) {
-      const b = h('button', 'game-opt' + (k === SETTINGS.game ? ' on' : '') + (lock && !lock.leader ? ' lock' : '')); b.type = 'button';
+      const b = h('button', 'game-opt' + (k === SETTINGS.game ? ' on' : '') + (lock && !lock.leader ? ' lock' : '')); b.type = 'button'; b.dataset.k = k;   // data-k: 온라인 매칭 인원 배지 (10_mm.js)
       b.appendChild(h('b', '', T.name)); b.appendChild(h('span', '', T.desc));
       b.addEventListener('click', () => {
         Audio.init(); Audio.ui();
@@ -1236,7 +1236,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
     // 데스매치·대결: 아레나 4곳 + 무작위 (v22) · 배틀로얄: 섬 맵들
     const ents = dm ? [['random', null]].concat(ARENAS.map((k) => [k, MAPS[k]])) : Object.entries(MAPS).filter(([, M]) => !M.training && !M.arena);
     for (const [k, M] of ents) {
-      const on = dm ? k === arenaPick() : k === SETTINGS.map, b = h('button', 'map-opt' + (on ? ' on' : '')); b.type = 'button';
+      const on = dm ? k === arenaPick() : k === SETTINGS.map, b = h('button', 'map-opt' + (on ? ' on' : '')); b.type = 'button'; b.dataset.k = k;
       const im = h('div', 'mo-img');
       if (M) im.style.backgroundImage = `url(${LOBBY_ART[k] || LOBBY_ART.arena || LOBBY_ART.kalden})`; else arenaMosaic(im);
       im.appendChild(h('em', M && M.big && M.half >= 2000 ? 'big' : M && M.snow ? 'xmas' : '', !M ? '4곳 중 하나' : M.big && M.half >= 2000 ? `${mapSize(k)} · 렉 주의` : M.snow ? `${mapSize(k)} · 크리스마스` : M.arena ? '72×72m' : mapSize(k)));

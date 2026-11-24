@@ -9,6 +9,7 @@
 --  · 2초마다 확인(mm_poll). 15초 넘게 확인이 없는 줄은 연결이 끊긴 것으로 보고 뺀다
 --    마감 뒤 12초 안에 방장이 설정을 못 올리면(방장 연결 끊김) 다음 사람이 방장
 --  · 30분 지난 경기·줄은 지운다. 모든 읽기·쓰기는 아래 함수로만 (RLS 켬, 정책 없음)
+--  · v23 같은 대기열 키로 동시에 줄 서면 차례로 처리한다(mm_join 의 advisory lock) — 둘이 각자 새 경기를 열어 갈라지지 않게
 --  · 여러 번 실행해도 안전 (기존 기록을 지우지 않음)
 -- ============================================================
 
@@ -71,6 +72,9 @@ begin
   if p_members is null or jsonb_typeof(p_members) <> 'array' or octet_length(p_members::text) > 24000 then raise exception 'members'; end if;
   k := jsonb_array_length(p_members);
   if k < 1 or k > 4 or k > p_cap then raise exception 'members'; end if;
+  -- v23 같은 대기열 키끼리는 한 번에 하나씩: 둘이 거의 같은 순간에 줄 서면 둘 다 아래에서 '열린 경기 없음'을 보고
+  --  각자 새 경기를 열어 따로 AI 와 시작했다 → 키마다 잠그고(트랜잭션이 끝나면 풀림) 뒤에 온 사람은 앞사람이 연 경기에 들어간다
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(p_qkey));
   -- 내 예전 줄은 지우고 새로 선다
   delete from public.mm_tickets where owner = me;
   -- 정리: 연결이 끊긴 줄(열린 경기) · 사람이 없는 열린 경기 · 30분 지난 경기

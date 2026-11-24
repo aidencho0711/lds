@@ -1725,6 +1725,9 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 .online-tg.on { border-color: rgba(94, 214, 140, 0.75); background: linear-gradient(180deg, rgba(60, 170, 100, 0.3), rgba(13, 17, 19, 0.78)); color: #d2f7de; }
 .online-tg.on svg { opacity: 1; stroke: #7be3a2; }
 .online-tg.lock { opacity: 0.6; cursor: default; }
+.online-tg .ot-cnt { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 0.56rem; letter-spacing: -0.02em; white-space: nowrap; color: var(--sand); opacity: 0.8; font-variant-numeric: tabular-nums; }   /* v23 접속·매칭 인원 */
+.online-tg.on .ot-cnt { color: #a6eac0; opacity: 1; }
+.online-tg.cnt svg { display: none; }   /* 인원 줄이 생기면 아이콘을 빼서 버튼 높이를 그대로 */
 .btn.play.mm { background: linear-gradient(135deg, #2f7a52, #1b4a33); color: #e9fff1; }
 .btn.play.mm span { letter-spacing: 0.12em; }
 .mm-panel { display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; border: 1px solid rgba(94, 214, 140, 0.55); border-radius: 6px; background: linear-gradient(180deg, rgba(20, 56, 38, 0.94), rgba(13, 17, 19, 0.92)); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
@@ -1737,6 +1740,11 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 .mm-bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
 .mm-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #4fc27f, #b3f2cb); transition: width 0.25s linear; }
 .mm-sub { font-size: 0.72rem; color: var(--sand); opacity: 0.88; }
+.mm-cnt { font-size: 0.68rem; color: #a6eac0; font-variant-numeric: tabular-nums; }
+.mm-cnt:empty { display: none; }
+/* v23 맵 선택 창 '매칭 중 N' 배지 (10_mm.js badges) */
+.mm-n { position: absolute; right: 6px; top: 6px; font-style: normal; font-size: 0.64rem; font-weight: 800; white-space: nowrap; padding: 1px 6px; border-radius: 3px; background: rgba(36, 128, 76, 0.92); color: #e9fff1; box-shadow: 0 0 0 1px rgba(123, 227, 162, 0.6); pointer-events: none; }
+.game-opt { position: relative; }
 .mm-who { display: flex; flex-wrap: wrap; gap: 4px; }
 .mm-who:empty { display: none; }
 .mm-chip { padding: 1px 8px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.07); font-size: 0.68rem; color: var(--sand); white-space: nowrap; }
@@ -1747,8 +1755,8 @@ body.touch.teammode .kf.eps:nth-child(n+3) { display: none; }
 .mm-btns .btn { flex: 1; }
 .lb-launch.mm .news-card, .lb-launch.mm .train-btn { display: none; }
 @media (max-height: 520px), (max-width: 860px) {
-  .online-tg { width: 74px; padding: 3px 2px; } .online-tg svg { width: 17px; height: 17px; } .online-tg b { font-size: 0.64rem; } .online-tg small { font-size: 0.56rem; }
-  .mm-panel { padding: 5px 8px; gap: 3px; } .mm-head b { font-size: 0.8rem; } .mm-sub { font-size: 0.64rem; } .mm-who { display: none; }
+  .online-tg { width: 74px; padding: 3px 2px; } .online-tg svg { width: 17px; height: 17px; } .online-tg b { font-size: 0.64rem; } .online-tg small { font-size: 0.56rem; } .online-tg .ot-cnt { font-size: 0.5rem; }
+  .mm-panel { padding: 5px 8px; gap: 3px; } .mm-head b { font-size: 0.8rem; } .mm-sub { font-size: 0.64rem; } .mm-cnt { font-size: 0.6rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mm-who { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .mm-spin { animation: none; } }
 

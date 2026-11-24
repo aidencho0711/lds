@@ -11,11 +11,15 @@
 //  · v22 초대 예약: 게임 중인 친구에게 '초대 예약' → 내가 들고 있다가 그 친구가 로비로 돌아오면(접속 표시 'lobby') 초대를 보낸다
 //    (30분 지나면 지움) · 친구에게는 rsv 로 알려 경기 중에 토스트 · 로비로 돌아와 받은 초대 카드에 '예약해 둔 초대'
 //  · v22 파티 문자(10_chat.js): 파티 채널 {k:'chat'} — 로비 파티 막대·경기 중 화면 모두
+//  · v23 접속 표시 mq: 온라인 매칭으로 줄 선 대기열 키 → 10_mm.js 가 '접속 N · 매칭 중 M' · 맵 선택 창 배지 · 나(파티)밖에 없으면 바로 시작 · 아니면 1분 대기
+//    남이 보낸 mq 는 80자 이하 문자열만 남긴다(readPresence) · synced 는 '이번 연결에서 받은 접속 목록'만 (끊김·오류·다시 연결하면 새 목록이 올 때까지 거짓)
+//    · presence 보내기가 'error'·'timed out' 으로 끝나면 잠깐(3초부터 두 배씩, 30초까지) 쉬었다가 다시 보낸다
 // ============================================================
 const PARTY_MAX = 4;
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
 const Social = (() => {
-  let ch = null, ok = false, friends = [], online = new Map(), invites = [], busy = false, pollT = null, statT = null, lastTrack = '', msgEl = null;
+  let ch = null, ok = false, synced = false, friends = [], online = new Map(), invites = [], busy = false, pollT = null, statT = null, lastTrack = '', msgEl = null;   // synced: 이번 연결(SUBSCRIBED)에서 접속 목록(presence)을 받음 — 그 전에는 '아무도 없음'을 믿을 수 없다 (10_mm.js)
+  let trackNo = 0, trackBo = 0, trackSeq = 0;   // presence 보내기 실패: trackNo(시각)까지 쉼 · trackBo 쉬는 길이 · trackSeq 마지막으로 보낸 것
   const me = () => Cloud.uid;
   const sb = () => Cloud.client();
   const lvOf = (xp) => levelFromXp(xp || 0).lv;
@@ -25,9 +29,10 @@ const Social = (() => {
     if (!sb() || !me() || typeof sb().channel !== 'function') return;
     stop(true);
     try { ch = sb().channel('ld-lobby', { config: { broadcast: { self: false }, presence: { key: me() } } }); } catch (e) { console.warn('실시간 채널 실패', e); ch = null; return; }
-    ch.on('presence', { event: 'sync' }, () => { readPresence(); Party.onOnline(); render(); });
+    ch.on('presence', { event: 'sync' }, () => { synced = true; readPresence(); Party.onOnline(); try { MM.onOnline(); } catch (e) { console.warn('MM.onOnline', e); } render(); });   // 매칭 표시가 실패해도 친구 목록은 그린다
     ch.on('broadcast', { event: 'm' }, (m) => onMsg(m && m.payload));
-    ch.subscribe((st) => { ok = st === 'SUBSCRIBED'; if (ok) { lastTrack = ''; track(); } render(); });
+    // 상태가 바뀔 때마다(오류·닫힘·시간 초과·다시 연결) 접속 목록을 다시 받을 때까지 synced = false — SUBSCRIBED 뒤에 오는 presence_state 가 새 목록
+    ch.subscribe((st) => { ok = st === 'SUBSCRIBED'; synced = false; trackNo = 0; trackBo = 0; if (ok) { lastTrack = ''; track(); } render(); });
     refresh();
     clearInterval(pollT); pollT = setInterval(() => { if (G.state === 'lobby' && !document.hidden) refresh(); }, 30000);
     clearInterval(statT); statT = setInterval(() => { track(); Party.tick(); expireInvites(); checkRsv(); }, 1000);
@@ -36,30 +41,36 @@ const Social = (() => {
   function stop(keepUi) {
     Party.leave(true);
     if (ch && sb()) { try { sb().removeChannel(ch); } catch (e) { /* */ } }
-    ch = null; ok = false; friends = []; online.clear(); invites = []; lastTrack = ''; rsv.clear(); rsvIn.clear(); rsvSent.clear();
+    ch = null; ok = false; synced = false; friends = []; online.clear(); invites = []; lastTrack = ''; trackNo = 0; trackBo = 0; rsv.clear(); rsvIn.clear(); rsvSent.clear();
     clearInterval(pollT); clearInterval(statT);
     if (!keepUi) { Watch.stopAll(); $('friendPanel').hidden = true; render(); renderInvites(); }
   }
-  // pl: 지금 경기 화면(관전할 수 있음) — 결과 화면·불러오는 중은 0 · nv: 같이 하기 버전 (10_ver.js — 없으면 예전 화면)
+  // pl: 지금 경기 화면(관전할 수 있음) — 결과 화면·불러오는 중은 0 · nv: 같이 하기 버전 (10_ver.js — 없으면 예전 화면) · v23 mq: 지금 온라인 매칭으로 줄 선 대기열 키 (10_mm.js — 접속·매칭 인원 표시, 대기 시간)
   function myStatus() {
-    return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, st: G.state === 'lobby' || G.state === 'loading' && !G.netLoading ? (G.state === 'lobby' ? 'lobby' : 'game') : 'game', pid: Party.id(), pn: Party.size(), pl: G.state === 'play' ? 1 : 0, nv: NET_VER };
+    return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, st: G.state === 'lobby' || G.state === 'loading' && !G.netLoading ? (G.state === 'lobby' ? 'lobby' : 'game') : 'game', pid: Party.id(), pn: Party.size(), pl: G.state === 'play' ? 1 : 0, nv: NET_VER, mq: MM.qkey() || undefined };
   }
   // 상태가 바뀌었을 때만 presence 갱신 (초당 제한이 있다)
+  //  supabase-js track() 은 실패해도 거부하지 않고 'error'·'timed out' 으로 끝난다 → 'ok' 가 아니면 비교 키를 지워 잠깐 쉬었다가 다시 보낸다
+  //  (마지막으로 보낸 것의 결과만 본다 — 앞의 것이 실패해도 뒤의 것이 갔으면 그만)
   function track(force) {
-    if (!ch || !ok) return;
-    const s = myStatus(), k = JSON.stringify([s.name, s.lv, s.st, s.pid, s.pn, s.pl]);
+    if (!ch || !ok || (!force && Date.now() < trackNo)) return;
+    const s = myStatus(), k = JSON.stringify([s.name, s.lv, s.st, s.pid, s.pn, s.pl, s.mq]);
     if (!force && k === lastTrack) return; lastTrack = k;
-    ch.track(s).catch(() => { lastTrack = ''; });
+    const c0 = ch, seq = ++trackSeq;
+    const bad = () => { if (ch !== c0 || seq !== trackSeq) return; lastTrack = ''; trackBo = Math.min(30000, trackBo ? trackBo * 2 : 3000); trackNo = Date.now() + trackBo; };
+    ch.track(s).then((r) => { if (r !== 'ok') bad(); else if (seq === trackSeq) trackBo = 0; }, bad);
   }
   // 한 계정이 여러 곳(휴대폰·PC 탭)에 접속해 있으면 하나를 고른다: 이 화면과 게임 버전이 같은 접속 → 그중 로비에 있는 것 → 가장 늦게 알린 것
   //  (예전 버전 탭이 남아 있어도 같은 버전 접속으로 초대할 수 있게 — 10_ver.js)
+  // 접속 목록: 계정마다 마지막 접속 정보 · 남이 보낸 값이라 mq 는 80자 이하 문자열만 남긴다 (10_mm.js 가 비교·표시에 그대로 씀)
   function readPresence() {
     online.clear(); if (!ch) return;
     const st = ch.presenceState();
     for (const k in st) {
-      const a = (st[k] || []).filter(Boolean); if (!a.length) continue;
+      const a = (st[k] || []).filter((x) => x && typeof x === 'object'); if (!a.length) continue;
       const same = a.filter((x) => x.nv === NET_VER), L = same.length ? same : a, lb = L.filter((x) => x.st === 'lobby');
-      online.set(k, (lb.length ? lb : L).pop());
+      let o = (lb.length ? lb : L).pop(); if (o.mq !== undefined && MM.keyOk(o.mq) !== o.mq) o = Object.assign({}, o, { mq: '' });
+      online.set(k, o);
     }
   }
   const isFriend = (uid) => friends.some((f) => f.id === uid && f.status === 'accepted');
@@ -262,7 +273,7 @@ const Social = (() => {
     G.onAuth = (on) => { if (on) start(); else stop(); };
     render();
   }
-  return { setup, start, stop, send, refresh, render, renderInvites, track, openPanel, reserve, unreserve, msg: (t) => setMsg(t, false), get online() { return online; }, get friends() { return friends; }, get connected() { return ok; }, get invites() { return invites; }, get rsv() { return rsv; }, get rsvIn() { return rsvIn; } };
+  return { setup, start, stop, send, refresh, render, renderInvites, track, openPanel, reserve, unreserve, msg: (t) => setMsg(t, false), get online() { return online; }, get friends() { return friends; }, get connected() { return ok; }, get synced() { return ok && synced; }, get invites() { return invites; }, get rsv() { return rsv; }, get rsvIn() { return rsvIn; } };
 })();
 
 const Party = (() => {

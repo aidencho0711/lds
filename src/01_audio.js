@@ -701,6 +701,8 @@ const Audio = (() => {
     },
     attach() { if (!playBuf('attach', null, 0.6, { own: true })) api.pickup('att'); },
     ui() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.05, 'triangle', 700, 760, 0.1); },
+    // v23 온라인 매칭 완료 알림 (10_mm.js): 맑게 올라가는 세 음 — 화면을 보고 있지 않아도 알아차리게
+    matchFound() { if (!ctx) return; const t = ctx.currentTime; [659, 880, 1319].forEach((f, i) => { tone(sfxBus, t + i * 0.11, 0.34, 'triangle', f, f, 0.17); tone(sfxBus, t + i * 0.11, 0.2, 'sine', f * 2, f * 2, 0.035); }); },
     // 팀 핑: 이동(올라가는 두 음) / 공격(짧고 높은 경고음 두 번) / 모여(내려가는 두 음)
     ping(kind) {
       if (!ctx) return; const t = ctx.currentTime;
