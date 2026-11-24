@@ -140,6 +140,11 @@ kbd { font-family: var(--f-display); font-size: 0.8em; border: 1px solid var(--l
 .btn.play:hover { background: #ffb853; }
 .lb-brief { align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 34%; }
 .match-brief { font-size: 0.8rem; color: var(--sand); background: rgba(13, 17, 19, 0.62); border: 1px solid var(--line); padding: 7px 12px; border-radius: 4px; text-align: right; line-height: 1.5; }
+/* v23 로비 로고 (index.html #ldr-logo-h): 오른쪽 아래 경기 안내 위 · 경기 안내가 숨는 좁은 화면(휴대폰 가로)에서는 로고만 작게 그 자리에 */
+.lb-logo { position: relative; z-index: 0; flex: none; margin-bottom: 2px; pointer-events: none; }
+.lb-logo::before { content: ''; position: absolute; inset: -45% -14% -45% -22%; z-index: -1; background: radial-gradient(closest-side, rgba(8, 11, 12, 0.62), rgba(8, 11, 12, 0.3) 55%, rgba(8, 11, 12, 0)); }
+.lb-logo svg { display: block; width: clamp(180px, 18vw, 250px); height: calc(clamp(180px, 18vw, 250px) / 4); filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6)); }
+@media (max-height: 520px), (max-width: 860px) { #lobby .lb-brief { display: flex; } #lobby .lb-brief > :not(.lb-logo) { display: none; } .lb-logo { margin: 0; } .lb-logo svg { width: 136px; height: 34px; } }
 /* 전적 · 커스터마이즈 */
 /* 창고 */
 .wh-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }

@@ -1002,7 +1002,7 @@ function applyCssVars() {
   const s = document.documentElement.style;
   s.setProperty('--bs', SETTINGS.btnScale); s.setProperty('--hud-s', SETTINGS.hudScale); s.setProperty('--hud-o', SETTINGS.hudOpacity);
 }
-function fatal(msg) { const f = $('fatal'); f.hidden = false; f.innerHTML = ''; const d = document.createElement('div'); d.innerHTML = '<p class="eyebrow">실행 오류</p>'; const p = document.createElement('p'); p.textContent = msg; d.appendChild(p); const b = document.createElement('button'); b.className = 'btn'; b.textContent = '새로고침'; b.onclick = () => location.reload(); d.appendChild(b); f.appendChild(d); }
+function fatal(msg) { if (window.LDBoot) window.LDBoot.fail(true); const f = $('fatal'); f.hidden = false; f.innerHTML = ''; const d = document.createElement('div'); d.innerHTML = '<p class="eyebrow">실행 오류</p>'; const p = document.createElement('p'); p.textContent = msg; d.appendChild(p); const b = document.createElement('button'); b.className = 'btn'; b.textContent = '새로고침'; b.onclick = () => location.reload(); d.appendChild(b); f.appendChild(d); }
 
 // ---------- 루프 ----------
 //  FPS 제한(설정 30·60·120, 0 = 제한 없음 → 화면 주사율까지): 일정 기반 — 다음 프레임 목표 시각을 정해 두고, 그보다 일찍 온 화면 갱신은 건너뛴다.
@@ -1081,7 +1081,10 @@ function boot() {
   $('rotateDismiss').addEventListener('click', () => { G.rotateDismissed = true; $('rotateHint').hidden = true; });
   G.onResize();
   document.addEventListener('pointerdown', () => { Audio.init(); if (G.state === 'lobby') Audio.music(true); }, { once: true });
-  loop();
+  // v23 부팅 화면(index.html #bootSplash): '로비 입장 중'을 한 번 그린 뒤 로비 첫 프레임 — 첫 프레임(셰이더 컴파일)이 오래 걸려도 그동안 부팅 화면은 합성 스레드에서 계속 움직인다
+  //  첫 프레임 다음 화면 갱신에 done → 0 m 착지 → 사라짐 · 부팅 화면이 없으면 예전처럼 바로
+  //  window.LDBoot 을 지역 변수에 담지 말 것: boot() 안의 오래 사는 함수들(이벤트 리스너 등)이 같은 클로저를 공유해, 끝난 부팅 화면(캔버스 포함)이 통째로 메모리에 남는다
+  if (window.LDBoot) { window.LDBoot.step(0.9, '로비 입장 중'); window.LDBoot.after(() => { requestAnimationFrame(() => { if (window.LDBoot) window.LDBoot.done(); }); loop(); }); } else loop();
   // 인벤토리 사진(아이콘)은 글꼴이 준비된 뒤 로비에서 조금씩 미리 렌더
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
