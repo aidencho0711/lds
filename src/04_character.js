@@ -23,6 +23,20 @@ function nearestKnockedMate(c, r) {
 }
 const _matCache = {};
 function lam(hex) { return _matCache[hex] || (_matCache[hex] = new THREE.MeshLambertMaterial({ color: hex })); }
+// v23 아주 멀리(화면에서 작게) 보이는 캐릭터의 총: 부품 여러 개(그리기 4~10번) 대신 그 총 크기의 상자 하나 (rig.setFar — 11_game.js)
+//  gun 은 아직 손에 붙이기 전(부모 없음)이어야 크기가 총 좌표로 잡힌다 · 보이는 메시만 잰다(스킨 효과의 점·선·빛은 빼고)
+//  굵기(x·y)는 70% — 총은 대부분 가늘다 · 재질은 몸처럼 안개 상한(Body.charFog)
+const GUN_BOX = new THREE.BoxGeometry(1, 1, 1), _gpb = new THREE.Box3(), _gpm = new THREE.Box3(), _gpk = new THREE.Vector3(0.7, 0.7, 1);
+let GUN_BOX_MAT = null;
+const gunBoxMat = () => GUN_BOX_MAT || (GUN_BOX_MAT = Body.charFog(new THREE.MeshLambertMaterial({ color: 0x2c2e30 })));   // 경기 시작 때 셰이더를 미리 만듦 (11_game.js warmFar)
+function gunProxy(gun) {
+  _gpb.makeEmpty(); gun.updateMatrixWorld(true);
+  gun.traverseVisible((o) => { if (!o.isMesh) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); _gpb.union(_gpm.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld)); });
+  if (_gpb.isEmpty()) return null;
+  const m = new THREE.Mesh(GUN_BOX, gunBoxMat());
+  _gpb.getSize(m.scale).multiply(_gpk); _gpb.getCenter(m.position); m.castShadow = false;
+  return m;
+}
 
 // ---------- 캐릭터 모델 (04_body.js의 뼈대·스킨드 메시 + 05_models_gear.js의 장비) ----------
 // look: Body.makeLook(장착 스킨, 몸) 결과. 옛 형식(복장 색 표)이 오면 기본 외형
@@ -56,7 +70,7 @@ function buildRig(look) {
         while (grp.children.length) grp.remove(grp.children[0]);
         if (m) { m.traverse((o) => { if (o.isMesh) o.castShadow = this.shadow; }); grp.add(m); }
       }
-      hat.visible = !h;
+      hat.visible = !h && !this.far;
       if (typeof OutfitFx !== 'undefined') this.ofx = OutfitFx.kindsOf(L, this.gearLv);   // EXCLUSIVE 헬멧·가방 효과는 그 장비를 썼을 때만
     },
     setShadow(on) {
@@ -66,6 +80,16 @@ function buildRig(look) {
     },
     // 0 = 가까이(정밀), 1 = 멀리(간략)
     setLod(l) { if (this.lod === l) return; this.lod = l; this.mesh.visible = l === 0; this.meshLo.visible = l !== 0; const g = this.gearLv; this.setGear(g[0], g[1], g[2]); },
+    // v23 아주 멀리(120m 밖이면서 화면에서 키 5화소 미만, 또는 캐릭터 안개 상한이 걸리기 시작하는 거리 밖 — 11_game.js charView loD): 손의 총은 상자 하나로,
+    //  헬멧·조끼·가방·모자·허리의 근접 무기는 숨김 → 캐릭터 하나 그리기 10~16번이 2번으로 (몸 실루엣은 그대로)
+    //  상한이 걸리는 자리에서 바꾸므로 장비만 더 옅게 안개에 묻히는 구간이 없고, 총과 상자의 안개도 같아 바뀌는 순간 튀지 않는다
+    far: false, gunProxy: null,
+    setFar(f) {
+      if (this.far === f) return; this.far = f;
+      if (this.gunObj && this.gunProxy) { this.gunObj.visible = !f; this.gunProxy.visible = f; }
+      for (const grp of [helmet, vest, pack, vestL, vestR, meleeHip]) grp.visible = !f;
+      hat.visible = !f && !this.gearLv[0];
+    },
   };
   return rig;
 }
@@ -85,7 +109,11 @@ class Character {
     this.fireCd = 0; this.rl = null; this.cycle = null; this.slideKick = 0; this.equipT = 0; this.bloom = 0;
     this.heal = null; // {id, t, total}
     this.rig = buildRig(this.look); this.root = this.rig.root;
-    if (!this.isPlayer) this.root.updateMatrixWorld = rootMatrixWorld;   // v22: 안 보이는(멀리 있는) 캐릭터는 관절 행렬 계산을 건너뜀 (내 캐릭터는 1인칭에서 숨겨도 그대로)
+    if (!this.isPlayer) {   // v22: 안 보이는(멀리 있는) 캐릭터는 관절 행렬 계산을 건너뜀 (내 캐릭터는 1인칭에서 숨겨도 그대로)
+      this.root.updateMatrixWorld = rootMatrixWorld;
+      //  v23 멀리서 숨기는 장비 묶음(헬멧·조끼·가방·어깨·모자·허리 근접 무기·등의 총·낙하산)도 숨은 동안은 통째로 건너뜀. 손의 총(gunObj)은 총구 자리를 읽으므로 그대로
+      const r = this.rig; for (const g of [r.helmet, r.vest, r.pack, r.vestL, r.vestR, r.hat, r.meleeHip, r.backGuns, r.chute]) g.updateMatrixWorld = rootMatrixWorld;
+    }
     this.anim = { phase: 0, crouch: 0, prone: 0, aim: 0, flinch: 0, flinchDir: 1, land: 0, dead: 0, fall: 0, chute: 0, speed: 0, armed: 0, stepAcc: 0 };
     this.lastAttacker = null; this.lastDamageT = -99; this.outsideZoneT = 0;
     // 팀·기절·부활
@@ -147,8 +175,10 @@ class Character {
       const fx = swap && typeof GunSkin !== 'undefined' && this.root.visible && !!this.root.parent && (!G.camera || this.pos.distanceTo(G.camera.position) < 45);
       if (fx && r.gunObj) GunSkin.holster(r.gunObj, 0.3, this);
       while (r.gunMount.children.length) r.gunMount.remove(r.gunMount.children[0]);
-      r.gunObj = gid ? buildGunMesh(w.id, w.att, sk) : null;
-      if (r.gunObj) { r.gunObj.rotation.y = 0; r.gunMount.add(r.gunObj); if (fx) GunSkin.draw(r.gunObj, 0.3, this); }
+      r.gunObj = gid ? buildGunMesh(w.id, w.att, sk) : null; if (r.gunObj) r.gunObj.rotation.y = 0;
+      r.gunProxy = r.gunObj && !this.isPlayer ? gunProxy(r.gunObj) : null;   // 아주 멀리서 보일 상자 (손에 붙이기 전에 크기를 잰다 · 내 캐릭터는 늘 가까움)
+      if (r.gunProxy) { r.gunObj.visible = !r.far; r.gunProxy.visible = r.far; r.gunMount.add(r.gunProxy); }
+      if (r.gunObj) { r.gunMount.add(r.gunObj); if (fx) GunSkin.draw(r.gunObj, 0.3, this); }
       r.gunId = gid; r.gunBase = base;
     }
   }

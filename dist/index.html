@@ -2843,8 +2843,9 @@ function levelFromXp(xp) {
 
 // 그래픽 품질은 기기마다 다른 설정이라 맵에 손대지 않는다 — 나무·덤불 수는 여기 없음: 나무는 충돌 상자이고, 수가 바뀌면 생성 난수 순서가 밀려 바위·리콜 타워
 //  자리까지 달라졌다 (같이 하기에서 폰(낮음)과 PC(중간)의 엄폐물이 달랐음). 맵은 모든 품질에서 예전 '중간'과 같고, 품질은 풀(충돌 없음·갈라진 난수)·시야·해상도만 바꾼다 (02_world.js)
+// botDraw: 캐릭터를 그리는 거리 — v23 모든 품질에서 봇이 보고 쏘는 거리(익스트림 200m) + 10% 이상 (낮음 160 → 220m · 11_game.js charView 가 BOT_SEE 로 한 번 더 지킴, 배율 조준경으로 볼 때는 더 멀리)
 const QUALITY = {
-  low:    { pr: 0.8, grass: 0,    far: 260, near: 60,  botDraw: 160 },
+  low:    { pr: 0.8, grass: 0,    far: 260, near: 60,  botDraw: 220 },
   medium: { pr: 1.0, grass: 1600, far: 380, near: 90,  botDraw: 230 },
   high:   { pr: Math.min(window.devicePixelRatio || 1, 1.75), grass: 4000, far: 520, near: 120, botDraw: 320 },
   // v20 엑스트라: '높음'보다 선명(해상도 배율 최대 2)·멀리(시야 640m, 봇 420m)·풀 많이, 정밀 캐릭터·캐릭터 그림자를 더 멀리(lod·shadow)
@@ -8229,19 +8230,58 @@ const Body = (() => {
     const t = new THREE.DataTexture(data, NX, NY, THREE.RGBAFormat); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
     return t;
   }
+  // v23 캐릭터 안개 상한: 이 재질(몸·옷·모자 — 먼 캐릭터의 총 상자·점도)은 안개에 FOGMAX.value 넘게 묻히지 않는다
+  //  — 봇이 보고 쏘는 거리의 적이 짙은 안개('낮음' 품질·정글 맵)나 조준경 너머에서도 보이게. 안개가 그보다 옅은 곳은 지형과 똑같다
+  //  값은 경기 중 11_game.js charView 가 정함 (로비·상점 = 1, 상한 없음)
+  const FOGMAX = { value: 1 }, FOG_FRAG = THREE.ShaderChunk.fog_fragment.replace('fogColor, fogFactor', 'fogColor, min( fogFactor, uFogMax )');
+  function charFog(m) {
+    m.onBeforeCompile = (sh) => { sh.uniforms.uFogMax = FOGMAX; sh.fragmentShader = 'uniform float uFogMax;\n' + sh.fragmentShader.replace('#include <fog_fragment>', FOG_FRAG); };
+    m.customProgramCacheKey = () => 'charfogmax';
+    return m;
+  }
   function material() {
     if (MAT) return MAT;
     ATLAS = paintAtlas();
     const env = Models.env;
-    MAT = new THREE.MeshStandardMaterial({ map: ATLAS, roughnessMap: roughMap(), roughness: 1, metalness: 0, vertexColors: true, envMap: env || null, envMapIntensity: 0.3,
-      emissive: 0xffffff, emissiveMap: EMI });
+    MAT = charFog(new THREE.MeshStandardMaterial({ map: ATLAS, roughnessMap: roughMap(), roughness: 1, metalness: 0, vertexColors: true, envMap: env || null, envMapIntensity: 0.3,
+      emissive: 0xffffff, emissiveMap: EMI }));
     MAT.skinning = true;
     return MAT;
   }
-  // 모자처럼 머리 뼈에 붙는 단단한 부품: 같은 아틀라스, 스키닝 없음
+  // v23 멀리서 본 몸의 평균 색 — 간략 메시(lod 1)의 정점 색 × 아틀라스 무늬, 넓이 가중. 아주 먼 캐릭터의 점 색 (11_game.js FarDots: 여기에 경기의 빛을 곱함)
+  //  외형(lookKey)마다 한 번 · 아틀라스는 1/8 로 줄인 사본(256×128)만 한 번 읽음 · 캔버스를 못 읽으면(개인정보 보호 설정 등) 무늬 밝기 0.75
+  let FARPX = null; const FARC = new Map();
+  function farColor(look) {
+    const key = lookKey(look); let c = FARC.get(key); if (c) return c;
+    if (FARPX === null) {
+      FARPX = false;
+      try {
+        const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128; const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(material().map.image, 0, 0, 256, 128);
+        const d = g.getImageData(0, 0, 256, 128).data, f = CELL.face; let s = 0, n = 0;
+        for (let y = f[1] / 8 + 8; y < (f[1] + f[3]) / 8 - 8; y++) for (let x = f[0] / 8 + 8; x < (f[0] + f[2]) / 8 - 8; x++) { s += d[(y * 256 + x) * 4]; n++; }
+        if (s / n > 160) FARPX = d;   // 얼굴 칸은 밝은 회색(#efefef) — 아니면 읽은 값이 가짜(빈 캔버스·무작위 잡음)
+      } catch (e) { /* 무늬 밝기 0.75 */ }
+    }
+    const geo = geometry(look, 1), P = geo.attributes.position.array, C = geo.attributes.color.array, U = geo.attributes.uv.array, I = geo.index.array;
+    let r = 0, gg = 0, b = 0, A = 0;
+    for (let i = 0; i < I.length; i += 3) {
+      const a = I[i] * 3, e = I[i + 1] * 3, f = I[i + 2] * 3;
+      const ux = P[e] - P[a], uy = P[e + 1] - P[a + 1], uz = P[e + 2] - P[a + 2], vx = P[f] - P[a], vy = P[f + 1] - P[a + 1], vz = P[f + 2] - P[a + 2];
+      const ar = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx); if (!ar) continue;
+      let tr = 0.75, tg = 0.75, tb = 0.75;
+      if (FARPX) {
+        const a2 = I[i] * 2, e2 = I[i + 1] * 2, f2 = I[i + 2] * 2, tu = (U[a2] + U[e2] + U[f2]) / 3, tv = (U[a2 + 1] + U[e2 + 1] + U[f2 + 1]) / 3;
+        const k = (clamp((1 - tv) * 128 | 0, 0, 127) * 256 + clamp(tu * 256 | 0, 0, 255)) * 4; tr = FARPX[k] / 255; tg = FARPX[k + 1] / 255; tb = FARPX[k + 2] / 255;
+      }
+      r += ar * (C[a] + C[e] + C[f]) / 3 * tr; gg += ar * (C[a + 1] + C[e + 1] + C[f + 1]) / 3 * tg; b += ar * (C[a + 2] + C[e + 2] + C[f + 2]) / 3 * tb; A += ar;
+    }
+    c = A ? [r / A, gg / A, b / A] : [0.36, 0.36, 0.33]; FARC.set(key, c);
+    return c;
+  }
+  // 모자처럼 머리 뼈에 붙는 단단한 부품: 같은 아틀라스, 스키닝 없음 (clone 은 onBeforeCompile 을 옮기지 않으므로 안개 상한을 다시)
   function rigidMaterial() {
     if (RIGIDMAT) return RIGIDMAT;
-    RIGIDMAT = material().clone(); RIGIDMAT.skinning = false;
+    RIGIDMAT = charFog(material().clone()); RIGIDMAT.skinning = false;
     return RIGIDMAT;
   }
 
@@ -8974,7 +9014,7 @@ const Body = (() => {
     return { B, list, skel, mesh: m };
   }
   return { DEF, BI, REST, LEN, SIDES, SLOTS, SKINS, DEFAULT_LOOK, PLAYER_BODY, TONES, makeLook, normEquip, randomBody, lookKey, geometry, armsGeometry, instance, armsInstance, material, rigidMaterial, hatMesh, bindPose, headPoint, HC, cellUV,
-    get atlas() { return ATLAS; }, get emissive() { return EMI; }, get cache() { return GEO; } };
+    get atlas() { return ATLAS; }, get emissive() { return EMI; }, get cache() { return GEO; }, fogMax: FOGMAX, charFog, farColor };
 })();
 
 // ---------- 04_character.js ----------
@@ -9003,6 +9043,20 @@ function nearestKnockedMate(c, r) {
 }
 const _matCache = {};
 function lam(hex) { return _matCache[hex] || (_matCache[hex] = new THREE.MeshLambertMaterial({ color: hex })); }
+// v23 아주 멀리(화면에서 작게) 보이는 캐릭터의 총: 부품 여러 개(그리기 4~10번) 대신 그 총 크기의 상자 하나 (rig.setFar — 11_game.js)
+//  gun 은 아직 손에 붙이기 전(부모 없음)이어야 크기가 총 좌표로 잡힌다 · 보이는 메시만 잰다(스킨 효과의 점·선·빛은 빼고)
+//  굵기(x·y)는 70% — 총은 대부분 가늘다 · 재질은 몸처럼 안개 상한(Body.charFog)
+const GUN_BOX = new THREE.BoxGeometry(1, 1, 1), _gpb = new THREE.Box3(), _gpm = new THREE.Box3(), _gpk = new THREE.Vector3(0.7, 0.7, 1);
+let GUN_BOX_MAT = null;
+const gunBoxMat = () => GUN_BOX_MAT || (GUN_BOX_MAT = Body.charFog(new THREE.MeshLambertMaterial({ color: 0x2c2e30 })));   // 경기 시작 때 셰이더를 미리 만듦 (11_game.js warmFar)
+function gunProxy(gun) {
+  _gpb.makeEmpty(); gun.updateMatrixWorld(true);
+  gun.traverseVisible((o) => { if (!o.isMesh) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); _gpb.union(_gpm.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld)); });
+  if (_gpb.isEmpty()) return null;
+  const m = new THREE.Mesh(GUN_BOX, gunBoxMat());
+  _gpb.getSize(m.scale).multiply(_gpk); _gpb.getCenter(m.position); m.castShadow = false;
+  return m;
+}
 
 // ---------- 캐릭터 모델 (04_body.js의 뼈대·스킨드 메시 + 05_models_gear.js의 장비) ----------
 // look: Body.makeLook(장착 스킨, 몸) 결과. 옛 형식(복장 색 표)이 오면 기본 외형
@@ -9036,7 +9090,7 @@ function buildRig(look) {
         while (grp.children.length) grp.remove(grp.children[0]);
         if (m) { m.traverse((o) => { if (o.isMesh) o.castShadow = this.shadow; }); grp.add(m); }
       }
-      hat.visible = !h;
+      hat.visible = !h && !this.far;
       if (typeof OutfitFx !== 'undefined') this.ofx = OutfitFx.kindsOf(L, this.gearLv);   // EXCLUSIVE 헬멧·가방 효과는 그 장비를 썼을 때만
     },
     setShadow(on) {
@@ -9046,6 +9100,16 @@ function buildRig(look) {
     },
     // 0 = 가까이(정밀), 1 = 멀리(간략)
     setLod(l) { if (this.lod === l) return; this.lod = l; this.mesh.visible = l === 0; this.meshLo.visible = l !== 0; const g = this.gearLv; this.setGear(g[0], g[1], g[2]); },
+    // v23 아주 멀리(120m 밖이면서 화면에서 키 5화소 미만, 또는 캐릭터 안개 상한이 걸리기 시작하는 거리 밖 — 11_game.js charView loD): 손의 총은 상자 하나로,
+    //  헬멧·조끼·가방·모자·허리의 근접 무기는 숨김 → 캐릭터 하나 그리기 10~16번이 2번으로 (몸 실루엣은 그대로)
+    //  상한이 걸리는 자리에서 바꾸므로 장비만 더 옅게 안개에 묻히는 구간이 없고, 총과 상자의 안개도 같아 바뀌는 순간 튀지 않는다
+    far: false, gunProxy: null,
+    setFar(f) {
+      if (this.far === f) return; this.far = f;
+      if (this.gunObj && this.gunProxy) { this.gunObj.visible = !f; this.gunProxy.visible = f; }
+      for (const grp of [helmet, vest, pack, vestL, vestR, meleeHip]) grp.visible = !f;
+      hat.visible = !f && !this.gearLv[0];
+    },
   };
   return rig;
 }
@@ -9065,7 +9129,11 @@ class Character {
     this.fireCd = 0; this.rl = null; this.cycle = null; this.slideKick = 0; this.equipT = 0; this.bloom = 0;
     this.heal = null; // {id, t, total}
     this.rig = buildRig(this.look); this.root = this.rig.root;
-    if (!this.isPlayer) this.root.updateMatrixWorld = rootMatrixWorld;   // v22: 안 보이는(멀리 있는) 캐릭터는 관절 행렬 계산을 건너뜀 (내 캐릭터는 1인칭에서 숨겨도 그대로)
+    if (!this.isPlayer) {   // v22: 안 보이는(멀리 있는) 캐릭터는 관절 행렬 계산을 건너뜀 (내 캐릭터는 1인칭에서 숨겨도 그대로)
+      this.root.updateMatrixWorld = rootMatrixWorld;
+      //  v23 멀리서 숨기는 장비 묶음(헬멧·조끼·가방·어깨·모자·허리 근접 무기·등의 총·낙하산)도 숨은 동안은 통째로 건너뜀. 손의 총(gunObj)은 총구 자리를 읽으므로 그대로
+      const r = this.rig; for (const g of [r.helmet, r.vest, r.pack, r.vestL, r.vestR, r.hat, r.meleeHip, r.backGuns, r.chute]) g.updateMatrixWorld = rootMatrixWorld;
+    }
     this.anim = { phase: 0, crouch: 0, prone: 0, aim: 0, flinch: 0, flinchDir: 1, land: 0, dead: 0, fall: 0, chute: 0, speed: 0, armed: 0, stepAcc: 0 };
     this.lastAttacker = null; this.lastDamageT = -99; this.outsideZoneT = 0;
     // 팀·기절·부활
@@ -9127,8 +9195,10 @@ class Character {
       const fx = swap && typeof GunSkin !== 'undefined' && this.root.visible && !!this.root.parent && (!G.camera || this.pos.distanceTo(G.camera.position) < 45);
       if (fx && r.gunObj) GunSkin.holster(r.gunObj, 0.3, this);
       while (r.gunMount.children.length) r.gunMount.remove(r.gunMount.children[0]);
-      r.gunObj = gid ? buildGunMesh(w.id, w.att, sk) : null;
-      if (r.gunObj) { r.gunObj.rotation.y = 0; r.gunMount.add(r.gunObj); if (fx) GunSkin.draw(r.gunObj, 0.3, this); }
+      r.gunObj = gid ? buildGunMesh(w.id, w.att, sk) : null; if (r.gunObj) r.gunObj.rotation.y = 0;
+      r.gunProxy = r.gunObj && !this.isPlayer ? gunProxy(r.gunObj) : null;   // 아주 멀리서 보일 상자 (손에 붙이기 전에 크기를 잰다 · 내 캐릭터는 늘 가까움)
+      if (r.gunProxy) { r.gunObj.visible = !r.far; r.gunProxy.visible = r.far; r.gunMount.add(r.gunProxy); }
+      if (r.gunObj) { r.gunMount.add(r.gunObj); if (fx) GunSkin.draw(r.gunObj, 0.3, this); }
       r.gunId = gid; r.gunBase = base;
     }
   }
@@ -18015,16 +18085,29 @@ const VehModels = (() => {
     parts.wr = B.wr || 0.33;
     return parts;
   }
+  // v23 탄 사람이 멀리 그려지는 차량: 사람처럼 안개 상한(Body.charFog) — 차는 안개에 묻히고 탄 사람만 떠서 달리지 않게 (11_game.js vehShow)
+  //  재질마다 '상한 짝'을 하나 만들어 두고 바꿔 끼운다(원래 재질은 userData.m0). 엡실론 빛 효과(fx — 차마다 재질이 따로, 색을 바꾸는 곳이 있음)는 그대로
+  const CAPM = new Map();
+  const capOf = (m) => { let t = CAPM.get(m); if (!t) { t = Body.charFog(m.clone()); CAPM.set(m, t); } return t; };
+  function fogCap(parts, on) {
+    if (!!parts.fogCap === on) return; parts.fogCap = on;
+    for (const m of parts.meshes) {
+      if (m.userData.fx) continue;
+      if (on) { if (!m.userData.m0) { m.userData.m0 = m.material; m.material = capOf(m.material); } }
+      else if (m.userData.m0) { m.material = m.userData.m0; m.userData.m0 = null; }
+    }
+  }
+  const capMats = () => [...Object.values(mats()), glowMat()].map(capOf);   // 경기 시작 때 셰이더를 미리 만들 상한 짝 전부 (11_game.js warmFar)
   // 불탄 잔해: 도장·무광 재질을 검게, 유리·등화 숨김
   function wreck(parts) {
-    const M = mats();
+    const M = mats(); fogCap(parts, false);   // 원래 재질로 비교 (탄 사람을 아직 그리면 11_game.js 가 다음 프레임에 잔해 재질의 짝으로)
     for (const m of parts.meshes) {
       if (m.material === M.glass || m.material === M.sglass || m.material === M.lamp || m.material === M.tail || m.material === GLOWM || m.userData.fx) m.visible = false;
       else if (m.material === M.paint || m.material === M.coat || m.material === M.chrome || m.material === M.gloss || m.material === M.metal) m.material = M.wreck;
     }
   }
-  function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) if (m.material !== mats().glass && m.material !== mats().sglass && m.material !== GLOWM && !m.userData.fx) m.castShadow = on; }
-  return { instance, wreck, setShadows, mats, register, has: (id) => !!SKIN_BUILD[id],
+  function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) { const mt = m.userData.m0 || m.material; if (mt !== mats().glass && mt !== mats().sglass && mt !== GLOWM && !m.userData.fx) m.castShadow = on; } }
+  return { instance, wreck, setShadows, fogCap, capMats, mats, register, has: (id) => !!SKIN_BUILD[id],
     kit: { VB, mtx, arch, side, tube, ball, wheelGeo, SEAT_C, TRIM, CHROME, buildHorse } };
 })();
 
@@ -21010,6 +21093,13 @@ const DIFF = {
   //  두 명 이상에게 노출되면 바로 엄폐, 재장전은 거의 항상 엄폐 뒤에서. 랭크 높은 티어에 섞여 나온다
   extreme: { key: 'extreme', view: 200, fov: 88, react: [0.1, 0.24], aimErr: 0.4, settle: 0.45, burst: [4, 9], pause: [0.12, 0.3], cover: 0.95, retreatHp: 55, hear: 1.7, zoneLead: 1.5, grenade: 0.75, strafe: 0.95, fireRange: 1.35, think: 0.1, headshot: 0.3 },
 };
+// 봇이 적을 알아보는 최대 거리(m) — 사격도 보이는 적에게만 하므로(combat: tr.visible) 쏠 수 있는 최대 거리이기도 하다.
+//  perceive 에서 줄어드는 건 자세뿐(엎드림 0.5·앉음 0.8, 쏘는 중이면 그대로) — 밤·날씨·안개·조준경은 거리를 늘리지도 줄이지도 않고, 소리는 수색만 한다.
+//  플레이어 화면은 이 거리 + 10% 안의 캐릭터를 그래픽 품질과 상관없이 그린다 (11_game.js charView)
+const BOT_SEE = Math.max(...Object.values(DIFF).map((d) => d.view));
+// 배율 조준경으로 조준할 때 캐릭터를 그리는 거리(m): 봇 시야의 1.6배(320m) — 모든 품질에서 같다(카메라 끝이 더 가까우면 거기까지).
+//  봇은 이 거리에서 나를 못 보므로 더 멀리 그리면 맞받아 쏘지 못하는 봇을 위험 없이 저격하게 되고, 품질(PC·휴대폰)에 따라 사람끼리 보이는 거리가 달라진다
+const BOT_SCOPE = Math.round(BOT_SEE * 1.6);
 const isTopBot = (d) => d.key === 'hard' || d.key === 'extreme';
 const STATE_KO = { LANDING: '착지', EXPLORE: '탐색', LOOT: '파밍', MOVE: '이동', DETECT: '적 탐지', COMBAT: '전투', COVER: '엄폐', RETREAT: '후퇴', HEAL: '회복', ZONE: '안전구역 복귀', DEAD: '탈락', TOVEH: '차량으로', DRIVE: '운전', BOARD: '동승하러', RIDE: '동승', KNOCKED: '기절', REVIVE: '부활', REGROUP: '합류', HOLD: '엄폐 대기', FOLLOW: '따라가기', ORDER: '지시 이동', DANGER: '위험 경계' };
 
@@ -23764,10 +23854,11 @@ const Veh = (() => {
     }
     for (const v of list) if (v.awake && !v.dead && !(G.net && Net.vehRemote(v))) { vehVeh(v); runOver(v); }
     engineAudio();
-    // 거리 컬링·그림자
+    // 거리 컬링·그림자 (v23 배율 조준경으로 캐릭터를 그리는 거리 + 10m 까지는 그림 — '낮음' 300 → 330m: 그 안의 적이 숨은 차가 엄폐물로 보이게.
+    //  탄 사람을 그리면 그 차는 이 거리와 상관없이 11_game.js 가 같은 프레임에 다시 켬)
     cullT -= dt;
     if (cullT <= 0 && G.camera) {
-      cullT = 0.3; const cam = G.camera.position, far = QUALITY[SETTINGS.quality].far + 40;
+      cullT = 0.3; const Q = QUALITY[SETTINGS.quality], cam = G.camera.position, far = Math.max(Q.far + 40, Math.min(Q.far + 200, BOT_SCOPE) + 10);
       for (const v of list) { const d = Math.hypot(v.pos.x - cam.x, v.pos.z - cam.z); v.P.root.visible = d < far; if (d < far) VehModels.setShadows(v.P, d < 55); }
     }
   }
@@ -25563,6 +25654,15 @@ const KAnim = (() => {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-24', t: '휴대폰(그래픽 낮음)에서도 나를 쏘는 적이 보임 · 배율 조준경으로 320m 까지', items: [
+    '그래픽 「낮음」(휴대폰 기본)에서 160m 밖 적이 안 보이던 문제 수정 — 이제 모든 그래픽 품질에서 봇이 나를 보고 쏠 수 있는 거리(익스트림 200m)보다 10% 먼 220m 까지 캐릭터를 그림 · 팀원 관전 화면도 같음',
+    '2배 이상 배율 조준경으로 조준하면 조준 방향의 캐릭터를 320m(봇 시야의 1.6배)까지 그림 — 모든 그래픽 품질에서 같은 거리(높음·엑스트라는 원래 보이던 거리 그대로) · 그 안의 차도 엄폐물로 보이게 「낮음」에서 330m 까지 그림',
+    '안개가 짙은 곳(「낮음」 · 키나루 정글 · 크리스마스 섬)에서도 캐릭터와 그가 탄 차는 안개에 60% 넘게 묻히지 않음 — 봇은 안개와 상관없이 보고 쏘므로, 짙은 안개 속에서도 캐릭터가 완전히 숨지는 않음',
+    '멀리서 차에 탄 사람만 보이고 차는 안 보이던(사람이 앉은 채 떠서 달리던) 문제 수정 — 탄 사람을 그리면 그 차도 함께 그림',
+    '화면에서 멀리 있어 그리지 않는 캐릭터의 앉음·엎드림이 맞는 자리·눈높이에 반영되지 않던 문제 수정 — 같이 하기·온라인에서 방장 화면 밖에 엎드린 사람을 봇이 선 키로 보고 맞히던 문제',
+    '아주 멀리 있는 캐릭터는 가볍게 그림(장비 대신 몸과 총 모양만 · 자세는 네 프레임에 한 번 · 숨긴 장비는 계산도 건너뜀) · 「낮음」은 화소보다 작아 깜빡이던 먼 캐릭터 가슴에 그 옷 색의 작은 점을 찍음(위장복은 점도 위장색)',
+    '대형 맵에서 배율 조준을 풀 때 잠깐 먼 건물·나무까지 그려 느려지던 것, 먼 적이 처음 보일 때 한 박자 멈추던 것(셰이더를 경기 시작 때 미리 준비) 수정',
+  ] },
   { v: 'v23', d: '2026-11-24', t: '화면 연결이 끊겼다 돌아올 때 안내·복구 · 3D 라이브러리·로그인 모듈 예비 서버 · 콘솔 디버그 도구 잠금', items: [
     '휴대폰에서 앱을 바꾸거나 메모리가 모자라 그래픽(WebGL) 연결이 끊기면 「화면을 다시 불러오는 중…」 안내가 뜨고, 연결이 돌아오면 그대로 이어서 그림 — 혼자 하는 경기는 그동안 멈추고, 같이 하기는 경기가 계속됨',
     '연결이 돌아온 뒤 총·장비의 금속 반사가 까맣게 되던 것, 끊긴 사이 그린 아이템 아이콘·상점 상자·창고 차량 그림이 빈칸으로 남던 것을 고침',
@@ -38750,6 +38850,7 @@ async function startMatch(cfg) {
   G.total = CHARS.length; Hunt.reset();   // v23 잠수 추적 (승급전 · 하드코어 — 07_bot_hunt.js)
   try { MeleeSkin.warm(CHARS, G.player); } catch (e) { console.warn('근접 무기 스킨 미리 만들기 실패', e); }   // v23 이번 경기의 근접 무기 스킨 모양·내 무기 칸 그림을 미리 (주울 때 끊기지 않게)
   for (const c of CHARS) { c.root.visible = false; c.pos.copy(G.plane.pos); sc.add(c.root); c.yaw = Math.atan2(G.plane.dx, G.plane.dz); }
+  warmFar(sc);   // v23 먼 캐릭터용 셰이더·점 색을 로딩 중에 미리
   G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
   HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
   // 스타트 섬 (08_island.js): 25초 동안 모두 섬에 모였다가 수송기로 — 끝나면 비행 경로 보기부터. 테스트는 G.skipIsland 로 건너뜀
@@ -38772,6 +38873,7 @@ G.planeIntro = planeIntro;
 function disposeMatch() {
   Training.dispose(); DM.dispose(); Island.dispose(); G.bgSim = false; G.netCfg = null; G.rjHold = false;
   Victory.reset();   // v23 우승 축하 창·춤 음악 정리
+  Body.fogMax.value = 1; CV.objR = 0; CAPV.clear();   // v23 캐릭터 안개 상한·건물 표시 거리 되돌림 (로비·상점 화면의 캐릭터는 지형과 같은 안개) · 안개 상한을 씌운 차 목록
   if (!G.scene) return;
   Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose(); XmasFx.dispose();
   G.scene.traverse(o => { if (o.geometry && !o.isSprite) o.geometry.dispose(); });
@@ -38859,6 +38961,91 @@ let lootCullT = 0;
 const CORPSE_T = 10, CORPSE_SINK = 1.2;
 function corpseK(c) { return !c.alive && c.deathTime && !G.dm && c.mode === 'ground' ? clamp((G.time - c.deathTime - CORPSE_T) / CORPSE_SINK, 0, 1) : 0; }
 const _sp = new THREE.Vector3();
+// v23 캐릭터를 그리는 거리 (매 프레임 charView — 카메라 기준이라 팀원 관전·친구 관전 영상도 같은 규칙):
+//  · R: 봇이 보고 쏘는 거리(BOT_SEE — 익스트림 200m) + 10% 와 품질의 봇 표시 거리 중 먼 쪽 — 예전 '낮음'(휴대폰 기본)은 160m 라 안 보이는 적에게 맞았다
+//  · Rs: 배율 조준경(2배 이상)으로 조준하는 동안 조준 방향(inScope) 안은 BOT_SCOPE(봇 시야 × 1.6 = 320m — 07_bot.js)까지, 모든 품질에서 같게
+//    (카메라 끝이 더 가까우면 거기까지 · R 이 이미 더 멀면(높음 320·엑스트라 420) 늘리지 않음). 예전처럼 카메라 끝(낮음 460 · 엑스트라 840m)까지 그리면
+//    PC 높은 품질이 휴대폰보다 사람을 훨씬 멀리 보고, 나를 못 보는 봇을 위험 없이 저격했다
+//    대형 맵은 건물·나무 구역을 그 거리까지 보인 뒤(objR)에만 — 숨긴 건물 안의 캐릭터가 벽 없이 보이지 않게
+//  · 캐릭터 안개 상한(Body.fogMax — 04_body.js): 캐릭터(와 탄 차 — vehShow)는 안개에 CHAR_FOG 넘게 묻히지 않는다. '낮음'은 안개가 65~260m(정글 31~208m)라
+//    200m 적이 77~99% 묻혀 그려도 안 보였다. 안개가 그보다 옅은 곳은 지형과 똑같다 (보통·높음의 칼덴·아이언리지는 R 안에서 그대로)
+//    봇 시야를 안개로 줄이지 않는 까닭: 안개 거리는 그래픽 품질(기기마다 다름)을 따르므로, 같이 하기에서 방장 품질이 규칙을 바꾸게 된다
+//    그래서 짙은 안개(키나루 정글·크리스마스 섬)도 이제 캐릭터를 다 숨기지 못한다 — 봇은 안개와 상관없이 보고 쏘므로
+//  · capD: 상한이 걸리기 시작하는 거리 (smoothstep 이 0.6 이 되는 자리 = near + (far - near) × 0.5665)
+//  · farD: 120m 밖이면서 화면에서 키 5화소 미만(해상도·조준경 배율 반영) — 관절 자세는 네 프레임에 한 번, 그림자 없음, 안티에일리어싱이 없으면 가슴에 점(FarDots)
+//  · loD: farD 와 capD 중 가까운 쪽 — 그 밖은 총을 상자 하나로, 장비는 숨김 (rig.setFar · 상한이 걸린 몸 위에 장비만 옅게 묻히는 구간이 없게)
+const CHAR_FOG = 0.6, CAP_T = 0.5665, FAR_MIN = 120;
+const CV = { R: 220, Rs: 220, want: 220, objR: 0, zs: 0, fx: 0, fy: 0, fz: 1, cosA: 1, farD: FAR_MIN, loD: FAR_MIN, capD: Infinity, dots: null };
+function charView(Q) {
+  const p = G.player, cam = G.camera, fog = G.scene.fog;
+  CV.R = Math.max(Q.botDraw, Math.round(BOT_SEE * 1.1));
+  CV.zs = p && p.alive && p.mode === 'ground' && G.viewChar() === p && Cam.si && Cam.si.mag ? smoothstep01(Cam.ads) : 0;
+  CV.want = lerp(CV.R, Math.max(CV.R, Math.min(cam.far, BOT_SCOPE)), CV.zs);
+  CV.Rs = Math.min(CV.want, W.streamTerrain ? CV.objR : Infinity);
+  if (CV.zs > 0) {   // 조준 방향 원뿔: 화면 대각선 반각 + 0.1 (반동·흔들림·한 프레임 늦은 시야 여유)
+    const cp = Math.cos(p.pitch), hv = cam.fov * DEG / 2;
+    CV.fx = Math.sin(p.yaw) * cp; CV.fy = Math.sin(p.pitch); CV.fz = Math.cos(p.yaw) * cp;
+    CV.cosA = Math.cos(Math.min(1.4, Math.atan(Math.tan(hv) * Math.hypot(1, cam.aspect || 1.78)) + 0.1));
+  }
+  Body.fogMax.value = fog ? CHAR_FOG : 1;
+  const pxK = (G.renderer.domElement.height || 540) / (2 * Math.tan(cam.fov * DEG / 2));   // d m 앞 1m 가 화면에서 차지하는 화소 = pxK / d
+  CV.farD = Math.max(FAR_MIN, pxK * 1.8 / 5);
+  CV.capD = fog ? fog.near + (fog.far - fog.near) * CAP_T : Infinity;
+  CV.loD = Math.min(CV.farD, CV.capD);
+  if (CV.dots === null) CV.dots = !(G.renderer.getContextAttributes() || {}).antialias;   // 렌더러는 시작할 때 품질로 한 번 만들어짐 ('낮음' = 안티에일리어싱 없음)
+  return CV;
+}
+const inScope = (c, cam) => { const dx = c.pos.x - cam.x, dy = c.pos.y + 1.2 - cam.y, dz = c.pos.z - cam.z; return dx * CV.fx + dy * CV.fy + dz * CV.fz > CV.cosA * Math.hypot(dx, dy, dz); };
+// v23 아주 멀리 있는 캐릭터(farD 밖)의 점: 안티에일리어싱이 없으면('낮음') 화면에서 키 5화소 미만인 몸은 화소보다 가늘어
+//  0~2화소만 찍히거나 깜빡인다 (휴대폰 '낮음' 실측: 150m 봇 0화소, 210m 1화소) → 가슴 자리에 2×2화소 점.
+//  모든 캐릭터를 점 묶음 하나로(그리기 1번) · 안개 상한을 받고 지형·건물에 가려진다 · 경기 장면이 바뀌면 그 장면에 다시 붙음
+//  색은 그 캐릭터 옷의 평균 색(Body.farColor — 외형마다 한 번) × 이 경기의 빛 × 0.85 → 멀리서 본 그 몸보다 조금 어둡게 (한 색 점이면 위장복이 점으로 드러남)
+//   빛 = 선 몸이 받는 빛: 하늘빛(하늘·땅 반씩) + 해(옆면 평균 cos(고도)/π) + 환경광 0.075 — 점은 빛을 받지 않는 재질이라 미리 곱함.
+//   엎드리면 등이 하늘을 보아 더 밝다 → 앉음 +8%·엎드림 +15%. 실측(먼 모습 밝기/옷 색, 8방향 평균): 낮 선 0.59~0.70 · 앉음 0.65~0.80 · 엎드림 0.60~0.91,
+//   저녁 선 0.46~0.58 — 이 식으로 점은 그 몸 밝기의 0.67~0.99배 (옷의 광택·발광은 셈하지 않아 조금 어두운 쪽)
+const FarDots = (() => {
+  const MAX = 128, pos = new Float32Array(MAX * 3), col = new Float32Array(MAX * 3), g = new THREE.BufferGeometry(), v = new THREE.Vector3(), LK = [0.54, 0.55, 0.52];
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3).setUsage(THREE.DynamicDrawUsage));
+  const pts = new THREE.Points(g, Body.charFog(new THREE.PointsMaterial({ vertexColors: true, size: 2, sizeAttenuation: false })));
+  pts.frustumCulled = false; let n = 0;
+  function light() {
+    const h = G.hemi, s = G.sun, sd = G.sunDir; if (!h || !s) return;
+    const ks = s.intensity * (sd ? Math.hypot(sd.x, sd.z) : 0.6) / Math.PI;
+    for (const [i, k] of [[0, 'r'], [1, 'g'], [2, 'b']]) LK[i] = ((h.color[k] + h.groundColor[k]) / 2 * h.intensity + s.color[k] * ks + 0.075) * 0.85;
+  }
+  const colorOf = (c) => (c._dotL === c.look ? c._dotC : (c._dotL = c.look, c._dotC = Body.farColor(c.look)));
+  return {
+    begin() { n = 0; },
+    add(c) {
+      if (n >= MAX) return; c.chest(v); const k = colorOf(c), i = n * 3, s = 1 + 0.08 * c.anim.crouch + 0.15 * c.anim.prone;
+      pos[i] = v.x; pos[i + 1] = v.y; pos[i + 2] = v.z; col[i] = k[0] * LK[0] * s; col[i + 1] = k[1] * LK[1] * s; col[i + 2] = k[2] * LK[2] * s; n++;
+    },
+    end(sc) {
+      if (pts.parent !== sc) { sc.add(pts); light(); }
+      g.setDrawRange(0, n); pts.visible = n > 0; if (n) g.attributes.position.needsUpdate = g.attributes.color.needsUpdate = true;
+      pts.material.size = 2 / G.renderer.getPixelRatio();   // 크기는 그리는 화소 2개 (three 가 배율을 곱함)
+    },
+    colorOf, get count() { return n; }, get points() { return pts; }, get light() { return LK; },
+  };
+})();
+// v23 탄 사람을 그리면 그 차도 그린다 — 차는 0.3초마다 거리로 숨기는데(08_vehicle.js, 이 프레임 앞에서) 여기서 같은 프레임에 다시 켜므로 깜빡이지 않음.
+//  상한이 걸리는 거리(capD) 밖이면 차도 캐릭터처럼 안개 상한 재질로(VehModels.fogCap) — 차는 안개에 묻히고 사람만 앉은 채 떠서 달리지 않게. 아무도 그리지 않게 되면 되돌림
+const CAPV = new Set();
+function vehShow(P, d) {
+  if (!P.root.visible) { P.root.visible = true; VehModels.setShadows(P, false); }
+  if (d > CV.capD - 15) { if (!P.fogCap) { VehModels.fogCap(P, true); CAPV.add(P); } P.capF = G.frame; }
+}
+// v23 먼 캐릭터에만 쓰는 셰이더(총 상자 · 점 · 탄 차의 안개 상한 짝)를 경기 시작 때 미리 컴파일 — 처음 쓰는 순간(착지 뒤 첫 원거리 교전)에 한 박자 멈추지 않게.
+//  r128 의 compile 은 숨긴 물체의 재질도 컴파일한다(10_partyfx.js warmDev 와 같은 방법) · 점 색도 외형마다 미리
+//  임시 상자에도 정점 색(3개짜리)을 둔다 — three 는 '색 속성이 4개짜리인가'(vertexAlphas)도 셰이더 열쇠에 넣어, 색 속성이 없으면 다른 셰이더가 만들어진다(실측)
+function warmFar(sc) {
+  FarDots.begin(); FarDots.end(sc);
+  const wg = new THREE.BoxGeometry(1, 1, 1); wg.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(wg.attributes.position.count * 3), 3));
+  const tmp = new THREE.Group(); tmp.visible = false; for (const m of [gunBoxMat(), ...VehModels.capMats()]) tmp.add(new THREE.Mesh(wg, m));
+  sc.add(tmp); try { G.renderer.compile(sc, G.camera); } catch (e) { /* 처음 그릴 때 컴파일됨 */ } sc.remove(tmp); wg.dispose();
+  for (const c of CHARS) try { FarDots.colorOf(c); } catch (e) { console.warn(e); }
+}
 G.update = function (dt) {
   G.time += dt;
   const p = G.player, bg = G.state !== 'play';   // bg: 방장이 결과 화면에 있는 동안 뒤에서 돌리는 경기 (G.bgSim)
@@ -38915,6 +39102,7 @@ G.update = function (dt) {
   // 봇 (대형 맵: 카메라에서 600m 밖의 봇은 두 프레임에 한 번, 누적 dt로 갱신 — 봇마다 번갈아 부하 분산)
   //  v22: 작은 맵도 봇 표시 거리 밖(화면에 그리지 않는 거리, 최소 220m)이면 같게. 단 싸우는 중(COMBAT)이거나
   //  다른 기기 사람(같이 하기·온라인 매칭) 가까이 있는 봇은 매 프레임 (움직임은 stepPhysics 가 큰 dt 를 잘게 나눠 벽을 뚫지 않음)
+  //  v23: 화면에 그리는 봇(배율 조준경으로 보는 220m 밖 봇 — 아래 charView)도 매 프레임 — 조준경 속에서 두 프레임씩 끊겨 움직이지 않게
   G.frame = (G.frame || 0) + 1;
   const camP = G.camera.position, lodR = W.big ? 600 : Math.max(QUALITY[SETTINGS.quality].botDraw, 220);
   let hum = null; if (G.net) for (const h of CHARS) if (h.human && h.alive && h.net && !h.net.mine && !h.botized) (hum || (hum = [])).push(h);
@@ -38938,7 +39126,7 @@ G.update = function (dt) {
       if (c.mode === 'fall' && G.time - c.jumpT > 1.5 && L > (c.pos.y - Math.max(heightAt(c.pos.x, c.pos.z), WATER_Y)) * 1.05) openChute(c);
       updateDrop(c, dt, sx, sz, L > 120 ? 1 : L > 30 ? 0.5 : -0.3);
     } else if (c.mode === 'ground') {
-      if (Math.hypot(c.pos.x - camP.x, c.pos.z - camP.z) < lodR || b.state === 'COMBAT' || nearHum(c)) { if (c._lod) { b.update(c._lod + dt); c._lod = 0; } else b.update(dt); }
+      if (Math.hypot(c.pos.x - camP.x, c.pos.z - camP.z) < lodR || b.state === 'COMBAT' || c.root.visible || nearHum(c)) { if (c._lod) { b.update(c._lod + dt); c._lod = 0; } else b.update(dt); }
       else { c._lod = (c._lod || 0) + dt; if ((G.frame + c.id) % 2 === 0) { b.update(c._lod); c._lod = 0; } }
     }
   }
@@ -38957,13 +39145,19 @@ G.update = function (dt) {
     // 화면에 안 보이는 캐릭터는 관절 애니메이션 생략
     //  v22: 멀리 있는(카메라에서 정밀 메시 거리 + 15m, 최소 45m 밖 — 강하 중 포함) 캐릭터는 관절 자세를 두 프레임에 한 번(쌓인 시간으로) 계산하고,
     //  그 사이 프레임은 몸만 이동한 만큼 옮긴다 — 멀리서는 차이가 보이지 않고, 애니메이션이 프레임 시간에서 가장 큰 몫
+    //  v23: 아주 멀리(120m 밖·화면에서 키 5화소 미만 — c._far, 아래 표시 거리에서 정함) 보이는 캐릭터는 네 프레임에 한 번
     if (c.isPlayer || c.root.visible) {
       const ap = c._ap;
-      if (ap && !c.isPlayer && !c.veh && G.frame - c._animF <= 2 && ((G.frame + c.id) & 1) && Math.hypot(c.pos.x - camP.x, c.pos.y - camP.y, c.pos.z - camP.z) > animFar) {
-        const rp = c.root.position; rp.x += c.pos.x - ap.x; rp.y += c.pos.y - ap.y; rp.z += c.pos.z - ap.z; ap.copy(c.pos);
+      if (ap && !c.isPlayer && !c.veh && (c._far ? G.frame - c._animF < 4 && ((G.frame + c.id) & 3) : G.frame - c._animF <= 2 && ((G.frame + c.id) & 1) && Math.hypot(c.pos.x - camP.x, c.pos.y - camP.y, c.pos.z - camP.z) > animFar)) {
+        c.root.position.copy(c.pos); ap.copy(c.pos);   // animateChar 처럼 몸을 지금 자리로 (v23: 이동량을 더하던 방식은 다른 곳이 몸을 옮긴 뒤 — 다른 기기 사람의 강하·이어하기 — 한 번 더 옮겨 튀었다)
         c._animAcc = (c._animAcc || 0) + dt;
       } else { animateChar(c, dt + (c._animAcc || 0)); c._animAcc = 0; c._animF = G.frame; (c._ap || (c._ap = new THREE.Vector3())).copy(c.pos); }
       if (!c.alive) { const ck = corpseK(c); if (ck > 0) c.root.position.y = c.pos.y - ck * 0.9; }   // v22 시체: 10초 뒤 가라앉으며 사라짐
+    } else if (c.alive && c.mode === 'ground' && !c.veh) {
+      // v23 그리지 않는 캐릭터도 걷기 속도·앉음·엎드림 값은 매 프레임 (animateChar 와 같은 빠르기) — 맞는 자리(hitSpheres)·눈·가슴(eye·chest: 봇 시선·조준)·
+      //  탄 퍼짐(weaponSpread)이 이 값을 읽는다. 예전엔 그리는 캐릭터만 갱신돼 방장 화면 밖에서 엎드린 다른 기기 사람을 방장 봇이 선 키로 보고 맞혔다
+      const a = c.anim, t = dt + (c._animAcc || 0); c._animAcc = 0;
+      a.speed = lerp(a.speed, Math.hypot(c.vel.x, c.vel.z), clamp(t * 10, 0, 1)); a.crouch = lerp(a.crouch, c.stance === 'crouch' ? 1 : 0, clamp(t * 9, 0, 1)); a.prone = lerp(a.prone, c.stance === 'prone' ? 1 : 0, clamp(t * 6, 0, 1));
     }
     if (c.rig.ofx.length && c.alive && c.root.visible && !(c.isPlayer && VM.active)) { const d = G.camera.position.distanceTo(c.pos); if (d < 40) OutfitFx.update(c.rig, dt, d < 15 ? 1 : 0.5); }   // EXCLUSIVE 옷 효과
     footsteps(c, dt);
@@ -38978,17 +39172,26 @@ G.update = function (dt) {
   // 거리 기반 표시 최적화
   const Q = QUALITY[SETTINGS.quality], cam = G.camera.position;
   const lodD = Q.lod || (SETTINGS.quality === 'low' ? 18 : SETTINGS.quality === 'high' ? 45 : 30), shD = Q.shadow || 45;
+  const V = charView(Q); FarDots.begin();   // v23 그리는 거리·조준경·아주 먼 캐릭터 (위 charView)
   for (const c of CHARS) if (!c.isPlayer && c.mode !== 'plane') {
     const d = Math.hypot(c.pos.x - cam.x, c.pos.z - cam.z);
-    c.root.visible = (d < Q.botDraw || c.mode !== 'ground' || !!c.dummy) && corpseK(c) < 1;
-    c.rig.setShadow(d < shD); c.rig.setLod(d > lodD && !c.dummy ? 1 : 0); c.rig.backGuns.visible = d < Math.max(60, lodD + 15);   // 정밀 메시 거리: 낮음 18m·보통 30m·높음 45m·엑스트라 70m(캐릭터 그림자 90m), 그 밖은 등의 총 생략
+    c.root.visible = (d < V.R || (d < V.Rs && inScope(c, cam)) || c.mode !== 'ground' || !!c.dummy) && corpseK(c) < 1;
+    const lo = c.root.visible && d > V.loD, far = c._far = lo && d > V.farD;
+    c.rig.setShadow(d < shD && !far); c.rig.setLod(d > lodD && !c.dummy ? 1 : 0); c.rig.backGuns.visible = d < Math.max(60, lodD + 15); c.rig.setFar(lo);   // 정밀 메시 거리: 낮음 18m·보통 30m·높음 45m·엑스트라 70m(캐릭터 그림자 90m), 그 밖은 등의 총 생략
+    if (far && V.dots && c.alive && c.mode === 'ground') FarDots.add(c);
+    if (c.veh && c.root.visible) vehShow(c.veh.P, d);   // v23 탄 사람을 그리면 그 차도 (위 vehShow)
   }
+  FarDots.end(G.scene);
+  for (const P of CAPV) if (P.capF !== G.frame) { VehModels.fogCap(P, false); CAPV.delete(P); }   // 탄 사람을 더는 그리지 않는(내린·멀어진) 차는 원래 재질로
+  // 대형 맵: 카메라 주변 지형 스트리밍 + 먼 구역 숨김 (안개 너머 · v23 단 캐릭터를 그리는 거리까지는 보임 — 조준경이면 더 멀리, CV.objR)
+  //  v23 조준을 풀어 그리는 거리가 줄면 먼 구역도 바로 숨김 — 0.25초를 기다리면 다시 넓어진 시야에 안개색 건물·나무가 잔뜩 그려졌다
+  const objR = Math.max(Q.far * (G.fogK ? G.fogK[1] : 1), CV.want);
+  if (W.streamTerrain && CV.objR > objR + 20) W.cullChunks(cam.x, cam.z, CV.objR = objR);
   lootCullT -= dt;
   if (lootCullT <= 0) {
     lootCullT = 0.25;
     for (const it of GROUND) if (it.alive && !it.bx) { const d = Math.hypot(it.x - cam.x, it.z - cam.z); if (d < Q.near) itemMesh(it).visible = true; else if (it.mesh) it.mesh.visible = false; }   // 상자 안 물건은 모델 없음 (상자 하나로)
-    // 대형 맵: 카메라 주변 지형 스트리밍 + 먼 구역 숨김
-    if (W.streamTerrain) { W.streamTerrain(cam.x, cam.z, Q.far + 250, 2); W.cullChunks(cam.x, cam.z, Q.far * (G.fogK ? G.fogK[1] : 1)); }   // 안개 너머 구역은 숨김
+    if (W.streamTerrain) { W.streamTerrain(cam.x, cam.z, Q.far + 250, 2); W.cullChunks(cam.x, cam.z, CV.objR = objR); }
   }
   Crates.update(cam, Math.max(Q.near * 2, 90), dt);   // v22 시체 상자: 먼 것은 숨기고, 다 비우면 뚜껑이 열림
   // 줍기 대상 표시 링
@@ -39199,7 +39402,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들 — 로컬 파일·개발 주소이거나 서버가 확인한 관리자 계정일 때만 window 에 붙는다 (10_dev.js Dev.hooks · 배포 사이트의 콘솔 치트 막기)
-  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD,
+  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } } }));

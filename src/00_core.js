@@ -122,8 +122,9 @@ function levelFromXp(xp) {
 
 // 그래픽 품질은 기기마다 다른 설정이라 맵에 손대지 않는다 — 나무·덤불 수는 여기 없음: 나무는 충돌 상자이고, 수가 바뀌면 생성 난수 순서가 밀려 바위·리콜 타워
 //  자리까지 달라졌다 (같이 하기에서 폰(낮음)과 PC(중간)의 엄폐물이 달랐음). 맵은 모든 품질에서 예전 '중간'과 같고, 품질은 풀(충돌 없음·갈라진 난수)·시야·해상도만 바꾼다 (02_world.js)
+// botDraw: 캐릭터를 그리는 거리 — v23 모든 품질에서 봇이 보고 쏘는 거리(익스트림 200m) + 10% 이상 (낮음 160 → 220m · 11_game.js charView 가 BOT_SEE 로 한 번 더 지킴, 배율 조준경으로 볼 때는 더 멀리)
 const QUALITY = {
-  low:    { pr: 0.8, grass: 0,    far: 260, near: 60,  botDraw: 160 },
+  low:    { pr: 0.8, grass: 0,    far: 260, near: 60,  botDraw: 220 },
   medium: { pr: 1.0, grass: 1600, far: 380, near: 90,  botDraw: 230 },
   high:   { pr: Math.min(window.devicePixelRatio || 1, 1.75), grass: 4000, far: 520, near: 120, botDraw: 320 },
   // v20 엑스트라: '높음'보다 선명(해상도 배율 최대 2)·멀리(시야 640m, 봇 420m)·풀 많이, 정밀 캐릭터·캐릭터 그림자를 더 멀리(lod·shadow)

@@ -333,15 +333,28 @@ const VehModels = (() => {
     parts.wr = B.wr || 0.33;
     return parts;
   }
+  // v23 탄 사람이 멀리 그려지는 차량: 사람처럼 안개 상한(Body.charFog) — 차는 안개에 묻히고 탄 사람만 떠서 달리지 않게 (11_game.js vehShow)
+  //  재질마다 '상한 짝'을 하나 만들어 두고 바꿔 끼운다(원래 재질은 userData.m0). 엡실론 빛 효과(fx — 차마다 재질이 따로, 색을 바꾸는 곳이 있음)는 그대로
+  const CAPM = new Map();
+  const capOf = (m) => { let t = CAPM.get(m); if (!t) { t = Body.charFog(m.clone()); CAPM.set(m, t); } return t; };
+  function fogCap(parts, on) {
+    if (!!parts.fogCap === on) return; parts.fogCap = on;
+    for (const m of parts.meshes) {
+      if (m.userData.fx) continue;
+      if (on) { if (!m.userData.m0) { m.userData.m0 = m.material; m.material = capOf(m.material); } }
+      else if (m.userData.m0) { m.material = m.userData.m0; m.userData.m0 = null; }
+    }
+  }
+  const capMats = () => [...Object.values(mats()), glowMat()].map(capOf);   // 경기 시작 때 셰이더를 미리 만들 상한 짝 전부 (11_game.js warmFar)
   // 불탄 잔해: 도장·무광 재질을 검게, 유리·등화 숨김
   function wreck(parts) {
-    const M = mats();
+    const M = mats(); fogCap(parts, false);   // 원래 재질로 비교 (탄 사람을 아직 그리면 11_game.js 가 다음 프레임에 잔해 재질의 짝으로)
     for (const m of parts.meshes) {
       if (m.material === M.glass || m.material === M.sglass || m.material === M.lamp || m.material === M.tail || m.material === GLOWM || m.userData.fx) m.visible = false;
       else if (m.material === M.paint || m.material === M.coat || m.material === M.chrome || m.material === M.gloss || m.material === M.metal) m.material = M.wreck;
     }
   }
-  function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) if (m.material !== mats().glass && m.material !== mats().sglass && m.material !== GLOWM && !m.userData.fx) m.castShadow = on; }
-  return { instance, wreck, setShadows, mats, register, has: (id) => !!SKIN_BUILD[id],
+  function setShadows(parts, on) { if (parts.shadowOn === on) return; parts.shadowOn = on; for (const m of parts.meshes) { const mt = m.userData.m0 || m.material; if (mt !== mats().glass && mt !== mats().sglass && mt !== GLOWM && !m.userData.fx) m.castShadow = on; } }
+  return { instance, wreck, setShadows, fogCap, capMats, mats, register, has: (id) => !!SKIN_BUILD[id],
     kit: { VB, mtx, arch, side, tube, ball, wheelGeo, SEAT_C, TRIM, CHROME, buildHorse } };
 })();

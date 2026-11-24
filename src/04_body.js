@@ -341,19 +341,58 @@ const Body = (() => {
     const t = new THREE.DataTexture(data, NX, NY, THREE.RGBAFormat); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
     return t;
   }
+  // v23 캐릭터 안개 상한: 이 재질(몸·옷·모자 — 먼 캐릭터의 총 상자·점도)은 안개에 FOGMAX.value 넘게 묻히지 않는다
+  //  — 봇이 보고 쏘는 거리의 적이 짙은 안개('낮음' 품질·정글 맵)나 조준경 너머에서도 보이게. 안개가 그보다 옅은 곳은 지형과 똑같다
+  //  값은 경기 중 11_game.js charView 가 정함 (로비·상점 = 1, 상한 없음)
+  const FOGMAX = { value: 1 }, FOG_FRAG = THREE.ShaderChunk.fog_fragment.replace('fogColor, fogFactor', 'fogColor, min( fogFactor, uFogMax )');
+  function charFog(m) {
+    m.onBeforeCompile = (sh) => { sh.uniforms.uFogMax = FOGMAX; sh.fragmentShader = 'uniform float uFogMax;\n' + sh.fragmentShader.replace('#include <fog_fragment>', FOG_FRAG); };
+    m.customProgramCacheKey = () => 'charfogmax';
+    return m;
+  }
   function material() {
     if (MAT) return MAT;
     ATLAS = paintAtlas();
     const env = Models.env;
-    MAT = new THREE.MeshStandardMaterial({ map: ATLAS, roughnessMap: roughMap(), roughness: 1, metalness: 0, vertexColors: true, envMap: env || null, envMapIntensity: 0.3,
-      emissive: 0xffffff, emissiveMap: EMI });
+    MAT = charFog(new THREE.MeshStandardMaterial({ map: ATLAS, roughnessMap: roughMap(), roughness: 1, metalness: 0, vertexColors: true, envMap: env || null, envMapIntensity: 0.3,
+      emissive: 0xffffff, emissiveMap: EMI }));
     MAT.skinning = true;
     return MAT;
   }
-  // 모자처럼 머리 뼈에 붙는 단단한 부품: 같은 아틀라스, 스키닝 없음
+  // v23 멀리서 본 몸의 평균 색 — 간략 메시(lod 1)의 정점 색 × 아틀라스 무늬, 넓이 가중. 아주 먼 캐릭터의 점 색 (11_game.js FarDots: 여기에 경기의 빛을 곱함)
+  //  외형(lookKey)마다 한 번 · 아틀라스는 1/8 로 줄인 사본(256×128)만 한 번 읽음 · 캔버스를 못 읽으면(개인정보 보호 설정 등) 무늬 밝기 0.75
+  let FARPX = null; const FARC = new Map();
+  function farColor(look) {
+    const key = lookKey(look); let c = FARC.get(key); if (c) return c;
+    if (FARPX === null) {
+      FARPX = false;
+      try {
+        const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128; const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(material().map.image, 0, 0, 256, 128);
+        const d = g.getImageData(0, 0, 256, 128).data, f = CELL.face; let s = 0, n = 0;
+        for (let y = f[1] / 8 + 8; y < (f[1] + f[3]) / 8 - 8; y++) for (let x = f[0] / 8 + 8; x < (f[0] + f[2]) / 8 - 8; x++) { s += d[(y * 256 + x) * 4]; n++; }
+        if (s / n > 160) FARPX = d;   // 얼굴 칸은 밝은 회색(#efefef) — 아니면 읽은 값이 가짜(빈 캔버스·무작위 잡음)
+      } catch (e) { /* 무늬 밝기 0.75 */ }
+    }
+    const geo = geometry(look, 1), P = geo.attributes.position.array, C = geo.attributes.color.array, U = geo.attributes.uv.array, I = geo.index.array;
+    let r = 0, gg = 0, b = 0, A = 0;
+    for (let i = 0; i < I.length; i += 3) {
+      const a = I[i] * 3, e = I[i + 1] * 3, f = I[i + 2] * 3;
+      const ux = P[e] - P[a], uy = P[e + 1] - P[a + 1], uz = P[e + 2] - P[a + 2], vx = P[f] - P[a], vy = P[f + 1] - P[a + 1], vz = P[f + 2] - P[a + 2];
+      const ar = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx); if (!ar) continue;
+      let tr = 0.75, tg = 0.75, tb = 0.75;
+      if (FARPX) {
+        const a2 = I[i] * 2, e2 = I[i + 1] * 2, f2 = I[i + 2] * 2, tu = (U[a2] + U[e2] + U[f2]) / 3, tv = (U[a2 + 1] + U[e2 + 1] + U[f2 + 1]) / 3;
+        const k = (clamp((1 - tv) * 128 | 0, 0, 127) * 256 + clamp(tu * 256 | 0, 0, 255)) * 4; tr = FARPX[k] / 255; tg = FARPX[k + 1] / 255; tb = FARPX[k + 2] / 255;
+      }
+      r += ar * (C[a] + C[e] + C[f]) / 3 * tr; gg += ar * (C[a + 1] + C[e + 1] + C[f + 1]) / 3 * tg; b += ar * (C[a + 2] + C[e + 2] + C[f + 2]) / 3 * tb; A += ar;
+    }
+    c = A ? [r / A, gg / A, b / A] : [0.36, 0.36, 0.33]; FARC.set(key, c);
+    return c;
+  }
+  // 모자처럼 머리 뼈에 붙는 단단한 부품: 같은 아틀라스, 스키닝 없음 (clone 은 onBeforeCompile 을 옮기지 않으므로 안개 상한을 다시)
   function rigidMaterial() {
     if (RIGIDMAT) return RIGIDMAT;
-    RIGIDMAT = material().clone(); RIGIDMAT.skinning = false;
+    RIGIDMAT = charFog(material().clone()); RIGIDMAT.skinning = false;
     return RIGIDMAT;
   }
 
@@ -1086,5 +1125,5 @@ const Body = (() => {
     return { B, list, skel, mesh: m };
   }
   return { DEF, BI, REST, LEN, SIDES, SLOTS, SKINS, DEFAULT_LOOK, PLAYER_BODY, TONES, makeLook, normEquip, randomBody, lookKey, geometry, armsGeometry, instance, armsInstance, material, rigidMaterial, hatMesh, bindPose, headPoint, HC, cellUV,
-    get atlas() { return ATLAS; }, get emissive() { return EMI; }, get cache() { return GEO; } };
+    get atlas() { return ATLAS; }, get emissive() { return EMI; }, get cache() { return GEO; }, fogMax: FOGMAX, charFog, farColor };
 })();

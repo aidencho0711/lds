@@ -15,6 +15,13 @@ const DIFF = {
   //  두 명 이상에게 노출되면 바로 엄폐, 재장전은 거의 항상 엄폐 뒤에서. 랭크 높은 티어에 섞여 나온다
   extreme: { key: 'extreme', view: 200, fov: 88, react: [0.1, 0.24], aimErr: 0.4, settle: 0.45, burst: [4, 9], pause: [0.12, 0.3], cover: 0.95, retreatHp: 55, hear: 1.7, zoneLead: 1.5, grenade: 0.75, strafe: 0.95, fireRange: 1.35, think: 0.1, headshot: 0.3 },
 };
+// 봇이 적을 알아보는 최대 거리(m) — 사격도 보이는 적에게만 하므로(combat: tr.visible) 쏠 수 있는 최대 거리이기도 하다.
+//  perceive 에서 줄어드는 건 자세뿐(엎드림 0.5·앉음 0.8, 쏘는 중이면 그대로) — 밤·날씨·안개·조준경은 거리를 늘리지도 줄이지도 않고, 소리는 수색만 한다.
+//  플레이어 화면은 이 거리 + 10% 안의 캐릭터를 그래픽 품질과 상관없이 그린다 (11_game.js charView)
+const BOT_SEE = Math.max(...Object.values(DIFF).map((d) => d.view));
+// 배율 조준경으로 조준할 때 캐릭터를 그리는 거리(m): 봇 시야의 1.6배(320m) — 모든 품질에서 같다(카메라 끝이 더 가까우면 거기까지).
+//  봇은 이 거리에서 나를 못 보므로 더 멀리 그리면 맞받아 쏘지 못하는 봇을 위험 없이 저격하게 되고, 품질(PC·휴대폰)에 따라 사람끼리 보이는 거리가 달라진다
+const BOT_SCOPE = Math.round(BOT_SEE * 1.6);
 const isTopBot = (d) => d.key === 'hard' || d.key === 'extreme';
 const STATE_KO = { LANDING: '착지', EXPLORE: '탐색', LOOT: '파밍', MOVE: '이동', DETECT: '적 탐지', COMBAT: '전투', COVER: '엄폐', RETREAT: '후퇴', HEAL: '회복', ZONE: '안전구역 복귀', DEAD: '탈락', TOVEH: '차량으로', DRIVE: '운전', BOARD: '동승하러', RIDE: '동승', KNOCKED: '기절', REVIVE: '부활', REGROUP: '합류', HOLD: '엄폐 대기', FOLLOW: '따라가기', ORDER: '지시 이동', DANGER: '위험 경계' };
 

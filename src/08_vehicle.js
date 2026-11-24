@@ -628,10 +628,11 @@ const Veh = (() => {
     }
     for (const v of list) if (v.awake && !v.dead && !(G.net && Net.vehRemote(v))) { vehVeh(v); runOver(v); }
     engineAudio();
-    // 거리 컬링·그림자
+    // 거리 컬링·그림자 (v23 배율 조준경으로 캐릭터를 그리는 거리 + 10m 까지는 그림 — '낮음' 300 → 330m: 그 안의 적이 숨은 차가 엄폐물로 보이게.
+    //  탄 사람을 그리면 그 차는 이 거리와 상관없이 11_game.js 가 같은 프레임에 다시 켬)
     cullT -= dt;
     if (cullT <= 0 && G.camera) {
-      cullT = 0.3; const cam = G.camera.position, far = QUALITY[SETTINGS.quality].far + 40;
+      cullT = 0.3; const Q = QUALITY[SETTINGS.quality], cam = G.camera.position, far = Math.max(Q.far + 40, Math.min(Q.far + 200, BOT_SCOPE) + 10);
       for (const v of list) { const d = Math.hypot(v.pos.x - cam.x, v.pos.z - cam.z); v.P.root.visible = d < far; if (d < far) VehModels.setShadows(v.P, d < 55); }
     }
   }
