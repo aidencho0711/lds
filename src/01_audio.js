@@ -596,6 +596,60 @@ const Audio = (() => {
       if (st === 'bash') { for (const [f, a, d] of [[260, 0.4, 0.7], [640, 0.25, 0.5], [1100, 0.15, 0.4]]) tone(out, t, d, 'sine', f * j, f * j, a); }
       else for (const [f, a, d] of [[2900, 0.18, 0.35], [4600, 0.1, 0.25], [6900, 0.06, 0.2]]) tone(out, t, d, 'sine', f * j, f * j, a);
     },
+    // v23 스킨 칼 소리 (발리송 · 카람빗): kind 하나가 동작 하나 — 꺼내기·살펴보기 연출은 부르는 쪽이 그 순간마다 하나씩 울린다
+    //  발리송(가볍고 밝은 쇳소리): bOpen 엄지로 걸쇠를 튕김 · bFlip 손잡이가 축을 돌아 넘어감 · bClack 손잡이 두 짝이 '딸깍-착' · bClick 걸쇠가 잠김 · bTick 살펴보기 '찰랑' · bSwing 가늘고 날카로운 휘두름
+    //  카람빗(묵직하고 어두운 쇳소리): kDraw 꺼내기 · kSpin 손가락에 걸고 돌림 · kCatch 다시 쥠 · kTick 살펴보기 울림 · kSwing 둥글고 굵은 휘두름
+    //  pos = 소리 위치(없으면 null) · own = 내 캐릭터 소리(위치 없이 바로 들림) — 거리 감쇠·너무 멀면 생략하는 것은 melee 와 같다
+    knife(kind, pos, own) {
+      if (!ctx) return;
+      // 소리 길이(초): 목소리 자리를 이만큼만 차지 · 모르는 kind 는 조용히 무시
+      const len = { bOpen: 0.07, bFlip: 0.2, bClack: 0.11, bClick: 0.05, bTick: 0.13, bSwing: 0.18, kDraw: 0.28, kSpin: 0.4, kCatch: 0.1, kTick: 0.2, kSwing: 0.3 }[kind]; if (!len) return;
+      // 휘두름은 근접 무기와 같은 거리(26m) · 손장난 소리는 20m 안에서만 · 같은 소리는 간격(긴 소리일수록 길게) 안에 다시 울리지 않아 연타해도 겹겹이 쌓이지 않음 (내 소리·남의 소리 따로 셈)
+      const sw = kind === 'bSwing' || kind === 'kSwing', range = sw ? 26 : 20;
+      //  v23 휘두름은 간격 제한 없이(한 사람은 0.4초마다만 휘두를 수 있음 — 여러 봇이 함께 휘둘러도 소리가 빠지지 않게) · 목소리 자리 제한(voice)은 그대로
+      if ((!own && pos && geom(pos).d > range) || (!sw && !throttle('kn' + (own ? 1 : 0) + kind, Math.max(0.05, len * 0.3))) || !voice(len)) return;
+      const out = spatial(own ? null : pos, own ? 0.3 : 0.38, range); if (!out) return;
+      const t = ctx.currentTime, j = 0.92 + Math.random() * 0.16;
+      // ring: 금속 고유 진동 둘(비정수배 r · 높은 쪽이 먼저 사라짐) · sweep: 대역 잡음이 f0 → f1(45% 지점) → f2 로 쓸리는 바람 (pk = 가장 큰 크기, at = 그 시점 비율)
+      const ring = (t0, f, d, a, r = 1.59) => { tone(out, t0, d, 'sine', f * j, f * j * 0.995, a); tone(out, t0, d * 0.6, 'sine', f * r * j, f * r * j * 0.995, a * 0.5); };
+      const sweep = (t0, du, q, f0, f1, f2, pk, at = 0.4) => {
+        const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.playbackRate.value = j;
+        const f = ctx.createBiquadFilter(), g = ctx.createGain(); f.type = 'bandpass'; f.Q.value = q; f.frequency.setValueAtTime(f0 * j, t0); f.frequency.exponentialRampToValueAtTime(f1 * j, t0 + du * 0.45); f.frequency.exponentialRampToValueAtTime(f2 * j, t0 + du);
+        g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(pk, t0 + du * at); g.gain.exponentialRampToValueAtTime(0.001, t0 + du);
+        s.connect(f); f.connect(g); g.connect(out); s.start(t0, Math.random()); s.stop(t0 + du + 0.05); return [s, g];
+      };
+      switch (kind) {
+        // ----- 발리송: 가볍고 밝고 짤깍거림 -----
+        case 'bOpen': noise(out, t, 0.01, 'highpass', 6000 * j, 0.8, 0.5); ring(t, 6600, 0.045, 0.06, 1.41); break;   // 엄지로 걸쇠를 튕겨 엶: 아주 짧고 높은 '틱' + 희미한 울림
+        case 'bFlip': sweep(t, 0.12, 1.2, 1700, 3800, 5600, 0.22, 0.55); ring(t + 0.05, 6900, 0.14, 0.02, 1.43); break;   // 손잡이가 축을 돌아 넘어감: 가볍고 빠른 바람(위로 쓸림) + 아노다이징 금속의 희미한 높은 울림
+        case 'bClack': {   // 손잡이 두 짝이 부딪는 '딸깍-착': 아주 짧은 쇳소리 두 번(35~45ms 간격) — 둘째가 조금 낮고 굵음
+          const gp = 0.035 + Math.random() * 0.01, s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+          s.buffer = noiseBuf; f.type = 'highpass'; f.frequency.value = 3400 * j; f.Q.value = 0.8;
+          // 잡음 하나로 두 번 때림 (노드 절약)
+          g.gain.setValueAtTime(0.42, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.007); g.gain.setValueAtTime(0.36, t + gp); g.gain.exponentialRampToValueAtTime(0.001, t + gp + 0.009);
+          s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random()); s.stop(t + gp + 0.03);
+          ring(t, 4300, 0.035, 0.09); ring(t + gp, 3500, 0.042, 0.09, 1.69); break;
+        }
+        case 'bClick': noise(out, t, 0.008, 'highpass', 3000 * j, 0.7, 0.52); noise(out, t, 0.016, 'bandpass', 2300 * j, 2.5, 0.34); ring(t, 3600, 0.024, 0.08); break;   // 걸쇠가 잠김: bOpen 보다 낮고 마른 '탁' (울림이 거의 없음)
+        case 'bTick': noise(out, t, 0.005, 'highpass', 4500 * j, 0.8, 0.15); ring(t, 4700, 0.11, 0.05, 1.53); break;   // 살펴보기: 손잡이가 가볍게 닿는 '찰랑' — 부딪힘보다 울림이 주인공 (bClack 보다 여림)
+        case 'bSwing': sweep(t, 0.13, 3, 1500, 6400, 4600, 0.62, 0.3); tone(out, t + 0.026, 0.075, 'sine', 8200 * j, 7200 * j, 0.02); break;   // 휘두름: 빠르고 가늘고 높은 '쉭' (좁은 대역이 확 올라감) — 기본 칼보다 날카로움
+        // ----- 카람빗: 묵직하고 어둡고 빙글 돎 -----
+        case 'kDraw': tone(out, t, 0.1, 'sine', 165 * j, 100 * j, 0.42); noise(out, t, 0.045, 'lowpass', 850 * j, 0.8, 0.32); sweep(t, 0.2, 4.5, 1500, 2300, 2900, 0.45, 0.18); ring(t + 0.02, 1340, 0.24, 0.06, 1.69); break;   // 꺼내기: 묵직한 '퉁'(낮은 몸통) + 어두운 쇳소리 '스앙'
+        case 'kSpin': {   // 손가락에 걸고 돌림: 칼날이 세 번 스쳐 가듯 대역·크기가 세 번 부풀었다 줄어드는 부드러운 바람
+          const du = 0.3 * j, p = du / 3, s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+          s.buffer = noiseBuf; f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(700 * j, t); g.gain.setValueAtTime(0.0001, t);
+          for (let i = 0; i < 3; i++) { const a = t + i * p, pk = [0.19, 0.25, 0.17][i]; f.frequency.linearRampToValueAtTime(1500 * j, a + p * 0.5); f.frequency.linearRampToValueAtTime(760 * j, a + p); g.gain.linearRampToValueAtTime(pk, a + p * 0.5); g.gain.linearRampToValueAtTime(pk * 0.2, a + p); }
+          g.gain.exponentialRampToValueAtTime(0.001, t + du + 0.05); s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random()); s.stop(t + du + 0.08); break;
+        }
+        case 'kCatch': noise(out, t, 0.07, 'lowpass', 800 * j, 0.8, 0.55); tone(out, t, 0.08, 'sine', 130 * j, 85 * j, 0.28); noise(out, t + 0.006, 0.005, 'highpass', 4200 * j, 0.8, 0.1); tone(out, t + 0.006, 0.05, 'sine', 3150 * j, 3130 * j, 0.03); break;   // 다시 쥠: 손에 감기는 부드러운 '툭' + 아주 작은 쇳소리 '틱'
+        case 'kTick': noise(out, t, 0.012, 'bandpass', 2600 * j, 1.4, 0.24); ring(t, 2750, 0.18, 0.045, 1.63); break;   // 살펴보기: 부드럽게 '톡' — 낮고 어둡게 울리는 쇳소리
+        case 'kSwing': {   // 휘두름: 굽은 날이 크게 도는 둥글고 굵은 '휘웅'(1~2.5kHz 몸통 + 낮은 바람) · 끝에 희미한 쇳소리 '징'
+          const du = 0.22, [s, g] = sweep(t, du, 1.3, 850, 1900, 950, 0.6, 0.5), lp = ctx.createBiquadFilter();
+          lp.type = 'lowpass'; lp.frequency.setValueAtTime(600 * j, t); lp.frequency.exponentialRampToValueAtTime(1100 * j, t + du * 0.55); lp.frequency.exponentialRampToValueAtTime(650 * j, t + du); s.connect(lp); lp.connect(g);
+          tone(out, t + du * 0.6, 0.15, 'sine', 3500 * j, 4200 * j, 0.022); tone(out, t + du * 0.62, 0.1, 'sine', 5750 * j, 6800 * j, 0.01); break;
+        }
+      }
+    },
     // v22 섬광탄: 아주 큰 '팡' (높은 터짐 + 짧은 쿵) · earRing: 가까이서 맞으면 귀 울림(삐—)
     flashbang(pos) {
       if (!ctx || !voice(1.2)) return;

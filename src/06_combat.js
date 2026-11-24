@@ -353,7 +353,7 @@ function swingMelee(c, dir) {
   if (c.fireCd > 0 || c.heal || c.inWater || c.knocked || c.revive || c.equipT > 0 || c.swing) return false;
   const D = ITEMS[id], total = meleeTotal(D);
   c.fireCd = total * 0.94;
-  const side = D.style === 'slash' && G.time - (c.swingT || -99) < total + 0.5 ? -(c.swingSide || -1) : 1;   // 마체테: 이어서 휘두르면 되베기
+  const side = (D.style === 'slash' || KAnim.alt(c)) && G.time - (c.swingT || -99) < total + 0.5 ? -(c.swingSide || -1) : 1;   // 마체테: 이어서 휘두르면 되베기 · v23 나비 나이프·카람빗: 두 동작을 번갈아 (보이는 것만)
   c.swingSide = side; c.swingT = G.time; c.punchT = G.time;
   c.swing = { id, t: 0, total, hitAt: D.wind + D.strike * 0.6, hit: false, dx: dir.x, dy: dir.y, dz: dir.z, side, remote: false };
   if (c.spawnProt) c.spawnProt = 0;
@@ -365,7 +365,7 @@ function updateSwing(c, dt) {
   if (!c.alive || c.knocked || !ITEMS[sw.id]) { c.swing = null; return; }
   sw.t += dt;
   const D = ITEMS[sw.id];
-  if (!sw.woosh && sw.t >= D.wind * 0.75) { sw.woosh = true; Audio.melee('swing', sw.id, c.pos, c.isPlayer); }
+  if (!sw.woosh && sw.t >= D.wind * 0.75) { sw.woosh = true; if (!KAnim.swingSound(c, sw)) Audio.melee('swing', sw.id, c.pos, c.isPlayer); }   // v23 나비 나이프·카람빗은 전용 휘두르는 소리
   if (!sw.hit && sw.t >= sw.hitAt) { sw.hit = true; meleeHit(c, sw); }
   if (sw.t >= sw.total) c.swing = null;
 }
@@ -394,7 +394,7 @@ function meleeHit(c, sw) {
     if (!sw.remote) applyDamage(tgt, part === 'head' ? D.dmg * 0.72 : D.dmg, part, c, sw.id, hx, hy, hz);   // 머리: applyDamage ×2.1 → 1.5배
     FX.impact(hx, hy, hz, 'blood'); if (D.style !== 'bash') FX.impact(hx, hy - 0.05, hz, 'blood');
     Audio.melee('hit', sw.id, tgt.pos, c.isPlayer);
-    if (c.isPlayer) { G.shake = Math.max(G.shake || 0, D.style === 'bash' ? 0.22 : 0.13); Cam.kick += 0.02; }
+    if (c.isPlayer) { G.shake = Math.max(G.shake || 0, D.style === 'bash' ? 0.22 : 0.13); Cam.kick += 0.02; KAnim.hit(c); }   // v23 나비 나이프·카람빗: 맞힌 쪽으로 작은 화면 흔들림
     return;
   }
   if (wall < D.reach) {

@@ -346,7 +346,7 @@ const HUD = (() => {
       const cur = inv.cur < 0, mb = h('button', 'ws-slot melee' + (cur ? ' cur' : '')); mb.type = 'button';
       const im = h('img', 'ws-sil'); im.alt = ''; im.draggable = false; { const ms = meleeSkinSrc(p, inv.melee); if (ms) im.src = ms; else iconInto(im, inv.melee); } mb.appendChild(im);
       mb.appendChild(h('span', 'ws-n', '4')); mb.setAttribute('aria-label', ITEMS[inv.melee].name + (cur ? ' (든 무기)' : ' 들기'));
-      mb.addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); try { Audio.init(); } catch (e) { /* 소리 없이도 */ } mb.classList.add('down'); setTimeout(() => mb.classList.remove('down'), 140); Input.press('w4'); });
+      mb.addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); try { Audio.init(); } catch (e) { /* 소리 없이도 */ } mb.classList.add('down'); setTimeout(() => mb.classList.remove('down'), 140); const P = G.player; Input.press(cur && P && !P.throwMode && P.inv.melee === 'knife' && KAnim.kindOf(P) ? 'inspect' : 'w4'); });   // v23: 나비 나이프·카람빗을 든 채 다시 누르면 살펴보기 (그 밖에는 예전처럼 4 — 투척 준비 취소 포함)
       Touch.dragLook(mb); sec.appendChild(mb);
     }
     for (const i of [0, 1, 2]) {
@@ -443,7 +443,8 @@ const HUD = (() => {
       if (inv.melee) {
         const e = h('div', 'wslot melee' + (inv.cur < 0 ? ' cur' : '')); e.appendChild(meleeIco(p, inv.melee, 'ico wide wi'));
         e.appendChild(h('span', 'wn', `4  ${ITEMS[inv.melee].name}`)); e.appendChild(h('span', 'wm', '근접'));
-        if (inv.cur >= 0) e.title = '눌러서 들기 (4)'; e.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); if (inv.cur >= 0) Input.press('w4'); });
+        const ki = inv.melee === 'knife' && KAnim.kindOf(p);   // v23 나비 나이프·카람빗: 든 칸을 누르면 살펴보기
+        e.title = inv.cur >= 0 ? '눌러서 들기 (4)' : ki ? '눌러서 살펴보기 (N)' : ''; e.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); if (inv.cur >= 0) Input.press('w4'); else if (ki && !(G.player && G.player.throwMode)) Input.press('inspect'); });
         wp.appendChild(e);
       }
       wp._meta = h('div', 'wmeta'); wp.appendChild(wp._meta);

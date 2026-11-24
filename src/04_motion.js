@@ -283,6 +283,7 @@ function setSheath(r, id, skin) {
   while (r.meleeHip.children.length) r.meleeHip.remove(r.meleeHip.children[0]);
   if (!id) return;
   const o = MeleeSkin.model(id, skin), P = SHEATH[id] || SHEATH.knife;
+  KAnim.sheath(o);   // v23 나비 나이프는 접은 채 허리에
   o.position.set(P[0], P[1], P[2]); o.rotation.set(P[3], P[4], P[5]); o.traverse((m) => { if (m.isMesh) m.castShadow = r.shadow; });
   r.meleeHip.add(o);
 }
@@ -363,6 +364,16 @@ function actPose(c, a, tm, sw, busy, dt) {
   }
   const mw = (a.mel || 0) * (1 - busy) * (1 - a.prone) * (1 - (a.swim || 0)) * (1 - Math.max(a.fall, a.chute, a.air || 0));
   if (mw < 0.01 || !a.melId) return null;
+  // v23 나비 나이프·카람빗: 1인칭과 같은 키프레임 줄을 가슴 좌표로 옮김 (대기 중 달리면 기본처럼 손을 허리 옆으로 — 그 비율은 부드럽게 따라가 상태가 바뀌어도 튀지 않음)
+  //  마지막 자세(ka.tv)를 남겨 두었다가, 칼을 넣거나 기절해 손에서 사라지는 동안(a.mel 이 줄어드는 동안)은 그 자세에서 그대로 풀림 (기본 준비 자세로 튀지 않게)
+  if (a.melId === 'knife' && KAnim.on(c)) {
+    KAnim.tppRow(c, _kv);
+    const tg = !sw && c.ka.st === 'idle' ? smoothstep01(clamp(a.sprint || 0, 0, 1)) : 0, rk = c.ka.rk = lerp(c.ka.rk || 0, tg, clamp(dt * 10, 0, 1));
+    if (rk > 0.001) { const sg = Math.sin(a.phase) * 0.14 * rk; for (let i = 0; i < 19; i++) _kv[i] = lerp(_kv[i], MEL_RUN[i + 1], rk); _kv[2] += sg; _kv[1] += Math.abs(sg) * 0.3; }
+    const tv = c.ka.tv || (c.ka.tv = new Array(19).fill(0)); for (let i = 0; i < 19; i++) tv[i] = _kv[i];
+    return { kind: 'melee', w: mw, v: _kv, sw, ka: true };
+  }
+  if (a.melId === 'knife' && !c.melee && c.ka && c.ka.tv && c.ka.kind) { for (let i = 0; i < 19; i++) _kv[i] = c.ka.tv[i]; return { kind: 'melee', w: mw, v: _kv, sw: null, ka: true }; }
   const st = ITEMS[a.melId].style, ready = st === 'bash' ? PAN_READY : st === 'chop' ? CROW_READY : MEL_READY;
   if (sw) kfSample(MEL_KF[st === 'slash' && sw.side < 0 ? 'slashB' : st], clamp(sw.t / sw.total, 0, 1), _kv);
   else {
@@ -411,6 +422,7 @@ const chestDir = (r, x, y, z, out) => out.set(x, y, z).applyQuaternion(worldQuat
 const bodyDir = (r, x, y, z, out) => out.set(x, y, z).applyQuaternion(worldQuat(r.body, _qg));
 
 function animateChar(c, dt) {
+  KAnim.tick(c, dt);   // v23 나비 나이프·카람빗 전용 동작: 상태·시간을 한 프레임에 한 번 (1인칭 뷰모델도 이것을 그림 · 탑승·춤 중에도 돌려 상태가 멈춰 남지 않게)
   if (c.veh) { Veh.animateRider(c, dt); return; }
   if (c.dance && c.alive && !c.knocked && c.mode === 'ground') { Victory.pose(c, dt); return; }   // v23 우승 축하 춤 (10_victory.js)
   const a = c.anim, r = c.rig, T = G.time || 0;
@@ -430,7 +442,7 @@ function animateChar(c, dt) {
   const rv = c.revive && c.revive.tgt; a.rev = lerp(a.rev || 0, rv ? 1 : 0, clamp(dt * 6, 0, 1));
   // v22 근접 무기: 들고 있음(a.mel) · 휘두르는 중(sw)
   const md = c.alive && !c.knocked && c.mode === 'ground' && !c.veh ? c.melee : null, sw = md && c.swing && c.swing.id === md ? c.swing : null;
-  a.mel = lerp(a.mel || 0, md && c.equipT <= 0.15 ? 1 : 0, clamp(dt * 10, 0, 1)); if (md) a.melId = md;
+  a.mel = lerp(a.mel || 0, md && (c.equipT <= 0.15 || KAnim.on(c)) ? 1 : 0, clamp(dt * 10, 0, 1)); if (md) a.melId = md;   // v23 나비 나이프·카람빗은 꺼내는 동작이 바로 보이게
   const busy = Math.max(a.heal, a.nade, climb ? Math.min(1, vk * 2) : 0, rk, a.rev);   // 총을 내려놓는 동작
   a.crouch = lerp(a.crouch, c.stance === 'crouch' ? 1 : 0, k);
   a.prone = lerp(a.prone, c.stance === 'prone' ? 1 : 0, clamp(dt * 6, 0, 1));
@@ -652,12 +664,13 @@ function animateChar(c, dt) {
     chestPt(r, v[0], v[1], v[2], _t1); _t2.copy(PALM.R).applyQuaternion(_hq); _t1.sub(_t2);
     chestPt(r, v[16], v[17], v[18], _t3);
     ik(r.armR, _t1, _t3, _hq, w, thr ? (act.thr > 0.3 ? 'open' : 'hold') : null);
-    if (!thr && fine) setFist(r.armR, w);
+    if (!thr && act.ka) KAnim.fingers3(c, r.armR, w);   // 카람빗은 검지 뼈 위치로 칼을 놓으므로 멀어도 손가락을 늘 맞춤
+    else if (!thr && fine) setFist(r.armR, w);   // v23 나비 나이프·카람빗: 동작마다 손가락(받기·검지 펴기·엄지로 걸쇠)
     chestPt(r, v[13], v[14], v[15], _t1); chestPt(r, 0.55, -0.3, thr ? 0 : -0.05, _t3);
     ik(r.armL, _t1, _t3, null, w * (thr ? 1 : 0.85), thr ? (a.wind > 0.5 || (act.thr > 0 && act.thr < 0.3) ? 'open' : 'pinch') : 'fist');
     // 휘두르기 자국: 날 끝·뿌리 (휘두르는 구간만 · 가까이)
     const s2 = act.sw;
-    if (s2 && G.scene && !(c.isPlayer && VM.active) && (c.isPlayer || camD < 28)) {
+    if (s2 && G.scene && !(c.isPlayer && VM.active) && (c.isPlayer || camD < 28) && !KAnim.trail3(c, r, s2)) {   // v23 나비 나이프·카람빗은 실제 날 끝(부품 자리)에서
       const D = ITEMS[s2.id], u = s2.t;
       if (u > D.wind * 0.85 && u < D.wind + D.strike * 1.35) {
         r.armR.hold.updateWorldMatrix(true, false);
@@ -731,7 +744,7 @@ function animateChar(c, dt) {
     chestPt(r, -0.16, 0.32, -0.12, _t1); chestPt(r, -0.5, 0.3, 0.1, _t3); ik(r.armR, _t1, _t3, null, w, 'claw');
   }
   // v22 근접 무기 꺼내기: 허리(프라이팬은 오른쪽 뒤)로 손을 뻗었다 올림
-  if (md && c.equipT > 0 && c.alive && busy < 0.3 && a.fall < 0.1 && a.chute < 0.1) {
+  if (md && c.equipT > 0 && c.alive && busy < 0.3 && a.fall < 0.1 && a.chute < 0.1 && !KAnim.on(c)) {   // v23 나비 나이프·카람빗은 꺼내는 동작이 따로(09_player_mskin.js)
     const e = clamp(c.equipT / 0.35, 0, 1), w = Math.sin(Math.PI * e) * (1 - a.prone), bk = ITEMS[md].style === 'bash';
     chestPt(r, bk ? -0.16 : 0.1, -0.44, bk ? -0.14 : 0.02, _t1); chestPt(r, -0.5, -0.2, 0.1, _t3); ik(r.armR, _t1, _t3, null, w, 'claw');
   }
@@ -742,6 +755,7 @@ function animateChar(c, dt) {
     const mid = !nid && !hid && md && a.mel > 0.3 ? md : null;   // v22 근접 무기는 오른손에
     setHeld(c, nid || (hid === 'bandage' || hid === 'drink' || hid === 'pills' ? hid : null) || mid, !nid && (hid === 'firstaid' || hid === 'medkit') ? hid : null);
     { const sh = c.alive && c.inv.melee && !mid ? c.inv.melee : null; setSheath(r, sh, sh ? MeleeSkin.ofChar(c, sh) : null); }   // 손에 없으면 허리에 (스킨 모양 그대로)
+    if (mid) KAnim.tppApply(c, r);   // v23 나비 나이프·카람빗: 손에 든 모델의 부품(날·손잡이·걸쇠 / 검지 둘레 회전)을 매 프레임
   } else if (r.heldKey && r.heldKey !== '|') setHeld(c, null, null);
   // ----- 낙하산 -----
   r.chute.visible = a.chute > 0.05; r.chute.scale.set(Math.max(0.05, a.chute), Math.max(0.05, Math.min(1, a.chute * 1.3)), Math.max(0.05, a.chute));

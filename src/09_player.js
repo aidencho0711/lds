@@ -82,6 +82,7 @@ function buildViewModel() {
   VM.tilt = new THREE.Group(); VM.pivot.add(VM.tilt);
   VM.shellL = Models.casing('hull'); VM.roundR = Models.casing('rnd762'); VM.roundKey = 'rnd762'; VM.tilt.add(VM.shellL); VM.tilt.add(VM.roundR);
   VM.root.visible = false;
+  KAnim.warmVM(VM.scene);   // v23 나비 나이프·카람빗 잔상 재질을 미리 (경기 시작 때 셰이더를 같이 만들어 둠)
 }
 // ---------- 1인칭 팔: 내 외형(창고 장착)으로 만든 팔 메시 + 뼈대, 손은 IK로 총·물건에 ----------
 //  어깨는 화면 밖 아래(카메라 공간 VM_SH). 총이 길어도 손이 닿도록 팔 크기 ×1.1
@@ -242,18 +243,22 @@ function updateMeleeVM(dt, p) {
   // 꺼내기: 아래에서 올라옴 · 걷는 흔들림 · 달리면 아래로 내림
   const eq = clamp(p.equipT / 0.35, 0, 1), bobAmp = clamp(p.anim.speed / 5, 0, 1);
   const S = VM.melS || (VM.melS = { run: 0 }); S.run = lerp(S.run, p.sprint && !sw ? 1 : 0, clamp(dt * 8, 0, 1));
-  _mvP.set(_mv9[0] + Math.sin(p.anim.phase) * 0.012 * bobAmp + S.run * 0.05, _mv9[1] - Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp - eq * 0.36 - S.run * 0.14, -_mv9[2]);
-  _mvB.set(_mv9[3], _mv9[4] - S.run * 0.55, -_mv9[5]); _mvE.set(_mv9[6], _mv9[7], -_mv9[8]);
-  bladeQuat(_mvQ, _mvB, _mvE);
   const msk = MeleeSkin.ofChar(p, id);   // v23 근접 무기 스킨 (모양이 바뀜)
-  vmHeld(A.R, id, msk); pickHeld(A.L, p);
-  vmReach(A.R, _mvP, _mvQ, _vpole.set(0.6, -0.7, 0.15), FING.fist); setFist(A.R);
-  const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0, pull = sw ? Math.sin(Math.PI * clamp((u - 0.2) / 0.55, 0, 1)) : 0;
-  _fvP.set(-0.17 - pull * 0.09, -0.31 - pull * 0.1 - eq * 0.2 - S.run * 0.1, -0.42 + pull * 0.1);
+  const ks = KAnim.vm(dt, p, A, S.run);   // v23 나비 나이프·카람빗: 오른손·칼은 전용 동작(09_player_mskin.js)이 그림 — 왼손만 아래에서
+  if (ks) pickHeld(A.L, p);
+  else {
+    _mvP.set(_mv9[0] + Math.sin(p.anim.phase) * 0.012 * bobAmp + S.run * 0.05, _mv9[1] - Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp - eq * 0.36 - S.run * 0.14, -_mv9[2]);
+    _mvB.set(_mv9[3], _mv9[4] - S.run * 0.55, -_mv9[5]); _mvE.set(_mv9[6], _mv9[7], -_mv9[8]);
+    bladeQuat(_mvQ, _mvB, _mvE);
+    vmHeld(A.R, id, msk); pickHeld(A.L, p);
+    vmReach(A.R, _mvP, _mvQ, _vpole.set(0.6, -0.7, 0.15), FING.fist); setFist(A.R);
+  }
+  const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0, pull = ks ? ks.pull : sw ? Math.sin(Math.PI * clamp((u - 0.2) / 0.55, 0, 1)) : 0, low = ks ? ks.low * 0.22 : 0;
+  _fvP.set(-0.17 - pull * 0.09, -0.31 - pull * 0.1 - eq * 0.2 - S.run * 0.1 - low, -0.42 + pull * 0.1);
   handQuat(_fvQ, _fvD.set(0.03, 0.72, -0.69), _fvN.set(0.4, -0.85, 0.25), 1);
   const pw = VM.pk ? VM.pk.w : 0;   // v23 줍기: 왼손이 내려가 집음
   vmReach(A.L, _fvP, _fvQ, _vpole.set(-0.5, -0.8, 0.1), pw > 0 ? pickBlend(A.L, _fvP, _fvQ, FING.fist, pw) : FING.fist); if (pw < 0.05) setFist(A.L);
-  if (sw && sw.t > D.wind * 0.85 && sw.t < D.wind + D.strike * 1.4) {
+  if (!ks && sw && sw.t > D.wind * 0.85 && sw.t < D.wind + D.strike * 1.4) {
     A.R.hold.updateWorldMatrix(true, false);
     _mvT.set(0, 0, MeleeSkin.tip(id, msk)).applyMatrix4(A.R.hold.matrixWorld); _mvT2.set(0, 0, 0.1).applyMatrix4(A.R.hold.matrixWorld);
     FX.trail('vm', VM.scene, _mvT, _mvT2, MeleeSkin.trail(id, msk));
@@ -341,7 +346,9 @@ function updateCamera(dt) {
   // v22 던지기·근접 무기: 휘두르는 순간 화면이 따라 숙여지고(내려찍기·던지기) 기운다(베기·가로 휘두르기) — 1인칭은 크게, 3인칭은 작게
   let fxP = 0, fxR = 0;
   if (p.throwAnim > 0) { const u = 1 - p.throwAnim / THROW_ANIM; fxP -= Math.sin(Math.PI * clamp((u - 0.12) / 0.45, 0, 1)) * 0.028; }
-  if (p.swing && ITEMS[p.swing.id]) { const D = ITEMS[p.swing.id], u = (p.swing.t - D.wind * 0.6) / (D.strike + D.wind * 0.4 + D.rec * 0.4); if (u > 0 && u < 1) { const kk = Math.sin(Math.PI * u); if (D.style === 'chop') fxP -= kk * 0.05; else if (D.style === 'stab') fxP -= kk * 0.014; else fxR += kk * 0.04 * (D.style === 'slash' ? p.swing.side : 1); } }
+  const kc = KAnim.cam(p);   // v23 나비 나이프·카람빗: 동작마다 다른 기울임 + 맞힌 순간 작은 흔들림
+  if (kc) { fxP += kc[0]; fxR += kc[1]; }
+  else if (p.swing && ITEMS[p.swing.id]) { const D = ITEMS[p.swing.id], u = (p.swing.t - D.wind * 0.6) / (D.strike + D.wind * 0.4 + D.rec * 0.4); if (u > 0 && u < 1) { const kk = Math.sin(Math.PI * u); if (D.style === 'chop') fxP -= kk * 0.05; else if (D.style === 'stab') fxP -= kk * 0.014; else fxR += kk * 0.04 * (D.style === 'slash' ? p.swing.side : 1); } }
   if (fppBase && PK.d > 0) { const kd = PK.d * (1 - adsE); fxP -= 0.16 * kd; fxR -= 0.025 * kd; cam.position.y -= 0.05 * kd; }   // v23 줍기: 바닥을 보며 살짝 숙임
   if (!fppBase) { fxP *= 0.4; fxR *= 0.35; }
   cam.rotation.order = 'YXZ'; cam.rotation.set(pitch + fxP, yaw + Math.PI, -(p.leanA || 0) * lerp(fppBase ? 0.13 : 0.045, 0.1, adsE) + fxR);   // 기울이면 화면도 살짝 기운다(1인칭·조준 때 더)
@@ -353,10 +360,14 @@ function updateCamera(dt) {
   const mel = !holding && !p.weapon && !!p.melee && p.alive && p.mode === 'ground' && !p.veh;   // v22 근접 무기
   const fists = !holding && !mel && !p.weapon && p.alive && !p.knocked && p.mode === 'ground' && !p.veh && p.anim.guard > 0.02;   // 맨손 가드·주먹
   const pickOnly = !holding && !mel && !fists && !p.weapon && PK.w > 0 && p.alive && !p.knocked && p.mode === 'ground' && !p.veh;   // v23 빈손으로 줍기
-  VM.active = holding || fists || mel || pickOnly ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
+  const melOut = !mel && !holding && fppBase && !p.veh && !p.knocked && KAnim.outActive(p);   // v23 나비 나이프·카람빗 넣기: 다른 무기로 바꾼 직후 0.2초 칼을 접으며 내림 (새 무기는 그 뒤에 · 회복·투척이 먼저)
+  VM.active = holding || fists || mel || pickOnly || melOut ? fppBase : !!p.weapon && p.alive && !p.knocked && p.mode === 'ground' && (fppBase || adsE > 0.35) && !(si.mag && adsE > 0.9);
   VM.root.visible = VM.active;
-  if (VM.pivot) VM.pivot.visible = !holding && !fists && !mel && !pickOnly;
-  if (VM.active) { if (holding) updateHoldVM(dt, p); else if (mel) updateMeleeVM(dt, p); else if (fists) updateFistVM(dt, p); else if (pickOnly) updatePickVM(dt, p); else updateViewModel(dt, p, adsE); }
+  if (VM.pivot) VM.pivot.visible = !holding && !fists && !mel && !pickOnly && !melOut;
+  if (!(VM.active && (mel || melOut))) KAnim.vmOff();
+  if (VM.wasOut && !melOut && p.weapon && p.equipT > 0) VM.eqFrom = Math.max(0.05, p.equipT);   // 넣기가 막 끝남 → 총은 남은 시간 동안 아래에서
+  VM.wasOut = melOut;
+  if (VM.active) { if (melOut && KAnim.vmOut(dt, p)) { /* 넣는 중 */ } else if (holding) updateHoldVM(dt, p); else if (mel) updateMeleeVM(dt, p); else if (fists) updateFistVM(dt, p); else if (pickOnly) updatePickVM(dt, p); else if (p.weapon) updateViewModel(dt, p, adsE); else VM.root.visible = false; }
 }
 function updateViewModel(dt, p, adsE) {
   const w = p.weapon, sk = p.skinOf(w.id);
@@ -379,14 +390,17 @@ function updateViewModel(dt, p, adsE) {
   const ax = 0, ay = -m.sightY, az = m.sightRearZ - m.relief;
   const bobAmp = clamp(p.anim.speed / 5, 0, 1) * (1 - adsE * 0.85);
   const bobX = Math.sin(p.anim.phase) * 0.008 * bobAmp, bobY = -Math.abs(Math.cos(p.anim.phase)) * 0.01 * bobAmp;
-  const eq = clamp(p.equipT / 0.6, 0, 1), sprintK = p.sprint ? 1 : 0;
+  //  v23 나비 나이프·카람빗을 넣고 나서 꺼내는 총은 남은 꺼내기 시간(VM.eqFrom) 동안 맨 아래에서 올라옴 (넣는 0.2초 동안 반쯤 올라간 채 튀어나오지 않게 · 쏠 수 있게 되는 순간은 같음)
+  if (p.equipT <= 0) VM.eqFrom = 0;
+  const eq = clamp(p.equipT / (VM.eqFrom || 0.6), 0, 1), sprintK = p.sprint ? 1 : 0;
   Cam.kick = lerp(Cam.kick, 0, clamp(dt * 16, 0, 1)); Cam.kickRot = lerp(Cam.kickRot, 0, clamp(dt * 12, 0, 1));
   const RP = VM.rp[A.rk] || VM.rp.L;
   // 살펴보기: 총을 몸 앞으로 들어 한쪽 옆면 → 반대쪽 옆면·윗면을 차례로 보여 줌
   const insU = p.inspectT > 0 ? 1 - p.inspectT / INSPECT_DUR : 0, insE = insU > 0 ? smoothstep01(clamp(insU / 0.16, 0, 1)) * smoothstep01(clamp((1 - insU) / 0.16, 0, 1)) : 0, insB = smoothstep01(clamp((insU - 0.42) / 0.18, 0, 1));
   const pkD = VM.pk ? VM.pk.d * (1 - adsE) : 0, pkW = VM.pk ? VM.pk.w * (1 - adsE) : 0;   // v23 줍기: 총을 조금 내려 비키고 왼손이 내려감
   const tx = lerp(hx, ax, adsE) + bobX + sprintK * 0.03 + RP.x * rw - 0.05 * insE + 0.035 * pkD, ty = lerp(hy, ay, adsE) + bobY - eq * 0.25 - sprintK * 0.03 + RP.y * rw + 0.03 * insE - 0.07 * pkD, tz = lerp(hz, az, adsE) + Cam.kick * (1 - adsE * 0.5) + RP.z * rw + 0.03 * pkD;
-  const k = clamp(dt * 22, 0, 1);
+  //  v23: 다른 뷰모델(근접 무기·회복·맨손 …)이었다가 총으로 돌아온 첫 프레임은 목표 자리에 바로 (예전 자리 — 들어 올린 채 — 에서 출발해 총이 크게 튀어 보이지 않게)
+  const k = VM.gunF === G.frame - 1 ? clamp(dt * 22, 0, 1) : 1; VM.gunF = G.frame;
   VM.pivot.position.x = lerp(VM.pivot.position.x, tx, k); VM.pivot.position.y = lerp(VM.pivot.position.y, ty, k); VM.pivot.position.z = lerp(VM.pivot.position.z, tz, k);
   VM.pivot.rotation.set(0, Math.PI + sprintK * 0.5, sprintK * -0.25);
   VM.tilt.rotation.set(-(A.tiltX + Cam.kickRot * (1 - adsE * 0.6)) - eq * 0.6 + RP.rx * rw, RP.ry * rw, clamp(A.tiltZ * (1 + RP.rz * rw), -0.95, 0.95));
@@ -484,7 +498,10 @@ function updatePlayer(dt) {
   if (Input.consume('view')) { G.firstPerson = !G.firstPerson; SETTINGS.view = G.firstPerson ? 'fpp' : 'tpp'; saveSettings(); }
   if (Input.consume('ping')) pingInputs(p);
   // 총 살펴보기 (N · 모바일은 무기 칸 누르기): 1인칭은 총을 들어 옆면을 보여 주고, 테스터 스킨은 전용 연출. 쏘기·조준·장전·교체·달리기면 멈춤
-  if (Input.consume('inspect') && p.weapon && !p.rl && !p.cycle && p.equipT <= 0 && !p.throwMode) {
+  //  v23 나비 나이프·카람빗을 들고 있으면 그 칼의 전용 살펴보기 (09_player_mskin.js — 대기 중일 때만, 휘두르기·달리기·회복·투척이면 멈춤)
+  const insReq = Input.consume('inspect');
+  if (insReq && !p.weapon && p.melee && !p.throwMode) KAnim.inspect(p);
+  if (insReq && p.weapon && !p.rl && !p.cycle && p.equipT <= 0 && !p.throwMode) {
     p.inspectT = INSPECT_DUR;
     for (const g of [VM.active && VM.gun, p.rig && p.rig.gunObj]) if (g) GunSkin.inspect(g, p);
   }
@@ -574,7 +591,7 @@ const DRIVE_IGNORE = ['inspect', 'prone', 'reload', 'w1', 'w2', 'w3', 'w4', 'wea
 function updatePassenger(dt, p, v) {
   const adsE = smoothstep01(Cam.ads), sensK = adsE > 0.5 && Cam.si ? (SETTINGS['sens_' + (Cam.si.sens || Cam.si.key)] || 1) / Math.max(1, Cam.zoom) : 1, sens = 0.0023 * SETTINGS.lookSens * sensK;
   p.yaw -= Input.lookX * sens; p.pitch = clamp(p.pitch - Input.lookY * sens, -1.1, 1.0); Input.lookX = Input.lookY = 0;
-  for (const k of ['prone', 'holster', 'throw', 'throwSwap', 'jump', 'view', 'w4']) Input.consume(k);
+  for (const k of ['prone', 'holster', 'throw', 'throwSwap', 'jump', 'view', 'w4', 'inspect']) Input.consume(k);   // v23: 탄 채 누른 살펴보기가 내린 뒤에 실행되지 않게
   if (Input.consume('reload')) startReload(p);
   for (const [k, i] of [['w1', 0], ['w2', 1], ['w3', 2]]) if (Input.consume(k)) switchWeapon(p, i);
   if (Input.consume('weaponCycle')) { const order = [0, 1, 2].filter(i => p.inv.weapons[i]); if (order.length) switchWeapon(p, order[(order.indexOf(p.inv.cur) + 1) % order.length]); }
@@ -745,7 +762,7 @@ function drawMelee(p, say) {
   if (!p.inv.melee) { if (say) HUD.toast('근접 무기가 없습니다'); return; }
   if (p.inv.cur < 0) return;
   p.inv.cur = -1; p.reloadT = 0; p.cycle = null; p.aiming = false; p.burstQ = 0; p.equipT = 0.35; p.swing = null; p.inspectT = 0; p.setVisibleGear();
-  Audio.melee('draw', p.inv.melee, null, true);
+  if (!(p.inv.melee === 'knife' && KAnim.kindOf(p) && !p.veh)) Audio.melee('draw', p.inv.melee, null, true);   // v23 나비 나이프·카람빗은 꺼내는 동작에 맞춘 전용 소리(09_player_mskin.js) — 탑승 중(동작 없음)은 기본 소리
 }
 // J: 부스트 — 부스트가 낮으면 진통제(큰 것)부터
 function useBoost(p) { const id = p.inv.bestBoost(p.boost); if (!id) { HUD.toast('부스트 아이템이 없습니다 (에너지 드링크·진통제)'); return; } useConsumable(p, id); }

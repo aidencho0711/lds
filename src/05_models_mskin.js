@@ -67,12 +67,27 @@ const MeleeSkin = (() => {
   const KIT = Object.assign({}, Models.kit, { put, glow, shade, lathe, slab, circlePts, rod, tubeAlong, tint });
 
   // ---------- 모델 ----------
+  // v23 관절 모델(나비 나이프·카람빗 전용 동작 — 09_player_mskin.js): 모양에 parts 가 있으면 부품마다 따로 합쳐 그룹으로 잇는다
+  //  parts = { 이름: { at: [x, y, z](부모 기준 자리 = 회전 축), parent: 부모 부품 이름(없으면 뿌리), build(g, K, S) } } — 부모가 먼저 오게 적는다
+  //  root.userData.rig = { kind: 모양의 rig, 이름: 그룹 … } · 아무것도 돌리지 않으면 펼친(기본) 모양 그대로
+  function rigModel(skinId, S, D) {
+    const root = new THREE.Group(), rig = { kind: D.rig };
+    for (const name in D.parts) {
+      const P = D.parts[name], grp = new THREE.Group();
+      if (P.at) grp.position.fromArray(P.at);
+      (P.parent ? rig[P.parent] : root).add(grp);
+      grp.add(Models.cluster('mskin:' + skinId + ':' + name, (g) => P.build(g, KIT, S)));
+      rig[name] = grp;
+    }
+    root.userData.rig = rig; return root;
+  }
   // 이 무기 + 스킨의 손에 드는 모델 (스킨이 없거나 다른 무기 것이면 기본 모델) — 같은 스킨은 지오메트리를 한 번만 만들어 공유
   const BAD = new Set();   // 만들다 실패한 스킨 → 기본 모델로 (한 번만 경고)
   function model(meleeId, skinId) {
     const S = skinOf(meleeId, skinId);
     if (!S || BAD.has(skinId)) return Models.display(meleeId);
-    try { return Models.cluster('mskin:' + skinId, (g) => MSHAPE[S.shape].build(g, KIT, S)); }
+    const D = MSHAPE[S.shape];
+    try { return D.parts ? rigModel(skinId, S, D) : Models.cluster('mskin:' + skinId, (g) => D.build(g, KIT, S)); }
     catch (e) { BAD.add(skinId); console.warn('근접 무기 스킨 모양 실패', skinId, e); return Models.display(meleeId); }
   }
   // 경기 시작(로딩 화면) 때 이번 경기에 나오는 스킨 모양을 미리 만들고, 내 무기 칸 그림도 미리 그려 둠

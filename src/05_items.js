@@ -371,7 +371,11 @@ function pickupItemRaw(c, it, scene, opts = {}) {
     // v22 근접 무기는 하나만: 이미 있으면 바꿔 들고 헌 것은 발밑에 버림. 총을 들고 있지 않으면 바로 든다
     const old = inv.melee; inv.melee = it.id; removeItem(it);
     if (old) dropAt(old, 1);
-    if (!c.weapon) { c.equipT = Math.max(c.equipT, 0.35); c.swing = null; if (c.isPlayer) setTimeout(() => Audio.melee('draw', it.id, null, true), 120); }
+    if (!c.weapon) {
+      c.equipT = Math.max(c.equipT, 0.35); c.swing = null;
+      if (old === 'knife' && c.ka) c.ka.held = false;   // v23 들고 있던 식칼을 식칼로 바꿔 주워도 꺼내는 동작을 다시 (나비 나이프·카람빗)
+      if (c.isPlayer && !(it.id === 'knife' && KAnim.kindOf(c) && !c.veh)) setTimeout(() => Audio.melee('draw', it.id, null, true), 120);   // v23 나비 나이프·카람빗은 꺼내는 동작의 전용 소리
+    }
     c.setVisibleGear();
     return { ok: true, msg: d.name + (old ? ` 획득 (${ITEMS[old].name} 버림)` : ' 획득') };
   }
