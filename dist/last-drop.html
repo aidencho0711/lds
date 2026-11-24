@@ -641,10 +641,6 @@ body.touch .map-side kbd { display: none; }
 .tord.on.attack { color: #ff8a7d; }
 .tord .tox { pointer-events: auto; display: none; border: 1px solid var(--line-2); background: rgba(10,12,12,0.6); color: var(--sand); border-radius: 3px; font-size: 0.68rem; line-height: 1; padding: 3px 6px; cursor: pointer; }
 .tord.on .tox { display: inline-block; }
-#pingTag { position: absolute; left: 0; top: 0; margin: -26px 0 0 -10px; display: flex; align-items: center; gap: 5px; pointer-events: none; font-size: 0.74rem; color: #f2c94c; text-shadow: 0 1px 2px #000, 0 0 4px #000; white-space: nowrap; will-change: transform; }
-#pingTag i { width: 14px; height: 14px; background: #f2c94c; transform: rotate(45deg); box-shadow: 0 0 0 1.5px rgba(0,0,0,0.6); }
-#pingTag.atk { color: #ff8a7d; }
-#pingTag.atk i { background: #e0453a; }
 .tbtn.ping { border-color: rgba(242, 201, 76, 0.7); color: #f2c94c; }
 body:not(.teammode) #tb_ping { display: none; }
 #mapOrder { font-size: 0.8rem; padding: 0.35rem 0.6rem; }
@@ -662,9 +658,6 @@ body.touch #toasts { gap: 3px; }
 body.touch .toast { font-size: 0.72rem; padding: 3px 10px; max-width: 100%; background: rgba(15, 20, 22, 0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.touch #toasts .toast:nth-last-child(n+3) { display: none; }
 
-/* 위험 표시 (핑 두 번) */
-#dangerTag { position: absolute; left: 0; top: 0; margin: -30px 0 0 -12px; display: flex; align-items: center; gap: 5px; pointer-events: none; font-size: 0.76rem; font-weight: 600; color: #ff7466; text-shadow: 0 1px 2px #000, 0 0 4px #000; white-space: nowrap; will-change: transform; }
-#dangerTag i { width: 18px; height: 18px; border-radius: 3px; background: #e0453a; color: #fff; font-style: normal; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 1.5px rgba(0,0,0,0.6); animation: blink 0.6s steps(2) infinite; }
 
 /* ---------- 소리 방향 표시 (조준점 둘레) ---------- */
 #sndCv { position: absolute; left: 50%; top: 50%; width: 240px; height: 240px; margin: -120px 0 0 -120px; pointer-events: none; }
@@ -1213,15 +1206,31 @@ body.dm #counters, body.dm #zoneInfo, body.dm #zoneVignette, body.dm #teamPanel 
 @media (max-height: 520px) { .menu.prof { max-height: 96vh; gap: 6px; } .prof-hero { padding: 2px 4px 0 12px; } .prof-hero .pf { --s: 56px !important; } .prof-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); padding-top: 12px; } }
 .tier .tier-ext { display: block; margin-top: 2px; font-size: 0.66rem; font-weight: 700; color: #ff7a6a; }
 
-/* v20 지도 마커 화면 표식 · 화면 밖이면 가장자리에 붙어 방향 화살표 (수송기에서도 보이게) */
-#markTag { position: absolute; left: 0; top: 0; margin: -30px 0 0 -11px; display: flex; align-items: center; gap: 5px; pointer-events: none; font-size: 0.78rem; font-weight: 700; color: #ffc46a; text-shadow: 0 1px 2px #000, 0 0 4px #000; white-space: nowrap; will-change: transform; z-index: 6; }
-#markTag[hidden] { display: none; }
-#markTag i { width: 18px; height: 18px; background: #f0a43a; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 0 12px rgba(240, 164, 58, 0.9); animation: markPulse 1.2s ease-in-out infinite; }
-@keyframes markPulse { 0%, 100% { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 0 8px rgba(240, 164, 58, 0.6); } 50% { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65), 0 0 18px rgba(255, 196, 106, 1); } }
-#markTag.edge, #pingTag.edge, #dangerTag.edge { margin: -11px 0 0 -11px; }
-#markTag.edge span, #pingTag.edge span, #dangerTag.edge span { font-size: 0.72rem; }
-#markTag.edge::before, #pingTag.edge::before, #dangerTag.edge::before { content: ''; position: absolute; left: 9px; top: 9px; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 11px solid currentColor;
-  transform: rotate(var(--ang, 0rad)) translateX(17px) translateY(-7px); transform-origin: 0 7px; filter: drop-shadow(0 0 2px #000); }
+/* v23 팀 핑·지도 마커 화면 표식 (09_player_ping.js): 찍은 팀원 번호 색(--pc) 점 + 거리 — 안개·시야 끝과 상관없이 · 화면 밖이면 가장자리에 붙어 방향 화살표
+   점(이동) · 붉은 테 점(공격) · 깜빡이는 붉은 테 ! (위험) · 번호 핀(마커). 표식의 (0,0) = 그 지점 (점 가운데 · 핀 끝) */
+#pingTags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }   /* 미니맵 묶음(#topRight 6) 밑으로 */
+.pg { position: absolute; left: 0; top: 0; width: 0; height: 0; --pc: #f2c94c; color: var(--pc); will-change: transform; }
+.pg[hidden] { display: none; }
+.pg i { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; background: var(--pc); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.72), 0 0 10px var(--pc); font-style: normal; }
+.pg i b { position: absolute; inset: 0; display: grid; place-items: center; font: 800 0.66rem/1 'Saira Condensed', sans-serif; color: #111; }
+.pg i::after { content: ''; position: absolute; left: -6px; top: -6px; right: -6px; bottom: -6px; border-radius: 50%; border: 2px solid var(--pc); opacity: 0; animation: pgRing 1.6s ease-out infinite; }
+@keyframes pgRing { 0% { transform: scale(0.45); opacity: 0.95; } 100% { transform: scale(1.75); opacity: 0; } }
+.pg-at i { box-shadow: 0 0 0 2px #e0453a, 0 0 0 3.5px rgba(0, 0, 0, 0.75), 0 0 10px #e0453a; }
+.pg-at i::after, .pg-dg i::after { border-color: #ff6a5a; }
+.pg-dg i { left: -8px; top: -8px; width: 16px; height: 16px; border-radius: 4px; box-shadow: 0 0 0 2px #e0453a, 0 0 0 3.5px rgba(0, 0, 0, 0.75), 0 0 12px #e0453a; animation: blink 0.6s steps(2) infinite; }
+.pg-dg i::after { border-radius: 7px; }
+.pg-mk i { left: -8px; top: -19px; width: 16px; height: 16px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+.pg-mk i b { transform: rotate(45deg); }
+.pg-mk i::after { display: none; }
+.pg span { position: absolute; left: 13px; top: -9px; line-height: 18px; white-space: nowrap; font-size: 0.74rem; font-weight: 700; text-shadow: 0 1px 2px #000, 0 0 4px #000; }
+.pg-mk span { top: -20px; }
+.pg.flip span { left: auto; right: 13px; }
+.pg.edge span { font-size: 0.7rem; }
+.pg.edge i::after { display: none; }
+.pg.edge::before { content: ''; position: absolute; left: 0; top: -6px; width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 10px solid var(--pc);
+  transform-origin: 0 6px; transform: rotate(var(--ang, 0rad)) translateX(14px); filter: drop-shadow(0 0 2px #000); }
+.pg-mk.edge::before { top: -17px; }
+body.touch .pg span { font-size: 0.7rem; }
 
 /* v20 상점 → 골드 이벤트 */
 .shop-tabs .ev-tab { position: relative; color: #ffd36b; }
@@ -2377,9 +2386,7 @@ body.touch #victoryHud button { padding: 8px 12px; font-size: 0.8rem; }</style>
     <div id="islandBar" hidden><b>스타트 섬</b><span id="islandT">25</span><small id="islandSub">출발까지</small></div>
     <div id="teamPanel" hidden></div>
     <div id="teamTags" hidden></div>
-    <div id="pingTag" hidden><i></i><span></span></div>
-    <div id="markTag" hidden><i></i><span></span></div>
-    <div id="dangerTag" hidden><i>!</i><span></span></div>
+    <div id="pingTags"></div>
     <div id="knockHud" hidden><b id="knockTxt">기절</b><div class="kbar"><i id="knockBar"></i></div><span class="micro">출혈로 체력이 줄어듭니다 · 기어서 엄폐하세요</span></div>
     <div id="specBar" hidden><span id="specName">관전 중</span><button class="btn" type="button" data-ui="specNext">다음 팀원 <kbd>F</kbd></button><button class="btn danger" type="button" data-ui="quit">로비로</button></div>
     <div id="toasts"></div>
@@ -2583,7 +2590,7 @@ body.touch #victoryHud button { padding: 8px 12px; font-size: 0.8rem; }</style>
           <tr><td><kbd>F</kbd></td><td>줍기 · 강하 · 낙하산 · 차량 탑승/하차 · 기절한 팀원 부활(10초, 움직이면 취소) · 리콜 타워 단말기에서 리콜 등록(8초)</td></tr>
           <tr><td>리콜 (듀오·스쿼드)</td><td>탈락한 팀원의 리콜 카드를 주워 지도의 리콜 타워(하늘색 삼각형) 단말기 앞에서 <kbd>F</kbd> — 8초 등록하면 팀원이 수송기로 돌아와 강하합니다 (권총·붕대 지급 · 한 사람당 한 번 · 자기장 절반 단계까지)</td></tr>
           <tr><td>운전 중 <kbd>W S</kbd> / <kbd>A D</kbd></td><td>가속·브레이크·후진 / 조향 (<kbd>Space</kbd> 핸드브레이크, 마우스로 둘러보기)</td></tr><tr><td><kbd>G</kbd> / <kbd>T</kbd></td><td>투척 준비(궤적 표시, 다시 누르면 취소) / 가진 투척 무기 차례로 바꾸기 — 준비 중 좌클릭을 누르면 핀 뽑기, 떼면 투척. 핀을 뽑고 세열 수류탄 7초 · 연막탄 3초 · 자기장 수류탄 2.5초 · 섬광탄 2.2초 뒤 터지고, 화염병·충격 수류탄은 닿으면 바로 터짐 (화염병 9초 불바다 · 자기장 수류탄 10초 작은 자기장 · 섬광탄은 터지는 쪽을 보고 있으면 최대 5초 눈이 멂)</td></tr>
-          <tr><td><kbd>Y</kbd> (듀오·스쿼드)</td><td>핑 — 적을 조준하면 팀원 '공격', 땅·건물이면 '이동'. 빠르게 두 번 = '위험' 표시(팀원이 그쪽을 경계하며 엄폐), 길게 누르기 = '모여'</td></tr>
+          <tr><td><kbd>Y</kbd> (듀오·스쿼드)</td><td>핑 — 적을 조준하면 팀원 '공격', 땅·건물이면 '이동'. 빠르게 두 번 = '위험' 표시(팀원이 그쪽을 경계하며 엄폐), 길게 누르기 = '모여'. 핑·지도 마커는 사람 팀원 화면에도 찍은 사람 번호 색 점으로 보입니다</td></tr>
           <tr><td>차량에서 <kbd>C</kbd></td><td>다음 빈 좌석으로 이동 (운전석 ↔ 동승석). 동승석에서는 마우스로 조준·사격·장전 가능</td></tr>
           <tr><td><kbd>H</kbd> / <kbd>J</kbd></td><td>회복(상황에 맞는 아이템 자동) / 부스트 — 에너지 드링크·진통제 (부스트가 낮으면 진통제부터) — 모바일은 회복·투척 버튼을 누르면 위에 아이템 선택이 뜹니다</td></tr>
           <tr><td>자동 줍기</td><td>지나가기만 해도 총(없을 때) · 가진 총에 맞는 탄 · 투척 무기 종류마다 2개 · 근접 무기 · 회복·부스트 아이템을 주움 (설정에서 끌 수 있음). 주워야 할 물건은 줍기 목록에서 노란색 · 처치한 적의 소지품은 시체 옆 상자에 모임</td></tr>
@@ -2599,7 +2606,7 @@ body.touch #victoryHud button { padding: 8px 12px; font-size: 0.8rem; }</style>
           <tr><td>줍기</td><td>가장 가까운 아이템 줍기 (오른쪽 목록을 눌러도 됨) · 상황에 따라 탑승/부활 버튼으로 바뀜</td></tr>
           <tr><td>미니맵</td><td>누르면 전체 지도 — 두 손가락으로 확대·축소, 한 손가락으로 끌어서 이동, 짧게 눌러 마커</td></tr>
           <tr><td>상단 버튼</td><td>가방 · 메뉴 · 💬 문자(파티원·관전자가 있을 때 — 빠른 문구 또는 직접 입력)</td></tr>
-          <tr><td>핑 버튼 (듀오·스쿼드)</td><td>조준점의 적 → 팀원 공격, 지면 → 이동, 두 번 빠르게 → 위험 표시, 길게 → 모여. 팀 목록 위 ✕로 지시 취소</td></tr>
+          <tr><td>핑 버튼 (듀오·스쿼드)</td><td>조준점의 적 → 팀원 공격, 지면 → 이동, 두 번 빠르게 → 위험 표시, 길게 → 모여. 팀 목록 위 ✕로 지시 취소. 사람 팀원에게도 번호 색 점으로 보임</td></tr>
           <tr><td>좌석 버튼 (차량)</td><td>다음 빈 좌석으로. 동승석에서는 사격·조준·장전 버튼이 나타남</td></tr>
           <tr><td>버튼 배치</td><td>메뉴 또는 설정 → 모바일 버튼 배치 편집: 버튼·가방/메뉴·킬 로그·팀 목록을 끌어서 이동, 각각 크기 조절</td></tr>
         </table>
@@ -21238,10 +21245,8 @@ class Brain {
   shareSpot(o) {
     if (G.noIntel) return; // (테스트용 비교 스위치)
     for (const m of teamMembers(this.c)) if (m !== this.c && m.brain && standing(m)) m.brain.reportEnemy(o, o.pos.x, o.pos.z);
-    if (G.player && sameTeam(G.player, this.c)) {
-      HUD.spot(o, this.c);
-      const ord = G.teamOrder; if (ord && ord.kind === 'attack' && ord.target === o) { ord.x = o.pos.x; ord.z = o.pos.z; }
-    }
+    if (G.player && sameTeam(G.player, this.c)) HUD.spot(o, this.c);
+    TeamPing.track(this.c, o);   // 그 적을 노린 같은 팀 사람(나·다른 기기 사람)의 공격 지시 위치를 새로
   }
   reportEnemy(o, x, z) {
     const c = this.c; if (c.knocked || !o.alive) return;
@@ -21252,10 +21257,11 @@ class Brain {
     // 무장한 봇만 그쪽을 돌아본다 (맨손 봇이 서로 돌아보다 주먹 싸움이 늘던 문제)
     if (this.usableWeapons().length && (!this.target || !this.aware.get(this.target) || !this.aware.get(this.target).visible)) this.lookYaw = Math.atan2(x - c.pos.x, z - c.pos.z);
   }
-  // 사람의 팀원이면 그 사람 (살아 있을 때) — 따라다닌다. 지시(핑)는 이 기기 플레이어의 팀원만 받는다
+  // 사람의 팀원이면 그 사람 (살아 있을 때) — 따라다닌다. 지시(핑)는 그 사람의 것을 받는다
   //  followC: 팀의 사람 (온라인 매칭·파티에서 다른 기기 사람의 팀원 봇도 방장 기기가 움직임 — 11_game.js startMatch)
+  //  v23: 그 사람이 다른 기기여도 그 사람이 찍은 핑(09_player_ping.js 가 받아 둔 것)을 따른다 · 위험 표시는 같은 팀 사람 것 중 가장 가까운 것 (dangerFor)
   playerMate() { const p = this.followC || G.player; return !G.dm && G.teamSize > 1 && p && p.alive && p !== this.c && p.team === this.c.team && p.mode === 'ground' ? p : null; }
-  order() { const pm = this.playerMate(); return pm && pm === G.player ? G.teamOrder : null; }
+  order() { const pm = this.playerMate(); return pm ? TeamPing.ordOf(pm) : null; }
   // 따라가기 자리: 플레이어 진행 방향 기준 왼뒤·오른뒤·뒤
   followSlot(p) {
     const yaw = Math.hypot(p.vel.x, p.vel.z) > 1 ? Math.atan2(p.vel.x, p.vel.z) : p.yaw;
@@ -21424,7 +21430,7 @@ class Brain {
     this.target = tgt;
     // 조심 모드: 막 부활했거나 체력이 낮으면 돌진·추격·소리 수색을 하지 않는다
     const recovering = G.time < (this.recoverUntil || 0);
-    const pm = this.playerMate(), ord = pm && pm === G.player ? G.teamOrder : null;
+    const pm = this.playerMate(), ord = this.order();
     const cautious = this.cautious = recovering || c.hp < 35;
 
     // 무기 정비
@@ -21543,8 +21549,8 @@ class Brain {
       const dl = Math.hypot(pm.pos.x - c.pos.x, pm.pos.z - c.pos.z);
       if (dl > (recovering ? 48 : usable ? 24 : 40) || (this.state === 'FOLLOW' && dl > 9 && this.stateT < 25)) { this.setState('FOLLOW'); return; }
     }
-    // 플레이어의 '위험' 표시: 150m 안이면 그쪽을 보고 엄폐(없으면 그 자리에서 앉아 경계) — 25초
-    const dg = pm && G.danger;
+    // 플레이어의 '위험' 표시: 150m 안이면 그쪽을 보고 엄폐(없으면 그 자리에서 앉아 경계) — 25초 (v23: 같은 팀 사람 것만 · 다른 기기 사람 것도)
+    const dg = pm && TeamPing.dangerFor(c);
     if (dg && Math.hypot(dg.x - c.pos.x, dg.z - c.pos.z) < 150 && !(tgt && tr.visible)) {
       if (this.state !== 'DANGER' || this.dangerRef !== dg) { this.dangerRef = dg; this.holdCover = null; const q = this.coverFrom(dg.x, (dg.y || heightAt(dg.x, dg.z)) + 1.5, dg.z); if (q) this.holdCover = { x: q[0], z: q[1] }; }
       this.setState('DANGER'); return;
@@ -21977,7 +21983,7 @@ class Brain {
         break;
       }
       case 'DANGER': { // 위험 표시 쪽을 경계: 엄폐 지점으로 가서 앉아 그쪽을 본다
-        const dg = G.danger; if (!dg) { this.setState('EXPLORE'); break; }
+        const dg = TeamPing.dangerFor(c); if (!dg) { this.setState('EXPLORE'); break; }
         const cv = this.holdCover;
         if (cv && Math.hypot(cv.x - c.pos.x, cv.z - c.pos.z) > 0.8) { this.moveGoal(cv.x, cv.z, 'cover'); wish = this.steer(); speed = 6.2; c.sprint = true; if (!wish && !this.wantPath) this.holdCover = null; }
         else { wantStance = 'crouch'; c.aiming = !!c.weapon; this.faceToward(dg.x, (dg.y || heightAt(dg.x, dg.z)) + 1.2, dg.z, dt, 3); }
@@ -21995,11 +22001,11 @@ class Brain {
       }
       case 'ORDER': { // 이동 지시 지점으로 가서 앉아 경계
         const o = this.order(); if (!o || o.kind !== 'move') { this.setState('EXPLORE'); break; }
-        const sl = this.orderSlot(o), ds = Math.hypot(sl[0] - c.pos.x, sl[1] - c.pos.z);
+        const sl = this.orderSlot(o), ds = Math.hypot(sl[0] - c.pos.x, sl[1] - c.pos.z), dg = ds > 2 ? null : TeamPing.dangerFor(c);
         if (ds > 2) {
           this.moveGoal(sl[0], sl[1], 'order', o.y); wish = this.steer(); speed = ds > 20 ? 6.2 : 4.6; c.sprint = ds > 20;
           if ((!wish || (!wish[0] && !wish[1])) && !this.wantPath && ds < 8) wish = [(sl[0] - c.pos.x) / ds, (sl[1] - c.pos.z) / ds];
-        } else if (G.danger && Math.hypot(G.danger.x - c.pos.x, G.danger.z - c.pos.z) < 150) { wantStance = 'crouch'; c.aiming = !!c.weapon; this.faceToward(G.danger.x, (G.danger.y || heightAt(G.danger.x, G.danger.z)) + 1.2, G.danger.z, dt, 3); }
+        } else if (dg && Math.hypot(dg.x - c.pos.x, dg.z - c.pos.z) < 150) { wantStance = 'crouch'; c.aiming = !!c.weapon; this.faceToward(dg.x, (dg.y || heightAt(dg.x, dg.z)) + 1.2, dg.z, dt, 3); }
         else { wantStance = 'crouch'; this.scan(dt * 0.6); }
         break;
       }
@@ -25032,6 +25038,7 @@ function updateDriving(dt) {
 // ---------- 팀 지휘 (핑) ----------
 // Y / 핑 버튼: 조준점 근처에 보이는 적이 있으면 '공격', 아니면 그 지점으로 '이동'
 //  빠르게 두 번(0.4초 안) → '위험' 표시(빨간 경고: 팀원이 그쪽을 경계하며 엄폐), 길게 누르기(0.55초) → '모여'(따라오기)
+//  v23: 핑·지도 마커는 다른 기기의 사람 팀원에게도 보인다 (09_player_ping.js TeamPing — 봇 팀원이 없어도 찍을 수 있다)
 let _pingT = -9, _pingPrev = null, _pingHold0 = 0, _pingHoldDone = false;
 const rtNow = () => performance.now() / 1000; // 실제 시간 (프레임이 느려도 두 번 누르기 판정이 흔들리지 않게)
 const _pv = new THREE.Vector3(), _pc = new THREE.Vector3();
@@ -25040,6 +25047,7 @@ function teamCallout(text, kind) { const ms = mateBots(G.player); if (ms.length)
 function setTeamOrder(ord, quiet) {
   const p = G.player; if (!p) return;
   ord.t = G.time; G.teamOrder = ord.kind === 'follow' ? null : ord;
+  if (ord.kind === 'follow') TeamPing.followed();   // 사람 팀원에게도 '모여' 알림
   for (const m of mateBots(p)) {
     const b = m.brain; b.thinkT = 0; b.goal = null; b.path = null; b.wantPath = null;
     if (b.investigate && b.investigate.kind === 'order') b.investigate = null;
@@ -25073,8 +25081,8 @@ function pingHoldCheck() {
 function pingInputs(p) { const q = Input.pingQ.splice(0); if (!q.length) q.push(rtNow()); for (const t of q) playerPing(p, t); }
 function playerPing(p, tPress) {
   const now = tPress || rtNow();
-  if (!(G.teamSize > 1)) { HUD.toast('핑은 듀오·스쿼드에서 팀원 봇에게 지시할 때 씁니다'); return; }
-  if (!mateBots(p).length) { HUD.toast('지시할 팀원이 없습니다', 'warn'); return; }
+  if (!(G.teamSize > 1)) { HUD.toast('핑은 듀오·스쿼드에서 팀원에게 위치를 알릴 때 씁니다'); return; }
+  if (!TeamPing.hasMates(p)) { HUD.toast('핑을 볼 팀원이 없습니다', 'warn'); return; }
   // 두 번째 누름: 방금 찍은 핑을 되돌리고 그 자리에 '위험' 표시
   if (now - _pingT < 0.4) {
     _pingT = -9; G.teamOrder = _pingPrev || null;
@@ -25099,7 +25107,7 @@ function playerPing(p, tPress) {
 }
 // 지시 유지·해제: 공격 목표 탈락/40초, 이동 지점에서 플레이어가 160m 넘게 멀어지거나 150초
 function updateTeamOrder() {
-  pingHoldCheck();
+  pingHoldCheck(); TeamPing.update();   // 내 핑을 사람 팀원에게 보내고, 받은 핑의 시간을 센다
   if (G.danger && G.time - G.danger.t > 25) G.danger = null;
   const ord = G.teamOrder, p = G.player; if (!ord) return;
   if (!p || !p.alive) { G.teamOrder = null; return; }
@@ -25778,6 +25786,274 @@ const KAnim = (() => {
   return { CFG, TR, kindOf, tick, on, inspect, vm, vmOut, vmOff, outActive, cam, hit, alt, swingSound, tppRow, fingersOf, fingers3, tppApply, trail3, sheath, parts, warmVM };
 })();
 
+// ---------- 09_player_ping.js ----------
+// ============================================================
+// 09_player_ping.js — 팀 핑·지도 마커를 같은 팀 사람에게도 (v23)
+//  · 내 핑(Y·핑 버튼: 이동·공격·위험)과 지도 마커(G.teamOrder · G.danger · G.marker)를 같은 팀의 다른 기기 사람(같이 하기·온라인 매칭)에게 'pg' 사건으로 보낸다
+//    상태를 통째로 보내므로 덮어쓰기·지우기·시간이 지나 사라짐(위험 25초 · 공격 40초 · 이동 150초)이 모든 기기에서 같다
+//    바뀐 뒤 0.6초 그대로일 때 보냄 — 두 번 누르기(위험)·길게 누르기(모여)가 잠깐 찍었다 되돌리는 핑은 보내지 않게
+//    남아 있으면 3초마다 다시(h: 알림·소리 없이) — 늦게 붙은 사람 · 방장이 바뀐 뒤 · 공격 목표의 새 위치
+//  · 받는 사람: 같은 팀 사람 + 방장(내 팀원 봇을 움직이는 기기 — 온라인 매칭에서는 다른 팀일 수 있음 · 방장 화면에는 같은 팀 것만 보임)
+//    옛 화면은 모르는 사건을 그냥 버리므로(깨지지 않음) 같이 하기 버전(NET_VER)은 그대로 둔다
+//  · 받은 핑은 그 사람 캐릭터에 (c.pg = { s 화면, n 순서, mk, o, dg }) — 나가서 봇이 이어받으면 지운다
+//  · 색: 찍은 팀원의 번호 색(TEAM_COLORS · 팀 목록의 1·2·3·4) — 지도 · 화면 표식 · 3D 점 (혼자면 예전 주황 마커)
+//  · 화면 표식(#pingTags): 안개·카메라 시야 끝(far)·봇 표시 거리와 상관없이 그 자리에 점 + 거리 · 화면 밖이면 가장자리에 방향 화살표
+//  · 3D: 예전 기둥(세로 빔) 대신 그 지점에 점 + 바닥에서 퍼지는 링 (안개 없이)
+//  · 팀원 봇(방장 기기): 따라다니는 사람(followC)의 이동·공격 지시를 받는다 — 그 사람이 다른 기기여도 · 위험 표시는 같은 팀 사람 것 중 가장 가까운 것
+// ============================================================
+const TeamPing = (() => {
+  const SID = Math.random().toString(36).slice(2, 8);   // 이 화면 (새로고침하면 바뀜) — 받는 쪽은 같은 화면의 더 작은 순서 번호를 늦게 온 예전 상태로 버린다
+  const LIFE = { move: 150, attack: 40 }, DG_LIFE = 25, HOLD = 0.6, BEAT = 3, SLOT = { mk: 0, o: 1, dg: 2 };
+  const NAME = { mk: '마커', mv: '이동', at: '공격', dg: '위험' }, DIRS = ['북', '북동', '동', '남동', '남', '남서', '서', '북서'];
+  const r1 = (v) => Math.round(v * 10) / 10, num = (v) => typeof v === 'number' && Number.isFinite(v);
+  const okXZ = (x, z) => num(x) && num(z) && Math.abs(x) < HALF + 100 && Math.abs(z) < HALF + 100;
+  const okT = (t) => num(t) && t <= G.time + 5;   // 찍은 시각: 앞날(시계가 크게 앞선 값)이면 영영 안 사라지므로 버림
+  const okY = (y, x, z) => (num(y) ? clamp(y, -100, 2500) : heightAt(x, z));   // 높이: 숫자가 아니면 땅 · 스타트 섬(1100m)까지
+  const fmt = (d) => (d >= 1000 ? (d / 1000).toFixed(1) + 'km' : Math.round(d) + 'm');
+  let acc = 0, lastT = 0, seq = 0, chgT = 0, sentT = -99, follow = false, frame = 0, dotG = null, ringG = null, warmM = null, warmN = 0;
+  const seen = [null, null, null], sent = [null, null, null], held = new Set(), tags = new Map();
+  // 다른 기기 사람이 아직 자기 캐릭터를 움직이는지 (나가면 방장 봇이 이어받아 주인이 바뀐다)
+  const live = (c) => !!c && !!c.human && !c.isPlayer && !!c.uid && !!c.net && c.net.owner === c.uid && !c.botized;
+  const mkOf = (c) => (c === G.player ? G.marker : c.pg && c.pg.mk) || null;
+  const ordOf = (c) => (c === G.player ? G.teamOrder : c.pg && c.pg.o) || null;
+  const dgOf = (c) => (c === G.player ? G.danger : c.pg && c.pg.dg) || null;
+  const colorOf = (c) => (G.teamSize > 1 ? TEAM_COLORS[c.slot % TEAM_COLORS.length] : '#f0a43a');
+  const byId = (id) => CHARS.find((x) => x.id === id) || null;
+  // 지금 보는 자리 (수송기·리콜 수송기 안 · 관전 중이면 그 팀원)
+  const viewPos = () => { const p = G.player, pl = p.mode === 'plane' && planeOf(p); return pl ? pl.pos : (G.viewChar ? G.viewChar() : p).pos; };
+  function where(x, z) { const v = viewPos(), dx = x - v.x, dz = z - v.z; let deg = (180 - Math.atan2(dx, dz) * 180 / Math.PI) % 360; if (deg < 0) deg += 360; return `${DIRS[Math.round(deg / 45) % 8]}쪽 ${fmt(Math.hypot(dx, dz))}`; }
+  // 핑을 볼 팀원이 있는지: 서 있는 팀원(봇·사람) · 다른 기기 사람(쓰러져 관전 중이어도)
+  function hasMates(p) { for (const m of teamMembers(p)) if (m !== p && (standing(m) || live(m))) return true; return false; }
+  // '모여'(길게 누르기 · 지시 취소): 다음에 보낼 때 알림
+  function followed() { follow = true; }
+
+  // ---------- 보내기 (매 프레임 · 09_player.js updateTeamOrder) ----------
+  function update() {
+    const t = G.time, dt = t - lastT; lastT = t; if (dt > 0 && dt < 0.5) acc += dt;
+    for (const c of held) expire(c);
+    sync();
+  }
+  // 받은 핑: 시간이 지나거나 공격 목표가 쓰러지면 지움 (보낸 쪽도 같은 때 지워 다시 보낸다) · 나간 사람 것은 통째로
+  function expire(c) {
+    const S = c.pg; if (!S) { held.delete(c); return; }
+    if (!live(c)) { c.pg = null; held.delete(c); return; }
+    if (S.o && (G.time - S.o.t > LIFE[S.o.kind] || (S.o.target && !S.o.target.alive))) S.o = null;
+    if (S.dg && G.time - S.dg.t > DG_LIFE) S.dg = null;
+  }
+  function sync() {
+    const p = G.player; if (!p) return;
+    const mk = G.marker || null, o = G.teamOrder || null, dg = G.danger || null;
+    if (mk !== seen[0] || o !== seen[1] || dg !== seen[2]) { seen[0] = mk; seen[1] = o; seen[2] = dg; chgT = acc; }
+    const N = Net.state;
+    if (!N || !G.teams) { sent[0] = mk; sent[1] = o; sent[2] = dg; follow = false; return; }   // 혼자·봇만: 보낼 곳 없음
+    if (mk !== sent[0] || o !== sent[1] || dg !== sent[2] || follow) { if (acc - chgT >= HOLD) send(N, p, mk, o, dg, false); }
+    else if ((mk || o || dg) && acc - sentT >= BEAT) send(N, p, mk, o, dg, true);
+  }
+  // 받을 사람: 같은 팀 사람(다른 기기 · 아직 자기 캐릭터를 움직이는 사람 — 나갔다 돌아오면 다시) + 방장(bot: 내 팀원 봇을 움직임 — 다른 팀이어도)
+  //  (N.gone 은 파티원 기기에서 돌아온 사람을 지우지 않아 쓰지 않는다 · 봇이 이어받은 사람도 방장 기기가 움직이는 '봇')
+  function targets(N, p) {
+    const out = [], ms = teamMembers(p);
+    for (const m of ms) if (m !== p && live(m) && !out.includes(m.uid)) out.push(m.uid);
+    const h = N.cfg.host, bot = !N.host && h && h !== N.me && !out.includes(h) && ms.some((m) => m !== p && m.alive && !live(m)) ? h : null;
+    return { out, bot };
+  }
+  // { k:'pg', c: 내 캐릭터, s·n, mk: [x, z] | 0, o: [1 이동 · 2 공격, x, y, z, 목표 캐릭터, 찍은 시각] | 0, dg: [x, y, z, 찍은 시각] | 0, h: 다시 보냄, f: 모여 }
+  function send(N, p, mk, o, dg, beat) {
+    sent[0] = mk; sent[1] = o; sent[2] = dg; sentT = acc;
+    if (!beat) seq++;
+    const to = targets(N, p);
+    if (to.out.length || to.bot) {
+      const e = { k: 'pg', c: p.id, s: SID, n: seq, mk: mk ? [r1(mk.x), r1(mk.z)] : 0,
+        o: o ? [o.kind === 'attack' ? 2 : 1, r1(o.x), num(o.y) ? r1(o.y) : null, r1(o.z), o.kind === 'attack' && o.target ? o.target.id : -1, r1(o.t || 0)] : 0,
+        dg: dg ? [r1(dg.x), num(dg.y) ? r1(dg.y) : null, r1(dg.z), r1(dg.t || 0)] : 0 };
+      if (beat) e.h = 1;
+      if (follow) e.f = 1;
+      for (const u of to.out) Net.ev(Object.assign({}, e), u);   // 받는 사람마다 따로 (ev 가 e.to 를 붙인다)
+      if (to.bot) Net.ev(Object.assign({}, e, { mk: 0 }), to.bot);   // 다른 팀 방장: 봇이 쓰는 지시·위험만 (마커는 그 화면에 보이지 않으므로 보내지 않음)
+    }
+    follow = false;
+  }
+
+  // ---------- 받기 (10_net.js 'pg') ----------
+  function onNet(e) {
+    const p = G.player; if (!p || !num(e.c) || !num(e.n)) return;
+    const c = byId(e.c); if (!live(c) || c.uid !== e.from) return;   // 그 사람 기기가 보낸 것만
+    const S0 = c.pg || null, s = typeof e.s === 'string' ? e.s.slice(0, 12) : '';
+    if (S0 && S0.s === s && e.n < S0.n) return;   // 늦게 온 예전 상태
+    const fresh = !S0 || S0.s !== s || e.n > S0.n;   // 같은 순서 번호를 또 받음(다시 보내기 · 방장이 대신 받은 사본) → 모여 알림은 한 번만
+    const S = { s, n: e.n, mk: null, o: null, dg: null };
+    // 바뀌지 않은 표시는 같은 물건을 그대로 (봇이 같은 위험·지시로 알고 엄폐 자리를 다시 찾지 않게)
+    const a = e.mk; if (Array.isArray(a) && okXZ(a[0], a[1])) { const m0 = S0 && S0.mk; S.mk = m0 && m0.x === a[0] && m0.z === a[1] ? m0 : { x: a[0], z: a[1] }; }
+    const b = e.o;
+    if (Array.isArray(b) && okXZ(b[1], b[3]) && okT(b[5])) {
+      const atk = b[0] === 2, tg = atk && num(b[4]) ? byId(b[4]) : null, kind = atk ? 'attack' : 'move';
+      if ((!atk || (tg && tg.alive && tg.team !== c.team)) && G.time - b[5] <= LIFE[kind]) {
+        const y = okY(b[2], b[1], b[3]), o0 = S0 && S0.o;
+        // 같은 지시: 보낸 쪽 좌표가 바뀔 때만 따른다 — 이 기기(방장) 봇이 목표를 보고 옮긴 공격 위치(track)를 3초마다 예전 자리로 되돌리지 않게
+        if (o0 && o0.kind === kind && o0.t === b[5] && (o0.target || null) === tg) { if (o0.sx !== b[1] || o0.sz !== b[3]) { o0.x = o0.sx = b[1]; o0.y = y; o0.z = o0.sz = b[3]; } S.o = o0; }
+        else S.o = { kind, x: b[1], y, z: b[3], t: b[5], target: tg || undefined, sx: b[1], sz: b[3] };
+      }
+    }
+    const d = e.dg;
+    if (Array.isArray(d) && okXZ(d[0], d[2]) && okT(d[3]) && G.time - d[3] <= DG_LIFE) {
+      const g0 = S0 && S0.dg;
+      S.dg = g0 && g0.t === d[3] && g0.x === d[0] && g0.z === d[2] ? g0 : { x: d[0], y: okY(d[1], d[0], d[2]), z: d[2], t: d[3] };
+    }
+    c.pg = S; held.add(c);
+    const o0 = S0 && S0.o, newO = !!S.o && S.o !== o0, newDg = !!S.dg && S.dg !== (S0 && S0.dg), newMk = !!S.mk && S.mk !== (S0 && S0.mk), fol = !!e.f && fresh;
+    if (newO || (o0 && !S.o) || fol) wake(c, true);
+    if (newDg) wake(c, false);
+    if (e.h || !sameTeam(p, c) || G.state !== 'play') return;   // 다시 보낸 것 · 다른 팀(방장 기기 — 봇 지시만) · 결과 화면: 조용히
+    if (newDg) { HUD.toast(`${c.name}: 위험! ${where(S.dg.x, S.dg.z)}`, 'warn'); Audio.ping('danger'); }
+    else if (newO) {
+      if (S.o.kind === 'attack') { if (G.spotted) G.spotted.set(S.o.target, { x: S.o.x, z: S.o.z, t: G.time }); HUD.toast(`${c.name}: 적 위치 · ${where(S.o.x, S.o.z)}`, 'warn'); }
+      else HUD.toast(`${c.name}: 이동 지점 · ${where(S.o.x, S.o.z)}`, 'info');
+      Audio.ping(S.o.kind);
+    } else if (fol) { HUD.toast(`${c.name}: 모여!`, 'info'); Audio.ping('follow'); }
+    else if (newMk) { HUD.toast(`${c.name}: 지도 마커 · ${where(S.mk.x, S.mk.z)}`, 'info'); Audio.ui(); }
+  }
+  // 방장 기기: 핑을 찍은 사람의 팀원 봇이 바로 다시 생각하게 (09_player.js setTeamOrder · setDanger 와 같게)
+  //  ord: 이동·공격·모여 → 그 사람을 따라다니는 봇만 · 위험 → 그 팀 봇 모두
+  function wake(c, ord) {
+    for (const m of teamMembers(c)) {
+      const br = m.brain; if (!br || m === G.player || !standing(m)) continue;
+      if (!ord) { br.thinkT = 0; br.holdCover = null; continue; }
+      if ((br.followC || G.player) !== c) continue;
+      br.thinkT = 0; br.goal = null; br.path = null; br.wantPath = null;
+      if (br.investigate && br.investigate.kind === 'order') br.investigate = null;
+      if (br.state === 'ORDER' || br.state === 'FOLLOW' || br.state === 'MOVE' || br.state === 'EXPLORE' || br.state === 'LOOT') br.setState('EXPLORE');
+    }
+  }
+
+  // ---------- 팀원 봇 (07_bot.js) ----------
+  // 봇이 적을 보면: 그 적을 노린 같은 팀 사람의 공격 지시 위치를 새로 (내 것은 다음 다시 보내기 때 팀원에게도)
+  function track(c, o) {
+    for (const m of teamMembers(c)) {
+      if (m !== G.player && !m.human) continue;
+      const ord = ordOf(m); if (ord && ord.kind === 'attack' && ord.target === o) { ord.x = o.pos.x; ord.z = o.pos.z; }
+    }
+  }
+  // 이 봇이 경계할 위험 표시: 같은 팀 사람(나 · 다른 기기 사람) 것 중 가장 가까운 것
+  function dangerFor(c) {
+    let best = null, bd = Infinity;
+    for (const m of teamMembers(c)) {
+      if (m !== G.player && !m.human) continue;
+      const dg = dgOf(m); if (!dg) continue;
+      const d = Math.hypot(dg.x - c.pos.x, dg.z - c.pos.z); if (d < bd) { bd = d; best = dg; }
+    }
+    return best;
+  }
+
+  // ---------- 화면 표식 + 3D 점 (매 프레임 · 10_hud.js updateTeam) ----------
+  const _v = new THREE.Vector3(), _w = new THREE.Vector3();
+  // 점·링 재질은 모두 같은 셰이더 (링도 위를 보는 앞면만 — 양면이면 셰이더가 하나 더 생긴다)
+  const mat = (op) => new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, transparent: true, opacity: op, depthWrite: false });
+  function geo() { if (!dotG) { dotG = new THREE.SphereGeometry(1, 12, 8); ringG = new THREE.RingGeometry(0.72, 1, 32).rotateX(-Math.PI / 2); } }
+  function mkTag(box) {
+    const el = document.createElement('div'), i = document.createElement('i'), b = document.createElement('b'), s = document.createElement('span');
+    el.className = 'pg'; el.hidden = true; i.appendChild(b); el.appendChild(i); el.appendChild(s); box.appendChild(el);
+    geo(); const dm = mat(0.95), rm = mat(0.6), dot = new THREE.Mesh(dotG, dm), ring = new THREE.Mesh(ringG, rm); dot.visible = ring.visible = false;
+    return { el, b, s, dm, rm, dot, ring, f: -1, on: false, kind: '', col: '', m: null, tx: '', tf: '', ang: '', edge: false, flip: false, x: NaN, z: NaN, y0: NaN, gy: 0, ph: Math.random() };
+  }
+  // 첫 핑 때 셰이더를 만드느라 한 박자 멈추지 않게: 경기 시작 뒤 처음 몇 프레임 동안 보이지 않는(투명) 점 하나를 카메라 앞에 그려 둔다
+  function warmUp() {
+    if (warmN > 3 || !G.scene || !G.camera) return;
+    if (!warmM) { geo(); warmM = new THREE.Mesh(dotG, mat(0)); warmM.scale.setScalar(0.01); }
+    if (warmM.parent !== G.scene) G.scene.add(warmM);
+    G.camera.getWorldDirection(_v); warmM.position.copy(G.camera.position).addScaledVector(_v, 2);
+    if (++warmN > 3) G.scene.remove(warmM);
+  }
+  // 화면 자리: 카메라 앞이면 투영한 x·y (시야 끝 far 너머여도 x·y 는 맞다 — project() 의 z<1 대신 앞뒤만 본다), 화면 밖·뒤면 가장자리 + 방향
+  //  W2·H2: 화면 크기 (hud 가 한 번 읽어 넘김 — 표식마다 읽으면 앞 표식의 글자·위치 변경 때문에 배치 계산을 강제할 수 있음)
+  function place(T, x, y, z, W2, H2) {
+    const cam = G.camera;
+    _v.set(x, y, z).applyMatrix4(cam.matrixWorldInverse);
+    let edge = true, sx = 0, sy = 0;
+    if (_v.z < -0.3) { _w.copy(_v).applyMatrix4(cam.projectionMatrix); if (Math.abs(_w.x) < 0.97 && Math.abs(_w.y) < 0.95) { edge = false; sx = (_w.x + 1) / 2 * W2; sy = (1 - _w.y) / 2 * H2; } }
+    if (edge) {
+      let dx = _v.x, dy = _v.y; if (Math.hypot(dx, dy) < 1e-3) { dx = 0; dy = -1; }   // 바로 뒤 → 아래쪽
+      const mx = W2 / 2 - 46, my = H2 / 2 - 40, k = Math.min(mx / Math.max(1e-6, Math.abs(dx)), my / Math.max(1e-6, Math.abs(dy)));
+      sx = W2 / 2 + dx * k; sy = H2 / 2 - dy * k;
+      const a = Math.atan2(-dy, dx).toFixed(2) + 'rad'; if (T.ang !== a) { T.ang = a; T.el.style.setProperty('--ang', a); }
+    }
+    if (edge !== T.edge) { T.edge = edge; T.el.classList.toggle('edge', edge); }
+    const flip = sx > W2 - 110; if (flip !== T.flip) { T.flip = flip; T.el.classList.toggle('flip', flip); }   // 오른쪽 끝: 글자를 점 왼쪽에
+    const tf = `translate(${sx.toFixed(0)}px, ${sy.toFixed(0)}px)`; if (T.tf !== tf) { T.tf = tf; T.el.style.transform = tf; }
+  }
+  // 한 표시: slot = 'mk' | 'o' | 'dg' (사람마다 하나씩), kind = 'mk' | 'mv' | 'at' | 'dg', y 가 없으면 땅(지붕 · 물 위) 높이
+  function put(box, m, slot, kind, col, x, y, z, vp, W2, H2) {
+    const key = m.id * 4 + SLOT[slot]; let T = tags.get(key);
+    if (!T) { T = mkTag(box); tags.set(key, T); }
+    T.f = frame; if (!T.on) { T.on = true; T.el.hidden = false; }
+    if (T.kind !== kind || T.m !== m) { T.kind = kind; T.m = m; T.el.className = 'pg pg-' + kind + (T.edge ? ' edge' : '') + (T.flip ? ' flip' : ''); T.b.textContent = kind === 'dg' ? '!' : kind === 'mk' && G.teamSize > 1 ? String(m.slot + 1) : ''; T.tx = ''; }
+    if (T.col !== col) { T.col = col; T.el.style.setProperty('--pc', col); T.dm.color.set(col); T.rm.color.set(col); }
+    if (T.x !== x || T.z !== z || T.y0 !== y) { T.x = x; T.z = z; T.y0 = y; T.gy = num(y) ? y : kind === 'mk' ? Math.max(groundAt(x, z, 9999), WATER_Y) : Math.max(heightAt(x, z), WATER_Y); }
+    const gy = T.gy, cam = G.camera, cp = cam.position, d = Math.hypot(x - cp.x, gy - cp.y, z - cp.z), sc = G.scene;
+    // 3D: 점(멀수록 조금 크게 — 화면에서 몇 화소는 되게) + 바닥에서 퍼지는 링 · 시야 끝 너머는 화면 표식만
+    const near = !!sc && d < cam.far * 0.95; T.dot.visible = T.ring.visible = near;
+    if (near) {
+      if (T.dot.parent !== sc) { sc.add(T.dot); sc.add(T.ring); }
+      const r = clamp(d * 0.0045, 0.2, 1.4), ph = (G.time * 0.8 + T.ph) % 1, rr = Math.max(0.9, d * 0.006) * (0.45 + ph * 1.5);
+      T.dot.position.set(x, gy + 0.3 + r, z); T.dot.scale.setScalar(r);
+      T.dm.opacity = kind === 'dg' && Math.floor(G.time * 4) % 2 ? 0.4 : 0.95;
+      T.ring.position.set(x, gy + 0.12, z); T.ring.scale.set(rr, 1, rr); T.rm.opacity = 0.75 * (1 - ph);
+    }
+    place(T, x, gy + 1.3, z, W2, H2);
+    const txt = NAME[kind] + ' · ' + fmt(Math.hypot(x - vp.x, z - vp.z)); if (T.tx !== txt) { T.tx = txt; T.s.textContent = txt; }
+  }
+  function hud(p) {
+    const box = $('pingTags'); if (!box || !G.camera) return;
+    frame++; G.camera.updateMatrixWorld(); warmUp();
+    const vp = viewPos(), team = G.teams && G.teams[p.team] ? G.teams[p.team].members : [p], W2 = innerWidth, H2 = innerHeight;
+    for (const m of team) {
+      if (m !== p && !(m.pg && live(m))) continue;
+      const col = colorOf(m), mk = mkOf(m), o = ordOf(m), dg = dgOf(m);
+      if (mk) put(box, m, 'mk', 'mk', col, mk.x, undefined, mk.z, vp, W2, H2);
+      if (o) put(box, m, 'o', o.kind === 'attack' ? 'at' : 'mv', col, o.x, o.kind === 'attack' ? undefined : o.y, o.z, vp, W2, H2);
+      if (dg) put(box, m, 'dg', 'dg', col, dg.x, dg.y, dg.z, vp, W2, H2);
+    }
+    for (const T of tags.values()) if (T.on && T.f !== frame) { T.on = false; T.el.hidden = true; T.dot.visible = T.ring.visible = false; }
+  }
+
+  // ---------- 지도 (10_hud.js drawMapLayer — 미니맵·전체 지도) ----------
+  //  마커 = 핀 · 이동 = 마름모 · 공격 = 붉은 테 마름모 · 위험 = 깜빡이는 붉은 테 원 + ! — 모두 찍은 팀원 번호 색 (전체 지도의 핀에는 번호)
+  function drawMap(ctx, toPx, opts) {
+    const p = G.player; if (!p) return;
+    const team = G.teams && G.teams[p.team] ? G.teams[p.team].members : [p], big = !!opts.labels, blink = Math.floor(G.time * 4) % 2;
+    for (let pass = 0; pass < 3; pass++) for (const m of team) {
+      if (m !== p && !(m.pg && live(m))) continue;
+      const col = colorOf(m);
+      ctx.fillStyle = col; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
+      if (pass === 0) {
+        const mk = mkOf(m); if (!mk) continue;
+        const [x, y] = toPx(mk.x, mk.z), r = big ? 7 : 5, cy = y - r * 1.8;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, cy, r, Math.PI * 0.8, Math.PI * 0.2); ctx.closePath(); ctx.fill(); ctx.stroke();
+        if (big && G.teamSize > 1) { ctx.fillStyle = '#111'; ctx.font = `800 ${Math.round(r * 1.5)}px 'Saira Condensed', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(m.slot + 1), x, cy + 0.5); ctx.textBaseline = 'alphabetic'; }
+      } else if (pass === 1) {
+        const o = ordOf(m); if (!o) continue;
+        const [x, y] = toPx(o.x, o.z), r = big ? 8 : 6, atk = o.kind === 'attack';
+        if (atk) { ctx.strokeStyle = '#e0453a'; ctx.lineWidth = 2.5; }
+        ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+        if (atk) { ctx.fillStyle = '#e0453a'; ctx.beginPath(); ctx.arc(x, y, r * 0.3, 0, TAU); ctx.fill(); }
+      } else {
+        const dg = dgOf(m); if (!dg) continue;
+        const [x, y] = toPx(dg.x, dg.z), r = big ? 9 : 7;
+        ctx.strokeStyle = blink ? '#e0453a' : '#111'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#111'; ctx.font = `800 ${Math.round(r * 1.5)}px 'Saira Condensed', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', x, y + 0.5); ctx.textBaseline = 'alphabetic';
+      }
+    }
+  }
+  // 경기 시작(HUD.reset)·경기 정리(disposeMatch): 표식을 숨기고 보낸·받은 상태를 비움 (캐릭터는 경기마다 새로 — c.pg 도 없음)
+  //  점·링은 장면에서 떼어 둔다 — 붙어 있으면 지난 경기 장면 전체가 메모리에 남는다 (다음에 그 표식을 쓸 때 새 장면에 다시 붙음)
+  function reset() {
+    for (const T of tags.values()) { T.on = false; T.el.hidden = true; T.dot.visible = T.ring.visible = false; T.m = null; T.kind = ''; if (T.dot.parent) T.dot.parent.remove(T.dot); if (T.ring.parent) T.ring.parent.remove(T.ring); }
+    if (warmM && warmM.parent) warmM.parent.remove(warmM);
+    held.clear(); seen.fill(null); sent.fill(null); follow = false; sentT = -99; chgT = acc; warmN = 0;
+  }
+  return { hasMates, followed, update, onNet, track, dangerFor, ordOf, hud, drawMap, reset, live, get tags() { return tags; }, get seq() { return seq; } };
+})();
+
 // ---------- 10_changelog.js ----------
 // ============================================================
 // 10_changelog.js — 업데이트 로그 (로비 오른쪽 위 메뉴 → 업데이트 로그)
@@ -25785,6 +26061,15 @@ const KAnim = (() => {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-24', t: '팀 핑·지도 마커가 사람 팀원 화면에도 · 팀 번호 색 · 기둥 대신 점', items: [
+    '핑(Y · 핑 버튼 — 이동·공격·위험·모여)과 지도 마커가 이제 봇 팀원뿐 아니라 같이 하기·온라인 매칭으로 같은 팀이 된 사람 팀원 화면에도 보임 (다른 팀에는 보이지 않음)',
+    '지도·미니맵·화면 표시 모두 찍은 사람의 팀 번호 색(팀 목록의 1 노랑 · 2 주황 · 3 파랑 · 4 초록) — 마커는 번호가 적힌 핀, 이동은 점, 공격은 붉은 테 점, 위험은 깜빡이는 붉은 테 !',
+    '팀원이 찍으면 짧은 알림(예: 「친구: 이동 지점 · 남동쪽 120m」)과 소리 · 지우기·덮어쓰기·시간이 지나 사라지는 것(위험 25초 · 공격 40초 · 이동 150초)도 모든 팀원 화면에서 같이',
+    '아주 먼 곳의 핑도 안개·시야 거리·봇 표시 거리와 상관없이 그 자리에 점과 거리(m · km)로 보임 · 화면 밖이면 가장자리에 방향 화살표 (시야 거리보다 먼 마커가 화면 가장자리로 밀려나던 것도 고침)',
+    '핑을 찍으면 세우던 세로 기둥(빔)을 없애고 그 지점에 작은 점과 바닥에서 퍼지는 링으로',
+    '봇 없이 사람끼리만 팀이어도 핑을 찍을 수 있음 (전에는 「지시할 팀원이 없습니다」) · 온라인 매칭에서 다른 기기 사람을 따라다니는 팀원 봇도 그 사람의 핑을 따름 · 위험 표시는 같은 팀 봇만 경계',
+    '같이 하는 사람도 새 버전이어야 서로의 핑이 보임 (예전 화면과도 같이 할 수는 있음)',
+  ] },
   { v: 'v23', d: '2026-11-24', t: '서버 설정 완료 — 둘이 거의 같은 순간에 매칭해도 같은 경기로', items: [
     '온라인 매칭 서버에 대기열 잠금을 켰음: 두 사람이 거의 동시에 출격을 눌러도 경기가 둘로 갈라지지 않고 같은 경기에 들어감 (전에는 드물게 각자 AI 와 따로 시작했음)',
     '서버에서 바로 적용됨 — 게임을 새로 고칠 필요 없음',
@@ -28759,7 +29044,7 @@ const HUD = (() => {
   function teamColor(c) { return TEAM_COLORS[c.slot % TEAM_COLORS.length]; }
   function updateTeam(p) {
     const on = G.teamSize > 1 && G.teams, panel = $('teamPanel'), tags = $('teamTags');
-    panel.hidden = !on; tags.hidden = !on; if (!on) { updateMarkTag(p); return; }   // 솔로: 내 지도 마커만
+    panel.hidden = !on; tags.hidden = !on; if (!on) { TeamPing.hud(p); return; }   // 솔로: 내 지도 마커만
     const ms = G.teams[p.team].members;
     if (panel.dataset.k !== String(ms.length)) {
       panel.dataset.k = String(ms.length); panel.innerHTML = ''; tags.innerHTML = '';
@@ -28802,65 +29087,7 @@ const HUD = (() => {
         }
       } else t.hidden = true;
     });
-    updatePing(p);
-  }
-  // 핑 표시: 3D 기둥 + 화면 표식(종류·거리)
-  let pingMesh = null;
-  let dangerMesh = null;
-  // 화면 표식: 화면 안이면 그 자리, 밖(또는 뒤)이면 화면 가장자리에 붙여 방향 화살표 — 수송기 위처럼 멀리서도 놓치지 않게
-  const _cv = new THREE.Vector3();
-  function placeTag(tg, x, y, z) {
-    const W = innerWidth, H = innerHeight;
-    _tp.set(x, y, z).project(G.camera);
-    if (_tp.z < 1 && Math.abs(_tp.x) < 0.97 && Math.abs(_tp.y) < 0.95) { tg.classList.remove('edge'); tg.style.visibility = ''; tg.style.transform = `translate(${((_tp.x + 1) / 2 * W).toFixed(0)}px, ${((1 - _tp.y) / 2 * H).toFixed(0)}px)`; return; }
-    _cv.set(x, y, z).applyMatrix4(G.camera.matrixWorldInverse);
-    let dx = _cv.x, dy = _cv.y; if (_cv.z > 0 && Math.hypot(dx, dy) < 1e-3) dy = -1;   // 바로 뒤 → 아래쪽
-    const mx = W / 2 - 46, my = H / 2 - 40, k = Math.min(mx / Math.max(1e-6, Math.abs(dx)), my / Math.max(1e-6, Math.abs(dy)));
-    tg.classList.add('edge'); tg.style.visibility = '';
-    tg.style.transform = `translate(${(W / 2 + dx * k).toFixed(0)}px, ${(H / 2 - dy * k).toFixed(0)}px)`;
-    tg.style.setProperty('--ang', Math.atan2(-dy, dx).toFixed(3) + 'rad');
-  }
-  // 3D 기둥: 시야 거리(카메라 far)보다 멀면 같은 방향·같은 화면 크기로 당겨 와서 그리고, 멀수록 굵게 (수송기 고도에서도 보이게)
-  function pillarAt(m, x, gy, z, h) {
-    const cam = G.camera, cp = cam.position, g = m.geometry.parameters, d = Math.hypot(x - cp.x, z - cp.z), lim = cam.far * 0.8, k = d > lim ? lim / d : 1;
-    const r = Math.max(g.radiusTop, d * 0.003) * k, hh = h * k;
-    m.position.set(cp.x + (x - cp.x) * k, cp.y + (gy - cp.y) * k + hh / 2, cp.z + (z - cp.z) * k);
-    m.scale.set(r / g.radiusTop, hh / g.height, r / g.radiusTop);
-  }
-  const fmtDist = (d) => d >= 1000 ? (d / 1000).toFixed(1) + 'km' : Math.round(d) + 'm';
-  // 내 지도 마커: 화면 표식(거리) + 기둥
-  function updateMarkTag(p) {
-    const mk = G.marker, tg = $('markTag'); if (!tg) return;
-    tg.hidden = !mk; if (!mk) return;
-    const gy = heightAt(mk.x, mk.z);
-    if (G.markerMesh && G.markerMesh.visible) pillarAt(G.markerMesh, mk.x, gy, mk.z, 220);
-    placeTag(tg, mk.x, gy + 2.5, mk.z);
-    const vc = p.mode === 'plane' && G.plane ? G.plane.pos : (G.viewChar ? G.viewChar() : p).pos, txt = `마커 · ${fmtDist(Math.hypot(mk.x - vc.x, mk.z - vc.z))}`;
-    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt;
-  }
-  function updateDanger(p) {
-    const dg = G.danger, tg = $('dangerTag');
-    if (!dangerMesh) dangerMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 70, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xe0453a, transparent: true, opacity: 0.5, fog: false, depthWrite: false }));
-    if (G.scene && dangerMesh.parent !== G.scene) G.scene.add(dangerMesh);
-    dangerMesh.visible = !!dg; tg.hidden = !dg; if (!dg) return;
-    const gy = dg.y !== undefined ? dg.y : heightAt(dg.x, dg.z);
-    pillarAt(dangerMesh, dg.x, gy, dg.z, 90); dangerMesh.material.opacity = 0.3 + (Math.floor(G.time * 4) % 2) * 0.3;
-    placeTag(tg, dg.x, gy + 2.4, dg.z);
-    const vc = p.mode === 'plane' && G.plane ? { pos: G.plane.pos } : G.viewChar ? G.viewChar() : p, txt = `위험 · ${fmtDist(Math.hypot(dg.x - vc.pos.x, dg.z - vc.pos.z))}`;
-    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt;
-  }
-  function updatePing(p) {
-    updateDanger(p); updateMarkTag(p);
-    const ord = G.teamOrder, tg = $('pingTag');
-    if (!pingMesh) pingMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 60, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xf2c94c, transparent: true, opacity: 0.5, fog: false, depthWrite: false }));
-    if (G.scene && pingMesh.parent !== G.scene) G.scene.add(pingMesh);
-    pingMesh.visible = !!ord; tg.hidden = !ord; if (!ord) return;
-    const atk = ord.kind === 'attack', gy = ord.y !== undefined && !atk ? ord.y : heightAt(ord.x, ord.z);
-    pingMesh.material.color.setHex(atk ? 0xe0453a : 0xf2c94c); pillarAt(pingMesh, ord.x, gy, ord.z, 140);
-    pingMesh.material.opacity = 0.35 + Math.sin(G.time * 6) * 0.12;
-    placeTag(tg, ord.x, gy + 2.2, ord.z);
-    const vc = p.mode === 'plane' && G.plane ? { pos: G.plane.pos } : G.viewChar ? G.viewChar() : p, txt = `${atk ? '공격' : '이동'} · ${fmtDist(Math.hypot(ord.x - vc.pos.x, ord.z - vc.pos.z))}`;
-    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt; tg.classList.toggle('atk', atk);
+    TeamPing.hud(p);   // v23 핑·지도 마커: 찍은 팀원 번호 색 점 + 거리 화면 표식 · 3D 점 (09_player_ping.js — 예전 기둥 없앰)
   }
   // 팀원(또는 내가 핑으로) 발견한 적: 미니맵에 6초 표시, 팀원이 발견하면 '적 발견' 알림 (8초에 한 번)
   let spotCallT = -99;
@@ -29124,8 +29351,6 @@ const HUD = (() => {
     }
     // 리콜 타워 · 팀원 리콜 카드 · 리콜 수송기 (듀오·스쿼드)
     Recall.drawMap(ctx, toPx, opts);
-    // 마커
-    if (G.marker) { const [mx, my] = toPx(G.marker.x, G.marker.z); ctx.fillStyle = '#f0a43a'; ctx.beginPath(); ctx.moveTo(mx, my); ctx.arc(mx, my - 9, 5, Math.PI * 0.8, Math.PI * 0.2); ctx.closePath(); ctx.fill(); }
     if (opts.labels) {
       ctx.font = `600 ${Math.round(S / 52)}px 'IBM Plex Sans KR', sans-serif`; ctx.textAlign = 'center';
       // 길가 마을·주유소(minor)는 확대했을 때만 (2km 이하가 보일 때) — 전체 지도에서는 글자가 겹친다
@@ -29161,17 +29386,8 @@ const HUD = (() => {
       ctx.globalAlpha = clamp(1.4 - age / 6, 0.25, 1); ctx.fillStyle = '#e0453a'; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.87, y + r * 0.5); ctx.lineTo(x - r * 0.87, y + r * 0.5); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
     }
-    if (G.danger) { // 위험 표시: 빨간 원 + 느낌표
-      const [x, y] = toPx(G.danger.x, G.danger.z), r = opts.labels ? 9 : 7;
-      ctx.fillStyle = Math.floor(G.time * 4) % 2 ? '#e0453a' : '#ff8a7d'; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = `800 ${r * 1.5}px 'Saira Condensed', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', x, y + 0.5); ctx.textBaseline = 'alphabetic';
-    }
-    if (G.teamOrder) {
-      const o = G.teamOrder, [x, y] = toPx(o.x, o.z), r = opts.labels ? 8 : 6;
-      ctx.fillStyle = o.kind === 'attack' ? '#e0453a' : '#f2c94c'; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fill(); ctx.stroke();
-    }
+    // v23 마커 · 핑(이동·공격·위험): 나와 같은 팀 사람(다른 기기 포함) 것 — 찍은 팀원 번호 색 (09_player_ping.js)
+    TeamPing.drawMap(ctx, toPx, opts);
     // 팀원 (번호 색 점, 기절은 붉게 깜빡임)
     if (G.teamSize > 1 && G.teams && p) for (const m of G.teams[p.team].members) {
       if (m === p || !m.alive || m.mode === 'plane') continue;
@@ -29285,7 +29501,7 @@ const HUD = (() => {
     $('mapOrder').addEventListener('click', (e) => { e.stopPropagation(); if (G.marker && G.player) { setTeamOrder({ kind: 'move', x: G.marker.x, z: G.marker.z, y: heightAt(G.marker.x, G.marker.z) }); drawBig(); } });
     // 미니맵을 누르면 전체 지도
     $('mini').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); Audio.init(); if (G.state === 'play' && !G.paused && $('mapPanel').hidden) openMap(); });
-    $('mapLegend').innerHTML = '<div><i style="background:#5aa2ff"></i>현재 안전 구역</div><div><i style="background:#fff"></i>다음 안전 구역</div><div><i style="background:#f0a43a"></i>나 / 마커</div><div><i style="background:#d8cfb0"></i>도로</div>';
+    $('mapLegend').innerHTML = '<div><i style="background:#5aa2ff"></i>현재 안전 구역</div><div><i style="background:#fff"></i>다음 안전 구역</div><div><i style="background:#f0a43a"></i>나</div><div><i style="background:linear-gradient(90deg,#f2c94c 25%,#f2994a 25% 50%,#5ab8f0 50% 75%,#6fcf97 75%)"></i>마커·핑 (찍은 팀원 번호 색)</div><div><i style="background:#d8cfb0"></i>도로</div>';
   }
 
   // ---------- 인벤토리 ----------
@@ -29968,7 +30184,7 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       if (R.tierUp && !R.placement && R.before && R.after) setTimeout(() => { if (G.state === 'result' && !$('resultPanel').hidden) RankFx.play(R.before, R.after, { series: !!R.series }); }, 650);
     }
   }
-  return { lobbyNote: (m, ms) => showLobbyNote(m, ms), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { if (/^m_/.test(cat || '')) { whMel = cat; cat = 'melee'; } whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); else if (cat === 'melee' && skin) Lobby.show({ kind: 'melee', melee: whMel.slice(2), skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
+  return { lobbyNote: (m, ms) => showLobbyNote(m, ms), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { if (/^m_/.test(cat || '')) { whMel = cat; cat = 'melee'; } whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); else if (cat === 'melee' && skin) Lobby.show({ kind: 'melee', melee: whMel.slice(2), skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; TeamPing.reset(); document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();
 
 // ---------- 10_mm.js ----------
@@ -30376,6 +30592,8 @@ const MM = (() => {
 //  피해: 쏜 쪽이 맞힌 것을 판정 → 맞은 캐릭터의 주인 기기로 'hit' → 주인이 방어구 계산·기절·사망 처리 후 결과를 알림
 //  아이템: 시작 아이템·차량은 같은 시드로 각자 생성(방장이 개수·위치 합계로 검증, 다르면 목록 전송), 이후 줍기·버리기는 사건으로
 //  리콜(08_recall.js): 'rc' — 등록 요청은 방장에게, 방장이 확인해 승인을 모두에게. 되살리기는 그 캐릭터의 주인 기기
+//  팀 핑(09_player_ping.js, v23): 'pg' — 찍은 사람의 핑·마커 상태 통째로, 같은 팀 사람마다(to) + 방장(팀원 봇). 방장이 받는 사람에게 넘긴다
+//   (옛 화면은 모르는 사건을 버릴 뿐 깨지지 않아 NET_VER 는 올리지 않음 — 서로 핑만 안 보인다)
 // ============================================================
 // 같이 하기 버전: 경기 사건·설정의 모양이 바뀌면 올린다 — 다르면 파티·온라인 매칭·경기 연결에서 같이 하지 않는다 (10_ver.js)
 //  2 = v22 데스매치 아레나(cfg.arena) · 3 = v22 시체·보급 상자(gadd bx)·근접 무기(pu w)·새 투척 무기 + v23 이어하기(로비 rj·rjok · rjs)·우승 축하(vic)
@@ -30620,7 +30838,7 @@ const Net = (() => {
     if (m.v) for (const a of m.v) applyVeh(a);
     if (m.w) applyWorld(m.w);
     if (m.e) for (const e of m.e) {
-      e.from = e.from || p.uid;
+      e.from = N.host ? p.uid : e.from || p.uid;   // 보낸 사람: 방장은 실제로 보낸 파티원으로 (파티원은 남의 사건을 넘기지 않음 — v23 핑처럼 보낸 사람을 믿는 사건을 다른 사람 이름으로 꾸며 넘기지 못하게)
       if (N.host && e.to && e.to !== N.me) { const tp = N.peers.get(e.to); if (!tp || tp.left) e.to = N.me; } // 떠난 사람 앞 사건은 방장이 대신 처리
       // 방장: 다른 파티원에게 넘길 것
       if (N.host && (!e.to || e.to !== N.me)) { const fw = Object.assign({}, e); N.outB.push(fw); }
@@ -30665,6 +30883,7 @@ const Net = (() => {
       case 'isl': if (!N.host && G.island) Island.end(); break;   // 방장의 스타트 섬이 끝남 → 모두 수송기로
       case 'rjs': applyRj(e); break;   // v23 다시 들어옴: 방장이 보낸 지금 상태
       case 'vic': Victory.onNet(e); break;   // v23 우승 축하: 파티원의 동상 세우기·춤
+      case 'pg': try { TeamPing.onNet(e); } catch (er) { console.warn('핑 받기', er); } break;   // v23 팀 핑·지도 마커 (09_player_ping.js — 같은 팀 사람 + 팀원 봇을 움직이는 방장에게만 온다 · 이상한 값으로 이 묶음의 다른 사건을 놓치지 않게)
     }
   }
 
@@ -38493,7 +38712,7 @@ const TIPS = [
 ];
 
 const G = {
-  state: 'lobby', paused: false, time: 0, noises: [], player: null, plane: null, marker: null, markerMesh: null,
+  state: 'lobby', paused: false, time: 0, noises: [], player: null, plane: null, marker: null,
   firstPerson: SETTINGS.view === 'fpp', shake: 0, over: false, scene: null, camera: null, renderer: null,
   sun: null, hemi: null, previewT: 0, stats: { shots: 0, hits: 0 }, lastXp: 0, statsSaved: false, timeScale: 1, endT: 0, total: 0,
 };
@@ -39034,22 +39253,15 @@ function disposeMatch() {
   Victory.reset();   // v23 우승 축하 창·춤 음악 정리
   Body.fogMax.value = 1; CV.objR = 0; CAPV.clear();   // v23 캐릭터 안개 상한·건물 표시 거리 되돌림 (로비·상점 화면의 캐릭터는 지형과 같은 안개) · 안개 상한을 씌운 차 목록
   if (!G.scene) return;
-  Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose(); XmasFx.dispose();
+  Zone.dispose(G.scene); Airdrop.dispose(); Recall.dispose(); Veh.dispose(); XmasFx.dispose(); TeamPing.reset();   // 핑 점·링을 장면에서 뗌 (지난 장면이 메모리에 남지 않게)
   G.scene.traverse(o => { if (o.geometry && !o.isSprite) o.geometry.dispose(); });
   for (const c of CHARS) if (c.rig && c.rig.skel) c.rig.skel.dispose();   // 뼈대 텍스처(GPU) 해제
   if (G.botLooks) { const ml = myLook(); BotSkin.purge(G.botLooks, CHARS.filter((c) => c.human || c.isPlayer).map((c) => c.look).concat([Body.makeLook(ml.eq, ml.body)])); G.botLooks = null; }   // 봇 옷 묶음 몸 메시(CPU) 정리
   G.scene = null; CHARS = []; GROUND = []; W = null; G.player = null; G.plane = null; G.dropCands = null;
   Audio.plane(false);
 }
-G.updateMarker = function () {
-  if (!G.scene) return;
-  if (!G.markerMesh) {
-    G.markerMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 160, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xf0a43a, transparent: true, opacity: 0.45, fog: false, depthWrite: false }));
-  }
-  if (G.markerMesh.parent !== G.scene) G.scene.add(G.markerMesh);
-  G.markerMesh.visible = !!G.marker;
-  if (G.marker) G.markerMesh.position.set(G.marker.x, heightAt(G.marker.x, G.marker.z) + 80, G.marker.z);
-};
+// 지도 마커가 바뀜: v23 부터 기둥 없이 — 화면 표식·3D 점·팀원에게 보내기는 TeamPing 이 매 프레임 G.marker 를 보고 한다 (09_player_ping.js)
+G.updateMarker = function () {};
 // 경기 종료 판정: 내 팀이 전멸하면 패배, 살아 있는 팀이 내 팀뿐이면 우승 (내가 죽어 관전 중이어도 팀 우승)
 G.onDeath = function (c, killer) {
   if (G.dm) { DM.onDeath(c, killer); return; }
@@ -39562,7 +39774,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들 — 로컬 파일·개발 주소이거나 서버가 확인한 관리자 계정일 때만 window 에 붙는다 (10_dev.js Dev.hooks · 배포 사이트의 콘솔 치트 막기)
-  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, Pace, PACE, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
+  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, TeamPing, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, Pace, PACE, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } } }));

@@ -219,7 +219,7 @@ const HUD = (() => {
   function teamColor(c) { return TEAM_COLORS[c.slot % TEAM_COLORS.length]; }
   function updateTeam(p) {
     const on = G.teamSize > 1 && G.teams, panel = $('teamPanel'), tags = $('teamTags');
-    panel.hidden = !on; tags.hidden = !on; if (!on) { updateMarkTag(p); return; }   // 솔로: 내 지도 마커만
+    panel.hidden = !on; tags.hidden = !on; if (!on) { TeamPing.hud(p); return; }   // 솔로: 내 지도 마커만
     const ms = G.teams[p.team].members;
     if (panel.dataset.k !== String(ms.length)) {
       panel.dataset.k = String(ms.length); panel.innerHTML = ''; tags.innerHTML = '';
@@ -262,65 +262,7 @@ const HUD = (() => {
         }
       } else t.hidden = true;
     });
-    updatePing(p);
-  }
-  // 핑 표시: 3D 기둥 + 화면 표식(종류·거리)
-  let pingMesh = null;
-  let dangerMesh = null;
-  // 화면 표식: 화면 안이면 그 자리, 밖(또는 뒤)이면 화면 가장자리에 붙여 방향 화살표 — 수송기 위처럼 멀리서도 놓치지 않게
-  const _cv = new THREE.Vector3();
-  function placeTag(tg, x, y, z) {
-    const W = innerWidth, H = innerHeight;
-    _tp.set(x, y, z).project(G.camera);
-    if (_tp.z < 1 && Math.abs(_tp.x) < 0.97 && Math.abs(_tp.y) < 0.95) { tg.classList.remove('edge'); tg.style.visibility = ''; tg.style.transform = `translate(${((_tp.x + 1) / 2 * W).toFixed(0)}px, ${((1 - _tp.y) / 2 * H).toFixed(0)}px)`; return; }
-    _cv.set(x, y, z).applyMatrix4(G.camera.matrixWorldInverse);
-    let dx = _cv.x, dy = _cv.y; if (_cv.z > 0 && Math.hypot(dx, dy) < 1e-3) dy = -1;   // 바로 뒤 → 아래쪽
-    const mx = W / 2 - 46, my = H / 2 - 40, k = Math.min(mx / Math.max(1e-6, Math.abs(dx)), my / Math.max(1e-6, Math.abs(dy)));
-    tg.classList.add('edge'); tg.style.visibility = '';
-    tg.style.transform = `translate(${(W / 2 + dx * k).toFixed(0)}px, ${(H / 2 - dy * k).toFixed(0)}px)`;
-    tg.style.setProperty('--ang', Math.atan2(-dy, dx).toFixed(3) + 'rad');
-  }
-  // 3D 기둥: 시야 거리(카메라 far)보다 멀면 같은 방향·같은 화면 크기로 당겨 와서 그리고, 멀수록 굵게 (수송기 고도에서도 보이게)
-  function pillarAt(m, x, gy, z, h) {
-    const cam = G.camera, cp = cam.position, g = m.geometry.parameters, d = Math.hypot(x - cp.x, z - cp.z), lim = cam.far * 0.8, k = d > lim ? lim / d : 1;
-    const r = Math.max(g.radiusTop, d * 0.003) * k, hh = h * k;
-    m.position.set(cp.x + (x - cp.x) * k, cp.y + (gy - cp.y) * k + hh / 2, cp.z + (z - cp.z) * k);
-    m.scale.set(r / g.radiusTop, hh / g.height, r / g.radiusTop);
-  }
-  const fmtDist = (d) => d >= 1000 ? (d / 1000).toFixed(1) + 'km' : Math.round(d) + 'm';
-  // 내 지도 마커: 화면 표식(거리) + 기둥
-  function updateMarkTag(p) {
-    const mk = G.marker, tg = $('markTag'); if (!tg) return;
-    tg.hidden = !mk; if (!mk) return;
-    const gy = heightAt(mk.x, mk.z);
-    if (G.markerMesh && G.markerMesh.visible) pillarAt(G.markerMesh, mk.x, gy, mk.z, 220);
-    placeTag(tg, mk.x, gy + 2.5, mk.z);
-    const vc = p.mode === 'plane' && G.plane ? G.plane.pos : (G.viewChar ? G.viewChar() : p).pos, txt = `마커 · ${fmtDist(Math.hypot(mk.x - vc.x, mk.z - vc.z))}`;
-    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt;
-  }
-  function updateDanger(p) {
-    const dg = G.danger, tg = $('dangerTag');
-    if (!dangerMesh) dangerMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 70, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xe0453a, transparent: true, opacity: 0.5, fog: false, depthWrite: false }));
-    if (G.scene && dangerMesh.parent !== G.scene) G.scene.add(dangerMesh);
-    dangerMesh.visible = !!dg; tg.hidden = !dg; if (!dg) return;
-    const gy = dg.y !== undefined ? dg.y : heightAt(dg.x, dg.z);
-    pillarAt(dangerMesh, dg.x, gy, dg.z, 90); dangerMesh.material.opacity = 0.3 + (Math.floor(G.time * 4) % 2) * 0.3;
-    placeTag(tg, dg.x, gy + 2.4, dg.z);
-    const vc = p.mode === 'plane' && G.plane ? { pos: G.plane.pos } : G.viewChar ? G.viewChar() : p, txt = `위험 · ${fmtDist(Math.hypot(dg.x - vc.pos.x, dg.z - vc.pos.z))}`;
-    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt;
-  }
-  function updatePing(p) {
-    updateDanger(p); updateMarkTag(p);
-    const ord = G.teamOrder, tg = $('pingTag');
-    if (!pingMesh) pingMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 60, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xf2c94c, transparent: true, opacity: 0.5, fog: false, depthWrite: false }));
-    if (G.scene && pingMesh.parent !== G.scene) G.scene.add(pingMesh);
-    pingMesh.visible = !!ord; tg.hidden = !ord; if (!ord) return;
-    const atk = ord.kind === 'attack', gy = ord.y !== undefined && !atk ? ord.y : heightAt(ord.x, ord.z);
-    pingMesh.material.color.setHex(atk ? 0xe0453a : 0xf2c94c); pillarAt(pingMesh, ord.x, gy, ord.z, 140);
-    pingMesh.material.opacity = 0.35 + Math.sin(G.time * 6) * 0.12;
-    placeTag(tg, ord.x, gy + 2.2, ord.z);
-    const vc = p.mode === 'plane' && G.plane ? { pos: G.plane.pos } : G.viewChar ? G.viewChar() : p, txt = `${atk ? '공격' : '이동'} · ${fmtDist(Math.hypot(ord.x - vc.pos.x, ord.z - vc.pos.z))}`;
-    if (tg.lastChild.textContent !== txt) tg.lastChild.textContent = txt; tg.classList.toggle('atk', atk);
+    TeamPing.hud(p);   // v23 핑·지도 마커: 찍은 팀원 번호 색 점 + 거리 화면 표식 · 3D 점 (09_player_ping.js — 예전 기둥 없앰)
   }
   // 팀원(또는 내가 핑으로) 발견한 적: 미니맵에 6초 표시, 팀원이 발견하면 '적 발견' 알림 (8초에 한 번)
   let spotCallT = -99;
@@ -584,8 +526,6 @@ const HUD = (() => {
     }
     // 리콜 타워 · 팀원 리콜 카드 · 리콜 수송기 (듀오·스쿼드)
     Recall.drawMap(ctx, toPx, opts);
-    // 마커
-    if (G.marker) { const [mx, my] = toPx(G.marker.x, G.marker.z); ctx.fillStyle = '#f0a43a'; ctx.beginPath(); ctx.moveTo(mx, my); ctx.arc(mx, my - 9, 5, Math.PI * 0.8, Math.PI * 0.2); ctx.closePath(); ctx.fill(); }
     if (opts.labels) {
       ctx.font = `600 ${Math.round(S / 52)}px 'IBM Plex Sans KR', sans-serif`; ctx.textAlign = 'center';
       // 길가 마을·주유소(minor)는 확대했을 때만 (2km 이하가 보일 때) — 전체 지도에서는 글자가 겹친다
@@ -621,17 +561,8 @@ const HUD = (() => {
       ctx.globalAlpha = clamp(1.4 - age / 6, 0.25, 1); ctx.fillStyle = '#e0453a'; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.87, y + r * 0.5); ctx.lineTo(x - r * 0.87, y + r * 0.5); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
     }
-    if (G.danger) { // 위험 표시: 빨간 원 + 느낌표
-      const [x, y] = toPx(G.danger.x, G.danger.z), r = opts.labels ? 9 : 7;
-      ctx.fillStyle = Math.floor(G.time * 4) % 2 ? '#e0453a' : '#ff8a7d'; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = `800 ${r * 1.5}px 'Saira Condensed', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', x, y + 0.5); ctx.textBaseline = 'alphabetic';
-    }
-    if (G.teamOrder) {
-      const o = G.teamOrder, [x, y] = toPx(o.x, o.z), r = opts.labels ? 8 : 6;
-      ctx.fillStyle = o.kind === 'attack' ? '#e0453a' : '#f2c94c'; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fill(); ctx.stroke();
-    }
+    // v23 마커 · 핑(이동·공격·위험): 나와 같은 팀 사람(다른 기기 포함) 것 — 찍은 팀원 번호 색 (09_player_ping.js)
+    TeamPing.drawMap(ctx, toPx, opts);
     // 팀원 (번호 색 점, 기절은 붉게 깜빡임)
     if (G.teamSize > 1 && G.teams && p) for (const m of G.teams[p.team].members) {
       if (m === p || !m.alive || m.mode === 'plane') continue;
@@ -745,7 +676,7 @@ const HUD = (() => {
     $('mapOrder').addEventListener('click', (e) => { e.stopPropagation(); if (G.marker && G.player) { setTeamOrder({ kind: 'move', x: G.marker.x, z: G.marker.z, y: heightAt(G.marker.x, G.marker.z) }); drawBig(); } });
     // 미니맵을 누르면 전체 지도
     $('mini').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); Audio.init(); if (G.state === 'play' && !G.paused && $('mapPanel').hidden) openMap(); });
-    $('mapLegend').innerHTML = '<div><i style="background:#5aa2ff"></i>현재 안전 구역</div><div><i style="background:#fff"></i>다음 안전 구역</div><div><i style="background:#f0a43a"></i>나 / 마커</div><div><i style="background:#d8cfb0"></i>도로</div>';
+    $('mapLegend').innerHTML = '<div><i style="background:#5aa2ff"></i>현재 안전 구역</div><div><i style="background:#fff"></i>다음 안전 구역</div><div><i style="background:#f0a43a"></i>나</div><div><i style="background:linear-gradient(90deg,#f2c94c 25%,#f2994a 25% 50%,#5ab8f0 50% 75%,#6fcf97 75%)"></i>마커·핑 (찍은 팀원 번호 색)</div><div><i style="background:#d8cfb0"></i>도로</div>';
   }
 
   // ---------- 인벤토리 ----------
@@ -1428,5 +1359,5 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
       if (R.tierUp && !R.placement && R.before && R.after) setTimeout(() => { if (G.state === 'result' && !$('resultPanel').hidden) RankFx.play(R.before, R.after, { series: !!R.series }); }, 650);
     }
   }
-  return { lobbyNote: (m, ms) => showLobbyNote(m, ms), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { if (/^m_/.test(cat || '')) { whMel = cat; cat = 'melee'; } whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); else if (cat === 'melee' && skin) Lobby.show({ kind: 'melee', melee: whMel.slice(2), skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; $('pingTag').hidden = true; $('dangerTag').hidden = true; document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
+  return { lobbyNote: (m, ms) => showLobbyNote(m, ms), goTab: (t) => setTab(t), whOpen: (cat, gun, skin) => { if (/^m_/.test(cat || '')) { whMel = cat; cat = 'melee'; } whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); else if (cat === 'melee' && skin) Lobby.show({ kind: 'melee', melee: whMel.slice(2), skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; TeamPing.reset(); document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();
