@@ -431,9 +431,11 @@ async function startMatch(cfg) {
   G.state = 'loading'; G.paused = false; G.over = false; G.training = false; G.matchT = 0; G.victory = null;
   document.body.classList.remove('training'); $('quitBtn').textContent = '경기 포기 (로비로)';
   Audio.music(false);
-  $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
-  $('loadMap').textContent = MAPS[SETTINGS.map].name; $('loadTip').textContent = pick(TIPS);
-  const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
+  $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; Shop.closeAll();
+  // v23 로딩 화면 「위성 정찰 스캔」 (10_loading.js) — 모드 줄은 아래에서 정하는 G.hc·G.ranked·팀 크기와 같은 식 (표시만)
+  { const hc = net ? !!cfg.hc : rs ? !!rs.hc : SETTINGS.queue === 'hardcore' && Rank.hcOk(), rk = net ? !!cfg.ranked : rs ? !!rs.rk : (SETTINGS.queue === 'ranked' || hc) && Rank.unlocked();
+    Loading.show({ title: MAPS[SETTINGS.map].name, sub: Loading.brSub(rk, hc, net ? cfg.teamSize : rs ? rs.ts : rk ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size), tips: TIPS, mapId: SETTINGS.map, kind: 'br' }); }
+  const prog = Loading.prog;
   disposeMatch();
   G.netCfg = net ? cfg : null;   // 이어하기 저장용 (창을 닫을 때 10_net.js 가 먼저 나가도 남아 있게)
   const sc = new THREE.Scene(); G.scene = sc;
@@ -455,7 +457,7 @@ async function startMatch(cfg) {
   setMapSize(SETTINGS.map);
   if (net && cfg.humans && typeof Cloud !== 'undefined' && Cloud.staffAsk) Cloud.staffAsk(cfg.humans.map((hm) => hm.uid));   // v23 스타트 섬 머리 위 칭호(한 번만 그려짐): 관리자 계정이 단 칭호가 보이게, 맵을 만드는 동안 답이 오도록 미리 확인 (10_cloud.js)
   try { await generateWorld(SETTINGS.map, sc, prog); }
-  catch (e) { console.error(e); fatal('맵 생성 중 오류: ' + e.message); return; }
+  catch (e) { console.error(e); Loading.hideNow(); fatal('맵 생성 중 오류: ' + e.message); return; }
   prog(0.97, '아이템 배치');
   // 경기 시드: 같이 하기는 방장이 정한 것, 혼자면 새로(이어하기는 저장해 둔 것) — 시드가 같으면 모든 기기에서 같은 아이템이 같은 자리에 생긴다
   //  v23: 혼자 하는 경기도 시드로 — 이어하기가 시작 아이템을 다시 만들고 바뀐 것만 저장한다 (10_resume.js)
@@ -546,7 +548,11 @@ async function startMatch(cfg) {
   const isl = !G.skipIsland && !rs && !(rj && !rj.isl) && Island.start(sc, net ? cfg.seed : (Math.random() * 2147483647) | 0);
   if (rs) Resume.apply(rs);
   if (net) Net.ready();
-  $('loading').hidden = true; $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
+  // 로딩 화면: 첫 자기장 + 「강하 준비 완료」 도장 뒤 CSS 로 사라짐 — 경기는 지금 바로 시작하고 화면만 겹친다
+  //  같이 하기 파티원: 이 기기의 Zone 은 아직 방장 것이 아님 → 방장 자기장(welcome)이 오면 그림('wait' — 10_net.js applyZone → Loading.zone)
+  //  이어하기는 진행 중인 경기라 빠른 마무리 · 같이 하기로 돌아온 사람(G.rjHold)은 방장이 지금 상태를 보낼 때까지 가림막 그대로 (10_resume.js rejoined 가 걷음)
+  if (G.rjHold) Loading.hold(); else Loading.finale({ zone: !net || Net.isHost() ? true : 'wait', plane: !rs, stamp: rs ? '작전 재개' : '강하 준비 완료', quick: !!rs });
+  $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
   G.state = 'play';
   if (isl) { G.previewT = 0; Audio.wind(0.04); }
   else if (!rs && !rj) planeIntro();
@@ -973,7 +979,7 @@ G.ui = function (a) {
 function toLobby() {
   if (G.net) Net.leave();
   if (!Resume.busy) Resume.clear();   // 메뉴로 나간 경기는 이어하지 않는다 (경기 포기는 그때 기록됨)
-  $('resultPanel').hidden = true; $('hud').hidden = true; $('mapPanel').hidden = true; $('invPanel').hidden = true; $('pausePanel').hidden = true;
+  $('resultPanel').hidden = true; $('hud').hidden = true; $('mapPanel').hidden = true; $('invPanel').hidden = true; $('pausePanel').hidden = true; Loading.hideNow();
   disposeMatch(); G.state = 'lobby'; G.paused = false; G.spec = null; releaseLock();
   G.training = false; document.body.classList.remove('training');
   $('lobby').hidden = false; HUD.renderLobby(); Audio.music(true);
@@ -1040,6 +1046,9 @@ function loop(ts) {
   try {
     if (G.state === 'lobby' || G.state === 'loading') {
       if (off) return;
+      // v23 로딩 화면(10_loading.js)이 화면을 다 덮는 동안: 로비 3D 와 아이콘·썸네일 미리 그리기(GPU 를 기다림)를 쉬고 맵 생성에 CPU 를 준다
+      //  미리 그리기는 로비로 돌아오면 이어서 · 경기 중 필요한 아이콘은 Models.idle 이 기다리지 않고 그림
+      if (G.state === 'loading' && Loading.covers()) return;
       GunSkin.update(dt);   // 총기 스킨: 빛 애니메이션·꺼내기 효과 (경기 중에는 G.update와 함께 — 멈추면 같이 멈춤)
       if (Cutscene.active) { Cutscene.update(dt); Cutscene.render(G.renderer); }
       else if (!Watch.viewing()) { Lobby.update(dt); G.renderer.render(Lobby.scene, Lobby.cam); }   // 친구 관전 화면이 덮고 있으면 로비 3D 는 그리지 않음
@@ -1089,7 +1098,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들 — 로컬 파일·개발 주소이거나 서버가 확인한 관리자 계정일 때만 window 에 붙는다 (10_dev.js Dev.hooks · 배포 사이트의 콘솔 치트 막기)
-  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, MeleeFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, TeamPing, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, Pace, PACE, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, App, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
+  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, MeleeFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, TeamPing, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, Pace, PACE, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Loading() { return Loading; }, get Ver() { return Ver; }, App, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } } }));

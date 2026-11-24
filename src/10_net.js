@@ -676,6 +676,7 @@ const Net = (() => {
     const nk = JSON.stringify(z.n), ok = JSON.stringify(Zone.next);
     Zone.cur = z.c; Zone.next = z.n; Zone.from = z.f; Zone.phase = z.p; Zone.state = z.s; Zone.timer = z.t; Zone.dps = z.d; Zone.shrinkTotal = z.st; Zone.finalT = z.ft; Zone.warned = z.w;
     Zone.updateMeshes(); if (nk !== ok) Zone.updateRing();
+    Loading.zone();   // v23 로딩 화면 마지막 연출 중이면 방장 자기장을 그림 (파티원은 이때부터 맞는 자기장)
   }
   function applyWorld(w) {
     if (N.host) return;

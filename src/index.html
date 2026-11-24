@@ -735,14 +735,42 @@
     </div>
   </section>
 
-  <!-- 로딩 -->
+  <!-- 로딩: v23 「위성 정찰 스캔」 (10_loading.js) — 맵을 만드는 동안 진짜 높이맵·표면이 주사선을 따라 드러나고 지역·도로·건물·나무 → 미니맵 → 첫 자기장 · 강하 준비 완료 도장 -->
   <section id="loading" class="screen" hidden>
-    <div class="load-box">
-      <div class="eyebrow">작전 지역 생성</div>
-      <h2 id="loadMap">칼덴 섬</h2>
-      <div class="bar big"><i id="loadBar"></i></div>
-      <div class="micro" id="loadStep">준비 중</div>
-      <p class="tip" id="loadTip"></p>
+    <div class="ld-bg" aria-hidden="true"></div>
+    <div class="ld-wrap">
+      <div class="ld-feed">
+        <div class="ld-cols" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span></div>
+        <div class="ld-rows" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+        <div class="ld-sat" id="ldSat" aria-hidden="true">
+          <canvas id="ldTerr" width="1" height="1"></canvas>
+          <canvas id="ldMap" width="1" height="1"></canvas>
+          <canvas id="ldTree" width="1" height="1"></canvas>
+          <canvas id="ldRoad" width="1" height="1"></canvas>
+          <canvas id="ldBld" width="1" height="1"></canvas>
+          <div class="ld-cur" id="ldCur"><div class="ld-cur-in"><canvas id="ldNoise" width="160" height="160"></canvas></div><i class="ld-trail"></i><i class="ld-line"></i><i class="ld-head"></i><canvas id="ldProf" width="256" height="40"></canvas><span class="ld-tag" id="ldTag"></span></div>
+          <div class="ld-acq"><i></i><b>신호 수신 중</b><small>SIGNAL ACQUIRE</small></div>
+          <canvas id="ldSweep" width="256" height="256"></canvas><i class="ld-swl"></i>
+          <div class="ld-pois" id="ldPois"></div>
+          <div class="ld-zone" id="ldZone"><div class="ld-zw"><svg class="zt" id="ldZt" preserveAspectRatio="none"><path id="ldZtP" fill-rule="evenodd"/></svg><i class="zc" id="ldZc"></i><i class="zn" id="ldZn"></i><i class="zp" id="ldZp"></i><i class="zx" id="ldZx"></i><b class="zl" id="ldZl"></b></div><i class="zf" id="ldZf"><i></i></i><b class="zfl" id="ldZfl">비행 경로</b></div>
+          <div class="ld-fx"></div>
+          <span class="ld-hud ld-live"><i></i>SAT-1 · LIVE</span><span class="ld-hud ld-rec" id="ldRec">REC 00:00.0</span>
+          <span class="ld-hud ld-pos" id="ldPos"></span><span class="ld-hud ld-gsd" id="ldGsd"></span>
+          <span class="ld-phase" id="ldPhase"></span>
+          <div class="ld-stamp" id="ldStamp"><b id="ldStampT"></b><small id="ldStampS"></small></div>
+        </div>
+        <i class="ld-brk" aria-hidden="true"></i>
+        <div class="ld-tick" aria-hidden="true"><div id="ldTick"></div></div>
+      </div>
+      <div class="ld-side">
+        <div class="ld-top"><span class="eyebrow">작전 지역 생성</span><span class="ld-op" id="ldOp"></span><svg class="ld-logo" viewBox="0 0 1200 300" aria-hidden="true"><use href="#ldr-logo-h"/></svg></div>
+        <h2 id="ldTitle"></h2>
+        <div class="ld-sub"><span id="ldSub"></span><em id="ldKm"></em></div>
+        <ol class="ld-log" id="ldLog"></ol>
+        <div class="ld-pct"><b id="ldPct">0</b><span>%</span><i class="ld-rule"><i id="ldRule"></i></i></div>
+        <div class="ld-memo" id="ldMemo"><div class="ld-memo-h"><span>작전 메모</span><em id="ldTipN"></em></div><p id="ldTip"></p></div>
+        <button class="btn ld-cancel" type="button" id="ldCancel" hidden>로비로 나가기</button>
+      </div>
     </div>
   </section>
 

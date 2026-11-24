@@ -166,7 +166,8 @@ async function generateWorld(mapId, scene, progress) {
   const RI = (a, b) => Math.floor(R(a, b + 1));
   const RP = (arr) => arr[Math.floor(rng() * arr.length)];
   const n1 = makeNoise(rng), n2 = makeNoise(rng), n3 = makeNoise(rng), n4 = makeNoise(rng);
-  const yieldUI = async (p, label) => { progress && progress(p, label); await new Promise(r => setTimeout(r, 0)); };
+  // info: 로딩 화면(10_loading.js 위성 스캔)에 넘기는 진행 자료 — { rows: 끝난 높이맵 줄 수 } · { trees: 지금까지 심은 나무 } (읽기만, 생성 난수와 무관)
+  const yieldUI = async (p, label, info) => { progress && progress(p, label, info); await new Promise(r => setTimeout(r, 0)); };
 
   const w = W = {
     mapId, hf: new Float32Array(HF_N * HF_N), surf: new Uint8Array(HF_N * HF_N),
@@ -399,7 +400,7 @@ async function generateWorld(mapId, scene, progress) {
       }
       w.surf[j * HF_N + i] = s;
     }
-    if (j % (big ? 60 : 40) === 0) await yieldUI(0.15 + 0.2 * j / HF_N, '높이맵 계산');
+    if (j % (big ? 60 : 40) === 0) await yieldUI(0.15 + 0.2 * j / HF_N, '높이맵 계산', { rows: j + 1 });
   }
   // 경사 급한 곳은 암석
   for (let j = 1; j < HF_N - 1; j++) for (let i = 1; i < HF_N - 1; i++) {
@@ -1122,7 +1123,7 @@ async function generateWorld(mapId, scene, progress) {
   const trees = [], rocks = [], bushes = [];
   const treeTarget = V2 ? 0 : big ? 42000 : 1500;   // v2 식생은 v2Vegetation
   for (let t = 0; t < treeTarget * 6 && trees.length < treeTarget; t++) {
-    if (big && t % 20000 === 0) await yieldUI(0.68 + 0.08 * trees.length / treeTarget, '숲과 바위 생성');
+    if (big && t % 20000 === 0) await yieldUI(0.68 + 0.08 * trees.length / treeTarget, '숲과 바위 생성', { trees });
     const x = R(-HALF * 0.9, HALF * 0.9), z = R(-HALF * 0.9, HALF * 0.9);
     const dens = sstep(-0.15, 0.35, fbm(n4, x * 0.008 / (big ? 2.5 : 1), z * 0.008 / (big ? 2.5 : 1), 3)) + mountW(x, z) * 0.5;
     if (rng() > dens * 0.9) continue;
@@ -1226,13 +1227,18 @@ async function generateWorld(mapId, scene, progress) {
   return w;
 }
 
+// 지도 표면 색 (표면 번호 → RGB): 미니맵 · v23 로딩 위성 화면(10_loading.js)이 같이 쓴다 — 정글·크리스마스 섬은 몇 가지를 바꿈
+function mapPalette(w) {
+  const SC = [[86, 120, 62], [124, 104, 74], [128, 122, 114], [196, 180, 132], [70, 70, 70], [140, 138, 132], [160, 142, 70], [110, 128, 56], [72, 100, 54], [64, 104, 92], [118, 156, 54], [132, 102, 68]];
+  if (w.v2 === 'jungle') SC[8] = [52, 86, 42];
+  if (w.xmas) Object.assign(SC, { 0: [226, 232, 240], 1: [168, 160, 152], 2: [140, 146, 156], 3: [176, 178, 182], 5: [158, 160, 166], 6: [214, 222, 232], 7: [204, 214, 226], 8: [196, 208, 222], 9: [176, 210, 232] });   // 크리스마스 섬
+  return SC;
+}
 // 미니맵 배경 이미지 (실제 높이맵/표면/도로/건물에서 생성)
 function buildMinimapImage(w) {
   const S = w.big && HALF > 1000 ? 2048 : 1024, cv = document.createElement('canvas'); cv.width = cv.height = S;
   const g = cv.getContext('2d'), img = g.createImageData(S, S), d = img.data;
-  const SC = [[86, 120, 62], [124, 104, 74], [128, 122, 114], [196, 180, 132], [70, 70, 70], [140, 138, 132], [160, 142, 70], [110, 128, 56], [72, 100, 54], [64, 104, 92], [118, 156, 54], [132, 102, 68]];
-  if (w.v2 === 'jungle') SC[8] = [52, 86, 42];
-  if (w.xmas) Object.assign(SC, { 0: [226, 232, 240], 1: [168, 160, 152], 2: [140, 146, 156], 3: [176, 178, 182], 5: [158, 160, 166], 6: [214, 222, 232], 7: [204, 214, 226], 8: [196, 208, 222], 9: [176, 210, 232] });   // 크리스마스 섬
+  const SC = mapPalette(w);
   for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
     const x = -HALF + (px + 0.5) / S * SIZE, z = -HALF + (py + 0.5) / S * SIZE, h = heightAt(x, z);
     let c;

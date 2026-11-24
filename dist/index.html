@@ -229,11 +229,202 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .map-opt b { font-family: var(--f-display); font-size: 1.2rem; letter-spacing: 0.03em; }
 .map-opt span { font-size: 0.72rem; color: var(--dim); line-height: 1.45; }
 
-/* ---------- 로딩 ---------- */
-#loading { display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #1b2224, var(--ink)); }
-.load-box { width: min(440px, calc(100% - 32px)); display: flex; flex-direction: column; gap: 10px; }
-.load-box h2 { font-family: var(--f-display); font-size: 2.2rem; margin: 0; letter-spacing: 0.05em; }
-.tip { color: var(--dim); font-size: 0.85rem; line-height: 1.6; margin-top: 14px; border-left: 2px solid var(--amber); padding-left: 10px; }
+/* ---------- 로딩: v23 「위성 정찰 스캔」 (10_loading.js) ----------
+   왼쪽 위성 화면(정사각형 --sq · 위 A~H · 왼쪽 1~8 · 아래 원격 측정 줄) + 오른쪽 맵 이름 · 모드 · 생성 기록 · 진행률 · 작전 메모
+   움직임은 transform·opacity 애니메이션뿐(합성 스레드) — 맵 생성이 주 스레드를 오래 막아도 잡음·주사선·탐지·도장·사라짐이 이어진다
+   z-index 45: HUD 와 메뉴(20~40) 위, 화면 회전 안내(50)·GL 끊김(55)·실행 오류(60) 아래 */
+#loading { z-index: 45; display: grid; place-items: center; overflow: hidden; background: #06090a; padding: calc(10px + var(--sat)) calc(16px + var(--sar)) calc(10px + var(--sab)) calc(16px + var(--sal)); --sq: min(calc(100vh - 96px), 46vw, 600px); }
+@supports (height: 100dvh) { #loading { --sq: min(calc(100dvh - 96px), 46vw, 600px); } }
+#loading.out { opacity: 0; pointer-events: none; transition: opacity 0.5s ease; }
+#loading.out.q { transition-duration: 0.3s; }   /* 빠른 마무리 (이어하기 · 다시 들어오기 · 데스매치) */
+#loading.fin { pointer-events: none; }   /* 마지막 연출 중에도 아래 경기 조작은 통과 · 사라짐(out)은 연출이 화면에 오르고 도장이 다 보인 뒤 (10_loading.js finTick) */
+.ld-bg { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 55% 75% at 30% 50%, rgba(52, 100, 128, 0.2), transparent 72%), radial-gradient(rgba(233, 226, 207, 0.06) 1px, transparent 1.4px) 0 0 / 22px 22px, linear-gradient(180deg, #080c0d, #050708); }
+.ld-wrap { position: relative; display: flex; align-items: center; gap: clamp(22px, 4vw, 52px); max-width: 100%; }
+.ld-feed { position: relative; flex: none; padding: 18px 0 22px 18px; }
+.ld-cols, .ld-rows { position: absolute; display: flex; font: 600 0.68rem/1 var(--f-display); letter-spacing: 0.1em; color: rgba(159, 212, 255, 0.55); pointer-events: none; }
+.ld-cols { left: 18px; top: 3px; width: var(--sq); }
+.ld-rows { left: 0; top: 18px; width: 14px; height: var(--sq); flex-direction: column; }
+.ld-cols span, .ld-rows span { flex: 1; display: grid; place-items: center; }
+.ld-sat { position: relative; width: var(--sq); height: var(--sq); overflow: hidden; background: #041016; isolation: isolate; box-shadow: 0 0 0 1px rgba(159, 212, 255, 0.24), 0 0 70px rgba(90, 162, 255, 0.12), 0 24px 60px rgba(0, 0, 0, 0.55); }
+.ld-sat > canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+#ldTree, #ldRoad, #ldBld { opacity: 0; transition: opacity 0.7s ease; }
+#ldTree.on { opacity: 0.9; } #ldRoad.on { opacity: 0.95; } #ldBld.on { opacity: 1; animation: ldBlink 0.9s ease-out; }
+#ldMap { opacity: 0; transition: opacity 0.9s ease; }
+.ld-sat.mini #ldMap { opacity: 1; } .ld-sat.mini #ldTree, .ld-sat.mini #ldRoad, .ld-sat.mini #ldBld { opacity: 0; }
+.ld-sat.mini.zoom #ldBld { opacity: 0.8; }   /* 아레나: 구조물이 바닥 무늬에 묻히지 않게 남김 */
+@keyframes ldBlink { 0% { opacity: 0; } 18% { opacity: 1; } 32% { opacity: 0.25; } 46% { opacity: 1; } 60% { opacity: 0.5; } }
+/* 아직 못 본 곳: 잡음 낀 어두운 바다 (가림막) — 윗변이 주사선, 그 위로 방금 지나간 빛 · 주사선 위를 오가는 감지 머리 */
+.ld-cur { position: absolute; left: 0; top: 0; width: 100%; height: 100%; will-change: transform; pointer-events: none; }
+.ld-cur-in { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(circle at 50% 35%, #0b2633, #041016 72%); }
+#ldNoise { position: absolute; left: -15%; top: -15%; width: 130%; height: 130%; image-rendering: pixelated; opacity: 0.6; animation: ldNoise 0.42s steps(1) infinite; }
+@keyframes ldNoise { 0% { transform: translate(0, 0); } 17% { transform: translate(-6%, 4%); } 33% { transform: translate(5%, -5%); } 50% { transform: translate(-3%, -8%); } 67% { transform: translate(7%, 3%); } 83% { transform: translate(-8%, 6%); } }
+.ld-line { position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: #e4f4ff; box-shadow: 0 0 8px 1px rgba(120, 196, 255, 0.95), 0 0 26px 4px rgba(90, 162, 255, 0.45); }
+.ld-trail { position: absolute; left: 0; right: 0; bottom: 100%; height: 16%; background: linear-gradient(0deg, rgba(130, 200, 255, 0.3), rgba(130, 200, 255, 0.07) 45%, transparent); }
+.ld-head { position: absolute; left: 0; top: -5px; width: 100%; height: 10px; animation: ldHead 1.25s ease-in-out infinite alternate; }
+.ld-head::before { content: ''; position: absolute; left: -26px; top: 0; width: 52px; height: 10px; border-radius: 50%; background: radial-gradient(closest-side, #fff, rgba(170, 220, 255, 0.7) 45%, transparent); }
+@keyframes ldHead { from { transform: translateX(0); } to { transform: translateX(100%); } }
+#ldProf { position: absolute; left: 0; bottom: 100%; width: 100%; height: 9%; max-height: 52px; opacity: 0.9; pointer-events: none; }   /* 고도 단면: 주사선 위에 바닥선을 둔 파형 */
+.ld-sat.acq #ldProf { opacity: 0; }
+.ld-tag { position: absolute; right: 8px; top: 7px; font: 600 0.64rem/1 var(--f-display); letter-spacing: 0.12em; color: #bfe3ff; text-shadow: 0 0 6px rgba(90, 162, 255, 0.8); white-space: nowrap; }
+.ld-sat.acq .ld-line, .ld-sat.acq .ld-trail, .ld-sat.acq .ld-head { opacity: 0; }
+/* 신호 잡는 중 (지형 설계) */
+.ld-acq { position: absolute; left: 50%; top: 50%; display: flex; flex-direction: column; align-items: center; gap: 5px; transform: translate(-50%, -50%); opacity: 0; transition: opacity 0.3s; pointer-events: none; text-align: center; }
+.ld-sat.acq .ld-acq { opacity: 1; }
+.ld-acq i { width: 52px; height: 52px; margin-bottom: 6px; border-radius: 50%; border: 2px solid rgba(159, 212, 255, 0.22); border-top-color: #cdeaff; animation: ldSpin 1.1s linear infinite; }
+.ld-acq b { font-size: 0.95rem; letter-spacing: 0.14em; color: #d6ecff; animation: ldPulse 1.2s ease-in-out infinite; }
+.ld-acq small { font: 600 0.6rem/1 var(--f-display); letter-spacing: 0.32em; color: rgba(159, 212, 255, 0.6); }
+@keyframes ldSpin { to { transform: rotate(360deg); } }
+@keyframes ldPulse { 50% { opacity: 0.3; } }
+/* 분석 중: 회전 탐지 (작은 캔버스 부채꼴을 돌림 — 흐려도 되는 빛 · 앞쪽 선은 또렷한 얇은 요소 .ld-swl 이 같은 회전으로 따라 돈다) */
+#ldSweep, .ld-swl { opacity: 0; transition: opacity 0.5s; animation: ldSpin 2.8s linear infinite paused; pointer-events: none; }
+#ldSweep { position: absolute; left: -21%; top: -21%; width: 142%; height: 142%; }
+.ld-swl { position: absolute; left: 50%; bottom: 50%; width: 2px; height: 71%; margin-left: -1px; transform-origin: 50% 100%; background: linear-gradient(0deg, rgba(200, 236, 255, 0), rgba(214, 240, 255, 0.9) 30%); box-shadow: 0 0 5px rgba(130, 200, 255, 0.55); }
+.ld-sat.sweep #ldSweep { opacity: 0.9; animation-play-state: running; }
+.ld-sat.sweep .ld-swl { opacity: 0.8; animation-play-state: running; }
+/* 지역 표식: 마름모 + 퍼지는 고리 + 이름 (--d: 주사선이 닿을 때까지 기다림) */
+.ld-pois { position: absolute; inset: 0; pointer-events: none; }
+.ld-poi { position: absolute; width: 0; height: 0; opacity: 0; --pc: #e9e2cf; }
+.ld-poi.hi { --pc: #f0a43a; } .ld-poi.mi { --pc: rgba(233, 226, 207, 0.65); }
+.ld-poi.on { opacity: 1; animation: ldPoi 0.45s var(--d, 0s) cubic-bezier(0.2, 0.9, 0.3, 1.35) both; }
+@keyframes ldPoi { from { opacity: 0; transform: scale(0.2); } }
+.ld-poi i { position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; background: var(--pc); transform: rotate(45deg); box-shadow: 0 0 0 1.5px rgba(4, 14, 18, 0.85), 0 0 8px var(--pc); }
+.ld-poi.mi i { left: -2px; top: -2px; width: 4px; height: 4px; box-shadow: 0 0 0 1px rgba(4, 14, 18, 0.7); }
+.ld-poi.on::before { content: ''; position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--pc); opacity: 0; animation: ldPing 1.1s var(--d, 0s) ease-out; }
+.ld-poi.mi.on::before { display: none; }
+@keyframes ldPing { from { opacity: 1; transform: scale(0.15); } to { opacity: 0; transform: scale(1.7); } }
+.ld-poi span { position: absolute; left: 9px; top: -8px; font-size: 0.7rem; font-weight: 600; line-height: 16px; color: #f4efdf; white-space: nowrap; letter-spacing: 0.02em; text-shadow: 0 1px 2px #000, 0 0 5px rgba(0, 0, 0, 0.9); }
+.ld-poi.l span { left: auto; right: 9px; }
+.ld-sat.fin .ld-pois { opacity: 0.6; transition: opacity 0.4s; }   /* 마지막: 자기장·비행 경로가 앞으로 — 지역 이름은 감추고 표식만 (자기장·비행 경로 이름표와 겹치지 않게) */
+.ld-sat.fin .ld-poi span { opacity: 0; transition: opacity 0.3s; }
+/* 위성 화면 덮개: 8×8 격자(지도와 같은 A~H · 1~8) · 주사 줄무늬 · 가장자리 어둡게 */
+.ld-fx { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 56%, rgba(0, 6, 10, 0.55) 100%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15) 0 1px, transparent 1px 3px), linear-gradient(90deg, rgba(200, 230, 255, 0.13) 1px, transparent 1px) 0 0 / 12.5% 100%, linear-gradient(0deg, rgba(200, 230, 255, 0.13) 1px, transparent 1px) 0 0 / 100% 12.5%; }
+.ld-hud { position: absolute; font: 600 0.68rem/1 var(--f-display); letter-spacing: 0.12em; color: rgba(214, 236, 255, 0.88); text-shadow: 0 1px 2px #000, 0 0 6px rgba(0, 0, 0, 0.8); white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
+.ld-live { left: 10px; top: 10px; display: flex; align-items: center; gap: 6px; }
+.ld-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 8px var(--red); animation: ldPulse 1s ease-in-out infinite; }
+.ld-rec { right: 10px; top: 10px; } .ld-pos { left: 10px; bottom: 10px; } .ld-gsd { right: 10px; bottom: 10px; }
+/* 녹화 시계: 0~9 숫자 띠를 steps 로 올림 (합성 스레드 — 맵 생성이 주 스레드를 잡아도 흐름) · 분 · 10초 · 초 · 0.1초 */
+.ld-dg { display: inline-block; height: 1em; line-height: 1em; overflow: hidden; vertical-align: top; }
+.ld-dg i { display: block; font-style: normal; line-height: 1em; animation: ldDg10 10s steps(10) infinite; }
+.ld-dg.t i { animation-duration: 1s; } .ld-dg.m i { animation-duration: 600s; } .ld-dg.s6 i { animation: ldDg6 60s steps(6) infinite; }
+@keyframes ldDg10 { to { transform: translateY(-10em); } }
+@keyframes ldDg6 { to { transform: translateY(-6em); } }
+.ld-phase { position: absolute; left: 50%; top: 26px; transform: translateX(-50%); padding: 3px 10px; border: 1px solid rgba(159, 212, 255, 0.35); background: rgba(4, 16, 22, 0.72); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; color: #d6ecff; white-space: nowrap; pointer-events: none; }
+.ld-brk { position: absolute; left: 10px; top: 10px; width: calc(var(--sq) + 16px); height: calc(var(--sq) + 16px); pointer-events: none; --c: rgba(240, 164, 58, 0.9);
+  background: linear-gradient(var(--c), var(--c)) 0 0 / 16px 2px no-repeat, linear-gradient(var(--c), var(--c)) 0 0 / 2px 16px no-repeat, linear-gradient(var(--c), var(--c)) 100% 0 / 16px 2px no-repeat, linear-gradient(var(--c), var(--c)) 100% 0 / 2px 16px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 100% / 16px 2px no-repeat, linear-gradient(var(--c), var(--c)) 0 100% / 2px 16px no-repeat, linear-gradient(var(--c), var(--c)) 100% 100% / 16px 2px no-repeat, linear-gradient(var(--c), var(--c)) 100% 100% / 2px 16px no-repeat; }
+.ld-tick { position: absolute; left: 18px; bottom: 3px; width: var(--sq); height: 14px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+#ldTick { display: flex; width: max-content; font: 600 0.62rem/14px var(--f-display); letter-spacing: 0.14em; color: rgba(159, 212, 255, 0.55); white-space: nowrap; animation: ldTick 30s linear infinite; }
+#ldTick span { padding-right: 4em; }
+@keyframes ldTick { to { transform: translateX(-50%); } }
+/* 마지막: 첫 자기장(파란 원 · 바깥 푸르게) → 흰 원(첫 안전 구역)과 십자 → 도장 쾅 + 화면 흔들림
+   .fin 마지막 연출 · .zon 자기장을 그림(그때 움직임 시작 — 같이 하기 파티원은 방장 자기장이 온 뒤) · .nz 시작 때 자기장 없음(도장이 먼저) · .q 빠른 마무리 */
+.ld-zone { position: absolute; inset: 0; display: none; pointer-events: none; }
+.ld-sat.fin .ld-zone { display: block; }
+.ld-zw { position: absolute; inset: 0; display: none; }
+.ld-sat.zon .ld-zw { display: block; }
+.ld-zone .zt { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.ld-zone .zt path { fill: rgba(40, 110, 255, 0.24); }
+.ld-zone i { position: absolute; border-radius: 50%; }
+.ld-zone .zc { border: 2px solid #5aa2ff; box-shadow: 0 0 10px rgba(90, 162, 255, 0.85), inset 0 0 12px rgba(90, 162, 255, 0.4); }
+.ld-zone .zn { border: 2px solid #fff; box-shadow: 0 0 9px rgba(255, 255, 255, 0.8), inset 0 0 9px rgba(255, 255, 255, 0.25); }
+.ld-zone .zp { border: 2px solid rgba(255, 255, 255, 0.85); opacity: 0; }
+.ld-zone .zx { width: 0; height: 0; border-radius: 0; }
+.ld-zone .zx::before, .ld-zone .zx::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 4px rgba(0, 0, 0, 0.8); }
+.ld-zone .zx::before { left: -9px; top: -1px; width: 18px; height: 2px; } .ld-zone .zx::after { left: -1px; top: -9px; width: 2px; height: 18px; }
+.ld-zone b { position: absolute; font-size: 0.68rem; font-weight: 700; white-space: nowrap; text-shadow: 0 1px 2px #000, 0 0 5px #000; }
+.ld-zone .zl { color: #fff; padding: 1px 7px; background: rgba(4, 14, 18, 0.62); border: 1px solid rgba(255, 255, 255, 0.55); transform: translate(-50%, calc(-100% - 6px)); }
+.ld-zone .zl.dn { transform: translate(-50%, 6px); }
+/* 비행 경로: 바깥은 회전만(JS) · 안쪽 점선이 0 → 1 로 늘어남 · 끝에 화살표 */
+.ld-zone .zf { height: 0; border-radius: 0; transform-origin: 0 0; }
+.ld-zone .zf i { position: absolute; left: 0; top: -1px; width: 100%; height: 2px; border-radius: 0; background: repeating-linear-gradient(90deg, rgba(255, 233, 196, 0.95) 0 10px, transparent 10px 16px); filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9)); transform-origin: 0 50%; }
+.ld-zone .zf i::after { content: ''; position: absolute; right: -1px; top: -5px; border-style: solid; border-width: 6px 0 6px 10px; border-color: transparent transparent transparent #ffe9c4; }
+.ld-zone .zfl { color: #ffe9c4; letter-spacing: 0.06em; transform: translate(-50%, -50%); }
+.ld-sat.fin .zf i { animation: ldFp 0.6s 0.1s cubic-bezier(0.3, 0.7, 0.3, 1) both; }
+.ld-sat.fin .zfl, .ld-sat.zon .zl { animation: ldFade 0.3s 0.45s both; }
+@keyframes ldFp { from { transform: scaleX(0); } }
+.ld-sat.zon .zt { animation: ldFade 0.4s 0.22s both; }
+.ld-sat.zon .zc { animation: ldZc 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.ld-sat.zon .zn { animation: ldZn 0.45s 0.3s cubic-bezier(0.3, 1.45, 0.5, 1) both; }
+.ld-sat.zon .zp { animation: ldZp 0.9s 0.62s ease-out; }
+.ld-sat.zon .zx { animation: ldFade 0.25s 0.5s both; }
+@keyframes ldFade { from { opacity: 0; } }
+@keyframes ldZc { from { opacity: 0; transform: scale(1.45); } }
+@keyframes ldZn { from { opacity: 0; transform: scale(0.3); } }
+@keyframes ldZp { from { opacity: 0.9; transform: scale(1); } to { opacity: 0; transform: scale(1.7); } }
+.ld-stamp { position: absolute; left: 50%; top: 50%; display: none; flex-direction: column; align-items: center; gap: 3px; padding: 9px 20px 8px; border: 3px solid var(--amber); border-radius: 4px; color: var(--amber); background: rgba(24, 14, 4, 0.62); transform: translate(-50%, -50%) rotate(-7deg); box-shadow: 0 0 0 2px rgba(240, 164, 58, 0.22), 0 0 34px rgba(240, 164, 58, 0.28); text-shadow: 0 0 10px rgba(240, 164, 58, 0.45); pointer-events: none; }
+.ld-sat.fin .ld-stamp { display: flex; animation: ldStamp 0.3s 0.58s cubic-bezier(0.25, 0.9, 0.3, 1.15) both; }
+.ld-sat.fin.nz .ld-stamp { animation-delay: 0.08s; }
+.ld-stamp b { font: 800 1.9rem/1 var(--f-display); letter-spacing: 0.08em; white-space: nowrap; }
+.ld-stamp small { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; color: rgba(255, 216, 156, 0.92); white-space: nowrap; }
+@keyframes ldStamp { from { opacity: 0; transform: translate(-50%, -50%) rotate(-16deg) scale(2.3); } }
+.ld-sat.fin { animation: ldShake 0.24s 0.86s; }
+.ld-sat.fin.nz { animation-delay: 0.36s; }
+@keyframes ldShake { 25% { transform: translate(3px, -2px); } 50% { transform: translate(-3px, 2px); } 75% { transform: translate(2px, 1px); } }
+/* 빠른 마무리: 진행 중인 경기를 열 때(이어하기 · 다시 들어오기)와 데스매치·대결 — 기다림 없이 자기장·도장 · 흔들림 없음 */
+.ld-sat.q .zt, .ld-sat.q .zc, .ld-sat.q .zn, .ld-sat.q .zx, .ld-sat.q .zl, .ld-sat.q .zfl { animation-duration: 0.22s; animation-delay: 0s; }
+.ld-sat.q .zf i { animation-duration: 0.3s; animation-delay: 0s; }
+.ld-sat.q .zp { animation: none; }
+.ld-sat.fin.q { animation: none; }
+.ld-sat.fin.q .ld-stamp { animation-duration: 0.2s; animation-delay: 0s; }
+/* 오른쪽 글 */
+.ld-side { width: min(440px, calc(100vw - var(--sq) - 140px)); min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.ld-top { display: flex; align-items: center; gap: 10px; }
+.ld-op { font: 600 0.68rem/1 var(--f-display); letter-spacing: 0.16em; color: var(--dim); padding: 3px 6px; border: 1px solid var(--line-2); }
+.ld-logo { margin-left: auto; width: 108px; height: 27px; flex: none; opacity: 0.92; }
+#ldTitle { margin: 2px 0 0; font: 800 clamp(2rem, 4.6vw, 3.3rem)/1.02 var(--f-display); letter-spacing: 0.03em; color: var(--sand); text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6); overflow-wrap: anywhere; }
+.ld-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 0.92rem; font-weight: 600; color: rgba(233, 226, 207, 0.8); }
+.ld-sub em { font: 600 0.68rem/1 var(--f-display); font-style: normal; letter-spacing: 0.12em; color: var(--amber); padding: 3px 6px; border: 1px solid rgba(240, 164, 58, 0.45); }
+.ld-log { list-style: none; margin: 4px 0 0; padding: 9px 12px; height: calc(6 * 1.62em + 18px); display: flex; flex-direction: column; overflow: hidden; background: linear-gradient(180deg, rgba(10, 20, 24, 0.78), rgba(6, 12, 14, 0.78)); border: 1px solid var(--line); border-left: 2px solid rgba(159, 212, 255, 0.55); font-size: 0.8rem; line-height: 1.62; }
+.ld-log li { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; color: #dde8ea; flex: none; }
+.ld-log li.done { color: rgba(221, 232, 234, 0.72); }
+.ld-log li.cmd { color: rgba(159, 212, 255, 0.62); font-size: 0.92em; }
+.ld-log time { flex: none; font: 600 0.74rem/1 var(--f-display); letter-spacing: 0.06em; color: rgba(159, 212, 255, 0.72); font-variant-numeric: tabular-nums; }
+.ld-log .l { flex: none; }
+.ld-log .d { flex: 1; min-width: 10px; align-self: center; border-bottom: 1px dotted rgba(233, 226, 207, 0.28); opacity: 0; }
+.ld-log .x { flex: none; font-size: 0.72rem; color: var(--dim); }
+.ld-log .ok { flex: none; font: 700 0.68rem/1 var(--f-display); letter-spacing: 0.1em; color: var(--green); opacity: 0; }
+.ld-log li.done .d, .ld-log li.done .ok { opacity: 1; }
+.ld-log li.nok .ok, .ld-log li.nok .d, .ld-log li.fin .ok, .ld-log li.fin .d { display: none; }   /* '준비 완료 ··· 완료' 처럼 겹치지 않게 · 마지막 줄(도장 글)은 호박색 */
+.ld-log li.fin { color: var(--amber); font-weight: 700; }
+/* 타자 효과: 글자마다 늦게 나타남(지연은 JS · opacity 만 → 합성 스레드) · 커서는 다 친 뒤(--td)부터 깜빡임 */
+.ld-log li.now .l span { display: inline-block; white-space: pre; animation: ldChar 1ms both; }
+@keyframes ldChar { from { opacity: 0; } }
+.ld-log li.now .l::after { content: ''; display: inline-block; width: 0.5em; height: 1em; margin-left: 3px; vertical-align: -0.15em; background: #bfe3ff; opacity: 0; animation: ldCur 0.8s var(--td, 0s) infinite; }
+@keyframes ldCur { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0.2; } }
+.ld-pct { position: relative; display: flex; align-items: baseline; gap: 4px; padding-bottom: 10px; }
+.ld-pct b { font: 800 3.4rem/0.9 var(--f-display); color: var(--sand); font-variant-numeric: tabular-nums; }
+.ld-pct span { font: 700 1.2rem/1 var(--f-display); color: var(--amber); }
+.ld-rule { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(233, 226, 207, 0.12); }
+.ld-rule i { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(240, 164, 58, 0.35), var(--amber)); transform-origin: 0 50%; transform: scaleX(0); }
+.ld-memo { padding: 9px 12px 10px; background: linear-gradient(90deg, rgba(240, 164, 58, 0.1), rgba(240, 164, 58, 0.02)); border: 1px solid rgba(240, 164, 58, 0.28); border-left: 3px solid var(--amber); }
+.ld-memo-h { display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; color: var(--amber); }
+.ld-memo-h em { font: 600 0.66rem/1 var(--f-display); font-style: normal; letter-spacing: 0.1em; color: rgba(240, 164, 58, 0.62); }
+#ldTip { margin: 6px 0 0; font-size: 0.84rem; line-height: 1.55; color: rgba(233, 226, 207, 0.88); min-height: 3.1em; }
+.ld-cancel { align-self: flex-start; padding: 0.45rem 0.9rem; font-size: 0.8rem; }   /* 같이 하기로 돌아오는 중: 기다리다 로비로 */
+/* 휴대폰 가로(412px 높이): 위성 화면을 조금 더 크게 · 글은 작게 · 기록 4줄 */
+@media (max-height: 520px), (max-width: 860px) {
+  #loading { --sq: min(calc(100vh - 62px), 46vw, 600px); }
+  @supports (height: 100dvh) { #loading { --sq: min(calc(100dvh - 62px), 46vw, 600px); } }
+  .ld-feed { padding: 15px 0 17px 15px; }
+  .ld-cols { left: 15px; top: 2px; font-size: 0.58rem; } .ld-rows { top: 15px; width: 12px; font-size: 0.58rem; }
+  .ld-brk { left: 8px; top: 8px; width: calc(var(--sq) + 14px); height: calc(var(--sq) + 14px); }
+  .ld-tick { left: 15px; bottom: 2px; height: 13px; } #ldTick { font-size: 0.56rem; line-height: 13px; }
+  .ld-hud { font-size: 0.56rem; } .ld-live, .ld-pos { left: 7px; } .ld-rec, .ld-gsd { right: 7px; } .ld-live, .ld-rec { top: 7px; } .ld-pos, .ld-gsd { bottom: 7px; }
+  .ld-phase { top: 21px; font-size: 0.6rem; padding: 2px 8px; }
+  .ld-poi span { font-size: 0.6rem; line-height: 14px; top: -7px; } .ld-zone b { font-size: 0.58rem; }
+  .ld-stamp { padding: 6px 14px 5px; border-width: 2px; } .ld-stamp b { font-size: 1.3rem; } .ld-stamp small { font-size: 0.6rem; }
+  .ld-side { gap: 6px; width: min(440px, calc(100vw - var(--sq) - 96px)); }
+  .ld-logo { width: 76px; height: 19px; } .ld-op { font-size: 0.58rem; padding: 2px 5px; }
+  #ldTitle { font-size: 1.85rem; }
+  .ld-sub { font-size: 0.76rem; } .ld-sub em { font-size: 0.58rem; }
+  .ld-log { height: calc(4 * 1.55em + 12px); padding: 6px 9px; font-size: 0.7rem; line-height: 1.55; } .ld-log time { font-size: 0.64rem; } .ld-log .x { font-size: 0.64rem; }
+  .ld-pct { padding-bottom: 7px; } .ld-pct b { font-size: 2.3rem; } .ld-pct span { font-size: 0.95rem; }
+  .ld-memo { padding: 6px 9px 7px; } .ld-memo-h { font-size: 0.62rem; } #ldTip { font-size: 0.72rem; line-height: 1.5; min-height: 0; margin-top: 4px; }
+  .ld-cancel { padding: 0.4rem 0.8rem; font-size: 0.72rem; }
+}
+/* 세로로 긴 PC 창: 위성 화면 위 · 글 아래 */
+@media (max-aspect-ratio: 1/1) and (min-height: 521px) and (min-width: 861px) { #loading { --sq: min(calc(100vh - 430px), calc(100vw - 80px), 600px); } .ld-wrap { flex-direction: column; } .ld-side { width: min(calc(var(--sq) + 18px), 440px); } }
+@media (prefers-reduced-motion: reduce) { #loading *, #loading *::before, #loading *::after { animation: none !important; } #loading.out { transition-duration: 0.25s; } }
 
 /* ---------- HUD ---------- */
 #hud { position: absolute; inset: 0; pointer-events: none; opacity: var(--hud-o); }
@@ -2966,14 +3157,42 @@ body.touch #victoryHud button { padding: 8px 12px; font-size: 0.8rem; }</style>
     </div>
   </section>
 
-  <!-- 로딩 -->
+  <!-- 로딩: v23 「위성 정찰 스캔」 (10_loading.js) — 맵을 만드는 동안 진짜 높이맵·표면이 주사선을 따라 드러나고 지역·도로·건물·나무 → 미니맵 → 첫 자기장 · 강하 준비 완료 도장 -->
   <section id="loading" class="screen" hidden>
-    <div class="load-box">
-      <div class="eyebrow">작전 지역 생성</div>
-      <h2 id="loadMap">칼덴 섬</h2>
-      <div class="bar big"><i id="loadBar"></i></div>
-      <div class="micro" id="loadStep">준비 중</div>
-      <p class="tip" id="loadTip"></p>
+    <div class="ld-bg" aria-hidden="true"></div>
+    <div class="ld-wrap">
+      <div class="ld-feed">
+        <div class="ld-cols" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span></div>
+        <div class="ld-rows" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+        <div class="ld-sat" id="ldSat" aria-hidden="true">
+          <canvas id="ldTerr" width="1" height="1"></canvas>
+          <canvas id="ldMap" width="1" height="1"></canvas>
+          <canvas id="ldTree" width="1" height="1"></canvas>
+          <canvas id="ldRoad" width="1" height="1"></canvas>
+          <canvas id="ldBld" width="1" height="1"></canvas>
+          <div class="ld-cur" id="ldCur"><div class="ld-cur-in"><canvas id="ldNoise" width="160" height="160"></canvas></div><i class="ld-trail"></i><i class="ld-line"></i><i class="ld-head"></i><canvas id="ldProf" width="256" height="40"></canvas><span class="ld-tag" id="ldTag"></span></div>
+          <div class="ld-acq"><i></i><b>신호 수신 중</b><small>SIGNAL ACQUIRE</small></div>
+          <canvas id="ldSweep" width="256" height="256"></canvas><i class="ld-swl"></i>
+          <div class="ld-pois" id="ldPois"></div>
+          <div class="ld-zone" id="ldZone"><div class="ld-zw"><svg class="zt" id="ldZt" preserveAspectRatio="none"><path id="ldZtP" fill-rule="evenodd"/></svg><i class="zc" id="ldZc"></i><i class="zn" id="ldZn"></i><i class="zp" id="ldZp"></i><i class="zx" id="ldZx"></i><b class="zl" id="ldZl"></b></div><i class="zf" id="ldZf"><i></i></i><b class="zfl" id="ldZfl">비행 경로</b></div>
+          <div class="ld-fx"></div>
+          <span class="ld-hud ld-live"><i></i>SAT-1 · LIVE</span><span class="ld-hud ld-rec" id="ldRec">REC 00:00.0</span>
+          <span class="ld-hud ld-pos" id="ldPos"></span><span class="ld-hud ld-gsd" id="ldGsd"></span>
+          <span class="ld-phase" id="ldPhase"></span>
+          <div class="ld-stamp" id="ldStamp"><b id="ldStampT"></b><small id="ldStampS"></small></div>
+        </div>
+        <i class="ld-brk" aria-hidden="true"></i>
+        <div class="ld-tick" aria-hidden="true"><div id="ldTick"></div></div>
+      </div>
+      <div class="ld-side">
+        <div class="ld-top"><span class="eyebrow">작전 지역 생성</span><span class="ld-op" id="ldOp"></span><svg class="ld-logo" viewBox="0 0 1200 300" aria-hidden="true"><use href="#ldr-logo-h"/></svg></div>
+        <h2 id="ldTitle"></h2>
+        <div class="ld-sub"><span id="ldSub"></span><em id="ldKm"></em></div>
+        <ol class="ld-log" id="ldLog"></ol>
+        <div class="ld-pct"><b id="ldPct">0</b><span>%</span><i class="ld-rule"><i id="ldRule"></i></i></div>
+        <div class="ld-memo" id="ldMemo"><div class="ld-memo-h"><span>작전 메모</span><em id="ldTipN"></em></div><p id="ldTip"></p></div>
+        <button class="btn ld-cancel" type="button" id="ldCancel" hidden>로비로 나가기</button>
+      </div>
     </div>
   </section>
 
@@ -4314,6 +4533,15 @@ const Audio = (() => {
     },
     attach() { if (!playBuf('attach', null, 0.6, { own: true })) api.pickup('att'); },
     ui() { if (!ctx) return; const t = ctx.currentTime; tone(sfxBus, t, 0.05, 'triangle', 700, 760, 0.1); },
+    // v23 로딩 화면 「위성 정찰 스캔」 (10_loading.js): tick 기록 한 줄(작은 전자음) · scan 구조물 식별(올라가는 쓸림) · lock 첫 자기장 표시(두 음) · stamp 도장(낮은 쿵 + 종이 소리)
+    //  dl: 몇 초 뒤에 (화면 연출에 맞춰 WebAudio 시계로 예약 — 주 스레드가 바빠도 제때 남)
+    loadFx(kind, dl) {
+      if (!ctx) return; const t = ctx.currentTime + Math.max(0, dl || 0);
+      if (kind === 'tick') tone(sfxBus, t, 0.035, 'sine', 1560, 1560, 0.028);
+      else if (kind === 'scan') { tone(sfxBus, t, 0.22, 'sine', 520, 1480, 0.035); noise(sfxBus, t, 0.2, 'bandpass', 2800, 3, 0.03); }
+      else if (kind === 'lock') { tone(sfxBus, t, 0.07, 'sine', 880, 900, 0.07); tone(sfxBus, t + 0.09, 0.12, 'sine', 1320, 1340, 0.07); }
+      else if (kind === 'stamp') { tone(sfxBus, t, 0.2, 'sine', 150, 52, 0.32); noise(sfxBus, t, 0.08, 'lowpass', 1500, 0.8, 0.22); }
+    },
     // v23 온라인 매칭 완료 알림 (10_mm.js): 맑게 올라가는 세 음 — 화면을 보고 있지 않아도 알아차리게
     matchFound() { if (!ctx) return; const t = ctx.currentTime; [659, 880, 1319].forEach((f, i) => { tone(sfxBus, t + i * 0.11, 0.34, 'triangle', f, f, 0.17); tone(sfxBus, t + i * 0.11, 0.2, 'sine', f * 2, f * 2, 0.035); }); },
     // 팀 핑: 이동(올라가는 두 음) / 공격(짧고 높은 경고음 두 번) / 모여(내려가는 두 음)
@@ -4997,7 +5225,8 @@ async function generateWorld(mapId, scene, progress) {
   const RI = (a, b) => Math.floor(R(a, b + 1));
   const RP = (arr) => arr[Math.floor(rng() * arr.length)];
   const n1 = makeNoise(rng), n2 = makeNoise(rng), n3 = makeNoise(rng), n4 = makeNoise(rng);
-  const yieldUI = async (p, label) => { progress && progress(p, label); await new Promise(r => setTimeout(r, 0)); };
+  // info: 로딩 화면(10_loading.js 위성 스캔)에 넘기는 진행 자료 — { rows: 끝난 높이맵 줄 수 } · { trees: 지금까지 심은 나무 } (읽기만, 생성 난수와 무관)
+  const yieldUI = async (p, label, info) => { progress && progress(p, label, info); await new Promise(r => setTimeout(r, 0)); };
 
   const w = W = {
     mapId, hf: new Float32Array(HF_N * HF_N), surf: new Uint8Array(HF_N * HF_N),
@@ -5230,7 +5459,7 @@ async function generateWorld(mapId, scene, progress) {
       }
       w.surf[j * HF_N + i] = s;
     }
-    if (j % (big ? 60 : 40) === 0) await yieldUI(0.15 + 0.2 * j / HF_N, '높이맵 계산');
+    if (j % (big ? 60 : 40) === 0) await yieldUI(0.15 + 0.2 * j / HF_N, '높이맵 계산', { rows: j + 1 });
   }
   // 경사 급한 곳은 암석
   for (let j = 1; j < HF_N - 1; j++) for (let i = 1; i < HF_N - 1; i++) {
@@ -5953,7 +6182,7 @@ async function generateWorld(mapId, scene, progress) {
   const trees = [], rocks = [], bushes = [];
   const treeTarget = V2 ? 0 : big ? 42000 : 1500;   // v2 식생은 v2Vegetation
   for (let t = 0; t < treeTarget * 6 && trees.length < treeTarget; t++) {
-    if (big && t % 20000 === 0) await yieldUI(0.68 + 0.08 * trees.length / treeTarget, '숲과 바위 생성');
+    if (big && t % 20000 === 0) await yieldUI(0.68 + 0.08 * trees.length / treeTarget, '숲과 바위 생성', { trees });
     const x = R(-HALF * 0.9, HALF * 0.9), z = R(-HALF * 0.9, HALF * 0.9);
     const dens = sstep(-0.15, 0.35, fbm(n4, x * 0.008 / (big ? 2.5 : 1), z * 0.008 / (big ? 2.5 : 1), 3)) + mountW(x, z) * 0.5;
     if (rng() > dens * 0.9) continue;
@@ -6057,13 +6286,18 @@ async function generateWorld(mapId, scene, progress) {
   return w;
 }
 
+// 지도 표면 색 (표면 번호 → RGB): 미니맵 · v23 로딩 위성 화면(10_loading.js)이 같이 쓴다 — 정글·크리스마스 섬은 몇 가지를 바꿈
+function mapPalette(w) {
+  const SC = [[86, 120, 62], [124, 104, 74], [128, 122, 114], [196, 180, 132], [70, 70, 70], [140, 138, 132], [160, 142, 70], [110, 128, 56], [72, 100, 54], [64, 104, 92], [118, 156, 54], [132, 102, 68]];
+  if (w.v2 === 'jungle') SC[8] = [52, 86, 42];
+  if (w.xmas) Object.assign(SC, { 0: [226, 232, 240], 1: [168, 160, 152], 2: [140, 146, 156], 3: [176, 178, 182], 5: [158, 160, 166], 6: [214, 222, 232], 7: [204, 214, 226], 8: [196, 208, 222], 9: [176, 210, 232] });   // 크리스마스 섬
+  return SC;
+}
 // 미니맵 배경 이미지 (실제 높이맵/표면/도로/건물에서 생성)
 function buildMinimapImage(w) {
   const S = w.big && HALF > 1000 ? 2048 : 1024, cv = document.createElement('canvas'); cv.width = cv.height = S;
   const g = cv.getContext('2d'), img = g.createImageData(S, S), d = img.data;
-  const SC = [[86, 120, 62], [124, 104, 74], [128, 122, 114], [196, 180, 132], [70, 70, 70], [140, 138, 132], [160, 142, 70], [110, 128, 56], [72, 100, 54], [64, 104, 92], [118, 156, 54], [132, 102, 68]];
-  if (w.v2 === 'jungle') SC[8] = [52, 86, 42];
-  if (w.xmas) Object.assign(SC, { 0: [226, 232, 240], 1: [168, 160, 152], 2: [140, 146, 156], 3: [176, 178, 182], 5: [158, 160, 166], 6: [214, 222, 232], 7: [204, 214, 226], 8: [196, 208, 222], 9: [176, 210, 232] });   // 크리스마스 섬
+  const SC = mapPalette(w);
   for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
     const x = -HALF + (px + 0.5) / S * SIZE, z = -HALF + (py + 0.5) / S * SIZE, h = heightAt(x, z);
     let c;
@@ -7757,7 +7991,7 @@ async function v2Vegetation(K) {
   const nearPoi = (x, z) => { for (const q of pg[clamp(Math.floor((z + HALF) / PC), 0, PN - 1) * PN + clamp(Math.floor((x + HALF) / PC), 0, PN - 1)]) if (Math.hypot(q.x - x, q.z - z) < q.cr) return true; return false; };
   const NO_TREE = new Set([2, 3, 4, 5, 6, 7, 9, 10, 11]);
   const okSpot = (x, z, h, s, rr, rd) => !(h < 1.4 || NO_TREE.has(s) || K.riverDist(x, z) < RW + rd || w.roadDist(x, z) < 6.5 || nearPoi(x, z) || !K.footprintFree(x - rr, z - rr, x + rr, z + rr, 1.0));
-  const trees = [], rocks = [], bushes = [], palms = [], bamboo = [], ferns = [], tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '숲과 바위 생성');
+  const trees = [], rocks = [], bushes = [], palms = [], bamboo = [], ferns = [], tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '숲과 바위 생성', { trees });
   const A = HALF * 0.9;
   if (!JG) { // 노르덴: 숲바닥(8)은 빽빽, 풀밭은 드문드문, 산비탈은 침엽수
     const target = 34000;
@@ -8192,7 +8426,7 @@ async function xmVegetation(K) {
   }
   const nearPoi = (x, z) => { for (const q of pg[clamp(Math.floor((z + HALF) / PC), 0, PN - 1) * PN + clamp(Math.floor((x + HALF) / PC), 0, PN - 1)]) if (Math.hypot(q.x - x, q.z - z) < q.cr) return true; return false; };
   const NO_TREE = new Set([2, 3, 4, 5, 6, 7, 9]);
-  const trees = [], rocks = [], bushes = [], A = HALF * 0.9, tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '눈 덮인 숲 생성');
+  const trees = [], rocks = [], bushes = [], A = HALF * 0.9, tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '눈 덮인 숲 생성', { trees });
   const target = 5500;
   for (let t = 0; t < target * 7 && trees.length < target; t++) {
     if (t % 30000 === 0) await tick(trees.length / target * 0.6);
@@ -27791,6 +28025,16 @@ const App = (() => {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-24', t: '맵 로딩 화면 「위성 정찰 스캔」 — 막대 대신 만들어지는 섬을 실시간으로', items: [
+    '경기를 불러오는 동안 막대가 차오르던 화면 대신, 정찰 위성이 지금 만들어지는 섬을 위에서 실시간으로 스캔하는 화면이 나옴 — 주사선이 내려가는 자리마다 진짜 지형(높이·땅의 종류·강·바다)이 드러나고, 주사선이 지나가는 순간 그 자리의 지역 이름이 뜸 (크리스마스 섬은 처음부터 눈 덮인 색으로)',
+    '스캔이 끝나면 도로망 → 건물(호박색으로 식별) → 숲이 생성 단계마다 차례로 나타나고, 마지막에는 실제 지도로 바뀜',
+    '오른쪽에는 맵 이름·모드와 생성 기록(타자 치듯 찍히는 단계 · 걸린 시간 · 지역 수·도로 길이·건물 수·나무 수 같은 결과), 진행률, 작전 메모(배틀로얄은 6초마다 다른 팁) — 녹화 시계·주사선·타자 효과는 맵을 만드느라 바쁠 때도 멈추지 않음',
+    '시작 직전 지도에 첫 자기장과 비행 경로가 그려지고 「강하 준비 완료」 도장이 찍힌 뒤 화면이 사라짐 — 경기는 그 밑에서 이미 시작돼 있음 · 같이 하기 파티원은 방장의 자기장이 도착하면 그때 그려짐 (훈련장은 「훈련 준비 완료」)',
+    '이어하기·같이 하기로 다시 들어가기·데스매치·대결은 도장을 짧게 보여 주고 바로 사라짐 — 진행 중인 경기와 대결의 라운드 준비 시간을 가리지 않게 (다시 들어갈 때는 지금 단계의 「다음 안전 구역」)',
+    '같이 하기로 다시 들어가며 「경기 상태를 받는 중」을 기다릴 때 「로비로 나가기」 단추 — 기다리다 그만두면 다시 들어가기 창으로 돌아가 다시 시도할 수 있음',
+    '로딩 화면이 덮고 있는 동안에는 뒤의 로비 화면과 아이콘 미리 그리기를 쉼 — 게임을 켜자마자 경기를 시작해도 맵 생성이 아이콘 그리기와 겹치지 않음',
+    '휴대폰 가로 화면에 맞춘 배치 · 기기의 「동작 줄이기」를 켜 두면 움직임 없이 표시 · 맵 모양과 아이템·건물 자리는 예전과 똑같음',
+  ] },
   { v: 'v23', d: '2026-11-24', t: '앱으로 설치 — 홈 화면 아이콘 · 전체 화면 · 인터넷 없이도 시작', items: [
     '로비 오른쪽 위 메뉴 ▾ → 「앱 설치」: 홈 화면(PC는 앱 목록)에 Last Drop 아이콘이 생기고, 누르면 주소창·탭 없이 전체 화면으로 바로 실행 (안드로이드는 가로로 고정)',
     'Chrome·Edge·삼성 인터넷처럼 바로 설치할 수 있는 브라우저에서는 메뉴에 빨간 점과 소식 카드가 뜨고, 「설치하기」를 누르면 설치 창이 열림 — 설치 창에서 아이콘을 눌러 전체 화면으로 시작하는 모습을 미리 보여 줌',
@@ -29449,13 +29693,14 @@ const DM = (() => {
     G.state = 'loading'; G.paused = false; G.over = false; G.training = false; G.dm = null;
     document.body.classList.remove('training');
     Audio.music(false);
-    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
+    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; Shop.closeAll();
     const duel = isDuel(type) ? GAME_TYPES[type].duel : 0, TSZ = dmTeamSize(type);
     const arenaId = cfg.arena && MAPS[cfg.arena] && MAPS[cfg.arena].arena ? cfg.arena : arenaResolve(arenaPick());   // v22: 아레나 4곳 (같이 하기는 방장이 정한 곳)
-    $('loadMap').textContent = `${GAME_TYPES[type].name} · ${MAPS[arenaId].name}`;
-    $('loadTip').textContent = duel ? `${GAME_TYPES[type].name}: 라운드마다 모두 같은 무작위 총으로 싸웁니다. 죽으면 그 라운드는 관전, 먼저 ${DUEL_RULES.win}라운드를 이기는 팀이 승리합니다.`
-      : type === 'tdm' ? '팀 데스매치: 모두 같은 총으로 싸웁니다. 먼저 40킬 하는 팀이 이깁니다.' : '웨폰 데스매치: 적을 처치할 때마다 총과 스코프가 바뀝니다. 먼저 40킬 하는 팀이 이깁니다.';
-    const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
+    // v23 로딩 화면 (10_loading.js): 아레나 이름 + 게임 종류 · 인원 · 시점
+    Loading.show({ title: MAPS[arenaId].name, sub: `${GAME_TYPES[type].name} · ${TSZ} 대 ${TSZ} · ${SETTINGS.view === 'fpp' ? '1인칭' : '3인칭'}`, mapId: arenaId, kind: 'dm',
+      tip: duel ? `${GAME_TYPES[type].name}: 라운드마다 모두 같은 무작위 총으로 싸웁니다. 죽으면 그 라운드는 관전, 먼저 ${DUEL_RULES.win}라운드를 이기는 팀이 승리합니다.`
+        : type === 'tdm' ? '팀 데스매치: 모두 같은 총으로 싸웁니다. 먼저 40킬 하는 팀이 이깁니다.' : '웨폰 데스매치: 적을 처치할 때마다 총과 스코프가 바뀝니다. 먼저 40킬 하는 팀이 이깁니다.' });
+    const prog = Loading.prog;
     disposeMatch();
     G.netCfg = cfg.roster && !cfg.resume && G.net ? G.net.cfg : null;   // 이어하기 저장용 (같이 하기)
     const sc = new THREE.Scene(); G.scene = sc;
@@ -29471,7 +29716,7 @@ const DM = (() => {
     G.focusRing.visible = false; sc.add(G.focusRing);
     setMapSize(arenaId);
     try { await generateWorld(arenaId, sc, prog); }
-    catch (e) { console.error(e); fatal('맵 생성 중 오류: ' + e.message); return; }
+    catch (e) { console.error(e); Loading.hideNow(); fatal('맵 생성 중 오류: ' + e.message); return; }
     prog(0.98, '부대 배치');
     Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
     Zone.cur = Zone.next = null; Zone.state = 'wait'; Airdrop.init(sc); G.plane = null;
@@ -29511,7 +29756,9 @@ const DM = (() => {
     HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
     document.body.classList.add('dm'); $('quitBtn').textContent = '경기 나가기 (로비로)';
     $('dmScore').hidden = false; $('dmGoal').textContent = duel ? `먼저 ${DUEL_RULES.win}라운드` : `먼저 ${DM_RULES.killTarget}킬`;
-    $('loading').hidden = true; $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
+    // 로딩 화면: 도장 뒤 사라짐 (경기는 바로 시작) — 빠른 마무리(대결 1라운드 준비 3초 · 데스매치 출현 보호 2초를 가리지 않게) · 같이 하기로 돌아온 사람은 방장 상태를 받을 때까지 가림막 (10_resume.js)
+    if (G.rjHold) Loading.hold(); else Loading.finale({ stamp: '교전 준비 완료', sub: duel ? `먼저 ${DUEL_RULES.win}라운드` : `먼저 ${DM_RULES.killTarget}킬`, quick: true });
+    $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
     G.state = 'play'; G.previewT = 0;
     Audio.wind(0.04);
     const my = G.player.team;
@@ -31984,6 +32231,484 @@ ${S.desc || ''}`; }   // 엡실론: 컬렉션 번호 + 계정마다 다른 소�
   return { lobbyNote: (m, ms) => showLobbyNote(m, ms), goTab: (t) => setTab(t), news, whOpen: (cat, gun, skin) => { if (/^m_/.test(cat || '')) { whMel = cat; cat = 'melee'; } whCat = cat; if (gun) whGun = gun; setTab('custom'); renderWarehouse(); showcase(); if (gun && skin) Lobby.show({ kind: 'gun', gun, skin }); else if (cat === 'melee' && skin) Lobby.show({ kind: 'melee', melee: whMel.slice(2), skin }); }, skinIcon: (slot, c, k) => SKIN_ICON[slot](c, k), renderWarehouse, quick, closeQuick, spot, renderRanks, modalOpen, toast, damage, flash, hitmarker, killfeed, setLoot, focusItem, update, refreshInventory, renderInventory, openInv, closeInv, openMap, closeMap, skinKill, drawBig, renderSettings, renderLobby, setupLobby, showResult, reset() { MV.z = 1; MV.cx = MV.cz = 0; spotCallT = -99; TeamPing.reset(); document.body.classList.remove('driving', 'riding'); $('teamPanel').dataset.k = ''; $('teamPanel').innerHTML = ''; $('teamTags').innerHTML = ''; document.body.classList.remove('knocked', 'spectating', 'teammode'); $('killfeed').innerHTML = ''; $('toasts').innerHTML = ''; $('dmgRing').innerHTML = ''; closeQuick(); $('fuseHud').hidden = true; flashT = 0; $('flashFx').style.opacity = 0; $('fireVignette').style.opacity = 0; lastLootKey = ''; loot = []; $('lootList').innerHTML = ''; $('weaponPanel').dataset.k = ''; $('gearRow').dataset.k = ''; } };
 })();
 
+// ---------- 10_loading.js ----------
+// ============================================================
+// 10_loading.js — v23 경기 로딩 화면 「위성 정찰 스캔」 (배틀로얄 · 훈련장 · 데스매치·대결 · 같이 하기로 돌아오기 · 이어하기)
+//  맵을 만드는 동안 generateWorld 가 알려 주는 진짜 생성 자료로 위성 화면을 그린다 (02_world.js yieldUI → progress(p, label, info))
+//   · 지형 설계: 잡음 낀 어두운 바다에서 신호를 잡는 중
+//   · 높이맵 계산: 끝난 줄(W.hf · W.surf)을 표면 색 + 음영(미니맵과 같은 식 · 비탈 암석도 같게)으로 칠하고, 위에서 내려오는 주사선이 지나간 곳만 드러남
+//     주사선이 지나가는 줄의 지역(W.pois)에 표식과 이름이 뜬다 · 색표는 첫 줄을 칠할 때 정함 (정글·크리스마스 섬 표시 w.v2·w.xmas 는 '지형 설계' 보고 뒤에 정해짐)
+//   · 그 뒤: 도로(W.roads) → 건물·구조물(W.buildings · W.mapRects — 호박색 '식별') → 나무(W.trees 점 · 큰 맵은 심는 대로) · 그동안 회전 탐지(분석 중)
+//   · 미니맵 렌더링이 끝나면 진짜 미니맵(w.minimap)으로 천천히 바뀜
+//   · 시작(finale): 첫 자기장(Zone.cur 파랑 · Zone.next 흰 원)이 좁혀 들어오고 비행 경로(G.plane) 점선 · 「강하 준비 완료」 도장 → 사라짐 — 경기는 이미 시작해 그 밑에서 돈다
+//     연출 시계는 마지막 화면이 실제로 화면에서 시작한 때부터 잰다 (도장 애니메이션 startTime — 경기 첫 화면이 그려진 뒤) — 첫 화면(셰이더 준비)이 오래 걸려도 도장이 다 보인 뒤 사라짐
+//     같이 하기 파티원은 방장이 보낸 자기장이 와야 맞으므로 그때 그린다 (zone — 10_net.js applyZone) · 이어하기·다시 들어오기·데스매치는 빠른 마무리(quick: 바로 도장 · 짧게 사라짐)
+//  오른쪽: 맵 이름 · 모드 · 생성 기록(경과 시간 · 타자 효과 · 앞 단계 '완료' + 결과 수) · 진행률(가는 선은 보조) · 작전 메모(배틀로얄은 TIPS 를 6초마다)
+//  움직임은 거의 CSS(transform·opacity → 합성 스레드)라 맵 생성이 주 스레드를 오래 잡아도 잡음·주사선·탐지·타자 효과·녹화 시계·도장·사라짐이 끊기지 않는다
+//   주사선: 직전 보고 간격(= 다음 보고까지 걸릴 시간)만큼 이미 칠한 줄까지 미끄러짐 → 칠한 곳보다 앞서지 않고, 지역 표식은 주사선이 닿는 순간 뜨도록 지연을 미리 줌
+//  그리는 양: 새 줄만(축소 캔버스 · 큰 맵은 표본), 도로·건물·나무는 단계마다 한 번 · 화면을 덮는 동안 로비 3D 는 그리지 않음(11_game.js loop → covers)
+//  꾸밈 화면이라 경기를 막지 않는다: 밖에서 부르는 함수는 모두 try 로 감싸 오류가 나면 화면만 걷는다(hideNow)
+//  API: show({ title, sub, tip, tips, mapId, kind }) · prog(p, label, info) · hold(label, onCancel) · finale({ zone, plane, stamp, sub, quick }) · zone() · hide() · hideNow() · covers() · brSub · marks(테스트: 단계 시작 시각)
+// ============================================================
+const Loading = (() => {
+  // 단계 → 위성 화면 위 상태 글 (없으면 단계 이름 그대로)
+  const PHASE = { '지형 설계': '궤도 진입 · 신호 수신', '높이맵 계산': '지형 스캔 중', '건물 배치': '구조물 식별 중', '지형 메시 생성': '지형 모델링', '숲과 바위 생성': '식생 분석', '눈 덮인 숲 생성': '식생 분석',
+    '미니맵 렌더링': '영상 합성', '경로 탐색망 구축': '이동 경로 분석', '준비 완료': '분석 완료', '아이템 배치': '보급품 위치 표시', '차량 배치': '차량 위치 표시', '무기고 정리': '무기고 점검', '부대 배치': '부대 배치' };
+  const NO_ROCK = new Set([2, 3, 4, 9, 10, 11]);   // 비탈이어도 암석으로 바꾸지 않는 표면 (02_world.js 높이맵 뒤 경사 처리와 같게)
+  const TYPE_MS = 26;   // 타자 효과: 글자 하나 간격
+  // 마지막 연출 (화면에 오른 때부터 ms): 도장이 '쾅' 닿는 때(CSS ldStamp 지연 + 0.2초) · 사라지기 시작 · 자기장 고정음
+  const FIN = { zone: { stamp: 790, out: 1350, lock: 300 }, nz: { stamp: 290, out: 800, lock: 0 }, quick: { stamp: 140, out: 560, lock: 0 } };
+  let E = null, S = null, marks = {};
+  const now = () => performance.now();
+  const mq = (q) => { try { return matchMedia(q).matches; } catch (e) { return false; } };
+  const fmtN = (n) => Math.round(n).toLocaleString('ko-KR');
+  const clock = (ms) => { const s = Math.max(0, ms) / 1000, m = Math.floor(s / 60); return String(m).padStart(2, '0') + ':' + (s - m * 60).toFixed(2).padStart(5, '0'); };
+  const sgn = (v) => (v < 0 ? '−' : '+') + String(Math.abs(Math.round(v))).padStart(3, '0');
+  // 소리 (dl: 몇 초 뒤 — WebAudio 시계로 예약해 화면과 맞춤)
+  const sfx = (k, dl) => { try { if (Audio.loadFx) Audio.loadFx(k, dl); } catch (e) { /* 소리 없음 */ } };
+  // 시간 예약: 화면이 바뀌면(다른 show · 숨김) 저절로 취소
+  function later(fn, ms) { const s = S; if (!s) return; const id = setTimeout(() => { s.timers.delete(id); if (S === s) try { fn(); } catch (e) { fail(e); } }, ms); s.timers.add(id); }
+  // 배틀로얄 모드 줄 (로비 맵 카드와 같은 글): 솔로 · 3인칭 · 클래식 — 랭크·하드코어는 앞에
+  const brSub = (rk, hc, ts) => { const tm = Object.values(TEAM_MODES).find((m) => m.size === ts) || TEAM_MODES.solo; return `${hc ? '하드코어 · ' : rk ? '랭크 · ' : ''}${tm.name} · ${SETTINGS.view === 'fpp' ? '1인칭' : '3인칭'} · ${(MODES[SETTINGS.mode] || MODES.classic).name}`; };
+  // 녹화 시계 숫자 띠 (0~n-1 을 세로로 — CSS 가 steps 로 올림)
+  const dg = (n, k) => `<span class="ld-dg ${k}"><i>${[...Array(n).keys()].join('<br>')}</i></span>`;
+
+  function els() {
+    if (E) return E;
+    E = {};
+    for (const k of ['loading', 'ldSat', 'ldTerr', 'ldTree', 'ldRoad', 'ldBld', 'ldMap', 'ldCur', 'ldNoise', 'ldProf', 'ldTag', 'ldSweep', 'ldPois', 'ldZt', 'ldZtP', 'ldZf', 'ldZfl', 'ldZc', 'ldZn', 'ldZp', 'ldZx', 'ldZl', 'ldRec', 'ldPos', 'ldGsd', 'ldPhase', 'ldStamp', 'ldStampT', 'ldStampS', 'ldTick', 'ldOp', 'ldTitle', 'ldSub', 'ldKm', 'ldLog', 'ldPct', 'ldRule', 'ldTip', 'ldTipN', 'ldMemo', 'ldCancel']) E[k] = document.getElementById(k);
+    // 한 번만 그리는 작은 그림 (CSS 가 크게 늘려 움직임 — 큰 층을 새로 그리지 않는다)
+    //  잡음: 푸른 점이 드문드문(가끔 밝은 가로 줄 — 전파 간섭) · 도장 얼룩(가면): 16% 칸만 옅게 · 회전 탐지 부채꼴 (앞쪽 선은 또렷하게 CSS .ld-swl)
+    { const c = E.ldNoise, g = c.getContext('2d'), im = g.createImageData(c.width, c.height), d = im.data, cw = c.width;
+      for (let i = 0; i < d.length; i += 4) { const v = Math.random(), y = (i / 4 / cw) | 0, band = (y * 7919) % 23 === 0 ? 0.2 : 0; d[i] = 140 + 90 * v; d[i + 1] = 182 + 64 * v; d[i + 2] = 210 + 45 * v; d[i + 3] = (v * v * 0.62 + band * v) * 255; }
+      g.putImageData(im, 0, 0); }
+    { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), im = g.createImageData(64, 64), d = im.data;
+      for (let i = 0; i < d.length; i += 4) { const v = Math.random(); d[i + 3] = v < 0.16 ? 30 + v * 600 : 255; }
+      g.putImageData(im, 0, 0); const u = 'url(' + c.toDataURL() + ')', st = E.ldStamp.style; st.webkitMaskImage = st.maskImage = u; st.webkitMaskSize = st.maskSize = '64px 64px'; }
+    { const c = E.ldSweep, g = c.getContext('2d'), R = c.width / 2, A = 1.5, N = 90;
+      for (let i = 0; i < N; i++) { const a1 = -Math.PI / 2 - A + (i + 1) / N * A; g.fillStyle = `rgba(130, 200, 255, ${(i / N) ** 2.2 * 0.34})`; g.beginPath(); g.moveTo(R, R); g.arc(R, R, R, a1 - A / N - 0.004, a1); g.closePath(); g.fill(); } }
+    // 같이 하기로 돌아오는 중 가림막의 '로비로' (hold 의 onCancel)
+    E.ldCancel.addEventListener('click', () => { const f = S && S.onCancel; if (!f) return; S.onCancel = null; E.ldCancel.hidden = true; try { f(); } catch (e) { console.error(e); } });
+    return E;
+  }
+
+  // ---------- 보이기 ----------
+  // o: { title, sub, tip(고정 글) | tips(돌아가며), mapId, kind: 'br'|'training'|'dm'|'hold' }
+  function show(o) {
+    o = o || {}; const e = els(); teardown();
+    const t = now(), rm = mq('(prefers-reduced-motion: reduce)'); marks = {};
+    S = { o, t0: t, kind: o.kind || 'br', rm, maxLines: mq('(max-height: 520px), (max-width: 860px)') ? 4 : 6, target: 0, shown: 0, pc: -1, label: '', lines: [], timers: new Set(), raf: 0, ft: t, txtT: 0, hdg: -1,
+      w: null, view: null, R: 0, idx: null, pal: null, py: 0, rows: 0, scan: false, scanned: false, curF: 0, lastT: t, hmax: 0, roads: false, bldN: 0, rectN: 0, treeN: 0, treeImg: null, mini: false,
+      pois: new Map(), tgtI: 0, tgtT: 0, tips: o.tips && o.tips.length ? o.tips : null, tipI: 0, tipT: 0, fin: false, out: false, onCancel: null };
+    const r = e.loading; r.classList.remove('fin', 'out', 'q'); r.hidden = false;
+    e.ldSat.className = 'ld-sat acq';
+    e.ldTitle.textContent = String(o.title || '').replace(/\s*\(.*\)$/, '');
+    e.ldSub.textContent = o.sub || '';
+    const M = o.mapId && MAPS[o.mapId]; e.ldKm.textContent = !M ? '' : M.arena ? '72×72m' : mapKm(o.mapId); e.ldKm.hidden = !M;
+    e.ldOp.textContent = 'OP-' + String(((M ? M.seed : 4093) * 7 + 1009) % 10000).padStart(4, '0');
+    e.ldLog.textContent = ''; e.ldPois.textContent = ''; e.ldTag.textContent = ''; e.ldPos.textContent = 'X +000 · Z +000'; e.ldGsd.textContent = 'GSD —';
+    e.ldPhase.textContent = '위성 연결 중'; e.ldPct.textContent = '0'; e.ldRule.style.transform = 'scaleX(0)'; e.ldCancel.hidden = true;
+    // 녹화 시계: 숫자 띠를 CSS 로 올림(합성 스레드 — 맵 생성이 주 스레드를 잡아도 흐름) · 새 요소라 0부터 · 동작 줄이기는 frame 이 글로
+    if (rm) e.ldRec.textContent = 'REC 00:00.0'; else e.ldRec.innerHTML = 'REC 0' + dg(10, 'm') + ':' + dg(6, 's6') + dg(10, 's') + '.' + dg(10, 't');
+    const cu = e.ldCur.style; cu.transition = 'none'; cu.transform = 'translateY(0)'; cu.opacity = '';
+    // 캔버스: 도로·건물·미니맵은 위성 화면 실제 크기 × 화면 배율(최대 2) · 지형·나무는 맵을 알게 되면(attach) 높이맵 칸 수에 맞춰
+    const cw = e.ldSat.clientWidth || 480, V = Math.round(clamp(cw * Math.min(2, window.devicePixelRatio || 1), 256, 1024));
+    for (const c of [e.ldRoad, e.ldBld, e.ldMap]) { c.width = c.height = V; c.classList.remove('on'); }
+    for (const c of [e.ldTerr, e.ldTree]) { c.width = c.height = 1; c.classList.remove('on'); }
+    // 작전 메모: 배틀로얄은 TIPS 를 6초마다 (처음은 무작위), 훈련장·데스매치는 넘겨받은 글 하나
+    e.ldMemo.hidden = !S.tips && !o.tip;
+    if (S.tips) { S.tipI = Math.floor(Math.random() * S.tips.length); setTip(); S.tipT = setInterval(nextTip, 6000); }
+    else { e.ldTip.textContent = o.tip || ''; e.ldTipN.textContent = ''; }
+    // 기록 첫 줄: 위성에 내린 명령 (진짜 맵 시드)
+    { const li = document.createElement('li'); li.className = 'cmd'; li.innerHTML = '<time></time><span></span>'; li.firstChild.textContent = clock(0);
+      li.lastChild.textContent = `SAT-1 › ${o.kind === 'hold' ? '경기 상태 요청' : '지형 생성 명령'}` + (M ? ` · 시드 ${M.seed}` : ''); e.ldLog.appendChild(li); }
+    ticker();
+    S.raf = requestAnimationFrame(frame);
+  }
+  function setTip() { E.ldTip.textContent = S.tips[S.tipI]; E.ldTipN.textContent = String(S.tipI + 1).padStart(2, '0') + ' / ' + String(S.tips.length).padStart(2, '0'); }
+  // 다음 메모: 글은 바로 바꾸고 나타나는 움직임만 (합성 스레드 — 생성이 길게 잡아도 빈칸이 생기지 않음)
+  function nextTip() {
+    try {
+      if (!S || !S.tips || S.fin) return;
+      S.tipI = (S.tipI + 1) % S.tips.length; setTip();
+      if (!S.rm && E.ldTip.animate) E.ldTip.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'ease-out' });
+    } catch (e) { fail(e); }
+  }
+  // 위성 화면 아래 흐르는 원격 측정 줄 (같은 글 두 벌 — 절반 옮기면 처음과 같아 끊김 없이 돈다)
+  function ticker() {
+    const w = S.w, v = S.view, a = ['LDR SAT-1', '궤도 412KM'];
+    if (v) a.push(`관측 폭 ${v.span >= 1000 ? (v.span / 1000).toFixed(1) + 'KM' : v.span + 'M'}`, `해상도 ${HF_RES}M`);
+    if (w) { if (w.pois.length) a.push(`지역 ${w.pois.length}곳`); if (S.roads) a.push(`도로 ${w.roads.length}구간`); if (S.bldN) a.push(`건물 ${fmtN(S.bldN)}동`); if (S.treeN) a.push(`나무 ${fmtN(S.treeN)}그루`); }
+    a.push(`수신율 ${(97.2 + Math.random() * 2.6).toFixed(1)}%`);
+    const s = a.join('   ▸   '); E.ldTick.innerHTML = '<span></span><span></span>'; E.ldTick.firstChild.textContent = s; E.ldTick.lastChild.textContent = s;
+  }
+
+  // ---------- 진행 (generateWorld progress) ----------
+  function prog(p, label, info) {
+    if (!S || S.fin || S.out) return;
+    const t = now();
+    if (label && !(label in marks)) marks[label] = t;
+    if (p > S.target) S.target = Math.min(1, p);
+    if (W && W !== S.w && W.hf && W.surf) attach(W);   // 지금 만드는 월드 (startMatch 가 setMapSize 뒤에 부름)
+    if (label && label !== S.label) stage(label, t);
+    if (S.w) feed(label, info, t);
+  }
+  // 맵을 알게 됨: 보이는 범위(아레나는 72m 경기장만 크게) · 지형 캔버스 크기 = 보이는 높이맵 칸 수(96~512) · 열/줄 → 높이맵 칸 번호
+  function attach(w) {
+    S.w = w; S.pal = null;   // 색표는 첫 줄을 칠할 때 (paint)
+    const M = MAPS[w.mapId] || {}, span = M.arena ? 100 : SIZE, x0 = -span / 2;
+    S.view = { x0, z0: x0, span }; E.ldSat.classList.toggle('zoom', !!M.arena);   // zoom: 아레나 — 미니맵 뒤에도 구조물 표시를 남김 (미니맵만으로는 바닥 무늬에 묻힘)
+    const R = S.R = Math.round(clamp(Math.ceil(span / HF_RES) + 1, 96, 512));
+    E.ldTerr.width = E.ldTerr.height = R; E.ldTree.width = E.ldTree.height = R; S.treeImg = null; S.treeN = 0; S.py = 0;
+    S.idx = new Int32Array(R); for (let q = 0; q < R; q++) S.idx[q] = clamp(Math.round((x0 + (q + 0.5) / R * span + HALF) / HF_RES), 0, HF_N - 1);
+    ticker();
+  }
+  function grid(x, z) { const v = S.view; return 'ABCDEFGH'[clamp(Math.floor((x - v.x0) / v.span * 8), 0, 7)] + (clamp(Math.floor((z - v.z0) / v.span * 8), 0, 7) + 1); }
+  // 선분 (x0,y0)→(x1,y1) 을 0~1 정사각형 안으로 자름 (Liang–Barsky) — 밖이면 null
+  function clipUnit(x0, y0, x1, y1) {
+    let t0 = 0, t1 = 1; const dx = x1 - x0, dy = y1 - y0;
+    for (const [p, q] of [[-dx, x0], [dx, 1 - x0], [-dy, y0], [dy, 1 - y0]]) {
+      if (p === 0) { if (q < 0) return null; continue; }
+      const r = q / p; if (p < 0) { if (r > t1) return null; if (r > t0) t0 = r; } else { if (r < t0) return null; if (r < t1) t1 = r; }
+    }
+    return t1 - t0 > 0.02 ? [x0 + dx * t0, y0 + dy * t0, x0 + dx * t1, y0 + dy * t1] : null;
+  }
+  const fx = (x) => (x - S.view.x0) / S.view.span, fz = (z) => (z - S.view.z0) / S.view.span;
+
+  // 새 단계: 앞 줄은 '완료' + 결과 수, 새 줄은 타자 효과
+  //  타자 효과는 글자마다 늦게 나타나는 CSS(opacity · 합성 스레드) — 글은 처음부터 다 들어 있어 생성이 주 스레드를 오래 잡아도 끝까지 쳐진다 · 커서는 다 친 뒤 깜빡임(--td)
+  function stage(label, t) {
+    const prev = S.lines[S.lines.length - 1]; if (prev) closeLine(prev);
+    S.label = label;
+    const li = document.createElement('li'); li.className = 'now';
+    li.innerHTML = '<time></time><span class="l"></span><i class="d"></i><span class="x"></span><b class="ok">완료</b>';
+    li.firstChild.textContent = clock(t - S.t0);
+    const L = { label, li, sp: li.children[1], x: li.children[3], done: false };
+    if (S.rm) L.sp.textContent = label;
+    else { const ch = [...label], f = document.createDocumentFragment(); ch.forEach((c, i) => { const s = document.createElement('span'); s.textContent = c; s.style.animationDelay = i * TYPE_MS + 'ms'; f.appendChild(s); }); L.sp.appendChild(f); li.style.setProperty('--td', ch.length * TYPE_MS + 'ms'); }
+    S.lines.push(L); E.ldLog.appendChild(li);
+    // 위에서부터 쌓이고, 칸이 넘치면 오래된 줄부터 지움 (PC 6줄 · 휴대폰 4줄 — 높이는 CSS · 레이아웃을 묻지 않고 줄 수로)
+    while (E.ldLog.children.length > S.maxLines) E.ldLog.removeChild(E.ldLog.firstChild);
+    E.ldPhase.textContent = PHASE[label] || label;
+    if (S.lines.length > 1) sfx('tick');
+  }
+  function closeLine(L) {
+    if (L.done) return; L.done = true;
+    L.sp.textContent = L.label; L.x.textContent = detail(L.label);
+    L.li.classList.remove('now'); L.li.classList.add('done');
+    if (/완료$/.test(L.label)) L.li.classList.add('nok');   // '준비 완료 ··· 완료' 처럼 겹치지 않게
+  }
+  // 끝난 단계의 결과 (그 단계가 만든 자료를 센다)
+  function detail(label) {
+    const w = S.w; if (!w) return '';
+    switch (label) {
+      case '지형 설계': { let m = 0; for (const r of w.roads) m += r.len || 0; return [w.pois.length ? `지역 ${w.pois.length}곳` : '', m > 0 ? `도로 ${(m / 1000).toFixed(1)}km` : ''].filter(Boolean).join(' · '); }
+      case '높이맵 계산': return `${HF_N}×${HF_N}`;
+      case '건물 배치': return w.buildings.length ? `건물 ${fmtN(w.buildings.length)}동` : '';
+      case '숲과 바위 생성': case '눈 덮인 숲 생성': return w.trees && w.trees.length ? `나무 ${fmtN(w.trees.length)}그루` : '';
+      case '미니맵 렌더링': return w.minimap ? `${w.minimap.width}px` : '';
+      case '아이템 배치': return GROUND.length ? `보급품 ${fmtN(GROUND.length)}개` : '';
+    }
+    return '';
+  }
+
+  function feed(label, info, t) {
+    const w = S.w;
+    syncPois(w);
+    if (label === '높이맵 계산') {
+      if (!S.scan) { S.scan = true; S.lastT = t; E.ldSat.classList.remove('acq'); ticker(); }
+      const rows = info && info.rows ? info.rows : 0;
+      if (rows > S.rows) {
+        S.rows = rows; paint(rows - 2);   // 마지막 줄은 다음 줄이 있어야 비탈을 앎 → 한 줄 늦게
+        glide(t);
+        E.ldTag.textContent = `ROW ${rows}/${HF_N}`;
+        E.ldPos.textContent = `SCAN Z ${sgn(S.view.z0 + S.curF * S.view.span)} · ${grid(0, S.view.z0 + S.curF * S.view.span).slice(1)}행`;
+      }
+      return;
+    }
+    if (label === '지형 설계') return;
+    if (!S.scanned) finishScan(t);   // 높이맵이 끝남 (다음 단계가 옴)
+    if (!S.roads && w.roads.length) drawRoads(w);
+    drawBlds(w);
+    const tr = info && info.trees ? info.trees : w.trees;
+    if (tr && tr.length) drawTrees(tr);
+    if (!S.mini && w.minimap) showMini(w);
+    revealRest();
+    if (label === '준비 완료') E.ldSat.classList.remove('sweep');
+  }
+
+  // 높이맵 줄 칠하기: 아직 안 칠한 캔버스 줄 중 높이맵 칸 줄이 jMax 이하인 것 (미니맵 buildMinimapImage 와 같은 색·음영 · 물은 깊이로)
+  function paint(jMax) {
+    const R = S.R, idx = S.idx, w = S.w; let py1 = S.py;
+    while (py1 < R && idx[py1] <= jMax) py1++;
+    if (py1 <= S.py) return;
+    const g = E.ldTerr.getContext('2d'), n = py1 - S.py, img = g.createImageData(R, n), d = img.data;
+    const pal = S.pal || (S.pal = mapPalette(w));   // 여기서 정함: w.v2·w.xmas 는 첫 '높이맵 계산' 보고 전에 정해져 있음 (크리스마스 섬 눈 · 정글 숲바닥)
+    const hf = w.hf, sf = w.surf, N = HF_N, k0 = 0.18 / HF_RES, inv = 1 / (2 * HF_RES), slT = w.v2 ? 1.05 : 0.75;
+    for (let y = 0; y < n; y++) {
+      const j = idx[S.py + y], jm = j > 0 ? j - 1 : 0, edgeJ = j < 1 || j > N - 2;
+      for (let px = 0; px < R; px++) {
+        const i = idx[px], k = j * N + i, h = hf[k], o = (y * R + px) * 4;
+        if (h < WATER_Y) { const dd = Math.min(1, -h / 6); d[o] = 70 - 36 * dd; d[o + 1] = 130 - 52 * dd; d[o + 2] = 150 - 40 * dd; }
+        else {
+          let s = sf[k];
+          if (!edgeJ && i > 0 && i < N - 1 && !NO_ROCK.has(s) && Math.max(Math.abs(hf[k + 1] - hf[k - 1]), Math.abs(hf[k + N] - hf[k - N])) * inv > slT) s = 2;
+          const c = pal[s] || pal[0], hn = hf[jm * N + (i > 0 ? i - 1 : 0)];
+          const sh = Math.min(1.25, Math.max(0.7, 1 + (hn - h) * k0)) * (0.9 + Math.min(0.25, Math.max(0, h / 80)));
+          d[o] = c[0] * sh; d[o + 1] = c[1] * sh; d[o + 2] = c[2] * sh;
+        }
+        d[o + 3] = 255;
+      }
+    }
+    g.putImageData(img, 0, S.py);
+    S.py = py1;
+  }
+  // 주사선(가림막 윗변)을 칠한 곳까지 — 직전 보고 간격만큼 걸려 다음 보고가 올 즈음 닿는다
+  function glide(t) {
+    const f = S.py / S.R, dt = S.rm ? 0 : clamp(t - S.lastT, 60, 1600); S.lastT = t;
+    revealUpTo(S.curF, f, dt);
+    const cu = E.ldCur.style; cu.transition = dt ? `transform ${Math.round(dt)}ms linear` : 'none'; cu.transform = `translateY(${(f * 100).toFixed(3)}%)`;
+    S.curF = f;
+    if (S.py > 0) profile(S.idx[S.py - 1]);
+  }
+  // 고도 단면: 주사선 바로 밑에 방금 칠한 줄의 높이를 파형으로 (가림막과 함께 움직임) — 바다는 바닥선, 높이 눈금은 지금까지 본 가장 높은 곳
+  function profile(j) {
+    const c = E.ldProf, g = c.getContext('2d'), Wd = c.width, Hd = c.height, hf = S.w.hf, N = HF_N, v = S.view;
+    let mx = S.hmax || 24; const hs = new Float32Array(Wd);
+    for (let q = 0; q < Wd; q++) { const i = clamp(Math.round((v.x0 + (q + 0.5) / Wd * v.span + HALF) / HF_RES), 0, N - 1), h = hf[j * N + i]; hs[q] = h; if (h > mx) mx = h; }
+    S.hmax = mx;
+    const y = (h) => Hd - 1.5 - Math.max(0, h) / mx * (Hd - 6);
+    g.clearRect(0, 0, Wd, Hd); g.beginPath(); g.moveTo(0, Hd);
+    for (let q = 0; q < Wd; q++) g.lineTo(q + 0.5, y(hs[q]));
+    g.lineTo(Wd, Hd); g.closePath(); g.fillStyle = 'rgba(120, 196, 255, 0.16)'; g.fill();
+    g.beginPath(); for (let q = 0; q < Wd; q++) g[q ? 'lineTo' : 'moveTo'](q + 0.5, y(hs[q]));
+    g.strokeStyle = 'rgba(200, 236, 255, 0.95)'; g.lineWidth = 1.2; g.stroke();
+  }
+  function finishScan(t) {
+    S.scanned = true; S.scan = true; S.rows = HF_N; paint(HF_N - 1);
+    const d = S.rm ? 0 : 420; revealUpTo(S.curF, 1.0001, d); S.curF = 1;
+    const cu = E.ldCur.style; cu.transition = d ? `transform ${d}ms cubic-bezier(.45, 0, .85, .6), opacity .3s ${d}ms` : 'none'; cu.transform = 'translateY(100%)'; cu.opacity = '0';
+    E.ldSat.classList.remove('acq'); E.ldSat.classList.add('sweep');
+    E.ldTag.textContent = ''; ticker();
+  }
+
+  // 지역 표식 (DOM · 표식은 처음엔 숨김 — 주사선이 닿을 때 on)
+  //  이름: 큰 지역(도시·군사기지 등 tier high/top)은 항상, 나머지는 지역이 14곳 이하일 때만 · 길가 마을·주유소(minor)는 작은 점만
+  function syncPois(w) {
+    if (S.pois.size >= w.pois.length) return;
+    const major = w.pois.filter((p) => !p.minor).length;
+    for (const p of w.pois) {
+      if (S.pois.has(p)) continue;
+      const a = fx(p.x), b = fz(p.z), el = document.createElement('div');
+      if (a < -0.02 || a > 1.02 || b < -0.02 || b > 1.02) { S.pois.set(p, { on: true, el: null }); continue; }
+      const hi = p.tier === 'high' || p.tier === 'top', lab = !p.minor && (hi || major <= 14);
+      el.className = 'ld-poi' + (p.minor ? ' mi' : hi ? ' hi' : '') + (a > 0.72 ? ' l' : '');
+      el.style.left = (a * 100).toFixed(2) + '%'; el.style.top = (b * 100).toFixed(2) + '%';
+      el.appendChild(document.createElement('i'));
+      if (lab && p.name) { const s = document.createElement('span'); s.textContent = p.name; el.appendChild(s); }
+      E.ldPois.appendChild(el);
+      S.pois.set(p, { on: false, el, fy: b, p });
+    }
+  }
+  function revealUpTo(f0, f1, dt) {
+    for (const P of S.pois.values()) if (!P.on && P.fy <= f1) {
+      P.on = true; const dl = f1 > f0 ? clamp((P.fy - f0) / (f1 - f0), 0, 1) * dt : 0;
+      P.el.style.setProperty('--d', Math.round(dl) + 'ms'); P.el.classList.add('on');
+    }
+  }
+  // 주사선이 지나간 뒤에 생긴 지역 (훈련장 시설·아레나 구역 등) — 조금씩 시간차
+  function revealRest() { let n = 0; for (const P of S.pois.values()) if (!P.on) { P.on = true; P.el.style.setProperty('--d', (S.rm ? 0 : n++ * 70) + 'ms'); P.el.classList.add('on'); } }
+
+  // 도로: 종류·폭마다 경로 한 벌 → 어두운 테두리 + 밝은 심
+  function drawRoads(w) {
+    S.roads = true;
+    const c = E.ldRoad, g = c.getContext('2d'), V = c.width, v = S.view, k = V / v.span, groups = new Map();
+    for (const r of w.roads) { const key = (r.kind || 'main') + '|' + (r.width || 7); let P = groups.get(key); if (!P) groups.set(key, P = new Path2D()); P.moveTo((r.ax - v.x0) * k, (r.az - v.z0) * k); P.lineTo((r.bx - v.x0) * k, (r.bz - v.z0) * k); }
+    const col = { main: '#f1e6c4', street: '#b3b0a4', dirt: '#d4b27e' }, edge = Math.max(1.4, V / 420);
+    g.lineCap = g.lineJoin = 'round';
+    for (const pass of [0, 1]) for (const [key, P] of groups) {
+      const [kind, wd] = key.split('|'), lw = Math.max(1, +wd * k * 0.6);
+      g.lineWidth = pass ? lw : lw + edge; g.strokeStyle = pass ? col[kind] || col.main : 'rgba(6, 12, 14, 0.7)'; g.stroke(P);
+    }
+    c.classList.add('on'); ticker();
+  }
+  // 건물·구조물: 호박색 칸 (처음 보일 때 깜빡이며 '식별') — 새로 생긴 것만 더 그림
+  function drawBlds(w) {
+    const B = w.buildings, MR = w.mapRects || [];
+    if (B.length <= S.bldN && MR.length <= S.rectN) return;
+    const c = E.ldBld, g = c.getContext('2d'), V = c.width, v = S.view, k = V / v.span, lw = Math.max(1, V / 640);
+    g.fillStyle = 'rgba(240, 164, 58, 0.45)'; g.strokeStyle = 'rgba(255, 204, 128, 0.95)'; g.lineWidth = lw;
+    const box = (x0, z0, x1, z1) => {
+      let x = (x0 - v.x0) * k, y = (z0 - v.z0) * k, ww = (x1 - x0) * k, hh = (z1 - z0) * k;
+      if (ww < 2) { x -= (2 - ww) / 2; ww = 2; } if (hh < 2) { y -= (2 - hh) / 2; hh = 2; }
+      g.fillRect(x, y, ww, hh); if (ww > 5 && hh > 5) g.strokeRect(x + lw / 2, y + lw / 2, ww - lw, hh - lw);
+    };
+    for (let i = S.bldN; i < B.length; i++) { const r = B[i].rect; if (r) box(r[0], r[1], r[2], r[3]); }
+    for (let i = S.rectN; i < MR.length; i++) { const r = MR[i]; box(r[0], r[1], r[2], r[3]); }
+    S.bldN = B.length; S.rectN = MR.length;
+    if (!c.classList.contains('on')) { c.classList.add('on'); sfx('scan'); }
+    ticker();
+  }
+  // 나무: 지형 해상도의 점 (픽셀 버퍼에 새 나무만 찍고 한 번에 올림)
+  function drawTrees(list) {
+    if (list.length <= S.treeN) return;
+    const R = S.R, v = S.view, k = R / v.span, g = E.ldTree.getContext('2d');
+    if (!S.treeImg) S.treeImg = g.createImageData(R, R);
+    const d = S.treeImg.data, snow = !!S.w.xmas, cr = snow ? 46 : 16, cg = snow ? 78 : 50, cb = snow ? 64 : 22;
+    for (let i = S.treeN; i < list.length; i++) {
+      const t = list[i], px = Math.floor((t.x - v.x0) * k), py = Math.floor((t.z - v.z0) * k);
+      if (px < 0 || py < 0 || px >= R || py >= R) continue;
+      const o = (py * R + px) * 4; d[o] = cr; d[o + 1] = cg; d[o + 2] = cb; d[o + 3] = 220;
+    }
+    S.treeN = list.length; g.putImageData(S.treeImg, 0, 0);
+    E.ldTree.classList.add('on');
+  }
+  // 진짜 미니맵으로 (보이는 범위만 잘라 위성 화면 크기로)
+  function showMini(w) {
+    S.mini = true;
+    const c = E.ldMap, g = c.getContext('2d'), V = c.width, m = w.minimap, v = S.view, k = m.width / SIZE;
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(m, (v.x0 + HALF) * k, (v.z0 + HALF) * k, v.span * k, v.span * k, 0, 0, V, V);
+    E.ldSat.classList.add('mini'); E.ldSat.classList.remove('sweep');
+  }
+
+  // ---------- 매 화면 (글자만 · 0.045초마다) ----------
+  function frame(ts) {
+    if (!S) return;
+    S.raf = requestAnimationFrame(frame);
+    try {
+      const t = now(), dt = Math.max(0, (t - S.ft) / 1000); S.ft = t;
+      if (S.fin && !S.out) finTick(ts, t);
+      // 진행률: 실제로 지난 시간만큼 따라감 — 생성 중에는 화면이 드물게 그려지므로 오래 비었으면 한 번에 따라잡음
+      S.shown += (S.target - S.shown) * (1 - Math.exp(-dt * 7)); if (Math.abs(S.target - S.shown) < 0.002) S.shown = S.target;
+      if (t - S.txtT < 45) return; S.txtT = t;
+      const pc = Math.min(100, Math.floor(S.shown * 100 + 1e-6));
+      if (pc !== S.pc) { S.pc = pc; E.ldPct.textContent = pc; }
+      E.ldRule.style.transform = `scaleX(${S.shown.toFixed(3)})`;
+      if (S.rm) E.ldRec.textContent = 'REC ' + clock(t - S.t0).slice(0, -1);
+      if (!S.w || S.fin) return;
+      const hd = Math.floor(47 + (t - S.t0) / 1000 * 1.7) % 360;
+      if (hd !== S.hdg) { S.hdg = hd; E.ldGsd.textContent = `GSD ${HF_RES}M · HDG ${String(hd).padStart(3, '0')}°`; }
+      // 스캔이 끝나면 왼쪽 아래 읽음값이 드러난 지역을 차례로 겨눔
+      if (S.scanned && t - S.tgtT > 1300) {
+        S.tgtT = t; const ps = [...S.pois.values()].filter((P) => P.el && P.p && !P.p.minor);
+        if (ps.length) { const P = ps[S.tgtI++ % ps.length]; E.ldPos.textContent = `TGT ${P.p.name} · ${grid(P.p.x, P.p.z)}`; }
+      }
+    } catch (e) { fail(e); }
+  }
+  // 마지막 연출 시계: 연출이 실제로 화면에서 시작한 때부터 잰다 — 도장 애니메이션의 startTime (합성 스레드가 시작하며 알려 줌 · 경기 첫 화면(셰이더 준비)이 오래 걸리면 그만큼 늦음)
+  //  아직 모르면 finale 뒤 두 번째 화면의 시작(ts)을 임시 기준으로 0.6초까지 기다림 (동작 줄이기는 애니메이션이 없어 바로 ts)
+  //  소리도 같은 기준으로 WebAudio 에 예약 (자기장 고정음 · 도장 '쾅') · 사라짐은 경기 화면이 3번 그려지고 도장이 다 보인 뒤
+  function finTick(ts, t) {
+    S.finN++;
+    if (S.finN === 2) S.finT = Math.min(t, ts || t);
+    if (S.finN >= 2 && !S.finOk) {
+      let st = null; try { const a = E.ldStamp.getAnimations()[0]; if (a && a.startTime != null) st = a.startTime; } catch (e) { /* 모름 */ }
+      if (st != null || S.rm || t - S.finT > 600) {
+        S.finOk = true; if (st != null) S.finT = st;
+        const late = t - S.finT, F = S.F;
+        if (S.Z0) sfx('lock', Math.max(0, F.lock - late) / 1000);
+        sfx('stamp', Math.max(0, F.stamp - late) / 1000);
+      }
+    }
+    if (S.finOk && S.finN >= 3 && t - S.finT >= S.finMin) fadeOut();
+  }
+
+  // ---------- 끝 ----------
+  const zoneOk = () => !!(S.view && Zone.cur && Zone.next);
+  // 이어하기·다시 들어오기는 지금 단계의 구역일 수 있음
+  const zoneWord = () => (Zone.phase > 0 ? '다음 안전 구역' : '첫 안전 구역');
+  const zoneSub = () => `${zoneWord()} ${grid(Zone.next.x, Zone.next.z)} · 반경 ${Math.round(Zone.next.r)}m`;
+  const pc = (f) => (f * 100).toFixed(2) + '%';
+  // 자기장: 파란 원(Zone.cur · 바깥은 푸르게) · 흰 원(Zone.next) + 십자 + 이름표 — .zon 이 붙는 때 움직임 시작 (CSS)
+  function drawZone() {
+    const e = E, v = S.view, Z = Zone;
+    const place = (el, c) => { const s = el.style; s.left = pc(fx(c.x - c.r)); s.top = pc(fz(c.z - c.r)); s.width = s.height = pc(c.r * 2 / v.span); };
+    place(e.ldZc, Z.cur); place(e.ldZn, Z.next); place(e.ldZp, Z.next);
+    e.ldZx.style.left = pc(fx(Z.next.x)); e.ldZx.style.top = pc(fz(Z.next.z));
+    // 이름표는 흰 원 윗변 바깥 (가운데 도장과 겹치지 않게) · 윗변이 위성 화면 맨 위(상태 글 자리)에 가까우면 아랫변 바깥 · 화면 안으로
+    const up = fz(Z.next.z - Z.next.r) > 0.16; e.ldZl.textContent = `${zoneWord()} ${grid(Z.next.x, Z.next.z)}`;
+    e.ldZl.style.left = pc(clamp(fx(Z.next.x), 0.12, 0.88)); e.ldZl.style.top = pc(clamp(fz(Z.next.z + (up ? -Z.next.r : Z.next.r)), 0.08, 0.92)); e.ldZl.classList.toggle('dn', !up);
+    const c = Z.cur; e.ldZt.setAttribute('viewBox', `${v.x0} ${v.z0} ${v.span} ${v.span}`);
+    e.ldZtP.setAttribute('d', `M${v.x0} ${v.z0}h${v.span}v${v.span}h${-v.span}Z M${c.x - c.r} ${c.z}a${c.r} ${c.r} 0 1 0 ${2 * c.r} 0a${c.r} ${c.r} 0 1 0 ${-2 * c.r} 0Z`);
+    e.ldPos.textContent = `ZONE ${grid(Z.next.x, Z.next.z)} · R ${Math.round(Z.next.r)}M`;
+    e.ldSat.classList.add('zon'); S.Z = true;
+  }
+  // 경기 시작 직전 (startMatch · Training.start · DM.start 끝 — 그 뒤 바로 G.state = 'play'): 첫 자기장 → 도장 → 사라짐 (경기 진행은 기다리지 않고 화면만 겹친다)
+  //  zone: true = 지금 Zone.cur·next 를 그림 · 'wait' = 같이 하기 파티원(이 기기의 Zone 은 아직 방장 것이 아님) — 방장 자기장이 오면 zone() 이 그림
+  //  plane: 비행 경로(G.plane) · stamp: 도장 글 · sub: 도장 아래 작은 글 · quick: 진행 중인 경기를 여는 경우(이어하기·다시 들어오기)와 데스매치 — 바로 도장 · 짧게
+  function finale(o) {
+    if (!S || S.fin || S.out) return;
+    o = o || {}; const e = E, t = now(), q = !!o.quick;
+    if (S.w) { if (!S.scanned) finishScan(t); if (!S.roads && S.w.roads.length) drawRoads(S.w); drawBlds(S.w); if (!S.mini && S.w.minimap) showMini(S.w); revealRest(); }
+    S.fin = true; S.target = 1; S.Z = false; S.sub = o.sub || ''; S.quick = q; S.zWait = o.zone === 'wait';
+    if (o.zone === true && zoneOk()) drawZone();
+    // 비행 경로 (배틀로얄 시작): 수송기가 지나갈 직선을 위성 화면 가장자리까지 잘라 점선 + 화살표 — 바깥 div 는 회전만, 안쪽이 늘어남(합성 스레드)
+    const v = S.view, pl = o.plane && v && G.plane, seg = pl ? clipUnit(fx(pl.ax), fz(pl.az), fx(pl.bx), fz(pl.bz)) : null;
+    e.ldZf.hidden = e.ldZfl.hidden = !seg;
+    if (seg) {
+      const [x0, y0, x1, y1] = seg, len = Math.hypot(x1 - x0, y1 - y0), a = Math.atan2(y1 - y0, x1 - x0), s = e.ldZf.style;
+      s.left = pc(x0); s.top = pc(y0); s.width = pc(len); s.transform = `rotate(${a.toFixed(4)}rad)`;
+      const lx = x0 + (x1 - x0) * 0.14 - Math.sin(a) * 0.035, ly = y0 + (y1 - y0) * 0.14 + Math.cos(a) * 0.035;
+      e.ldZfl.style.left = pc(clamp(lx, 0.08, 0.92)); e.ldZfl.style.top = pc(clamp(ly, 0.05, 0.95));
+    }
+    const st = o.stamp || '준비 완료';
+    stage(st, t); const L = S.lines[S.lines.length - 1]; closeLine(L); L.li.classList.add('fin');
+    e.ldPhase.textContent = S.Z ? '자기장 정보 수신' : '작전 개시';
+    e.ldStampT.textContent = st; e.ldStampS.textContent = S.sub || (S.Z ? zoneSub() : '');
+    e.ldSat.classList.remove('sweep', 'acq'); e.ldSat.classList.add('fin'); if (!S.Z) e.ldSat.classList.add('nz'); if (q) e.ldSat.classList.add('q');
+    e.loading.classList.add('fin'); e.loading.classList.toggle('q', q); e.ldCancel.hidden = true; S.onCancel = null;
+    clearInterval(S.tipT);
+    // 시계는 finTick 이 화면에 오른 때부터 · 화면이 아예 그려지지 않는 상태(탭 숨김 등)가 길면 그래도 사라짐
+    S.F = q ? FIN.quick : S.Z ? FIN.zone : FIN.nz; S.Z0 = S.Z; S.finN = 0; S.finT = 0; S.finOk = false; S.finMin = S.F.out;
+    later(fadeOut, 9000);
+  }
+  // 같이 하기 파티원: 방장이 보낸 자기장이 도착함 (10_net.js applyZone — welcome · zone) — 마지막 연출 중이면 그때 그림
+  function zone() {
+    if (!S || !S.fin || S.out || !S.zWait || !zoneOk()) return;
+    S.zWait = false; drawZone();
+    E.ldPhase.textContent = '자기장 정보 수신';
+    if (!S.sub) E.ldStampS.textContent = zoneSub();
+    if (S.finN < 1) { E.ldSat.classList.remove('nz'); S.F = S.quick ? FIN.quick : FIN.zone; S.Z0 = true; S.finMin = S.F.out; return; }   // 아직 화면에 오르기 전: 처음부터 자기장 순서대로
+    // 이미 도장이 나오는 중(도장 지연은 그대로 — 바꾸면 깜빡임): 자기장이 다 그려지고 잠깐 보일 때까지 (화면에 오른 뒤 최대 2.1초)
+    sfx('lock', S.quick ? 0 : 0.3);
+    S.finMin = Math.min(2100, Math.max(S.finMin, (S.finT ? now() - S.finT : 0) + (S.quick ? 450 : 900)));
+  }
+  function fadeOut() { if (!S || S.out) return; S.out = true; E.loading.classList.add('out'); later(hideNow, S.quick ? 340 : 540); }
+  // 같이 하기로 돌아온 사람: 방장이 지금 상태를 보낼 때까지 가림막 (10_resume.js — 0.3초마다 불려도 같음) · onCancel: '로비로' 단추 (기다리다 그만두기)
+  function hold(label, onCancel) {
+    label = label || '경기 상태를 받는 중…';
+    if (!S || S.fin || S.out) {
+      const w = W, M = w && MAPS[w.mapId];
+      show({ title: M ? M.name : '', sub: '경기에 다시 연결', mapId: w ? w.mapId : null, kind: 'hold' });
+      if (w && w.hf && w.surf) { attach(w); syncPois(w); S.scan = true; finishScan(now()); E.ldCur.style.transition = 'none'; if (w.minimap) showMini(w); revealRest(); }
+    }
+    if (S.label !== label) stage(label, now());
+    S.target = Math.max(S.target, 0.99);
+    E.ldPhase.textContent = '경기 상태 수신 중';
+    if (onCancel) { S.onCancel = onCancel; if (E.ldCancel.hidden) { E.ldCancel.hidden = false; E.ldMemo.hidden = true; clearInterval(S.tipT); } }
+  }
+  // 도장 없이 사라짐 / 바로 숨김(오류 · 로비로)
+  const hide = () => fadeOut();
+  function hideNow() {
+    const e = els(); teardown();
+    e.loading.hidden = true; e.loading.classList.remove('fin', 'out', 'q');
+    e.ldSat.className = 'ld-sat'; e.ldPois.textContent = ''; e.ldLog.textContent = ''; e.ldCancel.hidden = true;
+    for (const c of [e.ldTerr, e.ldTree, e.ldRoad, e.ldBld, e.ldMap]) { c.width = c.height = 1; c.classList.remove('on'); }   // 큰 캔버스 메모리 반납
+    const cu = e.ldCur.style; cu.transition = 'none'; cu.transform = ''; cu.opacity = '';
+  }
+  function teardown() {
+    if (!S) return; const s = S; S = null;
+    cancelAnimationFrame(s.raf); for (const id of s.timers) clearTimeout(id); s.timers.clear(); clearInterval(s.tipT);
+  }
+  // 꾸밈 화면 오류: 경기는 그대로 두고 화면만 걷음
+  function fail(err) { console.warn('로딩 화면 오류 — 화면만 걷음', err); try { hideNow(); } catch (e) { try { teardown(); document.getElementById('loading').hidden = true; } catch (e2) { /* 그대로 */ } } }
+  const safe = (fn) => (...a) => { try { return fn(...a); } catch (e) { fail(e); } };
+  // 로딩 화면이 화면을 다 덮고 있음 (도장·사라지는 중이면 아님) — 11_game.js loop 가 로비 3D 를 건너뜀
+  const covers = () => !!S && !S.fin && !S.out;
+  return { show: safe(show), prog: safe(prog), hold: safe(hold), finale: safe(finale), zone: safe(zone), hide: safe(hide), hideNow: safe(hideNow), covers, brSub, get marks() { return marks; } };
+})();
+
 // ---------- 10_mm.js ----------
 // ============================================================
 // 10_mm.js — 온라인 매칭 (v21)
@@ -33053,6 +33778,7 @@ const Net = (() => {
     const nk = JSON.stringify(z.n), ok = JSON.stringify(Zone.next);
     Zone.cur = z.c; Zone.next = z.n; Zone.from = z.f; Zone.phase = z.p; Zone.state = z.s; Zone.timer = z.t; Zone.dps = z.d; Zone.shrinkTotal = z.st; Zone.finalT = z.ft; Zone.warned = z.w;
     Zone.updateMeshes(); if (nk !== ok) Zone.updateRing();
+    Loading.zone();   // v23 로딩 화면 마지막 연출 중이면 방장 자기장을 그림 (파티원은 이때부터 맞는 자기장)
   }
   function applyWorld(w) {
     if (N.host) return;
@@ -36874,20 +37600,21 @@ const Resume = (() => {
       clearInterval(waitT);
       waitT = setInterval(() => {
         if (!G.rjHold) { clearInterval(waitT); return; }
-        if (G.state === 'play') { $('loading').hidden = false; $('loadStep').textContent = '경기 상태를 받는 중…'; $('loadBar').style.width = '99%'; }
+        // 로딩 화면 그대로 가림막 (10_loading.js — 이미 떠 있으면 그대로) · '로비로 나가기' 단추: 기다리다 그만두면 다시 들어가기 창으로 (다시 시도 가능)
+        if (G.state === 'play') Loading.hold('경기 상태를 받는 중…', () => { if (G.rjHold) { clearInterval(waitT); failNet(s, '다시 들어가기를 그만두었습니다 — 다시 시도할 수 있습니다'); } });
         if (Date.now() - t0 > 25000 || !G.net) { clearInterval(waitT); failNet(s); }
       }, 300);
     } catch (e) { console.error(e); busy = false; show(s, '연결 실패: ' + e.message); }
   }
-  function failNet(s) {
-    G.rjHold = false; busy = false; $('loading').hidden = true;
+  function failNet(s, msg) {
+    G.rjHold = false; busy = false; Loading.hideNow();
     if (G.net) Net.close(true);
     if (G.state === 'play' || G.state === 'loading') toLobby();
-    pend = s; store.set(KEY, s); show(s, '경기에 다시 연결하지 못했습니다 (방장 기기와 연결이 되지 않음)');
+    pend = s; store.set(KEY, s); show(s, msg || '경기에 다시 연결하지 못했습니다 (방장 기기와 연결이 되지 않음)');
   }
   // 방장이 보낸 지금 상태를 적용함 (10_net.js applyRj 끝)
   function rejoined() {
-    G.rjHold = false; busy = false; clearInterval(waitT); $('loading').hidden = true;
+    G.rjHold = false; busy = false; clearInterval(waitT); Loading.finale({ zone: true, stamp: '경기 복귀', quick: true });   // 가림막: 지금 자기장 + 도장 뒤 바로 사라짐 (경기는 이미 진행 중)
     const p = G.player;
     HUD.toast(p && p.alive ? '경기에 다시 들어왔습니다 — 내 캐릭터를 돌려받았습니다' : '경기에 다시 들어왔습니다 — 그사이 탈락해서 팀원을 관전합니다', 'ok');
     saveT = 1;
@@ -38716,9 +39443,9 @@ const Training = (() => {
     if (G.state === 'loading') return;
     G.state = 'loading'; G.paused = false; G.over = false; G.training = true;
     Audio.music(false);
-    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
-    $('loadMap').textContent = MAPS.training.name; $('loadTip').textContent = '훈련장: 무기고에서 총을 고르고 사격선에서 더미를 쏴 보세요. 차량과 장애물 코스도 있습니다.';
-    const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
+    $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; Shop.closeAll();
+    Loading.show({ title: MAPS.training.name, sub: `훈련 · 자유 사격 · ${SETTINGS.view === 'fpp' ? '1인칭' : '3인칭'}`, tip: '훈련장: 무기고에서 총을 고르고 사격선에서 더미를 쏴 보세요. 차량과 장애물 코스도 있습니다.', mapId: 'training', kind: 'training' });   // v23 로딩 화면 (10_loading.js)
+    const prog = Loading.prog;
     disposeMatch();
     const sc = new THREE.Scene(); G.scene = sc;
     const t = TIMES[SETTINGS.time], far = viewFar();
@@ -38733,7 +39460,7 @@ const Training = (() => {
     G.focusRing.visible = false; sc.add(G.focusRing);
     setMapSize('training');
     try { await generateWorld('training', sc, prog); }
-    catch (e) { console.error(e); fatal('훈련장 생성 중 오류: ' + e.message); return; }
+    catch (e) { console.error(e); Loading.hideNow(); fatal('훈련장 생성 중 오류: ' + e.message); return; }
     prog(0.97, '무기고 정리');
     Veh.init(sc); FX.init(sc); ThrowViz.init(sc); PROJ = []; SMOKES = []; ROCKETS = []; PathQ.clear(); G.myNade = null;
     Zone.cur = Zone.next = null; Zone.state = 'wait'; Airdrop.init(sc); G.plane = null;
@@ -38751,7 +39478,8 @@ const Training = (() => {
     G.firstPerson = SETTINGS.view === 'fpp'; Cam.ads = 0; VM.key = null;
     HUD.reset(); Input.reset(); Touch.resetToggles(); Touch.apply();
     document.body.classList.add('training'); $('quitBtn').textContent = '훈련장 나가기 (로비로)';
-    $('loading').hidden = true; $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
+    Loading.finale({ stamp: '훈련 준비 완료', sub: '사격장 개방 · 무기고 점검 끝' });   // 도장 뒤 사라짐 — 훈련은 바로 시작
+    $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
     G.state = 'play'; G.previewT = 0;
     Audio.wind(0.05);
     HUD.toast('훈련장 — 뒤의 무기고 탁자에서 총을 고르세요', 'info');
@@ -40929,9 +41657,11 @@ async function startMatch(cfg) {
   G.state = 'loading'; G.paused = false; G.over = false; G.training = false; G.matchT = 0; G.victory = null;
   document.body.classList.remove('training'); $('quitBtn').textContent = '경기 포기 (로비로)';
   Audio.music(false);
-  $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; $('loading').hidden = false; Shop.closeAll();
-  $('loadMap').textContent = MAPS[SETTINGS.map].name; $('loadTip').textContent = pick(TIPS);
-  const prog = (p, label) => { $('loadBar').style.width = Math.round(p * 100) + '%'; $('loadStep').textContent = label; };
+  $('lobby').hidden = true; $('resultPanel').hidden = true; $('hud').hidden = true; Shop.closeAll();
+  // v23 로딩 화면 「위성 정찰 스캔」 (10_loading.js) — 모드 줄은 아래에서 정하는 G.hc·G.ranked·팀 크기와 같은 식 (표시만)
+  { const hc = net ? !!cfg.hc : rs ? !!rs.hc : SETTINGS.queue === 'hardcore' && Rank.hcOk(), rk = net ? !!cfg.ranked : rs ? !!rs.rk : (SETTINGS.queue === 'ranked' || hc) && Rank.unlocked();
+    Loading.show({ title: MAPS[SETTINGS.map].name, sub: Loading.brSub(rk, hc, net ? cfg.teamSize : rs ? rs.ts : rk ? 1 : (TEAM_MODES[SETTINGS.squad] || TEAM_MODES.solo).size), tips: TIPS, mapId: SETTINGS.map, kind: 'br' }); }
+  const prog = Loading.prog;
   disposeMatch();
   G.netCfg = net ? cfg : null;   // 이어하기 저장용 (창을 닫을 때 10_net.js 가 먼저 나가도 남아 있게)
   const sc = new THREE.Scene(); G.scene = sc;
@@ -40953,7 +41683,7 @@ async function startMatch(cfg) {
   setMapSize(SETTINGS.map);
   if (net && cfg.humans && typeof Cloud !== 'undefined' && Cloud.staffAsk) Cloud.staffAsk(cfg.humans.map((hm) => hm.uid));   // v23 스타트 섬 머리 위 칭호(한 번만 그려짐): 관리자 계정이 단 칭호가 보이게, 맵을 만드는 동안 답이 오도록 미리 확인 (10_cloud.js)
   try { await generateWorld(SETTINGS.map, sc, prog); }
-  catch (e) { console.error(e); fatal('맵 생성 중 오류: ' + e.message); return; }
+  catch (e) { console.error(e); Loading.hideNow(); fatal('맵 생성 중 오류: ' + e.message); return; }
   prog(0.97, '아이템 배치');
   // 경기 시드: 같이 하기는 방장이 정한 것, 혼자면 새로(이어하기는 저장해 둔 것) — 시드가 같으면 모든 기기에서 같은 아이템이 같은 자리에 생긴다
   //  v23: 혼자 하는 경기도 시드로 — 이어하기가 시작 아이템을 다시 만들고 바뀐 것만 저장한다 (10_resume.js)
@@ -41044,7 +41774,11 @@ async function startMatch(cfg) {
   const isl = !G.skipIsland && !rs && !(rj && !rj.isl) && Island.start(sc, net ? cfg.seed : (Math.random() * 2147483647) | 0);
   if (rs) Resume.apply(rs);
   if (net) Net.ready();
-  $('loading').hidden = true; $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
+  // 로딩 화면: 첫 자기장 + 「강하 준비 완료」 도장 뒤 CSS 로 사라짐 — 경기는 지금 바로 시작하고 화면만 겹친다
+  //  같이 하기 파티원: 이 기기의 Zone 은 아직 방장 것이 아님 → 방장 자기장(welcome)이 오면 그림('wait' — 10_net.js applyZone → Loading.zone)
+  //  이어하기는 진행 중인 경기라 빠른 마무리 · 같이 하기로 돌아온 사람(G.rjHold)은 방장이 지금 상태를 보낼 때까지 가림막 그대로 (10_resume.js rejoined 가 걷음)
+  if (G.rjHold) Loading.hold(); else Loading.finale({ zone: !net || Net.isHost() ? true : 'wait', plane: !rs, stamp: rs ? '작전 재개' : '강하 준비 완료', quick: !!rs });
+  $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
   G.state = 'play';
   if (isl) { G.previewT = 0; Audio.wind(0.04); }
   else if (!rs && !rj) planeIntro();
@@ -41471,7 +42205,7 @@ G.ui = function (a) {
 function toLobby() {
   if (G.net) Net.leave();
   if (!Resume.busy) Resume.clear();   // 메뉴로 나간 경기는 이어하지 않는다 (경기 포기는 그때 기록됨)
-  $('resultPanel').hidden = true; $('hud').hidden = true; $('mapPanel').hidden = true; $('invPanel').hidden = true; $('pausePanel').hidden = true;
+  $('resultPanel').hidden = true; $('hud').hidden = true; $('mapPanel').hidden = true; $('invPanel').hidden = true; $('pausePanel').hidden = true; Loading.hideNow();
   disposeMatch(); G.state = 'lobby'; G.paused = false; G.spec = null; releaseLock();
   G.training = false; document.body.classList.remove('training');
   $('lobby').hidden = false; HUD.renderLobby(); Audio.music(true);
@@ -41538,6 +42272,9 @@ function loop(ts) {
   try {
     if (G.state === 'lobby' || G.state === 'loading') {
       if (off) return;
+      // v23 로딩 화면(10_loading.js)이 화면을 다 덮는 동안: 로비 3D 와 아이콘·썸네일 미리 그리기(GPU 를 기다림)를 쉬고 맵 생성에 CPU 를 준다
+      //  미리 그리기는 로비로 돌아오면 이어서 · 경기 중 필요한 아이콘은 Models.idle 이 기다리지 않고 그림
+      if (G.state === 'loading' && Loading.covers()) return;
       GunSkin.update(dt);   // 총기 스킨: 빛 애니메이션·꺼내기 효과 (경기 중에는 G.update와 함께 — 멈추면 같이 멈춤)
       if (Cutscene.active) { Cutscene.update(dt); Cutscene.render(G.renderer); }
       else if (!Watch.viewing()) { Lobby.update(dt); G.renderer.render(Lobby.scene, Lobby.cam); }   // 친구 관전 화면이 덮고 있으면 로비 3D 는 그리지 않음
@@ -41587,7 +42324,7 @@ function boot() {
   const warm = () => Models.prewarm();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(warm); else setTimeout(warm, 500);
   // 테스트/디버그용 핸들 — 로컬 파일·개발 주소이거나 서버가 확인한 관리자 계정일 때만 window 에 붙는다 (10_dev.js Dev.hooks · 배포 사이트의 콘솔 치트 막기)
-  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, MeleeFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, TeamPing, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, Pace, PACE, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Ver() { return Ver; }, App, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
+  Dev.hooks(() => ({ __gh: (x, z) => groundAt(x, z, 999), __spawn: (id, x, z) => { const d = ITEMS[id]; return spawnItem(G.scene, id, d.type === 'ammo' ? d.stack : 1, x, groundAt(x, z, 999), z, d.type === 'weapon' ? newWeapon(id, d.mag) : (d.dur ? { id, dur: d.dur } : (d.type === 'bag' ? { id } : null))); }, __LD: { KAnim, MeleeSkin, get MSHAPE() { return MSHAPE; }, FrameGate, FpsBox, GLX, Boom, FX, MM, Island, Net, get SETTINGS() { return SETTINGS; }, Body, Gear, buildRig, Lobby, Eco, EvBR, BR_EVENT, Shop, Cutscene, VSKINS, BOXES, RARITY, GSKINS, GunSkin, GunParts, SkinFx, MeleeFx, Dev, Ladder, VehFx, get animateChar() { return typeof animateChar !== 'undefined' ? animateChar : null; }, playerPing, setTeamOrder, TeamPing, startRevive, cancelRevive, nearestKnockedMate, knockChar, killChar, Models, VehModels, Veh, VEH_TYPES, VM, Cam, Touch, TOUCH_BTNS, Audio, Brain, PathQ, Airdrop, Recall, RECALL, jumpOut, Rank, RANK_TIERS, RankFx, Hunt, HUNT, Pace, PACE, get Training() { return Training; }, get Cloud() { return Cloud; }, get DM() { return DM; }, get Net() { return Net; }, get Party() { return Party; }, get PartyFx() { return PartyFx; }, get Social() { return Social; }, get Prof() { return Prof; }, get Watch() { return Watch; }, get Chat() { return Chat; }, get Resume() { return Resume; }, get Loading() { return Loading; }, get Ver() { return Ver; }, App, NET_VER, NET_HIT_MAX, get Victory() { return Victory; }, fns: { vaultPlan, startVault, enterThrow, exitThrow, ThrowViz, useConsumable, doPickup, pickupItem, Crates, Hazard, queueThrow, swingMelee, autoWant, lootWant, autoPickup, gearBetter, spawnItem, drawMelee, corpseK, throwItem, detonate, get PROJ() { return PROJ; }, FUSE, losClear, rayBoxes, rayTerrain, stepPhysics, animateChar, raycastAll, updateCharTimers, separateChars, footsteps, attFits, newWeapon, startReload, fireWeapon, weaponSpread, sightInfo, fireMode, cycleFireMode, modeName, dropFromInventory, applyDamage, weaponAnim, itemsNear, get GROUND() { return GROUND; }, heightAt, groundAt }, G, get CHARS() { return CHARS; }, get W() { return W; }, Zone, Nav, ITEMS, Input, HUD, CV, FarDots,
     setXp(x) { STATS.xp = x; saveStats(); HUD.renderLobby(); }, get stats() { return STATS; },
     sim(n, dt = 1 / 30) { for (let i = 0; i < n && G.state === 'play'; i++) { GunSkin.update(dt); G.update(dt); } },
     states() { const s = {}; for (const c of CHARS) if (c.brain) s[c.brain.state] = (s[c.brain.state] || 0) + 1; return s; } } }));

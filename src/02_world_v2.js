@@ -853,7 +853,7 @@ async function v2Vegetation(K) {
   const nearPoi = (x, z) => { for (const q of pg[clamp(Math.floor((z + HALF) / PC), 0, PN - 1) * PN + clamp(Math.floor((x + HALF) / PC), 0, PN - 1)]) if (Math.hypot(q.x - x, q.z - z) < q.cr) return true; return false; };
   const NO_TREE = new Set([2, 3, 4, 5, 6, 7, 9, 10, 11]);
   const okSpot = (x, z, h, s, rr, rd) => !(h < 1.4 || NO_TREE.has(s) || K.riverDist(x, z) < RW + rd || w.roadDist(x, z) < 6.5 || nearPoi(x, z) || !K.footprintFree(x - rr, z - rr, x + rr, z + rr, 1.0));
-  const trees = [], rocks = [], bushes = [], palms = [], bamboo = [], ferns = [], tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '숲과 바위 생성');
+  const trees = [], rocks = [], bushes = [], palms = [], bamboo = [], ferns = [], tick = async (f) => K.yieldUI(0.68 + 0.1 * f, '숲과 바위 생성', { trees });
   const A = HALF * 0.9;
   if (!JG) { // 노르덴: 숲바닥(8)은 빽빽, 풀밭은 드문드문, 산비탈은 침엽수
     const target = 34000;
