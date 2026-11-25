@@ -101,6 +101,44 @@ const KAnim = (() => {
   const trackOf = (ka, st) => { const S = SPEC[ka.kind]; return st === 'attack' ? S.attack[ka.v] || S.attack[0] || null : st === 'inspect' ? S.inspect[ka.iv] || null : st === 'idle' ? null : S[st]; };
   // 방금 한 것(last)을 빼고 무작위 하나
   const pickOther = (n, last) => { if (n <= 1) return 0; if (last < 0 || last >= n) return Math.floor(Math.random() * n); let i = Math.floor(Math.random() * (n - 1)); if (i >= last) i++; return i; };
+  // 나비 나이프: 섞기 시작 줄의 날(IP)·손잡이 B(IP+1)·칼 전체의 손 안 회전 w(IW)를 2π 배수 셋(가장 가까운 것과 ±1) 중에서 다시 고른다 —
+  //  가장 가까운 2π 만 맞추면(Math.round(0.5) = 1) 접힌 날(−π)·힐릭스 막대의 B(−π)가 +π 로 가서, 짧은 섞기가 경첩이 막는 각을 지나고
+  //  hinge() 가 그 부품을 반대쪽 멈춤으로 한 프레임에 튀게 했다 (닫힌 칼·막대에서 휘두르기·무기 바꾸기·달리기)
+  //  → 섞는 동안의 실제 줄(새 상태의 목표 줄 쪽으로 섞이는 그대로)을 16 점에서 보고 날–A(날 + π)·날–B(B − 날 − π)가 0~π 안인 것만 · 그중 손 안에서 덜 도는 것
+  //   (A 는 1.25 배 — 쥔 손잡이가 제자리 · B 를 쥔 자세는 w 와 B 가 함께 움직여 B 가 손 안 제자리) · 맞는 것이 없으면 원래대로
+  //   닫힌 칼 → 펼침 = 날이 펴지는 동안 B 가 한 바퀴(진짜 여는 길) · 힐릭스 막대 → B 가 반 바퀴 열려 A 에 붙음
+  //   반환 = 새 상태 첫 줄까지 손 안에서 도는 양(rad · A·날·B 합 · 맞는 것이 없으면 −1) · _bM = 그중 한 부품이 가장 크게 도는 양
+  const _bk = new Array(NV).fill(0), _bq = new Float64Array(40), BSH = [0, -1, 1];
+  let _bM = 0;
+  const hOut = (x) => { const a = ((x % P2) + P2) % P2; return a > PI ? Math.min(a - PI, P2 - a) : 0; };   // 0~π 를 넘친 각
+  function balFrom(ka, S, st, t, bd) {
+    const f = ka.from, N = 16, sw = st === 'attack' ? ka.sw : null;
+    const dur = !t ? 1 : sw ? sw.total || 0.42 : t.dur || 0.5, sp = t && !sw ? t.speed || 1 : 1, u0 = sw ? sw.t / dur : 0;
+    // 섞는 동안 목표 줄의 날·B (m = 0 … N) · 끝의 w
+    for (let m = 0; m <= N; m++) {
+      if (t) kfSample(t.R, clamp(u0 + (bd * m / N) * sp / dur, 0, 1), _bk); else for (let i = IP; i <= IW; i++) _bk[i] = S.rest[i + 1];
+      _bq[m * 2] = _bk[IP]; _bq[m * 2 + 1] = _bk[IP + 1];
+    }
+    const wE = _bk[IW];
+    // 시작 줄·목표 줄이 이미 넘친 만큼(키프레임 곡선이 멈춤을 살짝 지나친 것)은 봐 줌
+    let tol = Math.max(hOut(f[IP] + PI), hOut(f[IP + 1] - f[IP] - PI));
+    for (let m = 1; m <= N; m++) tol = Math.max(tol, hOut(_bq[m * 2] + PI), hOut(_bq[m * 2 + 1] - _bq[m * 2] - PI));
+    tol += 0.15;
+    let best = 1e9, ba = 0, bb = 0, bc = 0;
+    for (let ia = 0; ia < 3; ia++) for (let ib = 0; ib < 3; ib++) {
+      const a = BSH[ia], b = BSH[ib], th = f[IP] + P2 * a, ph = f[IP + 1] + P2 * b;
+      let ok = true;
+      for (let m = 1; m < N && ok; m++) { const k = sstep(0, 1, m / N), x = th + (_bq[m * 2] - th) * k, y = ph + (_bq[m * 2 + 1] - ph) * k; if (hOut(x + PI) > tol || hOut(y - x - PI) > tol) ok = false; }
+      if (!ok) continue;
+      const dth = _bq[N * 2] - th, dph = _bq[N * 2 + 1] - ph;
+      for (let ic = 0; ic < 3; ic++) { const c = BSH[ic], dw = wE - (f[IW] + P2 * c), cost = 1.25 * Math.abs(dw) + Math.abs(dw + dth) + Math.abs(dw + dph); if (cost < best - 1e-6) { best = cost; ba = a; bb = b; bc = c; } }
+    }
+    if (best >= 1e9) { _bM = 0; return -1; }
+    f[IP] += P2 * ba; f[IP + 1] += P2 * bb; f[IW] += P2 * bc;
+    const r0 = t ? t.R[0] : S.rest, dw0 = r0[IW + 1] - f[IW], rA = Math.abs(dw0), rL = Math.abs(dw0 + r0[IP + 1] - f[IP]), rB = Math.abs(dw0 + r0[IP + 2] - f[IP + 1]);
+    _bM = Math.max(rA, rL, rB);
+    return 1.25 * rA + rL + rB;
+  }
   // 새 상태로: 지금 줄(처음이면 기본 자세 · low 면 화면 아래)을 붙잡아 bd 초 동안 섞는다
   function enter(ka, st, bd, low) {
     const S = SPEC[ka.kind];
@@ -113,6 +151,16 @@ const KAnim = (() => {
     for (const i of SPIN) ka.from[i] += P2 * Math.round((r0[i + 1] - ka.from[i]) / P2);
     //  손목 각도 2π 맞춤 (바로 앞 동작이 손목을 크게 돌려 2π 근처로 끝났어도 새 동작으로 섞일 때 한 바퀴 거꾸로 감지 않게 — 같은 자세)
     for (let i = IR; i < IR + 3; i++) ka.from[i] += P2 * Math.round((r0[i + 1] - ka.from[i]) / P2);
+    //  나비 나이프: 경첩을 지키는 2π 배수로 다시 (balFrom) — 섞는 시간을 늘려야 하면 늘린 시간으로 한 번 더 고름(그 길에 맞는 것이 없으면 원래 시간·고른 것으로)
+    //   넣기(무기 바꾸기)를 펼친 칼이 아닌 자세(닫힘·막대·B 를 쥠·던짐)에서 시작하면 넣기 끝까지 섞음 — 0.04초 만에 칼이 확 펴졌다 다시 접히지 않고 그 자세에서 곧장 접히며 손이 내려감
+    //   휘두르기를 한 부품이 손 안에서 반 바퀴 가까이 넘게 돌아야 하는 자세(닫힌 칼·힐릭스 막대·B 만 든 채플린·공중에 던진 칼)에서 시작하면 0.1초 —
+    //   B 가 4 프레임 만에 한 바퀴(프레임마다 2.1 rad) 돌던 것을 6 프레임에(1.5 rad) (휘두르는 줄은 그대로 — 젖히기가 한 프레임 늦게 다 닿을 뿐 베는 구간부터 같음 ·
+    //   펼친 칼·B 를 쥔 꺼내기 자세는 그대로 0.07초)
+    if (S.bal) {
+      const o0 = ka.from[IP], o1 = ka.from[IP + 1], o2 = ka.from[IW], d0 = balFrom(ka, S, st, t, bd);
+      const nb = st === 'unequip' && t && d0 > 0.8 ? (t.dur || 0.2) / (t.speed || 1) : st === 'attack' && _bM > 3 && bd < 0.1 ? 0.1 : 0;
+      if (nb) { ka.bd = nb; ka.from[IP] = o0; ka.from[IP + 1] = o1; ka.from[IW] = o2; if (balFrom(ka, S, st, t, nb) < 0) { ka.bd = bd; balFrom(ka, S, st, t, bd); } }
+    }
   }
   function snd(S, k, pos, own, swing) {
     const r = S.snd[k];
