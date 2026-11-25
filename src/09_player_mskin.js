@@ -71,7 +71,8 @@ const KAnim = (() => {
     // 카메라 공간(z 뒤) 기본 손바닥 자리 · 손 방향
     S.P0 = new THREE.Vector3(S.h[0], S.h[1], -S.h[2]);
     S.Q0 = bladeQuat(new THREE.Quaternion(), new THREE.Vector3(S.B[0], S.B[1], -S.B[2]), new THREE.Vector3(S.E[0], S.E[1], -S.E[2]));
-    const tr = (t, add) => { if (!t) return null; const R = []; for (const k of t.K) R.push(Array.isArray(k) ? k : rowOf(k, F0, add, add ? null : S, R[R.length - 1])); return Object.assign({}, t, { R }); };
+    //  손목 각(Euler)은 앞 줄과 2π 맞춤으로 이어 둔다 — 방향으로 쓴 줄(KO)이 크게 돌아 2π 근처에 닿은 뒤 기본 기준 줄(K)이 0 으로 돌아가면 손목이 한 바퀴 거꾸로 감기던 것을 막음 (같은 자세, 값만 이어짐)
+    const tr = (t, add) => { if (!t) return null; const R = []; for (const k of t.K) { const r = Array.isArray(k) ? k : rowOf(k, F0, add, add ? null : S, R[R.length - 1]), p = R[R.length - 1]; if (p && !add) for (let j = 1 + IR; j < 4 + IR; j++) r[j] += P2 * Math.round((p[j] - r[j]) / P2); R.push(r); } return Object.assign({}, t, { R }); };
     S.equip = tr(sp.equip || DEF.equip); S.unequip = tr(sp.unequip || DEF.unequip);
     S.attack = (sp.attack || []).map((t) => tr(t)); S.inspect = (sp.inspect || []).map((t) => tr(t)); S.fid = (S.idle.fid || []).map((t) => tr(t, true));
     S.rest = rowOf(K(0), F0, false, S, null);
@@ -105,6 +106,8 @@ const KAnim = (() => {
     ka.st = st; ka.t = 0; ka.bt = 0; ka.bd = bd; ka.u0 = -1; ka.fi = -1;
     const t = trackOf(ka, st), r0 = t ? t.R[0] : S.rest;
     for (const i of SPIN) ka.from[i] += P2 * Math.round((r0[i + 1] - ka.from[i]) / P2);
+    //  손목 각도 2π 맞춤 (바로 앞 동작이 손목을 크게 돌려 2π 근처로 끝났어도 새 동작으로 섞일 때 한 바퀴 거꾸로 감지 않게 — 같은 자세)
+    for (let i = IR; i < IR + 3; i++) ka.from[i] += P2 * Math.round((r0[i + 1] - ka.from[i]) / P2);
   }
   function snd(S, k, pos, own, swing) {
     const r = S.snd[k];
@@ -223,13 +226,21 @@ const KAnim = (() => {
   }
   // 줄의 부품·무기 회전·이동을 손에 든 모델에 (매 프레임 모두 다시 — 모델이 새로 만들어져도 그대로) · sc = 모델 1m 가 손 그룹 몇 단위인지 (1인칭 1/VM_SC)
   const _we = new THREE.Euler(0, 0, 0, 'XYZ'), _wv = new THREE.Vector3();
+  // 나비 나이프 경첩 멈춤: 날–손잡이 A 사이(날 + π)·날–손잡이 B 사이(B − 날 − π)는 진짜 칼처럼 0~π 를 넘지 않음 —
+  //  키프레임 곡선(Catmull-Rom)이 빠르게 닫히거나 펴지는 자리를 살짝 지나쳐도 손잡이·날이 서로를 뚫지 않고 멈춤에 닿아 선다 (넘친 쪽이 0 에 가까우면 0, π 에 가까우면 π)
+  const _hg = [0, 0];
+  function hinge(bl, b) {
+    const a = ((bl + PI) % P2 + P2) % P2; if (a > PI) bl += a > 1.5 * PI ? P2 - a : PI - a;
+    const c = ((b - bl - PI) % P2 + P2) % P2; if (c > PI) b += c > 1.5 * PI ? P2 - c : PI - c;
+    _hg[0] = bl; _hg[1] = b; return _hg;
+  }
   function place(Ar, o, S, v, sc) {
     const rig = o.userData.rig; o.userData.kaSet = true;
     if (S.kar && rig) { karamPlace(Ar, o, v[IP]); return; }
     _we.set(v[IW], v[IW + 1], v[IW + 2], 'XYZ'); o.quaternion.setFromEuler(_we);
     _wv.set(v[IV], v[IV + 1], v[IV + 2]).applyQuaternion(o.quaternion); o.position.set(v[IV] - _wv.x, v[IV + 1] - _wv.y, v[IV + 2] - _wv.z);
     o.position.x += v[IT]; o.position.y += v[IT + 1]; o.position.z += v[IT + 2];
-    if (rig && S.bal) { rig.blade.rotation.x = v[IP]; rig.B.rotation.x = v[IP + 1]; rig.latch.rotation.x = v[IP + 2]; o.position.z += v[IP + 3]; }
+    if (rig && S.bal) { const hg = hinge(v[IP], v[IP + 1]); rig.blade.rotation.x = hg[0]; rig.B.rotation.x = hg[1]; rig.latch.rotation.x = v[IP + 2]; o.position.z += v[IP + 3]; }
     o.position.multiplyScalar(sc);
   }
   // 전용 동작이 끝나 기본 동작이 같은 모델을 그릴 때: 손 안 자리를 원래대로 (sc = 모델 크기 — 위치는 0)
@@ -258,7 +269,7 @@ const KAnim = (() => {
   const _tp = new THREE.Vector3(), _bp = new THREE.Vector3(), _lt = new THREE.Vector3();
   // 잔상: 빠르게 움직이는 날(관절 모델은 날 부품, 아니면 무기 전체)을 지난 몇 프레임 자리에 옅게 — 낮은 화질이면 생략
   //  메시마다 지난 자리 4개를 돌려 쓰는 행렬 고리(무기가 바뀔 때만 새로 만듦) · 잔상 3장(가까운 것일수록 진하게)
-  const GH = { src: null, list: [], ms: [], ring: [], head: 0, n: 0, mats: null, lt: false, wm: null }, GOP = [0.15, 0.09, 0.045];
+  const GH = { src: null, list: [], ms: [], ring: [], head: 0, n: 0, mats: null, lt: false, wm: null, vf: 0, st: null }, GOP = [0.15, 0.09, 0.045];
   const ghostMats = () => GH.mats || (GH.mats = GOP.map((op) => new THREE.MeshBasicMaterial({ color: 0xd8e6ff, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })));
   // 반짝임: 살펴보기 줄의 gl = [[u0, u1], …] 동안 빛 한 점이 날 뿌리 → 끝으로 미끄러짐 (금속 재질이 빛을 받는 순간) — 1인칭만 · 스프라이트 하나를 돌려 씀
   let GLS = null;
@@ -321,6 +332,9 @@ const KAnim = (() => {
     if (run > 0.01) { _qr.setFromAxisAngle(AX_X, -run * 0.5); _Q.premultiply(_qr); }
     fing(v, _F5); vmReach(A.R, _P, _Q, _pole.set(0.6, -0.7, 0.15), _F5); setK(A.R, _F5);
     place(A.R, o, S, v, 1 / VM_SC);
+    // 새로 꺼내는 첫 프레임·한동안 안 그리다 다시 그릴 때: 지난 자리(잔상·빠르기)를 버림 — 전에 들고 있던 자리에 잔상이 떠 보이지 않게
+    if (G.frame - (GH.vf || 0) > 1 || (ka.st === 'equip' && GH.st !== 'equip')) { GH.lt = false; GH.n = 0; }
+    GH.vf = G.frame; GH.st = ka.st;
     // 휘두르기 자국(휘두르는 순간) + 잔상(빠르게 움직일 때)
     const gs = tipBase(o, ka.mid, sk, _tp, _bp);
     const spd = GH.lt ? _tp.distanceTo(_lt) / Math.max(dt, 1e-3) : 0; _lt.copy(_tp); GH.lt = true;
