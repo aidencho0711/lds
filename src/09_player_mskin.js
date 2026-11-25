@@ -17,10 +17,11 @@
 //    화면 숙임도 기본 무기 그대로(근접 판정 방향 = 카메라 앞) · 옆 기울임만 동작마다
 //  · 소리: 동작표의 S = [[u, 이름], …] (내 캐릭터의 꺼내기·대기 손장난·살펴보기·넣기·휘두르기 중) — 이름은 동작표 snd 의 소리(Audio.mskin) 또는 Audio.knife 의 것
 //  · 달리기 자세(선택 — 동작표 run): 대기 중 달리면 1인칭 줄(run.fp)·3인칭 자세(run.tp)로 섞어 넘어감 (없는 스킨은 기본처럼 손을 내림 · 허리 옆으로)
-//    섞는 정도 ka.rw = 달리는 정도(ka.sg — 달리기 중이고 빠름 · 공중에서도 그대로라 달리다 뛰어도 풀리지 않음) × 상태마다: 대기 = 1 ·
-//    휘두르기 = 달리며 휘두르기 줄(attack[i].run)이 있으면 휘두르기를 시작할 때의 섞는 정도(ka.sa)로 처음부터 그 줄(달리기 줄에서 시작해 달리기 줄로 끝남 —
-//      누르는 동안 달리기가 잠깐 끊겨도 손이 대기 자세 쪽으로 되돌지 않음) · 마무리(u 0.5~0.8)부터는 지금 달리는 정도로 /
-//      없으면 달리던 자세를 붙잡고 있다가 휘두르는 줄이 그 자세를 이어받는 무렵(u 0.26~0.36) 넘겨주고 찢고 난 마무리(u 0.46~0.75)에 다시 · 그 밖 = 0
+//    섞는 정도 ka.rw = 달리는 정도(ka.sg — 달리기 중이고 빠름 · 공중에서도 그대로라 달리다 뛰어도 풀리지 않음) × 상태마다: 대기·살펴보기 = 1 ·
+//    휘두르기 = 달리며 휘두르기 줄(attack[i].run)이 있으면 휘두르기를 시작할 때의 섞는 정도(ka.sa)로 처음부터 끝까지 그 줄(달리기 줄에서 시작해 달리기 줄로 끝남 —
+//      누르는 동안 달리기가 끊기거나 도중에 달리기를 멈춰도 손이 대기 자세 쪽으로 뒤집히지 않고, 끝난 뒤 달리기를 멈출 때처럼 풀림) /
+//      없으면 달리던 자세를 붙잡고 있다가 휘두르는 줄이 그 자세를 이어받는 무렵(u 0.26~0.36) 넘겨주고 찢고 난 마무리(u 0.46~0.75)에 다시 ·
+//    꺼내기 = 끝무렵(u 0.75)부터 달리기를 시작할 때처럼 · 넣기 = 0
 //  · 3인칭 휘두르기(선택 — 동작표 attack[i].tp): MEL_KF 형식 줄이 있으면 손 자리·허리·왼손·팔꿈치는 그 줄로 (없으면 기본 3인칭 찌르기 궤적)
 // ============================================================
 const KAnim = (() => {
@@ -197,14 +198,17 @@ const KAnim = (() => {
     ka.u0 = u;
     // 달리기 자세(동작표 run)를 섞는 정도 ka.rw = 달리는 정도 ka.sg × 상태마다 (머리말)
     //  ka.sg 는 땅에 닿았는지 보지 않음 — 달리다 뛰어올라도 손이 대기 자세로 풀렸다 다시 돌아가지 않게 (조준·사격 직후처럼 몸이 달리기 자세가 아닐 땐 0)
-    //  휘두르기: 달리며 휘두르기 줄(attack[i].run)이 있으면 휘두르기를 시작할 때의 섞는 정도(ka.sa = 그때의 ka.rw)로 그 줄 — 첫 프레임부터 손등 위 그대로 장전해 휘두름
-    //   (사격 버튼을 누르는 동안은 달리기가 끊겨 ka.sg 가 잠깐 줄지만 손이 대기 자세 쪽으로 반쯤 되돌지 않게 · 꺼내다 바로 휘두르면 0 이라 튀지 않음)
-    //   마무리(u 0.5~0.8)부터는 지금 달리는 정도로 — 계속 누르고 있으면(달리기가 끊긴 채) 대기 자세로 돌아감
+    //  휘두르기: 달리며 휘두르기 줄(attack[i].run)이 있으면 휘두르기를 시작할 때의 섞는 정도(ka.sa = 그때의 ka.rw)로 처음부터 끝까지 그 줄 — 첫 프레임부터 손등 위 그대로 장전해 휘두르고 달리기 자세로 끝남
+    //   (사격 버튼을 누르는 동안 달리기가 끊기거나 휘두르는 중에 달리기를 멈춰도 휘두르는 도중에 손이 대기 자세 쪽으로 뒤집히지 않게 · 꺼내다 바로 휘두르면 0 이라 튀지 않음)
+    //   그동안 ka.sg 는 그 섞는 정도에 맞춰 둠(sstep 의 역) — 끝나면 거기서부터 달리기 시작·멈춤과 똑같이 이어짐 (달리기를 멈췄으면 그때 천천히 풀림)
     //   줄이 없으면: 달리던 손(손등 위)을 붙잡고 있다가 휘두르는 줄이 손등 위로 돌아오는 무렵 넘겨줌 — 손이 대기 자세 쪽으로 되돌았다 다시 엎어지지 않게
+    //  꺼내기: 끝무렵(u 0.75)까지 0 이고 ka.sg 도 0 쪽으로 — 달리며 꺼내면 감아 쥔 뒤 달리기를 시작할 때처럼 천천히 손등 위로 (다 꺼내자마자 한 번에 돌지 않게)
+    //  살펴보기: 줄어드는 ka.sg 그대로 (달리기를 멈추자마자 살펴보면 달리기를 멈출 때와 같은 빠르기로 풀림) · 넣기 = 0
     if (S.run) {
-      const an = c.anim, at = ka.st === 'attack';
-      ka.sg = lerp(ka.sg || 0, c.sprint && Math.hypot(c.vel.x, c.vel.z) > 3.2 && !(an && an.ready > 0.5) ? 1 : 0, clamp(dt * 6, 0, 1));
-      const s = sstep(0, 1, ka.sg), g = ka.st === 'idle' ? (sw ? 0 : s) : at && tr && tr.rr ? lerp(ka.sa || 0, s, sstep(0.5, 0.8, u)) : at ? Math.max(1 - sstep(0.26, 0.36, u), sstep(0.46, 0.75, u)) * s : 0;
+      const an = c.anim, at = ka.st === 'attack', rr = at && tr && tr.rr, eq = ka.st === 'equip' && u < 0.75;
+      if (rr) ka.sg = 0.5 - Math.sin(Math.asin(1 - 2 * clamp(ka.sa || 0, 0, 1)) / 3);
+      else ka.sg = lerp(ka.sg || 0, !eq && c.sprint && Math.hypot(c.vel.x, c.vel.z) > 3.2 && !(an && an.ready > 0.5) ? 1 : 0, clamp(dt * 6, 0, 1));
+      const s = sstep(0, 1, ka.sg), g = rr ? ka.sa || 0 : ka.st === 'idle' ? (sw ? 0 : s) : at ? Math.max(1 - sstep(0.26, 0.36, u), sstep(0.46, 0.75, u)) * s : eq || ka.st === 'unequip' ? 0 : s;
       ka.rw = lerp(ka.rw || 0, g, clamp(dt * (at ? 40 : 10), 0, 1));
     } else ka.rw = 0;
     // 3인칭: 꺼내기·살펴보기 동안 손을 가슴 앞으로 들어 올리는 정도(멀리서도 동작이 보이게) — 부드럽게 따라감
@@ -447,12 +451,18 @@ const KAnim = (() => {
   //  휘두르기: 식칼은 기본 3인칭 찌르기 궤적(높이·앞뒤·허리·팔꿈치)에 옆으로 가는 것과 손 방향은 이 스킨의 줄 / 다른 무기는 기본 3인칭 휘두르기로 섞어 넘어갔다 돌아옴
   //   (손가락·부품·손 안의 무기 회전은 늘 이 스킨의 줄 — tppApply)
   const _tP = new THREE.Vector3(), _tQ = new THREE.Quaternion(), _tB = new THREE.Vector3(), _tE = new THREE.Vector3(), _kt = new Array(19).fill(0), _tP2 = new THREE.Vector3(), _tQ2 = new THREE.Quaternion();
+  let _rrK = null; const _rrD = new Array(6).fill(0);
   function tppRow(c, out) {
     const ka = c.ka, S = SPEC[ka.kind], v = ka.row, rd = TREADY[S.mid], k = 0.8;
     handPose(S, v, _tP, _tQ, VM_SC);
-    //  달리며 휘두르기: 1인칭과 같게 그 휘두르기의 run 줄로 섞음 (손등 위 장전 → 휘두름 — 3인칭 손 방향도 대기 자세 쪽으로 되돌지 않음)
+    //  달리며 휘두르기: 그 휘두르기의 run 줄(1인칭) 손 방향을 3인칭 방향으로 옮겨 따로 둠(_rrD) — tppRun 이 달리기 자세 방향과 이어 붙여 ka.rw 만큼 섞음
+    //   (손등 위 장전 → 휘두름 · 대기 중 달리기와 같은 섞기라 섞는 정도가 어중간해도 휘두르기 시작·끝에서 손 방향이 튀지 않음)
     const rw = ka.rw || 0, ra = S.run && rw > 0.001 && ka.st === 'attack' && ka.sw ? trackOf(ka, 'attack') : null;
-    if (ra && ra.rr) { handPose(S, runRow(ka, S), _tP2, _tQ2, VM_SC); _tP.lerp(_tP2, sstep(0.2, 1, rw)); _tQ.slerp(_tQ2, sstep(0, 0.8, rw)); }
+    _rrK = ra && ra.rr ? ka : null;
+    if (_rrK) {
+      handPose(S, runRow(ka, S), _tP2, _tQ2, VM_SC); _tP.lerp(_tP2, sstep(0.2, 1, rw));
+      _tB.set(0, 0, 1).applyQuaternion(_tQ2); _tE.set(0, -1, 0).applyQuaternion(_tQ2); _rrD[0] = -_tB.x; _rrD[1] = _tB.y; _rrD[2] = -_tB.z; _rrD[3] = -_tE.x; _rrD[4] = _tE.y; _rrD[5] = -_tE.z;
+    }
     const dx = _tP.x - S.P0.x, dy = _tP.y - S.P0.y, dz = S.P0.z - _tP.z;
     _tB.set(0, 0, 1).applyQuaternion(_tQ); _tE.set(0, -1, 0).applyQuaternion(_tQ);
     out[0] = rd[1] - dx * k; out[1] = rd[2] + dy * k; out[2] = rd[3] + dz * k;
@@ -481,23 +491,36 @@ const KAnim = (() => {
   const _rp = new Array(19).fill(0), SHR = [-0.191, 0.171, 0], SHL = [0.191, 0.171, 0];
   // 가슴 로컬 x(왼쪽) 축 둘레로 돌림 (+ = 앞으로 · 점은 C 를 중심으로, C 가 없으면 방향)
   function swingX(v, i, a, C) { const c0 = C ? C[1] : 0, c1 = C ? C[2] : 0, y = v[i + 1] - c0, z = v[i + 2] - c1, cs = Math.cos(a), sn = Math.sin(a); v[i + 1] = c0 + y * cs + z * sn; v[i + 2] = c1 - y * sn + z * cs; }
+  // 손 방향 쌍(날 방향 v[i..i+2] · 손가락 쪽 v[i+3..i+5]) ↔ 사원수 — 손가락 쪽은 날 방향에 수직으로 맞춤(몸이 손 방향을 만들 때와 같음)
+  const _dq1 = new THREE.Quaternion(), _dq2 = new THREE.Quaternion(), _dX = new THREE.Vector3(), _dY = new THREE.Vector3(), _dZ = new THREE.Vector3(), _dM = new THREE.Matrix4();
+  function dirQ(q, v, i) {
+    _dX.set(v[i], v[i + 1], v[i + 2]).normalize(); _dY.set(v[i + 3], v[i + 4], v[i + 5]); _dY.addScaledVector(_dX, -_dY.dot(_dX));
+    if (_dY.lengthSq() < 1e-8) _dY.set(0, 1, 0).addScaledVector(_dX, -_dX.y); _dY.normalize(); _dZ.crossVectors(_dX, _dY);
+    return q.setFromRotationMatrix(_dM.makeBasis(_dX, _dY, _dZ));
+  }
+  function qDir(v, i, q) { _dX.set(1, 0, 0).applyQuaternion(q); _dY.set(0, 1, 0).applyQuaternion(q); v[i] = _dX.x; v[i + 1] = _dX.y; v[i + 2] = _dX.z; v[i + 3] = _dY.x; v[i + 4] = _dY.y; v[i + 5] = _dY.z; }
   function tppRun(c, out, ph) {
     const ka = c.ka, S = ka && SPEC[ka.kind], R = S && S.run; if (!R || !R.tp) return false;
-    // 휘두르는 중 — 달리며 휘두르기 줄(attack[i].run)이 있으면: 첫 프레임부터 손 자리·방향 모두 휘두르기 쪽으로 넘겨줌(u 0~0.2 — 손은 휘두르는 3인칭 줄의 장전 자리로,
-    //  방향은 tppRow 가 섞은 손등 위 장전) · 그 줄이 돌아오는 구간(u 0.56~0.95)에 다시 달리기 자세로 (걸음 흔들기도 그동안은 줄어듦)
+    // 휘두르는 중 — 달리며 휘두르기 줄(attack[i].run)이 있으면: 손 자리는 첫 프레임부터 휘두르는 3인칭 줄의 장전 자리로 넘겨주고(u 0~0.2) 그 줄이 돌아오는 구간(u 0.56~0.95)에 다시 달리기 자세로
+    //  (걸음 흔들기도 그동안은 줄어듦) · 손 방향은 같은 때에 달리기 자세 방향 → run 줄 방향(tppRow 의 _rrD — 손등 위 장전·휘두름) → 달리기 자세 방향으로 이어 붙인 것을
+    //  대기 중 달리기처럼 ka.rw 만큼 (휘두르기 시작·끝에서 대기 중 달리기와 같은 방향이라 섞는 정도가 어중간해도 튀지 않음)
     //  없으면: 손 자리는 휘두르는 3인칭 줄이 손을 끌어올리는 무렵(u 0.2~0.32) 넘겨주고 그 줄이 돌아오는 구간(u 0.56~0.95)에서만 다시 (뻗은 팔이 한 번에 끌려오지 않게)
     //   손 방향은 ka.rw 그대로 — 휘두르는 줄이 손등 위로 돌아올 때까지 달리던 손등 위 그대로 (손이 대기 자세 쪽으로 기울었다 다시 엎어지지 않게)
-    const w = ka.rw || 0; let wp = w, wd = w;
+    const w = ka.rw || 0; let wp = w, hd = -1;
     if (ka.st === 'attack' && ka.sw) {
       const u = ka.sw.t / ka.sw.total, at = trackOf(ka, 'attack');
-      if (at && at.rr) wp = wd = w * Math.max(1 - sstep(0, 0.2, u), sstep(0.56, 0.95, u));
+      if (at && at.rr) { hd = Math.max(1 - sstep(0, 0.2, u), sstep(0.56, 0.95, u)); wp = w * hd; }
       else wp = Math.min(w, Math.max(1 - sstep(0.2, 0.32, u), sstep(0.56, 0.95, u)));
     }
     if (w < 0.001) return true;
     const T = R.tp, o = T.length > 19 ? 1 : 0, s = -Math.cos(ph), q = 0.2 * s * s, a = R.sw * (0.8 * s + q), al = R.sw * (-0.8 * s + q);
     for (let i = 0; i < 19; i++) _rp[i] = T[i + o];
     swingX(_rp, 0, a, SHR); swingX(_rp, 3, a * 0.85); swingX(_rp, 6, a * 0.85); swingX(_rp, 16, a * 0.4, SHR); swingX(_rp, 13, al, SHL);
-    for (let i = 0; i < 19; i++) out[i] = lerp(out[i], _rp[i], i >= 3 && i < 9 ? wd : wp);
+    if (hd >= 0 && _rrK === ka) for (let i = 3; i < 9; i++) _rp[i] = lerp(_rrD[i - 3], _rp[i], hd);
+    //  손 방향은 사원수로 구면 섞기 — 방향 벡터를 그대로 섞으면 두 방향이 거의 반대일 때(달리기를 멈추자마자 살펴보며 칼을 눕힌 손 등) 길이가 0 근처를 지나며 한두 프레임에 뒤집힘
+    //   (섞는 비율은 sstep — 대기 자세 ↔ 달리기 자세처럼 130° 쯤 떨어진 두 방향을 그대로 섞던 때와 거의 같은 빠르기로 돎)
+    dirQ(_dq1, out, 3); dirQ(_dq2, _rp, 3); _dq1.slerp(_dq2, sstep(0, 1, w)); qDir(out, 3, _dq1);
+    for (let i = 0; i < 19; i++) if (i < 3 || i >= 9) out[i] = lerp(out[i], _rp[i], wp);
     return true;
   }
   const fingersOf = (c) => fing(c.ka.row, _F5);
