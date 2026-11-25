@@ -165,9 +165,10 @@ const Resume = (() => {
       sc: S.score.slice(), md: S.myDeaths || 0, lw: S.lastWin, rd: S.round ? S.round.n : 0, kd: CHARS.map((c) => [c.id, c.kills || 0, c.dmDeaths || 0]) };
   }
   // 같이 하기: 경기 설정 + 내 캐릭터 (소지품) — 나머지는 돌아갈 때 방장이 보내 준다
+  //  rk: 방장에게 쓰던 내 키들 (v24 — 돌아갈 때 '내가 그 사람'이라는 증명 · 방장 답 확인, 10_net.js rjKeys/probe)
   function snapNet() {
     const cfg = G.netCfg;
-    return { kind: cfg.dm ? 'ndm' : 'nbr', cfg, t: r2(G.time), me: encChar(G.player, null), q: G.dm ? null : quitSum() };
+    return { kind: cfg.dm ? 'ndm' : 'nbr', cfg, t: r2(G.time), me: encChar(G.player, null), q: G.dm ? null : quitSum(), rk: Net.rjKeys(cfg.mid) };
   }
   function save() {
     if (!want()) return;
@@ -304,11 +305,13 @@ const Resume = (() => {
     try {
       if (!Cloud.uid) { busy = false; show(s, '로그인이 풀려 있습니다 — 로그인한 뒤 다시 시도하세요'); return; }
       for (let i = 0; i < 40 && !Social.connected; i++) await new Promise((r) => setTimeout(r, 200));   // 로비 채널 연결을 기다림
-      const ok = Social.connected ? await Net.probe(s.cfg) : null;
+      const ok = Social.connected ? await Net.probe(s.cfg, s.rk) : null;   // rk: 예전 페이지의 내 키 (v24 다시 들어오기 증명)
       if (!ok) { busy = false; pend = null; clear(); hide(); if (s.q) record(s.q, true, '그 경기는 이미 끝났습니다 · 떠날 때의 순위로 기록'); else HUD.lobbyNote('그 경기는 이미 끝났습니다'); return; }
+      if (ok.refused) { busy = false; show(s, '방장 기기가 이 기기를 확인하지 못했습니다 — 잠시 뒤 다시 시도하거나 포기할 수 있습니다'); return; }   // v24: 경기는 계속되는 중 (방장이 증명을 확인하지 못해 거절 — 10_net.js rjno) → 끝난 경기로 기록하지 않음
       pend = null; hide();
       const cfg = JSON.parse(JSON.stringify(s.cfg)); cfg.host = ok.host;
       Net.join(cfg, { ep: ok.ep, isl: ok.isl, mine: s.me });
+      rjS = s; keys(cfg.mid, Net.rjKeys(cfg.mid));   // v24: 이번 시도의 새 키를 바로 기록에 — 시도가 끊겨도(25초 · 로비로 나가기 · 새로고침) 방장이 이미 받은 새 키로 다시 증명할 수 있게
       G.rjHold = true;
       // 경기 화면이 열린 뒤 방장 상태를 받을 때까지 가림막 (25초 안에 못 받으면 실패)
       const t0 = Date.now();
@@ -325,11 +328,22 @@ const Resume = (() => {
     G.rjHold = false; busy = false; Loading.hideNow();
     if (G.net) Net.close(true);
     if (G.state === 'play' || G.state === 'loading') toLobby();
-    pend = s; store.set(KEY, s); show(s, msg || '경기에 다시 연결하지 못했습니다 (방장 기기와 연결이 되지 않음)');
+    rjS = null; pend = s; store.set(KEY, s); show(s, msg || '경기에 다시 연결하지 못했습니다 (방장 기기와 연결이 되지 않음)');   // s.rk 에는 이번 시도의 키도 (keys)
+  }
+  // ---------- 다시 들어오기 증명 키 (v24 — 10_net.js rjKeys/probe) ----------
+  //  방장에게 쓰는 내 키가 생기면(다시 들어가기 시도 · 방장 넘겨받기 follow) 저장 기록에 바로 더한다 — want() 와 상관없이:
+  //  다시 들어가는 중(rjHold — 보통 저장을 쉼) · 화면이 숨겨져 5초 저장이 없는 사이 생긴 키가 빠지면, 그 키를 받은 방장이 다음 다시 들어가기를 거절한다(rjno)
+  const mergeKeys = (a, b) => { const o = []; for (const k of [].concat(a || [], b || [])) if (typeof k === 'string' && !o.includes(k)) o.push(k); return o.slice(-4); };
+  let rjS = null;   // 지금 다시 들어가는 중인 기록 (goNet — 실패하면 failNet 이 이것을 다시 저장)
+  function keys(mid, list) {
+    try {
+      if (rjS && rjS.cfg && rjS.cfg.mid === mid) rjS.rk = mergeKeys(rjS.rk, list);
+      const s = store.get(KEY, null); if (s && s.cfg && s.cfg.mid === mid) { s.rk = mergeKeys(s.rk, list); store.set(KEY, s); }
+    } catch (e) { /* 저장소를 못 쓰면 그대로 (5초 저장) */ }
   }
   // 방장이 보낸 지금 상태를 적용함 (10_net.js applyRj 끝)
   function rejoined() {
-    G.rjHold = false; busy = false; clearInterval(waitT); Loading.finale({ zone: true, stamp: '경기 복귀', quick: true });   // 가림막: 지금 자기장 + 도장 뒤 바로 사라짐 (경기는 이미 진행 중)
+    rjS = null; G.rjHold = false; busy = false; clearInterval(waitT); Loading.finale({ zone: true, stamp: '경기 복귀', quick: true });   // 가림막: 지금 자기장 + 도장 뒤 바로 사라짐 (경기는 이미 진행 중)
     const p = G.player;
     HUD.toast(p && p.alive ? '경기에 다시 들어왔습니다 — 내 캐릭터를 돌려받았습니다' : '경기에 다시 들어왔습니다 — 그사이 탈락해서 팀원을 관전합니다', 'ok');
     saveT = 1;
@@ -339,5 +353,5 @@ const Resume = (() => {
     $('rjGo').addEventListener('click', go);
     $('rjNo').addEventListener('click', () => { if (!busy) forfeit(pend); });
   }
-  return { setup, check, tick, save, clear, fresh, mark, apply, applyMine, encChar, rejoined, can: want, get pending() { return pend; }, get busy() { return busy; } };
+  return { setup, check, tick, save, clear, fresh, mark, apply, applyMine, encChar, rejoined, keys, can: want, get pending() { return pend; }, get busy() { return busy; } };   // keys: 다시 들어오기 증명 키 더하기 (v24)
 })();

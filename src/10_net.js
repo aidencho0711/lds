@@ -16,6 +16,8 @@
 //  리콜(08_recall.js): 'rc' — 등록 요청은 방장에게, 방장이 확인해 승인을 모두에게. 되살리기는 그 캐릭터의 주인 기기
 //  팀 핑(09_player_ping.js, v23): 'pg' — 찍은 사람의 핑·마커 상태 통째로, 같은 팀 사람마다(to) + 방장(팀원 봇). 방장이 받는 사람에게 넘긴다
 //   (옛 화면은 모르는 사건을 버릴 뿐 깨지지 않아 NET_VER 는 올리지 않음 — 서로 핑만 안 보인다)
+//  채널 서명(v24): 채널(파티·로비·매칭)은 들어온 누구나 읽고 보내며 보낸 사람(from)도 보내는 화면이 적는다 → 직접 연결이 열리면 그 연결로만
+//   서로 무작위 키(ky)를 건네고, 중계('g')·매칭 채널 'bye' 에 그 키로 만든 서명을 붙인다 (아래 '채널 메시지 서명')
 // ============================================================
 // 같이 하기 버전: 경기 사건·설정의 모양이 바뀌면 올린다 — 다르면 파티·온라인 매칭·경기 연결에서 같이 하지 않는다 (10_ver.js)
 //  2 = v22 데스매치 아레나(cfg.arena) · 3 = v22 시체·보급 상자(gadd bx)·근접 무기(pu w)·새 투척 무기 + v23 이어하기(로비 rj·rjok · rjs)·우승 축하(vic)
@@ -41,6 +43,105 @@ const Net = (() => {
   const isGuest = () => !!N && !N.host;
   const mine = (c) => !N || !c || !c.net || c.net.mine;
   const ownerOf = (c) => (c && c.net ? c.net.owner : N ? N.cfg.host : null);
+
+  // ---------- 채널 메시지 서명 (v24) ----------
+  //  파티·로비·매칭 채널은 그 채널에 들어온 누구나 보내고 읽는다. 보낸 사람(from)도 보내는 화면이 적으므로 고친 화면은 남의 이름으로 보낼 수 있다
+  //   (중계 'g' 를 방장 이름으로 → 그 안 사건이 모두 방장 것 · 매칭 채널 'bye' 를 방장·파티원 이름으로 → 방장을 떠나거나 그 사람을 봇에게 넘김)
+  //  → 직접 연결(암호화된 데이터 채널)이 열리면 양쪽이 그 상대에게만 쓰는 무작위 키를 건넨다: { ky: [키, 보낸 중계 번호] } — 그 연결로 온 것만 받음(채널로 온 키는 버림)
+  //   · 중계('g')에 번호(sq) · 서명(tg) = HMAC-SHA-256(보내는 쪽 키, 'g|보낸 사람|받는 사람|번호|내용') 앞 16자 — 받는 쪽은 상대 키를 받은 뒤부터 서명이 맞고 처음 보는 번호만 받는다
+  //     (채널은 모두 읽으므로 서명·번호를 엿볼 수 있지만, 키 없이는 다른 내용·번호의 서명을 만들 수 없고 같은 메시지를 다시 보내면 번호가 겹쳐 버려진다)
+  //   · 매칭 채널 'bye' 에는 받는 사람마다 서명(tg: { uid: 서명 }) — 나가는 방장의 다음 방장(next)·나간 사람 목록(g)까지 넣어 서명
+  //   · 키를 건네지 않는 화면(이번 업데이트 전)·직접 연결이 한 번도 안 된 상대(중계로만 — 일부 모바일 망)는 예전처럼 서명 없이 받는다 (배포하는 동안에도 같이 하기가 끊기지 않게)
+  //     다만 그 상대와 직접 연결로 방금(0.8초 안)까지 받고 있었으면 그 이름의 중계는 버린다 — 그 사람은 직접 연결로 보내는 중
+  const SHA_K = new Uint32Array(64), SHA_H = new Uint32Array(8);   // SHA-256 상수: 소수 64개 세제곱근 · 8개 제곱근의 소수 부분 32비트 (불러올 때 계산 — 시험: hmac('Jefe', …) = RFC 4231)
+  { let n = 0; for (let c = 2; n < 64; c++) { let pr = true; for (let d = 2; d * d <= c; d++) if (c % d === 0) { pr = false; break; } if (!pr) continue; if (n < 8) SHA_H[n] = (Math.sqrt(c) % 1) * 4294967296; SHA_K[n++] = (Math.cbrt(c) % 1) * 4294967296; } }
+  function sha256(b) {   // Uint8Array → Uint8Array(32)
+    const l = b.length, nb = (l + 72) & ~63, m = new Uint8Array(nb), dv = new DataView(m.buffer), W = new Uint32Array(64), H = SHA_H.slice();
+    m.set(b); m[l] = 0x80; dv.setUint32(nb - 4, l * 8); dv.setUint32(nb - 8, Math.floor(l / 0x20000000));
+    for (let o = 0; o < nb; o += 64) {
+      for (let i = 0; i < 16; i++) W[i] = dv.getUint32(o + i * 4);
+      for (let i = 16; i < 64; i++) { const x = W[i - 15], y = W[i - 2]; W[i] = ((x >>> 7 | x << 25) ^ (x >>> 18 | x << 14) ^ x >>> 3) + W[i - 16] + ((y >>> 17 | y << 15) ^ (y >>> 19 | y << 13) ^ y >>> 10) + W[i - 7]; }
+      let a = H[0], bb = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (let i = 0; i < 64; i++) {
+        const t1 = (h + ((e >>> 6 | e << 26) ^ (e >>> 11 | e << 21) ^ (e >>> 25 | e << 7)) + (e & f ^ ~e & g) + SHA_K[i] + W[i]) | 0;
+        const t2 = (((a >>> 2 | a << 30) ^ (a >>> 13 | a << 19) ^ (a >>> 22 | a << 10)) + (a & bb ^ a & c ^ bb & c)) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = bb; bb = a; a = (t1 + t2) | 0;
+      }
+      H[0] += a; H[1] += bb; H[2] += c; H[3] += d; H[4] += e; H[5] += f; H[6] += g; H[7] += h;
+    }
+    const out = new Uint8Array(32), ov = new DataView(out.buffer); for (let i = 0; i < 8; i++) ov.setUint32(i * 4, H[i]);
+    return out;
+  }
+  const te = new TextEncoder(), hex = (b, n) => { let s = ''; for (let i = 0; i < n; i++) s += (b[i] < 16 ? '0' : '') + b[i].toString(16); return s; };
+  const padK = new Map();   // 키 → [안쪽 패드, 바깥 패드] (키는 연결마다 하나라 몇 개 안 된다)
+  // HMAC-SHA-256(키, 메시지) 앞 8바이트 = 16자 (64비트 — 키 없이 맞힐 수 없고, 채널로 한 번씩만 시도할 수 있다)
+  function hmac(key, msg) {
+    let P = padK.get(key);
+    if (!P) { let k = te.encode(String(key)); if (k.length > 64) k = sha256(k); const ip = new Uint8Array(64), op = new Uint8Array(64); for (let i = 0; i < 64; i++) { const v = i < k.length ? k[i] : 0; ip[i] = v ^ 0x36; op[i] = v ^ 0x5c; } P = [ip, op]; if (padK.size > 64) padK.clear(); padK.set(key, P); }   // 64바이트 넘는 키는 먼저 해시 (RFC 2104 — 이 게임 키는 32자)
+    const mb = te.encode(String(msg)), a = new Uint8Array(64 + mb.length); a.set(P[0]); a.set(mb, 64);
+    const o = new Uint8Array(96); o.set(P[1]); o.set(sha256(a), 64);
+    return hex(sha256(o), 8);
+  }
+  // 연결마다 새 키 (128비트 → 32자)
+  function newKey() { const b = new Uint8Array(16); try { crypto.getRandomValues(b); } catch (e) { for (let i = 0; i < 16; i++) b[i] = (Math.random() * 256) | 0; } return hex(b, 16); }
+  // 직접 연결로 온 상대 키 { ky: [키, kn] } — kn: 상대가 그때까지 보낸 중계 번호. 그 근처(kn-64 초과)부터 받는다 (키보다 늦게 도착한 그 전 중계도 받게)
+  //  키를 받기 전에 받은 번호 중 kn 이하만 남긴다 — 엿본 예전 중계를 키를 받은 뒤 다시 보내도 받지 않게 · 꾸민 큰 번호가 뒤의 진짜 번호를 막지 않게
+  function setKey(p, ky) {
+    if (!Array.isArray(ky) || typeof ky[0] !== 'string' || !/^[0-9a-f]{32}$/.test(ky[0]) || p.kr === ky[0]) return;   // 같은 키(r·u 채널이 열릴 때 두 번)
+    const kn = Number.isSafeInteger(ky[1]) && ky[1] >= 0 ? ky[1] : 0, s = new Set();
+    p.kr = ky[0]; p.rb = Math.max(0, kn - 64); p.rm = p.rb;
+    if (p.rs) for (const v of p.rs) if (v > p.rb && v <= kn) { s.add(v); if (v > p.rm) p.rm = v; }
+    p.rs = s;
+  }
+  // 받은 중계 번호 적기: 키를 받은 뒤에는 오래된 번호를 밀어낸다(rb — 그 아래는 받지 않음) · 받기 전에는 먼저 적은 것부터 버림 (꾸민 번호로 창이 밀리지 않게)
+  function seenSq(p, sq, keyed) {
+    const s = p.rs || (p.rs = new Set()); s.add(sq);
+    if (keyed) { if (sq > p.rm) p.rm = sq; if (s.size > 300) { p.rb = Math.max(p.rb, p.rm - 200); for (const v of s) if (v <= p.rb) s.delete(v); } }
+    else if (s.size > 300) for (const v of s) { s.delete(v); if (s.size <= 200) break; }
+  }
+  const gStr = (from, to, sq, d) => 'g|' + from + '|' + to + '|' + sq + '|' + d;
+  const byeStr = (from, to, next, g) => 'bye|' + from + '|' + to + '|' + JSON.stringify([next || null, Array.isArray(g) ? g : null]);
+  // 중계('g')를 받을지 — 상대 키가 있으면 서명이 맞고 처음 보는 번호만 · 없으면(예전 화면 · 직접 연결이 안 됨) 받는다,
+  //  단 그 상대와 직접 연결로 방금까지 받고 있었으면 버림 (진짜 그 사람은 직접 연결로 보내는 중 — 중계로 바꾸면 그쪽 직접 연결로는 아무것도 오지 않는다)
+  function relayOk(p, m) {
+    const sq = m.sq, okN = Number.isSafeInteger(sq) && sq > 0;
+    if (!p.kr) {
+      if (p.open && !p.relay && now() - p.dcRx < 0.8 && now() - (p.openT || 0) > 1.5) { N.stats.bad++; return false; }   // 막 열린 연결(1.5초)은 그 전에 보낸 중계가 늦게 올 수 있어 받는다
+      if (okN) seenSq(p, sq, false);
+      return true;
+    }
+    // 모양·크기를 먼저 보고 해시 (꾸민 큰 내용으로 해시를 시키지 못하게 — 진짜 중계는 아이템 목록 묶음도 수십 KB)
+    if (!okN || sq <= p.rb || p.rs.has(sq) || typeof m.d !== 'string' || m.d.length > 120000 || typeof m.tg !== 'string' || m.tg.length !== 16 || m.tg !== hmac(p.kr, gStr(p.uid, N.me, sq, m.d))) { N.stats.bad++; return false; }
+    seenSq(p, sq, true); return true;
+  }
+  // 나가는 사람의 매칭 채널 'bye' 서명 — 연결 상대마다 (방장 = 모든 파티원 · 파티원 = 방장)
+  function byeTags(next, g) { const t = {}; for (const p of N.peers.values()) t[p.uid] = hmac(p.ks, byeStr(N.me, p.uid, next, g)); return t; }
+  // 매칭 채널 'bye' 를 받을지: 보낸 사람이 연결 상대이고 그 키가 있으면 내 서명이 맞아야 · 키가 없으면(예전 화면 등) 그대로
+  //  파티원 기기에서 연결 상대가 아닌 사람(다른 파티원)의 'bye' 는 서명을 확인할 수 없으므로 그 사람이 아직 자기 캐릭터를 움직이면 버림 (진짜로 나갔으면 방장이 연결로 넘겨준다)
+  function byeOk(m) {
+    const p = N.peers.get(m.from);
+    if (!p) return N.host || !playing(m.from);
+    if (!p.kr) return true;
+    const t = m.tg && typeof m.tg === 'object' ? m.tg[N.me] : null;
+    if (typeof t === 'string' && t.length === 16) { let s = null; try { s = byeStr(m.from, N.me, m.next, m.g); } catch (e) { /* 너무 깊은 g 등 */ } if (s && s.length < 20000 && t === hmac(p.kr, s)) return true; }
+    N.stats.bad++; return false;   // 서명이 안 맞음 (stats.bad 는 서명이 틀린 것만 센다)
+  }
+  // ---------- 다시 들어오기 증명 (v24) ----------
+  //  돌아온 사람의 'rj' 는 로비 채널(접속한 모두가 읽음)로 그 경기 사람 모두에게 간다. 방장이 그 사람과 키를 주고받은 자리(peer)를 갖고 있으면
+  //  그 사람의 예전 키로 만든 증명(rk — 새로고침 전 페이지가 이어하기 저장에 남긴 내 보내기 키 목록 rjKeys 로)이 맞아야 받아 준다 → 꾸민 'rj' 로 살아 있는 사람 연결을 끊고 키 없는 새 자리로 바꾸지 못하게
+  //   · 방장의 답 'rjok' 에도 그 키로 만든 서명(tg) — 돌아온 사람은 서명이 맞는 답을 먼저 믿는다 (아무나 '내가 방장'이라고 답해 가로채지 못하게)
+  //   · 증명은 그 키로만 맞으므로, 돌아온 뒤 새 연결로 새 키를 주고받으면 엿본 예전 증명을 다시 보내도 맞지 않는다
+  //   · 키 없는 자리(예전 화면 · 직접 연결이 한 번도 안 된 사람 · 방장이 바뀌어 그 사람 자리가 새로 생김)는 예전처럼 증명 없이
+  //   · 'rjok' 서명에는 넘겨받은 횟수(ep)·스타트 섬(isl)·그 물음의 1회용 번호(rn)까지 — 엿본 서명된 답을 다른 값으로 바꿔 다시 보내지 못하게
+  const rjStr = (uid, mid) => 'rj|' + uid + '|' + mid;
+  const rjokStr = (host, uid, mid, ep, isl, rn) => 'rjok|' + host + '|' + uid + '|' + mid + '|' + (+ep || 0) + '|' + (isl ? 1 : 0) + '|' + (typeof rn === 'string' ? rn.slice(0, 24) : '');
+  function rjProof(p, from, m) { return Array.isArray(m.rk) && m.rk.slice(0, 6).some((t) => typeof t === 'string' && t.length === 16 && t === hmac(p.kr, rjStr(from, N.cfg.mid))); }
+  // 이어하기 저장에 남길 내 보내기 키 (방장 자리마다 하나 — 처음 방장 · 넘겨받은 방장들 · 최근 4개) · mid: 그 경기 것만
+  //  경기를 나간 뒤에도 마지막 경기 것을 돌려준다 — 창을 닫을 때 이어하기 저장이 나가기(leave) 뒤에 한 번 더 불려도(10_resume.js pagehide) 키가 비지 않게
+  let rjMid = null, rjMine = [];
+  function rjKeys(mid) { return mid && mid === rjMid ? rjMine.slice(-4) : []; }
+  // 이 사람이 아직 이 경기에서 자기 캐릭터를 움직이는지 (방장이 봇에게 넘기지 않음) — 파티 채널 'bye'(10_social.js)는 경기를 떠난 뒤 로비에서만 보내므로 그 전에 온 것은 꾸민 것
+  function playing(uid) { return !!N && !N.ended && typeof uid === 'string' && uid !== N.me && CHARS.some((c) => c.human && c.uid === uid && c.net && c.net.owner === uid && !c.botized); }
 
   // ---------- 경기 설정 (방장) ----------
   // opt.mm: 온라인 매칭 경기 번호 (10_mm.js) — humans[].g = 줄(파티) 번호: 같은 줄은 같은 팀, 다른 줄과는 팀이 되지 않는다
@@ -98,14 +199,15 @@ const Net = (() => {
     SETTINGS.game = cfg.game;
     const myIdx = cfg.humans.findIndex((h) => h.uid === Cloud.uid);
     N = { cfg, host: cfg.host === Cloud.uid, me: Cloud.uid, myIdx, peers: new Map(), quiet: 0, applying: 0, seq: 0, uidBase: (myIdx + 1) * 1e7, uidN: 0, own,
-      items: new Map(), vehs: [], outB: [], tickT: 0, zoneT: 0, t0: now(), welcomed: false, ended: false, ready: false, hiT: 0, gone: new Set(), epoch: 0, mig: false, claimN: 0, claimT: 0, lost: 0, lostDt: 0, lostQ: 0, lostTold: false, stats: { tx: 0, rx: 0 } };   // gone: 나간 사람 · epoch·mig: 방장 넘겨받은 횟수 · claim: 새 방장 알림 · lost: 파티원 — 방장이 아직 경기 중인 내 캐릭터를 봇에게 넘긴 시각('own' · 0 = 아님)
+      items: new Map(), vehs: [], outB: [], tickT: 0, zoneT: 0, t0: now(), welcomed: false, ended: false, ready: false, hiT: 0, gone: new Set(), epoch: 0, mig: false, claimN: 0, claimT: 0, lost: 0, lostDt: 0, lostQ: 0, lostTold: false, stats: { tx: 0, rx: 0, bad: 0 }, myKeys: [] };   // gone: 나간 사람 · epoch·mig: 방장 넘겨받은 횟수 · claim: 새 방장 알림 · lost: 파티원 — 방장이 아직 경기 중인 내 캐릭터를 봇에게 넘긴 시각('own' · 0 = 아님) · stats.bad: 서명이 안 맞아 버린 채널 메시지 · myKeys: 방장에게 쓴 내 키들 (다시 들어오기 증명 — rjKeys)
     // 돌아온 사람: 'hi'를 방장이 offer 할 때까지 되풀이(mig) · 파티 경기는 파티 채널에 없으므로 신호를 로비 채널로(lob)
     if (rj) { N.rj = rj; N.hold = true; N.mig = true; N.epoch = rj.ep || 0; N.lob = !cfg.mm; }
     G.net = N; G.netAuthority = () => !N || N.host;
     // 온라인 매칭: 이 경기 채널로 신호. 방장은 파티원이 '들어왔다(hi)'고 알릴 때 연결을 시작한다 (채널에 늦게 들어온 사람이 신호를 놓치지 않게)
     if (cfg.mm) MM.chOpen(cfg.mm, onMM, () => { if (N && !N.host) hi(); });
     if (N.host) { for (const hm of cfg.humans) if (hm.uid !== N.me) N.peers.set(hm.uid, newPeer(hm.uid, true, !!cfg.mm)); }
-    else N.peers.set(cfg.host, newPeer(cfg.host, false));
+    else { const hp = newPeer(cfg.host, false); N.peers.set(cfg.host, hp); N.myKeys.push(hp.ks); }
+    rjMid = cfg.mid; rjMine = N.myKeys;   // 다시 들어오기 증명 키 (follow 가 같은 배열에 더함 — rjKeys)
     if (pendBuf) { const b = pendBuf; pendBuf = null; for (const m of b) if (m.from === cfg.host || N.host) onSig(m); }
     if (N.lob) hi();
     if (cfg.dm) DM.start(dmCfg(cfg)); else G.startMatchNet(cfg);
@@ -128,15 +230,21 @@ const Net = (() => {
   function hi() { if (N && !N.host) { N.hiT = now(); bus('hi', { to: N.cfg.host }); } }
   // 경기 채널로 온 메시지 (나머지 sig·g·hi·host 는 파티 채널과 같이 onParty)
   function onMM(m) {
-    if (!N || (m.to && m.to !== Cloud.uid)) return;
-    if (m.k === 'bye') { if (!N.host && m.from === N.cfg.host) keepGone(m.g); peerLeft(m.from, m.next); return; }   // 나가는 방장의 나간 사람 목록(g) — keepGone
+    if (!N || typeof m.from !== 'string' || (m.to && m.to !== Cloud.uid)) return;
+    if (m.k === 'bye') {   // v24: 서명이 맞아야 (byeOk — 키를 건넨 상대 · 다른 파티원의 'bye' 는 그 사람이 정말 떠났을 때만)
+      if (!byeOk(m)) return;
+      const bp = N.peers.get(m.from);
+      if (!N.host && m.from === N.cfg.host) keepGone(m.g); peerLeft(m.from, m.next, !!(bp && bp.kr)); return;   // 나가는 방장의 나간 사람 목록(g) — keepGone · sure: 서명을 확인한 'bye' 만 (방장이 다른 파티원에게 알림)
+    }
     onParty(m);
   }
   // 파티원이 '연결해 주세요(hi)' → 방장이 offer (온라인 매칭 처음 · 방장을 넘겨받은 뒤)
+  //  v24: 직접 연결을 한 번도 시작하지 않은 채 12초가 지나 중계로 바뀐 자리(온라인 매칭 — 늦게 들어온 사람의 'hi')에도 처음 offer 는 보낸다
+  //   (전에는 경기 내내 중계 = 느리고 서명 키도 없음) · 키를 주고받은 자리에는 다시 offer 하지 않는다 (파티원 기기도 받지 않음 — onSig)
   function onHi(m) {
     if (!N || !N.host) return;
     const p = N.peers.get(m.from);
-    if (p && !p.open && !p.relay && (!p.pc || (p.offerT && now() - p.offerT > 5))) offer(p);
+    if (p && !p.open && !p.kr && (!p.relay || !p.pc) && (!p.pc || (p.offerT && now() - p.offerT > 5))) offer(p);
   }
   // 이번 경기만 쓴 방장 설정을 내 설정으로 되돌림 (온라인 매칭)
   function restoreOwn(n0) { if (n0 && n0.own) { Object.assign(SETTINGS, n0.own); n0.own = null; } }
@@ -151,8 +259,10 @@ const Net = (() => {
 
   // ---------- 연결 ----------
   // defer: 연결은 나중에 (온라인 매칭 방장 — 상대의 'hi'를 받으면 offer)
+  // v24 채널 서명: ks 내 키(이 상대에게 보내는 중계·'bye' 서명) · tn 보낸 중계 번호 · kr 상대 키(직접 연결로 받음 — 없으면 서명 확인 없이) · rb·rm·rs 받은 중계 번호 창 · dcRx 직접 연결로 마지막으로 받은 때
   function newPeer(uid, offerer, defer) {
-    const p = { uid, pc: null, r: null, u: null, open: false, relay: false, t0: now(), lastRx: now(), pend: [], oid: 0, offerT: 0, name: (N.cfg.humans.find((h) => h.uid === uid) || {}).name || '?' };
+    const p = { uid, pc: null, r: null, u: null, open: false, relay: false, t0: now(), lastRx: now(), pend: [], oid: 0, offerT: 0, name: (N.cfg.humans.find((h) => h.uid === uid) || {}).name || '?',
+      ks: newKey(), tn: 0, kr: null, rb: 0, rm: 0, rs: null, dcRx: 0 };
     if (!defer) makePc(p, offerer);
     return p;
   }
@@ -173,8 +283,10 @@ const Net = (() => {
   // 방장: (다시) 연결 시작
   function offer(p) { try { if (p.pc) p.pc.close(); } catch (e) { /* */ } p.oid++; p.offerT = now(); p.pend = []; p.r = p.u = null; makePc(p, true); }
   function setupDc(p, dc) {
-    dc.onopen = () => { if (p.r && p.r.readyState === 'open') { p.open = true; if (p.relay) { p.relay = false; } hello(p); linkUp(p); } };
-    dc.onmessage = (e) => recv(p, e.data);
+    // 열리면 먼저 이 연결로 내 키를 건넨다 (v24 채널 서명 — 이 뒤 중계·'bye' 를 상대가 확인할 수 있게)
+    //  openT: 열린 때 (키 없는 상대의 늦게 온 중계를 1.5초 동안은 받는다 — relayOk) · held: 중계 틱을 기다리던 사건은 이 연결로 바로 (중계가 끝나 다음 중계 틱이 오지 않으므로 — 전에는 사라졌다)
+    dc.onopen = () => { if (!N) return; if (p.r && p.r.readyState === 'open') { p.open = true; p.openT = now(); if (p.relay) { p.relay = false; } sendTo(p, { ky: [p.ks, p.tn] }, true); if (p.held && p.held.length) sendTo(p, { e: p.held.splice(0) }, true); hello(p); linkUp(p); } };   // N 없음: 나간 뒤 0.4초 안에 열린 연결 (곧 닫힘)
+    dc.onmessage = (e) => recv(p, e.data, true);
     dc.onclose = () => { if (p.open) { p.open = false; if (N && !N.ended) toRelay(p, 'closed'); } };
   }
   // 중계로 바꾸지 않는 연결: 나간 사람(left — 'bye' · 20초 끊김 · 파티 채널 알림 · 버전 다름 · 넘겨받을 때 봇이던 사람) · 지금 자리가 아닌 지난 연결(다시 들어오기·방장 넘겨받기로 바뀐 자리에 늦게 온 닫힘 알림)
@@ -189,12 +301,16 @@ const Net = (() => {
   function sig(to, d, o) { bus('sig', { to, d, o: o || 0 }); }
   async function onSig(m) {
     if (!N) { (pendBuf || (pendBuf = [])).push(m); return; }
-    const p = N.peers.get(m.from); if (!p) return;
-    const d = m.d, o = m.o || 0;
+    const p = N.peers.get(m.from), d = m.d; if (!p || !d || typeof d !== 'object') return;
+    const o = m.o || 0, isOffer = !!(d.sdp && d.sdp.type === 'offer');
+    // v24: 연결 제안(offer)은 방장만 보낸다 · 키를 주고받은 상대(직접 연결이 됐던 연결)에게는 방장도 다시 제안하지 않는다 (한 번 열린 연결은 열려 있거나 중계 — 방장의 onHi 는 둘 다 아닐 때만)
+    //  → 채널로 꾸민 제안(방장 이름)으로 연결을 끊고 가로채 키를 받아 가지 못하게. 새 방장·다시 들어오기는 새 자리(peer)라 키가 없어 그대로 받는다
+    if (isOffer && (N.host || p.kr)) return;
     // 방장이 연결을 새로 시작함 → 나도 새 연결 (온라인 매칭: 내가 채널에 늦게 들어와 처음 offer 를 놓친 경우 등)
-    if (!N.host && d.sdp && d.sdp.type === 'offer' && o !== p.oid) { try { if (p.pc) p.pc.close(); } catch (e) { /* */ } p.oid = o; p.pend = []; p.open = false; p.r = p.u = null; makePc(p, false); }
+    if (!N.host && isOffer && o !== p.oid) { try { if (p.pc) p.pc.close(); } catch (e) { /* */ } p.oid = o; p.pend = []; p.open = false; p.r = p.u = null; makePc(p, false); }
     if (o !== p.oid || !p.pc) return;   // 지난 연결의 신호
     const pc = p.pc;
+    if (isOffer) { if (p.offO === o) return; p.offO = o; }   // 같은 연결 번호의 두 번째 제안 = 다시 협상 (이 게임은 하지 않는다 — 먼저 온 것만)
     try {
       if (d.sdp) {
         await pc.setRemoteDescription(d.sdp);
@@ -208,7 +324,7 @@ const Net = (() => {
   function onParty(m) {
     if (m.to && m.to !== Cloud.uid) return;
     if (m.k === 'sig') { if (!N) { (pendBuf || (pendBuf = [])).push(m); setTimeout(() => { pendBuf = null; }, 15000); return; } onSig(m); }
-    else if (m.k === 'g' && N) { const p = N.peers.get(m.from); if (p) { if (!p.relay && !p.open) toRelay(p, 'peer-relay'); recv(p, m.d); } }
+    else if (m.k === 'g' && N) { const p = N.peers.get(m.from); if (p && relayOk(p, m)) { if (m.lob) p.lob = true; if (!p.relay && !p.open) toRelay(p, 'peer-relay'); recv(p, m.d, false); } }   // v24: 서명·번호 확인 (relayOk) · lob: 로비 채널로 온 맞는 중계 → 그 사람과는 로비 채널로
     else if (m.k === 'hi') onHi(m);
     else if (m.k === 'host') onHostClaim(m);
   }
@@ -220,7 +336,7 @@ const Net = (() => {
       const dc = reliable || !p.u || p.u.readyState !== 'open' ? p.r : p.u;
       if (dc && dc.readyState === 'open') { if (dc.bufferedAmount < 2e6 || reliable) { try { dc.send(s); } catch (e) { console.warn(e); } } return; }
     }
-    if (p.relay) bus('g', { to: p.uid, d: s });
+    if (p.relay) { const sq = ++p.tn; bus('g', { to: p.uid, d: s, sq, tg: hmac(p.ks, gStr(N.me, p.uid, sq, s)) }); }   // v24: 번호·서명 (키를 받은 상대만 확인 — 예전 화면은 모르는 칸을 무시)
   }
   // 큰 목록(아이템 등)은 나눠 보낸다
   function sendBig(p, kind, list, per = 400) {
@@ -262,10 +378,13 @@ const Net = (() => {
   }
 
   // ---------- 받기 ----------
-  function recv(p, data) {
+  // dc: 직접 연결(데이터 채널)로 옴 — 상대 키(ky)는 이렇게 온 것만 받는다 (중계는 채널이라 모두가 읽는다)
+  function recv(p, data, dc) {
     if (!N || p.bad) return;   // bad: 게임 버전이 달라 내보낸 사람 (verDrop)
     let m; try { m = typeof data === 'string' ? JSON.parse(data) : data; } catch (e) { return; }
+    if (!m || typeof m !== 'object') return;
     p.lastRx = now(); N.stats.rx += (data && data.length) || 0;
+    if (dc) { p.dcRx = p.lastRx; if (m.ky) setKey(p, m.ky); }   // 맵을 만드는 중(아래 rj)이어도 키는 먼저
     if (N.rj && !N.ready) return;   // 다시 들어오는 중 · 아직 맵을 만드는 중: 버림 (인사한 뒤 방장이 지금 상태를 통째로 보낸다 — 그 전 사건을 적용하면 아이템 칸이 없어 오류)
     if (m.s) for (const a of m.s) applyChar(a, p);
     if (m.v) for (const a of m.v) applyVeh(a);
@@ -274,8 +393,8 @@ const Net = (() => {
       e.from = N.host ? p.uid : e.from || p.uid;   // 보낸 사람: 방장은 실제로 보낸 파티원으로 (파티원은 남의 사건을 넘기지 않음 — v23 핑처럼 보낸 사람을 믿는 사건을 다른 사람 이름으로 꾸며 넘기지 못하게)
       if (N.host && e.k === 'bye') e.uid = p.uid;   // 'bye' 를 넘길 때 나간 사람(uid)도 실제로 보낸 파티원으로 — 이번 업데이트 전 화면(파티원)은 e.uid 를 읽으므로 꾸민 이름이 그대로 넘어가지 않게
       if (N.host && e.to && e.to !== N.me) { const tp = N.peers.get(e.to); if (!tp || tp.left) e.to = N.me; } // 떠난 사람 앞 사건은 방장이 대신 처리
-      // 방장: 다른 파티원에게 넘길 것
-      if (N.host && (!e.to || e.to !== N.me)) { const fw = Object.assign({}, e); N.outB.push(fw); }
+      // 방장: 다른 파티원에게 넘길 것 ('bye' 는 peerLeft 가 따로 알림 — v24, 어떻게 알았든 한 번)
+      if (N.host && (!e.to || e.to !== N.me) && e.k !== 'bye') { const fw = Object.assign({}, e); N.outB.push(fw); }
       if (!e.to || e.to === N.me) handle(e, p.uid);
     }
   }
@@ -313,7 +432,7 @@ const Net = (() => {
       case 'loot': recvLoot(e); break;
       case 'lootReq': if (N.host) sendLoot(N.peers.get(from)); break;
       case 'vehs': recvVehs(e); break;
-      case 'bye': { const u = N.host ? from : e.from || from; if (N.host) { const bp = N.peers.get(from); if (bp) bp.bye = true; } else if (u === N.cfg.host) keepGone(e.g); peerLeft(u, e.next); break; }   // 나간 사람 = 실제로 보낸 사람: 방장은 보낸 파티원(from) · 파티원은 방장이 적어 넘긴 보낸 사람(e.from — 방장 자신의 'bye' 면 방장). e.uid 는 믿지 않는다 (꾸민 화면이 다른 사람이 나간 것처럼 만들어 그 캐릭터를 봇에게 넘기지 못하게 — 예전 화면이 읽도록 보내기만) · 방장: 'bye' 를 보낸 연결(bye)의 늦게 온 상태로는 봇을 되돌리지 않음 (applyChar) · 파티원: 나가는 방장의 나간 사람 목록(g — keepGone)
+      case 'bye': { const u = N.host ? from : e.from || from; if (N.host) { const bp = N.peers.get(from); if (bp) bp.bye = true; } else if (u === N.cfg.host) keepGone(e.g); peerLeft(u, e.next, N.host); break; }   // 나간 사람 = 실제로 보낸 사람: 방장은 보낸 파티원(from) · 파티원은 방장이 적어 넘긴 보낸 사람(e.from — 방장 자신의 'bye' 면 방장). e.uid 는 믿지 않는다 (꾸민 화면이 다른 사람이 나간 것처럼 만들어 그 캐릭터를 봇에게 넘기지 못하게 — 예전 화면이 읽도록 보내기만) · 방장: 'bye' 를 보낸 연결(bye)의 늦게 온 상태로는 봇을 되돌리지 않음 (applyChar) · 파티원: 나가는 방장의 나간 사람 목록(g — keepGone)
       case 'isl': if (!N.host && G.island) Island.end(); break;   // 방장의 스타트 섬이 끝남 → 모두 수송기로
       case 'rjs': applyRj(e); break;   // v23 다시 들어옴: 방장이 보낸 지금 상태
       case 'vic': Victory.onNet(e); break;   // v23 우승 축하: 파티원의 동상 세우기·춤
@@ -346,31 +465,52 @@ const Net = (() => {
   //  5. 돌아온 사람이 맞춘 뒤에야 자기 캐릭터 상태를 보냄 → 방장이 봇을 멈추고 돌려줌(unbotize)
   //  아무도 답하지 않으면(경기가 끝났거나 모두 나감) 돌아온 사람 쪽에서 '이미 끝남'
   function onLobby(m) {
-    const k = m.nk, from = m.from && m.from.uid; if (!k || !from) return;
+    const k = m.nk, from = m.from && m.from.uid; if (!k || typeof from !== 'string') return;
     if (k === 'rj') { onRejoinReq(from, m); return; }
-    if (k === 'rjok') { if (probeP && m.mid === probeP.mid) probeP.fin({ host: m.host || from, ep: m.ep || 0, isl: !!m.isl }); return; }
-    if (!N || m.mid !== N.cfg.mid) return;
-    const p = N.peers.get(from); if (p) p.lob = true;   // 이 사람과는 로비 채널로
-    onParty({ k, from, to: Cloud.uid, d: m.d, o: m.o, uid: m.uid, ep: m.ep, next: m.next });
+    if (k === 'rjok') { if (probeP && m.mid === probeP.mid) probeP.ans(from, m); return; }   // v24: 그 경기 사람의 답만 · 서명이 맞는 답을 먼저 (probe)
+    if (k === 'rjno') { if (probeP && m.mid === probeP.mid) probeP.no(from); return; }   // v24: 방장이 증명을 확인하지 못해 거절 — 끝난 경기로 기록하지 않고 '다시 시도'
+    if (!N || m.mid !== N.cfg.mid || N.cfg.mm) return;   // v24: 온라인 매칭 경기는 로비 채널로 신호·중계를 하지 않는다(bus — 경기 채널) → 받지 않음 (로비 채널은 접속한 모두가 보낼 수 있다)
+    // 이 사람과는 로비 채널로 — 키를 주고받은 상대는 서명이 맞는 중계가 로비로 왔을 때만 (onParty) · 꾸민 메시지로 그 사람 길을 로비 채널로 돌리지 못하게
+    const p = N.peers.get(from); if (p && !p.kr) p.lob = true;
+    onParty({ k, from, to: Cloud.uid, d: m.d, o: m.o, uid: m.uid, ep: m.ep, next: m.next, sq: m.sq, tg: m.tg, lob: 1 });   // sq·tg: 중계 번호·서명 (v24)
   }
   function onRejoinReq(from, m) {
     if (!N || N.ended || !N.host || m.mid !== N.cfg.mid || from === N.me || !N.cfg.humans.some((h) => h.uid === from)) return;
     let p = N.peers.get(from);
-    if (!p || !p.rj || now() - p.t0 > 8) { if (p) closePeer(p); p = newPeer(from, true, true); p.rj = true; N.peers.set(from, p); }   // 새 자리 (8초 안에 다시 물으면 그대로)
+    // v24: 그 사람과 키를 주고받은 자리면 예전 키로 만든 증명(rk)이 있어야 — 없으면 꾸민 것 (살아 있는 연결을 끊고 키 없는 새 자리로 바꾸거나, 나간 사람 캐릭터를 가져가지 못하게)
+    if (p && p.kr && !rjProof(p, from, m)) { Social.send(from, 'nt', { nk: 'rjno', mid: N.cfg.mid }); return; }   // 거절도 알림 — 그 사람 기기가 다시 들어오는 중이면 '끝난 경기'로 기록하지 않게 (꾸민 'rj' 였으면 그 사람은 묻지 않았으므로 무시)
+    if (!p || !p.rj || now() - p.t0 > 8) {   // 새 자리 (8초 안에 다시 물으면 그대로) — 키는 새로 (예전 키로 서명된 지난 중계를 새 연결에 다시 보내지 못하게)
+      const rjK = p && p.kr ? p.kr : null;   // 답 서명에 쓸 그 사람 예전 키 (돌아온 사람이 진짜 방장의 답을 알아보게 — 새 자리는 답에만 씀)
+      if (p) closePeer(p);
+      p = newPeer(from, true, true); p.rj = true; p.rjK = rjK; N.peers.set(from, p);
+    }
     p.lob = !N.cfg.mm; p.bye = false; p.rjAt = now(); N.gone.delete(from);   // rjAt: 그 전 접속의 늦은 파티 채널 알림을 15초 동안 무시 (partyLeft)
     if (G.state === 'result') G.bgSim = true;   // 결과 화면 뒤에서 경기를 다시 돌린다 (돌아온 사람이 할 경기)
     N.rjKeep = now() + 40;
-    Social.send(from, 'nt', { nk: 'rjok', mid: N.cfg.mid, host: N.me, ep: N.epoch, isl: G.island ? 1 : 0 });
+    const isl = G.island ? 1 : 0;
+    Social.send(from, 'nt', { nk: 'rjok', mid: N.cfg.mid, host: N.me, ep: N.epoch, isl, tg: p.rjK ? hmac(p.rjK, rjokStr(N.me, from, N.cfg.mid, N.epoch, isl, m.rn)) : undefined });
   }
   // 돌아온 사람: 지금 방장 찾기 (10초 동안 2초마다 물음) → { host, ep, isl } 또는 null(끝난 경기)
+  //  keys: 이어하기 저장에 남긴 예전 페이지의 내 키들(rjKeys) → 'rj' 에 증명(rk) · 'rjok' 서명 확인
+  //  답(rjok)은 그 경기 사람에게서 · 방장도 그 경기 사람만. 내 예전 키로 서명이 맞는 답이면 바로, 아니면 처음 답을 1.2초 들고 있다가(그사이 서명 맞는 답이 오면 그것)
+  //  — 키 없는 방장(예전 화면 · 내가 나간 사이 바뀐 방장)의 답은 서명이 없으므로 처음 답을 따른다
   let probeP = null;
-  function probe(cfg, ms = 10000) {
+  function probe(cfg, keys, ms = 10000) {
     return new Promise((res) => {
-      const P = probeP = { mid: cfg.mid, done: false };
-      const others = cfg.humans.map((h) => h.uid).filter((u) => u && u !== Cloud.uid);
-      const ask = () => { if (!P.done) for (const u of others) Social.send(u, 'nt', { nk: 'rj', mid: cfg.mid }); };
-      const iv = setInterval(ask, 2000), to = setTimeout(() => P.fin(null), ms);
+      const me = Cloud.uid, ks = (Array.isArray(keys) ? keys : []).filter((k) => typeof k === 'string' && /^[0-9a-f]{32}$/.test(k)).slice(-4);
+      const rk = ks.map((k) => hmac(k, rjStr(me, cfg.mid))), rn = newKey().slice(0, 16);   // rn: 이번 물음의 1회용 번호 — 방장 답 서명에 들어간다
+      const P = probeP = { mid: cfg.mid, done: false, first: null };
+      const others = cfg.humans.map((h) => h.uid).filter((u) => u && u !== me);
+      const ask = () => { if (!P.done) for (const u of others) Social.send(u, 'nt', { nk: 'rj', mid: cfg.mid, rk: rk.length ? rk : undefined, rn }); };
+      const iv = setInterval(ask, 2000), to = setTimeout(() => P.fin(P.first || (P.refused ? { refused: true } : null)), ms);   // refused: 그 경기 사람(방장)이 거절만 함 → 끝난 경기가 아님
       P.fin = (v) => { if (P.done) return; P.done = true; clearInterval(iv); clearTimeout(to); if (probeP === P) probeP = null; res(v); };
+      P.ans = (from, m) => {
+        const host = typeof m.host === 'string' ? m.host : from; if (P.done || !others.includes(from) || !others.includes(host)) return;
+        const v = { host, ep: m.ep || 0, isl: !!m.isl };
+        if (typeof m.tg === 'string' && m.tg.length === 16 && ks.some((k) => hmac(k, rjokStr(host, me, cfg.mid, m.ep, m.isl, rn)) === m.tg)) { P.fin(v); return; }
+        if (!P.first) { P.first = v; setTimeout(() => P.fin(P.first), 1200); }
+      };
+      P.no = (from) => { if (others.includes(from)) P.refused = true; };
       if (!others.length) { P.fin(null); return; }
       ask();
     });
@@ -734,7 +874,9 @@ const Net = (() => {
     const gap = t - (N.tickAt || t); N.tickAt = t;
     if (gap > 5) for (const p of N.peers.values()) p.lastRx = Math.max(p.lastRx, t - 15);
     // 온라인 매칭 파티원: 방장의 offer 가 올 때까지 'hi'를 2.5초마다 다시 (방장이 채널에 늦게 들어온 경우)
-    if ((viaMM() || N.mig) && !N.host) { const hp = N.peers.get(N.cfg.host); if (hp && !hp.open && !hp.relay && !hp.oid && t - N.hiT > 2.5) hi(); }
+    //  v24: offer 를 한 번도 못 받은 채 중계가 됐어도(방장이 12초 안에 offer 하지 못함 → 방장 중계를 받아 이쪽도 중계) 6초마다 5번까지 — 방장이 처음 offer 를 보낸다 (onHi)
+    //   · 키를 받은 연결은 묻지 않음 · 5번: 이미 offer 했던 방장 · 이번 업데이트 전 방장은 중계 자리에 offer 하지 않으므로 경기 내내 채널 메시지를 쓰지 않게
+    if ((viaMM() || N.mig) && !N.host) { const hp = N.peers.get(N.cfg.host); if (hp && !hp.open && !hp.kr && !hp.oid && (!hp.relay || (hp.hiR || 0) < 5) && t - N.hiT > (hp.relay ? 6 : 2.5)) { if (hp.relay) hp.hiR = (hp.hiR || 0) + 1; hi(); } }
     // v24 파티원: 방장이 내 캐릭터를 봇에게 넘긴 채 경기 시간으로 2.5초 (내 상태가 방장에게 닿지 않는 중) → 한 번 알림. 곧 돌려받으면 알리지 않는다
     //  (파티 채널만 잠깐 끊김 · 앱을 바꿨다 돌아옴 — 화면이 멈춘 동안은 세지 않아 돌아오자마자 돌려받으면 조용히)
     //  v24: 방장과는 주고받는데 방장이 내 캐릭터 상태를 1.5초째 보내지 않으면(= 방장 기기에서 더는 봇이 아님) lost 를 끝냄 — 돌려준다는 'own' 을 놓쳤거나 새 방장이 내 캐릭터를 넘겨받지 않은 경우
@@ -747,7 +889,7 @@ const Net = (() => {
       else { N.lostDt = (N.lostDt || 0) + dt; if (!N.lostTold && N.lostDt > 2.5 && G.player && G.player.alive) { N.lostTold = true; HUD.toast('연결이 불안정해 다른 사람 화면에서는 봇이 내 캐릭터를 대신 움직입니다 — 연결되면 바로 돌려받습니다', 'warn'); } }
     }
     // 방장을 넘겨받은 기기: 3초마다 5번 '내가 방장' 알림 (다른 사람을 고른 파티원도 이쪽으로)
-    if (N.host && N.claimN > 0 && t - N.claimT > 3) { N.claimN--; N.claimT = t; bus('host', { uid: N.me, ep: N.epoch }); }
+    if (N.host && N.claimN > 0 && t - N.claimT > 3) { N.claimN--; N.claimT = t; bus('host', { uid: N.me, ep: N.epoch, mid: N.cfg.mid }); }   // mid: 이 경기 알림 (v24 — 파티 채널을 두 경기가 함께 쓸 때)
     // 연결 시간 초과 → 중계
     for (const p of N.peers.values()) {
       if (!p.open && !p.relay && t - p.t0 > 12) toRelay(p, 'timeout');
@@ -794,7 +936,8 @@ const Net = (() => {
 
   // ---------- 나가기 ----------
   // next: 나가는 방장이 고른 다음 방장 (없으면 남은 사람 중 정해진 순서)
-  function peerLeft(uid, next) {
+  // sure: 그 사람이 정말 나갔음 (그 사람의 'bye' — 연결 · 서명이 맞는 매칭 채널 · 버전 다름). 연결 끊김(20초)·파티 채널 알림은 아님 — 잠깐 끊겼다 돌아올 수 있다
+  function peerLeft(uid, next, sure) {
     if (!N || N.ended || !uid || uid === N.me) return;
     const p = N.peers.get(uid); if (p && p.left) return; if (p) p.left = true;
     if (N.gone.has(uid)) return;
@@ -805,6 +948,10 @@ const Net = (() => {
       // 떠난 파티원 캐릭터는 봇이 이어받는다
       const c = CHARS.find((x) => x.net && x.net.owner === uid && !x.botized);
       if (c) botize(c);
+      // v24: 정말 나갔으면(sure) 다른 파티원 기기에도 알림 — 연결 'bye' · 서명이 맞는 매칭 채널 'bye'(파티원은 다른 파티원의 채널 'bye' 를 확인할 수 없어 버림 — byeOk) · 버전 다름
+      //  → 파티원 N.gone 도 방장과 같아 방장이 바뀔 때 같은 사람을 고른다 · 이번 업데이트 전 화면은 uid 를 읽음. 연결 끊김(20초)·파티 채널 알림으로는 보내지 않는다 —
+      //  잠깐 끊긴 사람이 모두의 N.gone 에 들어가면 그사이 방장이 바뀔 때 새 방장이 그 사람 자리를 만들지 않아 돌아와도 붙지 못한다 (keepGone 이 넣지 않는 것과 같은 까닭)
+      if (sure) ev({ k: 'bye', uid, from: uid });
       HUD.toast(`${hm.name}님이 경기를 떠났습니다${c && c.alive ? ' — 봇이 이어서 합니다' : ''}`, 'warn');
     }
   }
@@ -822,7 +969,7 @@ const Net = (() => {
   //  떠난 사람처럼 캐릭터는 봇이 잇는다 — 내 경기를 아직 만드는 중이면 준비된 뒤(ready)에
   function verDrop(p, v) {
     if (p.dropped) return; p.bad = true; p.badV = v; if (!N.ready) return;
-    p.dropped = true; peerLeft(p.uid); Ver.tell(v, p.name);
+    p.dropped = true; peerLeft(p.uid, undefined, true); Ver.tell(v, p.name);
     setTimeout(() => { closePeer(p); if (N && N.peers.get(p.uid) === p) N.peers.delete(p.uid); }, 300);
   }
 
@@ -838,7 +985,9 @@ const Net = (() => {
     return list.filter(alive).concat(list.filter((u) => !alive(u)));
   }
   function migrate(oldHost, next) {
-    const cand = successors(oldHost), nh = next && cand.includes(next) ? next : cand[0];
+    // 다음 방장: 나가는 방장이 고른 사람(next) → 첫 연결 중에 받아 둔 '내가 방장' 알림(claim — 40초 안 · onHostClaim) → 정해진 순서
+    const cand = successors(oldHost), cl = N.claim && now() - N.claim.t < 40 && cand.includes(N.claim.uid) ? N.claim.uid : null, nh = next && cand.includes(next) ? next : cl || cand[0];
+    N.claim = null;
     if (!nh) { hostGone(); return; }
     if (nh === N.me) takeOver(oldHost); else follow(nh, oldHost);
   }
@@ -885,14 +1034,19 @@ const Net = (() => {
     N.host = false; N.cfg.host = nh; N.mig = true; N.epoch++;
     for (const c of CHARS) if (c.net && !c.net.mine) { const o = c.net.owner; if (o === oldHost || N.gone.has(o) || !N.cfg.humans.some((h) => h.uid === o)) c.net.owner = nh; }
     for (const p of N.peers.values()) closePeer(p);
-    N.peers.clear(); N.peers.set(nh, newPeer(nh, false)); N.hiT = 0; N.t0 = now();
+    N.peers.clear(); const np = newPeer(nh, false); N.peers.set(nh, np); N.myKeys.push(np.ks); if (N.myKeys.length > 8) N.myKeys.shift(); N.hiT = 0; N.t0 = now();   // myKeys: 새 방장에게 쓸 내 키도 다시 들어오기 증명에
+    try { Resume.keys(N.cfg.mid, N.myKeys.slice(-4)); } catch (e) { /* */ }   // 이어하기 기록에 바로 (화면이 숨겨져 5초 저장이 없는 사이 탭이 정리돼도 새 방장에게 증명할 수 있게)
     hi();
     HUD.toast(`방장이 나가서 ${(N.cfg.humans.find((h) => h.uid === nh) || {}).name || '다른 사람'}님이 경기를 이어받습니다 — 경기는 계속됩니다`, 'warn');
   }
   // 다른 기기가 '내가 방장'이라고 알림: 내가 따르던 방장과 연결이 안 되어 있으면 그쪽으로
+  //  v24: 이 경기 사람이 넘겨받은 알림만(ep ≥ 1 — 처음 방장은 알리지 않음 · mid 가 있으면 이 경기) · 아직 방장을 넘겨받은 적 없이 첫 연결 중이거나 다시 들어오는 중이면
+  //   따르지 않고 기억만 한다(claim) → 방장이 정말 사라지면(migrate) 그 사람을 먼저 고름. 서명할 수 없는 알림이라, 경기 시작 직후 꾸민 알림 하나로 모두가 진짜 방장을 버리고 따라가지 않게
   function onHostClaim(m) {
-    if (!N || N.host || m.uid === N.cfg.host || m.uid === N.me || (m.ep || 0) < N.epoch || N.gone.has(m.uid)) return;
+    if (!N || N.host || typeof m.uid !== 'string' || m.uid === N.cfg.host || m.uid === N.me || !(m.ep >= 1) || m.ep < N.epoch || N.gone.has(m.uid)) return;
+    if ((m.mid && m.mid !== N.cfg.mid) || !N.cfg.humans.some((h) => h.uid === m.uid)) return;
     const hp = N.peers.get(N.cfg.host); if (hp && (hp.open || hp.relay)) return;
+    if (N.epoch < 1 || (N.rj && !N.rj.done)) { N.claim = { uid: m.uid, t: now() }; return; }
     const old = N.cfg.host; N.gone.add(old); follow(m.uid, old);
   }
   function unbotize(c, p) {
@@ -927,7 +1081,7 @@ const Net = (() => {
     let next;
     if (N.host) { const ok = (u) => { const p = N.peers.get(u); return !!p && (p.open || p.relay) && !p.left; }; next = successors(N.me).find(ok) || successors(N.me)[0]; }
     const g = N.host ? [...N.gone] : undefined;   // 방장: 나간 사람 목록도 — 파티원은 여기에 없는 옛 기록을 지우고 같은 다음 방장을 고른다 (keepGone)
-    try { ev({ k: 'bye', uid: N.me, next, g }); flush(true); if (viaMM()) bus('bye', { next, g }); } catch (e) { /* */ }
+    try { ev({ k: 'bye', uid: N.me, next, g }); flush(true); if (viaMM()) bus('bye', { next, g, tg: byeTags(next, g) }); } catch (e) { /* */ }   // tg: 받는 사람마다 서명 (v24)
     const n0 = N, mm = n0.cfg.mm; setTimeout(() => { closePeers(n0); if (mm) MM.chClose(mm); }, 400);
     N = null; G.net = null; restoreOwn(n0);
   }
@@ -937,12 +1091,12 @@ const Net = (() => {
   function othersPlaying() { if (!N || !N.host) return false; return (N.rjKeep || 0) > now() || N.cfg.humans.some((hm) => hm.uid !== N.me && CHARS.some((c) => c.net && c.net.owner === hm.uid && c.alive && !c.botized)); }   // rjKeep: 다시 들어오는 사람을 기다리는 동안 (40초)
   // 방장: 아직 인사(hello)가 없는 사람 수 — 스타트 섬을 조금 더 기다린다
   function waiting() { if (!N || !N.host) return 0; let n = 0; for (const p of N.peers.values()) if (!p.helloSeen && !p.left && !p.gone) n++; return n; }
-  function status() { if (!N) return null; return { host: N.host, peers: [...N.peers.values()].map((p) => ({ uid: p.uid, name: p.name, open: p.open, relay: p.relay, left: !!p.left, rx: Math.round(now() - p.lastRx) })), tx: N.stats.tx, rx: N.stats.rx, items: N.items.size, vehs: N.vehs.length }; }
+  function status() { if (!N) return null; return { host: N.host, peers: [...N.peers.values()].map((p) => ({ uid: p.uid, name: p.name, open: p.open, relay: p.relay, left: !!p.left, rx: Math.round(now() - p.lastRx), key: !!p.kr })), tx: N.stats.tx, rx: N.stats.rx, bad: N.stats.bad, items: N.items.size, vehs: N.vehs.length }; }   // key: 상대 키를 받음 (채널 서명 확인) · bad: 서명이 안 맞아 버린 채널 메시지
 
   // 창을 닫거나 새로고침할 때도 나간다고 알린다 (방장이면 다음 방장을 골라 넘김 → 남은 사람의 경기는 계속)
   //  v23: 나가기 전에 이어하기 저장 (돌아오면 같은 경기로 — 10_resume.js)
   window.addEventListener('pagehide', () => { try { if (N) { Resume.save(); leave(); } } catch (e) { /* */ } });
   return { makeConfig, join, ready, onParty, onLobby, probe, tick, active, isHost, isGuest, mine, held, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
     remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft: partyLeft, leave, close, othersPlaying, waiting, status, ev, flush, zoneSnap, applyZone,
-    get state() { return N; } };
+    playing, hmac, rjKeys, get state() { return N; } };   // playing: 파티 채널 'bye' 확인 (10_social.js) · hmac: 채널 서명 (시험용) · rjKeys: 이어하기 저장에 남길 다시 들어오기 증명 키 (10_resume.js)
 })();

@@ -75,9 +75,10 @@ const Social = (() => {
   }
   const isFriend = (uid) => friends.some((f) => f.id === uid && f.status === 'accepted');
   // 받는 사람(to)이 정해진 메시지 — 로비 채널에 있는 모두가 받지만 to가 아니면 버린다
+  //  to·k·from 은 data 뒤에 (v24 — 넘겨받은 객체에 같은 이름 칸이 있어도 보낸 사람이 바뀌지 않게)
   function send(to, k, data) {
     if (!ch || !ok) return false;
-    ch.send({ type: 'broadcast', event: 'm', payload: Object.assign({ to, k, from: { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv } }, data || {}) });
+    ch.send({ type: 'broadcast', event: 'm', payload: Object.assign({}, data || {}, { to, k, from: { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv } }) });
     return true;
   }
   function onMsg(m) {
@@ -277,7 +278,7 @@ const Social = (() => {
 })();
 
 const Party = (() => {
-  let P = null, ch = null, chOk = false, own = null, joining = null, pushT = 0, lastShared = '', absent = new Map(), present = new Set(), silent = false;   // silent: 조용히 나가는 중 (leave(true)) — 로비의 내 퇴장 연출을 건너뛴다
+  let P = null, ch = null, chOk = false, own = null, joining = null, pushT = 0, lastShared = '', absent = new Map(), present = new Set(), silent = false, keep = false;   // silent: 조용히 나가는 중 (leave(true)) — 로비의 내 퇴장 연출을 건너뛴다 · keep: 파티에서 빠졌지만 파티 경기가 끝날 때까지 채널을 둠 (v24 closeKeep)
   const SHARED = ['game', 'map', 'mode', 'squad', 'queue', 'time', 'difficulty', 'bots', 'online', 'arena'];   // online: 온라인 매칭 켬/끔 · arena: 데스매치 아레나 (방장이 정함)
   const me = () => Cloud.uid;
   const sb = () => Cloud.client();
@@ -285,7 +286,7 @@ const Party = (() => {
   const id = () => (P ? P.id : null);
   const size = () => (P ? P.members.length : 1);
   const has = (uid) => !!P && P.members.some((m) => m.uid === uid);
-  const canInvite = () => !!Cloud.user && (!P || (isLeader() && size() < PARTY_MAX));
+  const canInvite = () => !!Cloud.user && !keep && (!P || (isLeader() && size() < PARTY_MAX));   // keep: 파티에서 빠진 뒤 경기 끝까지 둔 채널이 있는 동안은 새 파티를 열 수 없음 (v24 closeKeep)
   const uuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'p' + Math.random().toString(16).slice(2) + Date.now().toString(16));
   function memberInfo() { return { uid: me(), name: Cloud.name, lv: levelFromXp(STATS.xp).lv, hc: Rank.hcOk() ? 1 : 0, look: myLook(), st: G.state === 'lobby' ? 'lobby' : 'game', ent: typeof PartyFx !== 'undefined' ? PartyFx.mineList() : null, nv: NET_VER }; }   // ent: 파티 입장·퇴장 연출 (10_partyfx.js) · nv: 같이 하기 버전 (10_ver.js)
   function shared() { const o = {}; for (const k of SHARED) o[k] = SETTINGS[k]; return o; }
@@ -301,11 +302,15 @@ const Party = (() => {
       if (chOk) { ch.track({ uid: me() }).catch(() => {}); if (!was && then) { const f = then; then = null; f(); } }
     });
   }
-  function close() { if (ch && sb()) { try { sb().removeChannel(ch); } catch (e) { /* */ } } ch = null; chOk = false; present.clear(); absent.clear(); }
-  function send(k, data) { if (!ch || !chOk) return false; ch.send({ type: 'broadcast', event: 'm', payload: Object.assign({ k, from: me() }, data || {}) }); return true; }
+  function close() { keep = false; if (ch && sb()) { try { sb().removeChannel(ch); } catch (e) { /* */ } } ch = null; chOk = false; present.clear(); absent.clear(); }
+  // v24: 파티에서 빠졌어도(강퇴 · 파티장이 뺀 'state' — 꾸민 것 포함) 지금 파티 경기 중이면 채널은 경기가 끝날 때까지 둔다 — 그 경기의 신호·중계 길 (10_net.js bus)
+  //  → 파티 경기 중에 파티에서 빠져도(꾸민 메시지로든) 경기 연결이 끊기지 않는다 · 경기가 끝나면 tick 이 닫음 (keep)
+  function closeKeep() { const N = Net.state; if (ch && N && !N.ended && !N.cfg.mm) { keep = true; return; } close(); }
+  function send(k, data) { if (!ch || !chOk) return false; ch.send({ type: 'broadcast', event: 'm', payload: Object.assign({}, data || {}, { k, from: me() }) }); return true; }   // k·from 은 data 뒤에 (v24 — data 가 보낸 사람을 덮지 못하게)
 
   // ---------- 만들기 · 초대 · 참가 ----------
   function create(then) {
+    if (keep) return;   // v24: 파티에서 빠진 뒤 경기 끝까지 둔 채널(closeKeep)이 있으면 새 파티를 열지 않는다 — 열면 그 채널을 닫아 지금 경기 신호·중계가 끊긴다 (초대 예약 checkRsv 등)
     P = { id: uuid(), leader: me(), members: [memberInfo()], s: shared(), v: 1 };
     lastShared = JSON.stringify(P.s);
     open(P.id, then); Social.track(); renderAll();
@@ -324,6 +329,7 @@ const Party = (() => {
   function accept(v) {
     // 게임 버전이 다른 초대(안내 카드)는 수락할 수 없음 (10_ver.js) · 파티 번호(pid)가 없는 초대도 — 들어갈 파티가 없다 (버전 안내뿐)
     if (v.nv !== undefined || !v.pid) { if (v.nv !== undefined) Ver.tell(v.nv, v.from.name); return; }
+    if (keep) return;   // v24: 경기 끝까지 둔 채널이 있음 (create 와 같은 까닭)
     if (P) leave(true);
     joining = { pid: v.pid, leader: v.from, t: Date.now() };
     open(v.pid, () => send('hello', { m: memberInfo() }));
@@ -341,7 +347,7 @@ const Party = (() => {
     try { restoreOwn(); if (was && !quiet) HUD.lobbyNote('파티에서 나왔습니다'); Social.track(); renderAll(); } finally { silent = false; }
   }
   // 게임 버전이 달라 파티에 들어가지 못함·나옴 (10_ver.js) — nv: 방장 버전 · name: 방장 이름
-  function verOut(nv, name) { close(); P = null; joining = null; MM.partyGone(); restoreOwn(); Ver.tell(nv, name); Social.track(); renderAll(); }
+  function verOut(nv, name) { closeKeep(); P = null; joining = null; MM.partyGone(); restoreOwn(); Ver.tell(nv, name); Social.track(); renderAll(); }   // closeKeep: 같은 경기 중이면 버전이 같으므로 꾸민 'state' — 채널은 경기 끝까지 (v24)
   function kick(uid) {
     if (!isLeader()) return;
     const m = P.members.find((x) => x.uid === uid); if (!m) return;
@@ -382,7 +388,7 @@ const Party = (() => {
       }
       case 'state': {
         const p = m.p; if (!p || !p.members) return;
-        if (!p.members.some((x) => x.uid === me())) { if (P && P.id === p.id) { close(); P = null; MM.partyGone(); restoreOwn(); HUD.lobbyNote('파티에서 빠졌습니다'); renderAll(); } return; }
+        if (!p.members.some((x) => x.uid === me())) { if (P && P.id === p.id) { closeKeep(); P = null; MM.partyGone(); restoreOwn(); HUD.lobbyNote('파티에서 빠졌습니다'); renderAll(); } return; }   // closeKeep: 파티 경기 중이면 채널은 경기 끝까지 (v24)
         const ld = p.members.find((x) => x.uid === p.leader);
         if (ld && ld.uid !== me() && ld.nv !== NET_VER) { send('bye', {}); verOut(ld.nv, ld.name); return; }   // 방장과 게임 버전이 다름 (버전 확인이 없는 예전 방장 등) → 설정을 받기 전에 나감
         const first = !P;
@@ -392,6 +398,9 @@ const Party = (() => {
       }
       case 'bye': {
         if (!P) return;
+        // v24: 같은 경기에서 아직 자기 캐릭터를 움직이는 사람의 'bye' 는 꾸민 것 (파티는 경기를 떠난 뒤 로비에서만 나간다 — 경기를 떠나면 방장이 그 캐릭터를 봇에게 넘김)
+        //  → 파티에서 빼지도(그 사람 기기가 파티 채널을 닫아 경기 중계가 끊기지 않게) 경기에서 나간 것으로 보지도 않는다 (10_net.js playing)
+        if (Net.playing(m.from)) return;
         const m0 = P.members.find((x) => x.uid === m.from);
         if (isLeader() && m0) { P.members = P.members.filter((x) => x.uid !== m.from); MM.partyChanged(); pushState(); HUD.lobbyNote(`${m0.name}님이 파티를 나갔습니다`); renderAll(); }
         if (Net.active()) Net.peerLeft(m.from);
@@ -403,10 +412,13 @@ const Party = (() => {
         P.leader = m.uid; MM.partyGone(); if (isLeader()) { HUD.lobbyNote('방장이 나가서 내가 방장이 되었습니다'); pushState(); }
         renderAll(); break;
       }
-      case 'kick': if (m.uid === me()) { close(); P = null; MM.partyGone(); restoreOwn(); HUD.lobbyNote('방장이 파티에서 내보냈습니다'); Social.track(); renderAll(); } break;
-      case 'full': if (m.to === me()) { close(); P = null; joining = null; restoreOwn(); HUD.lobbyNote('파티가 가득 찼습니다'); renderAll(); } break;
-      case 'ver': if (m.to === me()) verOut(m.nv, joining && joining.leader ? joining.leader.name : ''); break;   // 방장이 게임 버전이 달라 들이지 않음
-      case 'start': if (P && m.cfg && m.cfg.humans.some((x) => x.uid === me())) { MM.partyGone(); Net.join(m.cfg); } break;
+      case 'kick': if (P && m.uid === me()) { closeKeep(); P = null; MM.partyGone(); restoreOwn(); HUD.lobbyNote('방장이 파티에서 내보냈습니다'); Social.track(); renderAll(); } break;   // closeKeep: 파티 경기 중이면 채널은 경기 끝까지 (v24)
+      // 'full'·'ver' 는 들어가는 중(joining — 파티장이 hello 에 답함)에만 · v24: 경기 중에 꾸민 것으로 파티 채널(경기 신호·중계 길)을 닫지 못하게
+      case 'full': if (joining && m.to === me()) { close(); P = null; joining = null; restoreOwn(); HUD.lobbyNote('파티가 가득 찼습니다'); renderAll(); } break;
+      case 'ver': if (joining && m.to === me()) verOut(m.nv, joining.leader ? joining.leader.name : ''); break;   // 방장이 게임 버전이 달라 들이지 않음
+      // v24: 경기 시작은 파티장이 보낸 것만 · 같이 하는 경기 중에는 무시 — 파티장은 모두 로비에 있을 때만 출격할 수 있으므로(tryStart) 경기 중에 온 'start' 는 꾸민 것
+      //  (전에는 아무나 보낸 'start' 가 지금 경기를 'bye' 도 없이 끊고 그 설정의 경기로 끌고 갔다)
+      case 'start': if (P && !Net.active() && m.from === P.leader && m.cfg && Array.isArray(m.cfg.humans) && m.cfg.humans.some((x) => x && x.uid === me())) { MM.partyGone(); Net.join(m.cfg); } break;
       case 'mm': if (P && m.from === P.leader) MM.onParty(m); break;   // 방장이 온라인 매칭 중 (10_mm.js)
       case 'chat': Chat.onParty(m); break;   // 파티 문자 (10_chat.js) — 로비·경기 중 모두
       default: if (Net.onParty) Net.onParty(m);
@@ -423,6 +435,7 @@ const Party = (() => {
   // 1초마다 (Social): 이탈 정리 · 방장 설정 변경 전파 · 내 상태 변경 알림 · 참가 시간 초과
   let lastMine = '';
   function tick() {
+    if (keep && !P) { const N = Net.state; if (!N || N.ended) close(); }   // v24: 파티에서 빠진 뒤 둔 채널 — 그 경기가 끝나면 닫음
     if (joining && Date.now() - joining.t > 8000) { close(); joining = null; restoreOwn(); HUD.lobbyNote('파티를 찾을 수 없습니다 (방장이 나갔거나 연결이 끊김)'); renderAll(); }
     if (!P) return;
     const now = Date.now();
