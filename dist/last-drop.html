@@ -21839,6 +21839,9 @@ function updateKnocked(c, dt) {
 function killChar(t, attacker, cause) {
   if (!t.alive) return;
   if (G.net && !Net.mine(t)) { Net.killReq(t, attacker, cause); return; } // 다른 기기 캐릭터: 주인에게 요청
+  // v24 같이 하기: 방장이 아직 경기 중인 내 캐릭터를 봇에게 넘긴 사이(10_net.js lost) — 쓰러지는 것은 방장 기기가 정한다 (출혈·자기장·내 폭발물·차에서 튕겨 나감 등).
+  //  내 기기에서도 쓰러뜨리면 다른 화면에서는 봇이 살아 있고 시체 상자·리콜 카드가 둘이 된다 → 체력만 남겨 두고, 방장 기기 쪽 사망을 받거나(lostMe) 돌려받은 뒤 다시 판정
+  if (G.net && Net.held(t)) { if (!(t.hp > 0)) t.hp = 0.01; return; }
   const aliveBefore = CHARS.filter(c => c.alive).length, wasKnocked = t.knocked;
   t.alive = false; t.hp = 0; t.deathTime = G.time; t.place = aliveBefore;
   t.heal = null; t.reloadT = 0; t.cycle = null; t.aiming = false; t.vel.set(0, 0, 0);
@@ -29171,6 +29174,13 @@ const App = (() => {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v24', d: '2026-11-25', t: '같이 하기 — 연결이 잠깐 불안정했던 파티원이 내 캐릭터를 다시 돌려받음', items: [
+    '같이 하기·온라인 매칭 경기 중 내 움직임이 20초 넘게 방장에게 닿지 않거나(휴대폰에서 잠깐 앱을 바꾼 경우 포함) 파티 채널만 잠깐 끊기면 방장 기기는 나간 것으로 보고 내 캐릭터를 봇에게 넘기는데, 연결이 돌아와도 내 화면에서는 봇이 내 캐릭터를 움직이고 나는 조종할 수 없었음 (새로고침 → 다시 들어가기로만 돌려받음)',
+    '이제 그동안에도 내 화면에서는 내가 그대로 움직이고, 연결이 돌아오면 바로 모든 화면에서 내 캐릭터를 다시 내가 움직임 — 2.5초 넘게 걸리면 「다른 사람 화면에서는 봇이 대신 움직이는 중」, 돌려받으면 「다시 직접 움직입니다」 알림 (금방 돌려받으면 알림 없음)',
+    '봇이 맡은 사이 내 캐릭터의 기절·쓰러짐은 다른 사람 화면(방장 기기)에서 정해지고 내 화면도 그대로 따름 — 그쪽에서 쓰러지면 내 화면도 그 자리에 쓰러져 관전으로, 내 화면에서만 쓰러지는 일은 없음 · 돌려받을 때 기절한 캐릭터가 일어나거나 쓰러진 캐릭터가 다시 살아나 보이지 않게 (데스매치는 그대로 3초 뒤 부활)',
+    '그사이 방장이 나가거나 연결이 끊겨도 모든 화면이 같은 사람을 다음 방장으로 고르고, 새 방장에게서 내 캐릭터를 돌려받음',
+    '보통 나가기 · 방장 나가기 · 다시 들어가기 · 방장 넘겨받기는 예전과 같음 · 이번 업데이트 전 화면과도 그대로 같이 할 수 있음 (방장이 아직 예전 화면이어도 내 화면이 새것이면 돌려받음)',
+  ] },
   { v: 'v24', d: '2026-11-25', t: '같이 하기 — 나간 사람에게 서버 중계로 계속 보내던 것 · 잠깐 비웠다 돌아온 사람이 캐릭터를 못 돌려받던 것', items: [
     '파티원이 경기를 나가거나 연결이 끊긴 뒤에도 방장 화면에 「…님과 직접 연결이 안 되어 서버 중계로 전환합니다」가 뜨고, 경기가 끝날 때까지 그 사람에게 서버 중계로 움직임을 보내던 것 고침 — 나간 사람에게는 더 보내지 않음 (중계 서버의 메시지 한도는 모든 경기가 함께 씀)',
     '다른 앱 · 탭에 20초 넘게 갔다가 돌아온 파티원은 캐릭터를 봇이 맡은 채로 남아, 자기 캐릭터가 저절로 움직이는 것만 보고 조종할 수 없었음 — 이제 돌아오면 「다시 연결되었습니다」와 함께 바로 돌려받음 (1분 가까이 비워도 방장이 바뀌지 않음 · 방장과 직접 연결이면 그사이 바뀐 바닥 아이템 · 보급도 그대로)',
@@ -34300,6 +34310,8 @@ const MM = (() => {
 //   방장을 넘겨받아 봇·자기장·보급·빈 차량·점수를 이어서 계산하고, 다른 사람은 새 방장에게 다시 연결 → 경기는 계속
 //   · 12초 안에 직접 연결이 안 되면(일부 모바일 망) 파티 채널로 중계 — 초당 5회로 줄여 보낸다
 //     (Supabase 무료 플랜 실시간 메시지 한도가 프로젝트 전체 초당 100개라 직접 연결이 기본)
+//  봇에게 넘긴 파티원(v24): 방장이 아직 경기 중인 파티원을 나간 것으로 보고 캐릭터를 봇에게 넘겨도(파티 채널만 끊김 · 상태가 20초 안 닿음) 그 기기는
+//   자기 캐릭터를 계속 움직이며 상태를 보낸다 → 방장이 그 상태를 받으면 돌려준다 (그사이 방장 기기에서 생긴 기절·사망은 그 기기도 따른다 — lostMe)
 //  피해: 쏜 쪽이 맞힌 것을 판정 → 맞은 캐릭터의 주인 기기로 'hit' → 주인이 방어구 계산·기절·사망 처리 후 결과를 알림
 //  아이템: 시작 아이템·차량은 같은 시드로 각자 생성(방장이 개수·위치 합계로 검증, 다르면 목록 전송), 이후 줍기·버리기는 사건으로
 //  리콜(08_recall.js): 'rc' — 등록 요청은 방장에게, 방장이 확인해 승인을 모두에게. 되살리기는 그 캐릭터의 주인 기기
@@ -34387,7 +34399,7 @@ const Net = (() => {
     SETTINGS.game = cfg.game;
     const myIdx = cfg.humans.findIndex((h) => h.uid === Cloud.uid);
     N = { cfg, host: cfg.host === Cloud.uid, me: Cloud.uid, myIdx, peers: new Map(), quiet: 0, applying: 0, seq: 0, uidBase: (myIdx + 1) * 1e7, uidN: 0, own,
-      items: new Map(), vehs: [], outB: [], tickT: 0, zoneT: 0, t0: now(), welcomed: false, ended: false, ready: false, hiT: 0, gone: new Set(), epoch: 0, mig: false, claimN: 0, claimT: 0, stats: { tx: 0, rx: 0 } };   // gone: 나간 사람 · epoch·mig: 방장 넘겨받은 횟수 · claim: 새 방장 알림
+      items: new Map(), vehs: [], outB: [], tickT: 0, zoneT: 0, t0: now(), welcomed: false, ended: false, ready: false, hiT: 0, gone: new Set(), epoch: 0, mig: false, claimN: 0, claimT: 0, lost: 0, lostDt: 0, lostQ: 0, lostTold: false, stats: { tx: 0, rx: 0 } };   // gone: 나간 사람 · epoch·mig: 방장 넘겨받은 횟수 · claim: 새 방장 알림 · lost: 파티원 — 방장이 아직 경기 중인 내 캐릭터를 봇에게 넘긴 시각('own' · 0 = 아님)
     // 돌아온 사람: 'hi'를 방장이 offer 할 때까지 되풀이(mig) · 파티 경기는 파티 채널에 없으므로 신호를 로비 채널로(lob)
     if (rj) { N.rj = rj; N.hold = true; N.mig = true; N.epoch = rj.ep || 0; N.lob = !cfg.mm; }
     G.net = N; G.netAuthority = () => !N || N.host;
@@ -34545,7 +34557,8 @@ const Net = (() => {
     if (N.host) {
       // 나간 사람(left): 조용한 사람(quiet)에게는 'bye' 사건만 (한 번씩이라 중계여도 바로 — 'bye' 없이 나간 것으로 본 사람이 돌아오면 그사이 나간 사람·나가는 방장이 고른 다음 방장을 안다) · 'bye' 를 보낸 사람에게는 아무것도
       //  데이터 채널이 열린 사람에게는 다 보내되 그 사람 캐릭터의 'own'(botize · 넘겨받은 방장의 adopt)만 뺀다 → 그 기기는 자기 캐릭터를 계속 움직여 상태를 보내고 방장이 그 상태로 unbotize
-      for (const [uid, p] of N.peers) { const q = quiet(p), mine2 = list.filter((e) => (!e.to || e.to === uid) && e.from !== uid && (q ? e.k === 'bye' && !p.bye : !(p.left && e.k === 'own' && humanOf(e.c) === uid))); if (mine2.length) { if (p.relay && !force && !p.left) { (p.held || (p.held = [])).push(...mine2); continue; } sendTo(p, { e: mine2 }, true); } }
+      //  v24 rs: 봇이 맡은 사이 죽은 캐릭터의 주인에게 다시 보내는 'own'·사망(lostAgain — 그 사람에게만)은 막지 않는다 (그 사람이 지금 살아 있다는 상태를 보내오는 중 = 연결은 살아 있음)
+      for (const [uid, p] of N.peers) { const q = quiet(p), mine2 = list.filter((e) => (!e.to || e.to === uid) && e.from !== uid && (e.rs || (q ? e.k === 'bye' && !p.bye : !(p.left && e.k === 'own' && humanOf(e.c) === uid)))); if (mine2.length) { if (p.relay && !force && !p.left) { (p.held || (p.held = [])).push(...mine2); continue; } sendTo(p, { e: mine2 }, true); } }
     } else { const p = N.peers.get(N.cfg.host); if (p && !p.left) { if (p.relay && !force) { (p.held || (p.held = [])).push(...list); return; } sendTo(p, { e: list }, true); } }
   }
 
@@ -34577,7 +34590,7 @@ const Net = (() => {
       case 'hello': { if (N.host) { const p = N.peers.get(from); if (p) { if (e.v !== NET_VER) { verDrop(p, e.v); break; } p.helloSeen = true; welcome(p); } } break; }
       case 'welcome': applyWelcome(e); break;
       case 'hit': { const t = charById(e.v); if (!t || !mine(t)) return; const dm = hitDmg(e.d); if (dm < 0) return; const a = e.a >= 0 ? charById(e.a) : null; const d = applyDamage(t, dm, e.p, a, e.c, e.h && e.h[0], e.h && e.h[1], e.h && e.h[2]); if (a && d > 0 && !mine(a)) ev({ k: 'dealt', a: a.id, d: r2(d) }, ownerOf(a)); break; }
-      case 'own': { if (N.host || e.from !== N.cfg.host) break; const c = charById(e.c); if (c && c.net) { c.net.owner = e.o; c.net.mine = e.o === N.me; if (c.uid && c.uid === e.o) N.gone.delete(e.o); } break; }   // 캐릭터 주인 바뀜은 방장이 보낸 것만 (botize·unbotize · 넘겨받은 새 방장의 adopt — 파티원이 꾸며 보낸 'own' 으로 남의 캐릭터를 가져가지 못하게) · 사람 캐릭터가 주인에게 돌아오면(unbotize — 이어하기·잠깐 끊김) 파티원 기기도 나간 사람(gone)에서 지운다 → 그 뒤 방장이 바뀌어도 다음 방장 후보·다시 연결할 사람에 든다
+      case 'own': { if (N.host || e.from !== N.cfg.host) break; const c = charById(e.c); if (c && c.net) { if (c.isPlayer) { if (e.o !== N.me) { if (!N.lost) N.lost = now(); break; } if (N.lost) lostEnd(); } c.net.owner = e.o; c.net.mine = e.o === N.me; if (c.uid && c.uid === e.o) N.gone.delete(e.o); } break; }   // v24 아직 경기 중인 내 캐릭터를 방장이 봇에게 넘김(botize — 파티 채널만 5초 끊김 · 내 상태가 20초 안 닿음 · 꾸민 채널 'bye' · 새 방장 adopt): 넘겨주지 않고 계속 내가 움직이며 상태를 보낸다 → 방장이 그 상태를 받으면 돌려준다(applyChar unbotize → 'own' 이 나에게) · 예전엔 여기서 내 캐릭터가 남의 것이 되어 상태를 안 보냈고, 방장은 상태가 와야 돌려주므로 영영 봇이 움직였다 (lost 동안: 방장 기기 쪽 기절·사망은 따름 — lostMe · 다음 방장 순서는 다른 기기처럼 봇으로 — successors) · 캐릭터 주인 바뀜은 방장이 보낸 것만 (botize·unbotize · 넘겨받은 새 방장의 adopt — 파티원이 꾸며 보낸 'own' 으로 남의 캐릭터를 가져가지 못하게) · 사람 캐릭터가 주인에게 돌아오면(unbotize — 이어하기·잠깐 끊김) 파티원 기기도 나간 사람(gone)에서 지운다 → 그 뒤 방장이 바뀌어도 다음 방장 후보·다시 연결할 사람에 든다
       case 'dealt': { const a = charById(e.a); if (a && mine(a) && Number.isFinite(e.d) && e.d > 0) a.damageDealt += e.d; break; }   // 숫자가 아니거나 무한이면 버림 (기록이 망가지지 않게)
       case 'kreq': { const t = charById(e.v); if (t && mine(t) && t.alive) killChar(t, e.a >= 0 ? charById(e.a) : null, e.c); break; }
       case 'knock': netKnock(e); break;
@@ -34681,7 +34694,7 @@ const Net = (() => {
   function applyRj(e) {
     const R = N.rj; if (!R || R.done) return; R.done = true;
     N.gone = new Set((e.gone || []).filter((u) => u !== N.me));
-    for (const [id, o] of e.own || []) { const c = charById(id); if (c && c.net && !c.isPlayer) { c.net.owner = o; c.net.mine = o === N.me; } }
+    for (const [id, o] of e.own || []) { const c = charById(id); if (!c || !c.net) continue; if (c.isPlayer) { if (o !== N.me && !N.lost) N.lost = now(); continue; } c.net.owner = o; c.net.mine = o === N.me; }   // 내 캐릭터는 그대로 내 것 (방장 기기에서는 아직 봇 — 곧 내 상태를 받고 돌려준다 · 그동안 lost: 'own' 과 같게)
     for (const [id, pl, dt, k] of e.dead || []) {   // 그사이 탈락한 캐릭터 (알림·소리 없이)
       const c = charById(id); if (!c || c.isPlayer || !c.alive) continue;
       if (c.veh) Veh.exit(c, true, true);
@@ -34751,7 +34764,8 @@ const Net = (() => {
     let c = charById(a[0]); if (!c) return;
     // 나간 것으로 봤지만 봇에게 넘긴 캐릭터가 없던 사람(경기를 만드는 동안 온 파티 채널 알림 등)이 자기 캐릭터 상태를 보냄 → 다시 같이 하는 사람으로 (unbotize 처럼 — 안 그러면 경기 내내 left 로 남아 보내지 않음)
     if (N.host && p && p.left && !p.bye && !c.botized && c.uid === p.uid && N.peers.get(p.uid) === p) { p.left = false; p.gone = false; N.gone.delete(p.uid); HUD.toast(`${p.name}님이 다시 연결되었습니다`, 'ok'); }
-    if (N.host && p && c.botized && !p.bye && (c.uid || c.origOwner) === p.uid) unbotize(c, p);  // 잠깐 끊겼던 파티원 · 나갔다가 다시 들어온 사람이 돌아옴 (v23: 방장이 바뀌었어도 캐릭터의 사람 uid 로) · 'bye' 를 보낸 연결(p.bye)이 그 뒤에 늦게 도착한 상태로는 되돌리지 않음 (순서 없는 채널 — 다시 들어오면 새 연결)
+    if (N.host && p && c.botized && !p.bye && (c.uid || c.origOwner) === p.uid) { if (c.alive || !(a[6] & FL.alive)) unbotize(c, p); else if (!G.dm || G.dm.duel) lostAgain(c, p); }  // 잠깐 끊겼던 파티원 · 나갔다가 다시 들어온 사람이 돌아옴 (v23: 방장이 바뀌었어도 캐릭터의 사람 uid 로) · 'bye' 를 보낸 연결(p.bye)이 그 뒤에 늦게 도착한 상태로는 되돌리지 않음 (순서 없는 채널 — 다시 들어오면 새 연결) · v24 봇이 맡은 사이 죽은 캐릭터는 살아 있다는 상태로는 돌려주지 않음 (그 사람 기기가 이 사망을 받기 전에 보낸 상태 — 받으면 죽은 상태를 보내 그때 돌려준다 · 그 사망을 놓친 기기에는 다시 보냄 lostAgain · 팀·웨폰 데스매치는 3초 뒤 봇이 부활하면 돌려줌)
+    if (!N.host && c.isPlayer) { N.meT = now(); N.meA = a; if (!N.lost) N.lost = N.meT; }   // v24 방장이 내 캐릭터 상태를 보냄 = 방장 기기에서 봇이 움직이는 중 (방장은 주인이 움직이는 캐릭터를 그 주인에게 보내지 않는다 — tick EO) → lost 시작('own' 은 데이터 채널이 열린 나간 사람에게 방장이 보내지 않으므로 — flush) · tick 의 lost 끝내기 · 마지막 상태는 lost 사망 때 몸 자리
     if (mine(c)) return;
     if (N.host && p && ownerOf(c) !== p.uid) return;                // 남의 캐릭터를 대신 보내는 것은 무시
     const n = c.net, t = now(), f = a[6];
@@ -34864,10 +34878,23 @@ const Net = (() => {
     return dmg;
   }
   function killReq(t, attacker, cause) { ev({ k: 'kreq', v: t.id, a: attacker ? attacker.id : -1, c: cause }, ownerOf(t)); }
-  function sendKnock(t, attacker, cause) { if (mine(t)) ev({ k: 'knock', v: t.id, a: attacker ? attacker.id : -1, c: cause }); }
-  function sendDeath(t, attacker, cause) { ev({ k: 'death', v: t.id, a: attacker && attacker !== t ? attacker.id : -1, c: cause, pl: t.place }); }
+  function sendKnock(t, attacker, cause) { if (mine(t) && !hostKO) ev({ k: 'knock', v: t.id, a: attacker ? attacker.id : -1, c: cause }); }
+  function sendDeath(t, attacker, cause) { const e = { k: 'death', v: t.id, a: attacker && attacker !== t ? attacker.id : -1, c: cause, pl: t.place }; if (N && N.host && t.botized) t.botDeath = Object.assign({}, e); ev(e); }   // v24 방장: 봇이 맡은 사람 캐릭터의 사망은 남겨 둔다 (lostAgain)
+  // v24 방장: 봇이 맡은 사이 죽은 캐릭터인데 그 사람이 아직 살아 있다는 상태를 보냄 — 넘긴 것('own')도 그 사망도 못 받은 기기(중계 메시지 유실 · 연결이 바뀌며 사라짐).
+  //  그대로 두면 그 사람은 다른 화면에서는 죽은 채 혼자 계속 움직이고(맞힌 것도 그대로 들어감) 돌려받지도 못한다 → 2초마다 둘 다 그 사람에게만 다시 보냄 → 죽은 상태를 보내면 돌려줌
+  //  (넘겨받은 새 방장은 그 사망을 모르므로 알림 없는 사망으로)
+  function lostAgain(c, p) { const t = now(); if (t - (c.lostRs || 0) < 2) return; c.lostRs = t; ev({ k: 'own', c: c.id, o: N.me, rs: 1 }, p.uid); ev(Object.assign({}, c.botDeath || { k: 'death', v: c.id, a: -1, c: '', pl: c.place || 0, lost: true }, { rs: 1 }), p.uid); }   // rs: flush 가 나간 사람(left·quiet)에게도 보냄
+  // v24 파티원: 방장이 아직 경기 중인 내 캐릭터를 봇에게 넘긴 사이(N.lost) 방장 기기의 그 캐릭터가 기절·사망함 — 다른 사람 화면에는 이미 그렇게 보였으므로 내 화면도 따른다
+  //  (따르지 않으면 돌려받을 때 내 상태가 방장 기기로 가서 기절한 캐릭터가 일어나고 죽은 캐릭터가 되살아나 보인다) · 방장이 보낸 것만
+  const lostMe = (t, e) => !!N && !N.host && !!N.lost && !!t.isPlayer && e.from === N.cfg.host;
+  const held = (c) => !!N && !N.host && !!N.lost && !!c && !!c.isPlayer;   // 06_combat.js killChar: 그동안 내 기기는 내 캐릭터를 쓰러뜨리지 않는다 (방장 기기 쪽 사망을 받거나 돌려받은 뒤에)
+  // lost 끝: 방장이 돌려줌('own' 나) · 방장이 내 캐릭터 상태를 더는 보내지 않음(그 'own' 을 놓침 · 새 방장이 넘겨받지 않음 — tick)
+  function lostEnd() { if (N.lostTold && G.player && G.player.alive) HUD.toast('연결이 돌아와 내 캐릭터를 다시 직접 움직입니다', 'ok'); N.lost = 0; N.lostDt = 0; N.lostQ = 0; N.lostTold = false; N.meA = null; }
+  let hostKO = false;   // 방장 기기에서 생긴 내 캐릭터의 기절을 옮기는 중 — 다시 알리지 않는다 (sendKnock)
   function netKnock(e) {
-    const t = charById(e.v); if (!t || mine(t) || t.knocked && t.knockSeen === t.knockN) return;
+    const t = charById(e.v); if (!t) return;
+    if (lostMe(t, e)) { if (t.alive && !t.knocked) { hostKO = true; try { knockChar(t, e.a >= 0 ? charById(e.a) : null, e.c); } finally { hostKO = false; } } return; }   // 내 기기에서 기절 (쓰러지는 것은 그동안 방장 기기가 — held · 부활은 그대로 · 돌려받으면 출혈도 이어서 내 기기가)
+    if (mine(t) || t.knocked && t.knockSeen === t.knockN) return;
     const by = e.a >= 0 ? charById(e.a) : null;
     t.knocked = true; t.knockN++; t.knockSeen = t.knockN; t.knockedBy = by; t.hp = 100; t.knockT = G.time; t.heal = null; t.aiming = false; t.stance = 'prone';
     if (t.veh) Veh.exit(t, true, true);
@@ -34877,16 +34904,25 @@ const Net = (() => {
     if (G.player && sameTeam(G.player, t)) HUD.toast(`팀원 ${t.name} 기절!`, 'warn');
   }
   function netDeath(e) {
-    const t = charById(e.v); if (!t || mine(t)) return;
-    if (t.net.deathLife === t.net.life && !t.alive) return;  // 같은 목숨에 두 번 처리하지 않음
+    const t = charById(e.v); if (!t) return;
+    const lost = lostMe(t, e);   // v24 봇이 맡은 사이 방장 기기에서 죽은 내 캐릭터 → 내 기기도 죽음으로 (시체 상자·리콜 카드는 방장 기기가 이미 냈다 · 다시 알리지 않음)
+    if (lost ? !t.alive : mine(t) || t.net.deathLife === t.net.life && !t.alive) return;  // 같은 목숨에 두 번 처리하지 않음
     t.net.deathLife = t.net.life; t.net.pendDead = 0;
     const by = e.a >= 0 ? charById(e.a) : null, wasKnocked = t.knocked;
     t.alive = false; t.hp = 0; t.deathTime = G.time; t.place = e.pl || CHARS.filter((c) => c.alive).length + 1; t.heal = null; t.aiming = false; t.vel.set(0, 0, 0);
     t.knocked = false; if (t.revivedBy) { const rv = t.revivedBy; t.revivedBy = null; if (rv.revive && rv.revive.tgt === t) rv.revive = null; }
     if (t.veh) Veh.exit(t, true, true);
+    if (lost) {
+      // 내 소지품·리콜 카드: 시체 상자와 카드는 방장 기기가 이미 냈으므로(그 기기가 알던 총·장비 · 들고 있던 팀원 카드) killChar 처럼 비우기만 · 리콜 등록 중이었으면 그만
+      if (t.revive) cancelRevive(t, true); if (t.recall) Recall.cancel(t, true); t.cards = [];
+      t.reloadT = 0; t.cycle = null; t.swing = null; t.nadeQ = null; const v = t.inv; v.weapons = [null, null, null]; v.items = {}; v.cur = -1; v.gear = { helmet: null, vest: null, bag: null }; v.melee = null; t.setVisibleGear();
+      // 몸은 방장 기기 쪽 봇이 쓰러진 자리(마지막으로 받은 그 캐릭터 상태 meA)에 — 다른 화면의 시체·상자 자리와 같게 · 수송기·낙하 중이던 내 캐릭터도 (수송기에 남으면 자동 강하·수송기 화면이 이어진다)
+      const h = N.meA, air = t.mode !== 'ground'; if (h) { t.pos.set(h[1], h[2], h[3]); t.yaw = t.bodyYaw = h[4]; } else if (air) t.pos.y = groundAt(t.pos.x, t.pos.z, t.pos.y);
+      t.mode = 'ground'; t.rplane = null; t.onGround = true; t.root.position.copy(t.pos); if (air) { Audio.plane(false); Audio.wind(0); }
+    }
     if (by) by.kills++;
     if (G.killLog) G.killLog.push({ t: Math.round(G.time), cause: e.c, kn: wasKnocked, by: by ? (by.isPlayer ? 'player' : 'bot') : 'env' });
-    if (!e.lost) HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, false, e.c === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(e.c) : null, MeleeFx.ofKill(by, e.c));
+    if (!e.lost) HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, !!t.isPlayer, e.c === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(e.c) : null, MeleeFx.ofKill(by, e.c));
     Audio.death(t.pos);
     // v23 근접 무기 스킨 처치 효과도 다른 기기의 처치에
     if (!e.lost) { SkinFx.kill(t, by, e.c); MeleeFx.kill(t, by, e.c); }
@@ -35000,6 +35036,17 @@ const Net = (() => {
     if (gap > 5) for (const p of N.peers.values()) p.lastRx = Math.max(p.lastRx, t - 15);
     // 온라인 매칭 파티원: 방장의 offer 가 올 때까지 'hi'를 2.5초마다 다시 (방장이 채널에 늦게 들어온 경우)
     if ((viaMM() || N.mig) && !N.host) { const hp = N.peers.get(N.cfg.host); if (hp && !hp.open && !hp.relay && !hp.oid && t - N.hiT > 2.5) hi(); }
+    // v24 파티원: 방장이 내 캐릭터를 봇에게 넘긴 채 경기 시간으로 2.5초 (내 상태가 방장에게 닿지 않는 중) → 한 번 알림. 곧 돌려받으면 알리지 않는다
+    //  (파티 채널만 잠깐 끊김 · 앱을 바꿨다 돌아옴 — 화면이 멈춘 동안은 세지 않아 돌아오자마자 돌려받으면 조용히)
+    //  v24: 방장과는 주고받는데 방장이 내 캐릭터 상태를 1.5초째 보내지 않으면(= 방장 기기에서 더는 봇이 아님) lost 를 끝냄 — 돌려준다는 'own' 을 놓쳤거나 새 방장이 내 캐릭터를 넘겨받지 않은 경우
+    //   (그대로 두면 다음 방장 순서를 나만 다르게 셈 · 거짓 알림 · 내 기기가 내 캐릭터를 끝내 쓰러뜨리지 않음)
+    if (N.lost && !N.host) {
+      // lostQ: 방장이 계속 말하는데(1초 안) 내 캐릭터 상태는 0.6초째 없는 상태가 시작된 시각 — 1.5초 이어지면 끝 (방장과 막 다시 이어진 순간·사건만 온 순간에 끝내지 않게)
+      const hp = N.peers.get(N.cfg.host), talking = !!hp && (hp.open || hp.relay) && t - hp.lastRx < 1;
+      if (!talking || t - (N.meT || 0) < 0.6) N.lostQ = 0; else if (!N.lostQ) N.lostQ = t;
+      if (N.lostQ && t - N.lostQ > 1.5) lostEnd();
+      else { N.lostDt = (N.lostDt || 0) + dt; if (!N.lostTold && N.lostDt > 2.5 && G.player && G.player.alive) { N.lostTold = true; HUD.toast('연결이 불안정해 다른 사람 화면에서는 봇이 내 캐릭터를 대신 움직입니다 — 연결되면 바로 돌려받습니다', 'warn'); } }
+    }
     // 방장을 넘겨받은 기기: 3초마다 5번 '내가 방장' 알림 (다른 사람을 고른 파티원도 이쪽으로)
     if (N.host && N.claimN > 0 && t - N.claimT > 3) { N.claimN--; N.claimT = t; bus('host', { uid: N.me, ep: N.epoch }); }
     // 연결 시간 초과 → 중계
@@ -35087,7 +35134,7 @@ const Net = (() => {
   //    남은 사람에게 새로 연결(파티원이 'hi' → offer) · 3초마다 '내가 방장' 알림
   //  · 다른 사람: 봇·나간 사람 캐릭터의 주인을 새 방장으로 바꾸고 새 방장에게 다시 연결
   function successors(oldHost) {
-    const alive = (uid) => CHARS.some((c) => c.human && c.net && c.net.owner === uid && c.alive && !c.botized);
+    const alive = (uid) => CHARS.some((c) => c.human && c.net && c.net.owner === uid && c.alive && !c.botized && !(c.isPlayer && N.lost));   // v24: 방장이 봇에게 넘긴 내 캐릭터(lost)는 다른 기기에서처럼 봇으로 셈 — 다음 방장 순서가 기기마다 같게 (내 기기에서만 살아 있는 사람으로 세면 나와 다른 사람이 함께 방장이 될 수 있다)
     const list = N.cfg.humans.map((h) => h.uid).filter((u) => u !== oldHost && !N.gone.has(u));
     return list.filter(alive).concat(list.filter((u) => !alive(u)));
   }
@@ -35098,7 +35145,7 @@ const Net = (() => {
   }
   function closePeer(p) { try { if (p.pc) p.pc.close(); } catch (e) { /* */ } }
   function takeOver(oldHost) {
-    N.host = true; N.cfg.host = N.me; N.mig = true; N.epoch++;
+    N.host = true; N.cfg.host = N.me; N.mig = true; N.epoch++; N.lost = 0; N.lostDt = 0; N.lostQ = 0; N.lostTold = false;   // 이제 내가 방장 — 내 캐릭터를 맡을 다른 방장은 없다
     G.netAuthority = () => !N || N.host;
     for (const c of CHARS) {
       if (!c.net || c.net.mine) continue;
@@ -35151,13 +35198,13 @@ const Net = (() => {
   }
   function unbotize(c, p) {
     N.gone.delete(p.uid);
-    c.botized = false; c.brain = null; c.net = charNet(p.uid); p.gone = false; p.left = false;
+    c.botized = false; c.brain = null; c.net = charNet(p.uid); p.gone = false; p.left = false; c.botDeath = null; c.lostRs = 0;
     ev({ k: 'own', c: c.id, o: p.uid });
     HUD.toast(`${p.name}님이 다시 연결되었습니다`, 'ok');
   }
   function botize(c) {
     c.origOwner = c.net ? c.net.owner : null;
-    c.botized = true; c.net = { owner: N.cfg.host, mine: true, buf: [], life: c.net ? c.net.life : 0 };
+    c.botized = true; c.net = { owner: N.cfg.host, mine: true, buf: [], life: c.net ? c.net.life : 0 }; c.botDeath = null; c.lostRs = 0;
     ev({ k: 'own', c: c.id, o: N.cfg.host });
     if (c.alive) {
       const wi = c.weapon; if (wi && ITEMS[wi.id].ammo) { const a = ITEMS[wi.id].ammo; c.inv.items[a] = (c.inv.items[a] || 0) + ITEMS[wi.id].mag * 3; }
@@ -35196,7 +35243,7 @@ const Net = (() => {
   // 창을 닫거나 새로고침할 때도 나간다고 알린다 (방장이면 다음 방장을 골라 넘김 → 남은 사람의 경기는 계속)
   //  v23: 나가기 전에 이어하기 저장 (돌아오면 같은 경기로 — 10_resume.js)
   window.addEventListener('pagehide', () => { try { if (N) { Resume.save(); leave(); } } catch (e) { /* */ } });
-  return { makeConfig, join, ready, onParty, onLobby, probe, tick, active, isHost, isGuest, mine, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
+  return { makeConfig, join, ready, onParty, onLobby, probe, tick, active, isHost, isGuest, mine, held, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
     remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft: partyLeft, leave, close, othersPlaying, waiting, status, ev, flush, zoneSnap, applyZone,
     get state() { return N; } };
 })();

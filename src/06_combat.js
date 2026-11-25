@@ -945,6 +945,9 @@ function updateKnocked(c, dt) {
 function killChar(t, attacker, cause) {
   if (!t.alive) return;
   if (G.net && !Net.mine(t)) { Net.killReq(t, attacker, cause); return; } // 다른 기기 캐릭터: 주인에게 요청
+  // v24 같이 하기: 방장이 아직 경기 중인 내 캐릭터를 봇에게 넘긴 사이(10_net.js lost) — 쓰러지는 것은 방장 기기가 정한다 (출혈·자기장·내 폭발물·차에서 튕겨 나감 등).
+  //  내 기기에서도 쓰러뜨리면 다른 화면에서는 봇이 살아 있고 시체 상자·리콜 카드가 둘이 된다 → 체력만 남겨 두고, 방장 기기 쪽 사망을 받거나(lostMe) 돌려받은 뒤 다시 판정
+  if (G.net && Net.held(t)) { if (!(t.hp > 0)) t.hp = 0.01; return; }
   const aliveBefore = CHARS.filter(c => c.alive).length, wasKnocked = t.knocked;
   t.alive = false; t.hp = 0; t.deathTime = G.time; t.place = aliveBefore;
   t.heal = null; t.reloadT = 0; t.cycle = null; t.aiming = false; t.vel.set(0, 0, 0);
