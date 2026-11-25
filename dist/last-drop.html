@@ -29171,6 +29171,13 @@ const App = (() => {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v24', d: '2026-11-25', t: '같이 하기 — 나간 사람에게 서버 중계로 계속 보내던 것 · 잠깐 비웠다 돌아온 사람이 캐릭터를 못 돌려받던 것', items: [
+    '파티원이 경기를 나가거나 연결이 끊긴 뒤에도 방장 화면에 「…님과 직접 연결이 안 되어 서버 중계로 전환합니다」가 뜨고, 경기가 끝날 때까지 그 사람에게 서버 중계로 움직임을 보내던 것 고침 — 나간 사람에게는 더 보내지 않음 (중계 서버의 메시지 한도는 모든 경기가 함께 씀)',
+    '다른 앱 · 탭에 20초 넘게 갔다가 돌아온 파티원은 캐릭터를 봇이 맡은 채로 남아, 자기 캐릭터가 저절로 움직이는 것만 보고 조종할 수 없었음 — 이제 돌아오면 「다시 연결되었습니다」와 함께 바로 돌려받음 (1분 가까이 비워도 방장이 바뀌지 않음 · 방장과 직접 연결이면 그사이 바뀐 바닥 아이템 · 보급도 그대로)',
+    '방장이 나갈 때 화면을 비우고 있던 파티원도 돌아오면 새 방장에게서 캐릭터를 돌려받음',
+    '방장이 나가 다른 사람이 경기를 이어받을 때 남은 사람 화면에 「방장…님과 직접 연결이 안 되어 서버 중계로 전환합니다」가 잘못 뜨던 것도 사라짐',
+    '보통 나가기 · 다시 들어가기 · 방장 나가기 · 방장 연결이 끊긴 뒤 넘겨받기는 예전과 같음',
+  ] },
   { v: 'v23', d: '2026-11-25', t: '나비 나이프 — 꺼낼 때 젠 롤오버 · 살펴보기 힐릭스 · 여닫을 때 날이 손잡이를 뚫던 문제 / 카람빗 — 달리기·휘두르기 손등 위 자세', items: [
     '나비 나이프를 꺼낼 때 고급 기술 「젠 롤오버」 — 세이프 손잡이를 옆으로 쥐고 바이트 손잡이를 엄지 끝 둘레로 납작하게 돌려 날을 거의 다 끌어내고, 늦게 놓아 짧게 굴린 뒤 바이트 손잡이를 받아 손목을 숙여 돌리며 세이프 손잡이를 「착」 닫아 쥠',
     '살펴보기 중 「스핀(T자 돌리기)」을 고급 기술 「힐릭스」로 바꿈 — 날을 바이트 손잡이 안에 접은 채 엄지 위로 세로 반 바퀴 → 손바닥 아래에서 검지로 납작하게 반 바퀴 → 엄지 위로 납작하게 반 바퀴, 손 위 · 아래 · 위로 실처럼 엮은 뒤 펼침 (굴리는 동안 날은 실제 기술처럼 손잡이 안에 접혀 있어 손잡이 구멍으로만 비침)',
@@ -34459,7 +34466,10 @@ const Net = (() => {
     dc.onmessage = (e) => recv(p, e.data);
     dc.onclose = () => { if (p.open) { p.open = false; if (N && !N.ended) toRelay(p, 'closed'); } };
   }
-  function toRelay(p, why) { if (p.relay || p.bad) return; p.relay = true; console.warn('중계 전환', p.uid, why); if (N && !N.ended) { HUD.toast(`${p.name}님과 직접 연결이 안 되어 서버 중계로 전환합니다 (움직임이 덜 부드러울 수 있음)`, 'warn'); hello(p); linkUp(p); } }
+  // 중계로 바꾸지 않는 연결: 나간 사람(left — 'bye' · 20초 끊김 · 파티 채널 알림 · 버전 다름 · 넘겨받을 때 봇이던 사람) · 지금 자리가 아닌 지난 연결(다시 들어오기·방장 넘겨받기로 바뀐 자리에 늦게 온 닫힘 알림)
+  //  예전엔 나간 사람의 연결이 닫히면 중계로 바꿔 「서버 중계로 전환」 알림을 띄우고 경기 끝까지 0.2초마다 보냈다 (실시간 메시지 한도 = 프로젝트 전체 초당 100개)
+  //  예외: 'bye' 없이 나간 것으로 본 사람이 중계로 보내오면(peer-relay — 잠깐 끊겼다 돌아옴) 바꾼다 · 알림 없이 (곧 unbotize 의 「다시 연결되었습니다」)
+  function toRelay(p, why) { if (p.relay || p.bad || !N || N.peers.get(p.uid) !== p || (p.left && (p.bye || why !== 'peer-relay'))) return; p.relay = true; console.warn('중계 전환', p.uid, why); if (!N.ended) { if (!p.left) HUD.toast(`${p.name}님과 직접 연결이 안 되어 서버 중계로 전환합니다 (움직임이 덜 부드러울 수 있음)`, 'warn'); hello(p); linkUp(p); } }
   // 연결이 생기면: 밀린 사건 전송, 방장은 인사를 받았던 파티원에게 현재 상태
   function linkUp(p) {
     if (p.q && p.q.length) { const q = p.q.splice(0); for (const m of q) sendTo(p, m, true); }
@@ -34524,12 +34534,19 @@ const Net = (() => {
   // ---------- 사건(이벤트) 큐 ----------
   // to: 받을 사람 uid (없으면 모두). 파티원은 방장에게만 보내고, 방장이 받는 사람에게 넘긴다
   function ev(e, to) { if (!N) return; if (to && to === N.me) { handle(e, N.me); return; } e.to = to || undefined; N.outB.push(e); }
+  // 나간 사람(left)에게 보내지 않을 때(quiet): 'bye' 를 보낸 사람 · 중계 · 연결이 닫힌 사람 (파티원 기기는 방장이 left 면 늘)
+  //  'bye' 없이 나간 것으로 본 사람(20초 끊김 · 파티 채널 알림 · 넘겨받을 때 봇이던 사람)과 데이터 채널이 아직 열려 있으면 그대로 보낸다 — 데이터 채널은 실시간 한도와 상관없고,
+  //  화면만 멈췄던(받기는 그대로) 그 기기가 아이템·보급·주인 바뀜을 놓치지 않고, 받은 지 20초 판정으로 방장을 넘겨받지도 않게
+  const quiet = (p) => !!p.left && (!N.host || !!p.bye || p.relay || !p.open);
+  const humanOf = (id) => { const c = charById(id); return c ? c.uid || c.origOwner : null; };   // 캐릭터 번호 → 그 사람 uid (봇이면 null)
   function flush(force) {
     if (!N || !N.outB.length) return;
     const list = N.outB.splice(0);
     if (N.host) {
-      for (const [uid, p] of N.peers) { const mine2 = list.filter((e) => (!e.to || e.to === uid) && e.from !== uid); if (mine2.length) { if (p.relay && !force) { (p.held || (p.held = [])).push(...mine2); continue; } sendTo(p, { e: mine2 }, true); } }
-    } else { const p = N.peers.get(N.cfg.host); if (p) { if (p.relay && !force) { (p.held || (p.held = [])).push(...list); return; } sendTo(p, { e: list }, true); } }
+      // 나간 사람(left): 조용한 사람(quiet)에게는 'bye' 사건만 (한 번씩이라 중계여도 바로 — 'bye' 없이 나간 것으로 본 사람이 돌아오면 그사이 나간 사람·나가는 방장이 고른 다음 방장을 안다) · 'bye' 를 보낸 사람에게는 아무것도
+      //  데이터 채널이 열린 사람에게는 다 보내되 그 사람 캐릭터의 'own'(botize · 넘겨받은 방장의 adopt)만 뺀다 → 그 기기는 자기 캐릭터를 계속 움직여 상태를 보내고 방장이 그 상태로 unbotize
+      for (const [uid, p] of N.peers) { const q = quiet(p), mine2 = list.filter((e) => (!e.to || e.to === uid) && e.from !== uid && (q ? e.k === 'bye' && !p.bye : !(p.left && e.k === 'own' && humanOf(e.c) === uid))); if (mine2.length) { if (p.relay && !force && !p.left) { (p.held || (p.held = [])).push(...mine2); continue; } sendTo(p, { e: mine2 }, true); } }
+    } else { const p = N.peers.get(N.cfg.host); if (p && !p.left) { if (p.relay && !force) { (p.held || (p.held = [])).push(...list); return; } sendTo(p, { e: list }, true); } }
   }
 
   // ---------- 받기 ----------
@@ -34628,7 +34645,7 @@ const Net = (() => {
     if (!N || N.ended || !N.host || m.mid !== N.cfg.mid || from === N.me || !N.cfg.humans.some((h) => h.uid === from)) return;
     let p = N.peers.get(from);
     if (!p || !p.rj || now() - p.t0 > 8) { if (p) closePeer(p); p = newPeer(from, true, true); p.rj = true; N.peers.set(from, p); }   // 새 자리 (8초 안에 다시 물으면 그대로)
-    p.lob = !N.cfg.mm; p.bye = false; N.gone.delete(from);
+    p.lob = !N.cfg.mm; p.bye = false; p.rjAt = now(); N.gone.delete(from);   // rjAt: 그 전 접속의 늦은 파티 채널 알림을 15초 동안 무시 (partyLeft)
     if (G.state === 'result') G.bgSim = true;   // 결과 화면 뒤에서 경기를 다시 돌린다 (돌아온 사람이 할 경기)
     N.rjKeep = now() + 40;
     Social.send(from, 'nt', { nk: 'rjok', mid: N.cfg.mid, host: N.me, ep: N.epoch, isl: G.island ? 1 : 0 });
@@ -34732,6 +34749,8 @@ const Net = (() => {
   }
   function applyChar(a, p) {
     let c = charById(a[0]); if (!c) return;
+    // 나간 것으로 봤지만 봇에게 넘긴 캐릭터가 없던 사람(경기를 만드는 동안 온 파티 채널 알림 등)이 자기 캐릭터 상태를 보냄 → 다시 같이 하는 사람으로 (unbotize 처럼 — 안 그러면 경기 내내 left 로 남아 보내지 않음)
+    if (N.host && p && p.left && !p.bye && !c.botized && c.uid === p.uid && N.peers.get(p.uid) === p) { p.left = false; p.gone = false; N.gone.delete(p.uid); HUD.toast(`${p.name}님이 다시 연결되었습니다`, 'ok'); }
     if (N.host && p && c.botized && !p.bye && (c.uid || c.origOwner) === p.uid) unbotize(c, p);  // 잠깐 끊겼던 파티원 · 나갔다가 다시 들어온 사람이 돌아옴 (v23: 방장이 바뀌었어도 캐릭터의 사람 uid 로) · 'bye' 를 보낸 연결(p.bye)이 그 뒤에 늦게 도착한 상태로는 되돌리지 않음 (순서 없는 채널 — 다시 들어오면 새 연결)
     if (mine(c)) return;
     if (N.host && p && ownerOf(c) !== p.uid) return;                // 남의 캐릭터를 대신 보내는 것은 무시
@@ -34975,6 +34994,10 @@ const Net = (() => {
   function tick(dt) {
     if (!N) return;
     const t = now();
+    // 이 기기의 틱이 5초 넘게 멈췄다 돌아옴(다른 앱·탭 · 화면 꺼짐): 그동안 못 받은 것을 상대 탓으로 보지 않고 5초 더 기다린다 — 내가 멈춘 사이 방장은 나를 나간 사람으로 보고
+    //  중계로는 보내지 않는다(아래 quiet). 돌아와 보낸 상태로 방장이 unbotize 하면 다시 받음 · 정말 끊긴 상대면 5초 뒤 판정 (예전: 돌아오자마자 방장이 나간 줄 알고 넘겨받아 경기가 둘로)
+    const gap = t - (N.tickAt || t); N.tickAt = t;
+    if (gap > 5) for (const p of N.peers.values()) p.lastRx = Math.max(p.lastRx, t - 15);
     // 온라인 매칭 파티원: 방장의 offer 가 올 때까지 'hi'를 2.5초마다 다시 (방장이 채널에 늦게 들어온 경우)
     if ((viaMM() || N.mig) && !N.host) { const hp = N.peers.get(N.cfg.host); if (hp && !hp.open && !hp.relay && !hp.oid && t - N.hiT > 2.5) hi(); }
     // 방장을 넘겨받은 기기: 3초마다 5번 '내가 방장' 알림 (다른 사람을 고른 파티원도 이쪽으로)
@@ -34985,12 +35008,12 @@ const Net = (() => {
       if ((p.open || p.relay) && t - p.lastRx > 20 && !p.gone && t - N.t0 > 30) { p.gone = true; peerLeft(p.uid); }
     }
     N.tickT -= dt;
-    const anyRelay = [...N.peers.values()].some((p) => p.relay);
+    const anyRelay = [...N.peers.values()].some((p) => p.relay && !p.left);   // 나간 사람(아래에서 건너뜀)은 세지 않음
     if (N.tickT <= 0) {
       N.tickT = 0.05;
       N.tickN = (N.tickN || 0) + 1;
       // 중계: 1명이면 0.2초마다, 2명 이상이면 0.35초마다 (Supabase 무료 플랜 초당 100개 한도 안에서)
-      let nRelay = 0; for (const p of N.peers.values()) if (p.relay) nRelay++;
+      let nRelay = 0; for (const p of N.peers.values()) if (p.relay && !p.left) nRelay++;
       const relayTick = N.tickN % (nRelay >= 2 || (!N.host && N.cfg.humans.length > 2) ? 7 : 4) === 0;
       // 내 것: 캐릭터(+방장: 봇·다른 파티원) · 차량
       const mineS = [], others = [];
@@ -35004,6 +35027,7 @@ const Net = (() => {
       if (N.host) for (const c of others) if (c.net.lastA) EO.push(c, JSON.stringify(c.net.lastA));
       const tail = (myVeh.length ? ',"v":' + JSON.stringify(myVeh) : '') + (w ? ',"w":' + JSON.stringify(w) : ''), me0 = G.player, tn = N.tickN;
       for (const p of N.peers.values()) {
+        if (quiet(p)) continue;   // 나간 사람: 'bye' 를 보냄 · 중계 · 연결이 닫힘 → 보내지 않음 (데이터 채널이 열린 사람은 그대로 — quiet)
         if (!(p.open || p.relay) || (p.relay && !relayTick)) continue;
         const pc = N.host ? charById2(p.uid) : null, px = pc ? pc.pos.x : 0, pz = pc ? pc.pos.z : 0;
         const send = (c) => { if (!pc || !c.alive) return true; const d = Math.hypot(c.pos.x - px, c.pos.z - pz); return d <= 150 || (d <= 260 ? tn % 2 === 0 : tn % 10 === 0); };
@@ -35041,7 +35065,9 @@ const Net = (() => {
   // 파티 채널(10_social.js — 파티를 나감 · 접속 표시가 5초 사라짐)이 알린 사람. 파티원 기기에서는 방장이 아닌 사람이 아직 자기 캐릭터를 움직이면
   //  (방장이 봇에게 넘기지 않았거나 넘겼다가 돌려줌) 나간 사람(N.gone)으로 두지 않는다 — 경기 연결은 그대로인데 파티 채널만 끊긴 사람 · 돌려받은 뒤 늦게 온 알림이
   //  남으면 그 뒤 방장이 바뀔 때 다음 방장 후보·다시 연결할 사람에서 빠진다 (방장 기기는 그대로: 봇에게 넘기고, 그 사람 상태가 오면 돌려준다)
-  function partyLeft(uid) { if (N && !N.host && uid !== N.cfg.host && CHARS.some((c) => c.human && c.uid === uid && c.net && c.net.owner === uid)) return; peerLeft(uid); }
+  //  방장 기기는 다시 들어오기로 만든 새 자리(onRejoinReq · 15초 안)면 무시 — 새로고침한 그 전 접속의 늦은 알림(5초)이 새 자리를 나간 사람으로 만들면
+  //  그 자리에는 상태·사건도 중계 전환도 막혀(tick·flush·toRelay 가 left 를 봄) 돌려받을 때까지 비게 된다
+  function partyLeft(uid) { if (N && !N.host && uid !== N.cfg.host && CHARS.some((c) => c.human && c.uid === uid && c.net && c.net.owner === uid)) return; if (N && N.host) { const p = N.peers.get(uid); if (p && p.rjAt && now() - p.rjAt < 15) return; } peerLeft(uid); }
   // 나가는 방장이 보낸 나간 사람 목록(g)에 없는 사람을 이 기기 N.gone 에서 지움 — 파티원 기기에만 남은 옛 기록(파티 채널 알림 · 돌아오는 중인 사람)으로
   //  다음 방장 후보가 방장 기기와 달라져 둘이 방장이 되거나 돌아온 사람이 연결하지 못하지 않게. 넣지는 않는다 (방장이 연결 끊김으로 봇에게 넘긴 사람도 새 방장에게 다시 연결할 수 있게)
   //  예전 방장(g 없음)이면 그대로
@@ -35082,7 +35108,9 @@ const Net = (() => {
     }
     for (const p of N.peers.values()) closePeer(p);
     N.peers.clear();
-    for (const hm of N.cfg.humans) if (hm.uid !== N.me && !N.gone.has(hm.uid)) N.peers.set(hm.uid, newPeer(hm.uid, true, true));   // 상대가 'hi'를 보내면 offer
+    // 상대가 'hi'를 보내면 offer · 봇이 맡은 사람(예전 방장이 나간 것으로 본 사람 — 나갔거나 화면만 멈춤)의 자리는 나간 사람(left)으로 시작:
+    //  12초 뒤 중계로 바꾸지 않고(알림·중계 없음) adopt 의 'own' 도 그 사람에게 가지 않음 (flush) — 살아 있으면 'hi'·중계로 붙고, 상태를 보내면 unbotize
+    for (const hm of N.cfg.humans) if (hm.uid !== N.me && !N.gone.has(hm.uid)) { const p = newPeer(hm.uid, true, true); if (CHARS.some((c) => c.human && c.uid === hm.uid && c.botized)) p.left = true; N.peers.set(hm.uid, p); }
     N.zoneT = 0; N.claimN = 5; N.claimT = 0; N.t0 = now();
     if (G.state === 'result') G.bgSim = true;   // 결과 화면에 있던 사람이 넘겨받으면 뒤에서 경기를 돌린다
     HUD.toast('방장이 나가서 이 기기가 경기를 이어받았습니다 — 경기는 계속됩니다', 'ok');
@@ -35163,7 +35191,7 @@ const Net = (() => {
   function othersPlaying() { if (!N || !N.host) return false; return (N.rjKeep || 0) > now() || N.cfg.humans.some((hm) => hm.uid !== N.me && CHARS.some((c) => c.net && c.net.owner === hm.uid && c.alive && !c.botized)); }   // rjKeep: 다시 들어오는 사람을 기다리는 동안 (40초)
   // 방장: 아직 인사(hello)가 없는 사람 수 — 스타트 섬을 조금 더 기다린다
   function waiting() { if (!N || !N.host) return 0; let n = 0; for (const p of N.peers.values()) if (!p.helloSeen && !p.left && !p.gone) n++; return n; }
-  function status() { if (!N) return null; return { host: N.host, peers: [...N.peers.values()].map((p) => ({ uid: p.uid, name: p.name, open: p.open, relay: p.relay, rx: Math.round(now() - p.lastRx) })), tx: N.stats.tx, rx: N.stats.rx, items: N.items.size, vehs: N.vehs.length }; }
+  function status() { if (!N) return null; return { host: N.host, peers: [...N.peers.values()].map((p) => ({ uid: p.uid, name: p.name, open: p.open, relay: p.relay, left: !!p.left, rx: Math.round(now() - p.lastRx) })), tx: N.stats.tx, rx: N.stats.rx, items: N.items.size, vehs: N.vehs.length }; }
 
   // 창을 닫거나 새로고침할 때도 나간다고 알린다 (방장이면 다음 방장을 골라 넘김 → 남은 사람의 경기는 계속)
   //  v23: 나가기 전에 이어하기 저장 (돌아오면 같은 경기로 — 10_resume.js)
