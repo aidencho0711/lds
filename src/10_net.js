@@ -127,7 +127,7 @@ const Net = (() => {
   // 경기 채널로 온 메시지 (나머지 sig·g·hi·host 는 파티 채널과 같이 onParty)
   function onMM(m) {
     if (!N || (m.to && m.to !== Cloud.uid)) return;
-    if (m.k === 'bye') { peerLeft(m.from, m.next); return; }
+    if (m.k === 'bye') { if (!N.host && m.from === N.cfg.host) keepGone(m.g); peerLeft(m.from, m.next); return; }   // 나가는 방장의 나간 사람 목록(g) — keepGone
     onParty(m);
   }
   // 파티원이 '연결해 주세요(hi)' → 방장이 offer (온라인 매칭 처음 · 방장을 넘겨받은 뒤)
@@ -259,6 +259,7 @@ const Net = (() => {
     if (m.w) applyWorld(m.w);
     if (m.e) for (const e of m.e) {
       e.from = N.host ? p.uid : e.from || p.uid;   // 보낸 사람: 방장은 실제로 보낸 파티원으로 (파티원은 남의 사건을 넘기지 않음 — v23 핑처럼 보낸 사람을 믿는 사건을 다른 사람 이름으로 꾸며 넘기지 못하게)
+      if (N.host && e.k === 'bye') e.uid = p.uid;   // 'bye' 를 넘길 때 나간 사람(uid)도 실제로 보낸 파티원으로 — 이번 업데이트 전 화면(파티원)은 e.uid 를 읽으므로 꾸민 이름이 그대로 넘어가지 않게
       if (N.host && e.to && e.to !== N.me) { const tp = N.peers.get(e.to); if (!tp || tp.left) e.to = N.me; } // 떠난 사람 앞 사건은 방장이 대신 처리
       // 방장: 다른 파티원에게 넘길 것
       if (N.host && (!e.to || e.to !== N.me)) { const fw = Object.assign({}, e); N.outB.push(fw); }
@@ -275,7 +276,7 @@ const Net = (() => {
       case 'hello': { if (N.host) { const p = N.peers.get(from); if (p) { if (e.v !== NET_VER) { verDrop(p, e.v); break; } p.helloSeen = true; welcome(p); } } break; }
       case 'welcome': applyWelcome(e); break;
       case 'hit': { const t = charById(e.v); if (!t || !mine(t)) return; const dm = hitDmg(e.d); if (dm < 0) return; const a = e.a >= 0 ? charById(e.a) : null; const d = applyDamage(t, dm, e.p, a, e.c, e.h && e.h[0], e.h && e.h[1], e.h && e.h[2]); if (a && d > 0 && !mine(a)) ev({ k: 'dealt', a: a.id, d: r2(d) }, ownerOf(a)); break; }
-      case 'own': { const c = charById(e.c); if (c && c.net) { c.net.owner = e.o; c.net.mine = e.o === N.me; } break; }
+      case 'own': { if (N.host || e.from !== N.cfg.host) break; const c = charById(e.c); if (c && c.net) { c.net.owner = e.o; c.net.mine = e.o === N.me; if (c.uid && c.uid === e.o) N.gone.delete(e.o); } break; }   // 캐릭터 주인 바뀜은 방장이 보낸 것만 (botize·unbotize · 넘겨받은 새 방장의 adopt — 파티원이 꾸며 보낸 'own' 으로 남의 캐릭터를 가져가지 못하게) · 사람 캐릭터가 주인에게 돌아오면(unbotize — 이어하기·잠깐 끊김) 파티원 기기도 나간 사람(gone)에서 지운다 → 그 뒤 방장이 바뀌어도 다음 방장 후보·다시 연결할 사람에 든다
       case 'dealt': { const a = charById(e.a); if (a && mine(a) && Number.isFinite(e.d) && e.d > 0) a.damageDealt += e.d; break; }   // 숫자가 아니거나 무한이면 버림 (기록이 망가지지 않게)
       case 'kreq': { const t = charById(e.v); if (t && mine(t) && t.alive) killChar(t, e.a >= 0 ? charById(e.a) : null, e.c); break; }
       case 'knock': netKnock(e); break;
@@ -299,7 +300,7 @@ const Net = (() => {
       case 'loot': recvLoot(e); break;
       case 'lootReq': if (N.host) sendLoot(N.peers.get(from)); break;
       case 'vehs': recvVehs(e); break;
-      case 'bye': peerLeft(from === N.me ? e.from : (e.uid || from), e.next); break;
+      case 'bye': { const u = N.host ? from : e.from || from; if (N.host) { const bp = N.peers.get(from); if (bp) bp.bye = true; } else if (u === N.cfg.host) keepGone(e.g); peerLeft(u, e.next); break; }   // 나간 사람 = 실제로 보낸 사람: 방장은 보낸 파티원(from) · 파티원은 방장이 적어 넘긴 보낸 사람(e.from — 방장 자신의 'bye' 면 방장). e.uid 는 믿지 않는다 (꾸민 화면이 다른 사람이 나간 것처럼 만들어 그 캐릭터를 봇에게 넘기지 못하게 — 예전 화면이 읽도록 보내기만) · 방장: 'bye' 를 보낸 연결(bye)의 늦게 온 상태로는 봇을 되돌리지 않음 (applyChar) · 파티원: 나가는 방장의 나간 사람 목록(g — keepGone)
       case 'isl': if (!N.host && G.island) Island.end(); break;   // 방장의 스타트 섬이 끝남 → 모두 수송기로
       case 'rjs': applyRj(e); break;   // v23 다시 들어옴: 방장이 보낸 지금 상태
       case 'vic': Victory.onNet(e); break;   // v23 우승 축하: 파티원의 동상 세우기·춤
@@ -343,7 +344,7 @@ const Net = (() => {
     if (!N || N.ended || !N.host || m.mid !== N.cfg.mid || from === N.me || !N.cfg.humans.some((h) => h.uid === from)) return;
     let p = N.peers.get(from);
     if (!p || !p.rj || now() - p.t0 > 8) { if (p) closePeer(p); p = newPeer(from, true, true); p.rj = true; N.peers.set(from, p); }   // 새 자리 (8초 안에 다시 물으면 그대로)
-    p.lob = !N.cfg.mm; N.gone.delete(from);
+    p.lob = !N.cfg.mm; p.bye = false; N.gone.delete(from);
     if (G.state === 'result') G.bgSim = true;   // 결과 화면 뒤에서 경기를 다시 돌린다 (돌아온 사람이 할 경기)
     N.rjKeep = now() + 40;
     Social.send(from, 'nt', { nk: 'rjok', mid: N.cfg.mid, host: N.me, ep: N.epoch, isl: G.island ? 1 : 0 });
@@ -447,7 +448,7 @@ const Net = (() => {
   }
   function applyChar(a, p) {
     let c = charById(a[0]); if (!c) return;
-    if (N.host && p && c.botized && (c.uid || c.origOwner) === p.uid) unbotize(c, p);  // 잠깐 끊겼던 파티원 · 나갔다가 다시 들어온 사람이 돌아옴 (v23: 방장이 바뀌었어도 캐릭터의 사람 uid 로)
+    if (N.host && p && c.botized && !p.bye && (c.uid || c.origOwner) === p.uid) unbotize(c, p);  // 잠깐 끊겼던 파티원 · 나갔다가 다시 들어온 사람이 돌아옴 (v23: 방장이 바뀌었어도 캐릭터의 사람 uid 로) · 'bye' 를 보낸 연결(p.bye)이 그 뒤에 늦게 도착한 상태로는 되돌리지 않음 (순서 없는 채널 — 다시 들어오면 새 연결)
     if (mine(c)) return;
     if (N.host && p && ownerOf(c) !== p.uid) return;                // 남의 캐릭터를 대신 보내는 것은 무시
     const n = c.net, t = now(), f = a[6];
@@ -753,6 +754,14 @@ const Net = (() => {
       HUD.toast(`${hm.name}님이 경기를 떠났습니다${c && c.alive ? ' — 봇이 이어서 합니다' : ''}`, 'warn');
     }
   }
+  // 파티 채널(10_social.js — 파티를 나감 · 접속 표시가 5초 사라짐)이 알린 사람. 파티원 기기에서는 방장이 아닌 사람이 아직 자기 캐릭터를 움직이면
+  //  (방장이 봇에게 넘기지 않았거나 넘겼다가 돌려줌) 나간 사람(N.gone)으로 두지 않는다 — 경기 연결은 그대로인데 파티 채널만 끊긴 사람 · 돌려받은 뒤 늦게 온 알림이
+  //  남으면 그 뒤 방장이 바뀔 때 다음 방장 후보·다시 연결할 사람에서 빠진다 (방장 기기는 그대로: 봇에게 넘기고, 그 사람 상태가 오면 돌려준다)
+  function partyLeft(uid) { if (N && !N.host && uid !== N.cfg.host && CHARS.some((c) => c.human && c.uid === uid && c.net && c.net.owner === uid)) return; peerLeft(uid); }
+  // 나가는 방장이 보낸 나간 사람 목록(g)에 없는 사람을 이 기기 N.gone 에서 지움 — 파티원 기기에만 남은 옛 기록(파티 채널 알림 · 돌아오는 중인 사람)으로
+  //  다음 방장 후보가 방장 기기와 달라져 둘이 방장이 되거나 돌아온 사람이 연결하지 못하지 않게. 넣지는 않는다 (방장이 연결 끊김으로 봇에게 넘긴 사람도 새 방장에게 다시 연결할 수 있게)
+  //  예전 방장(g 없음)이면 그대로
+  function keepGone(g) { if (!N || !Array.isArray(g)) return; const s = new Set(g); for (const u of [...N.gone]) if (!s.has(u)) N.gone.delete(u); }
   // 방장: 인사(hello)의 게임 버전이 다름 (버전 확인이 없는 예전 화면) → 같이 하지 않음: 그 사람이 보내는 것은 바로 버리고(bad),
   //  떠난 사람처럼 캐릭터는 봇이 잇는다 — 내 경기를 아직 만드는 중이면 준비된 뒤(ready)에
   function verDrop(p, v) {
@@ -859,7 +868,8 @@ const Net = (() => {
     // 방장이 나가면 다음 방장을 골라 알린다 (연결된 사람 중 살아 있는 사람 우선) → 남은 사람의 경기는 계속
     let next;
     if (N.host) { const ok = (u) => { const p = N.peers.get(u); return !!p && (p.open || p.relay) && !p.left; }; next = successors(N.me).find(ok) || successors(N.me)[0]; }
-    try { ev({ k: 'bye', uid: N.me, next }); flush(true); if (viaMM()) bus('bye', { next }); } catch (e) { /* */ }
+    const g = N.host ? [...N.gone] : undefined;   // 방장: 나간 사람 목록도 — 파티원은 여기에 없는 옛 기록을 지우고 같은 다음 방장을 고른다 (keepGone)
+    try { ev({ k: 'bye', uid: N.me, next, g }); flush(true); if (viaMM()) bus('bye', { next, g }); } catch (e) { /* */ }
     const n0 = N, mm = n0.cfg.mm; setTimeout(() => { closePeers(n0); if (mm) MM.chClose(mm); }, 400);
     N = null; G.net = null; restoreOwn(n0);
   }
@@ -875,6 +885,6 @@ const Net = (() => {
   //  v23: 나가기 전에 이어하기 저장 (돌아오면 같은 경기로 — 10_resume.js)
   window.addEventListener('pagehide', () => { try { if (N) { Resume.save(); leave(); } } catch (e) { /* */ } });
   return { makeConfig, join, ready, onParty, onLobby, probe, tick, active, isHost, isGuest, mine, ownerOf, charNet, updateProxy, indexVehicles, vehRemote, vehInterp, vehHit, encVeh,
-    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft, leave, close, othersPlaying, waiting, status, ev, flush, zoneSnap, applyZone,
+    remoteHit, killReq, sendKnock, sendDeath, sendRevive, sendShot, sendThrow, sendPunch, itemAdded, itemRemoved, itemCount, seeded, baseline, peerLeft: partyLeft, leave, close, othersPlaying, waiting, status, ev, flush, zoneSnap, applyZone,
     get state() { return N; } };
 })();
