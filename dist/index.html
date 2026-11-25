@@ -10695,8 +10695,11 @@ function actPose(c, a, tm, sw, busy, dt) {
   //  마지막 자세(ka.tv)를 남겨 두었다가, 칼을 넣거나 기절해 손에서 사라지는 동안(a.mel 이 줄어드는 동안)은 그 자세에서 그대로 풀림 (기본 준비 자세로 튀지 않게)
   if (KAnim.on(c) && c.ka.mid === a.melId) {
     KAnim.tppRow(c, _kv);
-    const tg = !sw && c.ka.st === 'idle' ? smoothstep01(clamp(a.sprint || 0, 0, 1)) : 0, rk = c.ka.rk = lerp(c.ka.rk || 0, tg, clamp(dt * 10, 0, 1));
-    if (rk > 0.001) { const sg = Math.sin(a.phase) * 0.14 * rk; for (let i = 0; i < 19; i++) _kv[i] = lerp(_kv[i], MEL_RUN[i + 1], rk); _kv[2] += sg; _kv[1] += Math.abs(sg) * 0.3; }
+    // 동작표에 달리기 자세(run)가 있는 스킨(카람빗)은 그 자세로 (09_player_mskin.js tppRun — 어깨를 축으로 흔듦)
+    if (!KAnim.tppRun(c, _kv, a.phase)) {
+      const tg = !sw && c.ka.st === 'idle' ? smoothstep01(clamp(a.sprint || 0, 0, 1)) : 0, rk = c.ka.rk = lerp(c.ka.rk || 0, tg, clamp(dt * 10, 0, 1));
+      if (rk > 0.001) { const sg = Math.sin(a.phase) * 0.14 * rk; for (let i = 0; i < 19; i++) _kv[i] = lerp(_kv[i], MEL_RUN[i + 1], rk); _kv[2] += sg; _kv[1] += Math.abs(sg) * 0.3; }
+    }
     const tv = c.ka.tv || (c.ka.tv = new Array(19).fill(0)); for (let i = 0; i < 19; i++) tv[i] = _kv[i];
     return { kind: 'melee', w: mw, v: _kv, sw, ka: true };
   }
@@ -26687,6 +26690,8 @@ function updateCharTimers(c, dt) {
 //  · 맞히는 시간·거리·피해·쿨타임·꺼내는 시간은 기본 무기와 똑같다 — 휘두르기 줄의 u = 휘두른 시간 / 전체 시간,
 //    화면 숙임도 기본 무기 그대로(근접 판정 방향 = 카메라 앞) · 옆 기울임만 동작마다
 //  · 소리: 동작표의 S = [[u, 이름], …] (내 캐릭터의 꺼내기·대기 손장난·살펴보기·넣기·휘두르기 중) — 이름은 동작표 snd 의 소리(Audio.mskin) 또는 Audio.knife 의 것
+//  · 달리기 자세(선택 — 동작표 run): 대기 중 달리면 1인칭 줄(run.fp)·3인칭 자세(run.tp)로 섞어 넘어감 (없는 스킨은 기본처럼 손을 내림 · 허리 옆으로)
+//    섞는 정도 ka.rw 는 상태마다: 대기 = 달리기 정도 · 휘두르기 = 0 이었다가 마무리(u 0.42~0.62)에 다시 오름(휘두르고 계속 달리면 기본 자세를 거치지 않고 곧장) · 그 밖 = 0
 // ============================================================
 const KAnim = (() => {
   const PI = Math.PI, P2 = PI * 2, NV = 24, IR = 3, IF = 6, IP = 11, IW = 15, IT = 18, IV = 21;
@@ -26733,7 +26738,9 @@ const KAnim = (() => {
   //  def(모양 id, { base: { h, b, e, f }(1인칭 기본 손 자리·날 방향·때리는 쪽·쥠 — 없으면 무기 기본), pivot: [x, y, z](무기 회전 중심, 모델 좌표 m),
   //    idle: { amp, speed, part(부품 0 흔들림), fid: [손장난 줄들 — 더하는 값], every: [최소, 최대 초] }, equip, unequip: { dur, speed, amp, K, S },
   //    attack: [{ K, S, roll(옆 기울임 rad), kick(맞힘 흔들림 방향 ±1) } …](u = 휘두른 시간 비율), inspect: [{ dur, speed, amp, K, S, gl: [[u0, u1] …](날을 따라 빛이 반짝 지나감) } …],
-  //    snd: { 이름: [길이(초), 소리 조각들] }(Audio.mskin), swing: 휘두르는 소리 이름 또는 [첫째, 둘째], ghost: 잔상 빠르기 기준(m/s, 0 = 없음) })
+  //    snd: { 이름: [길이(초), 소리 조각들] }(Audio.mskin), swing: 휘두르는 소리 이름 또는 [첫째, 둘째], ghost: 잔상 빠르기 기준(m/s, 0 = 없음),
+  //    run: { fp: 1인칭 달리기 줄(K·KO 하나 — 기본 내림·기울임 대신 이 줄이 손 자리·방향 전부), tp: 3인칭 달리기 자세(04_motion.js MEL_RUN 형식 [u, 19개] · 가슴 로컬),
+  //           sw: 3인칭 걸음에 맞춰 어깨를 축으로 흔드는 폭(rad · 기본 0.4) }(선택) })
   function def(shape, sp) {
     const D = MSHAPE[shape]; if (!D) { console.warn('KAnim: 모양 없음', shape); return null; }
     const mid = D.melee, vb = VBASE[mid], b = sp.base || {}, F0 = b.f || F_GRIP;
@@ -26742,10 +26749,12 @@ const KAnim = (() => {
     // 카메라 공간(z 뒤) 기본 손바닥 자리 · 손 방향
     S.P0 = new THREE.Vector3(S.h[0], S.h[1], -S.h[2]);
     S.Q0 = bladeQuat(new THREE.Quaternion(), new THREE.Vector3(S.B[0], S.B[1], -S.B[2]), new THREE.Vector3(S.E[0], S.E[1], -S.E[2]));
-    const tr = (t, add) => { if (!t) return null; const R = []; for (const k of t.K) R.push(Array.isArray(k) ? k : rowOf(k, F0, add, add ? null : S, R[R.length - 1])); return Object.assign({}, t, { R }); };
+    //  손목 각(Euler)은 앞 줄과 2π 맞춤으로 이어 둔다 — 방향으로 쓴 줄(KO)이 크게 돌아 2π 근처에 닿은 뒤 기본 기준 줄(K)이 0 으로 돌아가면 손목이 한 바퀴 거꾸로 감기던 것을 막음 (같은 자세, 값만 이어짐)
+    const tr = (t, add) => { if (!t) return null; const R = []; for (const k of t.K) { const r = Array.isArray(k) ? k : rowOf(k, F0, add, add ? null : S, R[R.length - 1]), p = R[R.length - 1]; if (p && !add) for (let j = 1 + IR; j < 4 + IR; j++) r[j] += P2 * Math.round((p[j] - r[j]) / P2); R.push(r); } return Object.assign({}, t, { R }); };
     S.equip = tr(sp.equip || DEF.equip); S.unequip = tr(sp.unequip || DEF.unequip);
     S.attack = (sp.attack || []).map((t) => tr(t)); S.inspect = (sp.inspect || []).map((t) => tr(t)); S.fid = (S.idle.fid || []).map((t) => tr(t, true));
     S.rest = rowOf(K(0), F0, false, S, null);
+    S.run = sp.run ? { v: rowOf(sp.run.fp || K(0), F0, false, S, S.rest).slice(1), tp: sp.run.tp || null, sw: sp.run.sw !== undefined ? sp.run.sw : 0.4 } : null;
     SPEC[shape] = S; return S;
   }
 
@@ -26776,6 +26785,8 @@ const KAnim = (() => {
     ka.st = st; ka.t = 0; ka.bt = 0; ka.bd = bd; ka.u0 = -1; ka.fi = -1;
     const t = trackOf(ka, st), r0 = t ? t.R[0] : S.rest;
     for (const i of SPIN) ka.from[i] += P2 * Math.round((r0[i + 1] - ka.from[i]) / P2);
+    //  손목 각도 2π 맞춤 (바로 앞 동작이 손목을 크게 돌려 2π 근처로 끝났어도 새 동작으로 섞일 때 한 바퀴 거꾸로 감지 않게 — 같은 자세)
+    for (let i = IR; i < IR + 3; i++) ka.from[i] += P2 * Math.round((r0[i + 1] - ka.from[i]) / P2);
   }
   function snd(S, k, pos, own, swing) {
     const r = S.snd[k];
@@ -26793,7 +26804,7 @@ const KAnim = (() => {
     if (ka.kind !== kind || ka.mid !== mid) { ka.kind = kind; ka.mid = mid; ka.st = null; }
     const S = SPEC[kind], sw = c.swing && c.swing.id === mid ? c.swing : null;
     if (held) {
-      if (!ka.held || !ka.st || ka.st === 'unequip') { const eq = c.equipT > 0.05; enter(ka, eq ? 'equip' : 'idle', eq ? (ka.st ? 0.08 : 0) : 0.26, !eq && !ka.st); ka.held = true; ka.sw = sw; ka.fn = 2.5 + Math.random() * 3; }
+      if (!ka.held || !ka.st || ka.st === 'unequip') { const eq = c.equipT > 0.05; if (!ka.st) ka.rw = 0; enter(ka, eq ? 'equip' : 'idle', eq ? (ka.st ? 0.08 : 0) : 0.26, !eq && !ka.st); ka.held = true; ka.sw = sw; ka.fn = 2.5 + Math.random() * 3; }
       if (sw && sw !== ka.sw) { ka.sw = sw; ka.v = S.attack.length > 1 && sw.side < 0 ? 1 : 0; enter(ka, 'attack', 0.07); }
       else if (ka.st === 'attack' && !sw) enter(ka, 'idle', 0.1);
       if (ka.req) {
@@ -26834,7 +26845,8 @@ const KAnim = (() => {
       //  (손장난 중이었으면 지금 자세에서 섞어 풀어 줌 — 부활처럼 근접 무기 화면이 그대로 보일 때 한 프레임에 튀지 않게)
       if (c.heal || c.throwMode || c.throwAnim > 0 || c.nadeQ || c.revive || c.dance) { if (ka.fi >= 0) enter(ka, 'idle', 0.15); }
       else if (S.fid.length) {
-        if (ka.fi < 0) { ka.fn -= dt; if (ka.fn <= 0) { ka.fi = pickOther(S.fid.length, ka.fl); ka.ft = 0; ka.fu0 = -1; } }
+        //  달리기 자세(동작표 run)로 달리는 동안은 시작하지 않음 (손장난이 그 자세에 가려 소리만 나지 않게 — 멈춘 뒤 1.5초 이상 지나서)
+        if (ka.fi < 0) { if (ka.rw > 0.3) ka.fn = Math.max(ka.fn, 1.5); ka.fn -= dt; if (ka.fn <= 0) { ka.fi = pickOther(S.fid.length, ka.fl); ka.ft = 0; ka.fu0 = -1; } }
         if (ka.fi >= 0) {
           const F = S.fid[ka.fi]; ka.ft += dt; const fu = ka.ft / (F.dur || 0.8);
           if (fu >= 1) { ka.fl = ka.fi; ka.fi = -1; const ev = I.every || [4, 8]; ka.fn = ev[0] + Math.random() * (ev[1] - ev[0]); }
@@ -26851,6 +26863,12 @@ const KAnim = (() => {
       if (c.isPlayer && tr.S) for (const [su, k] of tr.S) if (ka.u0 < su && u >= su) snd(S, k, null, true);
     }
     ka.u0 = u;
+    // 달리기 자세(동작표 run)를 섞는 정도: 대기 = 달리기 정도(c.anim.sprint — 앞 프레임) · 휘두르기 = 마무리(u 0.42~0.62)부터 다시 · 그 밖 = 0
+    //  휘두르는 동안은 빨리 빠지고 빨리 돌아옴 (맞히는 구간엔 휘두르는 줄이 거의 그대로 · 계속 달리면 기본 자세로 돌아가기 전에 달리는 자세로)
+    if (S.run) {
+      const at = ka.st === 'attack', g = ka.st === 'idle' ? (sw ? 0 : 1) : at ? sstep(0.42, 0.62, u) : 0, an = c.anim;
+      ka.rw = lerp(ka.rw || 0, g * (an ? sstep(0, 1, an.sprint || 0) : 0), clamp(dt * (at ? 14 : 10), 0, 1));
+    } else ka.rw = 0;
     // 3인칭: 꺼내기·살펴보기 동안 손을 가슴 앞으로 들어 올리는 정도(멀리서도 동작이 보이게) — 부드럽게 따라감
     const shT = ka.st === 'equip' ? sstep(0.1, 0.3, u) * (1 - sstep(0.8, 1, u)) : ka.st === 'inspect' ? sstep(0, 0.08, u) * (1 - sstep(0.9, 1, u)) : 0;
     ka.sh = lerp(ka.sh || 0, shT, clamp(dt * 8, 0, 1));
@@ -26894,13 +26912,21 @@ const KAnim = (() => {
   }
   // 줄의 부품·무기 회전·이동을 손에 든 모델에 (매 프레임 모두 다시 — 모델이 새로 만들어져도 그대로) · sc = 모델 1m 가 손 그룹 몇 단위인지 (1인칭 1/VM_SC)
   const _we = new THREE.Euler(0, 0, 0, 'XYZ'), _wv = new THREE.Vector3();
+  // 나비 나이프 경첩 멈춤: 날–손잡이 A 사이(날 + π)·날–손잡이 B 사이(B − 날 − π)는 진짜 칼처럼 0~π 를 넘지 않음 —
+  //  키프레임 곡선(Catmull-Rom)이 빠르게 닫히거나 펴지는 자리를 살짝 지나쳐도 손잡이·날이 서로를 뚫지 않고 멈춤에 닿아 선다 (넘친 쪽이 0 에 가까우면 0, π 에 가까우면 π)
+  const _hg = [0, 0];
+  function hinge(bl, b) {
+    const a = ((bl + PI) % P2 + P2) % P2; if (a > PI) bl += a > 1.5 * PI ? P2 - a : PI - a;
+    const c = ((b - bl - PI) % P2 + P2) % P2; if (c > PI) b += c > 1.5 * PI ? P2 - c : PI - c;
+    _hg[0] = bl; _hg[1] = b; return _hg;
+  }
   function place(Ar, o, S, v, sc) {
     const rig = o.userData.rig; o.userData.kaSet = true;
     if (S.kar && rig) { karamPlace(Ar, o, v[IP]); return; }
     _we.set(v[IW], v[IW + 1], v[IW + 2], 'XYZ'); o.quaternion.setFromEuler(_we);
     _wv.set(v[IV], v[IV + 1], v[IV + 2]).applyQuaternion(o.quaternion); o.position.set(v[IV] - _wv.x, v[IV + 1] - _wv.y, v[IV + 2] - _wv.z);
     o.position.x += v[IT]; o.position.y += v[IT + 1]; o.position.z += v[IT + 2];
-    if (rig && S.bal) { rig.blade.rotation.x = v[IP]; rig.B.rotation.x = v[IP + 1]; rig.latch.rotation.x = v[IP + 2]; o.position.z += v[IP + 3]; }
+    if (rig && S.bal) { const hg = hinge(v[IP], v[IP + 1]); rig.blade.rotation.x = hg[0]; rig.B.rotation.x = hg[1]; rig.latch.rotation.x = v[IP + 2]; o.position.z += v[IP + 3]; }
     o.position.multiplyScalar(sc);
   }
   // 전용 동작이 끝나 기본 동작이 같은 모델을 그릴 때: 손 안 자리를 원래대로 (sc = 모델 크기 — 위치는 0)
@@ -26926,10 +26952,11 @@ const KAnim = (() => {
 
   // ---------- 1인칭 ----------
   const _P = new THREE.Vector3(), _Q = new THREE.Quaternion(), _B = new THREE.Vector3(), _E = new THREE.Vector3(), _qr = new THREE.Quaternion(), _pole = new THREE.Vector3();
+  const _P2 = new THREE.Vector3(), _Q2 = new THREE.Quaternion(), _rv = new Array(NV).fill(0);
   const _tp = new THREE.Vector3(), _bp = new THREE.Vector3(), _lt = new THREE.Vector3();
   // 잔상: 빠르게 움직이는 날(관절 모델은 날 부품, 아니면 무기 전체)을 지난 몇 프레임 자리에 옅게 — 낮은 화질이면 생략
   //  메시마다 지난 자리 4개를 돌려 쓰는 행렬 고리(무기가 바뀔 때만 새로 만듦) · 잔상 3장(가까운 것일수록 진하게)
-  const GH = { src: null, list: [], ms: [], ring: [], head: 0, n: 0, mats: null, lt: false, wm: null }, GOP = [0.15, 0.09, 0.045];
+  const GH = { src: null, list: [], ms: [], ring: [], head: 0, n: 0, mats: null, lt: false, wm: null, vf: 0, st: null }, GOP = [0.15, 0.09, 0.045];
   const ghostMats = () => GH.mats || (GH.mats = GOP.map((op) => new THREE.MeshBasicMaterial({ color: 0xd8e6ff, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })));
   // 반짝임: 살펴보기 줄의 gl = [[u0, u1], …] 동안 빛 한 점이 날 뿌리 → 끝으로 미끄러짐 (금속 재질이 빛을 받는 순간) — 1인칭만 · 스프라이트 하나를 돌려 씀
   let GLS = null;
@@ -26985,20 +27012,30 @@ const KAnim = (() => {
     vmHeld(A.R, ka.mid, sk);
     const o = A.R.hold.children[0]; if (!o) return null;
     if (!force) ka.vf = G.frame;   // 이 프레임에 근접 무기 뷰모델을 그렸음 (넣기 판단용)
-    const v = ka.row; handPose(S, v, _P, _Q, VM_SC);
-    // 걷는 흔들림 · 달리면 아래로 (기본 근접 무기와 같음)
-    const bobAmp = clamp(p.anim.speed / 5, 0, 1);
-    _P.x += Math.sin(p.anim.phase) * 0.012 * bobAmp + run * 0.05; _P.y -= Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp + run * 0.14;
-    if (run > 0.01) { _qr.setFromAxisAngle(AX_X, -run * 0.5); _Q.premultiply(_qr); }
+    let v = ka.row; handPose(S, v, _P, _Q, VM_SC);
+    // 달리기 자세(동작표 run): 손 자리는 직선으로 · 방향은 구면으로(손목이 엉뚱하게 돌지 않게) ka.rw 만큼 그 줄로 — 손가락·부품도 (부품·무기 회전은 2π 맞춤)
+    const R = S.run, rw = R ? ka.rw || 0 : 0;
+    if (rw > 0.001) {
+      handPose(S, R.v, _P2, _Q2, VM_SC); _P.lerp(_P2, rw); _Q.slerp(_Q2, rw);
+      for (let i = 0; i < NV; i++) { let t = R.v[i]; if (i >= IP && i < IT) t += P2 * Math.round((v[i] - t) / P2); _rv[i] = lerp(v[i], t, rw); }
+      v = _rv;
+    }
+    // 걷는 흔들림 · 달리면 아래로 (기본 근접 무기와 같음 — 달리기 자세가 있는 스킨은 그 줄이 내림·기울임 대신)
+    const bobAmp = clamp(p.anim.speed / 5, 0, 1), rn = R ? 0 : run;
+    _P.x += Math.sin(p.anim.phase) * 0.012 * bobAmp + rn * 0.05; _P.y -= Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp + rn * 0.14;
+    if (rn > 0.01) { _qr.setFromAxisAngle(AX_X, -rn * 0.5); _Q.premultiply(_qr); }
     fing(v, _F5); vmReach(A.R, _P, _Q, _pole.set(0.6, -0.7, 0.15), _F5); setK(A.R, _F5);
     place(A.R, o, S, v, 1 / VM_SC);
+    // 새로 꺼내는 첫 프레임·한동안 안 그리다 다시 그릴 때: 지난 자리(잔상·빠르기)를 버림 — 전에 들고 있던 자리에 잔상이 떠 보이지 않게
+    if (G.frame - (GH.vf || 0) > 1 || (ka.st === 'equip' && GH.st !== 'equip')) { GH.lt = false; GH.n = 0; }
+    GH.vf = G.frame; GH.st = ka.st;
     // 휘두르기 자국(휘두르는 순간) + 잔상(빠르게 움직일 때)
     const gs = tipBase(o, ka.mid, sk, _tp, _bp);
     const spd = GH.lt ? _tp.distanceTo(_lt) / Math.max(dt, 1e-3) : 0; _lt.copy(_tp); GH.lt = true;
     const sw = ka.st === 'attack' ? ka.sw : null, D = ITEMS[ka.mid];
     if (sw && sw.t > D.wind * 0.85 && sw.t < D.wind + D.strike * 1.4) FX.trail('vm', VM.scene, _tp, _bp, MeleeSkin.trail(ka.mid, sk));
-    // 잔상은 손장난(꺼내기·살펴보기·대기)의 빠른 돌기에만 — 휘두르기는 자국이 따로 있어 겹치면 번져 보임
-    ghosts(gs, dt, spd, ka.st === 'attack' || ka.st === 'unequip' ? 0 : S.ghost);
+    // 잔상은 손장난(꺼내기·살펴보기·대기)의 빠른 돌기에만 — 휘두르기는 자국이 따로 있어 겹치면 번져 보임 · 달리기 자세로 손을 돌리는 동안도 없음
+    ghosts(gs, dt, spd, ka.st === 'attack' || ka.st === 'unequip' || (ka.st === 'idle' && rw > 0.02) ? 0 : S.ghost);
     const it = ka.st === 'inspect' ? trackOf(ka, 'inspect') : null;
     glint(it, it ? clamp(ka.t / (it.dur || 1), 0, 1) : 0, _tp, _bp);
     const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0;
@@ -27078,6 +27115,24 @@ const KAnim = (() => {
     const sh = ka.sh || 0; out[0] += 0.07 * sh; out[1] += 0.17 * sh; out[2] += 0.08 * sh;
     return out;
   }
+  // 3인칭 달리기 자세 (동작표 run.tp): tppRow 자세를 ka.rw 만큼 그 자세로 — 동작표에 run.tp 가 없으면 false (04_motion.js 가 기본 MEL_RUN 으로)
+  //  걸음에 맞춰 어깨를 축으로 팔을 흔든다: 오른팔은 왼발과 함께 앞으로(−cos 위상) · 왼손은 반대 · 뒤로는 앞의 0.6배만(팔꿈치가 등 뒤로 꺾이지 않게)
+  //  손 방향은 흔든 각의 절반만 기울어 손등이 늘 위 · 팔꿈치 방향은 0.4배만 따라가 옆구리에 붙은 채
+  const _rp = new Array(19).fill(0), SHR = [-0.191, 0.171, 0], SHL = [0.191, 0.171, 0];
+  // 가슴 로컬 x(왼쪽) 축 둘레로 돌림 (+ = 앞으로 · 점은 C 를 중심으로, C 가 없으면 방향)
+  function swingX(v, i, a, C) { const c0 = C ? C[1] : 0, c1 = C ? C[2] : 0, y = v[i + 1] - c0, z = v[i + 2] - c1, cs = Math.cos(a), sn = Math.sin(a); v[i + 1] = c0 + y * cs + z * sn; v[i + 2] = c1 - y * sn + z * cs; }
+  function tppRun(c, out, ph) {
+    const ka = c.ka, S = ka && SPEC[ka.kind], R = S && S.run; if (!R || !R.tp) return false;
+    // 휘두르는 중: 처음(u ~0.3)에 빠지고, 기본 3인칭 찌르기가 뻗었다 돌아오는 구간(u 0.56~0.95)에서만 다시 — 뻗은 팔이 달리는 자세로 한 번에 끌려오지 않게
+    let w = ka.rw || 0;
+    if (ka.st === 'attack' && ka.sw) { const u = ka.sw.t / ka.sw.total; w = Math.min(w, 1 - sstep(0, 0.3, u) + sstep(0.56, 0.95, u)); }
+    if (w < 0.001) return true;
+    const T = R.tp, o = T.length > 19 ? 1 : 0, s = -Math.cos(ph), q = 0.2 * s * s, a = R.sw * (0.8 * s + q), al = R.sw * (-0.8 * s + q);
+    for (let i = 0; i < 19; i++) _rp[i] = T[i + o];
+    swingX(_rp, 0, a, SHR); swingX(_rp, 3, a * 0.5); swingX(_rp, 6, a * 0.5); swingX(_rp, 16, a * 0.4, SHR); swingX(_rp, 13, al, SHL);
+    for (let i = 0; i < 19; i++) out[i] = lerp(out[i], _rp[i], w);
+    return true;
+  }
   const fingersOf = (c) => fing(c.ka.row, _F5);
   const fingers3 = (c, Ar, w) => setK(Ar, fing(c.ka.row, _F5), w);
   // 3인칭 손에 든 모델의 부품·손 안 회전 (setHeld 뒤 매 프레임) — 전용 동작이 끝났으면 원래 자리로
@@ -27095,7 +27150,7 @@ const KAnim = (() => {
     if (s2.t > D.wind * 0.85 && s2.t < D.wind + D.strike * 1.35) { tipBase(o, s2.id, sk, _t3a, _t3b); FX.trail('c' + c.id, G.scene, _t3a, _t3b, MeleeSkin.trail(s2.id, sk)); }
     return true;
   }
-  return { K, KO, def, SPEC, dbg, kindOf, canInspect, ownDraw, tick, on, inspect, vm, vmOut, vmOff, outActive, cam, hit, alt, swingSound, tppRow, fingersOf, fingers3, tppApply, trail3, sheath, unplace, place, handPose, warmVM };
+  return { K, KO, def, SPEC, dbg, kindOf, canInspect, ownDraw, tick, on, inspect, vm, vmOut, vmOff, outActive, cam, hit, alt, swingSound, tppRow, tppRun, fingersOf, fingers3, tppApply, trail3, sheath, unplace, place, handPose, warmVM };
 })();
 
 // ---------- 09_player_mskin_crow.js ----------
@@ -27375,12 +27430,15 @@ const KAnim = (() => {
   // ---------- 나비 나이프 ----------
   //  부품 [날, 손잡이 B, 걸쇠, 미끄럼] — 0 = 펼침·잠김 · 날 −π = 접힘(손잡이 A 홈 안) · B 는 핀 둘레로 돎(2π 마다 제자리) · 걸쇠 2.3 = 열림
   //  핀(회전축) = 칼의 x 축 = 손바닥 축 — 손목을 돌려 핀이 위를 보면 손잡이가 가로로, 비스듬하면 대각선으로 돈다 (같은 세로 돌기만 되풀이하지 않게)
+  //  경첩 한계(진짜 나비 나이프처럼): 날과 손잡이 A 사이 각(날 + π)·날과 손잡이 B 사이 각(B − 날 − π)은 늘 0~180° —
+  //   접으면(날 0 → −π) 펼 때는 그 길을 되돌아(−π → 0) 펴고, 날을 접는 동안 B 는 한 바퀴(0 → −2π) 따라 돈다 (같은 방향으로 계속 돌면 날·손잡이가 서로를 뚫음)
+  //  손잡이 B 를 쥔 동안: 무기 회전 w(핀 둘레) + B 각 = 2π 의 배수 → B 는 손 안 제자리, A·날이 핀 둘레로 돈다
   const S5 = 0.035;   // 돌릴 때 칼이 손 안에서 앞으로 미끄러지는 거리 (핀이 검지 앞으로 나와 손잡이가 손가락에 걸리지 않음)
   const GB = [1.72, 1.62, 1.58, 1.42, 1.0], GBT = [1.72, 1.62, 1.58, 1.42, 0.4], GBL = [1.05, 0.9, 1.35, 1.2, 0.85], GSP = [0.45, 0.35, 1.45, 1.3, 0.55], GOP = [0.55, 0.45, 0.6, 0.5, 0.25];
+  const PINCH = [1.25, 1.1, 1.3, 1.15, 0.15], GIX = [0.35, 0.3, 0.55, 0.45, 0.3], GRG = [1.35, 1.25, 1.5, 1.35, 0.25];   // 집기 · 검지를 펴서 축으로 · 엄지·검지 고리
   // 손 방향 [날, 손가락]
   const B_SHOW = [[-0.5, 0.75, 0.43], [-0.65, -0.55, 0.52]];   // 날 옆면이 화면을 봄 (빛을 받는 각)
   const B_SHOW2 = [[-0.62, 0.62, 0.48], [-0.5, -0.7, 0.5]];
-  const B_V = [[-0.25, 0.95, 0.2], [-0.3, -0.25, 0.92]];      // 칼이 서고 손가락은 앞 — 핀이 옆을 봄 (세로로 돎)
   const B_UR = [[0.18, 0.95, 0.25], [-0.2, -0.2, 0.96]];      // 칼이 서서 조금 오른쪽
   const B_D = [[-0.7, 0.68, 0.1], [-0.3, -0.25, 0.92]];       // 왼쪽 위 45° — 핀이 비스듬 (대각선으로 돎)
   const B_H = [[-0.92, 0.28, -0.25], [-0.3, -0.25, 0.92]];    // 칼이 (거의) 눕고 손등이 위 — 핀이 위를 봄 (가로로 돎)
@@ -27388,35 +27446,69 @@ const KAnim = (() => {
   const B_SB2 = [[-0.5, 0.85, 0.12], [-0.82, -0.5, -0.12]];
   const B_UR2 = [[0.22, 0.94, 0.25], [-0.25, -0.18, 0.95]];
   const B_H2 = [[-0.9, 0.33, -0.25], [-0.32, -0.22, 0.92]];
-  const B_S2 = [[-0.55, 0.65, 0.52], [-0.75, -0.62, 0.2]];     // 비스듬히 기운 손 (검지 둘레 돌기가 대각선 면에서)
+  const B_V = [[-0.25, 0.95, 0.2], [-0.3, -0.25, 0.92]];      // 칼이 서고 손가락은 앞
   const B_CK = [[0.35, 0.85, 0.4], [-0.55, -0.3, 0.78]];      // 베기 전 젖힘: 날이 오른쪽 위
-  const VT = [0, -0.02, 0.045];   // 검지 둘레로 돌릴 때 회전 중심 (닫은 칼의 핀 쪽 끝이 검지에 걸림)
+  // 방향 쌍을 카메라 공간 축 둘레로 돌림 (z 앞 · 화면에서 반시계 = 앞을 보는 축 둘레 +)
+  const nrm = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+  const rotV = (v, a, t) => { a = nrm(a); const c = Math.cos(t), s = Math.sin(t), d = a[0] * v[0] + a[1] * v[1] + a[2] * v[2];
+    return [v[0] * c + (a[1] * v[2] - a[2] * v[1]) * s + a[0] * d * (1 - c), v[1] * c + (a[2] * v[0] - a[0] * v[2]) * s + a[1] * d * (1 - c), v[2] * c + (a[0] * v[1] - a[1] * v[0]) * s + a[2] * d * (1 - c)]; };
+  const rotO = (o, a, t) => [rotV(o[0], a, t), rotV(o[1], a, t)];
+  const B_DF = rotO(B_D, B_D[0], PI / 2);   // 대각선 접기용: 칼 길이 축으로 손목을 90° 굴려 접히는 날이 손가락 위가 아니라 핀 아래로 지나감
+  const PIN = [0, -0.0025, 0.064];   // 회전 핀 (모델 좌표) — 칼 전체를 핀 둘레로 돌릴 때(손잡이 B 를 쥔 동안 · 막대째 굴리기)의 중심
+  //  젠 롤오버 손 방향: 닫힌 칼을 옆으로 눕혀 핀이 주먹 왼쪽(엄지 끝) · 칼 면이 화면을 봄 — 화면에서 반시계 = 부품·무기 회전 +
+  const Z0 = [[-0.92, 0.18, 0.35], [0.12, -0.75, -0.65]];
+  const FA = [-0.5, 0.35, 0.8];   // 팔뚝 축 — 손등이 위로 도는 쪽(엎침) = 화면에서 반시계 = +
+  const VA = [-0.2, 0.15, 0.97];  // 시선에 가까운 축 — 손목 넘기기 동안 칼 면이 화면을 보게
+  const ZT = rotO(Z0, FA, 0.42);  // 던질 때 손을 엎침 쪽으로 기울임 ('손잡이가 떨어지게 기울이기')
+  const WP = (t, dip) => rotO(rotO(ZT, VA, t), [1, 0, 0], dip);
+  const W1 = WP(0.6, 0.1);
+  const BASE = [[-0.3, 0.8, 0.52], [-0.584, -0.585, 0.562]];
+  // 두 손 방향 사이 (정규화한 섞음) — 손목 넘기기에서 기본 자세로 한 번에 튕겨 올라오는 길
+  const mixO = (o1, o2, k) => [nrm(o1[0].map((x, i) => x * (1 - k) + o2[0][i] * k)), nrm(o1[1].map((x, i) => x * (1 - k) + o2[1][i] * k))];
+  //  손잡이 B 를 쥔 동안의 칼: A 의 손 안 각 aA · 날 방향 abl(도) → [부품, 무기 회전]
+  const D2R = PI / 180;
+  const HO = (u, h, o, f, aA, abl, sl) => O(u, h, o, f, [(abl - 180 - aA) * D2R, P2 - aA * D2R, 2.3, sl === undefined ? S5 : sl], [aA * D2R, 0, 0], null, PIN);
+  //  힐릭스: 날이 B 안에 접힌 곧은 막대(A 가 밖) — w = A 의 손 안 각 · t = 칼 옮김(손바닥 아래로)
+  const BO = (u, h, o, f, w, sl, t) => O(u, h, o, f, [0, -PI, 2.3, sl === undefined ? S5 : sl], [w, 0, 0], t || null, PIN);
+  const Y0 = rotO(Z0, VA, -0.75);                    // 세로 굴리기(Y2K): 칼 면이 화면 · 핀이 위(조금 왼쪽) — 넘어가는 손잡이 끝이 조준점으로 오지 않게
+  const UU = rotO([[-0.75, -0.05, 0.65], [0.62, -0.1, 0.78]], [1, 0, 0], -0.3);   // 손등이 위 · 칼은 손바닥 아래에서 납작하게(보이게 조금 기울임)
+  const UM = -0.035, UH = [0.06, 0, 0];              // 아래 굴리기: 핀이 손 한가운데 아래(검지 끝)에 오게 칼을 밀고 손바닥 아래로 옮김
+  const ZH = rotO(ZT, [1, 0, 0], -0.45);             // 납작한 엄지 굴리기(젠): 첫 세로 굴리기보다 눕힌 면 · 손바닥이 위
   def('balisong', {
     base: { b: [-0.3, 0.8, 0.52], e: [-0.584, -0.585, 0.562], f: GB },
     ghost: 1.6,
-    // 대기: 가끔 엄지로 걸쇠를 톡 · 손잡이를 고쳐 쥠 · 손목을 돌려 날을 한 번 봄
+    // 대기: 가끔 엄지로 걸쇠를 톡 · 손잡이를 고쳐 쥠(B 는 날 쪽으로만 살짝 벌어짐) · 손목을 돌려 날을 한 번 봄
     idle: { amp: 1, every: [4, 7.5], fid: [
       { dur: 0.7, K: [K(0), K(0.2, null, null, [0, 0, 0, 0, -0.6], [0, 0, 0.55]), K(0.42, null, null, [0, 0, 0, 0, -0.5], [0, 0, 0.1]), K(0.6, null, null, [0, 0, 0, 0, -0.1]), K(1)], S: [[0.38, 'bTick']] },
-      { dur: 0.9, K: [K(0), K(0.25, [0, -0.004, 0], [0, 0, 0.06], [-0.55, -0.6, -0.2, -0.2, -0.2], [0, 0.16, 0]), K(0.5, [0, -0.003, 0], [0, 0, 0.04], [-0.5, -0.55, -0.2, -0.2, -0.2], [0, 0.1, 0]), K(0.62, null, null, null, [0, 0, 0]), K(1)], S: [[0.6, 'bClick']] },
+      { dur: 0.9, K: [K(0), K(0.25, [0, -0.004, 0], [0, 0, 0.06], [-0.55, -0.6, -0.2, -0.2, -0.2], [0, -0.16, 0]), K(0.5, [0, -0.003, 0], [0, 0, 0.04], [-0.5, -0.55, -0.2, -0.2, -0.2], [0, -0.1, 0]), K(0.62, null, null, null, [0, 0, 0]), K(1)], S: [[0.6, 'bClick']] },
       { dur: 1.1, K: [K(0), K(0.35, [0.004, 0.006, 0], [0.05, -0.2, 0.16]), K(0.62, [0.004, 0.006, 0], [0.04, -0.17, 0.14]), K(1)] },
     ] },
-    // 꺼내기 0.8초: 닫힌 칼이 가로로 누운 채 화면 오른쪽 아래에서 빠르게 올라옴 → 엄지로 걸쇠를 튕겨 풂 → 손잡이 B 가 가로로 휙 돌아 나감 →
-    //  손목을 세우며 튕기면 날이 펼쳐지고 B 가 손바닥으로 '딸깍' → 걸쇠 잠금 → 대기
-    equip: { dur: 0.8, K: [
-      O(0, [0.05, -0.3, -0.03], B_H, GB, [-PI, 0, 0, S5]),
-      O(0.15, [0, 0.055, 0.01], B_H, GB, [-PI, 0, 0, S5]),
-      O(0.2, [0, 0.05, 0], B_H, GBT, [-PI, 0, 0.8, S5]),
-      O(0.25, [0, 0.05, 0], B_H, GBT, [-PI, 0.15, 2.3, S5]),
-      O(0.36, [-0.006, 0.05, 0], B_H, GB, [-PI, PI * 0.8, 2.3, S5]),
-      O(0.42, [0, 0.045, 0], B_D, GBL, [-PI * 0.95, PI, 2.3, S5]),
-      O(0.52, [0.004, 0.02, 0], B_V, GBL, [-PI * 0.3, PI * 1.55, 2.3, S5]),
-      O(0.6, [0, 0.004, 0], B_SHOW2, GB, [0, P2, 2.3, S5]),
-      K(0.68, [0, -0.004, 0], [0, 0, 0.06], GBT, [0, P2, 2.3, 0.01]),
-      K(0.76, null, [0, 0, -0.02], GBT, [0, P2, 0.2, 0]),
-      K(0.86, null, null, GB, [0, P2, 0, 0]), K(1, null, null, GB, [0, P2, 0, 0])],
-      S: [[0.2, 'bOpen'], [0.27, 'bFlipM'], [0.44, 'bFlipM'], [0.6, 'bClack'], [0.75, 'bClick']] },
-    // 휘두르기 0 = 손목을 오른쪽 위로 젖혔다 튕기는 대각선 베기(→ 왼쪽) — 베는 힘에 손잡이 B 가 살짝 벌어졌다 '딸깍' 붙음
-    //  휘두르기 1 = 이어서: 왼쪽 아래에서 손목을 뒤집으며 오른쪽 위로 걷어 올리는 역베기 — B 가 반대쪽으로 벌어졌다 붙음
+    // 꺼내기 0.95초 — 젠 롤오버: 닫힌 칼이 오른쪽 아래에서 올라오며 엄지로 걸쇠를 튕겨 풂 → 옆으로 눕혀 안전 손잡이(A)를 집고 손을 살짝 엎으면
+    //  손잡이 B 가 핀(엄지 끝) 둘레로 화면에서 반시계로 거의 한 바퀴(위 → 왼쪽 → 아래) 휘돌고 날이 따라 끌려 나와 칼이 거의 펼쳐짐 →
+    //  B 가 엄지 등에 닿는 순간 놓아 칼이 엄지 위로 굴러 넘어가고 B 를 낚아챔 → 손목 넘기기: 같은 쪽으로 손등이 위로 돌며 손목이 꺾이고
+    //  A 가 날 쪽으로 접혀 들며 둘 다 엎은 손 아래로 매달림 → 손을 한 번에 튕겨 올리며(엎었던 손을 되돌림) A 가 휘돌아 B 에 '착' 닫히고 날이 앞으로 펴진 채 기본 자세 → 걸쇠 잠금
+    equip: { dur: 0.95, K: [
+      O(0, [0.06, -0.28, -0.03], Z0, GB, [-PI, 0, 0, S5], [0, 0, 0], null, PIN),
+      O(0.06, [0.03, -0.06, -0.01], Z0, GBT, [-PI, 0, 1.3, S5], [0, 0, 0], null, PIN),
+      O(0.12, [0.02, 0.055, 0], Z0, PINCH, [-PI, 0, 2.3, S5], [0, 0, 0], null, PIN),
+      O(0.16, [0.02, 0.058, 0], rotO(Z0, FA, 0.15), PINCH, [-PI + 0.06, 0.45, 2.3, S5], [0, 0, 0], null, PIN),
+      O(0.22, [0.02, 0.055, 0], rotO(Z0, FA, 0.3), PINCH, [-PI + 0.45, 1.75, 2.3, S5], [0, 0, 0], null, PIN),
+      O(0.28, [0.02, 0.05, 0], ZT, PINCH, [-PI + 1.25, 3.05, 2.3, S5], [0, 0, 0], null, PIN),
+      O(0.34, [0.02, 0.046, 0], ZT, PINCH, [-PI + 2.05, 4.35, 2.3, S5], [0, 0, 0], null, PIN),
+      O(0.4, [0.02, 0.044, 0], ZT, PINCH, [-PI + 2.75, 5.6, 2.3, S5], [0, 0, 0], null, PIN),
+      O(0.435, [0.02, 0.046, 0], ZT, GOP, [-PI + 2.85, 5.6, 2.3, S5], [0.42, 0, 0], null, PIN),
+      O(0.47, [0.02, 0.044, 0], ZT, GB, [-PI + 2.95, 5.6, 2.3, S5], [0.68, 0, 0], null, PIN),
+      HO(0.53, [0.03, 0.07, 0], WP(0.7, 0.15), GB, 110, 205),
+      HO(0.59, [0.035, 0.09, 0], WP(1.2, 0.3), GB, 150, 202),
+      HO(0.64, [0.035, 0.1, 0], WP(1.5, 0.38), GB, 168, 200),
+      HO(0.7, [0.03, 0.08, 0], mixO(WP(1.0, 0.2), BASE, 0.3), GB, 95, 192),
+      HO(0.75, [0.018, 0.045, 0], mixO(WP(0.5, 0.08), BASE, 0.65), GB, 25, 184),
+      O(0.79, [0.004, 0.01, 0], BASE, GB, [0, P2, 2.3, 0.01], [0, 0, 0], null, PIN),
+      K(0.86, [0, -0.004, 0], [0, 0, -0.03], GBT, [0, P2, 0.6, 0], [0, 0, 0], null, PIN),
+      K(1, null, null, GB, [0, P2, 0, 0], [0, 0, 0], null, PIN)],
+      S: [[0.03, 'bOpen'], [0.16, 'bFlipM'], [0.3, 'bFlipM'], [0.4, 'bTick'], [0.47, 'bGrab'], [0.55, 'bFlipM'], [0.71, 'bFlipM'], [0.79, 'bClack'], [0.87, 'bClick']] },
+    // 휘두르기 0 = 손목을 오른쪽 위로 젖혔다 튕기는 대각선 베기(→ 왼쪽) — 베는 힘에 손잡이 B 가 날 쪽으로 살짝 벌어졌다 '딸깍' 붙음
+    //  휘두르기 1 = 이어서: 왼쪽 아래에서 손목을 뒤집으며 오른쪽 위로 걷어 올리는 역베기 — B 가 다시 살짝 벌어졌다 붙음
     attack: [
       { roll: 0.03, kick: 1, K: [K(0),
         O(0.17, [0.045, 0.05, -0.02], B_CK),
@@ -27428,14 +27520,15 @@ const KAnim = (() => {
       { roll: -0.028, kick: -1, K: [K(0),
         O(0.18, [-0.035, -0.01, 0], [[-0.85, -0.2, 0.48], [-0.45, 0.6, 0.65]]),
         O(0.24, [-0.04, -0.014, 0.01], [[-0.85, -0.22, 0.47], [-0.45, 0.6, 0.65]]),
-        O(0.285, [-0.025, -0.008, 0.06], [[-0.68, 0.28, 0.68], [-0.55, 0.05, 0.83]], null, [0, 0.1, 0, 0]),
-        O(0.33, [0, 0, 0.1], [[-0.3, 0.75, 0.6], [-0.6, -0.55, 0.55]], null, [0, 0.2, 0, 0]),
-        O(0.43, [0.05, 0.06, 0.07], [[0.45, 0.8, 0.4], [-0.6, 0.0, 0.8]], null, [0, 0.36, 0, 0]),
-        O(0.56, [0.04, 0.045, 0.04], [[0.3, 0.88, 0.35], [-0.6, -0.2, 0.78]], null, [0, 0.05, 0, 0]),
+        O(0.285, [-0.025, -0.008, 0.06], [[-0.68, 0.28, 0.68], [-0.55, 0.05, 0.83]], null, [0, -0.1, 0, 0]),
+        O(0.33, [0, 0, 0.1], [[-0.3, 0.75, 0.6], [-0.6, -0.55, 0.55]], null, [0, -0.2, 0, 0]),
+        O(0.43, [0.05, 0.06, 0.07], [[0.45, 0.8, 0.4], [-0.6, 0.0, 0.8]], null, [0, -0.36, 0, 0]),
+        O(0.56, [0.04, 0.045, 0.04], [[0.3, 0.88, 0.35], [-0.6, -0.2, 0.78]], null, [0, -0.05, 0, 0]),
         K(0.7, [0.015, 0.015, 0.01], null, null, [0, 0, 0, 0]), K(1)], S: [[0.58, 'bClack']] },
     ],
     inspect: [
-      // 살펴보기 1 — 멀티 플립: 손목을 눕혀 핀이 위를 보게 하고 가로로 닫음 → 비스듬히 세워 대각선으로 펼침 → 오른쪽으로 세워 B 만 들어 올렸다 내림(채플린) → 잠금
+      // 살펴보기 1 — 멀티 플립: 손목을 눕혀 핀이 위를 보게 하고 가로로 닫음 → 비스듬히 세워 대각선으로 펼침(닫은 길을 되돌아) →
+      //  오른쪽으로 세워 B 만 들어 올렸다 내림(채플린 — B 가 날을 덮으며 T 자를 지나 위로) → 잠금
       { dur: 1.9, K: [K(0),
         K(0.05, null, [0, -0.08, 0.08], GBT, [0, 0, 0.5, 0.005]),
         O(0.1, [0, 0.03, 0], B_SHOW, GBT, [0, 0, 2.3, 0.02]),
@@ -27445,63 +27538,69 @@ const KAnim = (() => {
         O(0.31, [0, 0.075, 0], B_H, GB, [-PI, -P2, 2.3, S5]),
         O(0.36, [0.002, 0.072, 0], B_H2, GB, [-PI, -P2, 2.3, S5]),
         O(0.43, [0, 0.03, 0], B_D, GB, [-PI, -P2, 2.3, S5]),
-        O(0.46, [0.004, 0.025, 0], B_D, GB, [-PI * 1.1, -P2 - 0.5, 2.3, S5]),
-        O(0.52, [-0.006, 0.027, 0], B_D, GBL, [-PI * 1.6, -PI * 3.1, 2.3, S5]),
-        O(0.57, [0, 0.025, 0], B_D, GB, [-P2, -2 * P2, 2.3, S5]),
-        O(0.62, [0, 0.022, 0], B_D, GB, [-P2, -2 * P2, 2.3, S5]),
-        O(0.68, [0.01, 0.01, 0], B_UR, GB, [-P2, -2 * P2, 2.3, S5]),
-        O(0.74, [0.012, 0.012, 0], B_UR, GBL, [-P2, -2 * P2 - PI * 0.95, 2.3, S5]),
-        O(0.78, [0.012, 0.012, 0], B_UR, GBL, [-P2, -2 * P2 - PI, 2.3, S5]),
-        O(0.85, [0.008, 0.008, 0], B_UR, GB, [-P2, -2 * P2, 2.3, S5]),
-        K(0.9, [0, 0, 0], [0, 0, 0.05], GBT, [-P2, -2 * P2, 2.3, 0.01]),
-        K(0.95, null, null, GBT, [-P2, -2 * P2, 0.1, 0]),
-        K(1, null, null, GB, [-P2, -2 * P2, 0, 0])],
+        O(0.46, [0.012, 0.022, 0], B_D, GB, [-PI * 0.9, -P2 + 0.5, 2.3, S5]),
+        O(0.52, [0.008, 0.022, 0], B_D, GBL, [-PI * 0.4, -PI * 0.9, 2.3, S5]),
+        O(0.57, [0, 0.025, 0], B_D, GB, [0, 0, 2.3, S5]),
+        O(0.62, [0, 0.022, 0], B_D, GB, [0, 0, 2.3, S5]),
+        O(0.68, [0.01, 0.01, 0], B_UR, GB, [0, 0, 2.3, S5]),
+        O(0.74, [0.012, 0.012, 0], B_UR, GBL, [0, -PI * 0.95, 2.3, S5]),
+        O(0.78, [0.012, 0.012, 0], B_UR, GBL, [0, -PI, 2.3, S5]),
+        O(0.85, [0.008, 0.008, 0], B_UR, GB, [0, 0, 2.3, S5]),
+        K(0.9, [0, 0, 0], [0, 0, 0.05], GBT, [0, 0, 2.3, 0.01]),
+        K(0.95, null, null, GBT, [0, 0, 0.1, 0]),
+        K(1, null, null, GB, [0, 0, 0, 0])],
         S: [[0.08, 'bOpen'], [0.19, 'bFlipM'], [0.31, 'bClack'], [0.47, 'bFlipM'], [0.57, 'bClack'], [0.7, 'bFlipM'], [0.85, 'bClack'], [0.94, 'bClick']] },
-      // 살펴보기 2 — 스핀: 대각선으로 닫음 → 검지에 걸어 화면과 나란히 한 바퀴 반 빠르게(점점 빨라짐) → 끝이 위로 선 채 멈춤 →
-      //  손목을 비스듬히 기울여 반대로 한 바퀴 반(점점 느려짐) → 받아서 대각선으로 튕겨 펼침 → 잠금
-      { dur: 1.75, K: [K(0),
-        K(0.05, null, [0, -0.06, 0.06], GBT, [0, 0, 2.3, 0.01]),
-        O(0.1, [0, 0.02, 0], B_D, GB, [0, 0, 2.3, S5]),
-        O(0.18, [0, 0.02, 0], B_D, GB, [-PI, -P2, 2.3, S5]),
-        O(0.22, [0, 0.03, 0], B_V, GB, [-PI, -P2, 2.3, S5], null, null, VT),
-        O(0.25, [0, 0.03, 0], B_V, GSP, [-PI, -P2, 2.3, S5], [0, 0.4, 0], null, VT),
-        O(0.33, [0, 0.032, 0], B_V, GSP, [-PI, -P2, 2.3, S5], [0, PI * 1.25, 0], null, VT),
-        O(0.42, [0, 0.03, 0], B_V, GSP, [-PI, -P2, 2.3, S5], [0, PI * 2.6, 0], null, VT),
-        O(0.47, [0, 0.03, 0], B_V, GSP, [-PI, -P2, 2.3, S5], [0, PI * 3, 0], null, VT),
-        O(0.54, [0, 0.032, 0], B_V, GSP, [-PI, -P2, 2.3, S5], [0, PI * 3.02, 0], null, VT),
-        O(0.6, [0, 0.03, 0], B_S2, GSP, [-PI, -P2, 2.3, S5], [0, PI * 2.6, 0], null, VT),
-        O(0.7, [0, 0.03, 0], B_S2, GSP, [-PI, -P2, 2.3, S5], [0, PI * 1.2, 0], null, VT),
-        O(0.79, [0, 0.025, 0], B_S2, GBL, [-PI, -P2, 2.3, S5], [0, 0.15, 0], null, VT),
-        O(0.82, [0, 0.022, 0], B_D, GB, [-PI, -P2, 2.3, S5], [0, 0, 0], null, VT),
-        O(0.84, [0, 0.022, 0], B_D, GB, [-PI, -P2, 2.3, S5]),
-        O(0.91, [-0.004, 0.02, 0], B_D, GB, [-P2, -2 * P2, 2.3, S5]),
-        K(0.95, null, [0, 0, 0.04], GBT, [-P2, -2 * P2, 0.3, 0.005]),
-        K(1, null, null, GB, [-P2, -2 * P2, 0, 0])],
-        S: [[0.05, 'bOpen'], [0.11, 'bFlipM'], [0.18, 'bClack'], [0.26, 'bWhirl'], [0.47, 'bTick'], [0.6, 'bWhirl'], [0.81, 'bClack'], [0.85, 'bFlipM'], [0.91, 'bClack'], [0.95, 'bClick']] },
-      // 살펴보기 3 — 스타일리시(빠름·멈춤을 번갈아): 천천히 기울여 날 옆면을 정면으로(빛) → 휙 세우며 날을 반쯤 접었다 튕겨 폄 → 멈춤 →
-      //  휙 눕히며 손잡이 B 만 튕겨 냈다 '딸깍' → 멈춤 → 대각선으로 한 번에 접고 바로 펼침 → 잠금
+      // 살펴보기 2 — 힐릭스(Helix): 손잡이 B 를 쥐고 A·날을 함께 반 바퀴 튕겨 날을 B 안에 접은 곧은 막대로 →
+      //  ① 엄지 위로 세로로 반 바퀴(Y2K) — A 가 손바닥 쪽으로 넘어와 세 손가락이 잠깐 받음 → 손등이 위로 돌며(엎침) 손이 내려가 칼 면이 손바닥 아래로 눕고
+      //  ② 손바닥 아래에서 검지 끝을 축으로 납작하게 반 바퀴(0g) — 양 끝이 손 양옆으로 휩쓸고 가운데는 손 아래로 → 엄지·검지 고리로 받아 엄지가 다시 위로(뒤침) 손이 올라오며
+      //  ③ 엄지 위로 납작하게 반 바퀴(젠) → 받아서 손목을 꺾으며 B 를 반 바퀴 돌려 A 에 '착' — 날이 앞으로 펴짐 · 같은 쪽으로 계속 돌아 실처럼 손을 위·아래·위로 엮음
+      { dur: 1.9, K: [K(0),
+        K(0.03, null, [0, -0.04, 0.05], GBT, [0, 0, 1.4, 0.01]),
+        O(0.07, [0.02, 0.025, 0], Y0, GB, [0, -1.2, 2.3, S5], [1.2, 0, 0], null, PIN),
+        O(0.11, [0.025, 0.03, 0], Y0, GSP, [0, -PI, 2.3, S5], [PI, 0, 0], null, PIN),
+        BO(0.17, [0.03, 0.04, 0], Y0, GOP, PI + 1.3),
+        BO(0.22, [0.032, 0.042, 0], Y0, GOP, PI + 2.4),
+        BO(0.26, [0.03, 0.04, 0], Y0, GB, P2),
+        BO(0.31, [0.045, 0.06, 0], rotO(Y0, FA, 0.8), GIX, P2, S5, [0.03, 0, 0]),
+        BO(0.36, [0.026, 0.105, 0], UU, GIX, P2, UM, UH),
+        BO(0.42, [0.026, 0.112, 0.005], UU, GIX, P2 + 1.1, UM, UH),
+        BO(0.47, [0.026, 0.112, 0.008], UU, GIX, P2 + 2.3, UM, UH),
+        BO(0.52, [0.026, 0.105, 0.005], UU, GRG, 3 * PI, UM, UH),
+        BO(0.57, [0.022, 0.08, 0], rotO(UU, FA, -0.8), GRG, 3 * PI, S5, [0.03, 0, 0]),
+        BO(0.62, [0.02, 0.065, 0], ZH, PINCH, 3 * PI),
+        BO(0.67, [0.02, 0.068, 0], ZH, GOP, 3 * PI + 1.2),
+        BO(0.72, [0.02, 0.066, 0], ZH, GOP, 3 * PI + 2.4),
+        BO(0.76, [0.02, 0.06, 0], ZH, GB, 4 * PI),
+        O(0.82, [0.026, 0.05, 0], W1, GB, [0, -PI + 1.4, 2.3, S5], [4 * PI, 0, 0], null, PIN),
+        O(0.87, [0.012, 0.03, 0], B_SHOW2, GB, [0, -0.15, 2.3, 0.02], [4 * PI, 0, 0], null, PIN),
+        O(0.89, [0.008, 0.024, 0], B_SHOW2, GB, [0, 0, 2.3, 0.015], [4 * PI, 0, 0], null, PIN),
+        K(0.94, [0, 0.004, 0], [0, 0, -0.02], GBT, [0, 0, 0.3, 0], [4 * PI, 0, 0], null, PIN),
+        K(1, null, null, GB, [0, 0, 0, 0], [4 * PI, 0, 0], null, PIN)],
+        S: [[0.02, 'bOpen'], [0.06, 'bFlipM'], [0.14, 'bFlipM'], [0.26, 'bGrab'], [0.38, 'bWhirl'], [0.52, 'bTick'], [0.64, 'bFlipM'], [0.76, 'bGrab'], [0.83, 'bFlipM'], [0.89, 'bClack'], [0.95, 'bClick']] },
+      // 살펴보기 3 — 스타일리시(빠름·멈춤을 번갈아): 천천히 기울여 날 옆면을 정면으로(빛) → 휙 세우며 B 를 튕겨 날을 반쯤 접었다 되튕겨 폄 → 멈춤 →
+      //  휙 눕히며 손잡이 B 만 튕겨 냈다 '딸깍' → 멈춤 → 손목을 칼 길이 축으로 굴려(접히는 날이 손가락 위를 지나지 않게) 대각선으로 접고, 접은 길을 되돌아 바로 펼침 → 잠금
       { dur: 1.65, gl: [[0.12, 0.27]], K: [K(0),
         K(0.05, null, [0, -0.04, 0.04], GBT, [0, 0, 1.2, 0.005]),
         O(0.13, [0, 0.008, 0], B_SB, GB, [0, 0, 2.3, 0.01]),
         O(0.25, [0, 0.01, 0], B_SB2, GB, [0, 0, 2.3, 0.01]),
-        O(0.29, [0.008, 0.018, 0], B_UR, GB, [-PI * 0.55, 0, 2.3, 0.02]),
-        O(0.33, [0.01, 0.02, 0], B_UR, GB, [0.05, 0, 2.3, 0.02]),
+        O(0.29, [0.008, 0.018, 0], B_UR, GBL, [-PI * 0.55, -PI * 1.1, 2.3, 0.02]),
+        O(0.33, [0.01, 0.02, 0], B_UR, GB, [0, -0.08, 2.3, 0.02]),
         O(0.36, [0.01, 0.02, 0], B_UR, GB, [0, 0, 2.3, 0.02]),
         O(0.45, [0.008, 0.018, 0], B_UR2, GB, [0, 0, 2.3, 0.02]),
         O(0.5, [0, 0.07, 0], B_H, GB, [0, -PI * 0.62, 2.3, S5]),
-        O(0.55, [0, 0.07, 0], B_H, GB, [0, 0.04, 2.3, S5]),
+        O(0.55, [0, 0.07, 0], B_H, GB, [0, -0.04, 2.3, S5]),
         O(0.57, [0, 0.07, 0], B_H, GB, [0, 0, 2.3, S5]),
-        O(0.65, [0.002, 0.066, 0], B_H2, GB, [0, 0, 2.3, S5]),
-        O(0.7, [0, 0.03, 0], B_D, GBL, [-PI * 0.7, -PI * 1.3, 2.3, S5]),
-        O(0.73, [0, 0.025, 0], B_D, GB, [-PI, -P2, 2.3, S5]),
-        O(0.79, [0, 0.015, 0], B_SHOW2, GBL, [-PI * 1.65, -PI * 3.3, 2.3, S5]),
-        O(0.83, [0, 0.008, 0], B_SHOW2, GB, [-P2, -2 * P2, 2.3, S5]),
-        K(0.88, null, [0, 0, 0.06], GBT, [-P2, -2 * P2, 2.3, 0.01]),
-        K(0.93, null, [0, 0, -0.01], GBT, [-P2, -2 * P2, 0.2, 0]),
-        K(1, null, null, GB, [-P2, -2 * P2, 0, 0])],
+        O(0.65, [0.012, 0.06, 0], B_H2, GB, [0, 0, 2.3, S5]),
+        O(0.7, [0.02, 0.02, 0], B_DF, GBL, [-PI * 0.7, -PI * 1.3, 2.3, S5]),
+        O(0.73, [0.016, 0.018, 0], B_DF, GB, [-PI, -P2, 2.3, S5]),
+        O(0.79, [0, 0.015, 0], B_SHOW2, GBL, [-PI * 0.35, -PI * 0.7, 2.3, S5]),
+        O(0.83, [0, 0.008, 0], B_SHOW2, GB, [0, 0, 2.3, S5]),
+        K(0.88, null, [0, 0, 0.06], GBT, [0, 0, 2.3, 0.01]),
+        K(0.93, null, [0, 0, -0.01], GBT, [0, 0, 0.2, 0]),
+        K(1, null, null, GB, [0, 0, 0, 0])],
         S: [[0.05, 'bOpen'], [0.27, 'bFlipM'], [0.33, 'bClack'], [0.47, 'bFlipM'], [0.55, 'bClack'], [0.67, 'bFlipM'], [0.73, 'bClack'], [0.76, 'bFlipM'], [0.83, 'bClack'], [0.92, 'bClick']] },
       // 살펴보기 4 — 프리미엄(공중 던지기): 대각선으로 닫음 → 살짝 내렸다 위로 던짐(손가락을 폄 · 공중에서 한 바퀴 넘어감) →
-      //  받는 순간 날을 튕겨 펼침 → 손목을 천천히 돌려 빛이 날을 따라 흐르게 하고 두 번 멈춤 → 짧게 튕겨 마무리
+      //  받는 순간 닫은 길을 되돌아 날을 튕겨 펼침 → 손목을 천천히 돌려 빛이 날을 따라 흐르게 하고 두 번 멈춤 → 짧게 튕겨 마무리
       { dur: 2.0, gl: [[0.6, 0.7], [0.74, 0.84]], K: [K(0),
         K(0.04, null, [0, -0.06, 0.06], GBT, [0, 0, 2.3, 0.01]),
         O(0.09, [0, 0.015, 0], B_D, GB, [0, 0, 2.3, S5]),
@@ -27512,25 +27611,27 @@ const KAnim = (() => {
         O(0.38, [0, 0.02, 0.005], B_V, GOP, [-PI, -P2, 2.3, S5], [-PI * 1.1, 0, 0], [0, 0, 0.11], [0, 0, -0.006]),
         O(0.47, [0, 0.015, 0], B_V, GOP, [-PI, -P2, 2.3, S5], [-PI * 1.75, 0, 0], [0, 0, 0.05], [0, 0, -0.006]),
         O(0.51, [0, -0.008, 0], B_V, GB, [-PI, -P2, 2.3, S5], [-P2, 0, 0], [0, 0, 0], [0, 0, -0.006]),
-        O(0.535, [0, -0.012, 0], B_D, GB, [-PI * 1.5, -P2 - PI, 2.3, S5], [-P2, 0, 0]),
-        O(0.57, [0, 0.008, 0], B_SHOW2, GB, [-P2, -2 * P2, 2.3, S5], [-P2, 0, 0]),
-        O(0.66, [0, 0.01, 0], B_SHOW, GB, [-P2, -2 * P2, 2.3, 0.01], [-P2, 0, 0]),
-        O(0.71, [0, 0.01, 0], [[-0.42, 0.78, 0.46], [-0.7, -0.5, 0.5]], GB, [-P2, -2 * P2, 2.3, 0.005], [-P2, 0, 0]),
-        O(0.78, [0, 0.01, 0], [[-0.4, 0.8, 0.45], [-0.72, -0.48, 0.5]], GB, [-P2, -2 * P2, 2.3, 0], [-P2, 0, 0]),
-        O(0.84, [0, 0.008, 0], B_SHOW2, GB, [-P2, -2 * P2, 2.3, 0], [-P2, 0, 0]),
-        K(0.89, [0, 0.004, 0], [0, 0, -0.34], GBT, [-P2, -2 * P2, 2.3, 0], [-P2, 0, 0]),
-        K(0.93, null, [0, 0, 0.1], GBT, [-P2, -2 * P2, 0.4, 0], [-P2, 0, 0]),
-        K(1, null, null, GB, [-P2, -2 * P2, 0, 0], [-P2, 0, 0])],
+        O(0.535, [0, -0.012, 0], B_D, GB, [-PI * 0.5, -PI, 2.3, S5], [-P2, 0, 0]),
+        O(0.57, [0, 0.008, 0], B_SHOW2, GB, [0, 0, 2.3, S5], [-P2, 0, 0]),
+        O(0.66, [0, 0.01, 0], B_SHOW, GB, [0, 0, 2.3, 0.01], [-P2, 0, 0]),
+        O(0.71, [0, 0.01, 0], [[-0.42, 0.78, 0.46], [-0.7, -0.5, 0.5]], GB, [0, 0, 2.3, 0.005], [-P2, 0, 0]),
+        O(0.78, [0, 0.01, 0], [[-0.4, 0.8, 0.45], [-0.72, -0.48, 0.5]], GB, [0, 0, 2.3, 0], [-P2, 0, 0]),
+        O(0.84, [0, 0.008, 0], B_SHOW2, GB, [0, 0, 2.3, 0], [-P2, 0, 0]),
+        K(0.89, [0, 0.004, 0], [0, 0, -0.34], GBT, [0, 0, 2.3, 0], [-P2, 0, 0]),
+        K(0.93, null, [0, 0, 0.1], GBT, [0, 0, 0.4, 0], [-P2, 0, 0]),
+        K(1, null, null, GB, [0, 0, 0, 0], [-P2, 0, 0])],
         S: [[0.04, 'bOpen'], [0.1, 'bFlipM'], [0.17, 'bClack'], [0.28, 'bWhirl'], [0.51, 'bClack'], [0.535, 'bFlipM'], [0.57, 'bClack'], [0.71, 'bTick'], [0.93, 'bClick']] },
     ],
-    // 넣기: 날을 접으며 손이 화면 아래로
-    unequip: { dur: 0.2, K: [K(0), K(0.55, [0.015, -0.065, -0.015], [0.16, 0, 0.08], GB, [-PI * 0.9, 0, 0, 0.02]), K(1, [0.05, -0.3, -0.05], [0.4, 0, 0.25], GB, [-PI, 0, 0, S5])], S: [[0.45, 'bClack']] },
+    // 넣기: 날을 접으며(B 가 한 바퀴 따라 돎) 손이 화면 아래로
+    unequip: { dur: 0.2, K: [K(0), K(0.55, [0.015, -0.065, -0.015], [0.16, 0, 0.08], GB, [-PI * 0.9, -PI * 1.8, 0, 0.02]), K(1, [0.05, -0.3, -0.05], [0.4, 0, 0.25], GB, [-PI, -P2, 0, S5])], S: [[0.45, 'bClack']] },
     // 손장난 소리 + 휘두르는 소리(Audio.knife 의 bOpen·bClack·bClick·bTick·bSwing) — 돌릴 때는 쇳소리가 살짝 섞이게:
     //  bFlipM = 손잡이가 핀을 돌아 넘어가는 가벼운 바람 + 아노다이징 금속이 스치는 높은 '칭' · bWhirl = 검지에 걸어 돌리는 바람 세 번 + 돌 때마다 작은 '팅'
+    //  bGrab = 굴러 넘어온 손잡이를 손가락으로 낚아채는 짧은 '탁' + 가는 쇳소리
     snd: {
       bFlipM: [0.22, [['s', 0, 0.12, 1.2, 1700, 3800, 5600, 0.22, 0.55], ['r', 0.04, 6900, 0.13, 0.034, 1.43], ['r', 0.075, 5300, 0.1, 0.018, 1.52]]],
       bWhirl: [0.38, [['s', 0, 0.12, 1.6, 1400, 3200, 2000, 0.16, 0.5], ['s', 0.12, 0.12, 1.6, 1500, 3400, 2100, 0.18, 0.5], ['s', 0.24, 0.12, 1.6, 1400, 3000, 1900, 0.13, 0.5],
         ['r', 0.04, 6400, 0.09, 0.03, 1.47], ['r', 0.16, 6900, 0.09, 0.032, 1.43], ['r', 0.28, 6200, 0.1, 0.026, 1.5]]],
+      bGrab: [0.14, [['n', 0, 0.05, 'lowpass', 900, 0.8, 0.28], ['t', 0, 0.06, 'sine', 180, 110, 0.12], ['r', 0.008, 5200, 0.08, 0.018, 1.5]]],
     },
     swing: 'bSwing',
   });
@@ -27539,7 +27640,15 @@ const KAnim = (() => {
   //  부품 [검지(고리) 둘레 회전 θ] — 0 = 거꾸로 쥠(날이 새끼손가락 아래로 나와 왼쪽 앞으로 휨), π = 바로 쥠(날이 위), 2π 마다 한 바퀴
   //  돌기는 늘 고리를 낀 검지 둘레 — 검지를 앞으로 펴면 화면과 나란한 면에서(시계 바늘처럼), 손을 기울이면 비스듬한 면에서 돈다
   //  나비 나이프와 겹치지 않게: 펼치는 부품이 없고, 휜 날·고리가 보이는 각도와 검지 돌기·흔들기로 보여 준다
-  const GK = [1.75, 1.65, 1.5, 1.38, 0.75], GKS = [1.82, 1.74, 0.12, 0.08, 1.05], GKO = [1.2, 1.05, 0.45, 0.3, 0.6], GKL = [1.4, 1.28, 0.9, 0.75, 0.7];
+  //  달리기·휘두르기는 카람빗 기본 자세: 거꾸로 쥔 채 손등이 위 — 날이 새끼손가락 쪽(오른쪽)으로 납작하게 나와 앞으로 휘고, 오목한 날은 주먹 마디처럼 앞을 봄
+  const GK = [1.75, 1.65, 1.5, 1.38, 0.75], GKS = [1.82, 1.74, 0.12, 0.08, 1.05], GKO = [1.2, 1.05, 0.45, 0.3, 0.6], GKL = [1.4, 1.28, 0.9, 0.75, 0.7], GKT = [1.84, 1.74, 1.56, 1.44, 0.9];
+  // 손등이 위인 주먹 [엄지 쪽, 주먹 마디 쪽]: 엄지 왼쪽 · 마디 앞에서 rl(엄지 쪽이 들림) → pt(마디가 위로) → yw(마디가 오른쪽으로 — − 면 손목을 엄지 쪽으로 꺾어 날이 앞으로) 순서로 돌림
+  const PD = (yw, pt = 0, rl = 0) => {
+    const cy = Math.cos(yw), sy = Math.sin(yw), cp = Math.cos(pt), sp = Math.sin(pt), sr = Math.sin(rl);
+    const Y = (x, y, z) => [x * cy + z * sy, y, -x * sy + z * cy];
+    return [Y(-Math.cos(rl), sr * cp, -sr * sp), Y(0, sp, cp)];
+  };
+  const KTH = 0.15;   // 손등 위 자세의 고리 둘레 각: 날 뿌리가 팔꿈치 쪽으로 조금(손잡이가 손바닥에 비스듬히)
   const K_B = [[0.62, 0.62, -0.48], [-0.25, 0.75, 0.62]];      // 기본: 날이 왼쪽으로 휘어 갈고리가 보임
   const K_P = [[0.55, 0.65, -0.52], [-0.4, 0.72, 0.57]];       // 옆모습: 휜 날이 화면과 나란히 (빛을 받음)
   const K_P2 = [[0.5, 0.68, -0.53], [-0.45, 0.7, 0.56]];
@@ -27572,26 +27681,45 @@ const KAnim = (() => {
       K(0.78, [0, 0.003, 0], [0, 0, 0.04], GK, [P2 - 0.03]),
       K(1, null, null, GK, [P2])],
       S: [[0.02, 'kDraw'], [0.2, 'kSpinM'], [0.54, 'kCatch']] },
-    // 휘두르기 0 = 갈고리 베기: 오른쪽으로 젖혔다가 휜 날이 앞장서 왼쪽으로 걸어 당김 (가로 호)
-    //  휘두르기 1 = 이어서: 왼쪽 아래에서 손등으로 올려 긋고 → 검지로 한 바퀴 돌려 다시 거꾸로 쥠 (카람빗만의 회수)
+    // 달리기: 손등을 위로 돌려 주먹을 조금 내림 — 날은 오른쪽으로 납작하게 나와 끝이 앞으로 휨 (1인칭: 화면 오른쪽 아래에 주먹과 날이 보이게 ·
+    //  3인칭: 오른 엉덩이 앞 한 뼘, 배 높이 · 아래팔은 앞으로 거의 수평 · 걸음에 맞춰 어깨에서 앞 24° · 뒤 14° 흔듦 — 주먹은 몸 가운데를 넘지 않고 날은 허벅지·몸통 밖)
+    run: { fp: O(0, [-0.07, -0.05, 0.03], PD(0, -0.15), GK, [KTH]), sw: 0.42,
+      tp: [0, -0.2, -0.07, 0.25, 1, 0, 0, 0, -0.1, 1, 0, 0.1, 0, 0, 0.16, -0.12, 0.2, -0.27, -0.35, -0.3] },
+    // 휘두르기 0 = 갈고리 훅 베기(→ 왼쪽): 손등을 위로 돌리며 주먹을 오른쪽 위로 당겨 젖힘(날은 오른쪽 뒤 · 끝은 앞) → 훅 펀치처럼 가슴 높이로 평평하게 왼쪽으로 —
+    //  날은 주먹 오른쪽 뒤에 끌려오며 오목한 날이 긁고, 닿는 순간 손목을 엄지 쪽으로 살짝 꺾어 끝을 박음 → 가운데를 지나 왼쪽까지 → 팔꿈치를 당겨 찢고 제자리
+    //  휘두르기 1 = 이어서: 손등을 위로 돌리며 주먹을 옆구리로 살짝 당겼다가 곧게 내지르는 주먹 지르기(고리가 주먹 마디처럼 앞장서고 휜 끝이 파고듦) →
+    //  짧게 버텼다 손목을 엄지 쪽으로 꺾어 갈고리를 걸고 몸 쪽으로 세게 당겨 찢음 → 제자리 (두 동작 모두 손등은 위 · 날은 오른쪽)
+    //  손등을 위로 돌리는 것(대기 자세에서 약 130°)과 되돌리는 것은 손목을 엎는 길(날이 주먹 아래를 지나 오른쪽으로)을 따라 중간 방향을 두 세 개 둠
     attack: [
-      { roll: 0.04, kick: 1, K: [K(0),
-        O(0.16, [0.06, 0.03, -0.03], [[0.75, 0.55, -0.35], [0.0, 0.8, 0.6]]),
-        O(0.24, [0.065, 0.035, -0.01], [[0.75, 0.55, -0.35], [0.0, 0.8, 0.6]]),
-        O(0.3, [0.01, 0.02, 0.07], [[0.6, 0.7, -0.38], [-0.45, 0.65, 0.62]]),
-        O(0.36, [-0.06, 0, 0.1], [[0.5, 0.75, -0.4], [-0.75, 0.45, 0.48]]),
-        O(0.43, [-0.12, -0.03, 0.07], [[0.45, 0.8, -0.38], [-0.88, 0.25, 0.4]]),
-        O(0.56, [-0.09, -0.035, 0.04], [[0.5, 0.78, -0.4], [-0.75, 0.42, 0.5]]),
-        K(0.7, [-0.03, -0.012, 0.01]), K(1)] },
-      { roll: -0.025, kick: -1, K: [K(0),
-        O(0.18, [-0.03, -0.016, 0.01], [[0.5, 0.75, 0.42], [-0.6, 0.05, 0.8]]),
-        O(0.24, [-0.035, -0.02, 0.02], [[0.5, 0.75, 0.42], [-0.6, 0.05, 0.8]]),
-        O(0.32, [0.01, 0, 0.09], [[0.5, 0.6, -0.62], [-0.45, 0.78, 0.43]]),
-        O(0.43, [0.07, 0.07, 0.06], [[0.55, 0.35, -0.76], [-0.3, 0.92, 0.25]]),
-        O(0.52, [0.06, 0.05, 0.04], K_S, GKS, [0.3]),
-        O(0.72, [0.02, 0.015, 0.01], K_S, GKS, [P2 - 0.3]),
-        O(0.8, [0.005, 0.005, 0], K_B, GKO, [P2 + 0.1]),
-        K(1, null, null, GK, [P2])], S: [[0.53, 'kSpinM'], [0.8, 'kCatch']] },
+      { roll: 0.035, kick: 1, K: [K(0),
+        O(0.05, [0.006, 0.012, 0.004], [[0.024, 0.832, -0.554], [-0.327, 0.53, 0.782]], GK, [0.02]),
+        O(0.1, [0.012, 0.03, 0.01], [[-0.739, 0.607, -0.292], [-0.158, 0.264, 0.951]], GK, [0.04]),
+        O(0.16, [0.015, 0.042, 0.015], PD(0.1, 0.18, 0.15), GK, [0.06]),
+        O(0.23, [0.02, 0.048, 0.012], PD(0.14, 0.2, 0.15), GKT, [0.06]),
+        O(0.29, [-0.005, 0.038, 0.05], PD(0.02, 0.08, 0.05), GKT, [0.1]),
+        O(0.35, [-0.05, 0.028, 0.085], PD(-0.14, 0, 0), GKT, [KTH]),
+        O(0.42, [-0.12, 0.01, 0.065], PD(-0.42, -0.05, -0.04), GKT, [KTH]),
+        O(0.52, [-0.09, -0.01, 0], PD(-0.2, -0.12, 0), GK, [KTH]),
+        O(0.62, [-0.05, -0.008, -0.004], PD(0.05, -0.06, 0.12), GK, [0.1]),
+        O(0.7, [-0.036, -0.006, -0.003], [[-0.741, 0.622, -0.253], [-0.248, 0.096, 0.964]], GK, [0.07]),
+        O(0.78, [-0.022, -0.004, -0.002], [[-0.292, 0.845, -0.447], [-0.383, 0.325, 0.865]], GK, [0.04]),
+        O(0.86, [-0.01, -0.002, -0.001], [[0.239, 0.819, -0.522], [-0.371, 0.574, 0.73]], GK, [0.01]),
+        K(0.93, [-0.003, 0, 0]), K(1)], S: [[0.47, 'kRip']] },
+      { roll: 0, kick: 1, K: [K(0),
+        O(0.05, [0.008, -0.008, -0.006], [[0.001, 0.817, -0.577], [-0.326, 0.545, 0.772]], GK, [0.04]),
+        O(0.1, [0.018, -0.018, -0.014], [[-0.776, 0.547, -0.314], [-0.165, 0.305, 0.938]], GK, [0.1]),
+        O(0.17, [0.025, -0.028, -0.02], PD(0.08, 0.24, 0.06), GK, [KTH]),
+        O(0.24, [0.027, -0.03, -0.024], PD(0.08, 0.26, 0.06), GKT, [KTH]),
+        O(0.3, [0.008, -0.004, 0.06], PD(0.02, 0.08, 0), GKT, [KTH]),
+        O(0.36, [-0.025, 0.018, 0.135], PD(-0.06, -0.06, 0), GKT, [KTH]),
+        O(0.43, [-0.03, 0.012, 0.128], PD(-0.16, -0.12, -0.04), GKT, [KTH]),
+        O(0.47, [-0.022, 0.004, 0.085], PD(-0.3, -0.1, 0), GKT, [KTH]),
+        O(0.54, [0, -0.016, 0.006], PD(-0.42, -0.05, 0.05), GKT, [KTH]),
+        O(0.62, [0.01, -0.018, -0.008], PD(-0.18, -0.02, 0.12), GK, [0.1]),
+        O(0.69, [0.008, -0.014, -0.009], [[-0.689, 0.594, -0.415], [-0.397, 0.169, 0.902]], GK, [0.07]),
+        O(0.77, [0.005, -0.009, -0.006], [[-0.246, 0.808, -0.535], [-0.459, 0.389, 0.799]], GK, [0.04]),
+        O(0.85, [0.003, -0.004, -0.003], [[0.259, 0.795, -0.549], [-0.392, 0.606, 0.692]], GK, [0.01]),
+        K(0.93, [0.001, -0.001, 0]), K(1)], S: [[0.46, 'kRip']] },
     ],
     inspect: [
       // 살펴보기 1 — 플로우: 옆모습으로 돌려 휜 날에 빛 → 손목을 안으로 굽혀 날이 아래로 흐름 → 젖혀 날 끝이 위로(갈고리 안쪽) → 제자리 (끊김 없이 흐르고 사이사이 짧게 멈춤)
@@ -27648,10 +27776,11 @@ const KAnim = (() => {
         S: [[0.13, 'kTick'], [0.28, 'kTick'], [0.52, 'kSpinM'], [0.66, 'kSpinM'], [0.8, 'kCatch']] },
     ],
     unequip: { dur: 0.2, K: [K(0), O(0.5, [0.03, -0.065, -0.015], K_S, GKS, [-PI]), O(1, [0.07, -0.3, -0.06], K_B, GK, [-P2])], S: [[0.1, 'kSpinM']] },
-    // 돌릴 때 쇳소리: kSpinM = 휘익 세 번(칼날이 스치듯) + 돌 때마다 낮고 어두운 '팅'
+    // 돌릴 때 쇳소리: kSpinM = 휘익 세 번(칼날이 스치듯) + 돌 때마다 낮고 어두운 '팅' · kRip = 휘두른 뒤 갈고리를 당겨 찢는 짧은 '츠악'(내려가는 바람 + 긁힘 + 희미한 쇳소리)
     snd: {
       kSpinM: [0.38, [['s', 0, 0.1, 1.2, 700, 1500, 760, 0.19, 0.5], ['s', 0.1, 0.1, 1.2, 720, 1550, 760, 0.25, 0.5], ['s', 0.2, 0.1, 1.2, 700, 1450, 740, 0.17, 0.5],
         ['r', 0.05, 3100, 0.12, 0.03, 1.63], ['r', 0.15, 3400, 0.12, 0.032, 1.6], ['r', 0.25, 2900, 0.13, 0.026, 1.66]]],
+      kRip: [0.18, [['s', 0, 0.13, 1.6, 1500, 1100, 700, 0.28, 0.25], ['n', 0.015, 0.06, 'bandpass', 2400, 1.8, 0.15], ['r', 0.03, 3050, 0.1, 0.02, 1.62]]],
     },
     swing: 'kSwing',
   });
@@ -29074,6 +29203,18 @@ const App = (() => {
 //  · 마지막으로 본 항목(store 'clSeen')보다 새 항목이 있으면 메뉴 버튼에 빨간 점
 // ============================================================
 const CHANGELOG = [
+  { v: 'v23', d: '2026-11-25', t: '나비 나이프 — 꺼낼 때 젠 롤오버 · 살펴보기 힐릭스 · 여닫을 때 날이 손잡이를 뚫던 문제 / 카람빗 — 달리기·휘두르기 손등 위 자세', items: [
+    '나비 나이프를 꺼낼 때 고급 기술 「젠 롤오버」 — 세이프 손잡이를 옆으로 쥐고 바이트 손잡이를 엄지 끝 둘레로 납작하게 돌려 날을 거의 다 끌어내고, 늦게 놓아 짧게 굴린 뒤 바이트 손잡이를 받아 손목을 숙여 돌리며 세이프 손잡이를 「착」 닫아 쥠',
+    '살펴보기 중 「스핀(T자 돌리기)」을 고급 기술 「힐릭스」로 바꿈 — 날을 바이트 손잡이 안에 접은 채 엄지 위로 세로 반 바퀴 → 손바닥 아래에서 검지로 납작하게 반 바퀴 → 엄지 위로 납작하게 반 바퀴, 손 위 · 아래 · 위로 실처럼 엮은 뒤 펼침 (굴리는 동안 날은 실제 기술처럼 손잡이 안에 접혀 있어 손잡이 구멍으로만 비침)',
+    '예전 스핀 살펴보기에서 거꾸로 돌 때 칼이 화면 쪽을 향해 사라져 보이던 문제는 힐릭스로 바뀌며 없어짐',
+    '여닫기 고침 — 여러 번 뒤집기 · 스타일리시 · 던져 받기 살펴보기와 휘두르기 · 넣기에서 날이 닫힌 뒤 같은 방향으로 계속 돌아 손잡이를 뚫고 펼쳐지던 것을 접은 길을 되돌아 펼치게 · 날과 두 손잡이가 실제 경첩처럼 0~180° 를 넘지 않음',
+    '스타일리시 살펴보기 — 대각선으로 접을 때 날이 손가락을 쓸고 지나가던 것 · 다시 펼칠 때 손잡이가 손등 위를 지나가던 것 고침',
+    '꺼내기 끝에서 손목이 한 바퀴 되감기며 잔상이 흩어지던 것 · 다시 꺼낼 때 전에 들고 있던 자리에 잔상이 잠깐 떠 있던 것 고침',
+    '카람빗 — 들고 달릴 때 카람빗을 쥐는 기본 자세로: 손등이 위, 날은 새끼손가락 쪽에서 오른쪽으로 납작하게 나와 끝이 앞으로 휨 (3인칭은 오른 엉덩이 앞에서 걸음에 맞춰 팔을 흔들고, 1인칭은 화면 오른쪽 아래에 주먹과 날이 보임)',
+    '카람빗 휘두르기 두 가지를 새로 — 훅 펀치처럼 오른쪽에서 왼쪽으로 평평하게 긁고 갈고리를 박아 당기는 「훅 베기」 · 고리를 주먹 마디처럼 앞세워 곧게 지르고 갈고리를 걸어 몸 쪽으로 찢는 「지르고 당기기」 — 둘 다 손등은 위 · 날은 오른쪽',
+    '카람빗을 들고 달리다 휘두르면 기본 자세를 거치지 않고 곧장 달리는 자세로 이어짐 · 서 있을 때 자세 · 꺼내기 · 살펴보기는 그대로',
+    '맞히는 시간 · 거리 · 피해 · 쿨타임 · 화면 숙임은 그대로 (보이는 동작만 바뀜)',
+  ] },
   { v: 'v23', d: '2026-11-25', t: '쇠지렛대 3인칭 내려치기 — 되돌아올 때 막대 끝이 몸을 뚫고 지나가던 문제', items: [
     '3인칭(다른 사람 화면 · 봇 · 내 3인칭 시점)에서 쇠지렛대로 내려찍은 뒤 막대를 다시 세울 때, 손잡이 뒤로 길게 나온 끝이 배 · 골반 · 오른 허벅지 속으로 지나가던 것을 고침 — 이제 손을 몸 앞에 둔 채 막대를 앞으로 눕혔다가 세워 올린 뒤 손을 당김',
     '쇠지렛대 스킨 4종(소방 도끼 · 대형 렌치 · 전쟁 망치 · 사탕 지팡이)의 휘두르기도 같이 고쳐짐 — 스킨마다 다른 손놀림은 그대로',
