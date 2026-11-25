@@ -10,7 +10,8 @@
 //        손가락 5 (굽힘 — 가운데·약지·새끼 두 마디, 검지 두 마디, 엄지(1 = 주먹처럼 접음, 0 = 폄)),
 //        부품 4 (관절 모델 — 나비 나이프 [날, 손잡이 B, 걸쇠, 손 안에서 앞으로 미끄러진 m] · 카람빗 [검지(고리) 둘레 회전]),
 //        무기 회전 3 (rad · 손 안에서 회전 중심을 축으로 손 로컬 x·y·z — Euler XYZ), 무기 이동 3 (m · 손 안에서 — 던졌다 받기),
-//        회전 중심 3 (모델 좌표 m — 없으면 동작표 pivot, 그것도 없으면 쥔 점), 3인칭 손 기울임 3 (동작표 tt 에서 · 키프레임에는 없음)]
+//        회전 중심 3 (모델 좌표 m — 없으면 동작표 pivot, 그것도 없으면 쥔 점), 3인칭 손 기울임 3 (동작표 tt 에서 · 키프레임에는 없음),
+//        3인칭 손 안 칼 옮김 3 (동작표 to 에서 · 키프레임에는 없음)]
 //    키프레임 사이는 Catmull-Rom (kfSample) · 손 자리·손목은 상태의 amp 로 키우고 줄임
 //  · 상태가 바뀌면 바뀌기 직전 줄을 붙잡아 두고 짧게 섞어 넘어간다(순간이동 없음) · 부품·무기 회전은 2π 를 더하고 빼 새 상태와 가까운 쪽에서 섞음
 //  · 맞히는 시간·거리·피해·쿨타임·꺼내는 시간은 기본 무기와 똑같다 — 휘두르기 줄의 u = 휘두른 시간 / 전체 시간,
@@ -28,14 +29,17 @@
 //  · 3인칭 휘두르기(선택 — 동작표 attack[i].tp): MEL_KF 형식 줄이 있으면 손 자리·허리·왼손·팔꿈치는 그 줄로 (없으면 기본 3인칭 찌르기 궤적)
 //  · 3인칭 손 기울임(선택 — 꺼내기·살펴보기·넣기·휘두르기 줄의 tt): [[u0, u1, u2, u3, rx, ry, rz], …] — u0~u1 동안 들어가고 u2~u3 동안 풀리는
 //    가슴 로컬(x 왼쪽, y 위, z 앞) 회전 벡터(축 × 각 rad)로 3인칭 손 방향만 돌림 (손바닥 자리·1인칭은 그대로) — 1인칭 손목 각을 가슴 앞으로 그대로 옮기면
-//    돌리는 면이 팔뚝을 가로지르거나 가슴 앞에 선 원판으로 보이는 구간을 3인칭에서만 눕힘 · 줄의 끝 3칸(ITT)이라 상태가 바뀌면 섞여 풀림(끊겨도 튀지 않음 ·
-//    섞는 시간이 짧아도 이 칸만은 0.15초(TTB) 이상 — 휘두르기로 끊어도 눕힌 손이 2 프레임 만에 세워지지 않음)
+//    돌리는 면이 팔뚝을 가로지르거나 가슴 앞에 선 원판으로 보이는 구간을 3인칭에서만 눕힘 · 줄의 칸(ITT)이라 상태가 바뀌면 섞여 풀림(끊겨도 튀지 않음 ·
+//    섞는 시간이 짧아도 이 칸만은 0.15초(TTB) 이상 — 휘두르기로 끊어도 눕힌 손이 2 프레임 만에 세워지지 않음) · u0 < u1 ≤ u2 < u3 (같으면 아주 짧은 구간으로 봄)
+//  · 3인칭 손 안 칼 옮김(선택 — 같은 줄들의 to): [[u0, u1, u2, u3, x, y, z], …] — tt 와 같은 창으로 3인칭에서만 손에 든 칼을 손 로컬(무기 이동과 같은 축 · m)로 옮김
+//    (1인칭 손 모양에 맞춘 쥠이 3인칭 손·손목 모양과 달라 돌아가는 손잡이가 손목·손바닥 밑동을 뚫는 몇 프레임만 칼을 손바닥에서 띄움) · 줄의 칸(ITO) · 섞기는 tt 와 같음
+//  · 공중 구간(선택 — 살펴보기·꺼내기 줄의 air: [u0, u1] · 나비 나이프): 칼이 손을 떠나 공중에 있는 구간 — 그 사이 끊기면 칼을 먼저 손에 받고 나서 부품을 돌림(balX)
 //  · 달리며 꺼내기(동작표에 달리기 자세가 없는 스킨): 꺼내는 동안은 끝무렵(u 0.8~1)에야 기본처럼 손을 내림 — 달리며 꺼내도 꺼내는 동작이 서 있을 때처럼 다 보이고
 //    다 꺼낼 무렵 달리기 자세로 내려감 (내리는 비율 ka.rq 는 상태가 바뀔 때 부드럽게 따라감 · 꺼내다 휘두르면 휘두르는 동안 그대로)
 //  · 나비 나이프 끊김 섞기(enter → balFrom · balX, tick → balRow · balSnd): 경첩을 지키는 2π 배수 · 섞는 시간 · 손가락을 놓았다 쥠 · 소리 · 닫힌 칼 넣기 — balX 위 설명
 // ============================================================
 const KAnim = (() => {
-  const PI = Math.PI, P2 = PI * 2, NV = 27, IR = 3, IF = 6, IP = 11, IW = 15, IT = 18, IV = 21, ITT = 24;
+  const PI = Math.PI, P2 = PI * 2, NV = 30, IR = 3, IF = 6, IP = 11, IW = 15, IT = 18, IV = 21, ITT = 24, ITO = 27;
   const SPIN = [11, 12, 13, 14, 15, 16, 17];   // 2π 맞춤 채널 (부품 · 무기 회전)
   const F_GRIP = [1.72, 1.62, 1.58, 1.42, 1.0];   // 기본 쥠 (엄지 1 = 주먹처럼 접음)
   const SPEC = {};   // 모양 id → 동작표 (def 로 등록)
@@ -77,7 +81,7 @@ const KAnim = (() => {
   };
   // 동작표 등록 (09_player_mskin_<무기>.js):
   //  def(모양 id, { base: { h, b, e, f }(1인칭 기본 손 자리·날 방향·때리는 쪽·쥠 — 없으면 무기 기본), pivot: [x, y, z](무기 회전 중심, 모델 좌표 m),
-  //    idle: { amp, speed, part(부품 0 흔들림), fid: [손장난 줄들 — 더하는 값], every: [최소, 최대 초] }, equip, unequip: { dur, speed, amp, K, S, tt(3인칭 손 기울임 — 머리말 · 살펴보기·휘두르기 줄도) },
+  //    idle: { amp, speed, part(부품 0 흔들림), fid: [손장난 줄들 — 더하는 값], every: [최소, 최대 초] }, equip, unequip: { dur, speed, amp, K, S, tt(3인칭 손 기울임)·to(3인칭 손 안 칼 옮김)·air(공중 구간) — 머리말 · 살펴보기·휘두르기 줄도 },
   //    attack: [{ K, S, roll(옆 기울임 rad), kick(맞힘 흔들림 방향 ±1), tp(선택 — 3인칭 줄 MEL_KF 형식 [u, 19개] · 가슴 로컬 · 손 방향 칸은 쓰지 않음),
   //             run(선택 — 달리며 휘두를 때의 1인칭 줄 K·KO: 처음·끝은 run.fp 와 같은 줄 · 3인칭 손 방향도 이 줄을 따름) } …](u = 휘두른 시간 비율),
   //    inspect: [{ dur, speed, amp, K, S, gl: [[u0, u1] …](날을 따라 빛이 반짝 지나감) } …],
@@ -159,13 +163,21 @@ const KAnim = (() => {
   // 새 상태로: 지금 줄(처음이면 기본 자세 · low 면 화면 아래)을 붙잡아 bd 초 동안 섞는다
   function enter(ka, st, bd, low) {
     const S = SPEC[ka.kind], pst = ka.st;
+    //  나비 나이프: 줄의 공중 구간(air)에서 끊겼나 — 끊기기 직전 줄(ka.u0)이 그 안이고 칼이 손에서 BAL.ad 넘게 떠 있으면 · 그때 손 안 회전 w 가 돌던 쪽(ka.as) (balX)
+    let air = 0;
+    if (S.bal && pst && pst !== 'idle' && pst !== 'attack' && !low) {
+      const ot = trackOf(ka, pst);
+      if (ot && ot.air && ka.u0 >= ot.air[0] && ka.u0 <= ot.air[1] && Math.hypot(ka.row[IT], ka.row[IT + 1], ka.row[IT + 2]) > BAL.ad) { air = 1; kfSample(ot.R, Math.min(1, ka.u0 + 0.02), _bk); ka.as = _bk[IW] >= ka.row[IW] ? 1 : -1; }
+      //  휘두르기는 1인칭으로 그릴 때만 — 3인칭 휘두르는 몸 자세에선 받은 뒤 한 바퀴 도는 B 끝(걸쇠)이 오른 팔뚝을 한 프레임 뚫어 다른 사람·3인칭은 예전처럼 받으며 펼침
+      if (st === 'attack' && !ka.fp) air = 0;
+    }
     //  달리며 휘두르던 중(attack[i].run 줄)에 다른 상태로(넣기 등): 그 순간의 run 줄을 붙잡아 0.1초 동안 run.fp 로 옮겨 감 — 주먹이 한 프레임에 달리기 자리로 튀지 않게 (runRow)
     if (S.run && ka.st === 'attack' && ka.sw && st !== 'attack') { const a = trackOf(ka, 'attack'); if (a && a.rr) { kfSample(a.rr, clamp(ka.sw.t / ka.sw.total, 0, 1), ka.rf || (ka.rf = new Array(NV).fill(0))); ka.rft = 0; } }
     if (!ka.st || low) { for (let i = 0; i < NV; i++) ka.from[i] = S.rest[i + 1]; if (low) ka.from[1] -= 0.42; }
     else for (let i = 0; i < NV; i++) ka.from[i] = ka.row[i];
     // 손장난 중이었거나 손장난 시간이 다 됐으면 다음 손장난까지 시간을 새로 (휘두르기·살펴보기가 끝나자마자 손장난이 붙지 않게)
     if (ka.fi >= 0 || ka.fn <= 0) { const ev = S.idle.every || [4, 8]; ka.fn = ev[0] + Math.random() * (ev[1] - ev[0]); }
-    ka.st = st; ka.t = 0; ka.bt = 0; ka.bd = bd; ka.u0 = -1; ka.fi = -1; ka.bs = 0; ka.bc = 0; ka.bk = 0; ka.qs = 0;
+    ka.st = st; ka.t = 0; ka.bt = 0; ka.bd = bd; ka.u0 = -1; ka.fi = -1; ka.bs = 0; ka.bc = 0; ka.bk = 0; ka.qs = 0; ka.ba = 0; ka.bg = 0; ka.br = 0;
     const t = trackOf(ka, st), r0 = t ? t.R[0] : S.rest;
     for (const i of SPIN) ka.from[i] += P2 * Math.round((r0[i + 1] - ka.from[i]) / P2);
     //  손목 각도 2π 맞춤 (바로 앞 동작이 손목을 크게 돌려 2π 근처로 끝났어도 새 동작으로 섞일 때 한 바퀴 거꾸로 감지 않게 — 같은 자세)
@@ -176,12 +188,62 @@ const KAnim = (() => {
     //   B 가 4 프레임 만에 한 바퀴(프레임마다 2.1 rad) 돌던 것을 6 프레임에(1.5 rad) (휘두르는 줄은 그대로 — 젖히기가 한 프레임 늦게 다 닿을 뿐 베는 구간부터 같음 ·
     //   펼친 칼·B 를 쥔 꺼내기 자세는 그대로 0.07초)
     //   넣는 도중 다시 꺼내 한 부품이 3 rad 넘게 돌아야 하면 0.12초 — 반쯤 접힌 칼이 젠 롤오버 첫 자세(닫힘)로 4 프레임 만에 B 를 한 바퀴 휘돌리던 것(프레임마다 1.9 rad)을 7 프레임에
+    //   공중에 던진 칼을 휘두르기로 끊으면 BAL.ab 초 — 먼저 받고 나서 펼치므로(balX) B 가 한 바퀴 도는 몫이 남게
+    //  그다음 굴린 막대·막대 넣기는 섞는 길을 화면에서 보고 고름(balPick)
     if (S.bal) {
       const o0 = ka.from[IP], o1 = ka.from[IP + 1], o2 = ka.from[IW], d0 = balFrom(ka, S, st, t, bd);
-      const nb = st === 'unequip' && t && d0 > 0.8 ? (t.dur || 0.2) / (t.speed || 1) : st === 'attack' && _bM > 3 && bd < 0.1 ? 0.1 : st === 'equip' && pst === 'unequip' && _bM > 3 && bd < 0.12 ? 0.12 : 0;
+      const nb = st === 'unequip' && t && d0 > 0.8 ? (t.dur || 0.2) / (t.speed || 1) : st === 'attack' && air && bd < BAL.ab ? BAL.ab : st === 'attack' && _bM > 3 && bd < 0.1 ? 0.1 : st === 'equip' && pst === 'unequip' && _bM > 3 && bd < 0.12 ? 0.12 : 0;
       if (nb) { ka.bd = nb; ka.from[IP] = o0; ka.from[IP + 1] = o1; ka.from[IW] = o2; if (balFrom(ka, S, st, t, nb) < 0) { ka.bd = bd; balFrom(ka, S, st, t, bd); } }
-      balX(ka, st, t, pst);
+      const bM = _bM;
+      balPick(ka, S, st, t, ka.bd);
+      balX(ka, st, t, pst, air, bM);
     }
+  }
+  // 끊김 섞기의 길 고르기 (enter · balFrom 다음) — 나비 나이프 막대(힐릭스)에서 끊길 때 굴림 칸(무기 회전 z — 칼 길이 축)을 어느 쪽으로 풀까:
+  //  · 막대를 굴린 자세(0g·젠 — |굴림| > 0.3)는 굴러 온 쪽(가까운 2π)·되돌아가는 쪽 두 길 (휘두르기는 1인칭으로 그릴 때만 — 3인칭 휘두르는 몸 자세에선 되돌아가는 길의
+  //    걸쇠가 한 프레임 가슴을 뚫어 다른 사람·3인칭은 기본 길)
+  //  · 굴리지 않은 막대(Y2K)를 넣기 전체로 섞으면 그대로 접는 길과 접으며 길이 축으로 반 바퀴(±π — ka.br) 굴리는 길 (넣기가 끝날 때 손이 화면 밖이라 굴린 채 끝나도 됨)
+  //  섞는 동안의 실제 줄(손 자리·방향까지)을 BPN 점에서 보고 칼의 세 끝(A 끝·날 끝·B 끝)이 1인칭 화면에서 시작·끝 자리보다 위로 솟는 양의 합이 가장 적은 길
+  //  (기본 길보다 BAL.pk 넘게 나을 때만 — 화면 높이 tan 단위 · 0.01 ≈ 7 px)
+  //   — 굴림을 가까운 2π 로만 풀면 달리기로 끊긴 0g 에서 반 바퀴 펴지는 B 가 굴림과 겹쳐 내려가는 손 아래 화면 밑 끝에서 2~3 프레임 덩그러니 튀어 올랐고,
+  //     Y2K 끝무렵(굴리기 시작)에 무기를 바꾸면 접히는 앞 반쪽(날·B)이 내려가는 손 위로 곧추섰다 접혔음 (늘 한쪽으로 정하면 다른 때에 더 솟음 — 끊긴 자세마다 고름) ·
+  //     앞 반쪽 대신 A 가 핀 둘레로 돌아 붙는 길(w + π)도 재 봤으나 A 가 손 위로 넘어가 V 로 벌어져 늘 더 솟음 — 넣지 않음
+  const BPN = 12, _pk = new Float64Array((BPN + 1) * NV), _pr = new Array(NV).fill(0), _ps = new Float64Array((BPN + 1) * 3);
+  const _pP = new THREE.Vector3(), _pQ = new THREE.Quaternion(), _pE = new THREE.Euler(0, 0, 0, 'XYZ'), _pW = new THREE.Quaternion(), _pV = new THREE.Vector3();
+  // 칼 끝 셋 [핀 기준 y, z, 도는 부품 칸(−1 = A — 돌지 않음)] · 핀(모델 좌표) · 손바닥 → 손에 든 자리(손 로컬 · 1인칭 크기)
+  const BEND = [[0, -0.14, -1], [0.0036, 0.1305, IP], [0, -0.14, IP + 1]], BPIN = [0, -0.0025, 0.064], BHO = [0.0115, -0.0138, 0];
+  function balEnds(S, r, out, o) {
+    handPose(S, r, _pP, _pQ, VM_SC); _pE.set(r[IW], r[IW + 1], r[IW + 2], 'XYZ'); _pW.setFromEuler(_pE);
+    for (let e = 0; e < 3; e++) {
+      const E = BEND[e], a = E[2] < 0 ? 0 : r[E[2]], c = Math.cos(a), s = Math.sin(a);
+      _pV.set(-r[IV], BPIN[1] + E[0] * c - E[1] * s - r[IV + 1], BPIN[2] + E[0] * s + E[1] * c - r[IV + 2]).applyQuaternion(_pW);
+      _pV.x += r[IV] + r[IT] + BHO[0]; _pV.y += r[IV + 1] + r[IT + 1] + BHO[1]; _pV.z += r[IV + 2] + r[IT + 2] + r[IP + 3] + BHO[2];
+      _pV.applyQuaternion(_pQ).add(_pP); out[o + e] = _pV.y / Math.max(0.05, -_pV.z);
+    }
+  }
+  function balPick(ka, S, st, t, bd) {
+    const f = ka.from, N = BPN, rl = Math.abs(wrapA(f[IW + 2])) > 0.3 && (st !== 'attack' || ka.fp);
+    const stk = !rl && st === 'unequip' && t && bd >= 0.15 && Math.abs(wrapA(f[IP])) < 0.3 && Math.abs(wrapA(f[IP + 1] + PI)) < 0.3;
+    if (!rl && !stk) return;
+    const sw = st === 'attack' ? ka.sw : null, dur = !t ? 1 : sw ? sw.total || 0.42 : t.dur || 0.5, sp = t && !sw ? t.speed || 1 : 1, u0 = sw ? sw.t / dur : 0;
+    for (let m = 0; m <= N; m++) { const o = m * NV; if (t) kfSample(t.R, clamp(u0 + (bd * m / N) * sp / dur, 0, 1), _bk); for (let i = 0; i < NV; i++) _pk[o + i] = t ? _bk[i] : S.rest[i + 1]; }
+    //  후보: 0 기본 · 1 굴림을 반대쪽 2π 로(시작 값 r2) · 2·3 굴리며 접기(+π · −π)
+    const r2 = f[IW + 2] - P2 * Math.sign(f[IW + 2] - _pk[IW + 2]);
+    let best = 0, bc = 1e9, c0 = 0;
+    for (let ci = 0; ci < 4; ci++) {
+      if ((ci === 1 && !rl) || (ci > 1 && !stk)) continue;
+      for (let m = 0; m <= N; m++) {
+        const k = sstep(0, 1, m / N), o = m * NV;
+        for (let i = 0; i < NV; i++) _pr[i] = f[i] + (_pk[o + i] - f[i]) * k;
+        if (ci === 1) _pr[IW + 2] = r2 + (_pk[o + IW + 2] - r2) * k; else if (ci) _pr[IW + 2] += (ci === 2 ? PI : -PI) * k;
+        balEnds(S, _pr, _ps, m * 3);
+      }
+      let cost = 0;
+      for (let e = 0; e < 3; e++) { let mx = -1e9; for (let m = 0; m <= N; m++) mx = Math.max(mx, _ps[m * 3 + e]); cost += Math.max(0, mx - Math.max(_ps[e], _ps[N * 3 + e])); }
+      if (!ci) c0 = cost;
+      if (cost < bc - 1e-9) { bc = cost; best = ci; }
+    }
+    if (best && c0 - bc > BAL.pk) { if (best === 1) f[IW + 2] = r2; else ka.br = best === 2 ? PI : -PI; }
   }
   // 나비 나이프 끊김 섞기의 덧붙임 (enter 끝 balX → 섞는 동안 tick 의 balRow · balSnd) — 모두 섞는 시간 안에서만, 시작·끝에서 0 이라 튀지 않음:
   //  · 닫힌 칼(날–A·날–B 가 모두 0.3 rad 안)에서 넣기 전체로 섞으면 날·B 는 넣기 마지막 줄(접힘 · 2π 를 시작 줄에 맞춤)로 곧장 (ka.bc) — 움직이는 목표 줄로 섞던 때는
@@ -194,39 +256,69 @@ const KAnim = (() => {
   //    칼을 손바닥에서 BAL.tp 만큼 띄움(공중에서 내려앉는 칼의 A 가 손바닥으로 파고들지 않게)
   //  · 크게 도는 섞기(휘두르기·넣기)는 손을 BAL.hx 만큼 오른쪽으로 — 날·B 가 반 바퀴 넘게 휘도는 동안 끝이 조준점 가까이(36 px 안) 지나지 않게
   //  · 손 안에서 칼 전체가 크게 돈 자세(|w| > 1 — 힐릭스 막대 굴리기 등)에서 섞으면 손을 BAL.hz 만큼 앞으로 — 도는 B·걸쇠가 카메라 쪽으로 다가오지 않게
-  const BAL = { fo: [0.55, 0.45, 0.6, 0.5, 0.5], tp: [0.004, -0.015, 0], hx: 0.025, hz: 0.025, fl: 'bFlipM', cl: 'bClack', tk: 'bTick' };
+  //  · 공중에 던진 칼(줄의 air 구간 · 손에서 BAL.ad 넘게 뜸)에서 끊기면 먼저 받고 나서 부품을 돌림(ka.ba): 칼 옮김·손 안 회전은 섞는 시간의 앞 la 동안
+  //    (손가락은 받는 끝무렵 — la 의 BAL.lf 배 사이에 쥠: 미리 굽힌 손가락이 내려앉는 칼 끝·걸쇠를 가로막아 한 프레임 손가락에 묻히던 것 80 → 46%)
+  //    (넣기는 BAL.al 초 안 — 손이 화면 밖으로 내려가기 전에 받음) · 날·B 는 lb(받는 끝무렵)부터 — 공중에서 손바닥 위 3~12 cm 에 뜬 채 펼쳐지거나
+  //    (휘두르기·달리기) 닫힌 칼이 떠 있는 채 손만 내려가던 것(무기 바꾸기) 대신 · 손 안 회전은 돌던 쪽으로 받음(거꾸로가 BAL.af 넘게 짧을 때만 거꾸로) ·
+  //    받는 순간 손가락으로 낚아채는 소리(BAL.gr) · 돌리는 소리는 받은 뒤 부품이 돌 때 ·
+  //    휘두르기는 BAL.ab 초 섞되 손 자리·손목은 BAL.ah 초에 장전 자세로(휘두르는 손은 여느 때처럼) · 손가락은 편 채 받아 B 가 다 돌 무렵 쥠(놓았다 쥐기 대신) · 손바닥 띄움은 부품이 도는 동안
+  const BAL = { pk: 0.01, fo: [0.55, 0.45, 0.6, 0.5, 0.5], tp: [0.004, -0.015, 0], hx: 0.025, hz: 0.025, ad: 0.02, ab: 0.16, ah: 0.08, al: 0.08, af: 1, lf: [0.6, 1.3], fl: 'bFlipM', cl: 'bClack', tk: 'bTick', gr: 'bGrab' };
   const wrapA = (a) => a - P2 * Math.round(a / P2);
-  function balX(ka, st, t, pst) {
+  function balX(ka, st, t, pst, air, bM) {
     const f = ka.from, cl = Math.abs(wrapA(f[IP] + PI)) < 0.3 && Math.abs(wrapA(f[IP + 1] - f[IP] - PI)) < 0.3;
     if (st === 'unequip' && t && ka.bd >= 0.15 && cl) { const e = t.R[t.R.length - 1]; ka.bc = 1; ka.bc0 = e[IP + 1] + P2 * Math.round((f[IP] - e[IP + 1]) / P2); ka.bc1 = e[IP + 2] + P2 * Math.round((f[IP + 1] - e[IP + 2]) / P2); ka.qs = 1; ka.bs = 3; }
-    else if (st === 'equip' && pst === 'unequip' && _bM > 2.5) ka.bs = 4;
-    else if (_bM > 1 && (st === 'attack' || st === 'idle')) ka.bs = (st === 'attack' ? 1 : 2) + (_bM > 2.5 ? 0 : 4);
-    const op = Math.abs(wrapA(f[IP])) < 0.3 && Math.abs(wrapA(f[IP + 1])) < 0.3;
+    else if (st === 'equip' && pst === 'unequip' && bM > 2.5) ka.bs = 4;
+    else if (bM > 1 && (st === 'attack' || st === 'idle')) ka.bs = (st === 'attack' ? 1 : 2) + (bM > 2.5 ? 0 : 4);
+    const op = Math.abs(wrapA(f[IP])) < 0.3 && Math.abs(wrapA(f[IP + 1])) < 0.3, pr = Math.abs(wrapA(f[IW])) > 1;
     ka.bk = st === 'attack' && ka.bd >= 0.1 ? 1 : 0;
-    ka.bx = !op && (st === 'attack' || (st === 'unequip' && !ka.bc && ka.bd >= 0.15)) ? BAL.hx : 0; ka.bz = ka.bd >= 0.1 && Math.abs(wrapA(f[IW])) > 1 ? BAL.hz : 0;
+    ka.bx = !op && (st === 'attack' || (st === 'unequip' && !ka.bc && ka.bd >= 0.15)) ? BAL.hx : 0; ka.bz = ka.bd >= 0.1 && pr ? BAL.hz : 0;
+    if (air && (st === 'attack' || st === 'idle' || st === 'unequip')) {
+      const tw = (t ? t.R[0] : SPEC[ka.kind].rest)[IW + 1], s = ka.as || 1, d = s * wrapA(tw - f[IW]), fw = d >= 0 ? d : d + P2;
+      f[IW] = tw - s * (fw <= P2 - fw + BAL.af ? fw : fw - P2);
+      ka.ba = 1; ka.la = Math.min(0.5, BAL.al / ka.bd); ka.lb = ka.la * 0.7; ka.bg = 1;
+    }
   }
-  //  섞는 동안 줄에 덧붙임 (w = 섞는 정도 · 끝나면 부르지 않음) — 손가락·손바닥 띄움·앞으로는 sin(πw)(가운데에서 가장 큼),
+  //  섞는 동안 줄에 덧붙임 (w = 섞는 정도 · 끝나면 부르지 않음) — 손가락·손바닥 띄움·앞으로는 sin(πw)(가운데에서 가장 큼 · 공중의 칼을 받고 휘두르면 부품이 도는 동안의 가운데),
   //   오른쪽으로는 섞기 첫 1/3 에서 가장 큰 6.75·t·(1−t)² (t = 섞은 시간 비율 — 끊긴 자세에 머무는 첫 프레임들에 이미 비켜 남 · 끝은 매끈히 0)
   function balRow(ka, w) {
-    const r = ka.row;
-    if (ka.bc) { r[IP] = lerp(ka.from[IP], ka.bc0, w); r[IP + 1] = lerp(ka.from[IP + 1], ka.bc1, w); }
-    const k = Math.sin(PI * w), t = clamp(ka.bt / ka.bd, 0, 1);
-    if (ka.bk) { const F = BAL.fo; for (let j = 0; j < 5; j++) r[IF + j] += (F[j] - r[IF + j]) * k; r[IT] += BAL.tp[0] * k; r[IT + 1] += BAL.tp[1] * k; r[IT + 2] += BAL.tp[2] * k; }
-    r[0] += ka.bx * 6.75 * t * (1 - t) * (1 - t); r[2] += ka.bz * k;
+    const r = ka.row, f = ka.from, t = clamp(ka.bt / ka.bd, 0, 1);
+    if (ka.bc) { r[IP] = lerp(f[IP], ka.bc0, w); r[IP + 1] = lerp(f[IP + 1], ka.bc1, w); }
+    let k = Math.sin(PI * w);
+    if (ka.ba) {
+      const k1 = sstep(0, ka.la, t), k2 = sstep(ka.lb, 1, t), at = ka.st === 'attack', kf = at ? k2 : sstep(ka.la * BAL.lf[0], ka.la * BAL.lf[1], t);
+      for (let i = IT; i < IT + 3; i++) r[i] = lerp(f[i], _tg[i], k1);
+      for (let i = IW; i < IW + 3; i++) r[i] = lerp(f[i], _tg[i], k1);
+      for (let i = IF; i < IF + 5; i++) r[i] = lerp(f[i], _tg[i], kf);
+      if (!ka.bc) { r[IP] = lerp(f[IP], _tg[IP], k2); r[IP + 1] = lerp(f[IP + 1], _tg[IP + 1], k2); }
+      //  휘두르기: 손 자리·손목은 여느 휘두르기처럼 BAL.ah 초에 장전 자세로 (칼을 받고 펼치는 것만 손 안에서 늦게) · 손가락은 펼치는 동안 펴 둔 채(B 가 지나갈 길)
+      if (at) { const kh = sstep(0, 1, ka.bt / BAL.ah); for (let i = 0; i < IF; i++) r[i] = lerp(f[i], _tg[i], kh); }
+      k = Math.sin(PI * k2);
+    }
+    if (ka.bk) { const F = BAL.fo, T = BAL.tp; if (!ka.ba) for (let j = 0; j < 5; j++) r[IF + j] += (F[j] - r[IF + j]) * k; r[IT] += T[0] * k; r[IT + 1] += T[1] * k; r[IT + 2] += T[2] * k; }
+    r[0] += ka.bx * 6.75 * t * (1 - t) * (1 - t); r[2] += ka.bz * Math.sin(PI * w);
   }
   //  끊김 섞기 소리 ka.bs: 1 휘두르기·2 대기 = 섞는 0.15 에 돌리는 소리 + 끝 소리 · 5·6 = 1~2.5 rad 만 돌아 붙는 것(끝 소리만) · 3 닫힌 칼 넣기 = 0.5 에 '틱' · 4 다시 꺼내기 = 끝에 '딸깍'
   //   끝 소리: 휘두르기(1·5)·닫힌 칼 넣기는 '틱' · 대기(2·6)·다시 꺼내기는 '딸깍' — 섞는 시간 비율이 그 지점을 지나는 프레임에
+  //   공중의 칼(ka.ba): 받는 순간(la 의 0.8) 낚아채는 소리(ka.bg) · 돌리는 소리는 부품이 돌기 시작한 뒤(lb 다음) · 닫힌 칼 넣기의 '틱'은 0.6 (받은 뒤)
   function balSnd(ka, S, dt) {
-    const a = (ka.bt - dt) / ka.bd, b = ka.bt / ka.bd, e = ka.bs === 3 ? 0.5 : 1;
-    if (ka.bs <= 2 && ka.bs !== 0 && a < 0.15 && b >= 0.15) snd(S, BAL.fl, null, true);
-    if (a < e && b >= e) { snd(S, ka.bs === 1 || ka.bs === 3 || ka.bs === 5 ? BAL.tk : BAL.cl, null, true); ka.bs = 0; }
+    const a = (ka.bt - dt) / ka.bd, b = ka.bt / ka.bd, g = ka.ba ? ka.la * 0.8 : 0, fl = ka.ba ? ka.lb + 0.15 * (1 - ka.lb) : 0.15, e = ka.bs === 3 ? (ka.ba ? 0.6 : 0.5) : 1;
+    if (ka.bg && a < g && b >= g) { snd(S, BAL.gr, null, true); ka.bg = 0; }
+    if (ka.bs <= 2 && ka.bs !== 0 && a < fl && b >= fl) snd(S, BAL.fl, null, true);
+    if (ka.bs && a < e && b >= e) { snd(S, ka.bs === 1 || ka.bs === 3 || ka.bs === 5 ? BAL.tk : BAL.cl, null, true); ka.bs = 0; }
   }
-  // 3인칭 손 기울임(동작표 tt — 머리말): 줄의 ITT 칸에 u 에서의 회전 벡터를 더함 (u0~u1 들어감 · u2~u3 풀림)
-  //  상태가 바뀔 때 이 칸이 섞이는 가장 짧은 시간 TTB(초) — 휘두르기(0.07초 섞기)로 끊어도 눕힌 3인칭 손이 2 프레임 만에 세워지지 않고 9 프레임에 걸쳐 풀림
+  // 손에 다른 것을 든 동안(회복·투척: 1인칭은 그 물건 화면 · 3인칭은 손에 그 물건)·춤(우승 장면 카메라 · 칼 부품이 멈춤) — 칼이 보이지 않으니 줄의 소리·끊김 섞기 소리를 내지 않음
+  //  (부활은 칼이 1인칭·3인칭에 그대로 보이며 돌아가 소리를 냄)
+  const busy = (c) => !!(c.heal || c.throwMode || c.throwAnim > 0 || c.nadeQ || c.dance);
+  // 3인칭 손 기울임·손 안 칼 옮김(동작표 tt · to — 머리말): 줄의 i0 칸(ITT · ITO)부터 셋에 u 에서의 값을 더함 (u0~u1 들어감 · u2~u3 풀림)
+  //  창의 두 끝이 같으면(u0 = u1 등) 아주 짧은 구간으로 봄 — 0 으로 나눠 줄이 NaN 이 되지 않게
+  //  상태가 바뀔 때 이 칸들이 섞이는 가장 짧은 시간 TTB(초) — 휘두르기(0.07초 섞기)로 끊어도 눕힌 3인칭 손이 2 프레임 만에 세워지지 않고 9 프레임에 걸쳐 풀림
   //   (손 방향이 휘두르는 자세로 도는 동안 기울임까지 한꺼번에 풀던 때는 한 프레임에 50~70° — 기울임 없는 것보다 10° 넘게 더 · 1인칭은 이 칸을 쓰지 않아 그대로)
   const TTB = 0.15;
-  function tiltAt(tt, u, out) {
-    for (let i = 0; i < tt.length; i++) { const w = tt[i], k = sstep(w[0], w[1], u) * (1 - sstep(w[2], w[3], u)); if (k > 0) { out[ITT] += w[4] * k; out[ITT + 1] += w[5] * k; out[ITT + 2] += w[6] * k; } }
+  function winAt(tt, u, out, i0) {
+    for (let i = 0; i < tt.length; i++) {
+      const w = tt[i], k = sstep(w[0], Math.max(w[1], w[0] + 1e-4), u) * (1 - sstep(w[2], Math.max(w[3], w[2] + 1e-4), u));
+      if (k > 0) { out[i0] += w[4] * k; out[i0 + 1] += w[5] * k; out[i0 + 2] += w[6] * k; }
+    }
   }
   function snd(S, k, pos, own, swing) {
     const r = S.snd[k];
@@ -252,6 +344,8 @@ const KAnim = (() => {
     if (!ka) ka = c.ka = { kind, mid, st: null, t: 0, bt: 1, bd: 0, from: new Array(NV).fill(0), row: new Array(NV).fill(0), held: false, sw: null, v: 0, iv: 0, il: -1, req: 0, kick: 0, kdir: 1, it: Math.random() * 30, fn: 3, fi: -1, fl: -1, ft: 0, fu0: -1, u0: -1, sh: 0 };
     if (ka.kind !== kind || ka.mid !== mid) { ka.kind = kind; ka.mid = mid; ka.st = null; }
     const S = SPEC[kind], sw = c.swing && c.swing.id === mid ? c.swing : null;
+    //  1인칭으로 그리는 내 캐릭터인가 (나비 나이프 끊김 섞기의 길 고르기 — balPick)
+    ka.fp = !!(c.isPlayer && G.firstPerson);
     if (held) {
       if (!ka.held || !ka.st || ka.st === 'unequip') { const eq = c.equipT > 0.05; if (!ka.st) { ka.rw = 0; ka.sg = 0; } enter(ka, eq ? 'equip' : 'idle', eq ? (ka.st ? 0.08 : 0) : 0.26, !eq && !ka.st); ka.held = true; ka.sw = sw; ka.fn = 2.5 + Math.random() * 3; }
       if (sw && sw !== ka.sw) { ka.sw = sw; ka.v = S.attack.length > 1 && sw.side < 0 ? 1 : 0; ka.sa = ka.rw || 0; enter(ka, 'attack', 0.07); }
@@ -311,9 +405,11 @@ const KAnim = (() => {
     } else {
       kfSample(tr.R, u, _tg);
       const a = tr.amp; if (a !== undefined && a !== 1) for (let i = 0; i < 6; i++) _tg[i] *= a;
-      if (tr.tt) tiltAt(tr.tt, u, _tg);
-      //  줄의 소리 (나비 나이프 닫힌 칼 넣기는 대신 걸쇠 '틱' 하나 — balX)
-      if (c.isPlayer && tr.S && !ka.qs) for (const [su, k] of tr.S) if (ka.u0 < su && u >= su) snd(S, k, null, true);
+      if (tr.tt) winAt(tr.tt, u, _tg, ITT);
+      if (tr.to) winAt(tr.to, u, _tg, ITO);
+      //  줄의 소리 (나비 나이프 닫힌 칼 넣기는 대신 걸쇠 '틱' 하나 — balX) · 손에 회복·투척 물건을 든 동안·춤추는 동안은 내지 않음(busy — 칼이 보이지 않음 ·
+      //   휘두르다 붕대를 감기 시작하면 휘두르기 줄의 '딸깍'이 칼 없이 나던 것 · 지나간 소리는 뒤늦게 나지 않음)
+      if (c.isPlayer && tr.S && !ka.qs && !busy(c)) for (const [su, k] of tr.S) if (ka.u0 < su && u >= su) snd(S, k, null, true);
     }
     ka.u0 = u;
     // 달리기 자세(동작표 run)를 섞는 정도 ka.rw = 달리는 정도 ka.sg × 상태마다 (머리말)
@@ -344,13 +440,15 @@ const KAnim = (() => {
     // 3인칭: 꺼내기·살펴보기 동안 손을 가슴 앞으로 들어 올리는 정도(멀리서도 동작이 보이게) — 부드럽게 따라감
     const shT = ka.st === 'equip' ? sstep(0.1, 0.3, u) * (1 - sstep(0.8, 1, u)) : ka.st === 'inspect' ? sstep(0, 0.08, u) * (1 - sstep(0.9, 1, u)) : 0;
     ka.sh = lerp(ka.sh || 0, shT, clamp(dt * 8, 0, 1));
-    //  3인칭 손 기울임 칸(ITT)만은 섞는 시간이 짧아도 TTB 초 이상 (tiltAt 위)
+    //  3인칭 손 기울임·손 안 칼 옮김 칸(ITT · ITO)만은 섞는 시간이 짧아도 TTB 초 이상 (winAt 위)
     const w = ka.bd > 0 ? sstep(0, 1, ka.bt / ka.bd) : 1, wt = ka.bd > 0 ? sstep(0, 1, ka.bt / Math.max(ka.bd, TTB)) : 1;
     for (let i = 0; i < NV; i++) { const k = i < ITT ? w : wt; ka.row[i] = k >= 1 ? _tg[i] : lerp(ka.from[i], _tg[i], k); }
-    //  나비 나이프 끊김 섞기의 덧붙임·소리 (balX) — 소리는 손에 다른 것을 든 동안(회복·투척: 1인칭은 그 물건 화면 · 3인칭은 손에 그 물건)·춤(우승 장면 카메라 · 칼 부품이 멈춤)엔
-    //   내지 않고 지움(그 동작이 살펴보기·꺼내기를 끊어 보이지 않는 칼이 돌아감 · 그 동작이 끝난 뒤 늦게 나지도 않게) · 부활은 칼이 1인칭·3인칭에 그대로 보이며 돌아가 소리를 냄
+    //  나비 나이프 끊김 섞기의 덧붙임·소리 (balX) — 소리는 손에 다른 것을 든 동안·춤추는 동안엔(busy) 내지 않고 지움
+    //   (그 동작이 살펴보기·꺼내기를 끊어 보이지 않는 칼이 돌아감 · 그 동작이 끝난 뒤 늦게 나지도 않게)
+    //  막대를 굴리며 접는 넣기(balPick 의 ka.br): 넣기 끝까지 굴림 칸에 더함 (넣기 전체로 섞어 넣기가 끝나는 프레임에 섞기도 끝남 — 굴린 채 화면 밖에서 끝남)
     if (S.bal && w < 1) balRow(ka, w);
-    if (S.bal && ka.bs && ka.bd > 0 && c.isPlayer) { if (c.heal || c.throwMode || c.throwAnim > 0 || c.nadeQ || c.dance) ka.bs = 0; else balSnd(ka, S, dt); }
+    if (S.bal && ka.br) ka.row[IW + 2] += ka.br * w;
+    if (S.bal && (ka.bs || ka.bg) && ka.bd > 0 && c.isPlayer) { if (busy(c)) ka.bs = ka.bg = 0; else balSnd(ka, S, dt); }
     // 시험용: 고정 자세 (dbg.k = K(...) — 내 캐릭터만)
     if (dbg.k && c.isPlayer) { const r = rowOf(dbg.k, S.F0, false, S, null); for (let i = 0; i < NV; i++) ka.row[i] = r[i + 1]; }
     return ka.row;
@@ -674,11 +772,12 @@ const KAnim = (() => {
   }
   const fingersOf = (c) => fing(c.ka.row, _F5);
   const fingers3 = (c, Ar, w) => setK(Ar, fing(c.ka.row, _F5), w);
-  // 3인칭 손에 든 모델의 부품·손 안 회전 (setHeld 뒤 매 프레임) — 전용 동작이 끝났으면 원래 자리로
+  // 3인칭 손에 든 모델의 부품·손 안 회전 (setHeld 뒤 매 프레임) — 전용 동작이 끝났으면 원래 자리로 · 3인칭 손 안 칼 옮김(동작표 to — 줄의 ITO 칸)은 3인칭에서만 더함
   function tppApply(c, r) {
     const o = r.armR.hold.children[0]; if (!o) return;
     if (!on(c) || c.ka.mid !== c.melee) { unplace(o); return; }
-    place(r.armR, o, SPEC[c.ka.kind], c.ka.row, 1);
+    const v = c.ka.row; place(r.armR, o, SPEC[c.ka.kind], v, 1);
+    o.position.x += v[ITO]; o.position.y += v[ITO + 1]; o.position.z += v[ITO + 2];
   }
   // 3인칭 휘두르기 자국: 실제 날 끝(부품·손 안 회전 반영)에서 — 처리했으면 true
   const _t3a = new THREE.Vector3(), _t3b = new THREE.Vector3();
