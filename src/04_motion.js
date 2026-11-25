@@ -368,8 +368,11 @@ function actPose(c, a, tm, sw, busy, dt) {
   //  마지막 자세(ka.tv)를 남겨 두었다가, 칼을 넣거나 기절해 손에서 사라지는 동안(a.mel 이 줄어드는 동안)은 그 자세에서 그대로 풀림 (기본 준비 자세로 튀지 않게)
   if (KAnim.on(c) && c.ka.mid === a.melId) {
     KAnim.tppRow(c, _kv);
-    const tg = !sw && c.ka.st === 'idle' ? smoothstep01(clamp(a.sprint || 0, 0, 1)) : 0, rk = c.ka.rk = lerp(c.ka.rk || 0, tg, clamp(dt * 10, 0, 1));
-    if (rk > 0.001) { const sg = Math.sin(a.phase) * 0.14 * rk; for (let i = 0; i < 19; i++) _kv[i] = lerp(_kv[i], MEL_RUN[i + 1], rk); _kv[2] += sg; _kv[1] += Math.abs(sg) * 0.3; }
+    // 동작표에 달리기 자세(run)가 있는 스킨(카람빗)은 그 자세로 (09_player_mskin.js tppRun — 어깨를 축으로 흔듦)
+    if (!KAnim.tppRun(c, _kv, a.phase)) {
+      const tg = !sw && c.ka.st === 'idle' ? smoothstep01(clamp(a.sprint || 0, 0, 1)) : 0, rk = c.ka.rk = lerp(c.ka.rk || 0, tg, clamp(dt * 10, 0, 1));
+      if (rk > 0.001) { const sg = Math.sin(a.phase) * 0.14 * rk; for (let i = 0; i < 19; i++) _kv[i] = lerp(_kv[i], MEL_RUN[i + 1], rk); _kv[2] += sg; _kv[1] += Math.abs(sg) * 0.3; }
+    }
     const tv = c.ka.tv || (c.ka.tv = new Array(19).fill(0)); for (let i = 0; i < 19; i++) tv[i] = _kv[i];
     return { kind: 'melee', w: mw, v: _kv, sw, ka: true };
   }
