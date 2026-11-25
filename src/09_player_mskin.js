@@ -17,7 +17,9 @@
 //    화면 숙임도 기본 무기 그대로(근접 판정 방향 = 카메라 앞) · 옆 기울임만 동작마다
 //  · 소리: 동작표의 S = [[u, 이름], …] (내 캐릭터의 꺼내기·대기 손장난·살펴보기·넣기·휘두르기 중) — 이름은 동작표 snd 의 소리(Audio.mskin) 또는 Audio.knife 의 것
 //  · 달리기 자세(선택 — 동작표 run): 대기 중 달리면 1인칭 줄(run.fp)·3인칭 자세(run.tp)로 섞어 넘어감 (없는 스킨은 기본처럼 손을 내림 · 허리 옆으로)
-//    섞는 정도 ka.rw 는 상태마다: 대기 = 달리기 정도 · 휘두르기 = 0 이었다가 마무리(u 0.42~0.62)에 다시 오름(휘두르고 계속 달리면 기본 자세를 거치지 않고 곧장) · 그 밖 = 0
+//    섞는 정도 ka.rw = 달리는 정도(ka.sg — 달리기 중이고 빠름 · 공중에서도 그대로라 달리다 뛰어도 풀리지 않음) × 상태마다: 대기 = 1 ·
+//    휘두르기 = 달리던 자세를 붙잡고 있다가 휘두르는 줄이 그 자세를 이어받는 무렵(u 0.26~0.36) 넘겨주고 찢고 난 마무리(u 0.46~0.75)에 다시(기본 자세를 거치지 않고 곧장) · 그 밖 = 0
+//  · 3인칭 휘두르기(선택 — 동작표 attack[i].tp): MEL_KF 형식 줄이 있으면 손 자리·허리·왼손·팔꿈치는 그 줄로 (없으면 기본 3인칭 찌르기 궤적)
 // ============================================================
 const KAnim = (() => {
   const PI = Math.PI, P2 = PI * 2, NV = 24, IR = 3, IF = 6, IP = 11, IW = 15, IT = 18, IV = 21;
@@ -63,7 +65,8 @@ const KAnim = (() => {
   // 동작표 등록 (09_player_mskin_<무기>.js):
   //  def(모양 id, { base: { h, b, e, f }(1인칭 기본 손 자리·날 방향·때리는 쪽·쥠 — 없으면 무기 기본), pivot: [x, y, z](무기 회전 중심, 모델 좌표 m),
   //    idle: { amp, speed, part(부품 0 흔들림), fid: [손장난 줄들 — 더하는 값], every: [최소, 최대 초] }, equip, unequip: { dur, speed, amp, K, S },
-  //    attack: [{ K, S, roll(옆 기울임 rad), kick(맞힘 흔들림 방향 ±1) } …](u = 휘두른 시간 비율), inspect: [{ dur, speed, amp, K, S, gl: [[u0, u1] …](날을 따라 빛이 반짝 지나감) } …],
+  //    attack: [{ K, S, roll(옆 기울임 rad), kick(맞힘 흔들림 방향 ±1), tp(선택 — 3인칭 줄 MEL_KF 형식 [u, 19개] · 가슴 로컬 · 손 방향 칸은 쓰지 않음) } …](u = 휘두른 시간 비율),
+  //    inspect: [{ dur, speed, amp, K, S, gl: [[u0, u1] …](날을 따라 빛이 반짝 지나감) } …],
   //    snd: { 이름: [길이(초), 소리 조각들] }(Audio.mskin), swing: 휘두르는 소리 이름 또는 [첫째, 둘째], ghost: 잔상 빠르기 기준(m/s, 0 = 없음),
   //    run: { fp: 1인칭 달리기 줄(K·KO 하나 — 기본 내림·기울임 대신 이 줄이 손 자리·방향 전부), tp: 3인칭 달리기 자세(04_motion.js MEL_RUN 형식 [u, 19개] · 가슴 로컬),
   //           sw: 3인칭 걸음에 맞춰 어깨를 축으로 흔드는 폭(rad · 기본 0.4) }(선택) })
@@ -189,11 +192,13 @@ const KAnim = (() => {
       if (c.isPlayer && tr.S) for (const [su, k] of tr.S) if (ka.u0 < su && u >= su) snd(S, k, null, true);
     }
     ka.u0 = u;
-    // 달리기 자세(동작표 run)를 섞는 정도: 대기 = 달리기 정도(c.anim.sprint — 앞 프레임) · 휘두르기 = 마무리(u 0.42~0.62)부터 다시 · 그 밖 = 0
-    //  휘두르는 동안은 빨리 빠지고 빨리 돌아옴 (맞히는 구간엔 휘두르는 줄이 거의 그대로 · 계속 달리면 기본 자세로 돌아가기 전에 달리는 자세로)
+    // 달리기 자세(동작표 run)를 섞는 정도 ka.rw = 달리는 정도 ka.sg × 상태마다 (머리말)
+    //  ka.sg 는 땅에 닿았는지 보지 않음 — 달리다 뛰어올라도 손이 대기 자세로 풀렸다 다시 돌아가지 않게 (조준·사격 직후처럼 몸이 달리기 자세가 아닐 땐 0)
+    //  휘두르기: 달리던 손(손등 위)을 붙잡고 있다가 휘두르는 줄이 손등 위로 돌아오는 무렵 넘겨줌 — 손이 대기 자세 쪽으로 되돌았다 다시 엎어지지 않게
     if (S.run) {
-      const at = ka.st === 'attack', g = ka.st === 'idle' ? (sw ? 0 : 1) : at ? sstep(0.42, 0.62, u) : 0, an = c.anim;
-      ka.rw = lerp(ka.rw || 0, g * (an ? sstep(0, 1, an.sprint || 0) : 0), clamp(dt * (at ? 14 : 10), 0, 1));
+      const an = c.anim, at = ka.st === 'attack', g = ka.st === 'idle' ? (sw ? 0 : 1) : at ? Math.max(1 - sstep(0.26, 0.36, u), sstep(0.46, 0.75, u)) : 0;
+      ka.sg = lerp(ka.sg || 0, c.sprint && Math.hypot(c.vel.x, c.vel.z) > 3.2 && !(an && an.ready > 0.5) ? 1 : 0, clamp(dt * 6, 0, 1));
+      ka.rw = lerp(ka.rw || 0, g * sstep(0, 1, ka.sg), clamp(dt * (at ? 40 : 10), 0, 1));
     } else ka.rw = 0;
     // 3인칭: 꺼내기·살펴보기 동안 손을 가슴 앞으로 들어 올리는 정도(멀리서도 동작이 보이게) — 부드럽게 따라감
     const shT = ka.st === 'equip' ? sstep(0.1, 0.3, u) * (1 - sstep(0.8, 1, u)) : ka.st === 'inspect' ? sstep(0, 0.08, u) * (1 - sstep(0.9, 1, u)) : 0;
@@ -340,9 +345,10 @@ const KAnim = (() => {
     if (!force) ka.vf = G.frame;   // 이 프레임에 근접 무기 뷰모델을 그렸음 (넣기 판단용)
     let v = ka.row; handPose(S, v, _P, _Q, VM_SC);
     // 달리기 자세(동작표 run): 손 자리는 직선으로 · 방향은 구면으로(손목이 엉뚱하게 돌지 않게) ka.rw 만큼 그 줄로 — 손가락·부품도 (부품·무기 회전은 2π 맞춤)
+    //  손목을 먼저 돌리고 손은 나중에 내림(돌아올 땐 손을 먼저 올리고 손목은 나중에) — 손목이 반쯤 돌아 날이 아래를 볼 때 손이 이미 내려가 있으면 날이 화면 밑으로 빠짐
     const R = S.run, rw = R ? ka.rw || 0 : 0;
     if (rw > 0.001) {
-      handPose(S, R.v, _P2, _Q2, VM_SC); _P.lerp(_P2, rw); _Q.slerp(_Q2, rw);
+      handPose(S, R.v, _P2, _Q2, VM_SC); _P.lerp(_P2, sstep(0.2, 1, rw)); _Q.slerp(_Q2, sstep(0, 0.8, rw));
       for (let i = 0; i < NV; i++) { let t = R.v[i]; if (i >= IP && i < IT) t += P2 * Math.round((v[i] - t) / P2); _rv[i] = lerp(v[i], t, rw); }
       v = _rv;
     }
@@ -430,33 +436,38 @@ const KAnim = (() => {
     out[9] = rd[10] + clamp(-dx * 1.5, -0.55, 0.55); out[10] = rd[11] + clamp(dz * 0.6, -0.1, 0.25); out[11] = -Math.max(0, dz) * 0.08; out[12] = Math.max(0, dz) * 0.15;
     for (let i = 13; i < 19; i++) out[i] = rd[i + 1];
     if (ka.st === 'attack' && ka.sw) {
-      const D = ITEMS[S.mid], st = D.style, uu = clamp(ka.sw.t / ka.sw.total, 0, 1);
-      kfSample(MEL_KF[st === 'slash' && ka.sw.side < 0 ? 'slashB' : st], uu, _kt);
-      if (S.mid === 'knife') {
-        out[1] = _kt[1] + dy * 0.5; out[2] = _kt[2] + Math.min(0, dz) * 0.5;
-        out[9] = _kt[9] + clamp(-dx * 1.2, -0.5, 0.5); out[10] = _kt[10]; out[11] = _kt[11]; out[12] = _kt[12];
-        for (let i = 13; i < 19; i++) out[i] = _kt[i];
-      } else { const wv = sstep(0, 0.14, uu) * (1 - sstep(0.86, 1, uu)); for (let i = 0; i < 19; i++) out[i] = lerp(out[i], _kt[i], wv); }
+      const D = ITEMS[S.mid], st = D.style, uu = clamp(ka.sw.t / ka.sw.total, 0, 1), at = trackOf(ka, 'attack');
+      // 동작표의 3인칭 줄(attack[i].tp)이 있으면 손 자리·허리·숙임·골반·왼손·팔꿈치는 그 줄 · 손 방향은 위의 1인칭 줄 그대로 (두 휘두르기가 3인칭에서도 다른 궤적)
+      if (at && at.tp) { kfSample(at.tp, uu, _kt); for (let i = 0; i < 3; i++) out[i] = _kt[i]; for (let i = 9; i < 19; i++) out[i] = _kt[i]; }
+      else {
+        kfSample(MEL_KF[st === 'slash' && ka.sw.side < 0 ? 'slashB' : st], uu, _kt);
+        if (S.mid === 'knife') {
+          out[1] = _kt[1] + dy * 0.5; out[2] = _kt[2] + Math.min(0, dz) * 0.5;
+          out[9] = _kt[9] + clamp(-dx * 1.2, -0.5, 0.5); out[10] = _kt[10]; out[11] = _kt[11]; out[12] = _kt[12];
+          for (let i = 13; i < 19; i++) out[i] = _kt[i];
+        } else { const wv = sstep(0, 0.14, uu) * (1 - sstep(0.86, 1, uu)); for (let i = 0; i < 19; i++) out[i] = lerp(out[i], _kt[i], wv); }
+      }
     }
     const sh = ka.sh || 0; out[0] += 0.07 * sh; out[1] += 0.17 * sh; out[2] += 0.08 * sh;
     return out;
   }
   // 3인칭 달리기 자세 (동작표 run.tp): tppRow 자세를 ka.rw 만큼 그 자세로 — 동작표에 run.tp 가 없으면 false (04_motion.js 가 기본 MEL_RUN 으로)
   //  걸음에 맞춰 어깨를 축으로 팔을 흔든다: 오른팔은 왼발과 함께 앞으로(−cos 위상) · 왼손은 반대 · 뒤로는 앞의 0.6배만(팔꿈치가 등 뒤로 꺾이지 않게)
-  //  손 방향은 흔든 각의 절반만 기울어 손등이 늘 위 · 팔꿈치 방향은 0.4배만 따라가 옆구리에 붙은 채
+  //  손 방향도 흔든 각의 0.85배를 따라가 손목이 꺾이지 않음(주먹이 아래팔과 일직선 · 손등은 늘 위) · 팔꿈치 방향은 0.4배만 따라가 옆구리에 붙은 채
   const _rp = new Array(19).fill(0), SHR = [-0.191, 0.171, 0], SHL = [0.191, 0.171, 0];
   // 가슴 로컬 x(왼쪽) 축 둘레로 돌림 (+ = 앞으로 · 점은 C 를 중심으로, C 가 없으면 방향)
   function swingX(v, i, a, C) { const c0 = C ? C[1] : 0, c1 = C ? C[2] : 0, y = v[i + 1] - c0, z = v[i + 2] - c1, cs = Math.cos(a), sn = Math.sin(a); v[i + 1] = c0 + y * cs + z * sn; v[i + 2] = c1 - y * sn + z * cs; }
   function tppRun(c, out, ph) {
     const ka = c.ka, S = ka && SPEC[ka.kind], R = S && S.run; if (!R || !R.tp) return false;
-    // 휘두르는 중: 처음(u ~0.3)에 빠지고, 기본 3인칭 찌르기가 뻗었다 돌아오는 구간(u 0.56~0.95)에서만 다시 — 뻗은 팔이 달리는 자세로 한 번에 끌려오지 않게
-    let w = ka.rw || 0;
-    if (ka.st === 'attack' && ka.sw) { const u = ka.sw.t / ka.sw.total; w = Math.min(w, 1 - sstep(0, 0.3, u) + sstep(0.56, 0.95, u)); }
+    // 휘두르는 중: 손 자리는 휘두르는 3인칭 줄이 손을 끌어올리는 무렵(u 0.2~0.32) 넘겨주고 그 줄이 돌아오는 구간(u 0.56~0.95)에서만 다시 (뻗은 팔이 한 번에 끌려오지 않게)
+    //  손 방향은 ka.rw 그대로 — 휘두르는 줄이 손등 위로 돌아올 때까지 달리던 손등 위 그대로 (손이 대기 자세 쪽으로 기울었다 다시 엎어지지 않게)
+    const w = ka.rw || 0; let wp = w;
+    if (ka.st === 'attack' && ka.sw) { const u = ka.sw.t / ka.sw.total; wp = Math.min(w, Math.max(1 - sstep(0.2, 0.32, u), sstep(0.56, 0.95, u))); }
     if (w < 0.001) return true;
     const T = R.tp, o = T.length > 19 ? 1 : 0, s = -Math.cos(ph), q = 0.2 * s * s, a = R.sw * (0.8 * s + q), al = R.sw * (-0.8 * s + q);
     for (let i = 0; i < 19; i++) _rp[i] = T[i + o];
-    swingX(_rp, 0, a, SHR); swingX(_rp, 3, a * 0.5); swingX(_rp, 6, a * 0.5); swingX(_rp, 16, a * 0.4, SHR); swingX(_rp, 13, al, SHL);
-    for (let i = 0; i < 19; i++) out[i] = lerp(out[i], _rp[i], w);
+    swingX(_rp, 0, a, SHR); swingX(_rp, 3, a * 0.85); swingX(_rp, 6, a * 0.85); swingX(_rp, 16, a * 0.4, SHR); swingX(_rp, 13, al, SHL);
+    for (let i = 0; i < 19; i++) out[i] = lerp(out[i], _rp[i], i >= 3 && i < 9 ? w : wp);
     return true;
   }
   const fingersOf = (c) => fing(c.ka.row, _F5);
