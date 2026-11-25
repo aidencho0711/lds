@@ -718,7 +718,7 @@ const Net = (() => {
   }
   function killReq(t, attacker, cause) { ev({ k: 'kreq', v: t.id, a: attacker ? attacker.id : -1, c: cause }, ownerOf(t)); }
   function sendKnock(t, attacker, cause) { if (mine(t) && !hostKO) ev({ k: 'knock', v: t.id, a: attacker ? attacker.id : -1, c: cause }); }
-  function sendDeath(t, attacker, cause) { const e = { k: 'death', v: t.id, a: attacker && attacker !== t ? attacker.id : -1, c: cause, pl: t.place }; if (N && N.host && t.botized) t.botDeath = Object.assign({}, e); ev(e); }   // v24 방장: 봇이 맡은 사람 캐릭터의 사망은 남겨 둔다 (lostAgain)
+  function sendDeath(t, attacker, cause, rc) { const e = { k: 'death', v: t.id, a: attacker && attacker !== t ? attacker.id : -1, c: cause, pl: t.place }; if (rc !== cause || KO_ENV[cause]) e.kc = rc || ''; if (N && N.host && t.botized) t.botDeath = Object.assign({}, e); ev(e); }   // v24 방장: 봇이 맡은 사람 캐릭터의 사망은 남겨 둔다 (lostAgain)
   // v24 방장: 봇이 맡은 사이 죽은 캐릭터인데 그 사람이 아직 살아 있다는 상태를 보냄 — 넘긴 것('own')도 그 사망도 못 받은 기기(중계 메시지 유실 · 연결이 바뀌며 사라짐).
   //  그대로 두면 그 사람은 다른 화면에서는 죽은 채 혼자 계속 움직이고(맞힌 것도 그대로 들어감) 돌려받지도 못한다 → 2초마다 둘 다 그 사람에게만 다시 보냄 → 죽은 상태를 보내면 돌려줌
   //  (넘겨받은 새 방장은 그 사망을 모르므로 알림 없는 사망으로)
@@ -735,7 +735,7 @@ const Net = (() => {
     if (lostMe(t, e)) { if (t.alive && !t.knocked) { hostKO = true; try { knockChar(t, e.a >= 0 ? charById(e.a) : null, e.c); } finally { hostKO = false; } } return; }   // 내 기기에서 기절 (쓰러지는 것은 그동안 방장 기기가 — held · 부활은 그대로 · 돌려받으면 출혈도 이어서 내 기기가)
     if (mine(t) || t.knocked && t.knockSeen === t.knockN) return;
     const by = e.a >= 0 ? charById(e.a) : null;
-    t.knocked = true; t.knockN++; t.knockSeen = t.knockN; t.knockedBy = by; t.hp = 100; t.knockT = G.time; t.heal = null; t.aiming = false; t.stance = 'prone';
+    t.knocked = true; t.knockN++; t.knockSeen = t.knockN; t.knockedBy = by; t.knockCause = e.c; t.hp = 100; t.knockT = G.time; t.heal = null; t.aiming = false; t.stance = 'prone';
     if (t.veh) Veh.exit(t, true, true);
     t.setVisibleGear();
     if (by && !mine(by)) by.knocks = (by.knocks || 0) + 1; else if (by && mine(by)) by.knocks++;
@@ -759,7 +759,7 @@ const Net = (() => {
       const h = N.meA, air = t.mode !== 'ground'; if (h) { t.pos.set(h[1], h[2], h[3]); t.yaw = t.bodyYaw = h[4]; } else if (air) t.pos.y = groundAt(t.pos.x, t.pos.z, t.pos.y);
       t.mode = 'ground'; t.rplane = null; t.onGround = true; t.root.position.copy(t.pos); if (air) { Audio.plane(false); Audio.wind(0); }
     }
-    if (by) by.kills++;
+    if (by) { by.kills++; countMeleeKill(t, by, typeof e.kc === 'string' ? e.kc : killCauseOf(t, by, e.c, wasKnocked)); }   // v24.2 파쇄기: 근접 처치 — 원인은 주인 기기가 정한 것(kc · 이 기기의 기절 원인은 늦거나 다를 수 있다) (06_combat.js)
     if (G.killLog) G.killLog.push({ t: Math.round(G.time), cause: e.c, kn: wasKnocked, by: by ? (by.isPlayer ? 'player' : 'bot') : 'env' });
     if (!e.lost) HUD.killfeed(by ? by.name : null, t.name, causeName(e.c), by && by.isPlayer, !!t.isPlayer, e.c === 'wipe' ? 'wipe' : '', G.player && sameTeam(G.player, t), by && by.skinOf ? by.skinOf(e.c) : null, MeleeFx.ofKill(by, e.c));
     Audio.death(t.pos);

@@ -285,7 +285,7 @@ const Eco = (() => {
   function grantApply(g) {
     const e = E(); if (!Array.isArray(e.gr)) e.gr = [];
     if (e.gr.includes(g.id)) return false;
-    e.gr.push(g.id); if (g.gold) e.gold += g.gold; if (g.brx) e.brx = 1; if (g.brx12) e.brx12 = 1;
+    e.gr.push(g.id); if (g.gold) e.gold += g.gold; if (g.brx) e.brx = 1; if (g.brx12) e.brx12 = 1; if (g.brmad) e.brmad = 1;
     changed('grant'); return true;
   }
   // g = { id, gold, brx(백룸 탈출 1회 칭호·사진·테두리), brx12(백룸 12가지 탈출) } → 'ok'(지금 넣음) · 'wait'(계정을 불러오는 중 — 다 불러오면 들어감)
@@ -362,6 +362,7 @@ const Eco = (() => {
     const delta = (b, l, s) => (s || 0) + ((l || 0) - (b || 0));
     for (const k of ['matches', 'wins', 'kills', 'xp']) out[k] = Math.max(0, base ? delta(B[k], L[k], S[k]) : Math.max(L[k] || 0, S[k] || 0));
     out.best = Math.min(L.best || 99, S.best || 99);
+    { const mb = Math.max(L.meleeBest || 0, S.meleeBest || 0); if (mb) out.meleeBest = mb; }   // v24.2 한 경기 근접 처치 최고 (파쇄기) — 큰 쪽
     out.recent = JSON.stringify(L.recent || []) !== JSON.stringify(B.recent || []) ? (L.recent || []) : (S.recent || L.recent || []);
     const dm = {}, Bd = B.dm || {}, Ld = L.dm || {}, Sd = S.dm || {}; for (const k of ['matches', 'wins', 'kills', 'deaths']) dm[k] = Math.max(0, base ? delta(Bd[k], Ld[k], Sd[k]) : Math.max(Ld[k] || 0, Sd[k] || 0)); out.dm = dm;
     out.skins = [...new Set([...(S.skins || []), ...(L.skins || [])])];
@@ -403,6 +404,7 @@ const Eco = (() => {
         if (le.bpt || se.bpt) e.bpt = [...new Set([...(se.bpt || []), ...(le.bpt || [])])]; }
       if (le.brx || se.brx) e.brx = 1;   // 백룸 탈출 이벤트 칭호: 한 기기에서라도 받았으면 계정에 유지 (v22: 받기는 계정마다 한 번 — 서버 br_claim, 10_event.js)
       if (le.brx12 || se.brx12) e.brx12 = 1;   // 백룸 12가지 탈출 이벤트 (v22)
+      if (le.brmad || se.brmad) e.brmad = 1;   // v24.2 백룸 히든 칭호 「광인」 (서버 br_hidden — 10_event.js)
       if (le.gr || se.gr) e.gr = [...new Set([...(se.gr || []), ...(le.gr || [])])];   // 받은 보상 id (보상 대기열 — 두 번 들어가지 않게)
       e.welcome = 1; e.rev = Math.max(le.rev || 0, se.rev || 0) + 1; e.dev = DEV;
       out.eco = e;

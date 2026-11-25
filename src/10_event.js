@@ -33,8 +33,18 @@ const EvBR = (() => {
 
   // ---------- 계정 상태 (서버 br_state) ----------
   //  st: idle · guest(로그인 안 함) · wait(계정 불러오는 중) · load · ok · off(서버에 backrooms.sql 이 아직 없음) · err
-  const A0 = (uid) => ({ st: 'idle', uid, code: null, esc: new Map(), claims: new Set(), t: 0, err: '' });
+  const A0 = (uid) => ({ st: 'idle', uid, code: null, esc: new Map(), claims: new Set(), hid: new Set(), t: 0, err: '' });   // hid: v24.2 히든 업적 (br_hidden — 서버에 그 칸이 없으면 빈 채로)
   let A = A0(null), syncP = null, busy = '';
+  // v24.2 백룸 히든 칭호 「광인」: 서버(br_state)에 히든 업적 madman 이 기록돼 있으면 계정에 넣는다 (계정마다 한 번 · 받기 버튼 없이)
+  //  백룸 군 병원에서 정신력이 다 닳으면 백룸이 br_hidden(연결 코드, 'madman') 를 부른다 — 칭호 · 우로보로스 테두리 · 전용 파티 입장 연출
+  //  경기 중이면 로비에 돌아온 뒤에(lobby) · 알림은 계정마다 한 번 (계정을 불러오는 중이면 다 불러온 뒤 조용히 들어감)
+  let madTold = null;
+  function hidden() {
+    if (!A.hid.has('madman') || (STATS.eco && STATS.eco.brmad) || typeof Cloud === 'undefined' || !A.uid || A.uid !== Cloud.uid || G.state !== 'lobby') return;
+    const r = Eco.grant({ id: 'brmad:' + A.uid, brmad: 1 });
+    if (madTold === A.uid) return; madTold = A.uid;
+    setTimeout(() => { try { HUD.lobbyNote(r === 'wait' ? '히든 칭호 「광인」 — 계정을 다 불러오면 들어갑니다' : '히든 칭호 「광인」을 얻었습니다 — 우로보로스 테두리와 전용 파티 입장 연출도 열렸습니다 (계정 정보 → 칭호)'); if (typeof Audio !== 'undefined' && Audio.partyFx) Audio.partyFx('madIn'); } catch (e) { /* 로비 밖 */ } }, 300);
+  }
   function sync(force) {
     const uid = (typeof Cloud !== 'undefined' && Cloud.uid) || null;
     if (A.uid !== uid) A = A0(uid);
@@ -51,8 +61,11 @@ const EvBR = (() => {
         A.code = (data && data.code) || null;
         A.esc = new Map(((data && data.esc) || []).map((x) => [x.m, x.at]));
         A.claims = new Set((data && data.claims) || []);
+        A.hid = new Set(Array.isArray(data && data.hid) ? data.hid.filter((x) => typeof x === 'string') : []);
         A.st = 'ok'; A.t = Date.now(); A.err = '';
         await legacy(sb);
+        if (Cloud.uid !== uid) return A;   // 그사이 계정이 바뀜
+        hidden();
       } catch (e) {
         const m = String((e && e.message) || e).toLowerCase();
         A.st = e && (e.code === 'PGRST202' || m.includes('could not find') || m.includes('does not exist')) ? 'off' : 'err';
@@ -269,6 +282,7 @@ const EvBR = (() => {
     window.addEventListener('message', (e) => {
       const d = e.data; if (!okOrigin(e.origin) || !d || d.type !== 'ldr-br-escape') return;
       if (d.code) { if (G.state === 'lobby') accept(String(d.code)); else pending = String(d.code); return; }
+      if (d.hid) { A.t = 0; sync(true).then(() => { dots(); if (!el('evPanel').hidden && !busy) render(); }); return; }   // v24.2 히든 업적(광인): 서버 기록을 다시 읽어 칭호를 넣음 (hidden)
       if (G.state === 'lobby') escaped(String(d.m || '')); else pending = '1';
     });
     // 탈출 화면의 버튼으로 돌아옴: ?brx=1 (새 방식) · ?brx=코드 (예전) → 로비에서 처리하고 주소에서 지움
@@ -282,7 +296,7 @@ const EvBR = (() => {
     dots();
     if (pending) { const c = pending; pending = null; if (c === '1') escaped(''); else accept(c); }
     else topUp();
-    sync().then(() => { dots(); if (!el('evPanel').hidden && !busy) render(); });
+    sync().then(() => { hidden(); dots(); if (!el('evPanel').hidden && !busy) render(); });   // hidden: 경기 중에 온 광인 기록
   }
   return { init, lobby, open, banner, recover, prog, sync, state: () => get().st, get acct() { return A; }, _sign: sign, _accept: accept };
 })();

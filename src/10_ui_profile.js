@@ -78,6 +78,8 @@ const Prof = (() => {
     { id: 'br_escape', name: '백룸 탈출자', kind: 'title', title: 'br_escape', desc: '칭호 「백룸 탈출자」(THE BACKROOMS 탈출 이벤트)' },
     // 백룸 완전 탈출 (12가지) — 노란 벽지 고리 + 양옆 초록 비상등 12개 + 위의 EXIT 표지 + 아래 12/12 명판
     { id: 'br_all', name: '백룸 정복자', kind: 'title', title: 'br_all', desc: '칭호 「백룸 정복자」(백룸 12가지 탈출 이벤트)' },
+    // v24.2 우로보로스 — ‘영원과 순환’: 은빛 비늘 뱀이 제 꼬리를 무는 고리 + 형광빛 깜빡임 + 바깥 글자 고리 (백룸 숨겨진 칭호 「광인」과 함께)
+    { id: 'madman', name: '우로보로스', kind: 'title', title: 'madman', desc: '백룸의 숨겨진 칭호 「???」' },
   ];
   for (const f of FR) if (f.kind === 'tier') { f.name = RANK_TIERS[f.t].name; f.desc = `랭크 ${RANK_TIERS[f.t].name} 도달`; }
   // 장식(테두리 위·옆에 붙는 그림, viewBox -16..80) — 높은 티어일수록 많아짐
@@ -117,6 +119,43 @@ const Prof = (() => {
   ORN.br_all = [40, 60, 80, 100, 120, 140, -40, -60, -80, -100, -120, -140].map((d) => { const a = (d - 90) * Math.PI / 180, x = 32 + Math.cos(a) * 37.5, y = 32 + Math.sin(a) * 37.5; return `<rect x="${(x - 3.3).toFixed(1)}" y="${(y - 1.6).toFixed(1)}" width="6.6" height="3.2" rx="1.3" transform="rotate(${d} ${x.toFixed(1)} ${y.toFixed(1)})" fill="#dcffcc" stroke="#2f7a2a" stroke-width=".8"/>`; }).join('')
     + `<rect x="15" y="-15.5" width="34" height="12" rx="2" fill="#0c3a16" stroke="#8dff9a" stroke-width="1.3"/><text x="29" y="-6.2" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="9" fill="#c4ffbe" letter-spacing=".7">EXIT</text><path d="M39.5 -9.5h5.5m-2.2 -2.6 2.6 2.6-2.6 2.6" fill="none" stroke="#c4ffbe" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`
     + `<path d="M14 62h36l-4 6 4 6H14l4-6z" fill="#2a2208" stroke="#f4e07a" stroke-width="1.1"/><text x="32" y="71.3" text-anchor="middle" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif" font-weight="900" font-size="8.4" fill="#fff3b0" letter-spacing=".5">12 / 12</text>`;
+  // v24.2 우로보로스 ('영원과 순환' — 칭호 「광인」 테두리): 은빛 비늘 뱀이 고리를 이루며 제 꼬리를 문다
+  //  몸: 아래 오른쪽 목에서 화면상 시계 반대 방향으로 한 바퀴 돌아 꼬리 끝이 아래 왼쪽에서 입속으로 · 두께는 목 8.2 → 꼬리 2.4
+  //  배 쪽 어두운 띠 위에 비늘 세 줄(안·바깥·등)을 꼬리부터 그려 머리 쪽 비늘이 위에 겹친다 · 등줄기를 따라 도는 빛(순환)
+  //  머리: 아래 가운데에서 꼬리 쪽(왼쪽)을 보고 벌린 두 턱으로 꼬리를 문다 · 노란 세로 동공(백룸 형광빛) · 바깥 글자 고리와 점선 고리는 반대로 천천히 돎
+  //  비늘 모양·그라데이션·글자 경로는 index.html 전역 defs(oro-*)
+  ORN.madman = (() => {
+    const C = 32, R = 28.6, GAP = 0.64, a0 = Math.PI / 2 - GAP / 2, SPAN = Math.PI * 2 - GAP, Y = C + R;
+    // 움직임 줄이기(prefers-reduced-motion): SMIL 은 CSS 로 못 멈추므로 아예 넣지 않는다
+    const SM = (x) => (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? '' : x);
+    const ang = (u) => a0 - u * SPAN, thick = (u) => 8.2 - 5.8 * Math.pow(u, 1.2), f = (v) => v.toFixed(2);
+    const P = (u, dr) => { const a = ang(u), r = R + dr; return [C + Math.cos(a) * r, C + Math.sin(a) * r]; };
+    // 배 쪽 띠 (바깥 가장자리 → 안쪽 가장자리)
+    const out = [], inn = []; for (let i = 0; i <= 60; i++) { const u = i / 60, t = thick(u) / 2; out.push(P(u, t)); inn.push(P(u, -t)); }
+    let s = `<path d="M${out.map((p) => f(p[0]) + ' ' + f(p[1])).join('L')}L${inn.reverse().map((p) => f(p[0]) + ' ' + f(p[1])).join('L')}z" fill="#101215" stroke="#020304" stroke-width=".7"/>`;
+    // 비늘: 꼬리(u = 1)부터 목 쪽으로 — 안쪽·바깥 줄은 어둡게, 등 줄은 밝게 (모양은 #oro-k: 길이 1 · 폭 1, +x 가 꼬리 쪽)
+    const N = 46, scale = (u, dr, w, L, g) => { const [x, y] = P(u, dr), a = ang(u), deg = (Math.atan2(-Math.cos(a), Math.sin(a)) * 180) / Math.PI; return `<use href="#oro-k" fill="url(#${g})" transform="translate(${f(x)} ${f(y)}) rotate(${deg.toFixed(1)}) scale(${f(L)} ${f(w)})"/>`; };
+    for (let i = N; i >= 0; i--) {
+      const u = Math.min(1, i / N), t = thick(u), L = (SPAN * R / N) * 1.75 * (0.65 + 0.35 * (1 - u)), half = Math.min(1, (i + 0.5) / N);
+      if (u < 0.985) s += scale(half, -t * 0.3, t * 0.42, L * 0.9, 'oro-s2') + scale(half, t * 0.3, t * 0.42, L * 0.9, 'oro-s2');
+      s += scale(u, 0, t * 0.5, L, 'oro-s');
+    }
+    // 등줄기를 따라 도는 빛 (목 → 꼬리, 계속)
+    const arc = `M${f(P(0, 0)[0])} ${f(P(0, 0)[1])}A${R} ${R} 0 1 0 ${f(P(1, 0)[0])} ${f(P(1, 0)[1])}`;
+    s += `<path class="oro-glint" d="${arc}" fill="none" stroke="#fffdf0" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="6 200" opacity=".9">${SM('<animate attributeName="stroke-dashoffset" from="206" to="0" dur="3.4s" repeatCount="indefinite"/>')}</path>`;
+    // 머리 (화면 좌표 · 바깥 = 아래 +y, 안쪽 = 위 −y): 위턱(바깥)이 길고 아래턱(안쪽)이 꼬리 위를 누름
+    const hy = (d) => f(Y + d);
+    s += `<path d="M40.2 ${hy(-4.5)}C36.4 ${hy(-6.6)} 30.6 ${hy(-5.6)} 25.4 ${hy(-2.9)}L30.6 ${hy(-1.4)}L31 ${hy(0.9)}L24.2 ${hy(1.9)}C28.4 ${hy(6.6)} 35.6 ${hy(6.9)} 40.2 ${hy(4.5)}C43.4 ${hy(3.2)} 43.4 ${hy(-3.2)} 40.2 ${hy(-4.5)}z" fill="url(#oro-h)" stroke="#05070a" stroke-width=".8"/>`;
+    s += `<path d="M38.8 ${hy(-3.6)}C35.6 ${hy(-5.2)} 31.6 ${hy(-4.6)} 28.4 ${hy(-3)}M38.6 ${hy(3.7)}C35 ${hy(5.6)} 30.6 ${hy(5)} 27 ${hy(2.6)}" fill="none" stroke="#3a4046" stroke-width=".6"/>`;   // 턱 비늘 결
+    s += [[26.2, -2.6], [27.8, -2.0], [29.3, -1.6]].map(([x, d]) => `<path d="M${x} ${hy(d)}l.55 1.5.55-1.6z" fill="#fff"/>`).join('') + [[25.2, 1.8], [26.9, 1.3], [28.5, 1.05]].map(([x, d]) => `<path d="M${x} ${hy(d)}l.55-1.5.55 1.55z" fill="#fff"/>`).join('');   // 송곳니
+    s += `<path d="M37.6 ${hy(-4.9)}C35.6 ${hy(-5.6)} 33 ${hy(-5.2)} 31.2 ${hy(-4.1)}" fill="none" stroke="#05070a" stroke-width="1.1" stroke-linecap="round"/>`;   // 눈두덩
+    s += `<ellipse cx="34.4" cy="${hy(-2.9)}" rx="1.9" ry="1.35" fill="url(#oro-eye)" stroke="#05070a" stroke-width=".5"/><ellipse cx="34.4" cy="${hy(-2.9)}" rx=".38" ry="1.15" fill="#120d02"/><circle cx="33.7" cy="${hy(-3.4)}" r=".35" fill="#fff"/>`;
+    s += `<circle cx="26.9" cy="${hy(-2.1)}" r=".35" fill="#05070a"/>`;   // 콧구멍
+    // 바깥 층: 점선 고리(시간의 흐름)와 글자 고리 「시작은 끝 · 끝은 시작」 — 서로 반대로 천천히 돎 (작은 크기에선 숨김)
+    s += `<g class="oro-echo"><circle cx="32" cy="32" r="34.6" fill="none" stroke="#ffe27a" stroke-width=".55" stroke-dasharray="1.1 2.6" opacity=".5"/>${SM('<animateTransform attributeName="transform" type="rotate" from="0 32 32" to="360 32 32" dur="26s" repeatCount="indefinite"/>')}</g>`;
+    s += `<g class="oro-txt"><text font-size="3.5" font-weight="800" textLength="236" lengthAdjust="spacing" fill="#e6dcae" opacity=".8" font-family="Saira Condensed,Arial Narrow,Arial,sans-serif"><textPath href="#oro-c">${'시작은 끝 · 끝은 시작 · '.repeat(3)}</textPath></text>${SM('<animateTransform attributeName="transform" type="rotate" from="0 32 32" to="-360 32 32" dur="48s" repeatCount="indefinite"/>')}</g>`;
+    return s;
+  })();
   const ORN_FX = { br_escape: '<i class="pf-scan"></i>', br_all: '<i class="pf-rays br"></i>', champ_lv: '<i class="pf-rays lv"></i>', champ_tier: '<i class="pf-rays"></i><i class="pf-orb"></i><i class="pf-orb b"></i>', champ_hc: '<i class="pf-rays hc"></i>', eternal: '<i class="pf-orb"></i><i class="pf-orb b"></i>', grandmaster: '', legend: '<i class="pf-rays"></i>', hc_overlord: '<i class="pf-rays hc"></i>', beta: '<i class="pf-scan"></i>' };
   // ---------- v23 상위 티어 테두리 (노바 · 셀레스티얼 · 이클립스 · 제니스) — 기존 테두리와 다른 새 효과 묶음 'pfx' ----------
   //  뒤: 천천히 도는 색 후광(px-aura) · 영문 이름이 새겨져 도는 고리(px-sig — 작은 크기에선 숨김)
@@ -190,6 +229,10 @@ const Prof = (() => {
     { id: 'bp_s1', name: BP_TITLES.bp_s1, desc: '배틀패스 플러스로 시즌 1 — 50단계 달성 (테두리 함께)', prog: () => `${Eco.bpInfo().lv} / ${BP.max}단계`, ok: () => Eco.bpTitle('bp_s1'), fr: 'bp_s1' },
     // 콜라보 이벤트 (10_event.js): THE BACKROOMS 탈출 1회 · 12가지 모두 → 이벤트 창에서 받기 (계정마다 한 번)
     { id: 'br_escape', name: BR_EVENT.title, desc: 'THE BACKROOMS 탈출 이벤트 — 백룸에서 어떤 방법으로든 탈출 1회 (로비 상단 이벤트)', prog: () => EvBR.prog('one'), ok: () => !!(STATS.eco && STATS.eco.brx) },
+    // v24.2 고난도 칭호: 광인 = 백룸 숨겨진 칭호(군 병원에서 정신력이 다 닳음 — 서버 br_hidden · 10_event.js) · 파쇄기 = 한 경기 근접 처치 SHRED_N 명 (06_combat.js · 기록 STATS.meleeBest)
+    //  hidden: 얻기 전에는 이름·조건을 숨기고 「???」와 힌트만 (칭호 · 입장 연출 목록)
+    { id: 'madman', name: '광인', hidden: true, hint: '숨겨진 칭호 — 백룸 어딘가, 끝없이 되돌아오는 복도에서', desc: '백룸 숨겨진 칭호 — 정신병원 너머 군 병원에서 정신력이 다 닳음 (우로보로스 테두리 함께)', prog: () => '숨겨진 칭호', ok: () => !!(STATS.eco && STATS.eco.brmad), fr: 'madman' },
+    { id: 'shredder', name: '파쇄기', desc: `한 경기에서 근접 무기·주먹으로 ${SHRED_N}명 처치 (배틀로얄 — 같이 하기·랭크 포함 · 훈련장·데스매치 제외)`, prog: () => `최고 ${STATS.meleeBest || 0} / ${SHRED_N} (한 경기 근접 처치)`, ok: () => (STATS.meleeBest || 0) >= SHRED_N },
     { id: 'br_all', name: BR_EVENT.title12, desc: '백룸 완전 탈출 이벤트 — 12가지 방법으로 모두 탈출 (테두리 함께)', prog: () => EvBR.prog('all'), ok: () => !!(STATS.eco && STATS.eco.brx12), fr: 'br_all' },
     // 랭킹 1위 (10_ranking.js): 1위인 동안만 — 다른 계정이 1위가 되면 칭호·테두리가 회수된다
     { id: 'champ_lv', name: '정점의 베테랑', desc: '레벨 랭킹 1위 (1위를 빼앗기면 회수 · 테두리 함께)', prog: () => Ladder.posText('lv'), ok: () => Ladder.champ('lv'), fr: 'champ_lv' },
@@ -279,6 +322,8 @@ const Prof = (() => {
       const none = document.createElement('button'); none.type = 'button'; none.className = 'ti-row' + (!m.ti ? ' on' : ''); none.innerHTML = '<span class="ti-none">칭호 달지 않기</span>'; none.onclick = () => { set('ti', null); Audio.ui(); }; L.appendChild(none);
       for (const t of TI) {
         const ok = t.ok(), b = document.createElement('button'); b.type = 'button'; b.className = 'ti-row' + (m.ti === t.id ? ' on' : '') + (ok ? '' : ' lock');
+        const hid = t.hidden && !ok;   // v24.2 숨겨진 칭호: 얻기 전에는 이름·조건 대신 「???」와 힌트
+        if (hid) { b.innerHTML = `<span class="ttl ttl-hidden">???</span><span class="ti-d"><b>${t.hint}</b><small>숨겨진 칭호</small></span>${frameHTML(t.fr, m.av, 34)}`; b.onclick = () => msg(t.hint); L.appendChild(b); continue; }
         b.innerHTML = `${titleHTML(t.id)}<span class="ti-d"><b>${t.desc}</b><small>${ok ? (m.ti === t.id ? '달고 있음' : (t.own() ? '얻음' : Dev.roleName() + ' 권한') + ' · 눌러서 달기') : '진행: ' + t.prog()}</small></span>${frameHTML(t.fr, m.av, 34)}`;
         b.onclick = () => { if (!ok) { msg(`아직 얻지 못했습니다 — ${t.desc}`); return; } set('ti', t.id); if (frOk(t.fr) && st().fr === 'none') set('fr', t.fr); Audio.ui(); };
         L.appendChild(b);

@@ -40,10 +40,10 @@ const Resume = (() => {
   }
   // vi: 탄 차량 → 번호 (혼자: 저장할 때 붙인 순서 · 같이 하기: 차량 번호 nid)
   function encChar(c, vi) {
-    const o = { i: c.id, a: c.alive ? 1 : 0, p: [r2(c.pos.x), r2(c.pos.y), r2(c.pos.z)], y: r3(c.yaw), pt: r3(c.pitch || 0), m: c.mode, s: c.stance, hp: r1(c.hp), k: c.kills || 0 };
+    const o = { i: c.id, a: c.alive ? 1 : 0, p: [r2(c.pos.x), r2(c.pos.y), r2(c.pos.z)], y: r3(c.yaw), pt: r3(c.pitch || 0), m: c.mode, s: c.stance, hp: r1(c.hp), k: c.kills || 0, mk: c.meleeKills || 0 };
     if (c.knocks) o.kn = c.knocks; if (c.revives) o.rv = c.revives; if (c.damageDealt) o.dd = Math.round(c.damageDealt); if (c.boost) o.bo = r1(c.boost);
     if (c.knockN) o.kN = c.knockN;
-    if (c.knocked) { o.ko = 1; o.kT = r2(c.knockT || G.time); o.kB = c.knockedBy ? c.knockedBy.id : -1; }
+    if (c.knocked) { o.ko = 1; o.kT = r2(c.knockT || G.time); o.kB = c.knockedBy ? c.knockedBy.id : -1; if (c.knockCause) o.kc = c.knockCause; }
     if (!c.alive) { o.dt = r2(c.deathTime || 0); o.pl = c.place || 0; }
     if (c.life) o.lf = c.life; if (c.recallN) o.rn = c.recallN; if (c.cards && c.cards.length) o.cd = c.cards.slice();
     if (c.alive) o.iv = encInv(c.inv);   // 죽은 캐릭터의 소지품은 시체 상자(아이템)로 이미 나갔다
@@ -54,7 +54,7 @@ const Resume = (() => {
   }
   // 저장한 상태를 캐릭터에 (vehs: 번호 → 차량 · rps: 리콜 수송기)
   function charApply(c, o, vehs, rps) {
-    c.kills = o.k || 0; c.knocks = o.kn || 0; c.revives = o.rv || 0; c.damageDealt = o.dd || 0; c.boost = o.bo || 0; c.knockN = o.kN || 0;
+    c.kills = o.k || 0; c.meleeKills = o.mk || 0; c.knocks = o.kn || 0; c.revives = o.rv || 0; c.damageDealt = o.dd || 0; c.boost = o.bo || 0; c.knockN = o.kN || 0;
     c.life = o.lf || 0; c.recallN = o.rn || 0; c.cards = o.cd ? o.cd.slice() : [];
     if (o.me) { c.headshots = o.me.hs; c.lootN = o.me.lt; c.healN = o.me.hl; c.driveM = o.me.dr; c.goldN = o.me.gd; c.goldAmt = o.me.ga; c.dropN = o.me.dp; }
     if (c.veh) Veh.exit(c, true, true);
@@ -69,7 +69,7 @@ const Resume = (() => {
     }
     c.alive = true; c.hp = o.hp; c.mode = o.m || 'ground'; c.stance = o.s || 'stand'; c.onGround = c.mode === 'ground'; c.anim.dead = 0;
     c.knocked = !!o.ko;
-    if (c.knocked) { c.knockT = o.kT; c.knockedBy = o.kB >= 0 ? byId(o.kB) : null; c.stance = 'prone'; }
+    if (c.knocked) { c.knockT = o.kT; c.knockedBy = o.kB >= 0 ? byId(o.kB) : null; c.knockCause = o.kc || ''; c.stance = 'prone'; }
     if (o.iv) decInv(c, o.iv);
     c.equipT = 0; c.setVisibleGear();
     if (c.mode === 'plane') {
@@ -140,7 +140,7 @@ const Resume = (() => {
     if (G.over) { win = !!G.win; place = win ? 1 : (T.place || aliveTeamCount() + (teamAlive(T) ? 0 : 1)); }
     else { const others = T.members.some((m) => m !== p && m.alive), n = aliveTeamCount() - (p.alive && !others ? 1 : 0); place = T.place || (others ? n : n + 1); }
     const surv = p.alive || (win && !p.deathTime) ? G.matchT || G.time : p.deathTime || G.time;   // matchT: 우승이 정해진 시각 (v23 우승 축하 중에 떠나면 그 결과로)
-    return { place, nT: G.teams.length, total: G.total, kills: p.kills, dmg: Math.round(p.damageDealt || 0), revives: p.revives || 0, heads: p.headshots || 0, drive: Math.round(p.driveM || 0), loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0,
+    return { place, nT: G.teams.length, total: G.total, kills: p.kills, melee: p.meleeKills || 0, dmg: Math.round(p.damageDealt || 0), revives: p.revives || 0, heads: p.headshots || 0, drive: Math.round(p.driveM || 0), loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0,
       surv: Math.round(surv), ranked: G.ranked ? 1 : 0, hc: G.hc ? 1 : 0, ts: G.teamSize, party: G.netCfg ? 1 : 0, map: G.netCfg ? G.netCfg.s.map : SETTINGS.map, win: win ? 1 : 0, over: G.over ? 1 : 0 };   // 같이 하기: 창을 닫을 때 10_net.js 가 내 설정을 먼저 되돌려도 경기 맵으로
   }
   // 창에 보일 요약
@@ -225,7 +225,7 @@ const Resume = (() => {
     const o = Object.assign({}, h || mine || {}); if (!o.p) return;
     if (mine) {
       if (o.a && mine.iv) o.iv = mine.iv;
-      o.k = Math.max(o.k || 0, mine.k || 0); o.kn = Math.max(o.kn || 0, mine.kn || 0); o.rv = Math.max(o.rv || 0, mine.rv || 0); o.dd = Math.max(o.dd || 0, mine.dd || 0);
+      o.k = Math.max(o.k || 0, mine.k || 0); o.mk = Math.max(o.mk || 0, mine.mk || 0); o.kn = Math.max(o.kn || 0, mine.kn || 0); o.rv = Math.max(o.rv || 0, mine.rv || 0); o.dd = Math.max(o.dd || 0, mine.dd || 0);
       if (mine.me) o.me = mine.me; o.lf = Math.max(o.lf || 0, mine.lf || 0); o.rn = Math.max(o.rn || 0, mine.rn || 0); if (!o.cd && mine.cd && o.a) o.cd = mine.cd;
     }
     const vehs = G.net ? G.net.vehs : null;

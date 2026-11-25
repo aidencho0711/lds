@@ -889,7 +889,7 @@ function damageKnocked(t, dmg, part, attacker, cause) {
 const causeName = (cause) => cause && ITEMS[cause] ? ITEMS[cause].name : ({ zone: '자기장', fall: '낙하', frag: '수류탄', fist: '주먹', veh: '차량', vexp: '차량 폭발', crash: '충돌', bleed: '출혈', wipe: '팀 전멸' }[cause] || '');
 function knockChar(t, attacker, cause) {
   const by = attacker && attacker !== t ? attacker : null;
-  t.knocked = true; t.knockN++; t.knockedBy = by; t.hp = 100; t.knockT = G.time;
+  t.knocked = true; t.knockN++; t.knockedBy = by; t.hp = 100; t.knockT = G.time; t.knockCause = cause;   // knockCause: 출혈로 쓰러질 때 근접 처치인지 (countMeleeKill)
   t.heal = null; t.rl = null; t.cycle = null; t.aiming = false; t.sprint = false; t.burstQ = 0; t.fireHold = false; t.combatFacing = false;
   if (t.revive) cancelRevive(t);
   if (t.recall) Recall.cancel(t);
@@ -942,6 +942,18 @@ function updateKnocked(c, dt) {
   c.hp -= dt * 100 / BLEED_T[Math.min(c.knockN, BLEED_T.length) - 1];
   if (c.hp <= 0) killChar(c, c.knockedBy, 'bleed');
 }
+// v24.2 칭호 「파쇄기」: 한 경기에서 근접 처치 SHRED_N 명 — 주먹·근접 무기로 쓰러뜨림 + 근접으로 기절시킨 사람이 출혈로 쓰러짐
+//  셈은 캐릭터마다(c.meleeKills, 다른 기기의 처치는 10_net.js 가 같은 함수로) · 계정 기록은 배틀로얄 결과(recordBR → STATS.meleeBest)에서만 — 훈련장·데스매치는 세지 않음
+const SHRED_N = 8;
+const isMeleeCause = (c) => c === 'fist' || !!(c && ITEMS[c] && ITEMS[c].type === 'melee');
+//  기절한 사람이 무기가 아닌 것(출혈·팀 전멸·자기장·낙하·충돌)으로 기절시킨 사람에게 쓰러지면 기절시킨 원인으로 센다 — 주인 기기가 정해 사망 알림(kc)에 실어 보냄 (10_net.js)
+const KO_ENV = { bleed: 1, wipe: 1, zone: 1, fall: 1, crash: 1 };
+const killCauseOf = (t, by, cause, kn) => kn && by && by === t.knockedBy && KO_ENV[cause] && t.knockCause ? t.knockCause : cause;
+function countMeleeKill(t, by, rc) {
+  if (!by || by === t || !isMeleeCause(rc)) return;
+  by.meleeKills = (by.meleeKills || 0) + 1;
+  if (by === G.player && by.meleeKills === SHRED_N && G.state === 'play' && !G.training && !G.dm && !((STATS.meleeBest || 0) >= SHRED_N)) HUD.toast(`칭호 「파쇄기」 — 이번 경기 근접 처치 ${SHRED_N}명! 경기가 끝나면 계정에 기록됩니다`, 'ok');
+}
 function killChar(t, attacker, cause) {
   if (!t.alive) return;
   if (G.net && !Net.mine(t)) { Net.killReq(t, attacker, cause); return; } // 다른 기기 캐릭터: 주인에게 요청
@@ -955,7 +967,8 @@ function killChar(t, attacker, cause) {
   if (t.revivedBy) { const rv = t.revivedBy; t.revivedBy = null; if (rv.revive && rv.revive.tgt === t) rv.revive = null; }
   t.knocked = false;
   if (t.veh) Veh.exit(t, true, true);
-  if (attacker && attacker !== t) attacker.kills++;
+  const rc = killCauseOf(t, attacker, cause, wasKnocked);
+  if (attacker && attacker !== t) { attacker.kills++; countMeleeKill(t, attacker, rc); }
   if (G.killLog) G.killLog.push({ t: Math.round(G.time), cause, kn: wasKnocked, by: attacker && attacker !== t ? (attacker.isPlayer ? 'player' : 'bot') : 'env' });
   // v22 시체 상자: 소지품을 흩뿌리지 않고 시체 오른쪽 옆의 상자 하나에 전부 넣는다 (시체는 10초 뒤 사라지고 상자는 남음 — 11_game.js)
   if (!G.dm && G.scene) { // 데스매치는 떨어뜨리지 않는다 (부활하면 새로 지급)
@@ -979,7 +992,7 @@ function killChar(t, attacker, cause) {
   if (G.teams && G.teamSize > 1 && !teamHasStanding(t.team)) for (const m of G.teams[t.team].members) if (m.alive && m.knocked) killChar(m, m.knockedBy, 'wipe');
   if (G.teams) { const T = G.teams[t.team]; if (T && !T.place && !teamAlive(T)) T.place = aliveTeamCount() + 1; }
   Recall.onDeath(t);   // 리콜 카드(내 것 + 들고 있던 팀원 것)를 그 자리에
-  if (G.net) Net.sendDeath(t, attacker, cause);
+  if (G.net) Net.sendDeath(t, attacker, cause, rc);
   G.onDeath(t, attacker);
 }
 

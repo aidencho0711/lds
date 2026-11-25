@@ -621,7 +621,7 @@ function endMatch() {
   G.bgSim = !!(G.net && Net.isHost() && Net.othersPlaying());
   Resume.clear();   // 결과가 났으니 이어하기 저장은 지운다
   const r = recordBR({ place, nT, total: G.total, kills: p.kills, dmg: p.damageDealt || 0, revives: p.revives, heads: p.headshots || 0, drive: p.driveM || 0, loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0,
-    surv: p.alive || win && !p.deathTime ? G.matchT || G.time : p.deathTime || 0, ranked: G.ranked, hc: G.hc, ts: G.teamSize, party: !!G.net, map: SETTINGS.map, win, quit: !!G.quit });   // matchT: 우승이 정해진 시각 (v23 우승 축하 시간은 빼고)
+    surv: p.alive || win && !p.deathTime ? G.matchT || G.time : p.deathTime || 0, ranked: G.ranked, hc: G.hc, ts: G.teamSize, party: !!G.net, map: SETTINGS.map, win, quit: !!G.quit, melee: p.meleeKills || 0 });   // matchT: 우승이 정해진 시각 (v23 우승 축하 시간은 빼고)
   for (const m of r.notes) HUD.toast(m, 'ok');
   HUD.showResult(win, p, nT);
 }
@@ -633,6 +633,7 @@ function recordBR(r) {
   G.lastXp = xp;
   STATS.matches++; STATS.kills += r.kills; STATS.xp += xp; if (r.win) STATS.wins++;
   STATS.best = Math.min(STATS.best || 99, r.place);
+  if ((r.melee || 0) > (STATS.meleeBest || 0)) STATS.meleeBest = r.melee;   // v24.2 한 경기 근접 처치 최고 (칭호 「파쇄기」 — 10_ui_profile.js)
   const rr = { place: r.place, total: r.ts > 1 ? r.nT : r.total, kills: r.kills, dmg: r.dmg, win: !!r.win, quit: !!r.quit, map: r.map };   // map: 승급전 성공 순위 (10_rank.js SERIES_TOP)
   G.rankResult = r.hc ? Rank.applyHc(rr) : r.ranked ? Rank.apply(rr) : null;
   STATS.recent.unshift({ rank: r.place, total: r.nT, kills: r.kills, time: Math.round(r.surv), map: r.map, ranked: !!r.ranked, hc: r.hc ? 1 : 0, sq: r.ts, party: r.party ? 1 : 0, delta: G.rankResult && !G.rankResult.placement ? G.rankResult.delta : undefined });
