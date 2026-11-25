@@ -149,6 +149,8 @@ const KAnim = (() => {
   // 새 상태로: 지금 줄(처음이면 기본 자세 · low 면 화면 아래)을 붙잡아 bd 초 동안 섞는다
   function enter(ka, st, bd, low) {
     const S = SPEC[ka.kind];
+    //  달리며 휘두르던 중(attack[i].run 줄)에 다른 상태로(넣기 등): 그 순간의 run 줄을 붙잡아 0.1초 동안 run.fp 로 옮겨 감 — 주먹이 한 프레임에 달리기 자리로 튀지 않게 (runRow)
+    if (S.run && ka.st === 'attack' && ka.sw && st !== 'attack') { const a = trackOf(ka, 'attack'); if (a && a.rr) { kfSample(a.rr, clamp(ka.sw.t / ka.sw.total, 0, 1), ka.rf || (ka.rf = new Array(NV).fill(0))); ka.rft = 0; } }
     if (!ka.st || low) { for (let i = 0; i < NV; i++) ka.from[i] = S.rest[i + 1]; if (low) ka.from[1] -= 0.42; }
     else for (let i = 0; i < NV; i++) ka.from[i] = ka.row[i];
     // 손장난 중이었거나 손장난 시간이 다 됐으면 다음 손장난까지 시간을 새로 (휘두르기·살펴보기가 끝나자마자 손장난이 붙지 않게)
@@ -185,7 +187,7 @@ const KAnim = (() => {
     if (ka.kind !== kind || ka.mid !== mid) { ka.kind = kind; ka.mid = mid; ka.st = null; }
     const S = SPEC[kind], sw = c.swing && c.swing.id === mid ? c.swing : null;
     if (held) {
-      if (!ka.held || !ka.st || ka.st === 'unequip') { const eq = c.equipT > 0.05; if (!ka.st) ka.rw = 0; enter(ka, eq ? 'equip' : 'idle', eq ? (ka.st ? 0.08 : 0) : 0.26, !eq && !ka.st); ka.held = true; ka.sw = sw; ka.fn = 2.5 + Math.random() * 3; }
+      if (!ka.held || !ka.st || ka.st === 'unequip') { const eq = c.equipT > 0.05; if (!ka.st) { ka.rw = 0; ka.sg = 0; } enter(ka, eq ? 'equip' : 'idle', eq ? (ka.st ? 0.08 : 0) : 0.26, !eq && !ka.st); ka.held = true; ka.sw = sw; ka.fn = 2.5 + Math.random() * 3; }
       if (sw && sw !== ka.sw) { ka.sw = sw; ka.v = S.attack.length > 1 && sw.side < 0 ? 1 : 0; ka.sa = ka.rw || 0; enter(ka, 'attack', 0.07); }
       else if (ka.st === 'attack' && !sw) enter(ka, 'idle', 0.1);
       if (ka.req) {
@@ -206,7 +208,7 @@ const KAnim = (() => {
     if (ka.st === 'unequip' && (!c.alive || c.knocked || c.veh || c.mode !== 'ground' || !G.firstPerson)) { ka.st = null; return null; }
     let tr = trackOf(ka, ka.st);
     const sp = (tr && tr.speed) || (ka.st === 'idle' && S.idle.speed) || 1;
-    ka.t += dt * sp; ka.bt += dt; ka.kick = Math.max(0, ka.kick - dt * 7);
+    ka.t += dt * sp; ka.bt += dt; ka.kick = Math.max(0, ka.kick - dt * 7); if (ka.rf) ka.rft += dt;
     let u = 0;
     if (ka.st === 'attack') u = ka.sw ? clamp(ka.sw.t / ka.sw.total, 0, 1) : 1;
     else if (ka.st !== 'idle') u = clamp(ka.t / ((tr && tr.dur) || 0.5), 0, 1);
@@ -395,10 +397,13 @@ const KAnim = (() => {
     for (const gm of GH.list) { const k = gm.userData.k; gm.visible = k0 > 0.02 && GH.n > k + 1; if (gm.visible) gm.matrix.copy(GH.ring[gm.userData.mi][(GH.head - k - 1) & 3]); }
   }
   // 달리기 줄: 대기 = run.fp 줄 · 달리며 휘두르기 = 그 휘두르기의 run 줄을 u 에서 (없으면 run.fp 줄)
+  //  달리며 휘두르기가 중간에 끊겼으면(넣기 등 — enter 가 ka.rf 에 붙잡음) 0.1초 동안 그 줄에서 run.fp 로
   const _rs = new Array(NV).fill(0);
   function runRow(ka, S) {
     const at = ka.st === 'attack' && ka.sw ? trackOf(ka, 'attack') : null;
-    return at && at.rr ? kfSample(at.rr, clamp(ka.sw.t / ka.sw.total, 0, 1), _rs) : S.run.v;
+    if (at && at.rr) return kfSample(at.rr, clamp(ka.sw.t / ka.sw.total, 0, 1), _rs);
+    if (ka.rf && ka.rft < 0.1) { const w = sstep(0, 0.1, ka.rft), v = S.run.v; for (let i = 0; i < NV; i++) _rs[i] = lerp(ka.rf[i], v[i], w); return _rs; }
+    return S.run.v;
   }
   // 1인칭 뷰모델: 오른손 + 무기 (왼손은 09_player.js 가 그대로) — 반환 = 왼손이 참고할 { pull, low } 또는 null(기본 동작으로)
   const _vmInfo = { pull: 0, low: 0 };
