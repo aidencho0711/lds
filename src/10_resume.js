@@ -166,9 +166,10 @@ const Resume = (() => {
   }
   // 같이 하기: 경기 설정 + 내 캐릭터 (소지품) — 나머지는 돌아갈 때 방장이 보내 준다
   //  rk: 방장에게 쓰던 내 키들 (v24 — 돌아갈 때 '내가 그 사람'이라는 증명 · 방장 답 확인, 10_net.js rjKeys/probe)
+  //  dk: 그 경기 기기 키 { pub, jwk } (v24.3 온라인 매칭 — 돌아간 페이지가 같은 키로 봉투를 만든다 · 방장이 바뀌었어도 확인됨, 10_net.js dkSave/probe)
   function snapNet() {
     const cfg = G.netCfg;
-    return { kind: cfg.dm ? 'ndm' : 'nbr', cfg, t: r2(G.time), me: encChar(G.player, null), q: G.dm ? null : quitSum(), rk: Net.rjKeys(cfg.mid) };
+    return { kind: cfg.dm ? 'ndm' : 'nbr', cfg, t: r2(G.time), me: encChar(G.player, null), q: G.dm ? null : quitSum(), rk: Net.rjKeys(cfg.mid), dk: Net.dkSave(cfg.mid) };
   }
   function save() {
     if (!want()) return;
@@ -305,12 +306,13 @@ const Resume = (() => {
     try {
       if (!Cloud.uid) { busy = false; show(s, '로그인이 풀려 있습니다 — 로그인한 뒤 다시 시도하세요'); return; }
       for (let i = 0; i < 40 && !Social.connected; i++) await new Promise((r) => setTimeout(r, 200));   // 로비 채널 연결을 기다림
-      const ok = Social.connected ? await Net.probe(s.cfg, s.rk) : null;   // rk: 예전 페이지의 내 키 (v24 다시 들어오기 증명)
+      const ok = Social.connected ? await Net.probe(s.cfg, s.rk, 10000, s.dk) : null;   // rk: 예전 페이지의 내 키 (v24 다시 들어오기 증명) · dk: 그 경기 기기 키 (v24.3 봉투)
       if (!ok) { busy = false; pend = null; clear(); hide(); if (s.q) record(s.q, true, '그 경기는 이미 끝났습니다 · 떠날 때의 순위로 기록'); else HUD.lobbyNote('그 경기는 이미 끝났습니다'); return; }
       if (ok.refused) { busy = false; show(s, '방장 기기가 이 기기를 확인하지 못했습니다 — 잠시 뒤 다시 시도하거나 포기할 수 있습니다'); return; }   // v24: 경기는 계속되는 중 (방장이 증명을 확인하지 못해 거절 — 10_net.js rjno) → 끝난 경기로 기록하지 않음
+      if (ok.nokey) { busy = false; show(s, '이 기기에 그 경기의 확인 열쇠가 남아 있지 않아 다시 들어갈 수 없습니다 — 포기할 수 있습니다'); return; }   // v24.3: 이어하기 저장의 기기 키를 못 불러옴 (10_net.js probe)
       pend = null; hide();
       const cfg = JSON.parse(JSON.stringify(s.cfg)); cfg.host = ok.host;
-      Net.join(cfg, { ep: ok.ep, isl: ok.isl, mine: s.me });
+      Net.join(cfg, { ep: ok.ep, isl: ok.isl, mine: s.me, x: ok.x });   // x: 방장을 찾을 때 쓴 봉투 문맥 (v24.3 — 방장이 이 기기를 이미 안다)
       rjS = s; keys(cfg.mid, Net.rjKeys(cfg.mid));   // v24: 이번 시도의 새 키를 바로 기록에 — 시도가 끊겨도(25초 · 로비로 나가기 · 새로고침) 방장이 이미 받은 새 키로 다시 증명할 수 있게
       G.rjHold = true;
       // 경기 화면이 열린 뒤 방장 상태를 받을 때까지 가림막 (25초 안에 못 받으면 실패)
