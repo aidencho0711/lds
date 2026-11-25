@@ -16,6 +16,8 @@
 //  · 맞히는 시간·거리·피해·쿨타임·꺼내는 시간은 기본 무기와 똑같다 — 휘두르기 줄의 u = 휘두른 시간 / 전체 시간,
 //    화면 숙임도 기본 무기 그대로(근접 판정 방향 = 카메라 앞) · 옆 기울임만 동작마다
 //  · 소리: 동작표의 S = [[u, 이름], …] (내 캐릭터의 꺼내기·대기 손장난·살펴보기·넣기·휘두르기 중) — 이름은 동작표 snd 의 소리(Audio.mskin) 또는 Audio.knife 의 것
+//  · 달리기 자세(선택 — 동작표 run): 대기 중 달리면 1인칭 줄(run.fp)·3인칭 자세(run.tp)로 섞어 넘어감 (없는 스킨은 기본처럼 손을 내림 · 허리 옆으로)
+//    섞는 정도 ka.rw 는 상태마다: 대기 = 달리기 정도 · 휘두르기 = 0 이었다가 마무리(u 0.42~0.62)에 다시 오름(휘두르고 계속 달리면 기본 자세를 거치지 않고 곧장) · 그 밖 = 0
 // ============================================================
 const KAnim = (() => {
   const PI = Math.PI, P2 = PI * 2, NV = 24, IR = 3, IF = 6, IP = 11, IW = 15, IT = 18, IV = 21;
@@ -62,7 +64,9 @@ const KAnim = (() => {
   //  def(모양 id, { base: { h, b, e, f }(1인칭 기본 손 자리·날 방향·때리는 쪽·쥠 — 없으면 무기 기본), pivot: [x, y, z](무기 회전 중심, 모델 좌표 m),
   //    idle: { amp, speed, part(부품 0 흔들림), fid: [손장난 줄들 — 더하는 값], every: [최소, 최대 초] }, equip, unequip: { dur, speed, amp, K, S },
   //    attack: [{ K, S, roll(옆 기울임 rad), kick(맞힘 흔들림 방향 ±1) } …](u = 휘두른 시간 비율), inspect: [{ dur, speed, amp, K, S, gl: [[u0, u1] …](날을 따라 빛이 반짝 지나감) } …],
-  //    snd: { 이름: [길이(초), 소리 조각들] }(Audio.mskin), swing: 휘두르는 소리 이름 또는 [첫째, 둘째], ghost: 잔상 빠르기 기준(m/s, 0 = 없음) })
+  //    snd: { 이름: [길이(초), 소리 조각들] }(Audio.mskin), swing: 휘두르는 소리 이름 또는 [첫째, 둘째], ghost: 잔상 빠르기 기준(m/s, 0 = 없음),
+  //    run: { fp: 1인칭 달리기 줄(K·KO 하나 — 기본 내림·기울임 대신 이 줄이 손 자리·방향 전부), tp: 3인칭 달리기 자세(04_motion.js MEL_RUN 형식 [u, 19개] · 가슴 로컬),
+  //           sw: 3인칭 걸음에 맞춰 어깨를 축으로 흔드는 폭(rad · 기본 0.4) }(선택) })
   function def(shape, sp) {
     const D = MSHAPE[shape]; if (!D) { console.warn('KAnim: 모양 없음', shape); return null; }
     const mid = D.melee, vb = VBASE[mid], b = sp.base || {}, F0 = b.f || F_GRIP;
@@ -75,6 +79,7 @@ const KAnim = (() => {
     S.equip = tr(sp.equip || DEF.equip); S.unequip = tr(sp.unequip || DEF.unequip);
     S.attack = (sp.attack || []).map((t) => tr(t)); S.inspect = (sp.inspect || []).map((t) => tr(t)); S.fid = (S.idle.fid || []).map((t) => tr(t, true));
     S.rest = rowOf(K(0), F0, false, S, null);
+    S.run = sp.run ? { v: rowOf(sp.run.fp || K(0), F0, false, S, S.rest).slice(1), tp: sp.run.tp || null, sw: sp.run.sw !== undefined ? sp.run.sw : 0.4 } : null;
     SPEC[shape] = S; return S;
   }
 
@@ -122,7 +127,7 @@ const KAnim = (() => {
     if (ka.kind !== kind || ka.mid !== mid) { ka.kind = kind; ka.mid = mid; ka.st = null; }
     const S = SPEC[kind], sw = c.swing && c.swing.id === mid ? c.swing : null;
     if (held) {
-      if (!ka.held || !ka.st || ka.st === 'unequip') { const eq = c.equipT > 0.05; enter(ka, eq ? 'equip' : 'idle', eq ? (ka.st ? 0.08 : 0) : 0.26, !eq && !ka.st); ka.held = true; ka.sw = sw; ka.fn = 2.5 + Math.random() * 3; }
+      if (!ka.held || !ka.st || ka.st === 'unequip') { const eq = c.equipT > 0.05; if (!ka.st) ka.rw = 0; enter(ka, eq ? 'equip' : 'idle', eq ? (ka.st ? 0.08 : 0) : 0.26, !eq && !ka.st); ka.held = true; ka.sw = sw; ka.fn = 2.5 + Math.random() * 3; }
       if (sw && sw !== ka.sw) { ka.sw = sw; ka.v = S.attack.length > 1 && sw.side < 0 ? 1 : 0; enter(ka, 'attack', 0.07); }
       else if (ka.st === 'attack' && !sw) enter(ka, 'idle', 0.1);
       if (ka.req) {
@@ -163,7 +168,8 @@ const KAnim = (() => {
       //  (손장난 중이었으면 지금 자세에서 섞어 풀어 줌 — 부활처럼 근접 무기 화면이 그대로 보일 때 한 프레임에 튀지 않게)
       if (c.heal || c.throwMode || c.throwAnim > 0 || c.nadeQ || c.revive || c.dance) { if (ka.fi >= 0) enter(ka, 'idle', 0.15); }
       else if (S.fid.length) {
-        if (ka.fi < 0) { ka.fn -= dt; if (ka.fn <= 0) { ka.fi = pickOther(S.fid.length, ka.fl); ka.ft = 0; ka.fu0 = -1; } }
+        //  달리기 자세(동작표 run)로 달리는 동안은 시작하지 않음 (손장난이 그 자세에 가려 소리만 나지 않게 — 멈춘 뒤 1.5초 이상 지나서)
+        if (ka.fi < 0) { if (ka.rw > 0.3) ka.fn = Math.max(ka.fn, 1.5); ka.fn -= dt; if (ka.fn <= 0) { ka.fi = pickOther(S.fid.length, ka.fl); ka.ft = 0; ka.fu0 = -1; } }
         if (ka.fi >= 0) {
           const F = S.fid[ka.fi]; ka.ft += dt; const fu = ka.ft / (F.dur || 0.8);
           if (fu >= 1) { ka.fl = ka.fi; ka.fi = -1; const ev = I.every || [4, 8]; ka.fn = ev[0] + Math.random() * (ev[1] - ev[0]); }
@@ -180,6 +186,12 @@ const KAnim = (() => {
       if (c.isPlayer && tr.S) for (const [su, k] of tr.S) if (ka.u0 < su && u >= su) snd(S, k, null, true);
     }
     ka.u0 = u;
+    // 달리기 자세(동작표 run)를 섞는 정도: 대기 = 달리기 정도(c.anim.sprint — 앞 프레임) · 휘두르기 = 마무리(u 0.42~0.62)부터 다시 · 그 밖 = 0
+    //  휘두르는 동안은 빨리 빠지고 빨리 돌아옴 (맞히는 구간엔 휘두르는 줄이 거의 그대로 · 계속 달리면 기본 자세로 돌아가기 전에 달리는 자세로)
+    if (S.run) {
+      const at = ka.st === 'attack', g = ka.st === 'idle' ? (sw ? 0 : 1) : at ? sstep(0.42, 0.62, u) : 0, an = c.anim;
+      ka.rw = lerp(ka.rw || 0, g * (an ? sstep(0, 1, an.sprint || 0) : 0), clamp(dt * (at ? 14 : 10), 0, 1));
+    } else ka.rw = 0;
     // 3인칭: 꺼내기·살펴보기 동안 손을 가슴 앞으로 들어 올리는 정도(멀리서도 동작이 보이게) — 부드럽게 따라감
     const shT = ka.st === 'equip' ? sstep(0.1, 0.3, u) * (1 - sstep(0.8, 1, u)) : ka.st === 'inspect' ? sstep(0, 0.08, u) * (1 - sstep(0.9, 1, u)) : 0;
     ka.sh = lerp(ka.sh || 0, shT, clamp(dt * 8, 0, 1));
@@ -255,6 +267,7 @@ const KAnim = (() => {
 
   // ---------- 1인칭 ----------
   const _P = new THREE.Vector3(), _Q = new THREE.Quaternion(), _B = new THREE.Vector3(), _E = new THREE.Vector3(), _qr = new THREE.Quaternion(), _pole = new THREE.Vector3();
+  const _P2 = new THREE.Vector3(), _Q2 = new THREE.Quaternion(), _rv = new Array(NV).fill(0);
   const _tp = new THREE.Vector3(), _bp = new THREE.Vector3(), _lt = new THREE.Vector3();
   // 잔상: 빠르게 움직이는 날(관절 모델은 날 부품, 아니면 무기 전체)을 지난 몇 프레임 자리에 옅게 — 낮은 화질이면 생략
   //  메시마다 지난 자리 4개를 돌려 쓰는 행렬 고리(무기가 바뀔 때만 새로 만듦) · 잔상 3장(가까운 것일수록 진하게)
@@ -314,11 +327,18 @@ const KAnim = (() => {
     vmHeld(A.R, ka.mid, sk);
     const o = A.R.hold.children[0]; if (!o) return null;
     if (!force) ka.vf = G.frame;   // 이 프레임에 근접 무기 뷰모델을 그렸음 (넣기 판단용)
-    const v = ka.row; handPose(S, v, _P, _Q, VM_SC);
-    // 걷는 흔들림 · 달리면 아래로 (기본 근접 무기와 같음)
-    const bobAmp = clamp(p.anim.speed / 5, 0, 1);
-    _P.x += Math.sin(p.anim.phase) * 0.012 * bobAmp + run * 0.05; _P.y -= Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp + run * 0.14;
-    if (run > 0.01) { _qr.setFromAxisAngle(AX_X, -run * 0.5); _Q.premultiply(_qr); }
+    let v = ka.row; handPose(S, v, _P, _Q, VM_SC);
+    // 달리기 자세(동작표 run): 손 자리는 직선으로 · 방향은 구면으로(손목이 엉뚱하게 돌지 않게) ka.rw 만큼 그 줄로 — 손가락·부품도 (부품·무기 회전은 2π 맞춤)
+    const R = S.run, rw = R ? ka.rw || 0 : 0;
+    if (rw > 0.001) {
+      handPose(S, R.v, _P2, _Q2, VM_SC); _P.lerp(_P2, rw); _Q.slerp(_Q2, rw);
+      for (let i = 0; i < NV; i++) { let t = R.v[i]; if (i >= IP && i < IT) t += P2 * Math.round((v[i] - t) / P2); _rv[i] = lerp(v[i], t, rw); }
+      v = _rv;
+    }
+    // 걷는 흔들림 · 달리면 아래로 (기본 근접 무기와 같음 — 달리기 자세가 있는 스킨은 그 줄이 내림·기울임 대신)
+    const bobAmp = clamp(p.anim.speed / 5, 0, 1), rn = R ? 0 : run;
+    _P.x += Math.sin(p.anim.phase) * 0.012 * bobAmp + rn * 0.05; _P.y -= Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp + rn * 0.14;
+    if (rn > 0.01) { _qr.setFromAxisAngle(AX_X, -rn * 0.5); _Q.premultiply(_qr); }
     fing(v, _F5); vmReach(A.R, _P, _Q, _pole.set(0.6, -0.7, 0.15), _F5); setK(A.R, _F5);
     place(A.R, o, S, v, 1 / VM_SC);
     // 휘두르기 자국(휘두르는 순간) + 잔상(빠르게 움직일 때)
@@ -326,8 +346,8 @@ const KAnim = (() => {
     const spd = GH.lt ? _tp.distanceTo(_lt) / Math.max(dt, 1e-3) : 0; _lt.copy(_tp); GH.lt = true;
     const sw = ka.st === 'attack' ? ka.sw : null, D = ITEMS[ka.mid];
     if (sw && sw.t > D.wind * 0.85 && sw.t < D.wind + D.strike * 1.4) FX.trail('vm', VM.scene, _tp, _bp, MeleeSkin.trail(ka.mid, sk));
-    // 잔상은 손장난(꺼내기·살펴보기·대기)의 빠른 돌기에만 — 휘두르기는 자국이 따로 있어 겹치면 번져 보임
-    ghosts(gs, dt, spd, ka.st === 'attack' || ka.st === 'unequip' ? 0 : S.ghost);
+    // 잔상은 손장난(꺼내기·살펴보기·대기)의 빠른 돌기에만 — 휘두르기는 자국이 따로 있어 겹치면 번져 보임 · 달리기 자세로 손을 돌리는 동안도 없음
+    ghosts(gs, dt, spd, ka.st === 'attack' || ka.st === 'unequip' || (ka.st === 'idle' && rw > 0.02) ? 0 : S.ghost);
     const it = ka.st === 'inspect' ? trackOf(ka, 'inspect') : null;
     glint(it, it ? clamp(ka.t / (it.dur || 1), 0, 1) : 0, _tp, _bp);
     const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0;
@@ -407,6 +427,24 @@ const KAnim = (() => {
     const sh = ka.sh || 0; out[0] += 0.07 * sh; out[1] += 0.17 * sh; out[2] += 0.08 * sh;
     return out;
   }
+  // 3인칭 달리기 자세 (동작표 run.tp): tppRow 자세를 ka.rw 만큼 그 자세로 — 동작표에 run.tp 가 없으면 false (04_motion.js 가 기본 MEL_RUN 으로)
+  //  걸음에 맞춰 어깨를 축으로 팔을 흔든다: 오른팔은 왼발과 함께 앞으로(−cos 위상) · 왼손은 반대 · 뒤로는 앞의 0.6배만(팔꿈치가 등 뒤로 꺾이지 않게)
+  //  손 방향은 흔든 각의 절반만 기울어 손등이 늘 위 · 팔꿈치 방향은 0.4배만 따라가 옆구리에 붙은 채
+  const _rp = new Array(19).fill(0), SHR = [-0.191, 0.171, 0], SHL = [0.191, 0.171, 0];
+  // 가슴 로컬 x(왼쪽) 축 둘레로 돌림 (+ = 앞으로 · 점은 C 를 중심으로, C 가 없으면 방향)
+  function swingX(v, i, a, C) { const c0 = C ? C[1] : 0, c1 = C ? C[2] : 0, y = v[i + 1] - c0, z = v[i + 2] - c1, cs = Math.cos(a), sn = Math.sin(a); v[i + 1] = c0 + y * cs + z * sn; v[i + 2] = c1 - y * sn + z * cs; }
+  function tppRun(c, out, ph) {
+    const ka = c.ka, S = ka && SPEC[ka.kind], R = S && S.run; if (!R || !R.tp) return false;
+    // 휘두르는 중: 처음(u ~0.3)에 빠지고, 기본 3인칭 찌르기가 뻗었다 돌아오는 구간(u 0.56~0.95)에서만 다시 — 뻗은 팔이 달리는 자세로 한 번에 끌려오지 않게
+    let w = ka.rw || 0;
+    if (ka.st === 'attack' && ka.sw) { const u = ka.sw.t / ka.sw.total; w = Math.min(w, 1 - sstep(0, 0.3, u) + sstep(0.56, 0.95, u)); }
+    if (w < 0.001) return true;
+    const T = R.tp, o = T.length > 19 ? 1 : 0, s = -Math.cos(ph), q = 0.2 * s * s, a = R.sw * (0.8 * s + q), al = R.sw * (-0.8 * s + q);
+    for (let i = 0; i < 19; i++) _rp[i] = T[i + o];
+    swingX(_rp, 0, a, SHR); swingX(_rp, 3, a * 0.5); swingX(_rp, 6, a * 0.5); swingX(_rp, 16, a * 0.4, SHR); swingX(_rp, 13, al, SHL);
+    for (let i = 0; i < 19; i++) out[i] = lerp(out[i], _rp[i], w);
+    return true;
+  }
   const fingersOf = (c) => fing(c.ka.row, _F5);
   const fingers3 = (c, Ar, w) => setK(Ar, fing(c.ka.row, _F5), w);
   // 3인칭 손에 든 모델의 부품·손 안 회전 (setHeld 뒤 매 프레임) — 전용 동작이 끝났으면 원래 자리로
@@ -424,5 +462,5 @@ const KAnim = (() => {
     if (s2.t > D.wind * 0.85 && s2.t < D.wind + D.strike * 1.35) { tipBase(o, s2.id, sk, _t3a, _t3b); FX.trail('c' + c.id, G.scene, _t3a, _t3b, MeleeSkin.trail(s2.id, sk)); }
     return true;
   }
-  return { K, KO, def, SPEC, dbg, kindOf, canInspect, ownDraw, tick, on, inspect, vm, vmOut, vmOff, outActive, cam, hit, alt, swingSound, tppRow, fingersOf, fingers3, tppApply, trail3, sheath, unplace, place, handPose, warmVM };
+  return { K, KO, def, SPEC, dbg, kindOf, canInspect, ownDraw, tick, on, inspect, vm, vmOut, vmOff, outActive, cam, hit, alt, swingSound, tppRow, tppRun, fingersOf, fingers3, tppApply, trail3, sheath, unplace, place, handPose, warmVM };
 })();
