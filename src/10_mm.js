@@ -139,10 +139,14 @@ const MM = (() => {
   //  서버는 새 경기를 열 때만 이 값을 쓴다 — 이 대기열에 줄 선 사람이 있으면 그 사람이 연 경기에 들어가 그 경기의 대기 시간(st.wait)을 따른다.
   //  그런데도 새 경기가 열렸다면 그 사람들은 이미 마감(시작 직전)이거나 나와 동시에 줄 선 것이라 '줄 선 사람이 없음'과 같다 → 어느 쪽이든 1분
   function waitFor(q) { if (Social.synced) q.short = true; return q.short ? Math.min(T.short, T.wait) : T.wait; }
+  // v24.3 기기 키: 내 칸에 이 기기의 공개 키(ek) — 서버가 이 줄의 주인(owner)을 적으므로 방장이 그 사람 키로 믿고 경기 설정(cfg.ek)에 넣는다
+  //  (10_net.js '기기 키 · 봉투' — 첫 연결의 신호를 남이 꾸미지 못하게) · 1.5초 안에 못 만들면(WebCrypto 없음 등) 넣지 않음 → 그 판은 예전처럼 · 파티원 칸은 그대로 (방장이 믿지 않음)
   async function join() {
     const q = Q; if (!q) return;
     q.busy = true; q.wait = waitFor(q); let data = null;
-    try { const r = await sb().rpc('mm_join', { p_qkey: q.s.key, p_cap: q.s.cap, p_wait: q.wait, p_members: q.members }); if (r.error) throw r.error; data = r.data; }
+    const dk = await Net.devKey(1500); if (Q !== q) { q.busy = false; return; }
+    const members = dk ? q.members.map((m) => (m && m.uid === Cloud.uid ? Object.assign({}, m, { ek: dk.pub }) : m)) : q.members;
+    try { const r = await sb().rpc('mm_join', { p_qkey: q.s.key, p_cap: q.s.cap, p_wait: q.wait, p_members: members }); if (r.error) throw r.error; data = r.data; }
     catch (e) {
       q.busy = false; if (Q !== q) return; console.warn('mm_join', e);
       if (q.s.cap > 16 && /cap/.test(String(e && e.message || ''))) { q.s.cap = 16; schedule(300); return; }   // 서버 SQL 이 아직 예전 것(한 경기 최대 16명)이면 16명으로 다시
@@ -180,7 +184,7 @@ const MM = (() => {
     const q = Q; if (!q || !st) return;
     q.st = st; q.stAt = now(); tellParty();
     if (st.closed) {
-      if (st.cfg) { launch(st.cfg); return; }
+      if (st.cfg) { launch(st.cfg, st.tickets); return; }   // tickets: 서버의 줄 표 — 기기 키 맞춰 보기 (v24.3 ekCheck)
       if (st.host === Cloud.uid && !q.cfgBusy) makeCfg(st);
     }
     if (recheck()) return;
@@ -194,20 +198,40 @@ const MM = (() => {
     cancel(); quick(); return true;
   }
   // 방장: 마감된 명단으로 경기 설정을 만들어 올림 → 성공하면 바로 시작
+  //  v24.3: 남의 줄에 적힌 이름은 그 사람 자기 줄이 따로 있으면 건너뛴다(그 사람 줄에서 — 먼저 줄 선 남이 내 이름을 적어도 내 칸이 이긴다) ·
+  //   기기 키(ek)는 줄 주인 본인 칸의 것만 cfg.ek 에 (서버가 줄 주인을 적는다 — 파티원 칸은 파티장이 적은 것) · 줄 칸의 모양이 이상해도 건너뜀 (설정 만들기가 멈추지 않게)
+  //   이름은 문자열만 (줄 칸은 남이 올린 JSON — { toString: 1 } 같은 값에 String() 이 던져 설정을 못 만들고 cfgBusy 에 걸려 경기가 시작되지 않던 것) · 무슨 일이 있어도 cfgBusy 를 푼다
   async function makeCfg(st) {
     const q = Q; if (!q) return; q.cfgBusy = true;
-    const humans = [];
-    (st.tickets || []).forEach((t, g) => { for (const m of t.members || []) if (m && m.uid && !humans.some((h) => h.uid === m.uid)) humans.push({ uid: m.uid, name: String(m.name || '?').slice(0, 12), look: m.look || null, lv: m.lv || 1, g }); });
-    if (!humans.some((h) => h.uid === Cloud.uid)) { q.cfgBusy = false; return; }
-    const cfg = Net.makeConfig(humans, { mm: st.mid, spec: q.s });
     try {
+      const humans = [], ek = {}, tk = Array.isArray(st.tickets) ? st.tickets.filter((t) => t && typeof t === 'object') : [], owners = new Set(tk.map((t) => t.owner));
+      tk.forEach((t, g) => {
+        for (const m of Array.isArray(t.members) ? t.members : []) {
+          if (!m || typeof m.uid !== 'string' || !m.uid || humans.some((h) => h.uid === m.uid) || (m.uid !== t.owner && owners.has(m.uid))) continue;
+          humans.push({ uid: m.uid, name: typeof m.name === 'string' && m.name ? m.name.slice(0, 12) : '?', look: m.look || null, lv: m.lv || 1, g });
+          if (m.uid === t.owner && Net.ekOk(m.ek)) ek[m.uid] = m.ek;
+        }
+      });
+      if (!humans.some((h) => h.uid === Cloud.uid)) { q.cfgBusy = false; return; }
+      const cfg = Net.makeConfig(humans, { mm: st.mid, spec: q.s, ek });
       const r = await sb().rpc('mm_cfg', { p_match: st.mid, p_cfg: cfg }); if (r.error) throw r.error;
       if (Q !== q) return;
       if (r.data === 'ok') launch(cfg); else q.cfgBusy = false;   // 'no': 그 사이 방장이 바뀜 → 다음 확인에서 받음
     } catch (e) { console.warn('mm_cfg', e); q.cfgBusy = false; }
   }
-  function launch(cfg) {
+  // v24.3 기기 키 맞춰 보기 (서버에서 받은 경기 설정 — 파티원이 아닌 사람): cfg.ek 의 키가 그 사람 자기 줄 칸의 키와 다르면(방장이 바꿔 적음) 버린다 → 그 사람은 확인 없이(v24)
+  //  줄이 없어진 사람(그 뒤 취소 등)은 그대로 둔다 — 먼저 받은 사람과 나중에 받은 사람의 판단이 갈리지 않게 (줄 칸의 키는 바뀌지 않으므로 '다름'은 누구에게나 같다)
+  function ekCheck(cfg, tk) {
+    const ek = cfg && cfg.ek; if (!ek || typeof ek !== 'object' || !Array.isArray(tk)) return;
+    for (const u of Object.keys(ek)) {
+      const t = tk.find((x) => x && typeof x === 'object' && x.owner === u); if (!t) continue;
+      const m = (Array.isArray(t.members) ? t.members : []).find((x) => x && typeof x === 'object' && x.uid === u);
+      if (!m || m.ek !== ek[u]) delete ek[u];
+    }
+  }
+  function launch(cfg, tk) {
     const q = Q; if (!q || q.launched) return;
+    if (tk) ekCheck(cfg, tk);
     // 매칭된 경기의 방장과 게임 버전이 다름 (대기열 키에 버전이 들어 있어 보통은 갈림) → 같이 하지 않음 (10_ver.js)
     if (cfg.v !== NET_VER) { cancel(); Ver.tell(cfg.v, (cfg.humans.find((h) => h.uid === cfg.host) || {}).name); return; }
     q.launched = true; clearTimeout(q.timer); Q = null;
@@ -259,7 +283,7 @@ const MM = (() => {
   }
   function partyGone() { if (pv) { pv = null; render(); } }
   // 경기 명단(서버 — 남이 mm_join 에 보낸 members 그대로)에서 이름표: 객체가 아닌 항목은 건너뜀
-  const names = (st) => (st && Array.isArray(st.tickets) ? st.tickets.flatMap((t, g) => (t && Array.isArray(t.members) ? t.members : []).filter((m) => m && typeof m === 'object').map((m) => ({ n: String(m.name || '?').slice(0, 12), g, me: m.uid === Cloud.uid }))) : []);
+  const names = (st) => (st && Array.isArray(st.tickets) ? st.tickets.flatMap((t, g) => (t && Array.isArray(t.members) ? t.members : []).filter((m) => m && typeof m === 'object').map((m) => ({ n: typeof m.name === 'string' && m.name ? m.name.slice(0, 12) : '?', g, me: m.uid === Cloud.uid }))) : []);   // v24.3 이름은 문자열만 (String() 이 던지면 매칭 화면·확인이 멈췄다)
 
   // ---------- 화면 ----------
   //  noTrack: 접속 표시를 지금 보내지 않음 (곧 경기에 들어가 다시 바뀜 — 1초마다 확인에서 한 번만)

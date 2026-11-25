@@ -105,7 +105,7 @@ class Character {
     this.lean = 0; this.leanA = 0;   // 기울이기: lean = -1 왼쪽 · 0 · +1 오른쪽(목표), leanA = 부드럽게 따라가는 값. 상체·눈·피격 판정이 그쪽으로 옮겨 감
     this.sprint = false; this.aiming = false; this.moving = false;
     this.inv = new Inventory(this);
-    this.kills = 0; this.damageDealt = 0; this.deathTime = 0; this.place = 0;
+    this.kills = 0; this.meleeKills = 0; this.damageDealt = 0; this.deathTime = 0; this.place = 0;
     this.fireCd = 0; this.rl = null; this.cycle = null; this.slideKick = 0; this.equipT = 0; this.bloom = 0;
     this.heal = null; // {id, t, total}
     this.rig = buildRig(this.look); this.root = this.rig.root;

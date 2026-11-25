@@ -40,10 +40,10 @@ const Resume = (() => {
   }
   // vi: 탄 차량 → 번호 (혼자: 저장할 때 붙인 순서 · 같이 하기: 차량 번호 nid)
   function encChar(c, vi) {
-    const o = { i: c.id, a: c.alive ? 1 : 0, p: [r2(c.pos.x), r2(c.pos.y), r2(c.pos.z)], y: r3(c.yaw), pt: r3(c.pitch || 0), m: c.mode, s: c.stance, hp: r1(c.hp), k: c.kills || 0 };
+    const o = { i: c.id, a: c.alive ? 1 : 0, p: [r2(c.pos.x), r2(c.pos.y), r2(c.pos.z)], y: r3(c.yaw), pt: r3(c.pitch || 0), m: c.mode, s: c.stance, hp: r1(c.hp), k: c.kills || 0, mk: c.meleeKills || 0 };
     if (c.knocks) o.kn = c.knocks; if (c.revives) o.rv = c.revives; if (c.damageDealt) o.dd = Math.round(c.damageDealt); if (c.boost) o.bo = r1(c.boost);
     if (c.knockN) o.kN = c.knockN;
-    if (c.knocked) { o.ko = 1; o.kT = r2(c.knockT || G.time); o.kB = c.knockedBy ? c.knockedBy.id : -1; }
+    if (c.knocked) { o.ko = 1; o.kT = r2(c.knockT || G.time); o.kB = c.knockedBy ? c.knockedBy.id : -1; if (c.knockCause) o.kc = c.knockCause; }
     if (!c.alive) { o.dt = r2(c.deathTime || 0); o.pl = c.place || 0; }
     if (c.life) o.lf = c.life; if (c.recallN) o.rn = c.recallN; if (c.cards && c.cards.length) o.cd = c.cards.slice();
     if (c.alive) o.iv = encInv(c.inv);   // 죽은 캐릭터의 소지품은 시체 상자(아이템)로 이미 나갔다
@@ -54,7 +54,7 @@ const Resume = (() => {
   }
   // 저장한 상태를 캐릭터에 (vehs: 번호 → 차량 · rps: 리콜 수송기)
   function charApply(c, o, vehs, rps) {
-    c.kills = o.k || 0; c.knocks = o.kn || 0; c.revives = o.rv || 0; c.damageDealt = o.dd || 0; c.boost = o.bo || 0; c.knockN = o.kN || 0;
+    c.kills = o.k || 0; c.meleeKills = o.mk || 0; c.knocks = o.kn || 0; c.revives = o.rv || 0; c.damageDealt = o.dd || 0; c.boost = o.bo || 0; c.knockN = o.kN || 0;
     c.life = o.lf || 0; c.recallN = o.rn || 0; c.cards = o.cd ? o.cd.slice() : [];
     if (o.me) { c.headshots = o.me.hs; c.lootN = o.me.lt; c.healN = o.me.hl; c.driveM = o.me.dr; c.goldN = o.me.gd; c.goldAmt = o.me.ga; c.dropN = o.me.dp; }
     if (c.veh) Veh.exit(c, true, true);
@@ -69,7 +69,7 @@ const Resume = (() => {
     }
     c.alive = true; c.hp = o.hp; c.mode = o.m || 'ground'; c.stance = o.s || 'stand'; c.onGround = c.mode === 'ground'; c.anim.dead = 0;
     c.knocked = !!o.ko;
-    if (c.knocked) { c.knockT = o.kT; c.knockedBy = o.kB >= 0 ? byId(o.kB) : null; c.stance = 'prone'; }
+    if (c.knocked) { c.knockT = o.kT; c.knockedBy = o.kB >= 0 ? byId(o.kB) : null; c.knockCause = o.kc || ''; c.stance = 'prone'; }
     if (o.iv) decInv(c, o.iv);
     c.equipT = 0; c.setVisibleGear();
     if (c.mode === 'plane') {
@@ -140,7 +140,7 @@ const Resume = (() => {
     if (G.over) { win = !!G.win; place = win ? 1 : (T.place || aliveTeamCount() + (teamAlive(T) ? 0 : 1)); }
     else { const others = T.members.some((m) => m !== p && m.alive), n = aliveTeamCount() - (p.alive && !others ? 1 : 0); place = T.place || (others ? n : n + 1); }
     const surv = p.alive || (win && !p.deathTime) ? G.matchT || G.time : p.deathTime || G.time;   // matchT: 우승이 정해진 시각 (v23 우승 축하 중에 떠나면 그 결과로)
-    return { place, nT: G.teams.length, total: G.total, kills: p.kills, dmg: Math.round(p.damageDealt || 0), revives: p.revives || 0, heads: p.headshots || 0, drive: Math.round(p.driveM || 0), loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0,
+    return { place, nT: G.teams.length, total: G.total, kills: p.kills, melee: p.meleeKills || 0, dmg: Math.round(p.damageDealt || 0), revives: p.revives || 0, heads: p.headshots || 0, drive: Math.round(p.driveM || 0), loot: p.lootN || 0, heals: p.healN || 0, goldN: p.goldN || 0, drops: p.dropN || 0,
       surv: Math.round(surv), ranked: G.ranked ? 1 : 0, hc: G.hc ? 1 : 0, ts: G.teamSize, party: G.netCfg ? 1 : 0, map: G.netCfg ? G.netCfg.s.map : SETTINGS.map, win: win ? 1 : 0, over: G.over ? 1 : 0 };   // 같이 하기: 창을 닫을 때 10_net.js 가 내 설정을 먼저 되돌려도 경기 맵으로
   }
   // 창에 보일 요약
@@ -166,9 +166,10 @@ const Resume = (() => {
   }
   // 같이 하기: 경기 설정 + 내 캐릭터 (소지품) — 나머지는 돌아갈 때 방장이 보내 준다
   //  rk: 방장에게 쓰던 내 키들 (v24 — 돌아갈 때 '내가 그 사람'이라는 증명 · 방장 답 확인, 10_net.js rjKeys/probe)
+  //  dk: 그 경기 기기 키 { pub, jwk } (v24.3 온라인 매칭 — 돌아간 페이지가 같은 키로 봉투를 만든다 · 방장이 바뀌었어도 확인됨, 10_net.js dkSave/probe)
   function snapNet() {
     const cfg = G.netCfg;
-    return { kind: cfg.dm ? 'ndm' : 'nbr', cfg, t: r2(G.time), me: encChar(G.player, null), q: G.dm ? null : quitSum(), rk: Net.rjKeys(cfg.mid) };
+    return { kind: cfg.dm ? 'ndm' : 'nbr', cfg, t: r2(G.time), me: encChar(G.player, null), q: G.dm ? null : quitSum(), rk: Net.rjKeys(cfg.mid), dk: Net.dkSave(cfg.mid) };
   }
   function save() {
     if (!want()) return;
@@ -225,7 +226,7 @@ const Resume = (() => {
     const o = Object.assign({}, h || mine || {}); if (!o.p) return;
     if (mine) {
       if (o.a && mine.iv) o.iv = mine.iv;
-      o.k = Math.max(o.k || 0, mine.k || 0); o.kn = Math.max(o.kn || 0, mine.kn || 0); o.rv = Math.max(o.rv || 0, mine.rv || 0); o.dd = Math.max(o.dd || 0, mine.dd || 0);
+      o.k = Math.max(o.k || 0, mine.k || 0); o.mk = Math.max(o.mk || 0, mine.mk || 0); o.kn = Math.max(o.kn || 0, mine.kn || 0); o.rv = Math.max(o.rv || 0, mine.rv || 0); o.dd = Math.max(o.dd || 0, mine.dd || 0);
       if (mine.me) o.me = mine.me; o.lf = Math.max(o.lf || 0, mine.lf || 0); o.rn = Math.max(o.rn || 0, mine.rn || 0); if (!o.cd && mine.cd && o.a) o.cd = mine.cd;
     }
     const vehs = G.net ? G.net.vehs : null;
@@ -305,12 +306,13 @@ const Resume = (() => {
     try {
       if (!Cloud.uid) { busy = false; show(s, '로그인이 풀려 있습니다 — 로그인한 뒤 다시 시도하세요'); return; }
       for (let i = 0; i < 40 && !Social.connected; i++) await new Promise((r) => setTimeout(r, 200));   // 로비 채널 연결을 기다림
-      const ok = Social.connected ? await Net.probe(s.cfg, s.rk) : null;   // rk: 예전 페이지의 내 키 (v24 다시 들어오기 증명)
+      const ok = Social.connected ? await Net.probe(s.cfg, s.rk, 10000, s.dk) : null;   // rk: 예전 페이지의 내 키 (v24 다시 들어오기 증명) · dk: 그 경기 기기 키 (v24.3 봉투)
       if (!ok) { busy = false; pend = null; clear(); hide(); if (s.q) record(s.q, true, '그 경기는 이미 끝났습니다 · 떠날 때의 순위로 기록'); else HUD.lobbyNote('그 경기는 이미 끝났습니다'); return; }
       if (ok.refused) { busy = false; show(s, '방장 기기가 이 기기를 확인하지 못했습니다 — 잠시 뒤 다시 시도하거나 포기할 수 있습니다'); return; }   // v24: 경기는 계속되는 중 (방장이 증명을 확인하지 못해 거절 — 10_net.js rjno) → 끝난 경기로 기록하지 않음
+      if (ok.nokey) { busy = false; show(s, '이 기기에 그 경기의 확인 열쇠가 남아 있지 않아 다시 들어갈 수 없습니다 — 포기할 수 있습니다'); return; }   // v24.3: 이어하기 저장의 기기 키를 못 불러옴 (10_net.js probe)
       pend = null; hide();
       const cfg = JSON.parse(JSON.stringify(s.cfg)); cfg.host = ok.host;
-      Net.join(cfg, { ep: ok.ep, isl: ok.isl, mine: s.me });
+      Net.join(cfg, { ep: ok.ep, isl: ok.isl, mine: s.me, x: ok.x });   // x: 방장을 찾을 때 쓴 봉투 문맥 (v24.3 — 방장이 이 기기를 이미 안다)
       rjS = s; keys(cfg.mid, Net.rjKeys(cfg.mid));   // v24: 이번 시도의 새 키를 바로 기록에 — 시도가 끊겨도(25초 · 로비로 나가기 · 새로고침) 방장이 이미 받은 새 키로 다시 증명할 수 있게
       G.rjHold = true;
       // 경기 화면이 열린 뒤 방장 상태를 받을 때까지 가림막 (25초 안에 못 받으면 실패)

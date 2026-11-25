@@ -1941,7 +1941,7 @@ body.touch.teammode .kf.mku:nth-child(n+3) { display: none; }
   .lad-row { padding: 2px 8px 2px 4px; gap: 6px; grid-template-columns: 24px auto 1fr auto; }
   .lad-name b { font-size: 0.76rem; } .lad-tier img { width: 26px; height: 26px; }
 }
-@media (prefers-reduced-motion: reduce) { .lad-c::after, .ttl-champ_tier { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .lad-c::after, .ttl-champ_tier, .ttl-madman, .ttl-madman::before { animation: none; } }
 /* 로비 탭이 7개(랭킹 추가) — 넓은 화면에서도 탭이 왼쪽 위 계정·레벨과 겹치지 않게 화면 폭에 맞춰 글자·간격을 줄임 */
 @media (min-width: 861px) and (min-height: 521px) {
   .lb-tabs { gap: clamp(12px, 1.6vw, 26px); }
@@ -2009,6 +2009,17 @@ body.touch.teammode .kf.mku:nth-child(n+3) { display: none; }
 .fr-br_escape { --rg: repeating-conic-gradient(#d8c36a 0 8deg, #b3a04a 8deg 16deg); --w: calc(var(--s) * 0.1); --gl: rgba(255, 248, 200, 0.6); }
 .fr-br_escape .pf-ring { animation: pfSpin 9s linear infinite; }
 .fr-br_escape::after { animation: brFlicker 3.2s steps(1) infinite; }
+/* v24.2 우로보로스 테두리 (칭호 「광인」): 검은 고리 위에 은빛 비늘 뱀(장식) · 노란 형광빛이 이따금 깜빡 · 작은 크기에선 바깥 글자·점선 고리 숨김 */
+.fr-madman { --rg: conic-gradient(#121418, #2b2a1e 25%, #0a0b0d 50%, #2b2a1e 75%, #121418); --w: calc(var(--s) * 0.1); --gl: rgba(255, 226, 110, 0.5); }
+.fr-madman::after { animation: brFlicker 4.2s steps(1) infinite; }
+.pf-sm.fr-madman .oro-txt, .pf-sm.fr-madman .oro-echo, .pf-sm.fr-madman .oro-glint { display: none; }
+/* v24.2 칭호: 광인(이따금 글리치) · 파쇄기(쇠 · 주황 불꽃) · 얻기 전 숨겨진 칭호 */
+.ttl-madman { background: linear-gradient(90deg, rgba(10, 10, 8, 0), #0d0d0b 12%, #3b3a2c 38%, #d8d2b0 50%, #3b3a2c 62%, #0d0d0b 88%, rgba(10, 10, 8, 0)); border-color: rgba(230, 226, 200, 0.9); color: #fffbe6; text-shadow: 0 0 6px rgba(255, 226, 110, 0.9), 0 0 1px #000; animation: ttlMad 3.4s steps(1) infinite; }
+.ttl-madman::before { content: '∞'; color: #ffe066; }
+@keyframes ttlMad { 0%, 100% { filter: none; transform: none; } 61% { filter: none; transform: none; } 62% { filter: blur(0.6px) hue-rotate(40deg); transform: translateX(1px); } 63% { filter: none; transform: none; } 81% { transform: none; } 82% { transform: translateX(-1px) skewX(-6deg); } 83% { transform: none; } }
+.ttl-shredder { background: linear-gradient(90deg, rgba(30, 30, 30, 0), #1d1f22 12%, #5d6168 38%, #ff9a2e 50%, #5d6168 62%, #1d1f22 88%, rgba(30, 30, 30, 0)); border-color: rgba(255, 190, 90, 0.9); color: #fff; text-shadow: 0 1px 2px #000, 0 0 6px rgba(255, 140, 40, 0.8); }
+.ttl-shredder::before { content: '⚙'; color: #ffcf7a; }
+.ttl-hidden { background: repeating-linear-gradient(90deg, #1a1a14 0 6px, #24241a 6px 12px); border-color: rgba(255, 226, 110, 0.5); color: #d8d0a0; letter-spacing: 0.3em; }
 @keyframes brFlicker { 0%, 100% { opacity: 1; } 46% { opacity: 1; } 47% { opacity: 0.25; } 48% { opacity: 1; } 52% { opacity: 0.4; } 53% { opacity: 1; } }
 /* v22 백룸 완전 탈출(12가지) 테두리 · 칭호: 노란 벽지 고리에 초록 비상등 줄 + EXIT 표지 */
 .fr-br_all { --rg: repeating-conic-gradient(#efd978 0 6deg, #b49a3a 6deg 13deg, #8dff9a 13deg 15deg); --w: calc(var(--s) * 0.12); --gl: rgba(150, 255, 140, 0.65); }

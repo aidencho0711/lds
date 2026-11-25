@@ -1067,6 +1067,32 @@ const Audio = (() => {
           tone(o, t + 1.75, 0.8, 'sawtooth', 720, 180, 0.028); tone(o, t + 1.75, 0.8, 'sine', 1440, 360, 0.035); for (let i = 0; i < 12; i++) blip(t + 1.77 + i * 0.065, 2700 - (i % 5) * 240, 0.02, 0.016);
           blip(t + 2.75, 880, 0.03, 0.05); whoosh(t + 2.78, 0.5, 600, 2400, 0.14); tone(o, t + 3.3, 0.1, 'sine', 900, 1500, 0.07); blip(t + 3.36, 1760, 0.03, 0.028); blip(t + 3.62, 1760, 0.03, 0.028); break;
         }
+        // 광인: 형광등 웅 · 지직 · 비늘이 바닥을 쓰는 쉭 소리 · 문 순간 덥석 · 떨리는 웃음(짧은 모음 터짐) · 속삭임 / 조이며 올라가는 비늘 소리 · 오므라드는 높은 음
+        case 'madIn': case 'madOut': {
+          const inn = kind === 'madIn', bite = inn ? 1.85 : 0.92, lt = inn ? 2.3 : 0.6;
+          tone(o, t, inn ? 4.6 : 3.2, 'sawtooth', 118, 121, 0.03); tone(o, t, inn ? 4.6 : 3.2, 'sine', 236, 236, 0.025); glit(t + 0.05, 6);
+          whoosh(t + (inn ? 0.25 : 0.3), bite - (inn ? 0.25 : 0.3), 2400, 5200, 0.08); for (let i = 0; i < 14; i++) noise(o, t + (inn ? 0.3 : 0.32) + i * (bite - 0.3) / 14, 0.04, 'highpass', 5200, 1.5, 0.05);
+          tone(o, t + bite, 0.12, 'sine', 180, 70, 0.3); noise(o, t + bite, 0.06, 'bandpass', 2600, 2, 0.28); tone(o, t + bite + 0.02, 0.5, 'sine', 1760, 1700, 0.03);
+          for (let i = 0; i < 9; i++) { const tt = t + lt + i * 0.12 + (i % 3 === 2 ? 0.05 : 0), f = 300 - i * 12 + (i % 2) * 40; tone(o, tt, 0.09, 'sawtooth', f * 1.1, f * 0.8, 0.045); noise(o, tt, 0.07, 'bandpass', 900 + (i % 2) * 400, 3, 0.07); }
+          if (inn) { noise(o, t + 3.7, 0.6, 'highpass', 3800, 0.6, 0.06); chord(t + 4.55, [2093, 2637, 3136], 0.6, 'sine', 0.025, 0.04); }
+          else { whoosh(t + 1.05, 1.6, 600, 2600, 0.14); for (let i = 0; i < 16; i++) noise(o, t + 1.05 + i * 0.1, 0.04, 'highpass', 4800, 1.5, 0.05); tone(o, t + 2.7, 0.4, 'sine', 900, 2800, 0.05); chord(t + 3.0, [1568, 2093, 2637], 0.5, 'sine', 0.03, 0.03); }
+          break;
+        }
+        // 파쇄기: 롤러가 갈리는 소리 · 뚜껑 쿵 · 일곱 번 휙·쨍 · 여덟 번째 내려찍기 쾅 / 롤러 · 떨어짐 · 쇳조각 갈림
+        case 'shredIn': case 'shredOut': {
+          const grind = (t0, d, g = 0.18) => { noise(o, t0, d, 'bandpass', 380, 1.4, g); tone(o, t0, d, 'sawtooth', 62, 66, 0.05); for (let i = 0; i < d * 18; i++) noise(o, t0 + Math.random() * d, 0.025, 'highpass', 3500 + Math.random() * 2500, 1, 0.07); };
+          if (kind === 'shredIn') {
+            noise(o, t + 0.15, 0.25, 'lowpass', 900, 0.8, 0.15); grind(t + 0.2, 1.1); whoosh(t + 0.5, 0.65, 300, 1600, 0.2); boom(t + 1.28, 0.55); noise(o, t + 1.28, 0.06, 'bandpass', 1800, 2, 0.25);
+            for (const [i, h] of [1.62, 1.94, 2.26, 2.62, 2.9, 3.13, 3.36].entries()) { whoosh(t + h - 0.11, 0.13, 900, 3600, 0.16); noise(o, t + h, 0.05, 'bandpass', 3000 + i * 150, 3, 0.2); tone(o, t + h, 0.18, 'triangle', 1900 + i * 60, 1700, 0.025); }
+            whoosh(t + 3.55, 0.2, 500, 3000, 0.22); boom(t + 3.75, 1.2); noise(o, t + 3.75, 0.9, 'lowpass', 220, 0.8, 0.2); for (let i = 0; i < 8; i++) noise(o, t + 3.78 + i * 0.03, 0.08, 'bandpass', 600 + Math.random() * 700, 1, 0.12);
+            tone(o, t + 4.65, 0.12, 'sine', 300, 180, 0.08); noise(o, t + 4.66, 0.05, 'bandpass', 2400, 3, 0.1);
+          } else {
+            noise(o, t + 0.3, 0.2, 'lowpass', 900, 0.8, 0.12); noise(o, t + 0.86, 0.12, 'bandpass', 1400, 1.5, 0.15); grind(t + 0.9, 1.6, 0.22); whoosh(t + 1.05, 0.5, 1800, 200, 0.2);
+            for (let i = 0; i < 26; i++) noise(o, t + 1.15 + Math.random() * 1.1, 0.03, 'bandpass', 2400 + Math.random() * 3000, 4, 0.08);
+            boom(t + 2.42, 0.5); noise(o, t + 2.42, 0.06, 'bandpass', 1800, 2, 0.22); tone(o, t + 2.55, 0.6, 'sine', 520, 500, 0.04);
+          }
+          break;
+        }
         case 'back': chord(t + 0.4, [1318, 1568, 2093], 0.9, 'sine', 0.035, 0.07); noise(o, t + 0.42, 0.5, 'highpass', 4500, 0.8, 0.05); break;
       }
       const cut = () => { try { o.disconnect(); } catch (e) { /* 이미 끊김 */ } }, tm = setTimeout(cut, 9000);   // 가장 긴 연출 소리(약 6초)가 끝난 뒤 출력 정리
