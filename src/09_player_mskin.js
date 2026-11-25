@@ -17,9 +17,12 @@
 //    화면 숙임도 기본 무기 그대로(근접 판정 방향 = 카메라 앞) · 옆 기울임만 동작마다
 //  · 소리: 동작표의 S = [[u, 이름], …] (내 캐릭터의 꺼내기·대기 손장난·살펴보기·넣기·휘두르기 중) — 이름은 동작표 snd 의 소리(Audio.mskin) 또는 Audio.knife 의 것
 //  · 달리기 자세(선택 — 동작표 run): 대기 중 달리면 1인칭 줄(run.fp)·3인칭 자세(run.tp)로 섞어 넘어감 (없는 스킨은 기본처럼 손을 내림 · 허리 옆으로)
-//    섞는 정도 ka.rw = 달리는 정도(ka.sg — 달리기 중이고 빠름 · 공중에서도 그대로라 달리다 뛰어도 풀리지 않음) × 상태마다: 대기·살펴보기 = 1 ·
-//    휘두르기 = 달리며 휘두르기 줄(attack[i].run)이 있으면 휘두르기를 시작할 때의 섞는 정도(ka.sa)로 처음부터 끝까지 그 줄(달리기 줄에서 시작해 달리기 줄로 끝남 —
-//      누르는 동안 달리기가 끊기거나 도중에 달리기를 멈춰도 손이 대기 자세 쪽으로 뒤집히지 않고, 끝난 뒤 달리기를 멈출 때처럼 풀림) /
+//    섞는 정도 ka.rw = 달리는 정도(ka.sg — 달리려 하고(내 캐릭터 = 달리기 키·모바일 달리기 + 앞으로: 사격 버튼을 누르는 동안 꺼지는 c.sprint 대신 · 다른 캐릭터 = c.sprint,
+//      손등 위로 시작한 달리며 휘두르기 중엔 4 m/s 넘게 빠르면 — 보내는 쪽 c.sprint 가 사격 버튼에 꺼지므로) 빠름 ·
+//      공중에서도 그대로라 달리다 뛰어도 풀리지 않음 · 휘두르는 동안에도 따라감) × 상태마다: 대기·살펴보기 = 1 ·
+//    휘두르기 = 달리며 휘두르기 줄(attack[i].run)이 있으면 휘두르기를 시작할 때의 섞는 정도(ka.sa)로 그 줄(달리기 줄에서 시작해 달리기 줄로 끝남 — 사격 버튼을 눌러도
+//      손이 대기 자세 쪽으로 뒤집히지 않음) · 도중에 달리기를 멈췄으면 두 줄이 같은 손등 위·날 오른쪽 자세인 찌르기·찢기 구간(u 0.4~0.56)에서 서서 휘두르는 줄로
+//      넘겨줘 대기 자세로 끝남 (달리다 멈춰 사격 버튼을 누르고 있으면 다음 휘두르기부터 서서 휘두르기 — 휘두르는 횟수·프레임 빠르기가 아니라 시간으로 풀림) /
 //      없으면 달리던 자세를 붙잡고 있다가 휘두르는 줄이 그 자세를 이어받는 무렵(u 0.26~0.36) 넘겨주고 찢고 난 마무리(u 0.46~0.75)에 다시 ·
 //    꺼내기 = 끝무렵(u 0.75)부터 달리기를 시작할 때처럼 · 넣기 = 0
 //  · 3인칭 휘두르기(선택 — 동작표 attack[i].tp): MEL_KF 형식 줄이 있으면 손 자리·허리·왼손·팔꿈치는 그 줄로 (없으면 기본 3인칭 찌르기 궤적)
@@ -230,6 +233,15 @@ const KAnim = (() => {
     if (r) { if (Audio.mskin) Audio.mskin(r[1], r[0], pos, own, swing ? null : S.shape + ':' + k, swing); }
     else if (Audio.knife) Audio.knife(k, pos, own);
   }
+  // 달리려 하나 (달리기 자세 ka.sg 의 기준 — 동작표 run 이 있는 스킨만): 다른 캐릭터는 c.sprint · 내 캐릭터는 달리기 키(모바일 달리기 버튼·스틱 끝까지) + 앞으로 —
+  //  09_player.js 의 p.sprint 에서 '쏘는 중'만 뺀 것 (사격 버튼 = 휘두르기를 누르는 동안은 p.sprint 가 꺼져, 달리며 누르고 있으면 손이 서서 휘두르는 쪽으로 풀렸다 돌아왔음)
+  function runWant(c) {
+    if (c.sprint || !c.isPlayer) return !!c.sprint;
+    const I = Input, k = I.keys;
+    if (!(k.ShiftLeft || k.ShiftRight || I.touchSprint || I.touchSprintBtn) || c.stance !== 'stand' || c.lean || c.heal || c.inWater || c.vault) return false;
+    const mx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + I.move.x, mz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + I.move.z;
+    return mz / Math.max(1, Math.hypot(mx, mz)) > 0.3;
+  }
   // 한 프레임: 상태 전환 → 시간 → 키프레임 → 섞기 (animateChar 에서 캐릭터마다 한 번) · 반환 = 줄(전용 동작 중) 또는 null
   function tick(c, dt) {
     let ka = c.ka;
@@ -244,8 +256,10 @@ const KAnim = (() => {
       if (!ka.held || !ka.st || ka.st === 'unequip') { const eq = c.equipT > 0.05; if (!ka.st) { ka.rw = 0; ka.sg = 0; } enter(ka, eq ? 'equip' : 'idle', eq ? (ka.st ? 0.08 : 0) : 0.26, !eq && !ka.st); ka.held = true; ka.sw = sw; ka.fn = 2.5 + Math.random() * 3; }
       if (sw && sw !== ka.sw) { ka.sw = sw; ka.v = S.attack.length > 1 && sw.side < 0 ? 1 : 0; ka.sa = ka.rw || 0; enter(ka, 'attack', 0.07); }
       else if (ka.st === 'attack' && !sw) enter(ka, 'idle', 0.1);
-      if (ka.req) {
-        ka.req = 0;
+      // 살펴보기 요청 — 달리기 자세(동작표 run)로 달리다 멈추자마자 누르면 손이 대기 자세로 거의 돌아올 때까지(ka.rw 0.2 · 길어야 0.3초) 들고 기다렸다 시작
+      //  (손이 아직 낮은데 손목부터 살펴보는 자세로 돌아 날이 화면 아래로 빠지고 살펴보기 첫 동작이 섞기에 묻히던 것) · 그사이 다시 달리거나 휘두르면 버림
+      if (ka.req && !(S.run && ka.st === 'idle' && !c.sprint && ka.rw > 0.2 && (ka.rqt = (ka.rqt || 0) + dt) < 0.3)) {
+        ka.req = 0; ka.rqt = 0;
         if (ka.st === 'idle' && S.inspect.length && !c.sprint && !sw && !c.heal && !c.throwMode && !c.revive && !c.dance) { ka.iv = ka.reqV >= 0 && ka.reqV < S.inspect.length ? ka.reqV : pickOther(S.inspect.length, ka.il); ka.il = ka.iv; enter(ka, 'inspect', 0.16); }
         ka.reqV = -1;
       }
@@ -303,19 +317,29 @@ const KAnim = (() => {
     }
     ka.u0 = u;
     // 달리기 자세(동작표 run)를 섞는 정도 ka.rw = 달리는 정도 ka.sg × 상태마다 (머리말)
-    //  ka.sg 는 땅에 닿았는지 보지 않음 — 달리다 뛰어올라도 손이 대기 자세로 풀렸다 다시 돌아가지 않게 (조준·사격 직후처럼 몸이 달리기 자세가 아닐 땐 0)
-    //  휘두르기: 달리며 휘두르기 줄(attack[i].run)이 있으면 휘두르기를 시작할 때의 섞는 정도(ka.sa = 그때의 ka.rw)로 처음부터 끝까지 그 줄 — 첫 프레임부터 손등 위 그대로 장전해 휘두르고 달리기 자세로 끝남
-    //   (사격 버튼을 누르는 동안 달리기가 끊기거나 휘두르는 중에 달리기를 멈춰도 휘두르는 도중에 손이 대기 자세 쪽으로 뒤집히지 않게 · 꺼내다 바로 휘두르면 0 이라 튀지 않음)
-    //   그동안 ka.sg 는 그 섞는 정도에 맞춰 둠(sstep 의 역) — 끝나면 거기서부터 달리기 시작·멈춤과 똑같이 이어짐 (달리기를 멈췄으면 그때 천천히 풀림)
+    //  ka.sg = 달리려 하고(runWant) 빠른 정도를 늘 따라감(휘두르는 동안에도 — 시간으로 풀려 휘두르는 횟수·프레임 빠르기에 상관없음)
+    //   땅에 닿았는지 보지 않음 — 달리다 뛰어올라도 손이 대기 자세로 풀렸다 다시 돌아가지 않게 (조준·사격 직후처럼 몸이 달리기 자세가 아닐 땐 0)
+    //  휘두르기: 달리며 휘두르기 줄(attack[i].run)이 있으면 휘두르기를 시작할 때의 섞는 정도(ka.sa = 그때의 ka.rw)로 그 줄 — 첫 프레임부터 손등 위 그대로 장전해 휘두르고 달리기 자세로 끝남
+    //   (꺼내다 바로 휘두르면 0 이라 튀지 않음) · 달리기를 멈췄으면 찌르기·찢기 구간(u 0.4~0.56 — 두 줄이 같은 손등 위·날 오른쪽 자세 · 손 자리 3 cm 안)에서
+    //   min(ka.sa, 달리는 정도)로 넘겨줘 서서 휘두르는 줄의 마무리로 대기 자세에 닿음 (계속 달리면 그대로 ka.sa)
+    //   — 예전엔 휘두르는 동안 ka.sg 를 ka.sa 에 묶어, 달리다 멈춰 사격 버튼을 누르고 있으면 휘두르기 사이 한 프레임씩만 풀려 서 있는데도 7번(3초)을 달리기 자세로 휘둘렀고
+    //     (30 fps 는 그 한 프레임이 커서 더 빨리 풀림) 한 번 휘두르다 달리기를 놓아도 0.65초 뒤에야 손이 돌아왔음
     //   줄이 없으면: 달리던 손(손등 위)을 붙잡고 있다가 휘두르는 줄이 손등 위로 돌아오는 무렵 넘겨줌 — 손이 대기 자세 쪽으로 되돌았다 다시 엎어지지 않게
     //  꺼내기: 끝무렵(u 0.75)까지 0 이고 ka.sg 도 0 쪽으로 — 달리며 꺼내면 감아 쥔 뒤 달리기를 시작할 때처럼 천천히 손등 위로 (다 꺼내자마자 한 번에 돌지 않게)
-    //  살펴보기: 줄어드는 ka.sg 그대로 (달리기를 멈추자마자 살펴보면 달리기를 멈출 때와 같은 빠르기로 풀림) · 넣기 = 0
+    //  살펴보기: 줄어드는 ka.sg 그대로 (달리기를 멈추자마자 누른 살펴보기는 손이 거의 돌아온 뒤 시작 — 위 ka.req) · 넣기 = 0
     if (S.run) {
-      const an = c.anim, at = ka.st === 'attack', rr = at && tr && tr.rr, eq = ka.st === 'equip' && u < 0.75;
-      if (rr) ka.sg = 0.5 - Math.sin(Math.asin(1 - 2 * clamp(ka.sa || 0, 0, 1)) / 3);
-      else ka.sg = lerp(ka.sg || 0, !eq && c.sprint && Math.hypot(c.vel.x, c.vel.z) > 3.2 && !(an && an.ready > 0.5) ? 1 : 0, clamp(dt * 6, 0, 1));
-      const s = sstep(0, 1, ka.sg), g = rr ? ka.sa || 0 : ka.st === 'idle' ? (sw ? 0 : s) : at ? Math.max(1 - sstep(0.26, 0.36, u), sstep(0.46, 0.75, u)) * s : eq || ka.st === 'unequip' ? 0 : s;
-      ka.rw = lerp(ka.rw || 0, g, clamp(dt * (at ? 40 : 10), 0, 1));
+      const an = c.anim, at = ka.st === 'attack', rr = at && tr && tr.rr, eq = ka.st === 'equip' && u < 0.75, vv = Math.hypot(c.vel.x, c.vel.z);
+      //  다른 캐릭터(다른 기기의 사람)가 손등 위로 시작한 달리며 휘두르기(ka.sa > 0.5) 중이고 아직 빠르면(4 m/s 넘게) 달리려는 것으로 봄 —
+      //   보내는 쪽은 사격 버튼을 누르는 동안 p.sprint 가 꺼지고 준비 자세(ready)가 켜져 받는 기기에선 달리기를 멈춘 것으로 보였음
+      //   → 휘두를 때마다 서서 휘두르는 줄로 넘겨 달리는 채로 날이 허리에서 아래로 늘어졌다 0.5초 뒤 달리기 자세로 돌아갔음 (멈추면 곧 4 m/s 아래 — 그때부터 넘겨줌)
+      //   서서 시작한 휘두르기(ka.sa 0)는 그대로 — 걸으며(4.6 m/s) 휘두르는 동안 ka.sg 가 올라 끝난 뒤 손이 달리기 자세 쪽으로 반쯤 돌았다 돌아오지 않게
+      const oth = rr && !c.isPlayer && (ka.sa || 0) > 0.5 && vv > 4;
+      ka.sg = lerp(ka.sg || 0, !eq && (oth || runWant(c) && vv > 3.2 && !(an && an.ready > 0.5)) ? 1 : 0, clamp(dt * 6, 0, 1));
+      const s = sstep(0, 1, ka.sg), sa = ka.sa || 0, g = rr ? lerp(sa, Math.min(sa, s), sstep(0.4, 0.56, u)) : ka.st === 'idle' ? (sw ? 0 : s) : at ? Math.max(1 - sstep(0.26, 0.36, u), sstep(0.46, 0.75, u)) * s : eq || ka.st === 'unequip' ? 0 : s;
+      //  따라가는 빠르기: 휘두르기 40 · 그 밖 10 — 달리며 휘두르기는 넘겨주는 구간이 지난 뒤(u 0.56~) 오르내림 모두 달리기를 멈출 때와 같은 10
+      //   (늦게 멈추면 서서 휘두르는 줄이 손목을 되돌리는 동안 달리기 자세까지 한꺼번에 풀려 손이 프레임마다 19.7° · 날 끝 90 px 로 돌았음 — 찌르기보다 빠름 ·
+      //    놓았다 0.25초 뒤 다시 달리면 달리기 자세가 40 으로 되살아나며 손목이 프레임마다 18.6° 로 휙 돌았음)
+      ka.rw = lerp(ka.rw || 0, g, clamp(dt * (at && !(rr && u > 0.56) ? 40 : 10), 0, 1));
     } else ka.rw = 0;
     // 3인칭: 꺼내기·살펴보기 동안 손을 가슴 앞으로 들어 올리는 정도(멀리서도 동작이 보이게) — 부드럽게 따라감
     const shT = ka.st === 'equip' ? sstep(0.1, 0.3, u) * (1 - sstep(0.8, 1, u)) : ka.st === 'inspect' ? sstep(0, 0.08, u) * (1 - sstep(0.9, 1, u)) : 0;
@@ -494,7 +518,7 @@ const KAnim = (() => {
     // 걷는 흔들림 · 달리면 아래로 (기본 근접 무기와 같음 — 달리기 자세가 있는 스킨은 그 줄이 내림·기울임 대신)
     //  꺼내는 동안은 끝무렵(u 0.8~1)에야 내림 — 달리며 꺼내도 젠 롤오버의 손목 넘기기·착 닫힘 같은 꺼내는 동작이 화면 밖으로 내려가 버리지 않고 서서 꺼낼 때처럼 보임
     //   내리는 비율 ka.rq: 새로 꺼낼 땐(섞기 없이 화면 아래에서 시작) 그대로 · 상태가 바뀌면 부드럽게 따라감(넣다가 다시 꺼내기·꺼내다 넣기) · 꺼내다 휘두르면 휘두르는 동안 그대로
-    const eq = ka.st === 'equip', tq = eq ? sstep(0.8, 1, clamp(ka.t / (S.equip.dur || 0.5), 0, 1)) : ka.st === 'attack' && ka.rq !== undefined ? ka.rq : 1;
+    const eq = ka.st === 'equip', eu = eq ? clamp(ka.t / (S.equip.dur || 0.5), 0, 1) : 0, tq = eq ? sstep(0.8, 1, eu) : ka.st === 'attack' && ka.rq !== undefined ? ka.rq : 1;
     ka.rq = ka.rq === undefined || (eq && !ka.bd) || Math.abs(tq - ka.rq) < 1e-3 ? tq : lerp(ka.rq, tq, clamp(dt * 10, 0, 1));
     const bobAmp = clamp(p.anim.speed / 5, 0, 1), rn = R ? 0 : run * ka.rq;
     _P.x += Math.sin(p.anim.phase) * 0.012 * bobAmp + rn * 0.05; _P.y -= Math.abs(Math.cos(p.anim.phase)) * 0.014 * bobAmp + rn * 0.14;
@@ -510,7 +534,9 @@ const KAnim = (() => {
     const sw = ka.st === 'attack' ? ka.sw : null, D = ITEMS[ka.mid];
     if (sw && sw.t > D.wind * 0.85 && sw.t < D.wind + D.strike * 1.4) FX.trail('vm', VM.scene, _tp, _bp, MeleeSkin.trail(ka.mid, sk));
     // 잔상은 손장난(꺼내기·살펴보기·대기)의 빠른 돌기에만 — 휘두르기는 자국이 따로 있어 겹치면 번져 보임 · 달리기 자세로 손을 돌리는 동안도 없음
-    ghosts(gs, dt, spd, ka.st === 'attack' || ka.st === 'unequip' || (ka.st === 'idle' && rw > 0.02) ? 0 : S.ghost);
+    //  (대기는 섞는 동안 내내 · 꺼내기는 달리기 자세로 섞기 시작하는 끝무렵(u 0.75~)에만 — 달리다 넣었다 바로 꺼내면 줄어들던 섞는 정도에 꺼내는 돌기의 잔상까지
+    //   지워졌었음 · 살펴보기는 섞는 정도가 0.15 넘게 남았을 때만 — 멈춘 직후 시작한 살펴보기의 첫 돌기 잔상은 그대로)
+    ghosts(gs, dt, spd, ka.st === 'attack' || ka.st === 'unequip' || ((ka.st === 'idle' || eu >= 0.75) && rw > 0.02) || (ka.st === 'inspect' && rw > 0.15) ? 0 : S.ghost);
     const it = ka.st === 'inspect' ? trackOf(ka, 'inspect') : null;
     glint(it, it ? clamp(ka.t / (it.dur || 1), 0, 1) : 0, _tp, _bp);
     const u = sw ? clamp(sw.t / sw.total, 0, 1) : 0;
