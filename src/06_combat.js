@@ -1252,7 +1252,10 @@ const FX = (() => {
     g.fillStyle = gr; g.fillRect(0, 0, size, size); return new THREE.CanvasTexture(c);
   }
   function init(sc) {
-    scene = sc; tracers = []; dots = []; flashes = []; bursts = []; trails = [];
+    // v24.02 휘두르기 자국 띠는 경기가 바뀌어도 다시 씀 — 장면에서 빼고 숨기고 점을 비움 (예전엔 목록만 비워, 1인칭 띠가 경기마다 다시 쓰는 뷰모델 장면에 남아
+    //  휘두르는 중에 멈추고 나가면 다음 경기 1인칭 화면에 멈춘 자국이 떠 있을 수 있었다) · 재질은 지우지 않음 — 지우면 셰이더가 풀려 경기마다 첫 휘두르기에 다시 컴파일(끊김)
+    for (const tr of trails) { if (tr.m.parent) tr.m.parent.remove(tr.m); tr.m.visible = false; tr.n = 0; }
+    scene = sc; tracers = []; dots = []; flashes = []; bursts = [];
     SkinFx.init(sc); Hazard.init(sc); Crates.init(sc);   // v22 불·자기장 수류탄 · 시체 상자도 경기마다 새로
     // v23 근접 무기 스킨 처치 효과: 판 풀을 새 장면에 (첫 두 프레임 미리 그림)
     MeleeFx.init(sc);
@@ -1366,27 +1369,36 @@ const FX = (() => {
   }
   // 휘두르기 자국 (v22 근접 무기): 날 끝·뿌리의 최근 위치로 만든 띠 — 가산 혼합, 오래된 쪽일수록 어둡게(= 투명) · sc: 그릴 장면(1인칭은 뷰모델 장면)
   //  color: v23 근접 무기 스킨(네온·얼음)은 날 빛 색 자국 (없으면 흰빛)
+  //  v24.02: 휘두를 때마다 새 띠 — 두 프레임 넘게 점이 안 들어왔으면(= 새로 휘두름) 지난 휘두르기의 점을 버림. 예전엔 새 자국의 첫 프레임들이
+  //   지난 자국이 끝난 자리까지 이어져, 흐려지는 쐐기(줄)가 그려졌다 (1인칭·3인칭, 모든 근접 무기·스킨)
+  //   점은 띠마다 미리 만든 고리 버퍼 — q: 점 TRN 개 × [끝 xyz, 뿌리 xyz, 시각], h: 가장 새 점 칸, n: 점 수, f: 마지막 점을 넣은 프레임 · 매 프레임 새 배열 없음
   const TRN = 10, TR_WHITE = [1, 0.97, 0.92];
   function trail(key, sc, tip, base, color) {
-    let tr = trails.find((o) => o.key === key);
+    let tr = null;
+    for (let i = 0; i < trails.length; i++) if (trails[i].key === key) { tr = trails[i]; break; }
+    // 띠 7개를 다 쓰면 가장 오래 쉰 띠를 새 이름으로 다시 씀 (예전엔 가장 먼저 만든 띠를 — 휘두르는 중이어도 — 장면에서 빼고 새로 만들어 GPU 버퍼가 남았다)
+    //  7개 모두 지금 그리는 중이면(두 프레임 안에 점) 이번 띠는 건너뜀 — 서로 빼앗아 모두 안 보이게 되지 않게 · 내 1인칭 띠('vm')만은 빼앗음
+    if (!tr && trails.length > 6) { let o = trails[0]; for (const t of trails) if (t.f < o.f) o = t; if ((G.frame || 0) - o.f <= 2 && key !== 'vm') return; tr = o; tr.key = key; tr.n = 0; }
     if (!tr) {
-      if (trails.length > 6) { const o = trails.shift(); if (o.m.parent) o.m.parent.remove(o.m); }
       const g = new THREE.BufferGeometry(), pos = new Float32Array(TRN * 2 * 3), col = new Float32Array(TRN * 2 * 3), idx = [];
       for (let i = 0; i < TRN - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
       g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setIndex(idx);
       const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
-      m.frustumCulled = false; tr = { key, m, pts: [], idle: 0 }; trails.push(tr);
+      m.frustumCulled = false; tr = { key, m, q: new Float64Array(TRN * 7), h: 0, n: 0, f: 0, cl: TR_WHITE.slice(), idle: 0 }; trails.push(tr);
     }
     if (tr.m.parent !== sc) sc.add(tr.m);
-    tr.pts.unshift([tip.x, tip.y, tip.z, base.x, base.y, base.z, G.time]); if (tr.pts.length > TRN) tr.pts.length = TRN;
-    tr.col = color !== undefined && color !== null ? [((color >> 16) & 255) / 255 * 1.25, ((color >> 8) & 255) / 255 * 1.25, (color & 255) / 255 * 1.25] : TR_WHITE;
+    const F = G.frame || 0; if (F - tr.f > 2) tr.n = 0; tr.f = F;   // 새로 휘두름: 지난 점은 버림
+    const Q = tr.q, j = (tr.h = (tr.h + TRN - 1) % TRN) * 7;
+    Q[j] = tip.x; Q[j + 1] = tip.y; Q[j + 2] = tip.z; Q[j + 3] = base.x; Q[j + 4] = base.y; Q[j + 5] = base.z; Q[j + 6] = G.time; if (tr.n < TRN) tr.n++;
+    const cl = tr.cl, cs = color !== undefined && color !== null;
+    cl[0] = cs ? ((color >> 16) & 255) / 255 * 1.25 : TR_WHITE[0]; cl[1] = cs ? ((color >> 8) & 255) / 255 * 1.25 : TR_WHITE[1]; cl[2] = cs ? (color & 255) / 255 * 1.25 : TR_WHITE[2];
     tr.idle = 0; tr.m.visible = true; drawTrail(tr);
   }
   function drawTrail(tr) {
-    const P = tr.m.geometry.attributes.position, C = tr.m.geometry.attributes.color, n = tr.pts.length, cl = tr.col || TR_WHITE;
+    const P = tr.m.geometry.attributes.position, C = tr.m.geometry.attributes.color, n = tr.n, Q = tr.q, cl = tr.cl;
     for (let i = 0; i < TRN; i++) {
-      const q = tr.pts[Math.min(i, n - 1)], age = G.time - q[6], k = i < n ? clamp(1 - age / 0.14, 0, 1) * (1 - i / TRN) : 0;
-      P.setXYZ(i * 2, q[0], q[1], q[2]); P.setXYZ(i * 2 + 1, q[3] * 0.4 + q[0] * 0.6, q[4] * 0.4 + q[1] * 0.6, q[5] * 0.4 + q[2] * 0.6);
+      const j = ((tr.h + Math.min(i, n - 1)) % TRN) * 7, age = G.time - Q[j + 6], k = i < n ? clamp(1 - age / 0.14, 0, 1) * (1 - i / TRN) : 0;
+      P.setXYZ(i * 2, Q[j], Q[j + 1], Q[j + 2]); P.setXYZ(i * 2 + 1, Q[j + 3] * 0.4 + Q[j] * 0.6, Q[j + 4] * 0.4 + Q[j + 1] * 0.6, Q[j + 5] * 0.4 + Q[j + 2] * 0.6);
       const w = 0.55 * k; C.setXYZ(i * 2, w * cl[0], w * cl[1], w * cl[2]); C.setXYZ(i * 2 + 1, 0, 0, 0);
     }
     P.needsUpdate = true; C.needsUpdate = true;
