@@ -377,7 +377,7 @@ const MM = (() => {
   function chSend(k, data) {
     if (!ch) return false;
     if (!chOk) { chQ.push({ k, d: data }); if (chQ.length > 300) chQ.shift(); return true; }
-    ch.send({ type: 'broadcast', event: 'm', payload: Object.assign({ k, from: Cloud.uid }, data || {}) });
+    ch.send({ type: 'broadcast', event: 'm', payload: Object.assign({}, data || {}, { k, from: Cloud.uid }) });   // k·from 은 data 뒤에 (v24 — data 의 from 이 보낸 사람을 덮지 못하게)
     return true;
   }
   // mid 를 주면 그 경기 채널일 때만 닫는다 (그 사이 다음 경기 채널을 열었으면 그대로)
