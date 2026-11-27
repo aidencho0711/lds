@@ -151,8 +151,11 @@ const EvBR = (() => {
     return true;
   }
   // 새 백룸: 서버에 기록했다는 알림 → 다시 불러와 보여 줌
+  //  had: 이미 계정에 기록된 방법으로 다시 탈출함 (받은 계정이 다시 들어와 놀 때 등 — 서버는 방법마다 처음 것만 남김) → '기록됐습니다' 대신 그대로라고
+  //   알림 전에 이 창이 알던 기록(pre)에 있고 + 서버에 처음 기록된 때가 알림보다 90초 넘게 앞일 때만 — 방금 기록된 것을 그사이 다른 불러오기가 먼저 받아 와도 '다시'라고 하지 않게
   function escaped(m) {
-    open().then(() => { const nm = nameOf(m); if (A.st === 'ok' && (A.esc.size || !m)) flash(m ? `백룸 탈출이 계정에 기록됐습니다 — ‘${nm || m}’ · 12가지 중 ${n12()}가지` : `백룸에서 돌아왔습니다 — 계정에 기록된 탈출 ${n12()} / 12가지`); });
+    const tMsg = Date.now(), pre = !!m && A.st === 'ok' && A.esc.has(m);
+    open().then(() => { const nm = nameOf(m), at = Date.parse(A.esc.get(m) || ''), had = pre && !(at > tMsg - 90000); if (A.st === 'ok' && (A.esc.size || !m)) flash(m ? (had ? `백룸에서 다시 탈출했습니다 — ‘${nm || m}’ · 이미 계정에 기록된 방법 (12가지 중 ${n12()}가지)` : `백룸 탈출이 계정에 기록됐습니다 — ‘${nm || m}’ · 12가지 중 ${n12()}가지`) : `백룸에서 돌아왔습니다 — 계정에 기록된 탈출 ${n12()} / 12가지`); });
     try { Audio.init(); Audio.ui(); } catch (e) { /* 소리 없이도 */ }
   }
   // 보상이 늘었을 때(1,000 → 30,000): 예전 방식으로 받은 기기에는 차액을 한 번 더 (s.gold = 이 기기에서 받은 양)
@@ -210,7 +213,7 @@ const EvBR = (() => {
     box.innerHTML = '';
     box.appendChild(card('all', justClaimed === 'all'));
     box.appendChild(card('one', justClaimed === 'one'));
-    box.appendChild(h('p', 'micro evb-foot', '보상은 <b>계정마다</b> 이벤트 하나에 한 번 받을 수 있습니다 — 다른 기기에서 받았어도 같은 계정이면 끝. 이 창의 ‘백룸 들어가기’로 연 백룸은 로그인한 계정과 연결되어, 그 기기에서 탈출할 때마다 계정에 기록됩니다 (연결하기 전에 그 기기에서 한 탈출도 처음 연결한 계정 한 곳에 한 번 옮겨짐). 사진·테두리·칭호는 프로필에서 바꿀 수 있습니다.'));
+    box.appendChild(h('p', 'micro evb-foot', '보상은 <b>계정마다</b> 이벤트 하나에 한 번 받을 수 있습니다 — 다른 기기에서 받았어도 같은 계정이면 끝. 이 창의 ‘백룸 들어가기’로 연 백룸은 로그인한 계정과 연결되어, 그 기기에서 탈출할 때마다 계정에 기록됩니다 (보상을 받은 뒤에도 ‘백룸 다시 들어가기’로 계속) (연결하기 전에 그 기기에서 한 탈출도 처음 연결한 계정 한 곳에 한 번 옮겨짐). 사진·테두리·칭호는 프로필에서 바꿀 수 있습니다.'));
   }
   function card(ev, just) {
     const one = ev === 'one', st = evSt(ev), gold = one ? BR_EVENT.gold : BR_EVENT.gold12, n = n12(), s = get();
@@ -242,15 +245,18 @@ const EvBR = (() => {
     rw.appendChild(h('span', 'evb-chip', `${Prof.frameHTML(one ? 'br_escape' : 'br_all', 'helmet', 26)} 테두리 ‘${one ? BR_EVENT.title : BR_EVENT.title12}’`));
     txt.appendChild(rw);
     const act = h('div', 'evb-act'), se = h('span', 'evb-st');
-    const goBtn = (cls) => { const b = btn('백룸 들어가기 ↗', cls, go); if (!A.code) b.disabled = true; return b; };
+    const goBtn = (cls, label) => { const b = btn(label || '백룸 들어가기 ↗', cls, go); if (!A.code) b.disabled = true; return b; };
+    // v24.34 받은 계정·받기 전에도 백룸으로 (계정과 연결된 채 계속 놀기 · 숨겨진 칭호) — 받음 표시·보상 받기는 그대로, 다시 들어가도 받은 상태는 서버 기록(claims)이라 바뀌지 않음
+    const againBtn = () => goBtn('ghost', '백룸 다시 들어가기 ↗');
     if (A.st === 'guest') { se.textContent = '로그인한 계정마다 한 번 받을 수 있습니다'; act.appendChild(btn('로그인하고 참여', 'amber', () => { close(); Cloud.open(); })); }
     else if (A.st !== 'ok' && A.st !== 'off' && A.st !== 'err') se.innerHTML = '<i class="evb-wait"></i>계정의 이벤트 기록을 불러오는 중…';
     else if (A.st === 'off') { se.textContent = '이벤트 서버 준비 중입니다 — 잠시 뒤 다시 열어 주세요'; act.appendChild(btn('다시 확인', '', () => { sync(true).then(() => render()); })); }
     else if (A.st === 'err') { se.textContent = '이벤트 기록을 불러오지 못했습니다 — ' + A.err; act.appendChild(btn('다시 시도', '', () => { sync(true).then(() => render()); })); }
     else if (st === 'done') {
-      se.textContent = just ? `받았습니다 — 골드 탄피 ${gold.toLocaleString()} · 칭호·사진·테두리 (프로필에서 바꿀 수 있음)` : '이 계정은 받았습니다 — 사진·테두리·칭호는 프로필에서';
+      se.textContent = just ? `받았습니다 — 골드 탄피 ${gold.toLocaleString()} · 칭호·사진·테두리 (프로필에서 바꿀 수 있음)` : '이 계정은 받았습니다 — 백룸에는 계정과 연결된 채 계속 들어갈 수 있어요';
+      act.appendChild(againBtn());
       const b = btn('받음 ✓', '', null); b.disabled = true; act.appendChild(b);
-    } else if (st === 'ready') { se.textContent = one ? '탈출 확인 완료!' : '12가지 탈출 완료!'; const b = btn(busy === ev ? '받는 중…' : '보상 받기', 'amber pulse', () => claim(ev)); if (busy) b.disabled = true; act.appendChild(b); }
+    } else if (st === 'ready') { se.textContent = one ? '탈출 확인 완료!' : '12가지 탈출 완료!'; act.appendChild(goBtn('ghost')); const b = btn(busy === ev ? '받는 중…' : '보상 받기', 'amber pulse', () => claim(ev)); if (busy) b.disabled = true; act.appendChild(b); }
     else if (one) { if (s.goT) se.innerHTML = '<i class="evb-wait"></i>백룸에서 탈출을 기다리는 중…'; else se.textContent = '아직 참여하지 않았습니다'; act.appendChild(goBtn(s.goT ? '' : 'amber')); }
     else { se.textContent = n ? `${BR_ESCAPES.length - n}가지 남음` : '아직 계정에 기록된 탈출이 없습니다'; act.appendChild(btn('↻', 'ghost', () => { A.t = 0; sync(true).then(() => render()); })); act.appendChild(goBtn('amber')); }
     act.prepend(se); txt.appendChild(act);
